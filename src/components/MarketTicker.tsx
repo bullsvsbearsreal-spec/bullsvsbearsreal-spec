@@ -137,7 +137,7 @@ export default function MarketTicker() {
                     <TrendingDown className="w-3 h-3" />
                   )}
                   <span className="text-xs font-medium">
-                    {ticker.change >= 0 ? '+' : ''}{ticker.change.toFixed(2)}%
+                    {ticker.change >= 0 ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
                   </span>
                 </div>
               </div>
