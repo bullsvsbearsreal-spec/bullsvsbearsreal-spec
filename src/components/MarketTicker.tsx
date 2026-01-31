@@ -130,14 +130,14 @@ export default function MarketTicker() {
                 <span className="text-white font-mono text-sm">{formatPrice(ticker.price)}</span>
 
                 {/* Change */}
-                <div className={`flex items-center gap-1 ${ticker.change >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {ticker.change >= 0 ? (
+                <div className={`flex items-center gap-1 ${(ticker.change ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {(ticker.change ?? 0) >= 0 ? (
                     <TrendingUp className="w-3 h-3" />
                   ) : (
                     <TrendingDown className="w-3 h-3" />
                   )}
                   <span className="text-xs font-medium">
-                    {ticker.change >= 0 ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
+                    {(ticker.change ?? 0) >= 0 ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
                   </span>
                 </div>
               </div>
