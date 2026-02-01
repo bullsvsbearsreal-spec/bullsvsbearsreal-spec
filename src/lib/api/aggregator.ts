@@ -39,19 +39,19 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
   if (cached) return cached;
 
   const results = await Promise.allSettled([
-    binanceAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Binance' }))),
-    bybitAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bybit' }))),
-    okxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'OKX' }))),
-    bitgetAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bitget' }))),
-    hyperliquidAPI.getTickers(),
-    dydxAPI.getTickers(),
+    binanceAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Binance' as string }))),
+    bybitAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bybit' as string }))),
+    okxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'OKX' as string }))),
+    bitgetAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bitget' as string }))),
+    hyperliquidAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: t.exchange || 'Hyperliquid' }))),
+    dydxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: t.exchange || 'dYdX' }))),
   ]);
 
   // Collect all successful results
   const allTickers: (TickerData & { exchange: string })[] = [];
   results.forEach((result) => {
     if (result.status === 'fulfilled') {
-      allTickers.push(...result.value);
+      allTickers.push(...(result.value as (TickerData & { exchange: string })[]));
     }
   });
 
