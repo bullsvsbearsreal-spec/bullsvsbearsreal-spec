@@ -1,1 +1,2 @@
 # InfoHub - Crypto Trading Dashboard
+
