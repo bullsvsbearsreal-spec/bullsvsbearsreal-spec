@@ -1,15 +1,29 @@
 // API Response Types for Exchange Data
 
+// Utility type for API responses
+export interface ApiResponse<T> {
+  data: T | null;
+  error: string | null;
+  loading: boolean;
+  timestamp: number;
+}
+
+// Safe number type that handles undefined/null
+export type SafeNumber = number | null | undefined;
+
 export interface TickerData {
   symbol: string;
-  price: number;
-  change24h: number;
-  changePercent24h: number;
+  lastPrice: number;
+  price?: number; // Alias for compatibility
+  priceChangePercent24h: number;
+  change24h?: number;
+  changePercent24h?: number;
   high24h: number;
   low24h: number;
   volume24h: number;
   quoteVolume24h: number;
   timestamp: number;
+  exchange?: string;
 }
 
 export interface FundingRateData {

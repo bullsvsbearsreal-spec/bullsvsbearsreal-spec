@@ -2,7 +2,25 @@ import { binanceAPI } from './binance';
 import { bybitAPI } from './bybit';
 import { okxAPI } from './okx';
 import { bitgetAPI } from './bitget';
+import { hyperliquidAPI } from './hyperliquid';
+import { dydxAPI } from './dydx';
 import { TickerData, FundingRateData, OpenInterestData, AggregatedLiquidations } from './types';
+
+// Simple in-memory cache
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 10000; // 10 seconds
+
+function getCached<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
 
 // Aggregated market data interface
 export interface AggregatedMarketData {
@@ -16,11 +34,17 @@ export interface AggregatedMarketData {
 
 // Aggregate ticker data - use highest volume exchange price
 export async function fetchAllTickers(): Promise<TickerData[]> {
+  // Check cache first
+  const cached = getCached<TickerData[]>('tickers');
+  if (cached) return cached;
+
   const results = await Promise.allSettled([
     binanceAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Binance' }))),
     bybitAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bybit' }))),
     okxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'OKX' }))),
     bitgetAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bitget' }))),
+    hyperliquidAPI.getTickers(),
+    dydxAPI.getTickers(),
   ]);
 
   // Collect all successful results
@@ -40,16 +64,23 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
     }
   });
 
-  return Array.from(symbolMap.values()).sort((a, b) => b.quoteVolume24h - a.quoteVolume24h);
+  const result = Array.from(symbolMap.values()).sort((a, b) => b.quoteVolume24h - a.quoteVolume24h);
+  setCache('tickers', result);
+  return result;
 }
 
 // Fetch funding rates from all exchanges
 export async function fetchAllFundingRates(): Promise<FundingRateData[]> {
+  const cached = getCached<FundingRateData[]>('fundingRates');
+  if (cached) return cached;
+
   const results = await Promise.allSettled([
     binanceAPI.getFundingRates(),
     bybitAPI.getFundingRates(),
     okxAPI.getFundingRates(),
     bitgetAPI.getFundingRates(),
+    hyperliquidAPI.getFundingRates(),
+    dydxAPI.getFundingRates(),
   ]);
 
   const allRates: FundingRateData[] = [];
@@ -59,16 +90,22 @@ export async function fetchAllFundingRates(): Promise<FundingRateData[]> {
     }
   });
 
+  setCache('fundingRates', allRates);
   return allRates;
 }
 
 // Fetch open interest from all exchanges
 export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
+  const cached = getCached<OpenInterestData[]>('openInterest');
+  if (cached) return cached;
+
   const results = await Promise.allSettled([
     binanceAPI.getOpenInterest(),
     bybitAPI.getOpenInterest(),
     okxAPI.getOpenInterest(),
     bitgetAPI.getOpenInterest(),
+    hyperliquidAPI.getOpenInterest(),
+    dydxAPI.getOpenInterest(),
   ]);
 
   const allOI: OpenInterestData[] = [];
@@ -78,6 +115,7 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
     }
   });
 
+  setCache('openInterest', allOI);
   return allOI;
 }
 
@@ -158,5 +196,10 @@ export async function fetchAggregatedMarketData(): Promise<AggregatedMarketData>
   };
 }
 
+// Clear cache utility
+export function clearCache(): void {
+  cache.clear();
+}
+
 // Export individual exchange APIs for direct access
-export { binanceAPI, bybitAPI, okxAPI, bitgetAPI };
+export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI };
