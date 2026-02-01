@@ -41,7 +41,8 @@ export default function FundingRatesTable() {
     ? fundingRates.filter(r => r.symbol === selectedSymbol)
     : fundingRates;
 
-  const calculateAnnualized = (rate: number) => (rate * 3 * 365).toFixed(2);
+  const calculateAnnualized = (rate: number | undefined | null) => ((rate ?? 0) * 3 * 365).toFixed(2);
+  const safeRate = (rate: number | undefined | null) => rate ?? 0;
 
   return (
     <div className="glass-card rounded-2xl overflow-hidden">
@@ -163,13 +164,13 @@ export default function FundingRatesTable() {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {rate.fundingRate >= 0 ? (
+                        {safeRate(rate.fundingRate) >= 0 ? (
                           <ArrowUpRight className="w-3.5 h-3.5 text-success" />
                         ) : (
                           <ArrowDownRight className="w-3.5 h-3.5 text-danger" />
                         )}
-                        <span className={`font-mono text-sm ${rate.fundingRate >= 0 ? 'text-success' : 'text-danger'}`}>
-                          {rate.fundingRate >= 0 ? '+' : ''}{rate.fundingRate.toFixed(4)}%
+                        <span className={`font-mono text-sm ${safeRate(rate.fundingRate) >= 0 ? 'text-success' : 'text-danger'}`}>
+                          {safeRate(rate.fundingRate) >= 0 ? '+' : ''}{safeRate(rate.fundingRate).toFixed(4)}%
                         </span>
                       </div>
                     </td>

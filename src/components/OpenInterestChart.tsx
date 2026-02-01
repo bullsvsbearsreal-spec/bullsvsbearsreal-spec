@@ -12,10 +12,15 @@ interface ExchangeOI {
   change24h: number;
 }
 
-function formatNumber(num: number): string {
+function formatNumber(num: number | undefined | null): string {
+  if (num === undefined || num === null || isNaN(num)) return '$0';
   if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
   if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
   return `$${num.toLocaleString()}`;
+}
+
+function safeNumber(num: number | undefined | null): number {
+  return num ?? 0;
 }
 
 export default function OpenInterestChart() {
@@ -38,8 +43,8 @@ export default function OpenInterestChart() {
       // Aggregate by exchange
       const exchangeMap = new Map<string, number>();
       filteredData.forEach((oi: OpenInterestData) => {
-        const current = exchangeMap.get(oi.exchange) || 0;
-        exchangeMap.set(oi.exchange, current + oi.openInterestValue);
+        const current = exchangeMap.get(oi.exchange || 'Unknown') || 0;
+        exchangeMap.set(oi.exchange || 'Unknown', current + safeNumber(oi.openInterestValue));
       });
 
       // Convert to array

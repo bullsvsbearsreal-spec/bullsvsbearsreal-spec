@@ -15,17 +15,23 @@ interface CryptoAsset {
   fundingRate: number;
 }
 
-function formatNumber(num: number): string {
+function formatNumber(num: number | undefined | null): string {
+  if (num === undefined || num === null || isNaN(num)) return '$0';
   if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
   if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
   if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
   return `$${num.toLocaleString()}`;
 }
 
-function formatPrice(num: number): string {
+function formatPrice(num: number | undefined | null): string {
+  if (num === undefined || num === null || isNaN(num)) return '$0.00';
   if (num >= 1000) return `$${num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   if (num >= 1) return `$${num.toFixed(2)}`;
   return `$${num.toFixed(4)}`;
+}
+
+function safeNumber(num: number | undefined | null): number {
+  return num ?? 0;
 }
 
 // Simulated mini sparkline data
@@ -136,13 +142,13 @@ export default function CryptoTable() {
 
       // Build crypto assets
       const cryptoAssets: CryptoAsset[] = tickers.slice(0, 15).map((ticker: TickerData) => {
-        const symbol = ticker.symbol.replace('USDT', '').replace('USD', '');
+        const symbol = (ticker.symbol || '').replace('USDT', '').replace('USD', '');
         return {
           symbol,
           name: symbolNames[symbol] || symbol,
-          price: ticker.lastPrice,
-          change24h: ticker.priceChangePercent24h,
-          volume24h: ticker.quoteVolume24h,
+          price: safeNumber(ticker.lastPrice),
+          change24h: safeNumber(ticker.priceChangePercent24h),
+          volume24h: safeNumber(ticker.quoteVolume24h),
           openInterest: oiMap.get(symbol) || 0,
           fundingRate: fundingMap.get(symbol) || 0,
         };
@@ -264,8 +270,8 @@ export default function CryptoTable() {
                       ) : (
                         <TrendingDown className="w-4 h-4 text-danger" />
                       )}
-                      <span className={`font-semibold ${asset.change24h >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {asset.change24h >= 0 ? '+' : ''}{asset.change24h.toFixed(2)}%
+                      <span className={`font-semibold ${(asset.change24h ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {(asset.change24h ?? 0) >= 0 ? '+' : ''}{(asset.change24h ?? 0).toFixed(2)}%
                       </span>
                     </div>
                   </td>
@@ -282,9 +288,9 @@ export default function CryptoTable() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <span className={`px-2 py-1 rounded-md text-sm font-mono ${
-                      asset.fundingRate >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
+                      (asset.fundingRate ?? 0) >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
                     }`}>
-                      {asset.fundingRate >= 0 ? '+' : ''}{asset.fundingRate.toFixed(4)}%
+                      {(asset.fundingRate ?? 0) >= 0 ? '+' : ''}{(asset.fundingRate ?? 0).toFixed(4)}%
                     </span>
                   </td>
                 </tr>
