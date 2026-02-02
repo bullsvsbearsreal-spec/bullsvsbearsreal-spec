@@ -1,0 +1,91 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main gradient -->
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE55C"/>
+      <stop offset="30%" stop-color="#FFD700"/>
+      <stop offset="70%" stop-color="#FFA500"/>
+      <stop offset="100%" stop-color="#FF8C00"/>
+    </linearGradient>
+
+    <!-- Subtle inner shadow -->
+    <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feComponentTransfer in="SourceAlpha">
+        <feFuncA type="table" tableValues="1 0"/>
+      </feComponentTransfer>
+      <feGaussianBlur stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.3"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feComposite in2="SourceAlpha" operator="in"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode/>
+      </feMerge>
+    </filter>
+
+    <!-- Outer glow -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Text shadow -->
+    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Background shape - rounded square -->
+  <rect
+    x="24"
+    y="24"
+    width="464"
+    height="464"
+    rx="96"
+    fill="url(#mainGrad)"
+    filter="url(#glow)"
+  />
+
+  <!-- Inner highlight line at top -->
+  <rect
+    x="48"
+    y="48"
+    width="416"
+    height="8"
+    rx="4"
+    fill="white"
+    opacity="0.3"
+  />
+
+  <!-- Letter "i" - stylized -->
+  <g filter="url(#textShadow)">
+    <!-- i dot -->
+    <circle cx="168" cy="148" r="28" fill="#000000"/>
+    <!-- i stem -->
+    <rect x="140" y="200" width="56" height="180" rx="8" fill="#000000"/>
+  </g>
+
+  <!-- Letter "H" - bold geometric -->
+  <g filter="url(#textShadow)">
+    <!-- H left stem -->
+    <rect x="248" y="132" width="56" height="248" rx="8" fill="#000000"/>
+    <!-- H right stem -->
+    <rect x="376" y="132" width="56" height="248" rx="8" fill="#000000"/>
+    <!-- H crossbar -->
+    <rect x="248" y="228" width="184" height="56" rx="8" fill="#000000"/>
+  </g>
+
+  <!-- Subtle shine overlay -->
+  <ellipse
+    cx="256"
+    cy="180"
+    rx="180"
+    ry="100"
+    fill="white"
+    opacity="0.08"
+  />
+</svg>
