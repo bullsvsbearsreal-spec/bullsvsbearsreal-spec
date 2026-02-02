@@ -149,10 +149,11 @@ export default function Home() {
             <div>
               <h4 className="text-white font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Dashboard</a></li>
-                <li><a href="#" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Funding Rates</a></li>
-                <li><a href="#" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Open Interest</a></li>
-                <li><a href="#" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Liquidations</a></li>
+                <li><a href="/" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Dashboard</a></li>
+                <li><a href="/funding" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Funding Rates</a></li>
+                <li><a href="/open-interest" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Open Interest</a></li>
+                <li><a href="/liquidations" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Liquidations</a></li>
+                <li><a href="/brand" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Brand Assets</a></li>
               </ul>
             </div>
 

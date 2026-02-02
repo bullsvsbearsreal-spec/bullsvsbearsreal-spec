@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, TrendingUp, BarChart3, Zap, Calendar, Activity, Settings, Bell, ChevronDown } from 'lucide-react';
+import { Menu, X, TrendingUp, BarChart3, Zap, Activity, Settings, Bell, ChevronDown, Palette } from 'lucide-react';
 import Logo from './Logo';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { name: 'Funding', href: '/funding', icon: TrendingUp },
   { name: 'Open Interest', href: '/open-interest', icon: BarChart3 },
   { name: 'Liquidations', href: '/liquidations', icon: Zap },
+  { name: 'Brand', href: '/brand', icon: Palette },
 ];
 
 export default function Header() {
