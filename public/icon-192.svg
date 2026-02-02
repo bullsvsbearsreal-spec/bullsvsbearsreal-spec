@@ -1,0 +1,12 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="50%" stop-color="#FFA500"/>
+      <stop offset="100%" stop-color="#FF8C00"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="176" height="176" rx="40" fill="url(#icon-grad)"/>
+  <text x="50" y="126" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="100" font-weight="800" fill="#000" font-style="italic">i</text>
+  <text x="90" y="126" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="100" font-weight="800" fill="#000">H</text>
+</svg>

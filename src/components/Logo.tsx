@@ -4,71 +4,91 @@ interface LogoProps {
   variant?: 'full' | 'icon';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  animated?: boolean;
 }
 
-export default function Logo({ variant = 'full', size = 'md', className = '' }: LogoProps) {
-  const sizes = {
-    sm: { full: 'h-8', icon: 'h-8 w-8' },
-    md: { full: 'h-10', icon: 'h-10 w-10' },
-    lg: { full: 'h-12', icon: 'h-12 w-12' },
-    xl: { full: 'h-16', icon: 'h-16 w-16' },
+export default function Logo({ variant = 'full', size = 'md', className = '', animated = false }: LogoProps) {
+  const sizeMap = {
+    sm: { icon: 32, text: 'text-lg' },
+    md: { icon: 40, text: 'text-xl' },
+    lg: { icon: 48, text: 'text-2xl' },
+    xl: { icon: 64, text: 'text-3xl' },
   };
+
+  const dimensions = sizeMap[size];
+  const gradientId = `logo-gradient-${Math.random().toString(36).substr(2, 9)}`;
+
+  const IconSVG = () => (
+    <svg
+      width={dimensions.icon}
+      height={dimensions.icon}
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={animated ? 'hover:scale-105 transition-transform duration-300' : ''}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFD700" />
+          <stop offset="50%" stopColor="#FFA500" />
+          <stop offset="100%" stopColor="#FF8C00" />
+        </linearGradient>
+        <filter id={`${gradientId}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#FFA500" floodOpacity="0.3" />
+        </filter>
+      </defs>
+
+      {/* Background rounded square */}
+      <rect
+        x="4"
+        y="4"
+        width="92"
+        height="92"
+        rx="20"
+        fill={`url(#${gradientId})`}
+        filter={animated ? `url(#${gradientId}-shadow)` : undefined}
+      />
+
+      {/* Letter "i" - italic */}
+      <text
+        x="28"
+        y="68"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        fontSize="52"
+        fontWeight="800"
+        fill="#000000"
+        fontStyle="italic"
+      >
+        i
+      </text>
+
+      {/* Letter "H" */}
+      <text
+        x="48"
+        y="68"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        fontSize="52"
+        fontWeight="800"
+        fill="#000000"
+      >
+        H
+      </text>
+    </svg>
+  );
 
   if (variant === 'icon') {
     return (
-      <div className={`${sizes[size].icon} ${className}`}>
-        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-          <defs>
-            <linearGradient id="iconYellowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FFD700"/>
-              <stop offset="50%" stopColor="#FFA500"/>
-              <stop offset="100%" stopColor="#FF8C00"/>
-            </linearGradient>
-            <filter id="iconGlow">
-              <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-          <rect x="2" y="2" width="60" height="60" rx="12" fill="#000000" stroke="#333333" strokeWidth="1"/>
-          <rect x="8" y="8" width="48" height="48" rx="8" fill="url(#iconYellowGrad)" filter="url(#iconGlow)"/>
-          <text x="14" y="46" fontFamily="Arial Black, Arial, sans-serif" fontSize="34" fontWeight="900" fill="#000000" letterSpacing="-2">iH</text>
-          <circle cx="52" cy="16" r="3" fill="#000000" opacity="0.6"/>
-          <circle cx="52" cy="26" r="2" fill="#000000" opacity="0.4"/>
-          <circle cx="52" cy="34" r="2.5" fill="#000000" opacity="0.5"/>
-        </svg>
+      <div className={className}>
+        <IconSVG />
       </div>
     );
   }
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={sizes[size].icon}>
-        <defs>
-          <linearGradient id="iconYellowGradFull" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FFD700"/>
-            <stop offset="50%" stopColor="#FFA500"/>
-            <stop offset="100%" stopColor="#FF8C00"/>
-          </linearGradient>
-          <filter id="iconGlowFull">
-            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        <rect x="2" y="2" width="60" height="60" rx="12" fill="#000000" stroke="#333333" strokeWidth="1"/>
-        <rect x="8" y="8" width="48" height="48" rx="8" fill="url(#iconYellowGradFull)" filter="url(#iconGlowFull)"/>
-        <text x="14" y="46" fontFamily="Arial Black, Arial, sans-serif" fontSize="34" fontWeight="900" fill="#000000" letterSpacing="-2">iH</text>
-        <circle cx="52" cy="16" r="3" fill="#000000" opacity="0.6"/>
-        <circle cx="52" cy="26" r="2" fill="#000000" opacity="0.4"/>
-        <circle cx="52" cy="34" r="2.5" fill="#000000" opacity="0.5"/>
-      </svg>
-      <span className={`font-black tracking-tight ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl'}`}>
-        <span className="text-white">Info</span>
+    <div className={`flex items-center gap-2.5 ${animated ? 'group' : ''} ${className}`}>
+      <IconSVG />
+      <span className={`font-extrabold tracking-tight ${dimensions.text}`}>
+        <span className={`text-white ${animated ? 'group-hover:text-gray-200 transition-colors' : ''}`}>Info</span>
         <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">Hub</span>
       </span>
     </div>

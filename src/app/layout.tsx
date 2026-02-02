@@ -1,13 +1,68 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#FFA500',
+}
+
 export const metadata: Metadata = {
-  title: 'InfoHub | The Ultimate Trading Data Platform',
-  description: 'Your one-stop shop for all trading data - Funding rates, liquidations, charts, economic calendar, and more across CEX and DEX platforms.',
+  metadataBase: new URL('https://infohub.app'),
+  title: 'InfoHub | Real-time Crypto Market Data',
+  description: 'Your one-stop destination for real-time crypto trading data - Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
+  keywords: ['crypto', 'trading', 'funding rates', 'open interest', 'liquidations', 'bitcoin', 'ethereum', 'market data'],
+  authors: [{ name: 'InfoHub' }],
+  creator: 'InfoHub',
+  publisher: 'InfoHub',
+
+  // Favicon and icons
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.svg', type: 'image/svg+xml' },
+    ],
+  },
+
+  // Open Graph
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://infohub.app',
+    siteName: 'InfoHub',
+    title: 'InfoHub | Real-time Crypto Market Data',
+    description: 'Your one-stop destination for real-time crypto trading data - Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
+    images: [
+      {
+        url: '/og-image.svg',
+        width: 1200,
+        height: 630,
+        alt: 'InfoHub - Real-time Crypto Market Data',
+      },
+    ],
+  },
+
+  // Twitter Card
+  twitter: {
+    card: 'summary_large_image',
+    title: 'InfoHub | Real-time Crypto Market Data',
+    description: 'Your one-stop destination for real-time crypto trading data across 6 major exchanges.',
+    images: ['/og-image.svg'],
+    creator: '@infohub',
+  },
+
+  // Robots
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({
@@ -17,7 +72,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen`}>
+      <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+      </head>
+      <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
         {children}
       </body>
     </html>
