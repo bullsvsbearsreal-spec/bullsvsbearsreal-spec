@@ -1,91 +1,76 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Main gradient -->
-    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFE55C"/>
-      <stop offset="30%" stop-color="#FFD700"/>
-      <stop offset="70%" stop-color="#FFA500"/>
-      <stop offset="100%" stop-color="#FF8C00"/>
+    <!-- Premium gradient -->
+    <linearGradient id="premiumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFDF00"/>
+      <stop offset="25%" stop-color="#FFD000"/>
+      <stop offset="50%" stop-color="#FFAA00"/>
+      <stop offset="75%" stop-color="#FF9500"/>
+      <stop offset="100%" stop-color="#FF7700"/>
     </linearGradient>
 
-    <!-- Subtle inner shadow -->
-    <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feComponentTransfer in="SourceAlpha">
-        <feFuncA type="table" tableValues="1 0"/>
-      </feComponentTransfer>
-      <feGaussianBlur stdDeviation="8"/>
-      <feOffset dx="0" dy="4" result="offsetblur"/>
-      <feFlood flood-color="#000000" flood-opacity="0.3"/>
-      <feComposite in2="offsetblur" operator="in"/>
-      <feComposite in2="SourceAlpha" operator="in"/>
-      <feMerge>
-        <feMergeNode in="SourceGraphic"/>
-        <feMergeNode/>
-      </feMerge>
+    <!-- Shine effect -->
+    <linearGradient id="shineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="white" stop-opacity="0.4"/>
+      <stop offset="50%" stop-color="white" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Shadow filter -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#FF9500" flood-opacity="0.35"/>
     </filter>
 
-    <!-- Outer glow -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="12" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-
-    <!-- Text shadow -->
-    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.2"/>
+    <!-- Inner shadow for depth -->
+    <filter id="innerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur"/>
+      <feOffset in="blur" dx="0" dy="2"/>
+      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.3 0"/>
+      <feBlend in2="SourceGraphic"/>
     </filter>
   </defs>
 
-  <!-- Background shape - rounded square -->
+  <!-- Main background shape -->
   <rect
-    x="24"
-    y="24"
-    width="464"
-    height="464"
-    rx="96"
-    fill="url(#mainGrad)"
-    filter="url(#glow)"
+    x="32"
+    y="32"
+    width="448"
+    height="448"
+    rx="88"
+    fill="url(#premiumGrad)"
+    filter="url(#dropShadow)"
   />
 
-  <!-- Inner highlight line at top -->
+  <!-- Shine overlay -->
   <rect
-    x="48"
-    y="48"
-    width="416"
-    height="8"
-    rx="4"
-    fill="white"
-    opacity="0.3"
+    x="32"
+    y="32"
+    width="448"
+    height="224"
+    rx="88"
+    fill="url(#shineGrad)"
+    clip-path="inset(0 0 50% 0 round 88px)"
   />
 
-  <!-- Letter "i" - stylized -->
-  <g filter="url(#textShadow)">
-    <!-- i dot -->
-    <circle cx="168" cy="148" r="28" fill="#000000"/>
-    <!-- i stem -->
-    <rect x="140" y="200" width="56" height="180" rx="8" fill="#000000"/>
+  <!-- Letter i -->
+  <g fill="#000000">
+    <!-- i dot - perfectly round -->
+    <circle cx="160" cy="140" r="32" opacity="0.9"/>
+    <!-- i stem - rounded rectangle -->
+    <rect x="128" y="196" width="64" height="188" rx="12" opacity="0.9"/>
   </g>
 
-  <!-- Letter "H" - bold geometric -->
-  <g filter="url(#textShadow)">
-    <!-- H left stem -->
-    <rect x="248" y="132" width="56" height="248" rx="8" fill="#000000"/>
-    <!-- H right stem -->
-    <rect x="376" y="132" width="56" height="248" rx="8" fill="#000000"/>
-    <!-- H crossbar -->
-    <rect x="248" y="228" width="184" height="56" rx="8" fill="#000000"/>
+  <!-- Letter H -->
+  <g fill="#000000" opacity="0.9">
+    <!-- H left vertical -->
+    <rect x="232" y="128" width="64" height="256" rx="12"/>
+    <!-- H right vertical -->
+    <rect x="360" y="128" width="64" height="256" rx="12"/>
+    <!-- H horizontal bar -->
+    <rect x="232" y="224" width="192" height="64" rx="12"/>
   </g>
 
-  <!-- Subtle shine overlay -->
-  <ellipse
-    cx="256"
-    cy="180"
-    rx="180"
-    ry="100"
-    fill="white"
-    opacity="0.08"
-  />
+  <!-- Subtle top highlight line -->
+  <rect x="72" y="56" width="368" height="6" rx="3" fill="white" opacity="0.25"/>
 </svg>
