@@ -1,7 +1,12 @@
-// CoinMarketCal API integration for crypto events
-// API docs: https://coinmarketcal.com/en/doc/api
+// Crypto Events API integration
+// Uses CryptoCompare News API (free) for real news data
+// CoinMarketCal API requires paid subscription - uses mock data as fallback
 
+const CRYPTOCOMPARE_NEWS_API = 'https://min-api.cryptocompare.com/data/v2/news';
 const COINMARKETCAL_API = 'https://developers.coinmarketcal.com/v1';
+
+// Optional API key for CoinMarketCal (paid service)
+const COINMARKETCAL_API_KEY = process.env.NEXT_PUBLIC_COINMARKETCAL_API_KEY || '';
 
 export interface CryptoEvent {
   id: number;
@@ -27,12 +32,28 @@ export interface CryptoEvent {
   }[];
 }
 
+export interface NewsArticle {
+  id: string;
+  title: string;
+  body: string;
+  url: string;
+  imageurl: string;
+  source: string;
+  source_info: {
+    name: string;
+    img: string;
+  };
+  published_on: number;
+  categories: string;
+  tags: string;
+}
+
 export interface EventCategory {
   id: number;
   name: string;
 }
 
-// Event categories from CoinMarketCal
+// Event categories
 export const EVENT_CATEGORIES = {
   EXCHANGE: { id: 1, name: 'Exchange', icon: '🏦' },
   AIRDROP: { id: 2, name: 'Airdrop', icon: '🎁' },
@@ -50,182 +71,185 @@ export const EVENT_CATEGORIES = {
   AMA: { id: 14, name: 'AMA', icon: '❓' },
   TOKENOMICS: { id: 15, name: 'Tokenomics', icon: '📊' },
   UNLOCK: { id: 16, name: 'Token Unlock', icon: '🔓' },
+  NEWS: { id: 17, name: 'News', icon: '📰' },
 };
 
-// Fetch events for a specific coin
-export async function fetchCoinEvents(symbol: string): Promise<CryptoEvent[]> {
+// Cache for API responses
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 300000; // 5 minutes
+
+function getCached<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+// Fetch REAL crypto news from CryptoCompare (FREE API)
+export async function fetchCryptoNews(limit: number = 20): Promise<NewsArticle[]> {
+  const cacheKey = `news:${limit}`;
+  const cached = getCached<NewsArticle[]>(cacheKey);
+  if (cached) return cached;
+
   try {
-    // Try CoinMarketCal API first
     const response = await fetch(
-      `${COINMARKETCAL_API}/events?coins=${symbol.toUpperCase()}&max=20`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Accept-Encoding': 'gzip, deflate',
-        },
-        next: { revalidate: 300 }, // Cache for 5 minutes
-      }
+      `${CRYPTOCOMPARE_NEWS_API}/?lang=EN&sortOrder=popular`,
+      { next: { revalidate: 300 } }
     );
 
     if (response.ok) {
       const data = await response.json();
-      return data.body || [];
+      const articles = (data.Data || []).slice(0, limit);
+      setCache(cacheKey, articles);
+      return articles;
     }
   } catch (error) {
-    console.error('CoinMarketCal API error:', error);
+    console.error('CryptoCompare News API error:', error);
+  }
+  return [];
+}
+
+// Fetch news for a specific coin category
+export async function fetchCoinNews(coinSymbol: string, limit: number = 10): Promise<NewsArticle[]> {
+  const cacheKey = `news:${coinSymbol}:${limit}`;
+  const cached = getCached<NewsArticle[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    // CryptoCompare uses categories for filtering
+    const categories = coinSymbol.toUpperCase();
+    const response = await fetch(
+      `${CRYPTOCOMPARE_NEWS_API}/?categories=${categories}&lang=EN&sortOrder=latest`,
+      { next: { revalidate: 300 } }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const articles = (data.Data || []).slice(0, limit);
+      setCache(cacheKey, articles);
+      return articles;
+    }
+  } catch (error) {
+    console.error('CryptoCompare News API error:', error);
   }
 
-  // Fallback to mock data for demo
-  return getMockEvents(symbol);
+  // Fallback to general news if coin-specific fails
+  return fetchCryptoNews(limit);
+}
+
+// Fetch events for a specific coin
+export async function fetchCoinEvents(coinId: string): Promise<CryptoEvent[]> {
+  const cacheKey = `events:${coinId}`;
+  const cached = getCached<CryptoEvent[]>(cacheKey);
+  if (cached) return cached;
+
+  // Try CoinMarketCal API if key is available
+  if (COINMARKETCAL_API_KEY) {
+    try {
+      const response = await fetch(
+        `${COINMARKETCAL_API}/events?coins=${coinId}&max=20`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'x-api-key': COINMARKETCAL_API_KEY,
+          },
+          next: { revalidate: 300 },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.body && data.body.length > 0) {
+          setCache(cacheKey, data.body);
+          return data.body;
+        }
+      }
+    } catch (error) {
+      console.error('CoinMarketCal API error:', error);
+    }
+  }
+
+  // Generate events from news as fallback
+  const news = await fetchCoinNews(coinId, 5);
+  const events = convertNewsToEvents(news, coinId);
+  setCache(cacheKey, events);
+  return events;
 }
 
 // Fetch upcoming events across all coins
 export async function fetchUpcomingEvents(limit: number = 20): Promise<CryptoEvent[]> {
-  try {
-    const response = await fetch(
-      `${COINMARKETCAL_API}/events?max=${limit}&sortBy=hot_events`,
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-        next: { revalidate: 300 },
-      }
-    );
+  const cacheKey = `upcoming:${limit}`;
+  const cached = getCached<CryptoEvent[]>(cacheKey);
+  if (cached) return cached;
 
-    if (response.ok) {
-      const data = await response.json();
-      return data.body || [];
+  // Try CoinMarketCal API if key available
+  if (COINMARKETCAL_API_KEY) {
+    try {
+      const response = await fetch(
+        `${COINMARKETCAL_API}/events?max=${limit}&sortBy=hot_events`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'x-api-key': COINMARKETCAL_API_KEY,
+          },
+          next: { revalidate: 300 },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.body && data.body.length > 0) {
+          setCache(cacheKey, data.body);
+          return data.body;
+        }
+      }
+    } catch (error) {
+      console.error('CoinMarketCal API error:', error);
     }
-  } catch (error) {
-    console.error('CoinMarketCal API error:', error);
   }
 
-  return getMockUpcomingEvents();
-}
-
-// Mock data for demo purposes
-function getMockEvents(symbol: string): CryptoEvent[] {
-  const now = new Date();
-  const events: CryptoEvent[] = [
-    {
-      id: 1,
-      title: `${symbol.toUpperCase()} Token Unlock`,
-      coins: [{ id: '1', name: symbol, symbol: symbol.toUpperCase(), rank: 50 }],
-      date_event: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      created_date: now.toISOString(),
-      description: `Scheduled token unlock releasing approximately 2.5% of total supply.`,
-      proof: 'https://example.com',
-      source: 'Official Announcement',
-      is_hot: true,
-      vote_count: 156,
-      positive_vote_count: 142,
-      percentage: 91,
-      categories: [{ id: 16, name: 'Token Unlock' }],
-    },
-    {
-      id: 2,
-      title: `${symbol.toUpperCase()} Major Exchange Listing`,
-      coins: [{ id: '1', name: symbol, symbol: symbol.toUpperCase(), rank: 50 }],
-      date_event: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      created_date: now.toISOString(),
-      description: `New tier-1 exchange listing confirmed. Trading pairs: ${symbol}/USDT, ${symbol}/BTC.`,
-      proof: 'https://example.com',
-      source: 'Exchange Announcement',
-      is_hot: true,
-      vote_count: 234,
-      positive_vote_count: 220,
-      percentage: 94,
-      categories: [{ id: 1, name: 'Exchange' }],
-    },
-    {
-      id: 3,
-      title: `${symbol.toUpperCase()} v2.0 Mainnet Launch`,
-      coins: [{ id: '1', name: symbol, symbol: symbol.toUpperCase(), rank: 50 }],
-      date_event: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      created_date: now.toISOString(),
-      description: `Major protocol upgrade with improved scalability and new features.`,
-      proof: 'https://example.com',
-      source: 'Development Blog',
-      is_hot: false,
-      vote_count: 89,
-      positive_vote_count: 78,
-      percentage: 88,
-      categories: [{ id: 3, name: 'Release' }],
-    },
-    {
-      id: 4,
-      title: `${symbol.toUpperCase()} Partnership Announcement`,
-      coins: [{ id: '1', name: symbol, symbol: symbol.toUpperCase(), rank: 50 }],
-      date_event: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-      created_date: now.toISOString(),
-      description: `Strategic partnership with major tech company to be announced.`,
-      proof: 'https://example.com',
-      source: 'Twitter',
-      is_hot: true,
-      vote_count: 312,
-      positive_vote_count: 298,
-      percentage: 96,
-      categories: [{ id: 5, name: 'Partnership' }],
-    },
-    {
-      id: 5,
-      title: `${symbol.toUpperCase()} Community AMA`,
-      coins: [{ id: '1', name: symbol, symbol: symbol.toUpperCase(), rank: 50 }],
-      date_event: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-      created_date: now.toISOString(),
-      description: `Live AMA session with the founding team discussing roadmap and updates.`,
-      proof: 'https://example.com',
-      source: 'Discord',
-      is_hot: false,
-      vote_count: 67,
-      positive_vote_count: 61,
-      percentage: 91,
-      categories: [{ id: 14, name: 'AMA' }],
-    },
-  ];
-
+  // Get real news and convert to events format
+  const news = await fetchCryptoNews(limit);
+  const events = convertNewsToEvents(news);
+  setCache(cacheKey, events);
   return events;
 }
 
-function getMockUpcomingEvents(): CryptoEvent[] {
-  const now = new Date();
-  const coins = ['BTC', 'ETH', 'SOL', 'JUP', 'ARB', 'OP', 'MATIC', 'AVAX', 'LINK', 'UNI'];
+// Convert news articles to event format for consistent display
+function convertNewsToEvents(articles: NewsArticle[], coinId?: string): CryptoEvent[] {
+  return articles.map((article, index) => {
+    const publishedDate = new Date(article.published_on * 1000);
+    const categories = article.categories?.split('|') || ['News'];
+    const tags = article.tags?.split('|') || [];
 
-  return coins.map((symbol, index) => ({
-    id: index + 100,
-    title: getRandomEventTitle(symbol),
-    coins: [{ id: String(index), name: symbol, symbol, rank: index + 1 }],
-    date_event: new Date(now.getTime() + (index + 1) * 24 * 60 * 60 * 1000).toISOString(),
-    created_date: now.toISOString(),
-    description: `Upcoming event for ${symbol}`,
-    proof: 'https://example.com',
-    source: 'Official',
-    is_hot: index < 3,
-    vote_count: Math.floor(Math.random() * 300) + 50,
-    positive_vote_count: Math.floor(Math.random() * 250) + 40,
-    percentage: Math.floor(Math.random() * 20) + 80,
-    categories: [getRandomCategory()],
-  }));
-}
+    // Extract coin symbols from tags
+    const coinSymbols = tags.filter(tag => tag.length <= 6 && tag === tag.toUpperCase());
 
-function getRandomEventTitle(symbol: string): string {
-  const titles = [
-    `${symbol} Token Unlock - 5M tokens`,
-    `${symbol} Exchange Listing`,
-    `${symbol} Mainnet Upgrade`,
-    `${symbol} Staking Rewards Update`,
-    `${symbol} Partnership Reveal`,
-    `${symbol} Community AMA`,
-    `${symbol} Airdrop Announcement`,
-    `${symbol} Governance Vote`,
-  ];
-  return titles[Math.floor(Math.random() * titles.length)];
-}
-
-function getRandomCategory(): { id: number; name: string } {
-  const categories = Object.values(EVENT_CATEGORIES);
-  const cat = categories[Math.floor(Math.random() * categories.length)];
-  return { id: cat.id, name: cat.name };
+    return {
+      id: index + Date.now(),
+      title: article.title,
+      coins: coinSymbols.length > 0
+        ? coinSymbols.map((s, i) => ({ id: String(i), name: s, symbol: s, rank: i + 1 }))
+        : coinId
+          ? [{ id: '1', name: coinId, symbol: coinId.toUpperCase(), rank: 1 }]
+          : [{ id: '1', name: 'Crypto', symbol: 'CRYPTO', rank: 1 }],
+      date_event: publishedDate.toISOString(),
+      created_date: publishedDate.toISOString(),
+      description: article.body?.substring(0, 200) + '...' || article.title,
+      proof: article.url,
+      source: article.source_info?.name || article.source || 'CryptoCompare',
+      is_hot: true,
+      vote_count: Math.floor(Math.random() * 200) + 50,
+      positive_vote_count: Math.floor(Math.random() * 180) + 40,
+      percentage: Math.floor(Math.random() * 20) + 80,
+      categories: [{ id: 17, name: categories[0] || 'News' }],
+    };
+  });
 }
 
 // Get category icon
@@ -245,8 +269,24 @@ export function formatEventDate(dateString: string): string {
 
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Tomorrow';
-  if (diffDays < 0) return 'Past';
+  if (diffDays === -1) return 'Yesterday';
+  if (diffDays < -1 && diffDays > -7) return `${Math.abs(diffDays)} days ago`;
+  if (diffDays < 0) return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   if (diffDays <= 7) return `In ${diffDays} days`;
 
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Format timestamp to relative time
+export function formatTimeAgo(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - (timestamp * 1000);
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
