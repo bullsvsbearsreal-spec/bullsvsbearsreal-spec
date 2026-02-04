@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfoHub - Cinematic Trailer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Trailer Container */
+    .trailer {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Particle Background */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: linear-gradient(135deg, #FFDF00, #FF7700);
+      border-radius: 50%;
+      opacity: 0;
+      animation: float 8s infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(100vh) scale(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-100vh) scale(1); opacity: 0; }
+    }
+
+    /* Scene Styles */
+    .scene {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      padding: 2rem;
+      z-index: 10;
+    }
+
+    /* Scene 1: Hero */
+    .scene-hero {
+      background: radial-gradient(ellipse at center, #1a1a1a 0%, #000 70%);
+    }
+
+    .hero-logo {
+      position: relative;
+      animation: logoReveal 2s ease-out forwards;
+    }
+
+    @keyframes logoReveal {
+      0% { transform: scale(0.5); opacity: 0; filter: blur(20px); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; filter: blur(0); }
+    }
+
+    .logo-icon {
+      width: 150px;
+      height: 150px;
+      background: linear-gradient(135deg, #FFDF00 0%, #FFAA00 50%, #FF7700 100%);
+      border-radius: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+      font-weight: 900;
+      color: #000;
+      box-shadow:
+        0 0 60px rgba(255, 149, 0, 0.5),
+        0 0 120px rgba(255, 149, 0, 0.3),
+        0 0 180px rgba(255, 149, 0, 0.1);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 60px rgba(255, 149, 0, 0.5), 0 0 120px rgba(255, 149, 0, 0.3); }
+      50% { box-shadow: 0 0 80px rgba(255, 149, 0, 0.7), 0 0 160px rgba(255, 149, 0, 0.4); }
+    }
+
+    .hero-title {
+      margin-top: 2rem;
+      font-size: 5rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      animation: titleSlide 1.5s ease-out 0.5s forwards;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .hero-title span:first-child {
+      color: #fff;
+    }
+
+    .hero-title span:last-child {
+      background: linear-gradient(135deg, #FFDF00, #FF7700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    @keyframes titleSlide {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-tagline {
+      margin-top: 1rem;
+      font-size: 1.5rem;
+      color: #888;
+      animation: titleSlide 1.5s ease-out 1s forwards;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .scroll-indicator {
+      position: absolute;
+      bottom: 3rem;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: bounce 2s infinite;
+    }
+
+    .scroll-indicator::before {
+      content: '';
+      display: block;
+      width: 30px;
+      height: 50px;
+      border: 2px solid rgba(255, 223, 0, 0.5);
+      border-radius: 15px;
+    }
+
+    .scroll-indicator::after {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      width: 6px;
+      height: 10px;
+      background: #FFDF00;
+      border-radius: 3px;
+      transform: translateX(-50%);
+      animation: scrollDot 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(10px); }
+    }
+
+    @keyframes scrollDot {
+      0%, 100% { opacity: 1; top: 8px; }
+      50% { opacity: 0.5; top: 20px; }
+    }
+
+    /* Scene 2: Chaos */
+    .scene-chaos {
+      background: #0a0a0a;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chaos-text {
+      font-size: 3rem;
+      font-weight: 700;
+      text-align: center;
+      max-width: 800px;
+      line-height: 1.3;
+    }
+
+    .chaos-text .highlight {
+      color: #FF4444;
+      text-shadow: 0 0 30px rgba(255, 68, 68, 0.5);
+    }
+
+    .glitch-overlay {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 68, 68, 0.03) 2px,
+        rgba(255, 68, 68, 0.03) 4px
+      );
+      pointer-events: none;
+      animation: glitch 0.3s infinite;
+    }
+
+    @keyframes glitch {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      75% { transform: translateX(2px); }
+    }
+
+    /* Scene 3: Features */
+    .scene-features {
+      background: linear-gradient(180deg, #0a0a0a 0%, #111 100%);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 223, 0, 0.1);
+      border-radius: 24px;
+      padding: 2rem;
+      transition: all 0.5s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #FFDF00, #FF7700);
+      transform: scaleX(0);
+      transition: transform 0.5s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-10px);
+      border-color: rgba(255, 223, 0, 0.3);
+      box-shadow: 0 20px 60px rgba(255, 149, 0, 0.1);
+    }
+
+    .feature-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .feature-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, rgba(255, 223, 0, 0.2), rgba(255, 119, 0, 0.2));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .feature-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-desc {
+      color: #888;
+      line-height: 1.6;
+    }
+
+    /* Scene 4: Stats */
+    .scene-stats {
+      background: radial-gradient(ellipse at center, #1a1a0a 0%, #0a0a0a 70%);
+    }
+
+    .stats-container {
+      display: flex;
+      gap: 4rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #FFDF00, #FF7700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 1.25rem;
+      color: #888;
+      margin-top: 0.5rem;
+    }
+
+    /* Scene 5: CTA */
+    .scene-cta {
+      background: linear-gradient(180deg, #0a0a0a 0%, #000 100%);
+    }
+
+    .cta-content {
+      text-align: center;
+    }
+
+    .cta-title {
+      font-size: 3.5rem;
+      font-weight: 900;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #fff 0%, #ccc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cta-subtitle {
+      font-size: 1.5rem;
+      color: #888;
+      margin-bottom: 3rem;
+    }
+
+    .cta-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem 3rem;
+      background: linear-gradient(135deg, #FFDF00 0%, #FF7700 100%);
+      color: #000;
+      font-size: 1.25rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      box-shadow: 0 0 40px rgba(255, 149, 0, 0.3);
+    }
+
+    .cta-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 60px rgba(255, 149, 0, 0.5);
+    }
+
+    .cta-button svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* Footer */
+    .trailer-footer {
+      padding: 2rem;
+      text-align: center;
+      color: #444;
+      font-size: 0.875rem;
+    }
+
+    /* Animations on scroll */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(50px);
+      transition: all 1s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 3rem;
+      }
+
+      .chaos-text {
+        font-size: 2rem;
+      }
+
+      .stat-number {
+        font-size: 3rem;
+      }
+
+      .cta-title {
+        font-size: 2.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="trailer">
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Scene 1: Hero -->
+    <section class="scene scene-hero">
+      <div class="hero-logo">
+        <div class="logo-icon">iH</div>
+      </div>
+      <h1 class="hero-title">
+        <span>Info</span><span>Hub</span>
+      </h1>
+      <p class="hero-tagline">Where Data Meets Decision</p>
+      <div class="scroll-indicator"></div>
+    </section>
+
+    <!-- Scene 2: The Problem -->
+    <section class="scene scene-chaos">
+      <div class="glitch-overlay"></div>
+      <p class="chaos-text fade-in">
+        In a market that <span class="highlight">never sleeps</span>...
+        where fortunes rise and fall in <span class="highlight">seconds</span>...
+        one platform brings <span style="color: #FFDF00;">clarity</span> to chaos.
+      </p>
+    </section>
+
+    <!-- Scene 3: Features -->
+    <section class="scene scene-features">
+      <div class="features-grid">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">📊</div>
+          <h3 class="feature-title">Real-Time Data</h3>
+          <p class="feature-desc">Live market data from 6 major exchanges. Binance, Bybit, OKX, Bitget, Hyperliquid, dYdX.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🔍</div>
+          <h3 class="feature-title">Coin Search</h3>
+          <p class="feature-desc">Search any coin instantly. Get events, news, token unlocks, and price data in one view.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">💰</div>
+          <h3 class="feature-title">Funding Rates</h3>
+          <p class="feature-desc">Track funding rates across all exchanges. Spot opportunities before they happen.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">⚡</div>
+          <h3 class="feature-title">Liquidations</h3>
+          <p class="feature-desc">Real-time liquidation tracking. Know when the market is overleveraged.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">📈</div>
+          <h3 class="feature-title">Open Interest</h3>
+          <p class="feature-desc">Aggregate open interest data. Understand market positioning at a glance.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">📰</div>
+          <h3 class="feature-title">Live News</h3>
+          <p class="feature-desc">Real-time crypto news from trusted sources. Stay ahead of market moves.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scene 4: Stats -->
+    <section class="scene scene-stats">
+      <div class="stats-container">
+        <div class="stat-item fade-in">
+          <div class="stat-number">6</div>
+          <div class="stat-label">Exchanges</div>
+        </div>
+        <div class="stat-item fade-in">
+          <div class="stat-number">10K+</div>
+          <div class="stat-label">Coins</div>
+        </div>
+        <div class="stat-item fade-in">
+          <div class="stat-number">24/7</div>
+          <div class="stat-label">Real-Time</div>
+        </div>
+        <div class="stat-item fade-in">
+          <div class="stat-number">∞</div>
+          <div class="stat-label">Possibilities</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scene 5: CTA -->
+    <section class="scene scene-cta">
+      <div class="cta-content fade-in">
+        <h2 class="cta-title">Your Crypto Command Center</h2>
+        <p class="cta-subtitle">Everything you need. Nothing you don't.</p>
+        <a href="/" class="cta-button">
+          Launch InfoHub
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="trailer-footer">
+      <p>© 2026 InfoHub. All data for informational purposes only.</p>
+    </footer>
+  </div>
+
+  <script>
+    // Create particles
+    const particlesContainer = document.getElementById('particles');
+    const particleCount = 50;
+
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = Math.random() * 100 + '%';
+      particle.style.animationDelay = Math.random() * 8 + 's';
+      particle.style.animationDuration = (Math.random() * 4 + 6) + 's';
+      particlesContainer.appendChild(particle);
+    }
+
+    // Intersection Observer for fade-in animations
+    const observerOptions = {
+      threshold: 0.2,
+      rootMargin: '0px 0px -100px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+  </script>
+</body>
+</html>
