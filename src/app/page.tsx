@@ -1,18 +1,27 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import MarketTicker from '@/components/MarketTicker';
 import StatsOverview from '@/components/StatsOverview';
 import FundingRatesTable from '@/components/FundingRatesTable';
 import LiquidationsCard from '@/components/LiquidationsCard';
-import EconomicCalendar from '@/components/EconomicCalendar';
 import OpenInterestChart from '@/components/OpenInterestChart';
 import ExchangeList from '@/components/ExchangeList';
 import CryptoTable from '@/components/CryptoTable';
 import FearGreedIndex from '@/components/FearGreedIndex';
-import { Sparkles, ArrowRight, Globe, Shield, Zap } from 'lucide-react';
+import CoinSearch from '@/components/CoinSearch';
+import EventsCalendar from '@/components/EventsCalendar';
+import { CoinSearchResult } from '@/lib/api/coingecko';
+import { Sparkles, ArrowRight, Globe, Shield, Zap, Search, Calendar, TrendingUp } from 'lucide-react';
 
 export default function Home() {
+  const router = useRouter();
+
+  const handleCoinSelect = (coin: CoinSearchResult) => {
+    router.push(`/coin/${coin.id}`);
+  };
+
   return (
     <div className="min-h-screen bg-hub-black relative">
       {/* Animated background elements */}
@@ -25,7 +34,7 @@ export default function Home() {
       <MarketTicker />
 
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Hero Section with Animation */}
+        {/* Hero Section */}
         <div className="mb-10 animate-slideUp">
           <div className="flex items-center gap-2 mb-3">
             <div className="px-3 py-1 rounded-full bg-gradient-to-r from-hub-yellow/20 to-hub-orange/20 border border-hub-yellow/30">
@@ -39,79 +48,98 @@ export default function Home() {
             <span className="text-white">Welcome to </span>
             <span className="text-gradient animate-shine">InfoHub</span>
           </h1>
-          <p className="text-hub-gray-text text-lg md:text-xl max-w-2xl">
-            Your one-stop destination for real-time crypto trading data, funding rates, and market analytics.
+          <p className="text-hub-gray-text text-lg md:text-xl max-w-2xl mb-8">
+            Your one-stop destination for real-time crypto trading data, events, token unlocks, and market analytics.
           </p>
+
+          {/* Search Bar - Prominent */}
+          <div className="max-w-2xl">
+            <CoinSearch
+              onSelect={handleCoinSelect}
+              placeholder="Search any coin for events, unlocks & news..."
+              className="w-full"
+            />
+          </div>
 
           {/* Feature Pills */}
           <div className="flex flex-wrap gap-3 mt-6">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray-light/20 text-sm">
+              <Search className="w-4 h-4 text-hub-yellow" />
+              <span className="text-hub-gray-text-light">Search 10,000+ Coins</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray-light/20 text-sm">
+              <Calendar className="w-4 h-4 text-hub-yellow" />
+              <span className="text-hub-gray-text-light">Events & Unlocks</span>
+            </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray-light/20 text-sm">
               <Globe className="w-4 h-4 text-hub-yellow" />
               <span className="text-hub-gray-text-light">6 Exchanges</span>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray-light/20 text-sm">
               <Zap className="w-4 h-4 text-hub-yellow" />
-              <span className="text-hub-gray-text-light">Real-time Updates</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray-light/20 text-sm">
-              <Shield className="w-4 h-4 text-hub-yellow" />
-              <span className="text-hub-gray-text-light">Reliable Data</span>
+              <span className="text-hub-gray-text-light">Real-time</span>
             </div>
           </div>
         </div>
 
-        {/* Stats Overview - New Component */}
+        {/* Stats Overview */}
         <section className="mb-10">
           <StatsOverview />
         </section>
 
-        {/* Main Content Grid */}
+        {/* Events & Top Assets Grid */}
         <section className="mb-10">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-white">Top Assets</h2>
-              <p className="text-hub-gray-text text-sm">By 24h trading volume</p>
-            </div>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all group">
-              View All
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Upcoming Events */}
+            <div className="lg:col-span-1">
+              <EventsCalendar limit={6} showFilters={false} />
+            </div>
+
+            {/* Top Assets */}
             <div className="lg:col-span-2">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-hub-yellow" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Top Assets</h2>
+                    <p className="text-hub-gray-text text-sm">By 24h trading volume</p>
+                  </div>
+                </div>
+                <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all group">
+                  View All
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
               <CryptoTable />
             </div>
-            <div className="space-y-6">
+          </div>
+        </section>
+
+        {/* Fear & Greed + Funding Rates */}
+        <section className="mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
               <FearGreedIndex />
             </div>
+            <div className="lg:col-span-2">
+              <FundingRatesTable />
+            </div>
           </div>
         </section>
 
-        {/* Data Section */}
+        {/* Liquidations & Open Interest */}
         <section className="mb-10">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-xl md:text-2xl font-bold text-white">Market Data</h2>
-              <p className="text-hub-gray-text text-sm">Funding rates & liquidations</p>
+              <h2 className="text-xl md:text-2xl font-bold text-white">Market Analytics</h2>
+              <p className="text-hub-gray-text text-sm">Liquidations & open interest data</p>
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <FundingRatesTable />
             <LiquidationsCard />
-          </div>
-        </section>
-
-        {/* OI and Calendar */}
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-white">Analytics</h2>
-              <p className="text-hub-gray-text text-sm">Open interest & upcoming events</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <OpenInterestChart />
-            <EconomicCalendar />
           </div>
         </section>
 
@@ -141,7 +169,7 @@ export default function Home() {
                 </span>
               </div>
               <p className="text-hub-gray-text text-sm">
-                Real-time crypto market data aggregated from top exchanges.
+                Real-time crypto market data, events, and analytics from top exchanges.
               </p>
             </div>
 
