@@ -18,16 +18,17 @@ const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX'];
 const PRIORITY_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC', 'LTC', 'UNI', 'ATOM', 'NEAR', 'ARB', 'OP', 'APT', 'SUI', 'INJ'];
 
 // Symbol categories
-const CATEGORIES: Record<string, { name: string; emoji: string; symbols: string[] }> = {
+const CATEGORIES: Record<string, { name: string; emoji: string; symbols: string[]; dynamic?: string }> = {
   all: { name: 'All', emoji: '📊', symbols: [] },
-  major: { name: 'Major', emoji: '⭐', symbols: ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK', 'LTC', 'MATIC'] },
-  layer1: { name: 'Layer 1', emoji: '🔷', symbols: ['ETH', 'SOL', 'AVAX', 'ADA', 'DOT', 'ATOM', 'NEAR', 'APT', 'SUI', 'SEI', 'TON', 'FTM', 'ONE', 'ALGO', 'EGLD', 'FLOW', 'HBAR', 'ICP', 'KAVA', 'MINA'] },
-  layer2: { name: 'Layer 2', emoji: '🔶', symbols: ['ARB', 'OP', 'MATIC', 'IMX', 'METIS', 'STRK', 'MANTA', 'BLAST', 'ZK', 'SCROLL'] },
-  defi: { name: 'DeFi', emoji: '💰', symbols: ['UNI', 'AAVE', 'LINK', 'MKR', 'SNX', 'CRV', 'COMP', 'SUSHI', 'YFI', 'LDO', 'DYDX', 'GMX', 'PENDLE', 'JUP', 'RAY', 'INJ', 'CAKE', 'BAL', 'RUNE', '1INCH'] },
-  meme: { name: 'Meme', emoji: '🐕', symbols: ['DOGE', 'SHIB', 'PEPE', 'WIF', 'BONK', 'FLOKI', 'MEME', 'NEIRO', 'BRETT', 'POPCAT', 'MOG', 'TURBO', 'BABYDOGE', 'ELON', 'LADYS', 'WOJAK', 'BOME', 'SLERF', 'CAT', 'GOAT'] },
-  ai: { name: 'AI', emoji: '🤖', symbols: ['FET', 'RENDER', 'AGIX', 'OCEAN', 'TAO', 'WLD', 'RNDR', 'AKT', 'ARKM', 'AI', 'AIOZ', 'PHB', 'NMR', 'CTXC', 'OLAS', 'ALI', 'GLM', 'LPT'] },
-  gaming: { name: 'Gaming', emoji: '🎮', symbols: ['AXS', 'SAND', 'MANA', 'IMX', 'GALA', 'ENJ', 'ILV', 'MAGIC', 'PIXEL', 'PRIME', 'PORTAL', 'YGG', 'RON', 'SUPER', 'GODS', 'LOKA', 'PYR', 'ALICE'] },
-  infra: { name: 'Infra', emoji: '🔧', symbols: ['LINK', 'FIL', 'AR', 'GRT', 'PYTH', 'API3', 'BAND', 'TRB', 'TIA', 'MANTA', 'ALT', 'DYM', 'STRK'] },
+  tops: { name: 'Top 20', emoji: '👑', symbols: ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK', 'LTC', 'MATIC', 'UNI', 'ATOM', 'NEAR', 'ARB', 'OP', 'APT', 'SUI', 'INJ'] },
+  alts: { name: 'Alts', emoji: '💎', symbols: ['SOL', 'XRP', 'ADA', 'AVAX', 'DOT', 'LINK', 'ATOM', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FTM', 'ALGO', 'EGLD', 'FLOW', 'HBAR', 'ICP', 'KAVA', 'MINA', 'ONE', 'ROSE', 'CELO', 'ZIL'] },
+  memes: { name: 'Memes', emoji: '🐕', symbols: ['DOGE', 'SHIB', 'PEPE', 'WIF', 'BONK', 'FLOKI', 'MEME', 'NEIRO', 'BRETT', 'POPCAT', 'MOG', 'TURBO', 'BABYDOGE', 'ELON', 'LADYS', 'WOJAK', 'BOME', 'SLERF', 'CAT', 'GOAT', 'PNUT', 'ACT', 'HIPPO', 'SPX', 'GIGA', 'MYRO', 'BOOK', 'WEN'] },
+  layer2: { name: 'Layer 2', emoji: '🔶', symbols: ['ARB', 'OP', 'MATIC', 'IMX', 'METIS', 'STRK', 'MANTA', 'BLAST', 'ZK', 'SCROLL', 'MODE', 'ZETA'] },
+  defi: { name: 'DeFi', emoji: '💰', symbols: ['UNI', 'AAVE', 'LINK', 'MKR', 'SNX', 'CRV', 'COMP', 'SUSHI', 'YFI', 'LDO', 'DYDX', 'GMX', 'PENDLE', 'JUP', 'RAY', 'INJ', 'CAKE', 'BAL', 'RUNE', '1INCH', 'DODO', 'PERP'] },
+  ai: { name: 'AI', emoji: '🤖', symbols: ['FET', 'RENDER', 'AGIX', 'OCEAN', 'TAO', 'WLD', 'RNDR', 'AKT', 'ARKM', 'AI', 'AIOZ', 'PHB', 'NMR', 'CTXC', 'OLAS', 'ALI', 'GLM', 'LPT', 'VIRTUAL', 'AI16Z'] },
+  gaming: { name: 'Gaming', emoji: '🎮', symbols: ['AXS', 'SAND', 'MANA', 'IMX', 'GALA', 'ENJ', 'ILV', 'MAGIC', 'PIXEL', 'PRIME', 'PORTAL', 'YGG', 'RON', 'SUPER', 'GODS', 'LOKA', 'PYR', 'ALICE', 'BEAM', 'BIGTIME'] },
+  highest: { name: 'Highest', emoji: '🚀', symbols: [], dynamic: 'highest' },
+  lowest: { name: 'Lowest', emoji: '📉', symbols: [], dynamic: 'lowest' },
 };
 
 type Category = keyof typeof CATEGORIES;
@@ -79,8 +80,34 @@ export default function FundingPage() {
   // Get unique exchanges and symbols for heatmap
   const exchanges = Array.from(new Set(fundingRates.map(fr => fr.exchange)));
 
-  // Filter by category if selected
-  const categorySymbols = categoryFilter !== 'all' ? CATEGORIES[categoryFilter].symbols : null;
+  // Calculate dynamic categories (highest/lowest funding rates)
+  const getSymbolAvgRate = (symbol: string) => {
+    const rates = fundingRates.filter(fr => fr.symbol === symbol);
+    return rates.length > 0 ? rates.reduce((sum, fr) => sum + fr.fundingRate, 0) / rates.length : 0;
+  };
+
+  const allSymbolsWithRates = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
+    .map(symbol => ({ symbol, avgRate: getSymbolAvgRate(symbol) }));
+
+  const highestRateSymbols = [...allSymbolsWithRates]
+    .sort((a, b) => b.avgRate - a.avgRate)
+    .slice(0, 30)
+    .map(s => s.symbol);
+
+  const lowestRateSymbols = [...allSymbolsWithRates]
+    .sort((a, b) => a.avgRate - b.avgRate)
+    .slice(0, 30)
+    .map(s => s.symbol);
+
+  // Get category symbols (handle dynamic categories)
+  const getCategorySymbols = () => {
+    if (categoryFilter === 'all') return null;
+    if (categoryFilter === 'highest') return highestRateSymbols;
+    if (categoryFilter === 'lowest') return lowestRateSymbols;
+    return CATEGORIES[categoryFilter].symbols;
+  };
+
+  const categorySymbols = getCategorySymbols();
 
   const symbols = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
     .filter(symbol => {
@@ -91,6 +118,14 @@ export default function FundingPage() {
       return true;
     })
     .sort((a, b) => {
+      // For highest/lowest categories, sort by rate
+      if (categoryFilter === 'highest') {
+        return getSymbolAvgRate(b) - getSymbolAvgRate(a);
+      }
+      if (categoryFilter === 'lowest') {
+        return getSymbolAvgRate(a) - getSymbolAvgRate(b);
+      }
+
       // Priority symbols always come first
       const aPriority = PRIORITY_SYMBOLS.indexOf(a);
       const bPriority = PRIORITY_SYMBOLS.indexOf(b);
@@ -127,8 +162,16 @@ export default function FundingPage() {
     .filter(fr => {
       if (exchangeFilter !== 'all' && fr.exchange !== exchangeFilter) return false;
       if (searchTerm && !fr.symbol.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      // Apply category filter
-      if (categoryFilter !== 'all' && !CATEGORIES[categoryFilter].symbols.includes(fr.symbol)) return false;
+      // Apply category filter (handle dynamic categories)
+      if (categoryFilter !== 'all') {
+        if (categoryFilter === 'highest') {
+          return highestRateSymbols.includes(fr.symbol);
+        }
+        if (categoryFilter === 'lowest') {
+          return lowestRateSymbols.includes(fr.symbol);
+        }
+        return CATEGORIES[categoryFilter].symbols.includes(fr.symbol);
+      }
       return true;
     })
     .sort((a, b) => {
