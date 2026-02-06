@@ -13,7 +13,8 @@ import FearGreedIndex from '@/components/FearGreedIndex';
 import CoinSearch from '@/components/CoinSearch';
 import EventsCalendar from '@/components/EventsCalendar';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { Sparkles, ArrowRight, Globe, Shield, Zap, Search, Calendar, TrendingUp } from 'lucide-react';
+import { Sparkles, ArrowRight, Globe, Shield, Zap, Search, Calendar, TrendingUp, Users } from 'lucide-react';
+import TeamSection from '@/components/TeamSection';
 
 export default function Home() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function Home() {
             <span className="text-gradient animate-shine">InfoHub</span>
           </h1>
           <p className="text-hub-gray-text text-lg md:text-xl max-w-2xl mb-8">
-            Your one-stop destination for real-time crypto trading data, events, token unlocks, and market analytics.
+            Your one-stop destination for real-time trading data.
           </p>
 
           {/* Search Bar - Prominent */}
@@ -154,6 +155,11 @@ export default function Home() {
           <ExchangeList />
         </section>
 
+        {/* Team Section */}
+        <section className="mb-10">
+          <TeamSection />
+        </section>
+
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t border-hub-gray/30">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
@@ -169,7 +175,7 @@ export default function Home() {
                 </span>
               </div>
               <p className="text-hub-gray-text text-sm">
-                Real-time crypto market data, events, and analytics from top exchanges.
+                Your one-stop destination for real-time trading data.
               </p>
             </div>
 

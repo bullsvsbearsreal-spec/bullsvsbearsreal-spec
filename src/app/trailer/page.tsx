@@ -122,7 +122,7 @@ export default function TrailerPage() {
             <span className="text-white">INFO</span>
             <span className="text-gradient">HUB</span>
           </h2>
-          <p className="mt-4 text-xl text-hub-gray-text">Your Crypto Command Center</p>
+          <p className="mt-4 text-xl text-hub-gray-text">Your One-Stop Destination for Real-Time Trading Data</p>
         </div>
       </Scene>
 

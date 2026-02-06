@@ -69,7 +69,7 @@ export default function NewsSection({ coinSymbol, limit = 8, compact = false }: 
           </div>
           <div>
             <h3 className="text-xl font-bold text-white">
-              {coinSymbol ? `${coinSymbol.toUpperCase()} News` : 'Crypto News'}
+              {coinSymbol ? `${coinSymbol.toUpperCase()} News` : 'Market News'}
             </h3>
             <p className="text-hub-gray-text text-sm">
               Real-time from CryptoCompare

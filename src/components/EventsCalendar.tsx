@@ -59,7 +59,7 @@ export default function EventsCalendar({ symbol, limit = 10, showFilters = true 
           </div>
           <div>
             <h3 className="text-xl font-bold text-white">Latest News</h3>
-            <p className="text-hub-gray-text text-sm">Real-time crypto updates</p>
+            <p className="text-hub-gray-text text-sm">Real-time market updates</p>
           </div>
         </div>
         <span className="flex items-center gap-1 text-xs text-success">

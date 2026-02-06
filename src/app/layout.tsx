@@ -13,10 +13,10 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://infohub.app'),
-  title: 'InfoHub | Real-time Crypto Market Data',
-  description: 'Your one-stop destination for real-time crypto trading data - Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
-  keywords: ['crypto', 'trading', 'funding rates', 'open interest', 'liquidations', 'bitcoin', 'ethereum', 'market data'],
+  metadataBase: new URL('https://info-hub.io'),
+  title: 'InfoHub | Real-Time Trading Data',
+  description: 'Your one-stop destination for real-time trading data. Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
+  keywords: ['trading', 'funding rates', 'open interest', 'liquidations', 'market data', 'derivatives', 'perpetuals'],
   authors: [{ name: 'InfoHub' }],
   creator: 'InfoHub',
   publisher: 'InfoHub',
@@ -35,16 +35,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://infohub.app',
+    url: 'https://info-hub.io',
     siteName: 'InfoHub',
-    title: 'InfoHub | Real-time Crypto Market Data',
-    description: 'Your one-stop destination for real-time crypto trading data - Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
+    title: 'InfoHub | Real-Time Trading Data',
+    description: 'Your one-stop destination for real-time trading data. Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
     images: [
       {
         url: '/og-image.svg',
         width: 1200,
         height: 630,
-        alt: 'InfoHub - Real-time Crypto Market Data',
+        alt: 'InfoHub - Real-Time Trading Data',
       },
     ],
   },
@@ -52,8 +52,8 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: 'summary_large_image',
-    title: 'InfoHub | Real-time Crypto Market Data',
-    description: 'Your one-stop destination for real-time crypto trading data across 6 major exchanges.',
+    title: 'InfoHub | Real-Time Trading Data',
+    description: 'Your one-stop destination for real-time trading data across 6 major exchanges.',
     images: ['/og-image.svg'],
     creator: '@infohub',
   },
