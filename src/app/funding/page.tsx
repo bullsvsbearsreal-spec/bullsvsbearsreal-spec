@@ -14,6 +14,24 @@ type ViewMode = 'table' | 'heatmap' | 'arbitrage';
 // Exchange list for heatmap columns
 const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX'];
 
+// Priority symbols that should always appear first
+const PRIORITY_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC', 'LTC', 'UNI', 'ATOM', 'NEAR', 'ARB', 'OP', 'APT', 'SUI', 'INJ'];
+
+// Symbol categories
+const CATEGORIES: Record<string, { name: string; emoji: string; symbols: string[] }> = {
+  all: { name: 'All', emoji: '📊', symbols: [] },
+  major: { name: 'Major', emoji: '⭐', symbols: ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK', 'LTC', 'MATIC'] },
+  layer1: { name: 'Layer 1', emoji: '🔷', symbols: ['ETH', 'SOL', 'AVAX', 'ADA', 'DOT', 'ATOM', 'NEAR', 'APT', 'SUI', 'SEI', 'TON', 'FTM', 'ONE', 'ALGO', 'EGLD', 'FLOW', 'HBAR', 'ICP', 'KAVA', 'MINA'] },
+  layer2: { name: 'Layer 2', emoji: '🔶', symbols: ['ARB', 'OP', 'MATIC', 'IMX', 'METIS', 'STRK', 'MANTA', 'BLAST', 'ZK', 'SCROLL'] },
+  defi: { name: 'DeFi', emoji: '💰', symbols: ['UNI', 'AAVE', 'LINK', 'MKR', 'SNX', 'CRV', 'COMP', 'SUSHI', 'YFI', 'LDO', 'DYDX', 'GMX', 'PENDLE', 'JUP', 'RAY', 'INJ', 'CAKE', 'BAL', 'RUNE', '1INCH'] },
+  meme: { name: 'Meme', emoji: '🐕', symbols: ['DOGE', 'SHIB', 'PEPE', 'WIF', 'BONK', 'FLOKI', 'MEME', 'NEIRO', 'BRETT', 'POPCAT', 'MOG', 'TURBO', 'BABYDOGE', 'ELON', 'LADYS', 'WOJAK', 'BOME', 'SLERF', 'CAT', 'GOAT'] },
+  ai: { name: 'AI', emoji: '🤖', symbols: ['FET', 'RENDER', 'AGIX', 'OCEAN', 'TAO', 'WLD', 'RNDR', 'AKT', 'ARKM', 'AI', 'AIOZ', 'PHB', 'NMR', 'CTXC', 'OLAS', 'ALI', 'GLM', 'LPT'] },
+  gaming: { name: 'Gaming', emoji: '🎮', symbols: ['AXS', 'SAND', 'MANA', 'IMX', 'GALA', 'ENJ', 'ILV', 'MAGIC', 'PIXEL', 'PRIME', 'PORTAL', 'YGG', 'RON', 'SUPER', 'GODS', 'LOKA', 'PYR', 'ALICE'] },
+  infra: { name: 'Infra', emoji: '🔧', symbols: ['LINK', 'FIL', 'AR', 'GRT', 'PYTH', 'API3', 'BAND', 'TRB', 'TIA', 'MANTA', 'ALT', 'DYM', 'STRK'] },
+};
+
+type Category = keyof typeof CATEGORIES;
+
 export default function FundingPage() {
   const [fundingRates, setFundingRates] = useState<FundingRateData[]>([]);
   const [arbitrageData, setArbitrageData] = useState<any[]>([]);
@@ -25,6 +43,7 @@ export default function FundingPage() {
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [categoryFilter, setCategoryFilter] = useState<Category>('all');
 
   const fetchData = async () => {
     try {
@@ -59,16 +78,40 @@ export default function FundingPage() {
 
   // Get unique exchanges and symbols for heatmap
   const exchanges = Array.from(new Set(fundingRates.map(fr => fr.exchange)));
+
+  // Filter by category if selected
+  const categorySymbols = categoryFilter !== 'all' ? CATEGORIES[categoryFilter].symbols : null;
+
   const symbols = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
+    .filter(symbol => {
+      // If category is selected, only show symbols in that category
+      if (categorySymbols) {
+        return categorySymbols.includes(symbol);
+      }
+      return true;
+    })
     .sort((a, b) => {
-      // Sort by average absolute funding rate
+      // Priority symbols always come first
+      const aPriority = PRIORITY_SYMBOLS.indexOf(a);
+      const bPriority = PRIORITY_SYMBOLS.indexOf(b);
+
+      // If both are priority symbols, sort by priority order
+      if (aPriority !== -1 && bPriority !== -1) {
+        return aPriority - bPriority;
+      }
+      // If only a is priority, it comes first
+      if (aPriority !== -1) return -1;
+      // If only b is priority, it comes first
+      if (bPriority !== -1) return 1;
+
+      // For non-priority symbols, sort by average absolute funding rate
       const aRates = fundingRates.filter(fr => fr.symbol === a);
       const bRates = fundingRates.filter(fr => fr.symbol === b);
       const aAvg = aRates.reduce((sum, fr) => sum + Math.abs(fr.fundingRate), 0) / aRates.length;
       const bAvg = bRates.reduce((sum, fr) => sum + Math.abs(fr.fundingRate), 0) / bRates.length;
       return bAvg - aAvg;
     })
-    .slice(0, 30); // Top 30 symbols
+    .slice(0, 50); // Top 50 symbols (increased to include more)
 
   // Create heatmap data structure
   const heatmapData = new Map<string, Map<string, number>>();
@@ -84,6 +127,8 @@ export default function FundingPage() {
     .filter(fr => {
       if (exchangeFilter !== 'all' && fr.exchange !== exchangeFilter) return false;
       if (searchTerm && !fr.symbol.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      // Apply category filter
+      if (categoryFilter !== 'all' && !CATEGORIES[categoryFilter].symbols.includes(fr.symbol)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -228,6 +273,24 @@ export default function FundingPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Category Filter */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {(Object.keys(CATEGORIES) as Category[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+                categoryFilter === cat
+                  ? 'bg-hub-yellow text-black'
+                  : 'bg-hub-gray/20 border border-hub-gray/30 text-hub-gray-text hover:text-white hover:border-hub-gray/50'
+              }`}
+            >
+              <span>{CATEGORIES[cat].emoji}</span>
+              <span>{CATEGORIES[cat].name}</span>
+            </button>
+          ))}
         </div>
 
         {/* View Mode Selector */}
