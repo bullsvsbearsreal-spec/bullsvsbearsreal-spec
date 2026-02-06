@@ -13,8 +13,10 @@ export const binanceAPI = {
         .filter((t: any) => t.symbol.endsWith('USDT'))
         .map((ticker: any) => ({
           symbol: ticker.symbol.replace('USDT', ''),
+          lastPrice: parseFloat(ticker.lastPrice),
           price: parseFloat(ticker.lastPrice),
           change24h: parseFloat(ticker.priceChange),
+          priceChangePercent24h: parseFloat(ticker.priceChangePercent),
           changePercent24h: parseFloat(ticker.priceChangePercent),
           high24h: parseFloat(ticker.highPrice),
           low24h: parseFloat(ticker.lowPrice),

@@ -27,8 +27,10 @@ export const okxAPI = {
 
           return {
             symbol,
+            lastPrice,
             price: lastPrice,
             change24h,
+            priceChangePercent24h: changePercent,
             changePercent24h: changePercent,
             high24h: parseFloat(ticker.high24h),
             low24h: parseFloat(ticker.low24h),

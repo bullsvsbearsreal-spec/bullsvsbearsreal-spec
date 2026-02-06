@@ -20,8 +20,10 @@ export const bybitAPI = {
         .filter((t: any) => t.symbol.endsWith('USDT'))
         .map((ticker: any) => ({
           symbol: ticker.symbol.replace('USDT', ''),
+          lastPrice: parseFloat(ticker.lastPrice),
           price: parseFloat(ticker.lastPrice),
           change24h: parseFloat(ticker.price24hPcnt) * parseFloat(ticker.prevPrice24h),
+          priceChangePercent24h: parseFloat(ticker.price24hPcnt) * 100,
           changePercent24h: parseFloat(ticker.price24hPcnt) * 100,
           high24h: parseFloat(ticker.highPrice24h),
           low24h: parseFloat(ticker.lowPrice24h),
