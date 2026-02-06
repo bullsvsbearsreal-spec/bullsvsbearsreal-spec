@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { TokenIconSimple } from './TokenIcon';
 import { fetchLongShortRatio } from '@/lib/api/aggregator';
 
 interface RatioData {
@@ -71,7 +72,10 @@ export default function LongShortRatio() {
                 className="p-3 rounded-xl bg-hub-gray/30"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{item.symbol}</span>
+                  <div className="flex items-center gap-2">
+                    <TokenIconSimple symbol={item.symbol} size={24} />
+                    <span className="text-white font-medium">{item.symbol}</span>
+                  </div>
                   <span className={`text-xs font-medium ${
                     isLongDominant ? 'text-success' : 'text-danger'
                   }`}>

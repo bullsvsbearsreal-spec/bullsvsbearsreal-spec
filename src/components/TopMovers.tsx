@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Flame, Snowflake } from 'lucide-react';
+import { TokenIconSimple } from './TokenIcon';
 import { fetchTopMovers } from '@/lib/api/aggregator';
 import { TickerData } from '@/lib/api/types';
 
@@ -104,11 +105,7 @@ export default function TopMovers() {
             >
               <div className="flex items-center gap-3">
                 <span className="text-hub-gray-text text-xs w-5">{index + 1}</span>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-hub-yellow/30 to-hub-orange/20 flex items-center justify-center">
-                  <span className="text-xs font-bold text-hub-yellow">
-                    {item.symbol.slice(0, 2)}
-                  </span>
-                </div>
+                <TokenIconSimple symbol={item.symbol} size={32} />
                 <span className="text-white font-medium group-hover:text-hub-yellow transition-colors">
                   {item.symbol}
                 </span>

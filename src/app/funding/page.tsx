@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import { fetchAllFundingRates, fetchFundingArbitrage } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, ArrowUpDown, Grid3X3, Table, Shuffle } from 'lucide-react';
@@ -353,7 +354,10 @@ export default function FundingPage() {
                             className="border-b border-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
                           >
                             <td className="px-6 py-4">
-                              <span className="text-white font-semibold">{fr.symbol}</span>
+                              <div className="flex items-center gap-2">
+                                <TokenIconSimple symbol={fr.symbol} size={28} />
+                                <span className="text-white font-semibold">{fr.symbol}</span>
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
@@ -409,7 +413,10 @@ export default function FundingPage() {
                         return (
                           <tr key={symbol} className="border-t border-hub-gray/20">
                             <td className="px-3 py-2">
-                              <span className="text-white font-medium text-sm">{symbol}</span>
+                              <div className="flex items-center gap-2">
+                                <TokenIconSimple symbol={symbol} size={24} />
+                                <span className="text-white font-medium text-sm">{symbol}</span>
+                              </div>
                             </td>
                             {EXCHANGES.map(ex => {
                               const rate = rates?.get(ex);
@@ -478,6 +485,7 @@ export default function FundingPage() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <span className="text-hub-gray-text text-sm w-6">{index + 1}</span>
+                            <TokenIconSimple symbol={item.symbol} size={32} />
                             <span className="text-white font-bold text-lg">{item.symbol}</span>
                           </div>
                           <div className="text-right">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ExchangeLogo } from './ExchangeLogos';
+import { TokenIconSimple } from './TokenIcon';
 import { Clock, ArrowUpRight, ArrowDownRight, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
@@ -150,9 +151,7 @@ export default function FundingRatesTable() {
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-hub-yellow/20 to-hub-orange/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-hub-yellow">{rate.symbol.slice(0, 2)}</span>
-                        </div>
+                        <TokenIconSimple symbol={rate.symbol} size={28} />
                         <span className="font-semibold text-white">{rate.symbol}</span>
                       </div>
                     </td>

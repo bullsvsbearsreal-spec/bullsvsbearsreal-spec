@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { TokenIconSimple } from './TokenIcon';
 import { fetchAllTickers, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { TickerData, OpenInterestData } from '@/lib/api/types';
 
@@ -121,11 +122,9 @@ export default function MarketTicker() {
                 key={index}
                 className="flex items-center gap-3 px-4 py-1.5 rounded-lg hover:bg-hub-gray/30 transition-colors cursor-pointer group"
               >
-                {/* Symbol with gradient bg */}
+                {/* Symbol with icon */}
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-hub-yellow/30 to-hub-orange/20 flex items-center justify-center">
-                    <span className="text-xs font-bold text-hub-yellow">{ticker.symbol.slice(0, 2)}</span>
-                  </div>
+                  <TokenIconSimple symbol={ticker.symbol} size={24} />
                   <span className="text-white font-semibold text-sm group-hover:text-hub-yellow transition-colors">
                     {ticker.symbol}
                   </span>

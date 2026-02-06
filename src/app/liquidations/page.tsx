@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import { Zap, RefreshCw, Clock, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX, Grid3X3, List } from 'lucide-react';
 
 interface Liquidation {
@@ -305,7 +306,10 @@ export default function LiquidationsPage() {
                       return (
                         <div key={item.symbol} className={`${getHeatmapColor(item)} ${sizeClass} rounded-xl p-3 flex flex-col justify-between transition-all hover:scale-[1.02] cursor-pointer`}>
                           <div>
-                            <div className="text-white font-bold text-sm md:text-base">{item.symbol}</div>
+                            <div className="flex items-center gap-2">
+                              <TokenIconSimple symbol={item.symbol} size={20} />
+                              <span className="text-white font-bold text-sm md:text-base">{item.symbol}</span>
+                            </div>
                             <div className="text-white/70 text-xs">{item.count} liqs</div>
                           </div>
                           <div>
@@ -348,6 +352,7 @@ export default function LiquidationsPage() {
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
+                                  <TokenIconSimple symbol={liq.symbol} size={24} />
                                   <span className="text-white font-semibold">{liq.symbol}</span>
                                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${liq.side === 'long' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
                                     {liq.side.toUpperCase()}

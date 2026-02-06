@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Sparkles, ChevronRight, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { TokenIconSimple } from './TokenIcon';
 import { fetchAllTickers, fetchAllFundingRates, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { TickerData, FundingRateData, OpenInterestData } from '@/lib/api/types';
 
@@ -251,8 +252,8 @@ export default function CryptoTable() {
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-hub-yellow/30 to-hub-orange/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <span className="text-hub-yellow font-bold text-sm">{asset.symbol.slice(0, 2)}</span>
+                      <div className="group-hover:scale-105 transition-transform">
+                        <TokenIconSimple symbol={asset.symbol} size={40} />
                       </div>
                       <div>
                         <p className="font-semibold text-white group-hover:text-hub-yellow transition-colors">{asset.symbol}</p>
