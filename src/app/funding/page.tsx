@@ -5,14 +5,25 @@ import Header from '@/components/Header';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { fetchAllFundingRates, fetchFundingArbitrage } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
-import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, ArrowUpDown, Grid3X3, Table, Shuffle } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, ArrowUpDown, Grid3X3, Table, Shuffle, Settings2, Check } from 'lucide-react';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange';
 type SortOrder = 'asc' | 'desc';
 type ViewMode = 'table' | 'heatmap' | 'arbitrage';
 
 // Exchange list for heatmap columns
-const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX'];
+const ALL_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX'];
+
+// Exchange colors for the selector
+const EXCHANGE_COLORS: Record<string, string> = {
+  'Binance': 'bg-yellow-500',
+  'Bybit': 'bg-orange-500',
+  'OKX': 'bg-white',
+  'Bitget': 'bg-cyan-400',
+  'Hyperliquid': 'bg-green-400',
+  'dYdX': 'bg-purple-500',
+};
 
 // Priority symbols that should always appear first
 const PRIORITY_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC', 'LTC', 'UNI', 'ATOM', 'NEAR', 'ARB', 'OP', 'APT', 'SUI', 'INJ'];
@@ -45,6 +56,34 @@ export default function FundingPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [categoryFilter, setCategoryFilter] = useState<Category>('all');
+  const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(new Set(ALL_EXCHANGES));
+  const [showExchangeSelector, setShowExchangeSelector] = useState(false);
+
+  // Toggle exchange selection
+  const toggleExchange = (exchange: string) => {
+    setSelectedExchanges(prev => {
+      const next = new Set(prev);
+      if (next.has(exchange)) {
+        // Don't allow deselecting all exchanges
+        if (next.size > 1) {
+          next.delete(exchange);
+        }
+      } else {
+        next.add(exchange);
+      }
+      return next;
+    });
+  };
+
+  // Select/deselect all exchanges
+  const toggleAllExchanges = () => {
+    if (selectedExchanges.size === ALL_EXCHANGES.length) {
+      // Keep at least one exchange selected
+      setSelectedExchanges(new Set([ALL_EXCHANGES[0]]));
+    } else {
+      setSelectedExchanges(new Set(ALL_EXCHANGES));
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -157,10 +196,14 @@ export default function FundingPage() {
     heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
   });
 
+  // Get selected exchanges as array for heatmap
+  const visibleExchanges = ALL_EXCHANGES.filter(ex => selectedExchanges.has(ex));
+
   // Filter and sort data for table view
   const filteredAndSorted = fundingRates
     .filter(fr => {
-      if (exchangeFilter !== 'all' && fr.exchange !== exchangeFilter) return false;
+      // Filter by selected exchanges
+      if (!selectedExchanges.has(fr.exchange)) return false;
       if (searchTerm && !fr.symbol.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       // Apply category filter (handle dynamic categories)
       if (categoryFilter !== 'all') {
@@ -369,26 +412,70 @@ export default function FundingPage() {
           </div>
 
           {viewMode === 'table' && (
-            <>
-              <input
-                type="text"
-                placeholder="Search symbol..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white placeholder-hub-gray-text focus:outline-none focus:border-hub-yellow/50"
-              />
-              <select
-                value={exchangeFilter}
-                onChange={(e) => setExchangeFilter(e.target.value)}
-                className="px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white focus:outline-none focus:border-hub-yellow/50"
-              >
-                <option value="all">All Exchanges</option>
-                {exchanges.map(ex => (
-                  <option key={ex} value={ex}>{ex}</option>
-                ))}
-              </select>
-            </>
+            <input
+              type="text"
+              placeholder="Search symbol..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white placeholder-hub-gray-text focus:outline-none focus:border-hub-yellow/50"
+            />
           )}
+
+          {/* Exchange Selector Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExchangeSelector(!showExchangeSelector)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+                showExchangeSelector
+                  ? 'bg-hub-yellow text-black'
+                  : 'bg-hub-gray/20 border border-hub-gray/30 text-hub-gray-text hover:text-white'
+              }`}
+            >
+              <Settings2 className="w-4 h-4" />
+              Exchanges ({selectedExchanges.size}/{ALL_EXCHANGES.length})
+            </button>
+
+            {/* Exchange Selector Dropdown */}
+            {showExchangeSelector && (
+              <div className="absolute right-0 top-full mt-2 z-50 bg-hub-dark border border-hub-gray/30 rounded-2xl p-4 shadow-xl min-w-[280px]">
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-hub-gray/30">
+                  <span className="text-white font-semibold text-sm">Select Exchanges</span>
+                  <button
+                    onClick={toggleAllExchanges}
+                    className="text-xs text-hub-yellow hover:text-hub-yellow/80 transition-colors"
+                  >
+                    {selectedExchanges.size === ALL_EXCHANGES.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {ALL_EXCHANGES.map((exchange) => (
+                    <button
+                      key={exchange}
+                      onClick={() => toggleExchange(exchange)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                        selectedExchanges.has(exchange)
+                          ? 'bg-hub-gray/40 border border-hub-gray/50'
+                          : 'bg-hub-gray/10 border border-transparent hover:bg-hub-gray/20'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center ${
+                        selectedExchanges.has(exchange) ? 'bg-hub-yellow' : 'bg-hub-gray/30 border border-hub-gray/50'
+                      }`}>
+                        {selectedExchanges.has(exchange) && <Check className="w-3 h-3 text-black" />}
+                      </div>
+                      <ExchangeLogo exchange={exchange.toLowerCase()} size={20} />
+                      <span className={`text-sm font-medium ${
+                        selectedExchanges.has(exchange) ? 'text-white' : 'text-hub-gray-text'
+                      }`}>
+                        {exchange}
+                      </span>
+                      <div className={`ml-auto w-2 h-2 rounded-full ${EXCHANGE_COLORS[exchange]}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Error State */}
@@ -506,9 +593,12 @@ export default function FundingPage() {
                     <thead>
                       <tr>
                         <th className="px-3 py-2 text-left text-sm font-semibold text-hub-gray-text">Symbol</th>
-                        {EXCHANGES.map(ex => (
+                        {visibleExchanges.map(ex => (
                           <th key={ex} className="px-3 py-2 text-center text-sm font-semibold text-hub-gray-text">
-                            {ex}
+                            <div className="flex items-center justify-center gap-2">
+                              <ExchangeLogo exchange={ex.toLowerCase()} size={16} />
+                              <span>{ex}</span>
+                            </div>
                           </th>
                         ))}
                       </tr>
@@ -524,7 +614,7 @@ export default function FundingPage() {
                                 <span className="text-white font-medium text-sm">{symbol}</span>
                               </div>
                             </td>
-                            {EXCHANGES.map(ex => {
+                            {visibleExchanges.map(ex => {
                               const rate = rates?.get(ex);
                               return (
                                 <td key={ex} className="px-1 py-1">
