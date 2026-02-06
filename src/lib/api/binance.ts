@@ -128,6 +128,55 @@ export const binanceAPI = {
       return { longRatio: 50, shortRatio: 50 };
     }
   },
+
+  // Get top gainers/losers
+  async getTopMovers(): Promise<{ gainers: TickerData[]; losers: TickerData[] }> {
+    try {
+      const tickers = await this.getTickers();
+      const sorted = [...tickers].sort((a, b) => b.priceChangePercent24h - a.priceChangePercent24h);
+      return {
+        gainers: sorted.slice(0, 10),
+        losers: sorted.slice(-10).reverse(),
+      };
+    } catch (error) {
+      console.error('Binance getTopMovers error:', error);
+      return { gainers: [], losers: [] };
+    }
+  },
+
+  // Get 24h liquidation data from Binance
+  async get24hLiquidations(): Promise<{ totalLiquidations: number; longLiquidations: number; shortLiquidations: number }> {
+    // Note: Binance doesn't provide historical liquidation totals via REST API
+    // This would require WebSocket aggregation or third-party data
+    // For now, we'll use the live WebSocket data aggregated on the client
+    return { totalLiquidations: 0, longLiquidations: 0, shortLiquidations: 0 };
+  },
+
+  // Get OI-weighted funding rate for BTC/ETH
+  async getOIWeightedFunding(): Promise<{ btcOIWeighted: number; ethOIWeighted: number }> {
+    try {
+      const [fundingRates, oiData] = await Promise.all([
+        this.getFundingRates(),
+        this.getOpenInterest(),
+      ]);
+
+      // Calculate OI-weighted funding for BTC
+      const btcFunding = fundingRates.find(f => f.symbol === 'BTC');
+      const btcOI = oiData.find(o => o.symbol === 'BTC');
+
+      // Calculate OI-weighted funding for ETH
+      const ethFunding = fundingRates.find(f => f.symbol === 'ETH');
+      const ethOI = oiData.find(o => o.symbol === 'ETH');
+
+      return {
+        btcOIWeighted: btcFunding?.fundingRate || 0,
+        ethOIWeighted: ethFunding?.fundingRate || 0,
+      };
+    } catch (error) {
+      console.error('Binance getOIWeightedFunding error:', error);
+      return { btcOIWeighted: 0, ethOIWeighted: 0 };
+    }
+  },
 };
 
 export default binanceAPI;

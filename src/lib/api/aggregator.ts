@@ -201,5 +201,124 @@ export function clearCache(): void {
   cache.clear();
 }
 
+// Get Long/Short Ratio from Binance
+export async function fetchLongShortRatio(symbol: string = 'BTCUSDT'): Promise<{ longRatio: number; shortRatio: number }> {
+  const cached = getCached<{ longRatio: number; shortRatio: number }>(`longShort_${symbol}`);
+  if (cached) return cached;
+
+  const result = await binanceAPI.getLongShortRatio(symbol);
+  setCache(`longShort_${symbol}`, result);
+  return result;
+}
+
+// Get Top Gainers and Losers
+export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers: TickerData[] }> {
+  const cached = getCached<{ gainers: TickerData[]; losers: TickerData[] }>('topMovers');
+  if (cached) return cached;
+
+  const tickers = await fetchAllTickers();
+  const validTickers = tickers.filter(t =>
+    t.priceChangePercent24h !== undefined &&
+    !isNaN(t.priceChangePercent24h) &&
+    isFinite(t.priceChangePercent24h)
+  );
+  const sorted = [...validTickers].sort((a, b) => b.priceChangePercent24h - a.priceChangePercent24h);
+
+  const result = {
+    gainers: sorted.slice(0, 10),
+    losers: sorted.slice(-10).reverse(),
+  };
+
+  setCache('topMovers', result);
+  return result;
+}
+
+// Get OI Changes - coins with biggest OI changes (would need historical data)
+export async function fetchOIChanges(): Promise<OpenInterestData[]> {
+  const cached = getCached<OpenInterestData[]>('oiChanges');
+  if (cached) return cached;
+
+  const oiData = await fetchAllOpenInterest();
+  // Sort by OI value (we don't have historical change data yet)
+  const sorted = [...oiData].sort((a, b) => b.openInterestValue - a.openInterestValue);
+
+  setCache('oiChanges', sorted.slice(0, 20));
+  return sorted.slice(0, 20);
+}
+
+// Get aggregated market stats for the top stats bar
+export async function fetchMarketStats(): Promise<{
+  totalVolume24h: number;
+  totalOpenInterest: number;
+  btcLongShort: { longRatio: number; shortRatio: number };
+  btcDominance: number;
+}> {
+  const cached = getCached<any>('marketStats');
+  if (cached) return cached;
+
+  const [tickers, oiData, longShort] = await Promise.all([
+    fetchAllTickers(),
+    fetchAllOpenInterest(),
+    fetchLongShortRatio('BTCUSDT'),
+  ]);
+
+  const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
+  const totalOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
+
+  // Calculate BTC dominance from volume
+  const btcTicker = tickers.find(t => t.symbol === 'BTC');
+  const btcVolume = btcTicker?.quoteVolume24h || 0;
+  const btcDominance = totalVolume > 0 ? (btcVolume / totalVolume) * 100 : 0;
+
+  const result = {
+    totalVolume24h: totalVolume,
+    totalOpenInterest: totalOI,
+    btcLongShort: longShort,
+    btcDominance,
+  };
+
+  setCache('marketStats', result);
+  return result;
+}
+
+// Get funding rate comparison across exchanges for arbitrage
+export async function fetchFundingArbitrage(): Promise<Array<{
+  symbol: string;
+  exchanges: Array<{ exchange: string; rate: number }>;
+  spread: number;
+}>> {
+  const cached = getCached<any>('fundingArbitrage');
+  if (cached) return cached;
+
+  const fundingRates = await fetchAllFundingRates();
+
+  // Group by symbol
+  const symbolMap = new Map<string, Array<{ exchange: string; rate: number }>>();
+  fundingRates.forEach(fr => {
+    const existing = symbolMap.get(fr.symbol) || [];
+    existing.push({ exchange: fr.exchange, rate: fr.fundingRate });
+    symbolMap.set(fr.symbol, existing);
+  });
+
+  // Calculate spread for each symbol (only those with 2+ exchanges)
+  const arbitrageData = Array.from(symbolMap.entries())
+    .filter(([_, exchanges]) => exchanges.length >= 2)
+    .map(([symbol, exchanges]) => {
+      const rates = exchanges.map(e => e.rate);
+      const maxRate = Math.max(...rates);
+      const minRate = Math.min(...rates);
+      return {
+        symbol,
+        exchanges,
+        spread: maxRate - minRate,
+      };
+    })
+    .sort((a, b) => b.spread - a.spread)
+    .slice(0, 20);
+
+  setCache('fundingArbitrage', arbitrageData);
+  return arbitrageData;
+}
+
 // Export individual exchange APIs for direct access
 export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI };

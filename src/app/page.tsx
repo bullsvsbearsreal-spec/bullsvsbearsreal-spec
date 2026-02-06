@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import MarketTicker from '@/components/MarketTicker';
+import TopStatsBar from '@/components/TopStatsBar';
 import StatsOverview from '@/components/StatsOverview';
 import FearGreedIndex from '@/components/FearGreedIndex';
+import LiquidationHeatmap from '@/components/LiquidationHeatmap';
+import TopMovers from '@/components/TopMovers';
+import OIChangeWidget from '@/components/OIChangeWidget';
+import LongShortRatio from '@/components/LongShortRatio';
+import MarketIndices from '@/components/MarketIndices';
 import CoinSearch from '@/components/CoinSearch';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 import {
@@ -61,11 +67,12 @@ export default function Home() {
       </div>
 
       <Header />
+      <TopStatsBar />
       <MarketTicker />
 
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
-        <section className="mb-12 animate-slideUp">
+        <section className="mb-10 animate-slideUp">
           <div className="flex items-center gap-2 mb-4">
             <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-hub-yellow/20 to-hub-orange/20 border border-hub-yellow/30">
               <span className="text-xs font-semibold text-hub-yellow flex items-center gap-1.5">
@@ -119,111 +126,122 @@ export default function Home() {
           <StatsOverview />
         </section>
 
-        {/* Main Grid - Fear/Greed + Funding Preview + News */}
+        {/* Row 1: Fear & Greed + Liquidation Heatmap */}
+        <section className="mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FearGreedIndex />
+            <LiquidationHeatmap />
+          </div>
+        </section>
+
+        {/* Row 2: Market Indices + Top Movers + Long/Short Ratio */}
+        <section className="mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <MarketIndices />
+            <TopMovers />
+            <LongShortRatio />
+          </div>
+        </section>
+
+        {/* Row 3: Funding Preview + OI Widget + News */}
         <section className="mb-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Fear & Greed */}
-            <div className="lg:col-span-1">
-              <FearGreedIndex />
-            </div>
-
             {/* Funding Rates Preview */}
-            <div className="lg:col-span-1">
-              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6 h-full">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-hub-yellow" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Top Funding</h3>
-                      <p className="text-hub-gray-text text-xs">Highest rates now</p>
-                    </div>
+            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-hub-yellow" />
                   </div>
-                  <Link href="/funding" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
-                    View All <ArrowRight className="w-3 h-3" />
-                  </Link>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Top Funding</h3>
+                    <p className="text-hub-gray-text text-xs">Highest rates now</p>
+                  </div>
                 </div>
-
-                {loading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className="animate-pulse h-10 bg-hub-gray/30 rounded-lg" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {topFunding.map((item, index) => (
-                      <div
-                        key={`${item.symbol}-${item.exchange}-${index}`}
-                        className="flex items-center justify-between p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-hub-gray-text text-xs w-4">{index + 1}</span>
-                          <span className="text-white font-medium text-sm">{item.symbol}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-hub-gray-text text-xs">{item.exchange}</span>
-                          <span className={`font-mono font-semibold text-sm ${
-                            item.fundingRate >= 0 ? 'text-success' : 'text-danger'
-                          }`}>
-                            {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <Link href="/funding" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
+                  View All <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
+
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="animate-pulse h-10 bg-hub-gray/30 rounded-lg" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {topFunding.map((item, index) => (
+                    <div
+                      key={`${item.symbol}-${item.exchange}-${index}`}
+                      className="flex items-center justify-between p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-hub-gray-text text-xs w-4">{index + 1}</span>
+                        <span className="text-white font-medium text-sm">{item.symbol}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-hub-gray-text text-xs">{item.exchange}</span>
+                        <span className={`font-mono font-semibold text-sm ${
+                          item.fundingRate >= 0 ? 'text-success' : 'text-danger'
+                        }`}>
+                          {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* OI Widget */}
+            <OIChangeWidget />
 
             {/* News Preview */}
-            <div className="lg:col-span-1">
-              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6 h-full">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-                      <Newspaper className="w-5 h-5 text-hub-yellow" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Latest News</h3>
-                      <p className="text-hub-gray-text text-xs">Market updates</p>
-                    </div>
+            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+                    <Newspaper className="w-5 h-5 text-hub-yellow" />
                   </div>
-                  <Link href="/news" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
-                    View All <ArrowRight className="w-3 h-3" />
-                  </Link>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Latest News</h3>
+                    <p className="text-hub-gray-text text-xs">Market updates</p>
+                  </div>
                 </div>
-
-                {loading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="animate-pulse h-16 bg-hub-gray/30 rounded-lg" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {latestNews.map((article, index) => (
-                      <a
-                        key={article.id || index}
-                        href={article.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all group"
-                      >
-                        <h4 className="text-white text-sm font-medium line-clamp-2 group-hover:text-hub-yellow transition-colors">
-                          {article.title}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs text-hub-gray-text">{article.source_info?.name || article.source}</span>
-                          <span className="text-xs text-hub-gray-text">•</span>
-                          <span className="text-xs text-hub-gray-text">{formatTimeAgo(article.published_on)}</span>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                )}
+                <Link href="/news" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
+                  View All <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
+
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="animate-pulse h-16 bg-hub-gray/30 rounded-lg" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {latestNews.map((article, index) => (
+                    <a
+                      key={article.id || index}
+                      href={article.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all group"
+                    >
+                      <h4 className="text-white text-sm font-medium line-clamp-2 group-hover:text-hub-yellow transition-colors">
+                        {article.title}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-hub-gray-text">{article.source_info?.name || article.source}</span>
+                        <span className="text-xs text-hub-gray-text">•</span>
+                        <span className="text-xs text-hub-gray-text">{formatTimeAgo(article.published_on)}</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>

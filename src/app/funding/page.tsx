@@ -2,15 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import { fetchAllFundingRates } from '@/lib/api/aggregator';
+import { fetchAllFundingRates, fetchFundingArbitrage } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
-import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, ArrowUpDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, ArrowUpDown, Grid3X3, Table, Shuffle } from 'lucide-react';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange';
 type SortOrder = 'asc' | 'desc';
+type ViewMode = 'table' | 'heatmap' | 'arbitrage';
+
+// Exchange list for heatmap columns
+const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX'];
 
 export default function FundingPage() {
   const [fundingRates, setFundingRates] = useState<FundingRateData[]>([]);
+  const [arbitrageData, setArbitrageData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -18,13 +23,16 @@ export default function FundingPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchAllFundingRates();
-      // Filter out any invalid funding rates
+      const [data, arbData] = await Promise.all([
+        fetchAllFundingRates(),
+        fetchFundingArbitrage(),
+      ]);
       const validData = data.filter(fr =>
         fr &&
         typeof fr.fundingRate === 'number' &&
@@ -32,6 +40,7 @@ export default function FundingPage() {
         isFinite(fr.fundingRate)
       );
       setFundingRates(validData);
+      setArbitrageData(arbData);
       setLastUpdate(new Date());
     } catch (err) {
       setError('Failed to fetch funding rates. Please try again.');
@@ -43,15 +52,33 @@ export default function FundingPage() {
 
   useEffect(() => {
     fetchData();
-    // Refresh every 30 seconds
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Get unique exchanges
+  // Get unique exchanges and symbols for heatmap
   const exchanges = Array.from(new Set(fundingRates.map(fr => fr.exchange)));
+  const symbols = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
+    .sort((a, b) => {
+      // Sort by average absolute funding rate
+      const aRates = fundingRates.filter(fr => fr.symbol === a);
+      const bRates = fundingRates.filter(fr => fr.symbol === b);
+      const aAvg = aRates.reduce((sum, fr) => sum + Math.abs(fr.fundingRate), 0) / aRates.length;
+      const bAvg = bRates.reduce((sum, fr) => sum + Math.abs(fr.fundingRate), 0) / bRates.length;
+      return bAvg - aAvg;
+    })
+    .slice(0, 30); // Top 30 symbols
 
-  // Filter and sort data
+  // Create heatmap data structure
+  const heatmapData = new Map<string, Map<string, number>>();
+  fundingRates.forEach(fr => {
+    if (!heatmapData.has(fr.symbol)) {
+      heatmapData.set(fr.symbol, new Map());
+    }
+    heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
+  });
+
+  // Filter and sort data for table view
   const filteredAndSorted = fundingRates
     .filter(fr => {
       if (exchangeFilter !== 'all' && fr.exchange !== exchangeFilter) return false;
@@ -65,7 +92,7 @@ export default function FundingPage() {
           comparison = a.symbol.localeCompare(b.symbol);
           break;
         case 'fundingRate':
-          comparison = a.fundingRate - b.fundingRate;
+          comparison = Math.abs(a.fundingRate) - Math.abs(b.fundingRate);
           break;
         case 'exchange':
           comparison = a.exchange.localeCompare(b.exchange);
@@ -74,14 +101,7 @@ export default function FundingPage() {
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-  // Group by symbol for comparison view
-  const groupedBySymbol = new Map<string, FundingRateData[]>();
-  fundingRates.forEach(fr => {
-    const existing = groupedBySymbol.get(fr.symbol) || [];
-    groupedBySymbol.set(fr.symbol, [...existing, fr]);
-  });
-
-  // Calculate stats - filter valid rates only
+  // Calculate stats
   const validRates = fundingRates.filter(fr =>
     typeof fr.fundingRate === 'number' && !isNaN(fr.fundingRate) && isFinite(fr.fundingRate)
   );
@@ -106,7 +126,7 @@ export default function FundingPage() {
 
   const formatRate = (rate: number | undefined | null) => {
     if (rate === undefined || rate === null || isNaN(rate) || !isFinite(rate)) {
-      return '0.0000%';
+      return '-';
     }
     const formatted = rate.toFixed(4);
     return rate >= 0 ? `+${formatted}%` : `${formatted}%`;
@@ -114,8 +134,21 @@ export default function FundingPage() {
 
   const getRateColor = (rate: number) => {
     if (rate > 0.05) return 'text-success';
-    if (rate < -0.05) return 'text-error';
+    if (rate < -0.05) return 'text-danger';
     return 'text-hub-gray-text';
+  };
+
+  const getHeatmapColor = (rate: number | undefined) => {
+    if (rate === undefined) return 'bg-hub-gray/20';
+    if (rate > 0.1) return 'bg-green-500';
+    if (rate > 0.05) return 'bg-green-600';
+    if (rate > 0.01) return 'bg-green-700';
+    if (rate > 0) return 'bg-green-800';
+    if (rate < -0.1) return 'bg-red-500';
+    if (rate < -0.05) return 'bg-red-600';
+    if (rate < -0.01) return 'bg-red-700';
+    if (rate < 0) return 'bg-red-800';
+    return 'bg-hub-gray/30';
   };
 
   const getExchangeColor = (exchange: string) => {
@@ -138,7 +171,10 @@ export default function FundingPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Funding Rates</h1>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <TrendingUp className="w-8 h-8 text-hub-yellow" />
+              Funding Rates
+            </h1>
             <p className="text-hub-gray-text mt-1">
               Real-time perpetual funding rates across all major exchanges
             </p>
@@ -147,13 +183,13 @@ export default function FundingPage() {
             {lastUpdate && (
               <span className="text-sm text-hub-gray-text flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                Updated {lastUpdate.toLocaleTimeString()}
+                {lastUpdate.toLocaleTimeString()}
               </span>
             )}
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-hub-gray/30 hover:bg-hub-gray/50 rounded-xl text-white transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-hub-yellow/20 hover:bg-hub-yellow/30 border border-hub-yellow/30 rounded-xl text-hub-yellow transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
@@ -162,7 +198,7 @@ export default function FundingPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5">
             <span className="text-hub-gray-text text-sm">Total Pairs</span>
             <div className="text-2xl font-bold text-white mt-1">{fundingRates.length}</div>
@@ -173,45 +209,79 @@ export default function FundingPage() {
               {formatRate(avgRate)}
             </div>
           </div>
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5">
-            <span className="text-hub-gray-text text-sm">Highest Rate</span>
+          <div className="bg-success/10 border border-success/30 rounded-2xl p-5">
+            <span className="text-success text-sm">Highest Rate</span>
             {highestRate && (
               <div className="mt-1">
                 <span className="text-2xl font-bold text-success">{formatRate(highestRate.fundingRate)}</span>
-                <span className="text-hub-gray-text text-sm ml-2">{highestRate.symbol}</span>
+                <span className="text-success/70 text-sm ml-2">{highestRate.symbol}</span>
               </div>
             )}
           </div>
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5">
-            <span className="text-hub-gray-text text-sm">Lowest Rate</span>
+          <div className="bg-danger/10 border border-danger/30 rounded-2xl p-5">
+            <span className="text-danger text-sm">Lowest Rate</span>
             {lowestRate && (
               <div className="mt-1">
-                <span className="text-2xl font-bold text-error">{formatRate(lowestRate.fundingRate)}</span>
-                <span className="text-hub-gray-text text-sm ml-2">{lowestRate.symbol}</span>
+                <span className="text-2xl font-bold text-danger">{formatRate(lowestRate.fundingRate)}</span>
+                <span className="text-danger/70 text-sm ml-2">{lowestRate.symbol}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Filters */}
+        {/* View Mode Selector */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <input
-            type="text"
-            placeholder="Search symbol..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white placeholder-hub-gray-text focus:outline-none focus:border-hub-yellow/50"
-          />
-          <select
-            value={exchangeFilter}
-            onChange={(e) => setExchangeFilter(e.target.value)}
-            className="px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white focus:outline-none focus:border-hub-yellow/50"
-          >
-            <option value="all">All Exchanges</option>
-            {exchanges.map(ex => (
-              <option key={ex} value={ex}>{ex}</option>
-            ))}
-          </select>
+          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+                viewMode === 'table' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'
+              }`}
+            >
+              <Table className="w-4 h-4" />
+              Table
+            </button>
+            <button
+              onClick={() => setViewMode('heatmap')}
+              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+                viewMode === 'heatmap' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'
+              }`}
+            >
+              <Grid3X3 className="w-4 h-4" />
+              Heatmap
+            </button>
+            <button
+              onClick={() => setViewMode('arbitrage')}
+              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+                viewMode === 'arbitrage' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'
+              }`}
+            >
+              <Shuffle className="w-4 h-4" />
+              Arbitrage
+            </button>
+          </div>
+
+          {viewMode === 'table' && (
+            <>
+              <input
+                type="text"
+                placeholder="Search symbol..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white placeholder-hub-gray-text focus:outline-none focus:border-hub-yellow/50"
+              />
+              <select
+                value={exchangeFilter}
+                onChange={(e) => setExchangeFilter(e.target.value)}
+                className="px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white focus:outline-none focus:border-hub-yellow/50"
+              >
+                <option value="all">All Exchanges</option>
+                {exchanges.map(ex => (
+                  <option key={ex} value={ex}>{ex}</option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
 
         {/* Error State */}
@@ -231,126 +301,264 @@ export default function FundingPage() {
             </div>
           </div>
         ) : (
-          /* Funding Rates Table */
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-hub-gray/30">
-                    <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('symbol')}
-                    >
-                      <div className="flex items-center gap-2">
-                        Symbol
-                        <ArrowUpDown className="w-4 h-4" />
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('exchange')}
-                    >
-                      <div className="flex items-center gap-2">
-                        Exchange
-                        <ArrowUpDown className="w-4 h-4" />
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('fundingRate')}
-                    >
-                      <div className="flex items-center gap-2 justify-end">
-                        Funding Rate
-                        <ArrowUpDown className="w-4 h-4" />
-                      </div>
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">
-                      Annualized
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">
-                      Mark Price
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">
-                      Next Funding
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAndSorted.map((fr, index) => {
-                    const annualized = fr.fundingRate * 3 * 365; // 8h funding * 3 per day * 365
-                    const nextFunding = fr.nextFundingTime
-                      ? new Date(fr.nextFundingTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : '-';
-
-                    return (
-                      <tr
-                        key={`${fr.symbol}-${fr.exchange}-${index}`}
-                        className="border-b border-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
-                      >
-                        <td className="px-6 py-4">
+          <>
+            {/* Table View */}
+            {viewMode === 'table' && (
+              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-hub-gray/30">
+                        <th
+                          className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
+                          onClick={() => handleSort('symbol')}
+                        >
                           <div className="flex items-center gap-2">
-                            <span className="text-white font-semibold">{fr.symbol}</span>
-                            <span className="text-hub-gray-text text-sm">/USDT</span>
+                            Symbol
+                            <ArrowUpDown className="w-4 h-4" />
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
-                            {fr.exchange}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {fr.fundingRate > 0 ? (
-                              <TrendingUp className="w-4 h-4 text-success" />
-                            ) : fr.fundingRate < 0 ? (
-                              <TrendingDown className="w-4 h-4 text-error" />
-                            ) : null}
-                            <span className={`font-mono font-semibold ${getRateColor(fr.fundingRate)}`}>
-                              {formatRate(fr.fundingRate)}
-                            </span>
+                        </th>
+                        <th
+                          className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
+                          onClick={() => handleSort('exchange')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Exchange
+                            <ArrowUpDown className="w-4 h-4" />
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className={`font-mono text-sm ${getRateColor(annualized)}`}>
-                            {annualized >= 0 ? '+' : ''}{annualized.toFixed(2)}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="text-white font-mono">
-                            ${fr.markPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) || '-'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="text-hub-gray-text text-sm">{nextFunding}</span>
-                        </td>
+                        </th>
+                        <th
+                          className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
+                          onClick={() => handleSort('fundingRate')}
+                        >
+                          <div className="flex items-center gap-2 justify-end">
+                            Funding Rate
+                            <ArrowUpDown className="w-4 h-4" />
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">
+                          Annualized
+                        </th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">
+                          Mark Price
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredAndSorted.length === 0 && !loading && (
-              <div className="p-8 text-center text-hub-gray-text">
-                No funding rates found matching your criteria.
+                    </thead>
+                    <tbody>
+                      {filteredAndSorted.slice(0, 100).map((fr, index) => {
+                        const annualized = fr.fundingRate * 3 * 365;
+                        return (
+                          <tr
+                            key={`${fr.symbol}-${fr.exchange}-${index}`}
+                            className="border-b border-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
+                          >
+                            <td className="px-6 py-4">
+                              <span className="text-white font-semibold">{fr.symbol}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
+                                {fr.exchange}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className={`font-mono font-semibold ${getRateColor(fr.fundingRate)}`}>
+                                {formatRate(fr.fundingRate)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className={`font-mono text-sm ${getRateColor(annualized)}`}>
+                                {annualized >= 0 ? '+' : ''}{annualized.toFixed(2)}%
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className="text-white font-mono">
+                                ${fr.markPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) || '-'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
+
+            {/* Heatmap View */}
+            {viewMode === 'heatmap' && (
+              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-hub-gray/30">
+                  <h3 className="text-white font-semibold">Funding Rate Heatmap</h3>
+                  <p className="text-hub-gray-text text-sm">Compare rates across exchanges (green = positive, red = negative)</p>
+                </div>
+                <div className="overflow-x-auto p-4">
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2 text-left text-sm font-semibold text-hub-gray-text">Symbol</th>
+                        {EXCHANGES.map(ex => (
+                          <th key={ex} className="px-3 py-2 text-center text-sm font-semibold text-hub-gray-text">
+                            {ex}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {symbols.map(symbol => {
+                        const rates = heatmapData.get(symbol);
+                        return (
+                          <tr key={symbol} className="border-t border-hub-gray/20">
+                            <td className="px-3 py-2">
+                              <span className="text-white font-medium text-sm">{symbol}</span>
+                            </td>
+                            {EXCHANGES.map(ex => {
+                              const rate = rates?.get(ex);
+                              return (
+                                <td key={ex} className="px-1 py-1">
+                                  <div
+                                    className={`${getHeatmapColor(rate)} rounded-lg px-2 py-2 text-center text-xs font-mono text-white/90`}
+                                    title={`${symbol} on ${ex}: ${rate !== undefined ? formatRate(rate) : 'N/A'}`}
+                                  >
+                                    {rate !== undefined ? formatRate(rate) : '-'}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Legend */}
+                <div className="p-4 border-t border-hub-gray/30 flex items-center justify-center gap-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-red-500" />
+                    <span className="text-hub-gray-text">&lt; -0.1%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-red-700" />
+                    <span className="text-hub-gray-text">-0.1% to 0%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-hub-gray/30" />
+                    <span className="text-hub-gray-text">0%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-green-700" />
+                    <span className="text-hub-gray-text">0% to +0.1%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-green-500" />
+                    <span className="text-hub-gray-text">&gt; +0.1%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Arbitrage View */}
+            {viewMode === 'arbitrage' && (
+              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-hub-gray/30">
+                  <h3 className="text-white font-semibold flex items-center gap-2">
+                    <Shuffle className="w-5 h-5 text-hub-yellow" />
+                    Funding Rate Arbitrage Opportunities
+                  </h3>
+                  <p className="text-hub-gray-text text-sm">Largest spread between exchanges (long on low rate, short on high rate)</p>
+                </div>
+                <div className="divide-y divide-hub-gray/20">
+                  {arbitrageData.slice(0, 20).map((item, index) => {
+                    const sortedExchanges = [...item.exchanges].sort((a: any, b: any) => b.rate - a.rate);
+                    const highestEx = sortedExchanges[0];
+                    const lowestEx = sortedExchanges[sortedExchanges.length - 1];
+
+                    return (
+                      <div key={item.symbol} className="p-4 hover:bg-hub-gray/30 transition-colors">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-hub-gray-text text-sm w-6">{index + 1}</span>
+                            <span className="text-white font-bold text-lg">{item.symbol}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-hub-yellow font-bold">
+                              Spread: {item.spread.toFixed(4)}%
+                            </div>
+                            <div className="text-hub-gray-text text-xs">
+                              Annualized: {(item.spread * 3 * 365).toFixed(2)}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-danger/10 border border-danger/20 rounded-xl p-3">
+                            <div className="text-danger text-xs mb-1">SHORT here (highest rate)</div>
+                            <div className="flex items-center justify-between">
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(highestEx.exchange)}`}>
+                                {highestEx.exchange}
+                              </span>
+                              <span className="text-danger font-mono font-bold">
+                                {formatRate(highestEx.rate)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-success/10 border border-success/20 rounded-xl p-3">
+                            <div className="text-success text-xs mb-1">LONG here (lowest rate)</div>
+                            <div className="flex items-center justify-between">
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(lowestEx.exchange)}`}>
+                                {lowestEx.exchange}
+                              </span>
+                              <span className="text-success font-mono font-bold">
+                                {formatRate(lowestEx.rate)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* All exchanges for this symbol */}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {sortedExchanges.map((ex: any) => (
+                            <div
+                              key={ex.exchange}
+                              className="flex items-center gap-2 px-2 py-1 rounded-lg bg-hub-gray/30 text-xs"
+                            >
+                              <span className="text-hub-gray-text">{ex.exchange}:</span>
+                              <span className={ex.rate >= 0 ? 'text-success' : 'text-danger'}>
+                                {formatRate(ex.rate)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {arbitrageData.length === 0 && (
+                  <div className="p-8 text-center text-hub-gray-text">
+                    No arbitrage opportunities found.
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Legend */}
-        <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-hub-gray-text">
-          <span className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-success" />
-            Positive (Longs pay shorts)
-          </span>
-          <span className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-error" />
-            Negative (Shorts pay longs)
-          </span>
-          <span className="ml-auto">
-            Data refreshes automatically every 30 seconds
-          </span>
+        <div className="mt-6 bg-hub-yellow/10 border border-hub-yellow/20 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-hub-yellow flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-hub-yellow text-sm font-medium">Understanding Funding Rates</p>
+              <p className="text-hub-gray-text text-sm mt-1">
+                <strong className="text-success">Positive rate</strong> = Longs pay shorts (market is bullish).
+                <br />
+                <strong className="text-danger">Negative rate</strong> = Shorts pay longs (market is bearish).
+                <br />
+                Funding is paid every 8 hours. Annualized = Rate × 3 × 365.
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     </div>

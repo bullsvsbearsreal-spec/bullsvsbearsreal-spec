@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
-import { Zap, RefreshCw, Clock, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX } from 'lucide-react';
+import { Zap, RefreshCw, Clock, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX, Grid3X3, List } from 'lucide-react';
 
 interface Liquidation {
   id: string;
@@ -15,15 +15,29 @@ interface Liquidation {
   timestamp: number;
 }
 
+interface AggregatedLiq {
+  symbol: string;
+  totalValue: number;
+  longValue: number;
+  shortValue: number;
+  count: number;
+}
+
+type ViewMode = 'feed' | 'heatmap';
+
 export default function LiquidationsPage() {
   const [liquidations, setLiquidations] = useState<Liquidation[]>([]);
+  const [aggregated, setAggregated] = useState<Map<string, AggregatedLiq>>(new Map());
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [filter, setFilter] = useState<'all' | 'long' | 'short'>('all');
   const [minValue, setMinValue] = useState(10000);
+  const [timeframe, setTimeframe] = useState<'1h' | '4h' | '12h' | '24h'>('1h');
+  const [viewMode, setViewMode] = useState<ViewMode>('feed');
   const wsRef = useRef<WebSocket | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
   // Stats
   const [stats, setStats] = useState({
@@ -35,11 +49,8 @@ export default function LiquidationsPage() {
   });
 
   useEffect(() => {
-    // Create audio element for liquidation sounds
     audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleRQAEMSo7NGYWgkA');
-
     connectWebSocket();
-
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -47,16 +58,19 @@ export default function LiquidationsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    setAggregated(new Map());
+    setStats({ totalLongs: 0, totalShorts: 0, longValue: 0, shortValue: 0, largestLiq: null });
+    startTimeRef.current = Date.now();
+  }, [timeframe]);
+
   const connectWebSocket = () => {
     setLoading(true);
-
-    // Connect to Binance Futures Liquidation Stream
     const ws = new WebSocket('wss://fstream.binance.com/ws/!forceOrder@arr');
 
     ws.onopen = () => {
       setConnected(true);
       setLoading(false);
-      console.log('Connected to Binance liquidation stream');
     };
 
     ws.onmessage = (event) => {
@@ -66,7 +80,7 @@ export default function LiquidationsPage() {
           const liq: Liquidation = {
             id: `${data.o.s}-${data.o.T}`,
             symbol: data.o.s.replace('USDT', ''),
-            side: data.o.S === 'BUY' ? 'short' : 'long', // BUY = short liquidation, SELL = long liquidation
+            side: data.o.S === 'BUY' ? 'short' : 'long',
             price: parseFloat(data.o.p),
             quantity: parseFloat(data.o.q),
             value: parseFloat(data.o.p) * parseFloat(data.o.q),
@@ -74,16 +88,31 @@ export default function LiquidationsPage() {
             timestamp: data.o.T,
           };
 
-          // Only add if above minimum value
-          if (liq.value >= minValue) {
-            setLiquidations(prev => [liq, ...prev].slice(0, 100)); // Keep last 100
+          const timeframeMs = { '1h': 3600000, '4h': 14400000, '12h': 43200000, '24h': 86400000 }[timeframe];
+          if (Date.now() - startTimeRef.current > timeframeMs) {
+            startTimeRef.current = Date.now();
+            setAggregated(new Map());
+            setStats({ totalLongs: 0, totalShorts: 0, longValue: 0, shortValue: 0, largestLiq: null });
+          }
 
-            // Play sound for large liquidations
+          if (liq.value >= minValue) {
+            setLiquidations(prev => [liq, ...prev].slice(0, 100));
+
+            setAggregated(prev => {
+              const newMap = new Map(prev);
+              const existing = newMap.get(liq.symbol) || { symbol: liq.symbol, totalValue: 0, longValue: 0, shortValue: 0, count: 0 };
+              existing.totalValue += liq.value;
+              existing.count += 1;
+              if (liq.side === 'long') existing.longValue += liq.value;
+              else existing.shortValue += liq.value;
+              newMap.set(liq.symbol, existing);
+              return newMap;
+            });
+
             if (soundEnabled && liq.value >= 100000 && audioRef.current) {
               audioRef.current.play().catch(() => {});
             }
 
-            // Update stats
             setStats(prev => ({
               totalLongs: prev.totalLongs + (liq.side === 'long' ? 1 : 0),
               totalShorts: prev.totalShorts + (liq.side === 'short' ? 1 : 0),
@@ -98,17 +127,11 @@ export default function LiquidationsPage() {
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setConnected(false);
-    };
-
+    ws.onerror = () => setConnected(false);
     ws.onclose = () => {
       setConnected(false);
-      // Reconnect after 3 seconds
       setTimeout(connectWebSocket, 3000);
     };
-
     wsRef.current = ws;
   };
 
@@ -118,15 +141,16 @@ export default function LiquidationsPage() {
     return true;
   });
 
+  const sortedAggregated = Array.from(aggregated.values()).sort((a, b) => b.totalValue - a.totalValue).slice(0, 20);
+  const maxValue = Math.max(...sortedAggregated.map(l => l.totalValue), 1);
+
   const formatValue = (value: number) => {
     if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
     if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
     return `$${value.toFixed(0)}`;
   };
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString();
-  };
+  const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString();
 
   const getValueColor = (value: number) => {
     if (value >= 1000000) return 'text-purple-400';
@@ -141,10 +165,23 @@ export default function LiquidationsPage() {
     return '';
   };
 
+  const getHeatmapColor = (item: AggregatedLiq) => {
+    const isLongDominant = item.longValue > item.shortValue;
+    const intensity = Math.min((item.totalValue / maxValue) * 100, 100);
+    if (isLongDominant) {
+      if (intensity > 70) return 'bg-red-500';
+      if (intensity > 40) return 'bg-red-600';
+      return 'bg-red-700';
+    } else {
+      if (intensity > 70) return 'bg-green-500';
+      if (intensity > 40) return 'bg-green-600';
+      return 'bg-green-700';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -153,23 +190,16 @@ export default function LiquidationsPage() {
               <Zap className="w-8 h-8 text-hub-yellow" />
               Liquidations
             </h1>
-            <p className="text-hub-gray-text mt-1">
-              Real-time liquidation feed from Binance Futures
-            </p>
+            <p className="text-hub-gray-text mt-1">Real-time liquidation feed from Binance Futures</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
-              connected ? 'bg-success/20 text-success' : 'bg-error/20 text-error'
-            }`}>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${connected ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
               <span className={`w-2 h-2 rounded-full ${connected ? 'bg-success animate-pulse' : 'bg-error'}`} />
               {connected ? 'Live' : 'Disconnected'}
             </div>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-xl transition-colors ${
-                soundEnabled ? 'bg-hub-yellow/20 text-hub-yellow' : 'bg-hub-gray/30 text-hub-gray-text'
-              }`}
-              title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}
+              className={`p-2 rounded-xl transition-colors ${soundEnabled ? 'bg-hub-yellow/20 text-hub-yellow' : 'bg-hub-gray/30 text-hub-gray-text'}`}
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
@@ -179,32 +209,28 @@ export default function LiquidationsPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5">
-            <span className="text-hub-gray-text text-sm">Total Liquidations</span>
-            <div className="text-2xl font-bold text-white mt-1">{liquidations.length}</div>
+            <span className="text-hub-gray-text text-sm">{timeframe} Liquidations</span>
+            <div className="text-2xl font-bold text-white mt-1">{stats.totalLongs + stats.totalShorts}</div>
           </div>
           <div className="bg-success/10 border border-success/30 rounded-2xl p-5">
-            <span className="text-success text-sm">Longs Liquidated</span>
+            <span className="text-success text-sm">Longs Rekt</span>
             <div className="text-2xl font-bold text-success mt-1">{stats.totalLongs}</div>
             <div className="text-sm text-success/70">{formatValue(stats.longValue)}</div>
           </div>
-          <div className="bg-error/10 border border-error/30 rounded-2xl p-5">
-            <span className="text-error text-sm">Shorts Liquidated</span>
-            <div className="text-2xl font-bold text-error mt-1">{stats.totalShorts}</div>
-            <div className="text-sm text-error/70">{formatValue(stats.shortValue)}</div>
+          <div className="bg-danger/10 border border-danger/30 rounded-2xl p-5">
+            <span className="text-danger text-sm">Shorts Rekt</span>
+            <div className="text-2xl font-bold text-danger mt-1">{stats.totalShorts}</div>
+            <div className="text-sm text-danger/70">{formatValue(stats.shortValue)}</div>
           </div>
           <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5">
             <span className="text-hub-gray-text text-sm">Total Value</span>
-            <div className="text-2xl font-bold text-white mt-1">
-              {formatValue(stats.longValue + stats.shortValue)}
-            </div>
+            <div className="text-2xl font-bold text-white mt-1">{formatValue(stats.longValue + stats.shortValue)}</div>
           </div>
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-5">
             <span className="text-purple-400 text-sm">Largest Liquidation</span>
             {stats.largestLiq ? (
               <>
-                <div className="text-2xl font-bold text-purple-400 mt-1">
-                  {formatValue(stats.largestLiq.value)}
-                </div>
+                <div className="text-2xl font-bold text-purple-400 mt-1">{formatValue(stats.largestLiq.value)}</div>
                 <div className="text-sm text-purple-400/70">{stats.largestLiq.symbol}</div>
               </>
             ) : (
@@ -213,41 +239,34 @@ export default function LiquidationsPage() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Controls */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                filter === 'all' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'
-              }`}
-            >
-              All
+            <button onClick={() => setViewMode('feed')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'feed' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>
+              <List className="w-4 h-4" /> Live Feed
             </button>
-            <button
-              onClick={() => setFilter('long')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                filter === 'long' ? 'bg-success text-black' : 'text-hub-gray-text hover:text-white'
-              }`}
-            >
-              Longs
-            </button>
-            <button
-              onClick={() => setFilter('short')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                filter === 'short' ? 'bg-error text-white' : 'text-hub-gray-text hover:text-white'
-              }`}
-            >
-              Shorts
+            <button onClick={() => setViewMode('heatmap')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'heatmap' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>
+              <Grid3X3 className="w-4 h-4" /> Heatmap
             </button>
           </div>
+
+          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
+            {(['1h', '4h', '12h', '24h'] as const).map((tf) => (
+              <button key={tf} onClick={() => setTimeframe(tf)} className={`px-3 py-2 text-sm font-medium transition-colors ${timeframe === tf ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>
+                {tf}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
+            <button onClick={() => setFilter('all')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'all' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>All</button>
+            <button onClick={() => setFilter('long')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'long' ? 'bg-success text-black' : 'text-hub-gray-text hover:text-white'}`}>Longs</button>
+            <button onClick={() => setFilter('short')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'short' ? 'bg-danger text-white' : 'text-hub-gray-text hover:text-white'}`}>Shorts</button>
+          </div>
+
           <div className="flex items-center gap-2">
-            <span className="text-hub-gray-text text-sm">Min Value:</span>
-            <select
-              value={minValue}
-              onChange={(e) => setMinValue(Number(e.target.value))}
-              className="px-3 py-2 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50"
-            >
+            <span className="text-hub-gray-text text-sm">Min:</span>
+            <select value={minValue} onChange={(e) => setMinValue(Number(e.target.value))} className="px-3 py-2 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50">
               <option value={1000}>$1K+</option>
               <option value={10000}>$10K+</option>
               <option value={50000}>$50K+</option>
@@ -257,7 +276,6 @@ export default function LiquidationsPage() {
           </div>
         </div>
 
-        {/* Loading State */}
         {loading ? (
           <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-8">
             <div className="flex items-center justify-center gap-3">
@@ -266,74 +284,93 @@ export default function LiquidationsPage() {
             </div>
           </div>
         ) : (
-          /* Liquidations Feed */
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-hub-gray/30 flex items-center justify-between">
-              <h3 className="text-white font-semibold">Live Feed</h3>
-              <span className="text-hub-gray-text text-sm">{filteredLiquidations.length} liquidations</span>
-            </div>
-
-            <div className="max-h-[600px] overflow-y-auto">
-              {filteredLiquidations.length === 0 ? (
-                <div className="p-8 text-center text-hub-gray-text">
-                  <Zap className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                  <p>Waiting for liquidations...</p>
-                  <p className="text-sm mt-1">Large liquidations will appear here in real-time</p>
+          <>
+            {/* Heatmap View */}
+            {viewMode === 'heatmap' && (
+              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden mb-6">
+                <div className="p-4 border-b border-hub-gray/30">
+                  <h3 className="text-white font-semibold">Liquidation Heatmap</h3>
+                  <p className="text-hub-gray-text text-sm">Aggregated liquidations by symbol ({timeframe})</p>
                 </div>
-              ) : (
-                <div className="divide-y divide-hub-gray/20">
-                  {filteredLiquidations.map((liq) => (
-                    <div
-                      key={liq.id}
-                      className={`p-4 hover:bg-hub-gray/30 transition-colors ${
-                        liq.value >= 100000 ? 'animate-pulse-once' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          {/* Side indicator */}
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            liq.side === 'long' ? 'bg-success/20' : 'bg-error/20'
-                          }`}>
-                            {liq.side === 'long' ? (
-                              <TrendingDown className="w-5 h-5 text-success" />
-                            ) : (
-                              <TrendingUp className="w-5 h-5 text-error" />
-                            )}
-                          </div>
-
-                          {/* Symbol and details */}
+                {sortedAggregated.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-hub-gray-text">
+                    <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
+                    <p className="text-sm">Collecting liquidation data...</p>
+                  </div>
+                ) : (
+                  <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                    {sortedAggregated.map((item, index) => {
+                      const isLongDominant = item.longValue > item.shortValue;
+                      const sizeClass = index < 3 ? 'h-28' : index < 8 ? 'h-24' : 'h-20';
+                      return (
+                        <div key={item.symbol} className={`${getHeatmapColor(item)} ${sizeClass} rounded-xl p-3 flex flex-col justify-between transition-all hover:scale-[1.02] cursor-pointer`}>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-white font-semibold">{liq.symbol}</span>
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                liq.side === 'long' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'
-                              }`}>
-                                {liq.side.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="text-sm text-hub-gray-text mt-0.5">
-                              {liq.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })} @ ${liq.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </div>
+                            <div className="text-white font-bold text-sm md:text-base">{item.symbol}</div>
+                            <div className="text-white/70 text-xs">{item.count} liqs</div>
+                          </div>
+                          <div>
+                            <div className="text-white font-semibold text-sm">{formatValue(item.totalValue)}</div>
+                            <div className="text-white/60 text-xs">{isLongDominant ? 'Longs' : 'Shorts'} dominant</div>
                           </div>
                         </div>
-
-                        {/* Value and time */}
-                        <div className="text-right">
-                          <div className={`${getValueColor(liq.value)} ${getSizeClass(liq.value)}`}>
-                            {formatValue(liq.value)}
-                          </div>
-                          <div className="text-xs text-hub-gray-text mt-0.5">
-                            {formatTime(liq.timestamp)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="p-4 border-t border-hub-gray/30 flex items-center justify-center gap-6 text-xs text-hub-gray-text">
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-500" /><span>Long Liquidations</span></div>
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500" /><span>Short Liquidations</span></div>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            )}
+
+            {/* Live Feed View */}
+            {viewMode === 'feed' && (
+              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-hub-gray/30 flex items-center justify-between">
+                  <h3 className="text-white font-semibold">Live Feed</h3>
+                  <span className="text-hub-gray-text text-sm">{filteredLiquidations.length} liquidations</span>
+                </div>
+                <div className="max-h-[600px] overflow-y-auto">
+                  {filteredLiquidations.length === 0 ? (
+                    <div className="p-8 text-center text-hub-gray-text">
+                      <Zap className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                      <p>Waiting for liquidations...</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-hub-gray/20">
+                      {filteredLiquidations.map((liq) => (
+                        <div key={liq.id} className={`p-4 hover:bg-hub-gray/30 transition-colors ${liq.value >= 100000 ? 'animate-pulse-once' : ''}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${liq.side === 'long' ? 'bg-success/20' : 'bg-error/20'}`}>
+                                {liq.side === 'long' ? <TrendingDown className="w-5 h-5 text-success" /> : <TrendingUp className="w-5 h-5 text-error" />}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-white font-semibold">{liq.symbol}</span>
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${liq.side === 'long' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
+                                    {liq.side.toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-hub-gray-text mt-0.5">
+                                  {liq.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })} @ ${liq.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`${getValueColor(liq.value)} ${getSizeClass(liq.value)}`}>{formatValue(liq.value)}</div>
+                              <div className="text-xs text-hub-gray-text mt-0.5">{formatTime(liq.timestamp)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Info */}
@@ -343,9 +380,9 @@ export default function LiquidationsPage() {
             <div>
               <p className="text-hub-yellow text-sm font-medium">Understanding Liquidations</p>
               <p className="text-hub-gray-text text-sm mt-1">
-                <strong className="text-success">Long liquidation</strong> = Price dropped, long positions forcefully closed (bullish signal if excessive).
+                <strong className="text-success">Long liquidation</strong> = Price dropped, long positions forcefully closed.
                 <br />
-                <strong className="text-error">Short liquidation</strong> = Price rose, short positions forcefully closed (bearish signal if excessive).
+                <strong className="text-danger">Short liquidation</strong> = Price rose, short positions forcefully closed.
               </p>
             </div>
           </div>
