@@ -160,6 +160,16 @@ export function DriftLogo({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
+export function GTradeLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#14B8A6"/>
+      <path fill="#FFFFFF" d="M63 28c-19.3 0-35 15.7-35 35 0 19.3 15.7 35 35 35 9.7 0 18.4-3.9 24.7-10.3l-10-10C74 81.4 68.8 84 63 84c-11.6 0-21-9.4-21-21s9.4-21 21-21c5.8 0 11 2.6 14.7 6.7l10-10C81.4 31.9 72.7 28 63 28z"/>
+      <rect x="63" y="53" width="30" height="14" rx="2" fill="#FFFFFF"/>
+    </svg>
+  );
+}
+
 // Exchange logo mapping
 export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps>> = {
   binance: BinanceLogo,
@@ -178,6 +188,7 @@ export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps
   aevo: AevoLogo,
   vertex: VertexLogo,
   drift: DriftLogo,
+  gtrade: GTradeLogo,
 };
 
 // Exchange brand colors for styling
@@ -198,6 +209,7 @@ export const exchangeColors: Record<string, string> = {
   aevo: '#000000',
   vertex: '#00E99E',
   drift: '#8B5CF6',
+  gtrade: '#14B8A6',
 };
 
 // Generic exchange logo component

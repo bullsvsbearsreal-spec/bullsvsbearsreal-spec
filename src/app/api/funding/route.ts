@@ -198,5 +198,67 @@ export async function GET() {
     console.error('dYdX funding error:', error);
   }
 
+  // gTrade (Gains Network) - Arbitrum
+  try {
+    const res = await fetchWithTimeout('https://backend-arbitrum.gains.trade/trading-variables');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.pairs && json.collaterals) {
+        // Get USDC collateral data (usually index 2 or 3)
+        const usdcCollateral = json.collaterals.find((c: any) =>
+          c.symbol === 'USDC' || c.symbol === 'USDT'
+        );
+
+        if (usdcCollateral && usdcCollateral.fundingFees) {
+          const gtradeData: any[] = [];
+
+          // Process each pair
+          json.pairs.forEach((pair: any, index: number) => {
+            try {
+              const fundingFee = usdcCollateral.fundingFees[index];
+              if (fundingFee && pair.from) {
+                // Calculate funding rate from accPerOiLong/Short delta or use fundingRate if available
+                // gTrade uses different funding model - approximating hourly rate
+                const fundingRateLong = parseFloat(fundingFee.accPerOiLong || '0');
+                const fundingRateShort = parseFloat(fundingFee.accPerOiShort || '0');
+
+                // Use the average or the dominant side's rate
+                // Convert from per-second to 8-hour funding rate percentage
+                const avgFundingRate = (fundingRateLong - fundingRateShort) / 2;
+                const hourlyRate = avgFundingRate * 3600; // per hour
+                const fundingRate8h = hourlyRate * 8 * 100; // 8-hour in percentage
+
+                // Get price from pairOis if available
+                let markPrice = 0;
+                if (usdcCollateral.pairOis && usdcCollateral.pairOis[index]) {
+                  markPrice = parseFloat(usdcCollateral.pairOis[index].price || '0');
+                }
+
+                // Only add if we have a valid symbol (crypto pairs only)
+                const symbol = pair.from.toUpperCase();
+                if (symbol && pair.to === 'USD' && pair.groupIndex <= 1) { // groupIndex 0-1 are crypto
+                  gtradeData.push({
+                    symbol: symbol,
+                    exchange: 'gTrade',
+                    fundingRate: isFinite(fundingRate8h) ? fundingRate8h : 0,
+                    markPrice: markPrice,
+                    indexPrice: markPrice,
+                    nextFundingTime: Date.now() + 3600000,
+                  });
+                }
+              }
+            } catch {
+              // Skip invalid pairs
+            }
+          });
+
+          results.push(...gtradeData.filter((item: any) => !isNaN(item.fundingRate)));
+        }
+      }
+    }
+  } catch (error) {
+    console.error('gTrade funding error:', error);
+  }
+
   return NextResponse.json(results);
 }
