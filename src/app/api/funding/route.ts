@@ -204,48 +204,33 @@ export async function GET() {
     if (res.ok) {
       const json = await res.json();
       if (json && json.pairs && json.collaterals) {
-        // Get USDC collateral data (usually index 2 or 3)
-        const usdcCollateral = json.collaterals.find((c: any) =>
-          c.symbol === 'USDC' || c.symbol === 'USDT'
-        );
+        // Get USDC collateral data
+        const usdcCollateral = json.collaterals.find((c: any) => c.symbol === 'USDC');
 
-        if (usdcCollateral && usdcCollateral.fundingFees) {
+        if (usdcCollateral?.fundingFees?.pairData) {
           const gtradeData: any[] = [];
+          const pairData = usdcCollateral.fundingFees.pairData;
 
-          // Process each pair
+          // Process each pair - crypto pairs have groupIndex 0 or 10
           json.pairs.forEach((pair: any, index: number) => {
             try {
-              const fundingFee = usdcCollateral.fundingFees[index];
-              if (fundingFee && pair.from) {
-                // Calculate funding rate from accPerOiLong/Short delta or use fundingRate if available
-                // gTrade uses different funding model - approximating hourly rate
-                const fundingRateLong = parseFloat(fundingFee.accPerOiLong || '0');
-                const fundingRateShort = parseFloat(fundingFee.accPerOiShort || '0');
+              const data = pairData[index];
+              // Only process crypto pairs (groupIndex 0 = BTC/ETH, 10 = other crypto)
+              if (data && pair.from && pair.to === 'USD' && (pair.groupIndex === '0' || pair.groupIndex === '10')) {
+                // lastFundingRatePerSecondP is in 18 decimals
+                const ratePerSecond = parseFloat(data.lastFundingRatePerSecondP || '0') / 1e18;
+                const ratePerHour = ratePerSecond * 3600;
+                const rate8h = ratePerHour * 8 * 100; // Convert to 8h percentage
 
-                // Use the average or the dominant side's rate
-                // Convert from per-second to 8-hour funding rate percentage
-                const avgFundingRate = (fundingRateLong - fundingRateShort) / 2;
-                const hourlyRate = avgFundingRate * 3600; // per hour
-                const fundingRate8h = hourlyRate * 8 * 100; // 8-hour in percentage
-
-                // Get price from pairOis if available
-                let markPrice = 0;
-                if (usdcCollateral.pairOis && usdcCollateral.pairOis[index]) {
-                  markPrice = parseFloat(usdcCollateral.pairOis[index].price || '0');
-                }
-
-                // Only add if we have a valid symbol (crypto pairs only)
                 const symbol = pair.from.toUpperCase();
-                if (symbol && pair.to === 'USD' && pair.groupIndex <= 1) { // groupIndex 0-1 are crypto
-                  gtradeData.push({
-                    symbol: symbol,
-                    exchange: 'gTrade',
-                    fundingRate: isFinite(fundingRate8h) ? fundingRate8h : 0,
-                    markPrice: markPrice,
-                    indexPrice: markPrice,
-                    nextFundingTime: Date.now() + 3600000,
-                  });
-                }
+                gtradeData.push({
+                  symbol: symbol,
+                  exchange: 'gTrade',
+                  fundingRate: isFinite(rate8h) ? rate8h : 0,
+                  markPrice: 0, // gTrade doesn't provide mark price in this endpoint
+                  indexPrice: 0,
+                  nextFundingTime: Date.now() + 3600000,
+                });
               }
             } catch {
               // Skip invalid pairs
