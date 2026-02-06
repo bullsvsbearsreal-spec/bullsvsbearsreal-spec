@@ -24,7 +24,14 @@ export default function FundingPage() {
       setLoading(true);
       setError(null);
       const data = await fetchAllFundingRates();
-      setFundingRates(data);
+      // Filter out any invalid funding rates
+      const validData = data.filter(fr =>
+        fr &&
+        typeof fr.fundingRate === 'number' &&
+        !isNaN(fr.fundingRate) &&
+        isFinite(fr.fundingRate)
+      );
+      setFundingRates(validData);
       setLastUpdate(new Date());
     } catch (err) {
       setError('Failed to fetch funding rates. Please try again.');
@@ -74,15 +81,18 @@ export default function FundingPage() {
     groupedBySymbol.set(fr.symbol, [...existing, fr]);
   });
 
-  // Calculate stats
-  const avgRate = fundingRates.length > 0
-    ? fundingRates.reduce((sum, fr) => sum + fr.fundingRate, 0) / fundingRates.length
+  // Calculate stats - filter valid rates only
+  const validRates = fundingRates.filter(fr =>
+    typeof fr.fundingRate === 'number' && !isNaN(fr.fundingRate) && isFinite(fr.fundingRate)
+  );
+  const avgRate = validRates.length > 0
+    ? validRates.reduce((sum, fr) => sum + fr.fundingRate, 0) / validRates.length
     : 0;
-  const highestRate = fundingRates.length > 0
-    ? fundingRates.reduce((max, fr) => fr.fundingRate > max.fundingRate ? fr : max, fundingRates[0])
+  const highestRate = validRates.length > 0
+    ? validRates.reduce((max, fr) => fr.fundingRate > max.fundingRate ? fr : max, validRates[0])
     : null;
-  const lowestRate = fundingRates.length > 0
-    ? fundingRates.reduce((min, fr) => fr.fundingRate < min.fundingRate ? fr : min, fundingRates[0])
+  const lowestRate = validRates.length > 0
+    ? validRates.reduce((min, fr) => fr.fundingRate < min.fundingRate ? fr : min, validRates[0])
     : null;
 
   const handleSort = (field: SortField) => {
@@ -94,7 +104,10 @@ export default function FundingPage() {
     }
   };
 
-  const formatRate = (rate: number) => {
+  const formatRate = (rate: number | undefined | null) => {
+    if (rate === undefined || rate === null || isNaN(rate) || !isFinite(rate)) {
+      return '0.0000%';
+    }
     const formatted = rate.toFixed(4);
     return rate >= 0 ? `+${formatted}%` : `${formatted}%`;
   };

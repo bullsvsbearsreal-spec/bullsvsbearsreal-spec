@@ -74,14 +74,17 @@ export const okxAPI = {
 
           if (frResponse.data.code === '0' && frResponse.data.data.length > 0) {
             const fr = frResponse.data.data[0];
-            fundingRates.push({
-              symbol: swap.instId.replace('-USDT-SWAP', ''),
-              exchange: 'OKX',
-              fundingRate: parseFloat(fr.fundingRate) * 100,
-              fundingTime: parseInt(fr.fundingTime),
-              nextFundingTime: parseInt(fr.nextFundingTime),
-              predictedRate: fr.nextFundingRate ? parseFloat(fr.nextFundingRate) * 100 : undefined,
-            });
+            const fundingRate = parseFloat(fr.fundingRate) * 100;
+            if (!isNaN(fundingRate) && isFinite(fundingRate)) {
+              fundingRates.push({
+                symbol: swap.instId.replace('-USDT-SWAP', ''),
+                exchange: 'OKX',
+                fundingRate,
+                fundingTime: parseInt(fr.fundingTime) || Date.now(),
+                nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
+                predictedRate: fr.nextFundingRate ? parseFloat(fr.nextFundingRate) * 100 : undefined,
+              });
+            }
           }
         } catch (e) {
           // Skip failed requests
@@ -91,7 +94,7 @@ export const okxAPI = {
       return fundingRates;
     } catch (error) {
       console.error('OKX getFundingRates error:', error);
-      throw error;
+      return [];
     }
   },
 

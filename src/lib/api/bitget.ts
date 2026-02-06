@@ -66,13 +66,16 @@ export const bitgetAPI = {
 
           if (response.data.code === '00000' && response.data.data) {
             const fr = response.data.data;
-            fundingRates.push({
-              symbol: symbol.replace('USDT', ''),
-              exchange: 'Bitget',
-              fundingRate: parseFloat(fr.fundingRate) * 100,
-              fundingTime: Date.now(),
-              nextFundingTime: parseInt(fr.fundingTime) || Date.now() + 28800000,
-            });
+            const fundingRate = parseFloat(fr.fundingRate) * 100;
+            if (!isNaN(fundingRate) && isFinite(fundingRate)) {
+              fundingRates.push({
+                symbol: symbol.replace('USDT', ''),
+                exchange: 'Bitget',
+                fundingRate,
+                fundingTime: Date.now(),
+                nextFundingTime: parseInt(fr.fundingTime) || Date.now() + 28800000,
+              });
+            }
           }
         } catch (e) {
           // Skip failed requests
@@ -82,7 +85,7 @@ export const bitgetAPI = {
       return fundingRates;
     } catch (error) {
       console.error('Bitget getFundingRates error:', error);
-      throw error;
+      return [];
     }
   },
 

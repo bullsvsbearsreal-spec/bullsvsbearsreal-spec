@@ -33,19 +33,25 @@ export const binanceAPI = {
     try {
       const response = await axios.get(`${BASE_URL}/fapi/v1/premiumIndex`);
       return response.data
-        .filter((item: any) => item.symbol.endsWith('USDT'))
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Binance',
-          fundingRate: parseFloat(item.lastFundingRate) * 100, // Convert to percentage
-          fundingTime: item.time,
-          nextFundingTime: item.nextFundingTime,
-          markPrice: parseFloat(item.markPrice),
-          indexPrice: parseFloat(item.indexPrice),
-        }));
+        .filter((item: any) => item.symbol.endsWith('USDT') && item.lastFundingRate != null)
+        .map((item: any) => {
+          const fundingRate = parseFloat(item.lastFundingRate) * 100;
+          const markPrice = parseFloat(item.markPrice);
+          const indexPrice = parseFloat(item.indexPrice);
+          return {
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Binance',
+            fundingRate: isNaN(fundingRate) ? 0 : fundingRate,
+            fundingTime: item.time,
+            nextFundingTime: item.nextFundingTime,
+            markPrice: isNaN(markPrice) ? 0 : markPrice,
+            indexPrice: isNaN(indexPrice) ? 0 : indexPrice,
+          };
+        })
+        .filter((item: FundingRateData) => !isNaN(item.fundingRate));
     } catch (error) {
       console.error('Binance getFundingRates error:', error);
-      throw error;
+      return [];
     }
   },
 

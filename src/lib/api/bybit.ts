@@ -47,19 +47,25 @@ export const bybitAPI = {
       }
 
       return response.data.result.list
-        .filter((t: any) => t.symbol.endsWith('USDT') && t.fundingRate)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Bybit',
-          fundingRate: parseFloat(item.fundingRate) * 100,
-          fundingTime: Date.now(),
-          nextFundingTime: parseInt(item.nextFundingTime),
-          markPrice: parseFloat(item.markPrice),
-          indexPrice: parseFloat(item.indexPrice),
-        }));
+        .filter((t: any) => t.symbol.endsWith('USDT') && t.fundingRate != null)
+        .map((item: any) => {
+          const fundingRate = parseFloat(item.fundingRate) * 100;
+          const markPrice = parseFloat(item.markPrice);
+          const indexPrice = parseFloat(item.indexPrice);
+          return {
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Bybit',
+            fundingRate: isNaN(fundingRate) ? 0 : fundingRate,
+            fundingTime: Date.now(),
+            nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
+            markPrice: isNaN(markPrice) ? 0 : markPrice,
+            indexPrice: isNaN(indexPrice) ? 0 : indexPrice,
+          };
+        })
+        .filter((item: FundingRateData) => !isNaN(item.fundingRate));
     } catch (error) {
       console.error('Bybit getFundingRates error:', error);
-      throw error;
+      return [];
     }
   },
 
