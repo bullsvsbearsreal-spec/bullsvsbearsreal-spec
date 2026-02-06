@@ -32,91 +32,115 @@ export interface AggregatedMarketData {
   lastUpdate: number;
 }
 
-// Aggregate ticker data - use highest volume exchange price
+// Aggregate ticker data - use highest volume exchange price (via server-side API to avoid CORS)
 export async function fetchAllTickers(): Promise<TickerData[]> {
   // Check cache first
   const cached = getCached<TickerData[]>('tickers');
   if (cached) return cached;
 
-  const results = await Promise.allSettled([
-    binanceAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Binance' as string }))),
-    bybitAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bybit' as string }))),
-    okxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'OKX' as string }))),
-    bitgetAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: 'Bitget' as string }))),
-    hyperliquidAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: t.exchange || 'Hyperliquid' }))),
-    dydxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: t.exchange || 'dYdX' }))),
-  ]);
-
-  // Collect all successful results
-  const allTickers: (TickerData & { exchange: string })[] = [];
-  results.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      allTickers.push(...(result.value as (TickerData & { exchange: string })[]));
+  try {
+    // Use the server-side API route to avoid CORS issues
+    const response = await fetch('/api/tickers');
+    if (!response.ok) {
+      throw new Error('Failed to fetch tickers');
     }
-  });
+    const allTickers = await response.json();
 
-  // Aggregate by symbol - use highest volume exchange as primary
-  const symbolMap = new Map<string, TickerData & { exchange: string }>();
-  allTickers.forEach((ticker) => {
-    const existing = symbolMap.get(ticker.symbol);
-    if (!existing || ticker.quoteVolume24h > existing.quoteVolume24h) {
-      symbolMap.set(ticker.symbol, ticker);
-    }
-  });
+    // Aggregate by symbol - use highest volume exchange as primary
+    const symbolMap = new Map<string, TickerData & { exchange: string }>();
+    allTickers.forEach((ticker: any) => {
+      const existing = symbolMap.get(ticker.symbol);
+      if (!existing || ticker.quoteVolume24h > existing.quoteVolume24h) {
+        symbolMap.set(ticker.symbol, ticker);
+      }
+    });
 
-  const result = Array.from(symbolMap.values()).sort((a, b) => b.quoteVolume24h - a.quoteVolume24h);
-  setCache('tickers', result);
-  return result;
+    const result = Array.from(symbolMap.values()).sort((a, b) => b.quoteVolume24h - a.quoteVolume24h);
+    setCache('tickers', result);
+    return result;
+  } catch (error) {
+    console.error('Error fetching tickers:', error);
+    // Fallback to direct API calls (will only work for CORS-enabled APIs like dYdX)
+    const results = await Promise.allSettled([
+      dydxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: t.exchange || 'dYdX' }))),
+    ]);
+
+    const allTickers: (TickerData & { exchange: string })[] = [];
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        allTickers.push(...(result.value as (TickerData & { exchange: string })[]));
+      }
+    });
+
+    setCache('tickers', allTickers);
+    return allTickers;
+  }
 }
 
-// Fetch funding rates from all exchanges
+// Fetch funding rates from all exchanges via API route (to avoid CORS)
 export async function fetchAllFundingRates(): Promise<FundingRateData[]> {
   const cached = getCached<FundingRateData[]>('fundingRates');
   if (cached) return cached;
 
-  const results = await Promise.allSettled([
-    binanceAPI.getFundingRates(),
-    bybitAPI.getFundingRates(),
-    okxAPI.getFundingRates(),
-    bitgetAPI.getFundingRates(),
-    hyperliquidAPI.getFundingRates(),
-    dydxAPI.getFundingRates(),
-  ]);
-
-  const allRates: FundingRateData[] = [];
-  results.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      allRates.push(...result.value);
+  try {
+    // Use the server-side API route to avoid CORS issues
+    const response = await fetch('/api/funding');
+    if (!response.ok) {
+      throw new Error('Failed to fetch funding rates');
     }
-  });
+    const allRates = await response.json();
+    setCache('fundingRates', allRates);
+    return allRates;
+  } catch (error) {
+    console.error('Error fetching funding rates:', error);
+    // Fallback to direct API calls (will only work for CORS-enabled APIs like dYdX)
+    const results = await Promise.allSettled([
+      dydxAPI.getFundingRates(),
+    ]);
 
-  setCache('fundingRates', allRates);
-  return allRates;
+    const allRates: FundingRateData[] = [];
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        allRates.push(...result.value);
+      }
+    });
+
+    setCache('fundingRates', allRates);
+    return allRates;
+  }
 }
 
-// Fetch open interest from all exchanges
+// Fetch open interest from all exchanges (via server-side API to avoid CORS)
 export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
   const cached = getCached<OpenInterestData[]>('openInterest');
   if (cached) return cached;
 
-  const results = await Promise.allSettled([
-    binanceAPI.getOpenInterest(),
-    bybitAPI.getOpenInterest(),
-    okxAPI.getOpenInterest(),
-    bitgetAPI.getOpenInterest(),
-    hyperliquidAPI.getOpenInterest(),
-    dydxAPI.getOpenInterest(),
-  ]);
-
-  const allOI: OpenInterestData[] = [];
-  results.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      allOI.push(...result.value);
+  try {
+    // Use the server-side API route to avoid CORS issues
+    const response = await fetch('/api/openinterest');
+    if (!response.ok) {
+      throw new Error('Failed to fetch open interest');
     }
-  });
+    const allOI = await response.json();
+    setCache('openInterest', allOI);
+    return allOI;
+  } catch (error) {
+    console.error('Error fetching open interest:', error);
+    // Fallback to direct API calls (will only work for CORS-enabled APIs like dYdX)
+    const results = await Promise.allSettled([
+      dydxAPI.getOpenInterest(),
+    ]);
 
-  setCache('openInterest', allOI);
-  return allOI;
+    const allOI: OpenInterestData[] = [];
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        allOI.push(...result.value);
+      }
+    });
+
+    setCache('openInterest', allOI);
+    return allOI;
+  }
 }
 
 // Get aggregated open interest by symbol
@@ -201,14 +225,23 @@ export function clearCache(): void {
   cache.clear();
 }
 
-// Get Long/Short Ratio from Binance
+// Get Long/Short Ratio (via server-side API to avoid CORS)
 export async function fetchLongShortRatio(symbol: string = 'BTCUSDT'): Promise<{ longRatio: number; shortRatio: number }> {
   const cached = getCached<{ longRatio: number; shortRatio: number }>(`longShort_${symbol}`);
   if (cached) return cached;
 
-  const result = await binanceAPI.getLongShortRatio(symbol);
-  setCache(`longShort_${symbol}`, result);
-  return result;
+  try {
+    const response = await fetch(`/api/longshort?symbol=${symbol}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch long/short ratio');
+    }
+    const result = await response.json();
+    setCache(`longShort_${symbol}`, result);
+    return result;
+  } catch (error) {
+    console.error('Error fetching long/short ratio:', error);
+    return { longRatio: 50, shortRatio: 50 }; // Default fallback
+  }
 }
 
 // Get Top Gainers and Losers
