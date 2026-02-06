@@ -5,14 +5,7 @@ import { TrendingUp, TrendingDown, Flame, Snowflake } from 'lucide-react';
 import { TokenIconSimple } from './TokenIcon';
 import { fetchTopMovers } from '@/lib/api/aggregator';
 import { TickerData } from '@/lib/api/types';
-
-function formatPrice(num: number): string {
-  if (num === undefined || num === null) return '$0.00';
-  if (num >= 1000) return `$${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (num >= 1) return `$${num.toFixed(2)}`;
-  if (num >= 0.01) return `$${num.toFixed(4)}`;
-  return `$${num.toFixed(6)}`;
-}
+import { formatPrice } from '@/lib/utils/format';
 
 export default function TopMovers() {
   const [gainers, setGainers] = useState<TickerData[]>([]);

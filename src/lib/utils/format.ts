@@ -4,13 +4,17 @@ export type SafeNumber = number | null | undefined;
 
 /**
  * Safely format a price with proper decimal places
+ * Handles very small prices like PEPE, SHIB, BONK, etc.
  */
 export function formatPrice(num: SafeNumber): string {
   if (num === undefined || num === null || isNaN(num)) return '$0.00';
   if (num >= 1000) return `$${num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   if (num >= 1) return `$${num.toFixed(2)}`;
-  if (num >= 0.0001) return `$${num.toFixed(4)}`;
-  return `$${num.toFixed(6)}`;
+  if (num >= 0.01) return `$${num.toFixed(4)}`;
+  if (num >= 0.0001) return `$${num.toFixed(6)}`;
+  if (num >= 0.00000001) return `$${num.toFixed(10)}`;
+  // For extremely small numbers - use scientific notation
+  return `$${num.toExponential(4)}`;
 }
 
 /**

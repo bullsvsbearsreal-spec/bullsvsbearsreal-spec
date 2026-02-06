@@ -219,11 +219,15 @@ export function formatNumber(num: number): string {
 }
 
 // Format price with appropriate decimals
+// Handles very small prices like PEPE, SHIB, BONK, MOG
 export function formatPrice(price: number): string {
   if (price >= 1000) return `$${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if (price >= 1) return `$${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   if (price >= 0.01) return `$${price.toFixed(4)}`;
-  return `$${price.toFixed(8)}`;
+  if (price >= 0.0001) return `$${price.toFixed(6)}`;
+  if (price >= 0.00000001) return `$${price.toFixed(10)}`;
+  // For extremely small numbers - use scientific notation
+  return `$${price.toExponential(4)}`;
 }
 
 // Format percentage

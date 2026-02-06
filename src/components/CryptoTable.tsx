@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Sparkles, ChevronRight, RefreshCw, Loader2, A
 import { TokenIconSimple } from './TokenIcon';
 import { fetchAllTickers, fetchAllFundingRates, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { TickerData, FundingRateData, OpenInterestData } from '@/lib/api/types';
+import { formatPrice, formatNumber, safeNumber } from '@/lib/utils/format';
 
 interface CryptoAsset {
   symbol: string;
@@ -14,25 +15,6 @@ interface CryptoAsset {
   volume24h: number;
   openInterest: number;
   fundingRate: number;
-}
-
-function formatNumber(num: number | undefined | null): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0';
-  if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  return `$${num.toLocaleString()}`;
-}
-
-function formatPrice(num: number | undefined | null): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0.00';
-  if (num >= 1000) return `$${num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  if (num >= 1) return `$${num.toFixed(2)}`;
-  return `$${num.toFixed(4)}`;
-}
-
-function safeNumber(num: number | undefined | null): number {
-  return num ?? 0;
 }
 
 // Simulated mini sparkline data
