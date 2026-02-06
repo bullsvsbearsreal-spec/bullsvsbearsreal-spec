@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
+
+// Force Edge Runtime to run from Singapore (bypass US geo-restrictions)
+export const runtime = 'edge';
+export const preferredRegion = 'sin1';
 
 // Common headers to help with API requests
 const commonHeaders = {
@@ -8,52 +11,69 @@ const commonHeaders = {
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
+// Helper function for fetch with timeout
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: { ...commonHeaders, ...options.headers },
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 // Fetch funding rates from all exchanges server-side to avoid CORS
 export async function GET() {
   const results: any[] = [];
 
   // Binance
   try {
-    const binanceRes = await axios.get('https://fapi.binance.com/fapi/v1/premiumIndex', {
-      timeout: 10000,
-      headers: commonHeaders,
-    });
-    const binanceData = binanceRes.data
-      .filter((item: any) => item.symbol.endsWith('USDT') && item.lastFundingRate != null)
-      .map((item: any) => ({
-        symbol: item.symbol.replace('USDT', ''),
-        exchange: 'Binance',
-        fundingRate: parseFloat(item.lastFundingRate) * 100,
-        markPrice: parseFloat(item.markPrice),
-        indexPrice: parseFloat(item.indexPrice),
-        nextFundingTime: item.nextFundingTime,
-      }))
-      .filter((item: any) => !isNaN(item.fundingRate));
-    results.push(...binanceData);
+    const res = await fetchWithTimeout('https://fapi.binance.com/fapi/v1/premiumIndex');
+    if (res.ok) {
+      const data = await res.json();
+      const binanceData = data
+        .filter((item: any) => item.symbol.endsWith('USDT') && item.lastFundingRate != null)
+        .map((item: any) => ({
+          symbol: item.symbol.replace('USDT', ''),
+          exchange: 'Binance',
+          fundingRate: parseFloat(item.lastFundingRate) * 100,
+          markPrice: parseFloat(item.markPrice),
+          indexPrice: parseFloat(item.indexPrice),
+          nextFundingTime: item.nextFundingTime,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+      results.push(...binanceData);
+    }
   } catch (error) {
     console.error('Binance funding error:', error);
   }
 
   // Bybit
   try {
-    const bybitRes = await axios.get('https://api.bybit.com/v5/market/tickers', {
-      params: { category: 'linear' },
-      timeout: 10000,
-      headers: commonHeaders,
-    });
-    if (bybitRes.data.retCode === 0) {
-      const bybitData = bybitRes.data.result.list
-        .filter((t: any) => t.symbol.endsWith('USDT') && t.fundingRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Bybit',
-          fundingRate: parseFloat(item.fundingRate) * 100,
-          markPrice: parseFloat(item.markPrice),
-          indexPrice: parseFloat(item.indexPrice),
-          nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate));
-      results.push(...bybitData);
+    const res = await fetchWithTimeout('https://api.bybit.com/v5/market/tickers?category=linear');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.retCode === 0) {
+        const bybitData = json.result.list
+          .filter((t: any) => t.symbol.endsWith('USDT') && t.fundingRate != null)
+          .map((item: any) => ({
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Bybit',
+            fundingRate: parseFloat(item.fundingRate) * 100,
+            markPrice: parseFloat(item.markPrice),
+            indexPrice: parseFloat(item.indexPrice),
+            nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...bybitData);
+      }
     }
   } catch (error) {
     console.error('Bybit funding error:', error);
@@ -61,43 +81,43 @@ export async function GET() {
 
   // OKX - First get instruments, then fetch funding rates individually
   try {
-    // Get list of USDT perpetual swaps
-    const instrumentsRes = await axios.get('https://www.okx.com/api/v5/public/instruments', {
-      params: { instType: 'SWAP' },
-      timeout: 10000,
-      headers: commonHeaders,
-    });
-    if (instrumentsRes.data.code === '0') {
-      const usdtSwaps = instrumentsRes.data.data
-        .filter((inst: any) => inst.instId.endsWith('-USDT-SWAP'))
-        .slice(0, 50); // Limit to top 50 for performance
+    const instrumentsRes = await fetchWithTimeout('https://www.okx.com/api/v5/public/instruments?instType=SWAP');
+    if (instrumentsRes.ok) {
+      const instrumentsJson = await instrumentsRes.json();
+      if (instrumentsJson.code === '0') {
+        const usdtSwaps = instrumentsJson.data
+          .filter((inst: any) => inst.instId.endsWith('-USDT-SWAP'))
+          .slice(0, 50);
 
-      // Fetch funding rates for each instrument
-      const fundingPromises = usdtSwaps.map(async (inst: any) => {
-        try {
-          const frRes = await axios.get('https://www.okx.com/api/v5/public/funding-rate', {
-            params: { instId: inst.instId },
-            timeout: 5000,
-            headers: commonHeaders,
-          });
-          if (frRes.data.code === '0' && frRes.data.data.length > 0) {
-            const fr = frRes.data.data[0];
-            return {
-              symbol: inst.instId.replace('-USDT-SWAP', ''),
-              exchange: 'OKX',
-              fundingRate: parseFloat(fr.fundingRate) * 100,
-              markPrice: 0,
-              indexPrice: 0,
-              nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
-            };
+        const fundingPromises = usdtSwaps.map(async (inst: any) => {
+          try {
+            const frRes = await fetchWithTimeout(
+              `https://www.okx.com/api/v5/public/funding-rate?instId=${encodeURIComponent(inst.instId)}`,
+              {},
+              5000
+            );
+            if (frRes.ok) {
+              const frJson = await frRes.json();
+              if (frJson.code === '0' && frJson.data.length > 0) {
+                const fr = frJson.data[0];
+                return {
+                  symbol: inst.instId.replace('-USDT-SWAP', ''),
+                  exchange: 'OKX',
+                  fundingRate: parseFloat(fr.fundingRate) * 100,
+                  markPrice: 0,
+                  indexPrice: 0,
+                  nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
+                };
+              }
+            }
+          } catch {
+            return null;
           }
-        } catch {
           return null;
-        }
-        return null;
-      });
-      const okxData = (await Promise.all(fundingPromises)).filter((item: any) => item && !isNaN(item.fundingRate));
-      results.push(...okxData);
+        });
+        const okxData = (await Promise.all(fundingPromises)).filter((item: any) => item && !isNaN(item.fundingRate));
+        results.push(...okxData);
+      }
     }
   } catch (error) {
     console.error('OKX funding error:', error);
@@ -105,24 +125,23 @@ export async function GET() {
 
   // Bitget
   try {
-    const bitgetRes = await axios.get('https://api.bitget.com/api/v2/mix/market/tickers', {
-      params: { productType: 'USDT-FUTURES' },
-      timeout: 10000,
-      headers: commonHeaders,
-    });
-    if (bitgetRes.data.code === '00000') {
-      const bitgetData = bitgetRes.data.data
-        .filter((item: any) => item.symbol.endsWith('USDT'))
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Bitget',
-          fundingRate: parseFloat(item.fundingRate) * 100,
-          markPrice: parseFloat(item.markPrice),
-          indexPrice: parseFloat(item.indexPrice),
-          nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate));
-      results.push(...bitgetData);
+    const res = await fetchWithTimeout('https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === '00000') {
+        const bitgetData = json.data
+          .filter((item: any) => item.symbol.endsWith('USDT'))
+          .map((item: any) => ({
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Bitget',
+            fundingRate: parseFloat(item.fundingRate) * 100,
+            markPrice: parseFloat(item.markPrice),
+            indexPrice: parseFloat(item.indexPrice),
+            nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...bitgetData);
+      }
     }
   } catch (error) {
     console.error('Bitget funding error:', error);
@@ -130,24 +149,26 @@ export async function GET() {
 
   // Hyperliquid
   try {
-    const hlRes = await axios.post('https://api.hyperliquid.xyz/info', {
-      type: 'metaAndAssetCtxs',
-    }, {
-      timeout: 10000,
-      headers: commonHeaders,
+    const res = await fetchWithTimeout('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
     });
-    if (hlRes.data && hlRes.data[1]) {
-      const hlData = hlRes.data[1]
-        .map((item: any, index: number) => ({
-          symbol: hlRes.data[0].universe[index]?.name || `ASSET${index}`,
-          exchange: 'Hyperliquid',
-          fundingRate: parseFloat(item.funding) * 100,
-          markPrice: parseFloat(item.markPx),
-          indexPrice: parseFloat(item.oraclePx),
-          nextFundingTime: Date.now() + 3600000,
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
-      results.push(...hlData);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json[1]) {
+        const hlData = json[1]
+          .map((item: any, index: number) => ({
+            symbol: json[0].universe[index]?.name || `ASSET${index}`,
+            exchange: 'Hyperliquid',
+            fundingRate: parseFloat(item.funding) * 100,
+            markPrice: parseFloat(item.markPx),
+            indexPrice: parseFloat(item.oraclePx),
+            nextFundingTime: Date.now() + 3600000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+        results.push(...hlData);
+      }
     }
   } catch (error) {
     console.error('Hyperliquid funding error:', error);
@@ -155,23 +176,23 @@ export async function GET() {
 
   // dYdX
   try {
-    const dydxRes = await axios.get('https://indexer.dydx.trade/v4/perpetualMarkets', {
-      timeout: 10000,
-      headers: commonHeaders,
-    });
-    if (dydxRes.data.markets) {
-      const dydxData = Object.entries(dydxRes.data.markets)
-        .filter(([key]: [string, any]) => key.endsWith('-USD'))
-        .map(([key, market]: [string, any]) => ({
-          symbol: key.replace('-USD', ''),
-          exchange: 'dYdX',
-          fundingRate: parseFloat(market.nextFundingRate) * 100,
-          markPrice: parseFloat(market.oraclePrice),
-          indexPrice: parseFloat(market.oraclePrice),
-          nextFundingTime: Date.now() + 3600000,
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate));
-      results.push(...dydxData);
+    const res = await fetchWithTimeout('https://indexer.dydx.trade/v4/perpetualMarkets');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.markets) {
+        const dydxData = Object.entries(json.markets)
+          .filter(([key]: [string, any]) => key.endsWith('-USD'))
+          .map(([key, market]: [string, any]) => ({
+            symbol: key.replace('-USD', ''),
+            exchange: 'dYdX',
+            fundingRate: parseFloat(market.nextFundingRate) * 100,
+            markPrice: parseFloat(market.oraclePrice),
+            indexPrice: parseFloat(market.oraclePrice),
+            nextFundingTime: Date.now() + 3600000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...dydxData);
+      }
     }
   } catch (error) {
     console.error('dYdX funding error:', error);

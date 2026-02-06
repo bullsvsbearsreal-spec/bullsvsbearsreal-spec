@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
+
+// Force Edge Runtime to run from Singapore (bypass US geo-restrictions)
+export const runtime = 'edge';
+export const preferredRegion = 'sin1';
 
 // Common headers to help with API requests
 const commonHeaders = {
@@ -8,6 +11,24 @@ const commonHeaders = {
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
+// Helper function for fetch with timeout
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: { ...commonHeaders, ...options.headers },
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 // Fetch long/short ratio from Binance server-side to avoid CORS
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -15,27 +36,24 @@ export async function GET(request: Request) {
 
   try {
     // Binance Global Long/Short Account Ratio
-    const res = await axios.get('https://fapi.binance.com/futures/data/globalLongShortAccountRatio', {
-      params: {
-        symbol: symbol,
-        period: '5m',
-        limit: 1,
-      },
-      timeout: 10000,
-      headers: commonHeaders,
-    });
+    const res = await fetchWithTimeout(
+      `https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=5m&limit=1`
+    );
 
-    if (res.data && res.data.length > 0) {
-      const latest = res.data[0];
-      const longRatio = parseFloat(latest.longAccount) * 100;
-      const shortRatio = parseFloat(latest.shortAccount) * 100;
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const latest = data[0];
+        const longRatio = parseFloat(latest.longAccount) * 100;
+        const shortRatio = parseFloat(latest.shortAccount) * 100;
 
-      return NextResponse.json({
-        longRatio,
-        shortRatio,
-        symbol,
-        timestamp: latest.timestamp,
-      });
+        return NextResponse.json({
+          longRatio,
+          shortRatio,
+          symbol,
+          timestamp: latest.timestamp,
+        });
+      }
     }
 
     // Fallback to default

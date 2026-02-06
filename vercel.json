@@ -1,7 +1,6 @@
 {
-  "regions": ["sin1"],
   "functions": {
-    "src/app/api/**/*.ts": {
+    "app/api/**/*": {
       "maxDuration": 30
     }
   }
