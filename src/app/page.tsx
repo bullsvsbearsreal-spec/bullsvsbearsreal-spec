@@ -59,148 +59,185 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-hub-black">
+    <div className="min-h-screen bg-hub-black relative">
+      {/* Animated background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-hub-yellow/5 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-hub-orange/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '-2s' }} />
+      </div>
+
       <Header />
       <TopStatsBar />
       <MarketTicker />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Hero - kept simple and direct */}
-        <section className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Crypto derivatives data
+      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero Section */}
+        <section className="mb-10 animate-slideUp">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-hub-yellow/20 to-hub-orange/20 border border-hub-yellow/30">
+              <span className="text-xs font-semibold text-hub-yellow flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3" />
+                Live Market Data
+              </span>
+            </div>
+          </div>
+
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+            <span className="text-white">Welcome to </span>
+            <span className="text-gradient animate-shine">InfoHub</span>
           </h1>
-          <p className="text-hub-gray-text mb-5">
-            Funding, OI, liquidations — 7 exchanges, real-time.
+
+          <p className="text-hub-gray-text text-lg md:text-xl max-w-2xl mb-8">
+            Your one-stop destination for real-time trading data.
           </p>
 
-          {/* Search */}
-          <div className="max-w-md mb-5">
+          {/* Search Bar */}
+          <div className="max-w-2xl mb-6">
             <CoinSearch
               onSelect={handleCoinSelect}
-              placeholder="Search coin..."
+              placeholder="Search any coin for events, unlocks & news..."
               className="w-full"
             />
           </div>
 
-          {/* Quick links - simpler styling */}
-          <div className="flex flex-wrap gap-2">
-            <Link href="/funding" className="px-3 py-1.5 rounded-lg bg-hub-gray/40 text-sm text-white/80 hover:text-hub-yellow hover:bg-hub-gray/60 transition-colors">
-              Funding
+          {/* Quick Stats Pills */}
+          <div className="flex flex-wrap gap-3">
+            <Link href="/funding" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+              <TrendingUp className="w-4 h-4 text-hub-yellow" />
+              <span className="text-hub-gray-text group-hover:text-white">Funding Rates</span>
             </Link>
-            <Link href="/open-interest" className="px-3 py-1.5 rounded-lg bg-hub-gray/40 text-sm text-white/80 hover:text-hub-yellow hover:bg-hub-gray/60 transition-colors">
-              Open Interest
+            <Link href="/open-interest" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+              <BarChart3 className="w-4 h-4 text-hub-yellow" />
+              <span className="text-hub-gray-text group-hover:text-white">Open Interest</span>
             </Link>
-            <Link href="/liquidations" className="px-3 py-1.5 rounded-lg bg-hub-gray/40 text-sm text-white/80 hover:text-hub-yellow hover:bg-hub-gray/60 transition-colors">
-              Liquidations
+            <Link href="/liquidations" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+              <Zap className="w-4 h-4 text-hub-yellow" />
+              <span className="text-hub-gray-text group-hover:text-white">Liquidations</span>
             </Link>
-            <Link href="/news" className="px-3 py-1.5 rounded-lg bg-hub-gray/40 text-sm text-white/80 hover:text-hub-yellow hover:bg-hub-gray/60 transition-colors">
-              News
+            <Link href="/news" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+              <Newspaper className="w-4 h-4 text-hub-yellow" />
+              <span className="text-hub-gray-text group-hover:text-white">Market News</span>
             </Link>
           </div>
         </section>
 
-        {/* Stats row */}
-        <section className="mb-8">
+        {/* Stats Overview */}
+        <section className="mb-10">
           <StatsOverview />
         </section>
 
-        {/* Main grid - mixed sizing for visual interest */}
-        <section className="mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-2">
-              <FearGreedIndex />
-            </div>
-            <div className="lg:col-span-3">
-              <LiquidationHeatmap />
-            </div>
+        {/* Row 1: Fear & Greed + Liquidation Heatmap */}
+        <section className="mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FearGreedIndex />
+            <LiquidationHeatmap />
           </div>
         </section>
 
-        {/* Secondary row */}
-        <section className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Row 2: Market Indices + Top Movers + Long/Short Ratio */}
+        <section className="mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <MarketIndices />
             <TopMovers />
             <LongShortRatio />
-            <MarketIndices />
           </div>
         </section>
 
-        {/* Bottom row - funding, OI, news */}
-        <section className="mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Top Funding */}
-            <div className="bg-hub-gray/20 border border-hub-gray/20 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-semibold">Top Funding Rates</h3>
-                <Link href="/funding" className="text-hub-yellow text-xs hover:underline">
-                  See all →
+        {/* Row 3: Funding Preview + OI Widget + News */}
+        <section className="mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Funding Rates Preview */}
+            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-hub-yellow" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Top Funding</h3>
+                    <p className="text-hub-gray-text text-xs">Highest rates now</p>
+                  </div>
+                </div>
+                <Link href="/funding" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
+                  View All <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
               {loading ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-9 bg-hub-gray/30 rounded animate-pulse" />
+                    <div key={i} className="animate-pulse h-10 bg-hub-gray/30 rounded-lg" />
                   ))}
                 </div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {topFunding.map((item, index) => (
                     <div
                       key={`${item.symbol}-${item.exchange}-${index}`}
-                      className="flex items-center justify-between py-2 px-2 rounded hover:bg-hub-gray/30"
+                      className="flex items-center justify-between p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-hub-gray-text text-xs w-3">{index + 1}</span>
-                        <span className="text-white text-sm">{item.symbol}</span>
-                        <span className="text-hub-gray-text text-xs">· {item.exchange}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-hub-gray-text text-xs w-4">{index + 1}</span>
+                        <span className="text-white font-medium text-sm">{item.symbol}</span>
                       </div>
-                      <span className={`font-mono text-sm ${
-                        item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-hub-gray-text text-xs">{item.exchange}</span>
+                        <span className={`font-mono font-semibold text-sm ${
+                          item.fundingRate >= 0 ? 'text-success' : 'text-danger'
+                        }`}>
+                          {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* OI Changes */}
+            {/* OI Widget */}
             <OIChangeWidget />
 
-            {/* News */}
-            <div className="bg-hub-gray/20 border border-hub-gray/20 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-semibold">News</h3>
-                <Link href="/news" className="text-hub-yellow text-xs hover:underline">
-                  More →
+            {/* News Preview */}
+            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+                    <Newspaper className="w-5 h-5 text-hub-yellow" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Latest News</h3>
+                    <p className="text-hub-gray-text text-xs">Market updates</p>
+                  </div>
+                </div>
+                <Link href="/news" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
+                  View All <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-14 bg-hub-gray/30 rounded animate-pulse" />
+                    <div key={i} className="animate-pulse h-16 bg-hub-gray/30 rounded-lg" />
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {latestNews.map((article, index) => (
                     <a
                       key={article.id || index}
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block py-2 hover:bg-hub-gray/20 rounded px-2 -mx-2"
+                      className="block p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all group"
                     >
-                      <p className="text-white text-sm line-clamp-2 leading-snug">
+                      <h4 className="text-white text-sm font-medium line-clamp-2 group-hover:text-hub-yellow transition-colors">
                         {article.title}
-                      </p>
-                      <p className="text-hub-gray-text text-xs mt-1">
-                        {article.source_info?.name || article.source} · {formatTimeAgo(article.published_on)}
-                      </p>
+                      </h4>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-hub-gray-text">{article.source_info?.name || article.source}</span>
+                        <span className="text-xs text-hub-gray-text">•</span>
+                        <span className="text-xs text-hub-gray-text">{formatTimeAgo(article.published_on)}</span>
+                      </div>
                     </a>
                   ))}
                 </div>
@@ -209,19 +246,31 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Exchanges - more compact */}
-        <section className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-hub-gray-text text-sm">Data from:</span>
-            <div className="flex flex-wrap gap-2">
-              {['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'gTrade'].map((exchange) => (
-                <span
+        {/* Data Sources */}
+        <section className="mb-10">
+          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-hub-yellow" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Connected Exchanges</h3>
+                <p className="text-hub-gray-text text-xs">Real-time data from 6 exchanges</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX'].map((exchange) => (
+                <div
                   key={exchange}
-                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-hub-gray/30 text-xs text-white/70"
+                  className="flex items-center justify-center gap-2 p-4 rounded-xl bg-hub-gray/30 border border-hub-gray/30"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                  {exchange}
-                </span>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                  </span>
+                  <span className="text-white font-medium text-sm">{exchange}</span>
+                </div>
               ))}
             </div>
           </div>
@@ -236,25 +285,73 @@ export default function Home() {
 
 function Footer() {
   return (
-    <footer className="border-t border-hub-gray/20 mt-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <span className="text-white font-semibold">InfoHub</span>
-            <span className="text-hub-gray-text text-sm">Crypto data dashboard</span>
+    <footer className="border-t border-hub-gray/20 bg-hub-black/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Brand */}
+          <div>
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-hub-yellow to-hub-orange rounded-xl flex items-center justify-center shadow-lg shadow-hub-yellow/20">
+                <span className="text-hub-black font-bold">iH</span>
+              </div>
+              <span className="text-xl font-bold">
+                <span className="text-white">Info</span>
+                <span className="text-hub-yellow">Hub</span>
+              </span>
+            </div>
+            <p className="text-hub-gray-text text-sm">
+              Your one-stop destination for real-time trading data.
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            <Link href="/funding" className="text-hub-gray-text hover:text-white">Funding</Link>
-            <Link href="/open-interest" className="text-hub-gray-text hover:text-white">OI</Link>
-            <Link href="/liquidations" className="text-hub-gray-text hover:text-white">Liquidations</Link>
-            <Link href="/news" className="text-hub-gray-text hover:text-white">News</Link>
-            <Link href="/team" className="text-hub-gray-text hover:text-white">Team</Link>
+          {/* Navigation */}
+          <div>
+            <h4 className="text-white font-semibold mb-4">Navigation</h4>
+            <ul className="space-y-2">
+              <li><Link href="/" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Dashboard</Link></li>
+              <li><Link href="/funding" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Funding Rates</Link></li>
+              <li><Link href="/open-interest" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Open Interest</Link></li>
+              <li><Link href="/liquidations" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Liquidations</Link></li>
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <h4 className="text-white font-semibold mb-4">Resources</h4>
+            <ul className="space-y-2">
+              <li><Link href="/news" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Market News</Link></li>
+              <li><Link href="/team" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Our Team</Link></li>
+              <li><Link href="/brand" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Brand Assets</Link></li>
+            </ul>
+          </div>
+
+          {/* Data Sources */}
+          <div>
+            <h4 className="text-white font-semibold mb-4">Data Sources</h4>
+            <ul className="space-y-2">
+              <li><span className="text-hub-gray-text text-sm">Binance</span></li>
+              <li><span className="text-hub-gray-text text-sm">Bybit</span></li>
+              <li><span className="text-hub-gray-text text-sm">OKX</span></li>
+              <li><span className="text-hub-gray-text text-sm">Bitget</span></li>
+              <li><span className="text-hub-gray-text text-sm">Hyperliquid</span></li>
+              <li><span className="text-hub-gray-text text-sm">dYdX</span></li>
+            </ul>
           </div>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-hub-gray/10 text-xs text-hub-gray-text">
-          Data for informational purposes only. Not financial advice.
+        <div className="flex flex-col md:flex-row items-center justify-between pt-8 mt-8 border-t border-hub-gray/20">
+          <p className="text-hub-gray-text text-sm mb-4 md:mb-0">
+            © 2026 InfoHub. All data for informational purposes only.
+          </p>
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-2 text-xs text-hub-gray-text">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+              </span>
+              All systems operational
+            </span>
+          </div>
         </div>
       </div>
     </footer>
