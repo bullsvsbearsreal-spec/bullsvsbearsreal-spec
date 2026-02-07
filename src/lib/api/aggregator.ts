@@ -4,6 +4,7 @@ import { okxAPI } from './okx';
 import { bitgetAPI } from './bitget';
 import { hyperliquidAPI } from './hyperliquid';
 import { dydxAPI } from './dydx';
+import { getGlobalData } from './coingecko';
 import { TickerData, FundingRateData, OpenInterestData, AggregatedLiquidations } from './types';
 
 // Simple in-memory cache
@@ -289,19 +290,18 @@ export async function fetchMarketStats(): Promise<{
   const cached = getCached<any>('marketStats');
   if (cached) return cached;
 
-  const [tickers, oiData, longShort] = await Promise.all([
+  const [tickers, oiData, longShort, globalData] = await Promise.all([
     fetchAllTickers(),
     fetchAllOpenInterest(),
     fetchLongShortRatio('BTCUSDT'),
+    getGlobalData(),
   ]);
 
   const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
   const totalOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
 
-  // Calculate BTC dominance from volume
-  const btcTicker = tickers.find(t => t.symbol === 'BTC');
-  const btcVolume = btcTicker?.quoteVolume24h || 0;
-  const btcDominance = totalVolume > 0 ? (btcVolume / totalVolume) * 100 : 0;
+  // Get BTC dominance from CoinGecko global data (more accurate)
+  const btcDominance = globalData?.market_cap_percentage?.btc || 54.2;
 
   const result = {
     totalVolume24h: totalVolume,
