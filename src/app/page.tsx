@@ -100,23 +100,23 @@ export default function Home() {
             />
           </div>
 
-          {/* Quick Stats Pills */}
-          <div className="flex flex-wrap gap-3">
-            <Link href="/funding" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+          {/* Quick Links */}
+          <div className="flex flex-wrap gap-2">
+            <Link href="/funding" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
               <TrendingUp className="w-4 h-4 text-hub-yellow" />
-              <span className="text-hub-gray-text group-hover:text-white">Funding Rates</span>
+              <span className="text-white">Funding Rates</span>
             </Link>
-            <Link href="/open-interest" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+            <Link href="/open-interest" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
               <BarChart3 className="w-4 h-4 text-hub-yellow" />
-              <span className="text-hub-gray-text group-hover:text-white">Open Interest</span>
+              <span className="text-white">Open Interest</span>
             </Link>
-            <Link href="/liquidations" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+            <Link href="/liquidations" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
               <Zap className="w-4 h-4 text-hub-yellow" />
-              <span className="text-hub-gray-text group-hover:text-white">Liquidations</span>
+              <span className="text-white">Liquidations</span>
             </Link>
-            <Link href="/news" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 transition-all text-sm group">
+            <Link href="/news" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
               <Newspaper className="w-4 h-4 text-hub-yellow" />
-              <span className="text-hub-gray-text group-hover:text-white">Market News</span>
+              <span className="text-white">Market News</span>
             </Link>
           </div>
         </section>

@@ -22,27 +22,21 @@ function StatCard({ title, value, change, icon, delay = 0 }: StatCardProps) {
 
   return (
     <div
-      className={`stat-card hover-lift transition-all duration-500 ${
+      className={`bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5 transition-all duration-500 ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
       }`}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-orange/10">
-          {icon}
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-hub-gray-text text-sm">{title}</span>
         {change !== undefined && (
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold ${
-            change >= 0
-              ? 'bg-success/10 text-success'
-              : 'bg-danger/10 text-danger'
+          <span className={`text-xs font-medium ${
+            change >= 0 ? 'text-emerald-500' : 'text-red-500'
           }`}>
-            {change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {Math.abs(change).toFixed(1)}%
-          </div>
+            {change >= 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
+          </span>
         )}
       </div>
-      <p className="text-hub-gray-text text-sm mb-1">{title}</p>
-      <p className="text-2xl md:text-3xl font-bold text-white stat-value">{value}</p>
+      <p className="text-2xl font-bold text-white">{value}</p>
     </div>
   );
 }
