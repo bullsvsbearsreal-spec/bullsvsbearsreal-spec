@@ -30,9 +30,9 @@ function StatCard({ title, value, change, icon, delay = 0 }: StatCardProps) {
         <span className="text-hub-gray-text text-sm">{title}</span>
         {change !== undefined && (
           <span className={`text-xs font-medium ${
-            change >= 0 ? 'text-emerald-500' : 'text-red-500'
+            change >= 0 ? 'text-success' : 'text-danger'
           }`}>
-            {change >= 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
+            {change >= 0 ? '+' : ''}{change.toFixed(1)}%
           </span>
         )}
       </div>

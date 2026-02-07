@@ -150,8 +150,8 @@ export default function Header() {
             </button>
 
             {/* Live Status */}
-            <div className="hidden sm:flex items-center gap-1.5 text-emerald-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <div className="hidden sm:flex items-center gap-1.5 text-success">
+              <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
               <span className="text-sm">Live</span>
             </div>
 

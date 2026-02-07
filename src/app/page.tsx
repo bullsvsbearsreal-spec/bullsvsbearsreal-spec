@@ -260,7 +260,7 @@ export default function Home() {
                   key={exchange}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-hub-gray/30"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
                   <span className="text-white text-sm">{exchange}</span>
                 </div>
               ))}
@@ -336,7 +336,7 @@ function Footer() {
             © 2026 InfoHub. All data for informational purposes only.
           </p>
           <div className="flex items-center gap-1.5 text-hub-gray-text text-xs">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
             All systems operational
           </div>
         </div>

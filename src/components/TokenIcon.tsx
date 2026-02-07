@@ -235,14 +235,14 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
       img.src = iconSources[0];
     }
 
-    // Fallback to gradient icon with letters
+    // Fallback to simple icon with letters
     return (
       <div
-        className={`flex items-center justify-center rounded-full bg-gradient-to-br from-hub-yellow/30 to-hub-orange/20 ${className}`}
+        className={`flex items-center justify-center rounded-full bg-hub-gray/40 ${className}`}
         style={{ width: size, height: size }}
       >
         <span
-          className="font-bold text-hub-yellow"
+          className="font-semibold text-hub-yellow"
           style={{ fontSize: size * 0.4 }}
         >
           {fallbackText}
@@ -289,8 +289,8 @@ export function TokenIconSimple({ symbol, size = 24, className = '' }: TokenIcon
           const parent = e.currentTarget.parentElement;
           if (parent) {
             parent.innerHTML = `
-              <div class="flex items-center justify-center rounded-full bg-gradient-to-br from-hub-yellow/30 to-hub-orange/20" style="width: ${size}px; height: ${size}px;">
-                <span class="font-bold text-hub-yellow" style="font-size: ${size * 0.4}px;">${fallbackText}</span>
+              <div class="flex items-center justify-center rounded-full bg-hub-gray/40" style="width: ${size}px; height: ${size}px;">
+                <span class="font-semibold text-hub-yellow" style="font-size: ${size * 0.4}px;">${fallbackText}</span>
               </div>
             `;
           }

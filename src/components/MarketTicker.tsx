@@ -108,7 +108,7 @@ export default function MarketTicker() {
                 <span className="text-white font-mono text-sm">{formatPrice(ticker.price)}</span>
 
                 {/* Change */}
-                <span className={`text-xs ${(ticker.change ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                <span className={`text-xs ${(ticker.change ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
                   {(ticker.change ?? 0) >= 0 ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
                 </span>
               </div>

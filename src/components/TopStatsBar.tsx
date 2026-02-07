@@ -103,8 +103,8 @@ export default function TopStatsBar() {
           ))}
 
           {/* Live indicator */}
-          <div className="flex items-center gap-1.5 text-emerald-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <div className="flex items-center gap-1.5 text-success">
+            <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
             <span className="text-xs">Live</span>
           </div>
         </div>
