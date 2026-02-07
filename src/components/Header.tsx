@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  Menu, X, TrendingUp, BarChart3, Zap, Activity, Bell,
-  ChevronDown, Users, Newspaper, Search, Database, Info
+  Menu, X, TrendingUp, BarChart3, Zap, Activity,
+  ChevronDown, Users, Newspaper, Search, Database
 } from 'lucide-react';
 import Logo from './Logo';
+import CoinSearch from './CoinSearch';
+import { CoinSearchResult } from '@/lib/api/coingecko';
 
 interface NavItem {
   name: string;
@@ -32,10 +34,13 @@ const navItems: NavItem[] = [
 ];
 
 export default function Header() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -51,15 +56,32 @@ export default function Header() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdown(null);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close search on escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSearchOpen(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
   }, []);
 
   const isActive = (href?: string, children?: NavItem['children']) => {
     if (href) return pathname === href;
     if (children) return children.some(child => pathname === child.href);
     return false;
+  };
+
+  const handleCoinSelect = (coin: CoinSearchResult) => {
+    setSearchOpen(false);
+    router.push(`/coin/${coin.id}`);
   };
 
   return (
@@ -142,20 +164,29 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Right side */}
-          <div className="flex items-center gap-4">
-            <button className="text-hub-gray-text hover:text-white transition-colors">
-              <Search className="w-5 h-5" />
-            </button>
-
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-hub-gray/30">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
-              <span className="text-xs text-white font-medium">Live</span>
-            </div>
+          {/* Right side - Search */}
+          <div className="flex items-center gap-3" ref={searchRef}>
+            {searchOpen ? (
+              <div className="relative">
+                <CoinSearch
+                  onSelect={handleCoinSelect}
+                  placeholder="Search coins..."
+                  className="w-64"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="p-2 rounded-lg text-hub-gray-text hover:text-white hover:bg-hub-gray/30 transition-all"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
 
             {/* Mobile menu button */}
             <button
-              className="md:hidden p-2.5 rounded-xl text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all"
+              className="md:hidden p-2 rounded-lg text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <div className="relative w-6 h-6">
@@ -176,6 +207,18 @@ export default function Header() {
         }`}
       >
         <div className="bg-hub-gray/95 backdrop-blur-xl border-t border-hub-gray/30 mx-4 rounded-2xl mt-2 overflow-hidden shadow-2xl">
+          {/* Mobile Search */}
+          <div className="p-3 border-b border-hub-gray/20">
+            <CoinSearch
+              onSelect={(coin) => {
+                setMobileMenuOpen(false);
+                handleCoinSelect(coin);
+              }}
+              placeholder="Search coins..."
+              className="w-full"
+            />
+          </div>
+
           <nav className="p-3 space-y-1">
             {navItems.map((item) => (
               <div key={item.name}>
