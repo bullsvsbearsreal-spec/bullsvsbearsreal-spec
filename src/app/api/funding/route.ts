@@ -199,6 +199,7 @@ export async function GET() {
   }
 
   // gTrade (Gains Network) - Arbitrum
+  // Note: gTrade uses continuous funding, we convert to 8h equivalent for comparison
   try {
     const res = await fetchWithTimeout('https://backend-arbitrum.gains.trade/trading-variables');
     if (res.ok) {
@@ -217,17 +218,18 @@ export async function GET() {
               const data = pairData[index];
               // Only process crypto pairs (groupIndex 0 = BTC/ETH, 10 = other crypto)
               if (data && pair.from && pair.to === 'USD' && (pair.groupIndex === '0' || pair.groupIndex === '10')) {
-                // lastFundingRatePerSecondP is in 18 decimals
+                // lastFundingRatePerSecondP is in 18 decimals, represents rate per second
+                // gTrade funding is continuous - convert to 8h equivalent for CEX comparison
                 const ratePerSecond = parseFloat(data.lastFundingRatePerSecondP || '0') / 1e18;
-                const ratePerHour = ratePerSecond * 3600;
-                const rate8h = ratePerHour * 8 * 100; // Convert to 8h percentage
+                // Convert: rate/sec * 3600 sec/hr * 8 hrs * 100 for percentage
+                const rate8h = ratePerSecond * 3600 * 8 * 100;
 
                 const symbol = pair.from.toUpperCase();
                 gtradeData.push({
                   symbol: symbol,
                   exchange: 'gTrade',
                   fundingRate: isFinite(rate8h) ? rate8h : 0,
-                  markPrice: 0, // gTrade doesn't provide mark price in this endpoint
+                  markPrice: 0,
                   indexPrice: 0,
                   nextFundingTime: Date.now() + 3600000,
                 });
