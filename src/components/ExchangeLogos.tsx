@@ -170,6 +170,24 @@ export function GTradeLogo({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
+export function AsterLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#EC4899"/>
+      <path fill="#FFFFFF" d="M63 25l8 23h24l-19 14 7 23-20-15-20 15 7-23-19-14h24z"/>
+    </svg>
+  );
+}
+
+export function LighterLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#34D399"/>
+      <path fill="#FFFFFF" d="M50 35h26v56H50V35zm-10 20h10v16H40V55zm36 0h10v16H86V55z"/>
+    </svg>
+  );
+}
+
 // Exchange logo mapping
 export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps>> = {
   binance: BinanceLogo,
@@ -189,6 +207,8 @@ export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps
   vertex: VertexLogo,
   drift: DriftLogo,
   gtrade: GTradeLogo,
+  aster: AsterLogo,
+  lighter: LighterLogo,
 };
 
 // Exchange brand colors for styling
@@ -210,6 +230,8 @@ export const exchangeColors: Record<string, string> = {
   vertex: '#00E99E',
   drift: '#8B5CF6',
   gtrade: '#14B8A6',
+  aster: '#EC4899',
+  lighter: '#34D399',
 };
 
 // Generic exchange logo component

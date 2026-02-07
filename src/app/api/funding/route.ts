@@ -198,53 +198,92 @@ export async function GET() {
     console.error('dYdX funding error:', error);
   }
 
-  // gTrade (Gains Network) - Arbitrum
-  // Note: gTrade uses continuous funding, we convert to 8h equivalent for comparison
+  // gTrade (Gains Network) - PAUSED
+  // Reason: Funding rate model differs significantly from CEXes, causing misleading arbitrage comparisons
+  // TODO: Re-enable with proper rate normalization
+
+  // GMX v2 (Arbitrum)
   try {
-    const res = await fetchWithTimeout('https://backend-arbitrum.gains.trade/trading-variables');
+    const res = await fetchWithTimeout('https://arbitrum-api.gmxinfra.io/markets/info');
     if (res.ok) {
       const json = await res.json();
-      if (json && json.pairs && json.collaterals) {
-        // Get USDC collateral data
-        const usdcCollateral = json.collaterals.find((c: any) => c.symbol === 'USDC');
-
-        if (usdcCollateral?.fundingFees?.pairData) {
-          const gtradeData: any[] = [];
-          const pairData = usdcCollateral.fundingFees.pairData;
-
-          // Process each pair - crypto pairs have groupIndex 0 or 10
-          json.pairs.forEach((pair: any, index: number) => {
-            try {
-              const data = pairData[index];
-              // Only process crypto pairs (groupIndex 0 = BTC/ETH, 10 = other crypto)
-              if (data && pair.from && pair.to === 'USD' && (pair.groupIndex === '0' || pair.groupIndex === '10')) {
-                // lastFundingRatePerSecondP is in 18 decimals, represents rate per second
-                // gTrade funding is continuous - convert to 8h equivalent for CEX comparison
-                const ratePerSecond = parseFloat(data.lastFundingRatePerSecondP || '0') / 1e18;
-                // Convert: rate/sec * 3600 sec/hr * 8 hrs * 100 for percentage
-                const rate8h = ratePerSecond * 3600 * 8 * 100;
-
-                const symbol = pair.from.toUpperCase();
-                gtradeData.push({
-                  symbol: symbol,
-                  exchange: 'gTrade',
-                  fundingRate: isFinite(rate8h) ? rate8h : 0,
-                  markPrice: 0,
-                  indexPrice: 0,
+      if (json && json.markets) {
+        const gmxData: any[] = [];
+        Object.entries(json.markets).forEach(([marketKey, market]: [string, any]) => {
+          try {
+            // Extract symbol from market key (e.g., "ETH_USDC" -> "ETH")
+            const symbol = marketKey.split('_')[0];
+            if (symbol && market.fundingRate !== undefined) {
+              // GMX funding rate is already in decimal form
+              const fundingRate = parseFloat(market.fundingRate || market.borrowingRateLong || '0') * 100;
+              if (isFinite(fundingRate) && fundingRate !== 0) {
+                gmxData.push({
+                  symbol: symbol.toUpperCase(),
+                  exchange: 'GMX',
+                  fundingRate: fundingRate,
+                  markPrice: parseFloat(market.markPrice || '0'),
+                  indexPrice: parseFloat(market.indexPrice || '0'),
                   nextFundingTime: Date.now() + 3600000,
                 });
               }
-            } catch {
-              // Skip invalid pairs
             }
-          });
-
-          results.push(...gtradeData.filter((item: any) => !isNaN(item.fundingRate)));
-        }
+          } catch {
+            // Skip invalid markets
+          }
+        });
+        results.push(...gmxData.filter((item: any) => !isNaN(item.fundingRate)));
       }
     }
   } catch (error) {
-    console.error('gTrade funding error:', error);
+    console.error('GMX funding error:', error);
+  }
+
+  // Aster DEX
+  try {
+    const res = await fetchWithTimeout('https://fapi.asterdex.com/fapi/v1/premiumIndex');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const asterData = data
+          .filter((item: any) => item.symbol && item.lastFundingRate != null)
+          .map((item: any) => ({
+            symbol: item.symbol.replace('USDT', '').replace('USDC', ''),
+            exchange: 'Aster',
+            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            markPrice: parseFloat(item.markPrice || '0'),
+            indexPrice: parseFloat(item.indexPrice || '0'),
+            nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...asterData);
+      }
+    }
+  } catch (error) {
+    console.error('Aster funding error:', error);
+  }
+
+  // Lighter
+  try {
+    const res = await fetchWithTimeout('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const lighterData = data
+          .filter((item: any) => item.exchange === 'lighter' && item.symbol)
+          .map((item: any) => ({
+            symbol: item.symbol.replace('-PERP', '').replace('USDT', '').replace('USDC', ''),
+            exchange: 'Lighter',
+            fundingRate: parseFloat(item.fundingRate || '0') * 100,
+            markPrice: 0,
+            indexPrice: 0,
+            nextFundingTime: Date.now() + 3600000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+        results.push(...lighterData);
+      }
+    }
+  } catch (error) {
+    console.error('Lighter funding error:', error);
   }
 
   return NextResponse.json(results);
