@@ -202,41 +202,11 @@ export async function GET() {
   // Reason: Funding rate model differs significantly from CEXes, causing misleading arbitrage comparisons
   // TODO: Re-enable with proper rate normalization
 
-  // GMX v2 (Arbitrum)
-  try {
-    const res = await fetchWithTimeout('https://arbitrum-api.gmxinfra.io/markets/info');
-    if (res.ok) {
-      const json = await res.json();
-      if (json && json.markets) {
-        const gmxData: any[] = [];
-        Object.entries(json.markets).forEach(([marketKey, market]: [string, any]) => {
-          try {
-            // Extract symbol from market key (e.g., "ETH_USDC" -> "ETH")
-            const symbol = marketKey.split('_')[0];
-            if (symbol && market.fundingRate !== undefined) {
-              // GMX funding rate is already in decimal form
-              const fundingRate = parseFloat(market.fundingRate || market.borrowingRateLong || '0') * 100;
-              if (isFinite(fundingRate) && fundingRate !== 0) {
-                gmxData.push({
-                  symbol: symbol.toUpperCase(),
-                  exchange: 'GMX',
-                  fundingRate: fundingRate,
-                  markPrice: parseFloat(market.markPrice || '0'),
-                  indexPrice: parseFloat(market.indexPrice || '0'),
-                  nextFundingTime: Date.now() + 3600000,
-                });
-              }
-            }
-          } catch {
-            // Skip invalid markets
-          }
-        });
-        results.push(...gmxData.filter((item: any) => !isNaN(item.fundingRate)));
-      }
-    }
-  } catch (error) {
-    console.error('GMX funding error:', error);
-  }
+  // GMX v2 (Arbitrum) - PAUSED
+  // Reason: GMX uses continuous per-second funding rates with 1e30 precision
+  // These rates don't translate directly to 8h funding rates used by CEXes
+  // Need proper SDK integration for accurate rate conversion
+  // TODO: Re-enable with GMX SDK for proper rate calculation
 
   // Aster DEX
   try {
@@ -267,13 +237,15 @@ export async function GET() {
     const res = await fetchWithTimeout('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates');
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data)) {
-        const lighterData = data
+      // Lighter returns { funding_rates: [...] } with 'rate' field (not 'fundingRate')
+      const fundingRates = data.funding_rates || data;
+      if (Array.isArray(fundingRates)) {
+        const lighterData = fundingRates
           .filter((item: any) => item.exchange === 'lighter' && item.symbol)
           .map((item: any) => ({
-            symbol: item.symbol.replace('-PERP', '').replace('USDT', '').replace('USDC', ''),
+            symbol: item.symbol.replace('-PERP', '').replace('USDT', '').replace('USDC', '').replace('1000', ''),
             exchange: 'Lighter',
-            fundingRate: parseFloat(item.fundingRate || '0') * 100,
+            fundingRate: parseFloat(item.rate || '0') * 100, // 'rate' not 'fundingRate'
             markPrice: 0,
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000,
