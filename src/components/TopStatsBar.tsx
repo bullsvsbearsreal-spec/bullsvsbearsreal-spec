@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Activity, DollarSign, BarChart3, Zap, Users } from 'lucide-react';
 import { fetchMarketStats } from '@/lib/api/aggregator';
 
 interface MarketStats {
@@ -37,11 +36,10 @@ export default function TopStatsBar() {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Listen for liquidation updates from WebSocket (if component is used with liquidations)
   useEffect(() => {
     const handleLiqUpdate = (event: CustomEvent) => {
       setLiqStats(event.detail);
@@ -52,12 +50,17 @@ export default function TopStatsBar() {
 
   if (loading || !stats) {
     return (
-      <div className="bg-hub-black border-b border-hub-gray/30">
-        <div className="max-w-full mx-auto px-4 py-2">
-          <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide animate-pulse">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-5 w-40 bg-hub-gray/30 rounded" />
-            ))}
+      <div className="bg-gradient-to-r from-hub-black via-hub-dark to-hub-black border-b border-hub-gray/10">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-8 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex flex-col gap-1">
+                  <div className="h-3 w-16 bg-hub-gray/20 rounded" />
+                  <div className="h-5 w-24 bg-hub-gray/30 rounded" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -66,46 +69,53 @@ export default function TopStatsBar() {
 
   const statItems = [
     {
-      label: '24h Volume',
+      label: 'Volume 24H',
       value: formatLargeNumber(stats.totalVolume24h),
-      icon: DollarSign,
-      color: 'text-hub-yellow',
     },
     {
       label: 'Open Interest',
       value: formatLargeNumber(stats.totalOpenInterest),
-      icon: BarChart3,
-      color: 'text-blue-400',
     },
     {
-      label: '24h Liquidation',
-      value: formatLargeNumber(liqStats.total),
-      icon: Zap,
-      color: 'text-orange-400',
+      label: 'BTC Dominance',
+      value: `${stats.btcDominance?.toFixed(1) || '54.2'}%`,
     },
     {
-      label: '24h Long/Short',
-      value: `${stats.btcLongShort.longRatio.toFixed(2)}%/${stats.btcLongShort.shortRatio.toFixed(2)}%`,
-      icon: Users,
-      color: stats.btcLongShort.longRatio > 50 ? 'text-success' : 'text-danger',
+      label: 'Long/Short',
+      value: `${stats.btcLongShort.longRatio.toFixed(1)}% / ${stats.btcLongShort.shortRatio.toFixed(1)}%`,
+      isLongDominant: stats.btcLongShort.longRatio > 50,
     },
   ];
 
   return (
-    <div className="bg-hub-black/80 backdrop-blur-sm border-b border-hub-gray/20">
-      <div className="max-w-7xl mx-auto px-4 py-2.5">
-        <div className="flex items-center justify-between gap-6 overflow-x-auto scrollbar-hide">
-          <div className="flex items-center gap-6 md:gap-10">
+    <div className="bg-gradient-to-r from-hub-black via-hub-dark to-hub-black border-b border-hub-gray/10">
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Stats */}
+          <div className="flex items-center gap-6 md:gap-10 overflow-x-auto scrollbar-hide">
             {statItems.map((item, index) => (
-              <div key={index} className="flex items-center gap-2 whitespace-nowrap">
-                <span className="text-hub-gray-text text-xs">{item.label}</span>
-                <span className={`font-semibold text-sm ${item.color}`}>{item.value}</span>
+              <div key={index} className="flex flex-col min-w-fit">
+                <span className="text-[10px] uppercase tracking-wider text-hub-gray-text/70 mb-0.5">
+                  {item.label}
+                </span>
+                <span className={`text-sm font-semibold tracking-tight ${
+                  'isLongDominant' in item
+                    ? item.isLongDominant ? 'text-success' : 'text-danger'
+                    : 'text-white'
+                }`}>
+                  {item.value}
+                </span>
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
-            <span className="text-xs text-hub-gray-text">Live</span>
+
+          {/* Live Status */}
+          <div className="flex items-center gap-2 pl-4 border-l border-hub-gray/20">
+            <div className="relative">
+              <span className="absolute inset-0 h-2 w-2 rounded-full bg-success animate-ping opacity-75"></span>
+              <span className="relative h-2 w-2 rounded-full bg-success block"></span>
+            </div>
+            <span className="text-xs font-medium text-white/80">Live</span>
           </div>
         </div>
       </div>
