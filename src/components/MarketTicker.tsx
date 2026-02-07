@@ -71,19 +71,11 @@ export default function MarketTicker() {
         {/* Top row - Market Stats */}
         <div className="px-4 py-2 border-b border-hub-gray/20">
           <div className="flex items-center justify-between gap-6 overflow-x-auto scrollbar-hide">
-            <div className="flex items-center gap-2 text-hub-gray-text">
-              <Activity className="w-4 h-4 text-hub-yellow" />
-              <span className="text-xs font-medium">Market Overview</span>
-            </div>
+            <span className="text-hub-gray-text text-xs">Market Overview</span>
             {marketStats.map((stat, index) => (
               <div key={index} className="flex items-center gap-2 whitespace-nowrap">
                 <span className="text-hub-gray-text text-xs">{stat.label}</span>
-                <span className="text-white font-semibold text-sm">{stat.value}</span>
-                {stat.change && (
-                  <span className={`text-xs font-medium ${stat.positive ? 'text-success' : 'text-danger'}`}>
-                    {stat.change}
-                  </span>
-                )}
+                <span className="text-white font-medium text-sm">{stat.value}</span>
               </div>
             ))}
           </div>
@@ -116,16 +108,9 @@ export default function MarketTicker() {
                 <span className="text-white font-mono text-sm">{formatPrice(ticker.price)}</span>
 
                 {/* Change */}
-                <div className={`flex items-center gap-1 ${(ticker.change ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {(ticker.change ?? 0) >= 0 ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  <span className="text-xs font-medium">
-                    {(ticker.change ?? 0) >= 0 ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
-                  </span>
-                </div>
+                <span className={`text-xs ${(ticker.change ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {(ticker.change ?? 0) >= 0 ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
+                </span>
               </div>
             ))}
           </div>

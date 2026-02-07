@@ -249,27 +249,19 @@ export default function Home() {
         {/* Data Sources */}
         <section className="mb-10">
           <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-                <Globe className="w-5 h-5 text-hub-yellow" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">Connected Exchanges</h3>
-                <p className="text-hub-gray-text text-xs">Real-time data from 6 exchanges</p>
-              </div>
+            <div className="mb-4">
+              <h3 className="text-white font-semibold">Connected Exchanges</h3>
+              <p className="text-hub-gray-text text-sm">Real-time data from 8 exchanges</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX'].map((exchange) => (
+            <div className="flex flex-wrap gap-3">
+              {['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'].map((exchange) => (
                 <div
                   key={exchange}
-                  className="flex items-center justify-center gap-2 p-4 rounded-xl bg-hub-gray/30 border border-hub-gray/30"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-hub-gray/30"
                 >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-                  </span>
-                  <span className="text-white font-medium text-sm">{exchange}</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span className="text-white text-sm">{exchange}</span>
                 </div>
               ))}
             </div>
@@ -343,14 +335,9 @@ function Footer() {
           <p className="text-hub-gray-text text-sm mb-4 md:mb-0">
             © 2026 InfoHub. All data for informational purposes only.
           </p>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-2 text-xs text-hub-gray-text">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-              </span>
-              All systems operational
-            </span>
+          <div className="flex items-center gap-1.5 text-hub-gray-text text-xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            All systems operational
           </div>
         </div>
       </div>
