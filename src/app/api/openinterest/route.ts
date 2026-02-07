@@ -309,5 +309,93 @@ export async function GET() {
     console.error('BingX OI error:', error);
   }
 
+  // KuCoin Futures
+  try {
+    const res = await fetchWithTimeout('https://api-futures.kucoin.com/api/v1/contracts/active');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === '200000' && json.data) {
+        const kucoinData = json.data
+          .filter((c: any) => c.symbol.endsWith('USDTM') && parseFloat(c.openInterest) > 0)
+          .map((contract: any) => {
+            let symbol = contract.symbol.replace(/USDTM$|USDM$/, '').replace(/XBT/, 'BTC');
+            return {
+              symbol,
+              exchange: 'KuCoin',
+              openInterest: parseFloat(contract.openInterest),
+              openInterestValue: parseFloat(contract.openInterest) * contract.markPrice,
+            };
+          });
+        results.push(...kucoinData);
+      }
+    }
+  } catch (error) {
+    console.error('KuCoin OI error:', error);
+  }
+
+  // HTX (Huobi)
+  try {
+    const res = await fetchWithTimeout('https://api.hbdm.com/linear-swap-api/v1/swap_open_interest');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.status === 'ok' && json.data) {
+        const htxData = json.data
+          .filter((item: any) => item.contract_code?.includes('-USDT') && parseFloat(item.volume) > 0)
+          .map((item: any) => ({
+            symbol: item.contract_code.replace(/-USDT|-USD/, ''),
+            exchange: 'HTX',
+            openInterest: parseFloat(item.volume),
+            openInterestValue: parseFloat(item.value),
+          }));
+        results.push(...htxData);
+      }
+    }
+  } catch (error) {
+    console.error('HTX OI error:', error);
+  }
+
+  // Bitfinex Derivatives
+  try {
+    const res = await fetchWithTimeout('https://api-pub.bitfinex.com/v2/status/deriv?keys=ALL');
+    if (res.ok) {
+      const data = await res.json();
+      const bitfinexData = data
+        .filter((item: any) => item[0]?.includes('F0') && item[18] > 0)
+        .map((item: any) => {
+          const symbol = item[0].replace(/^t/, '').replace(/F0:USTF0$|F0:USDTF0$|:.*$/, '').replace(/USD$|UST$/, '');
+          return {
+            symbol,
+            exchange: 'Bitfinex',
+            openInterest: item[18],
+            openInterestValue: item[18] * (item[3] || 0),
+          };
+        });
+      results.push(...bitfinexData);
+    }
+  } catch (error) {
+    console.error('Bitfinex OI error:', error);
+  }
+
+  // WOO X
+  try {
+    const res = await fetchWithTimeout('https://api.woo.org/v1/public/futures');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.rows) {
+        const wooxData = json.rows
+          .filter((item: any) => item.symbol?.startsWith('PERP_') && item.open_interest > 0)
+          .map((item: any) => ({
+            symbol: item.symbol.replace(/^PERP_/, '').replace(/_USDT$|_USD$/, ''),
+            exchange: 'WOO X',
+            openInterest: item.open_interest,
+            openInterestValue: item.open_interest * (item.mark_price || item.index_price),
+          }));
+        results.push(...wooxData);
+      }
+    }
+  } catch (error) {
+    console.error('WOO X OI error:', error);
+  }
+
   return NextResponse.json(results);
 }

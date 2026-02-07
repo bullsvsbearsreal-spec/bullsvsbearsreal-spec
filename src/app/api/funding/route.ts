@@ -353,5 +353,102 @@ export async function GET() {
     console.error('BingX funding error:', error);
   }
 
+  // KuCoin Futures
+  try {
+    const res = await fetchWithTimeout('https://api-futures.kucoin.com/api/v1/contracts/active');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === '200000' && json.data) {
+        const kucoinData = json.data
+          .filter((c: any) => c.symbol.endsWith('USDTM') && c.fundingFeeRate !== undefined)
+          .map((contract: any) => {
+            let symbol = contract.symbol.replace(/USDTM$|USDM$/, '').replace(/XBT/, 'BTC');
+            return {
+              symbol,
+              exchange: 'KuCoin',
+              fundingRate: contract.fundingFeeRate * 100,
+              markPrice: contract.markPrice,
+              indexPrice: contract.indexPrice,
+              nextFundingTime: contract.nextFundingRateTime,
+            };
+          });
+        results.push(...kucoinData);
+      }
+    }
+  } catch (error) {
+    console.error('KuCoin funding error:', error);
+  }
+
+  // HTX (Huobi)
+  try {
+    const res = await fetchWithTimeout('https://api.hbdm.com/linear-swap-api/v1/swap_batch_funding_rate');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.status === 'ok' && json.data) {
+        const htxData = json.data
+          .filter((item: any) => item.contract_code?.includes('-USDT'))
+          .map((item: any) => ({
+            symbol: item.contract_code.replace(/-USDT|-USD/, ''),
+            exchange: 'HTX',
+            fundingRate: parseFloat(item.funding_rate) * 100,
+            markPrice: 0,
+            indexPrice: 0,
+            nextFundingTime: item.next_funding_time,
+          }));
+        results.push(...htxData);
+      }
+    }
+  } catch (error) {
+    console.error('HTX funding error:', error);
+  }
+
+  // Bitfinex Derivatives
+  try {
+    const res = await fetchWithTimeout('https://api-pub.bitfinex.com/v2/status/deriv?keys=ALL');
+    if (res.ok) {
+      const data = await res.json();
+      const bitfinexData = data
+        .filter((item: any) => item[0]?.includes('F0'))
+        .map((item: any) => {
+          const symbol = item[0].replace(/^t/, '').replace(/F0:USTF0$|F0:USDTF0$|:.*$/, '').replace(/USD$|UST$/, '');
+          return {
+            symbol,
+            exchange: 'Bitfinex',
+            fundingRate: (item[10] || 0) * 100,
+            markPrice: item[3] || 0,
+            indexPrice: item[2] || 0,
+            nextFundingTime: item[11] || Date.now() + 3600000,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate));
+      results.push(...bitfinexData);
+    }
+  } catch (error) {
+    console.error('Bitfinex funding error:', error);
+  }
+
+  // WOO X
+  try {
+    const res = await fetchWithTimeout('https://api.woo.org/v1/public/funding_rates');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.rows) {
+        const wooxData = json.rows
+          .filter((item: any) => item.symbol?.startsWith('PERP_'))
+          .map((item: any) => ({
+            symbol: item.symbol.replace(/^PERP_/, '').replace(/_USDT$|_USD$/, ''),
+            exchange: 'WOO X',
+            fundingRate: (item.last_funding_rate || 0) * 100,
+            markPrice: 0,
+            indexPrice: 0,
+            nextFundingTime: item.next_funding_time || Date.now() + 8 * 60 * 60 * 1000,
+          }));
+        results.push(...wooxData);
+      }
+    }
+  } catch (error) {
+    console.error('WOO X funding error:', error);
+  }
+
   return NextResponse.json(results);
 }

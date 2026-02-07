@@ -299,5 +299,126 @@ export async function GET() {
     console.error('BingX tickers error:', error);
   }
 
+  // KuCoin Futures
+  try {
+    const res = await fetchWithTimeout('https://api-futures.kucoin.com/api/v1/contracts/active');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === '200000' && json.data) {
+        const kucoinData = json.data
+          .filter((c: any) => c.symbol.endsWith('USDTM'))
+          .map((contract: any) => {
+            let symbol = contract.symbol.replace(/USDTM$|USDM$/, '').replace(/XBT/, 'BTC');
+            return {
+              symbol,
+              exchange: 'KuCoin',
+              lastPrice: contract.markPrice,
+              price: contract.markPrice,
+              priceChangePercent24h: 0,
+              changePercent24h: 0,
+              high24h: 0,
+              low24h: 0,
+              volume24h: contract.turnoverOf24h || 0,
+              quoteVolume24h: contract.turnoverOf24h || 0,
+            };
+          });
+        results.push(...kucoinData);
+      }
+    }
+  } catch (error) {
+    console.error('KuCoin tickers error:', error);
+  }
+
+  // HTX (Huobi)
+  try {
+    const res = await fetchWithTimeout('https://api.hbdm.com/linear-swap-ex/market/detail/batch_merged');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.status === 'ok' && json.ticks) {
+        const htxData = json.ticks
+          .filter((t: any) => t.contract_code?.includes('-USDT'))
+          .map((ticker: any) => {
+            const price = parseFloat(ticker.close);
+            const open = parseFloat(ticker.open);
+            const changePercent = open > 0 ? ((price - open) / open) * 100 : 0;
+            return {
+              symbol: ticker.contract_code.replace(/-USDT|-USD/, ''),
+              exchange: 'HTX',
+              lastPrice: price,
+              price,
+              priceChangePercent24h: changePercent,
+              changePercent24h: changePercent,
+              high24h: parseFloat(ticker.high),
+              low24h: parseFloat(ticker.low),
+              volume24h: parseFloat(ticker.vol),
+              quoteVolume24h: parseFloat(ticker.trade_turnover),
+            };
+          });
+        results.push(...htxData);
+      }
+    }
+  } catch (error) {
+    console.error('HTX tickers error:', error);
+  }
+
+  // Bitfinex Derivatives
+  try {
+    const res = await fetchWithTimeout('https://api-pub.bitfinex.com/v2/tickers?symbols=ALL');
+    if (res.ok) {
+      const data = await res.json();
+      const bitfinexData = data
+        .filter((t: any) => t[0]?.includes('F0:USTF0'))
+        .map((ticker: any) => {
+          const symbol = ticker[0].replace(/^t/, '').replace(/F0:USTF0$/, '').replace(/USD$|UST$/, '');
+          return {
+            symbol,
+            exchange: 'Bitfinex',
+            lastPrice: ticker[7],
+            price: ticker[7],
+            priceChangePercent24h: (ticker[6] || 0) * 100,
+            changePercent24h: (ticker[6] || 0) * 100,
+            high24h: ticker[9] || 0,
+            low24h: ticker[10] || 0,
+            volume24h: ticker[8] || 0,
+            quoteVolume24h: (ticker[8] || 0) * ticker[7],
+          };
+        });
+      results.push(...bitfinexData);
+    }
+  } catch (error) {
+    console.error('Bitfinex tickers error:', error);
+  }
+
+  // WOO X
+  try {
+    const res = await fetchWithTimeout('https://api.woo.org/v1/public/futures');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.rows) {
+        const wooxData = json.rows
+          .filter((t: any) => t.symbol?.startsWith('PERP_'))
+          .map((ticker: any) => {
+            const price = ticker.mark_price || ticker.index_price;
+            const symbol = ticker.symbol.replace(/^PERP_/, '').replace(/_USDT$|_USD$/, '');
+            return {
+              symbol,
+              exchange: 'WOO X',
+              lastPrice: price,
+              price,
+              priceChangePercent24h: 0,
+              changePercent24h: 0,
+              high24h: 0,
+              low24h: 0,
+              volume24h: ticker.volume || 0,
+              quoteVolume24h: (ticker.volume || 0) * price,
+            };
+          });
+        results.push(...wooxData);
+      }
+    }
+  } catch (error) {
+    console.error('WOO X tickers error:', error);
+  }
+
   return NextResponse.json(results);
 }
