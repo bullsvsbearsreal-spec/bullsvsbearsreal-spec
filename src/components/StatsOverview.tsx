@@ -22,21 +22,19 @@ function StatCard({ title, value, change, icon, delay = 0 }: StatCardProps) {
 
   return (
     <div
-      className={`bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5 transition-all duration-500 ${
+      className={`bg-hub-gray/30 rounded-xl p-4 transition-all duration-300 hover:bg-hub-gray/40 ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
       }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-hub-gray-text text-sm">{title}</span>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-hub-gray-text text-xs uppercase tracking-wide">{title}</span>
         {change !== undefined && (
-          <span className={`text-xs font-medium ${
-            change >= 0 ? 'text-success' : 'text-danger'
-          }`}>
+          <span className={`text-xs font-semibold ${change >= 0 ? 'text-success' : 'text-danger'}`}>
             {change >= 0 ? '+' : ''}{change.toFixed(1)}%
           </span>
         )}
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-xl font-bold text-white">{value}</p>
     </div>
   );
 }

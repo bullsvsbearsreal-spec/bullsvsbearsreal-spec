@@ -143,16 +143,14 @@ export default function Header() {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center gap-3">
-            {/* Search */}
+          <div className="flex items-center gap-4">
             <button className="text-hub-gray-text hover:text-white transition-colors">
               <Search className="w-5 h-5" />
             </button>
 
-            {/* Live Status */}
-            <div className="hidden sm:flex items-center gap-1.5 text-success">
-              <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
-              <span className="text-sm">Live</span>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-hub-gray/30">
+              <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
+              <span className="text-xs text-white font-medium">Live</span>
             </div>
 
             {/* Mobile menu button */}

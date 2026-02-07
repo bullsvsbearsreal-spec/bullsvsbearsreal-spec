@@ -69,13 +69,12 @@ export default function MarketTicker() {
     <div className="bg-hub-dark/80 backdrop-blur-sm border-b border-hub-gray/30 overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Top row - Market Stats */}
-        <div className="px-4 py-2 border-b border-hub-gray/20">
-          <div className="flex items-center justify-between gap-6 overflow-x-auto scrollbar-hide">
-            <span className="text-hub-gray-text text-xs">Market Overview</span>
+        <div className="px-4 py-2.5 border-b border-hub-gray/20">
+          <div className="flex items-center gap-8 overflow-x-auto scrollbar-hide">
             {marketStats.map((stat, index) => (
               <div key={index} className="flex items-center gap-2 whitespace-nowrap">
-                <span className="text-hub-gray-text text-xs">{stat.label}</span>
-                <span className="text-white font-medium text-sm">{stat.value}</span>
+                <span className="text-hub-gray-text text-xs uppercase tracking-wide">{stat.label}</span>
+                <span className="text-white font-semibold">{stat.value}</span>
               </div>
             ))}
           </div>
@@ -94,21 +93,12 @@ export default function MarketTicker() {
             {duplicatedTickers.map((ticker, index) => (
               <div
                 key={index}
-                className="flex items-center gap-3 px-4 py-1.5 rounded-lg hover:bg-hub-gray/30 transition-colors cursor-pointer group"
+                className="flex items-center gap-3 px-3 py-1 cursor-pointer group"
               >
-                {/* Symbol with icon */}
-                <div className="flex items-center gap-2">
-                  <TokenIconSimple symbol={ticker.symbol} size={24} />
-                  <span className="text-white font-semibold text-sm group-hover:text-hub-yellow transition-colors">
-                    {ticker.symbol}
-                  </span>
-                </div>
-
-                {/* Price */}
-                <span className="text-white font-mono text-sm">{formatPrice(ticker.price)}</span>
-
-                {/* Change */}
-                <span className={`text-xs ${(ticker.change ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                <TokenIconSimple symbol={ticker.symbol} size={20} />
+                <span className="text-white font-medium text-sm">{ticker.symbol}</span>
+                <span className="text-hub-gray-text font-mono text-sm">{formatPrice(ticker.price)}</span>
+                <span className={`text-sm font-medium ${(ticker.change ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
                   {(ticker.change ?? 0) >= 0 ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
                 </span>
               </div>

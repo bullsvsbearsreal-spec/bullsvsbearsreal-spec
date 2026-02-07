@@ -248,20 +248,25 @@ export default function Home() {
 
         {/* Data Sources */}
         <section className="mb-10">
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
-            <div className="mb-4">
-              <h3 className="text-white font-semibold">Connected Exchanges</h3>
-              <p className="text-hub-gray-text text-sm">Real-time data from 8 exchanges</p>
+          <div className="bg-hub-gray/30 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-white font-semibold text-lg">Connected Exchanges</h3>
+                <p className="text-hub-gray-text text-sm mt-1">Real-time data from 8 exchanges</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
+                <span className="text-xs text-hub-gray-text">All Connected</span>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
               {['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'].map((exchange) => (
                 <div
                   key={exchange}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-hub-gray/30"
+                  className="flex items-center justify-center gap-2 py-3 rounded-lg bg-hub-gray/40 hover:bg-hub-gray/50 transition-colors"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
-                  <span className="text-white text-sm">{exchange}</span>
+                  <span className="text-white text-sm font-medium">{exchange}</span>
                 </div>
               ))}
             </div>
@@ -335,9 +340,9 @@ function Footer() {
           <p className="text-hub-gray-text text-sm mb-4 md:mb-0">
             © 2026 InfoHub. All data for informational purposes only.
           </p>
-          <div className="flex items-center gap-1.5 text-hub-gray-text text-xs">
-            <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
-            All systems operational
+          <div className="flex items-center gap-2 text-hub-gray-text text-xs">
+            <span className="h-2 w-2 rounded-full bg-success"></span>
+            <span>All systems operational</span>
           </div>
         </div>
       </div>

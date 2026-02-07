@@ -92,20 +92,20 @@ export default function TopStatsBar() {
   ];
 
   return (
-    <div className="bg-hub-black border-b border-hub-gray/30">
-      <div className="max-w-full mx-auto px-4 py-2">
-        <div className="flex items-center justify-center gap-4 md:gap-8 overflow-x-auto scrollbar-hide text-xs md:text-sm">
-          {statItems.map((item, index) => (
-            <div key={index} className="flex items-center gap-2 whitespace-nowrap">
-              <span className="text-hub-gray-text">{item.label}</span>
-              <span className={`font-medium ${item.color}`}>{item.value}</span>
-            </div>
-          ))}
-
-          {/* Live indicator */}
-          <div className="flex items-center gap-1.5 text-success">
-            <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
-            <span className="text-xs">Live</span>
+    <div className="bg-hub-black/80 backdrop-blur-sm border-b border-hub-gray/20">
+      <div className="max-w-7xl mx-auto px-4 py-2.5">
+        <div className="flex items-center justify-between gap-6 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-6 md:gap-10">
+            {statItems.map((item, index) => (
+              <div key={index} className="flex items-center gap-2 whitespace-nowrap">
+                <span className="text-hub-gray-text text-xs">{item.label}</span>
+                <span className={`font-semibold text-sm ${item.color}`}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
+            <span className="text-xs text-hub-gray-text">Live</span>
           </div>
         </div>
       </div>

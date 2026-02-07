@@ -238,12 +238,12 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
     // Fallback to simple icon with letters
     return (
       <div
-        className={`flex items-center justify-center rounded-full bg-hub-gray/40 ${className}`}
+        className={`flex items-center justify-center rounded-full bg-hub-yellow/20 ${className}`}
         style={{ width: size, height: size }}
       >
         <span
-          className="font-semibold text-hub-yellow"
-          style={{ fontSize: size * 0.4 }}
+          className="font-bold text-hub-yellow"
+          style={{ fontSize: size * 0.45 }}
         >
           {fallbackText}
         </span>
@@ -289,8 +289,8 @@ export function TokenIconSimple({ symbol, size = 24, className = '' }: TokenIcon
           const parent = e.currentTarget.parentElement;
           if (parent) {
             parent.innerHTML = `
-              <div class="flex items-center justify-center rounded-full bg-hub-gray/40" style="width: ${size}px; height: ${size}px;">
-                <span class="font-semibold text-hub-yellow" style="font-size: ${size * 0.4}px;">${fallbackText}</span>
+              <div class="flex items-center justify-center rounded-full" style="width: ${size}px; height: ${size}px; background: rgba(255, 165, 0, 0.2);">
+                <span class="font-bold" style="font-size: ${size * 0.45}px; color: #FFA500;">${fallbackText}</span>
               </div>
             `;
           }
