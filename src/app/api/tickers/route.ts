@@ -195,5 +195,109 @@ export async function GET() {
     console.error('dYdX tickers error:', error);
   }
 
+  // Gate.io
+  try {
+    const res = await fetchWithTimeout('https://api.gateio.ws/api/v4/futures/usdt/tickers');
+    if (res.ok) {
+      const data = await res.json();
+      const gateData = data.map((ticker: any) => ({
+        symbol: ticker.contract.replace(/_USDT|_USD/, ''),
+        exchange: 'Gate.io',
+        lastPrice: parseFloat(ticker.last),
+        price: parseFloat(ticker.last),
+        priceChangePercent24h: parseFloat(ticker.change_percentage),
+        changePercent24h: parseFloat(ticker.change_percentage),
+        high24h: parseFloat(ticker.high_24h),
+        low24h: parseFloat(ticker.low_24h),
+        volume24h: parseFloat(ticker.volume_24h),
+        quoteVolume24h: parseFloat(ticker.volume_24h_quote),
+      }));
+      results.push(...gateData);
+    }
+  } catch (error) {
+    console.error('Gate.io tickers error:', error);
+  }
+
+  // MEXC
+  try {
+    const res = await fetchWithTimeout('https://contract.mexc.com/api/v1/contract/ticker');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        const mexcData = json.data.map((ticker: any) => ({
+          symbol: ticker.symbol.replace(/_USDT|_USD/, ''),
+          exchange: 'MEXC',
+          lastPrice: ticker.lastPrice,
+          price: ticker.lastPrice,
+          priceChangePercent24h: ticker.riseFallRate * 100,
+          changePercent24h: ticker.riseFallRate * 100,
+          high24h: ticker.high24Price,
+          low24h: ticker.lower24Price,
+          volume24h: ticker.volume24,
+          quoteVolume24h: ticker.amount24,
+        }));
+        results.push(...mexcData);
+      }
+    }
+  } catch (error) {
+    console.error('MEXC tickers error:', error);
+  }
+
+  // Kraken Futures
+  try {
+    const res = await fetchWithTimeout('https://futures.kraken.com/derivatives/api/v3/tickers');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.tickers) {
+        const krakenData = json.tickers
+          .filter((t: any) => t.symbol.startsWith('PF_') && !t.suspended)
+          .map((ticker: any) => {
+            let symbol = ticker.symbol.replace(/^(PF_|PI_|FI_)/, '').replace(/(USD|USDT|PERP)$/, '');
+            if (symbol === 'XBT') symbol = 'BTC';
+            return {
+              symbol,
+              exchange: 'Kraken',
+              lastPrice: ticker.last,
+              price: ticker.last,
+              priceChangePercent24h: (ticker.change24h || 0) * 100,
+              changePercent24h: (ticker.change24h || 0) * 100,
+              high24h: 0,
+              low24h: 0,
+              volume24h: ticker.vol24h,
+              quoteVolume24h: ticker.vol24h * ticker.last,
+            };
+          });
+        results.push(...krakenData);
+      }
+    }
+  } catch (error) {
+    console.error('Kraken tickers error:', error);
+  }
+
+  // BingX
+  try {
+    const res = await fetchWithTimeout('https://open-api.bingx.com/openApi/swap/v2/quote/ticker');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 0 && json.data) {
+        const bingxData = json.data.map((ticker: any) => ({
+          symbol: ticker.symbol.replace(/-USDT|-USD/, ''),
+          exchange: 'BingX',
+          lastPrice: parseFloat(ticker.lastPrice),
+          price: parseFloat(ticker.lastPrice),
+          priceChangePercent24h: parseFloat(ticker.priceChangePercent),
+          changePercent24h: parseFloat(ticker.priceChangePercent),
+          high24h: parseFloat(ticker.highPrice),
+          low24h: parseFloat(ticker.lowPrice),
+          volume24h: parseFloat(ticker.volume),
+          quoteVolume24h: parseFloat(ticker.quoteVolume),
+        }));
+        results.push(...bingxData);
+      }
+    }
+  } catch (error) {
+    console.error('BingX tickers error:', error);
+  }
+
   return NextResponse.json(results);
 }

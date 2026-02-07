@@ -206,5 +206,108 @@ export async function GET() {
     console.error('dYdX OI error:', error);
   }
 
+  // Gate.io
+  try {
+    const res = await fetchWithTimeout('https://api.gateio.ws/api/v4/futures/usdt/tickers');
+    if (res.ok) {
+      const data = await res.json();
+      const gateData = data
+        .filter((t: any) => parseFloat(t.total_size) > 0)
+        .map((ticker: any) => ({
+          symbol: ticker.contract.replace(/_USDT|_USD/, ''),
+          exchange: 'Gate.io',
+          openInterest: parseFloat(ticker.total_size),
+          openInterestValue: parseFloat(ticker.total_size) * parseFloat(ticker.last),
+        }));
+      results.push(...gateData);
+    }
+  } catch (error) {
+    console.error('Gate.io OI error:', error);
+  }
+
+  // MEXC
+  try {
+    const res = await fetchWithTimeout('https://contract.mexc.com/api/v1/contract/ticker');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        const mexcData = json.data
+          .filter((t: any) => t.holdVol > 0)
+          .map((ticker: any) => ({
+            symbol: ticker.symbol.replace(/_USDT|_USD/, ''),
+            exchange: 'MEXC',
+            openInterest: ticker.holdVol,
+            openInterestValue: ticker.holdVol * ticker.lastPrice,
+          }));
+        results.push(...mexcData);
+      }
+    }
+  } catch (error) {
+    console.error('MEXC OI error:', error);
+  }
+
+  // Kraken Futures
+  try {
+    const res = await fetchWithTimeout('https://futures.kraken.com/derivatives/api/v3/tickers');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.tickers) {
+        const krakenData = json.tickers
+          .filter((t: any) => t.symbol.startsWith('PF_') && !t.suspended && t.openInterest > 0)
+          .map((ticker: any) => {
+            let symbol = ticker.symbol.replace(/^(PF_|PI_|FI_)/, '').replace(/(USD|USDT|PERP)$/, '');
+            if (symbol === 'XBT') symbol = 'BTC';
+            return {
+              symbol,
+              exchange: 'Kraken',
+              openInterest: ticker.openInterest,
+              openInterestValue: ticker.openInterest * ticker.last,
+            };
+          });
+        results.push(...krakenData);
+      }
+    }
+  } catch (error) {
+    console.error('Kraken OI error:', error);
+  }
+
+  // BingX
+  try {
+    // Get tickers for prices
+    const tickersRes = await fetchWithTimeout('https://open-api.bingx.com/openApi/swap/v2/quote/ticker');
+    const priceMap = new Map<string, number>();
+    if (tickersRes.ok) {
+      const tickersJson = await tickersRes.json();
+      if (tickersJson.code === 0 && tickersJson.data) {
+        tickersJson.data.forEach((t: any) => {
+          priceMap.set(t.symbol, parseFloat(t.lastPrice));
+        });
+      }
+    }
+
+    const res = await fetchWithTimeout('https://open-api.bingx.com/openApi/swap/v2/quote/openInterest');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 0 && json.data) {
+        const oiData = Array.isArray(json.data) ? json.data : [json.data];
+        const bingxData = oiData
+          .filter((oi: any) => parseFloat(oi.openInterest) > 0)
+          .map((oi: any) => {
+            const openInterest = parseFloat(oi.openInterest);
+            const price = priceMap.get(oi.symbol) || 0;
+            return {
+              symbol: oi.symbol.replace(/-USDT|-USD/, ''),
+              exchange: 'BingX',
+              openInterest,
+              openInterestValue: openInterest * price,
+            };
+          });
+        results.push(...bingxData);
+      }
+    }
+  } catch (error) {
+    console.error('BingX OI error:', error);
+  }
+
   return NextResponse.json(results);
 }

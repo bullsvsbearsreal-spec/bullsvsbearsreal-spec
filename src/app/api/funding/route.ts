@@ -258,5 +258,100 @@ export async function GET() {
     console.error('Lighter funding error:', error);
   }
 
+  // Gate.io
+  try {
+    const res = await fetchWithTimeout('https://api.gateio.ws/api/v4/futures/usdt/tickers');
+    if (res.ok) {
+      const data = await res.json();
+      const gateData = data
+        .filter((t: any) => t.funding_rate && parseFloat(t.funding_rate) !== 0)
+        .map((ticker: any) => ({
+          symbol: ticker.contract.replace(/_USDT|_USD/, ''),
+          exchange: 'Gate.io',
+          fundingRate: parseFloat(ticker.funding_rate) * 100,
+          markPrice: parseFloat(ticker.mark_price),
+          indexPrice: parseFloat(ticker.index_price),
+          nextFundingTime: Date.now() + 8 * 60 * 60 * 1000,
+        }));
+      results.push(...gateData);
+    }
+  } catch (error) {
+    console.error('Gate.io funding error:', error);
+  }
+
+  // MEXC
+  try {
+    const res = await fetchWithTimeout('https://contract.mexc.com/api/v1/contract/ticker');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        const mexcData = json.data
+          .filter((t: any) => t.fundingRate !== undefined)
+          .map((ticker: any) => ({
+            symbol: ticker.symbol.replace(/_USDT|_USD/, ''),
+            exchange: 'MEXC',
+            fundingRate: ticker.fundingRate * 100,
+            markPrice: ticker.fairPrice,
+            indexPrice: ticker.indexPrice,
+            nextFundingTime: Date.now() + 8 * 60 * 60 * 1000,
+          }));
+        results.push(...mexcData);
+      }
+    }
+  } catch (error) {
+    console.error('MEXC funding error:', error);
+  }
+
+  // Kraken Futures
+  try {
+    const res = await fetchWithTimeout('https://futures.kraken.com/derivatives/api/v3/tickers');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.tickers) {
+        const krakenData = json.tickers
+          .filter((t: any) => t.symbol.startsWith('PF_') && !t.suspended && t.fundingRate !== undefined)
+          .map((ticker: any) => {
+            let symbol = ticker.symbol.replace(/^(PF_|PI_|FI_)/, '').replace(/(USD|USDT|PERP)$/, '');
+            if (symbol === 'XBT') symbol = 'BTC';
+            return {
+              symbol,
+              exchange: 'Kraken',
+              fundingRate: ticker.fundingRate * 100,
+              markPrice: ticker.markPrice,
+              indexPrice: ticker.indexPrice,
+              nextFundingTime: Date.now() + 8 * 60 * 60 * 1000,
+            };
+          });
+        results.push(...krakenData);
+      }
+    }
+  } catch (error) {
+    console.error('Kraken funding error:', error);
+  }
+
+  // BingX
+  try {
+    const res = await fetchWithTimeout('https://open-api.bingx.com/openApi/swap/v2/quote/premiumIndex');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 0 && json.data) {
+        const rates = Array.isArray(json.data) ? json.data : [json.data];
+        const bingxData = rates
+          .filter((r: any) => r.lastFundingRate || r.fundingRate)
+          .map((rate: any) => ({
+            symbol: rate.symbol.replace(/-USDT|-USD/, ''),
+            exchange: 'BingX',
+            fundingRate: parseFloat(rate.lastFundingRate || rate.fundingRate) * 100,
+            markPrice: parseFloat(rate.markPrice),
+            indexPrice: parseFloat(rate.indexPrice),
+            nextFundingTime: rate.nextFundingTime,
+          }));
+        results.push(...bingxData);
+      }
+    }
+  } catch (error) {
+    console.error('BingX funding error:', error);
+  }
+
   return NextResponse.json(results);
 }
