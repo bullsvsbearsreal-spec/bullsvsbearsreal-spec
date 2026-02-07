@@ -1,5 +1,6 @@
 // BingX Futures API
 // Docs: https://bingx-api.github.io/docs/
+// Updated: 2026-02-07
 
 import { TickerData, FundingRateData, OpenInterestData } from './types';
 
