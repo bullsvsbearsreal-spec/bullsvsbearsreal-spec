@@ -1,4 +1,5 @@
 'use client';
+// Build: 2026-02-07-v2
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
