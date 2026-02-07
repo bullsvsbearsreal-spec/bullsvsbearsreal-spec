@@ -725,10 +725,10 @@ export default function FundingPage() {
                           </div>
                           <div className="text-right">
                             <div className="text-hub-yellow font-bold">
-                              Spread: {item.spread.toFixed(4)}%
+                              Spread: {(item.spread ?? 0).toFixed(4)}%
                             </div>
                             <div className="text-hub-gray-text text-xs">
-                              Annualized: {(item.spread * 3 * 365).toFixed(2)}%
+                              Annualized: {((item.spread ?? 0) * 3 * 365).toFixed(2)}%
                             </div>
                           </div>
                         </div>
