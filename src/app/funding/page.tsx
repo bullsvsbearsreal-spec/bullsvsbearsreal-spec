@@ -1,5 +1,4 @@
 'use client';
-// Build: 2026-02-07-v2
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
@@ -14,10 +13,7 @@ type SortOrder = 'asc' | 'desc';
 type ViewMode = 'table' | 'heatmap' | 'arbitrage';
 
 // Exchange list for heatmap columns
-const ALL_EXCHANGES = [
-  'Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
-  'Gate.io', 'MEXC', 'Kraken', 'BingX', 'KuCoin', 'HTX', 'Bitfinex', 'WOO X'
-];
+const ALL_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'];
 
 // Exchange colors for the selector
 const EXCHANGE_COLORS: Record<string, string> = {
@@ -29,14 +25,6 @@ const EXCHANGE_COLORS: Record<string, string> = {
   'dYdX': 'bg-purple-500',
   'Aster': 'bg-pink-500',
   'Lighter': 'bg-emerald-400',
-  'Gate.io': 'bg-blue-500',
-  'MEXC': 'bg-blue-400',
-  'Kraken': 'bg-indigo-500',
-  'BingX': 'bg-sky-400',
-  'KuCoin': 'bg-teal-500',
-  'HTX': 'bg-blue-600',
-  'Bitfinex': 'bg-green-600',
-  'WOO X': 'bg-slate-400',
 };
 
 // Priority symbols that should always appear first
@@ -291,8 +279,7 @@ export default function FundingPage() {
     return rate >= 0 ? `+${formatted}%` : `${formatted}%`;
   };
 
-  const getRateColor = (rate: number | null | undefined) => {
-    if (rate === null || rate === undefined || isNaN(rate)) return 'text-hub-gray-text';
+  const getRateColor = (rate: number) => {
     if (rate > 0.05) return 'text-success';
     if (rate < -0.05) return 'text-danger';
     return 'text-hub-gray-text';
@@ -319,16 +306,6 @@ export default function FundingPage() {
       'Bitget': 'bg-cyan-500/20 text-cyan-400',
       'Hyperliquid': 'bg-green-500/20 text-green-400',
       'dYdX': 'bg-purple-500/20 text-purple-400',
-      'Aster': 'bg-pink-500/20 text-pink-400',
-      'Lighter': 'bg-emerald-500/20 text-emerald-400',
-      'Gate.io': 'bg-blue-500/20 text-blue-400',
-      'MEXC': 'bg-blue-400/20 text-blue-300',
-      'Kraken': 'bg-indigo-500/20 text-indigo-400',
-      'BingX': 'bg-sky-500/20 text-sky-400',
-      'KuCoin': 'bg-teal-500/20 text-teal-400',
-      'HTX': 'bg-blue-600/20 text-blue-400',
-      'Bitfinex': 'bg-green-600/20 text-green-400',
-      'WOO X': 'bg-slate-500/20 text-slate-400',
     };
     return colors[exchange] || 'bg-hub-gray/50 text-hub-gray-text';
   };
@@ -579,8 +556,7 @@ export default function FundingPage() {
                     </thead>
                     <tbody>
                       {filteredAndSorted.slice(0, 100).map((fr, index) => {
-                        const rate = fr.fundingRate ?? 0;
-                        const annualized = rate * 3 * 365;
+                        const annualized = fr.fundingRate * 3 * 365;
                         return (
                           <tr
                             key={`${fr.symbol}-${fr.exchange}-${index}`}
@@ -598,8 +574,8 @@ export default function FundingPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <span className={`font-mono font-semibold ${getRateColor(rate)}`}>
-                                {formatRate(rate)}
+                              <span className={`font-mono font-semibold ${getRateColor(fr.fundingRate)}`}>
+                                {formatRate(fr.fundingRate)}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right">
@@ -726,10 +702,10 @@ export default function FundingPage() {
                           </div>
                           <div className="text-right">
                             <div className="text-hub-yellow font-bold">
-                              Spread: {(item.spread ?? 0).toFixed(4)}%
+                              Spread: {item.spread.toFixed(4)}%
                             </div>
                             <div className="text-hub-gray-text text-xs">
-                              Annualized: {((item.spread ?? 0) * 3 * 365).toFixed(2)}%
+                              Annualized: {(item.spread * 3 * 365).toFixed(2)}%
                             </div>
                           </div>
                         </div>
