@@ -50,12 +50,14 @@ export const krakenAPI = {
         .filter(t => t.symbol.startsWith('PF_') && !t.suspended)
         .map(ticker => ({
           symbol: normalizeSymbol(ticker.symbol),
+          lastPrice: ticker.last,
           price: ticker.last,
           priceChangePercent24h: ticker.change24h * 100,
           high24h: 0, // Not provided directly
           low24h: 0,
           volume24h: ticker.vol24h,
           quoteVolume24h: ticker.vol24h * ticker.last,
+          timestamp: Date.now(),
           exchange: 'Kraken',
         }));
     } catch (error) {
@@ -77,6 +79,7 @@ export const krakenAPI = {
         .map(ticker => ({
           symbol: normalizeSymbol(ticker.symbol),
           fundingRate: ticker.fundingRate,
+          fundingTime: Date.now(),
           nextFundingTime: Date.now() + 8 * 60 * 60 * 1000, // Approximate
           exchange: 'Kraken',
         }));
@@ -100,6 +103,7 @@ export const krakenAPI = {
           symbol: normalizeSymbol(ticker.symbol),
           openInterest: ticker.openInterest,
           openInterestValue: ticker.openInterest * ticker.last,
+          timestamp: Date.now(),
           exchange: 'Kraken',
         }));
     } catch (error) {

@@ -52,12 +52,14 @@ export const vertexAPI = {
           const price = parseFloat(product.oracle_price_x18) / 1e18;
           return {
             symbol: PRODUCT_SYMBOLS[product.product_id] || `PERP${product.product_id}`,
+            lastPrice: price,
             price,
             priceChangePercent24h: 0,
             high24h: 0,
             low24h: 0,
             volume24h: 0,
             quoteVolume24h: 0,
+            timestamp: Date.now(),
             exchange: 'Vertex',
           };
         });
@@ -88,6 +90,7 @@ export const vertexAPI = {
           symbol: PRODUCT_SYMBOLS[product.product_id] || `PERP${product.product_id}`,
           // Vertex uses hourly funding, convert to 8h equivalent
           fundingRate: (parseFloat(product.funding_rate_x18 || '0') / 1e18) * 100 * 8,
+          fundingTime: Date.now(),
           nextFundingTime: Date.now() + 3600000, // Hourly funding
           exchange: 'Vertex',
         }));
@@ -121,6 +124,7 @@ export const vertexAPI = {
             symbol: PRODUCT_SYMBOLS[product.product_id] || `PERP${product.product_id}`,
             openInterest: oi,
             openInterestValue: oi * price,
+            timestamp: Date.now(),
             exchange: 'Vertex',
           };
         });

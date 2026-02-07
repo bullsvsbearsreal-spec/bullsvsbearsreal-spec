@@ -36,12 +36,14 @@ export const gateioAPI = {
 
       return tickers.map(ticker => ({
         symbol: normalizeSymbol(ticker.contract),
+        lastPrice: parseFloat(ticker.last),
         price: parseFloat(ticker.last),
         priceChangePercent24h: parseFloat(ticker.change_percentage),
         high24h: parseFloat(ticker.high_24h),
         low24h: parseFloat(ticker.low_24h),
         volume24h: parseFloat(ticker.volume_24h),
         quoteVolume24h: parseFloat(ticker.volume_24h_quote),
+        timestamp: Date.now(),
         exchange: 'Gate.io',
       }));
     } catch (error) {
@@ -62,6 +64,7 @@ export const gateioAPI = {
         .map(ticker => ({
           symbol: normalizeSymbol(ticker.contract),
           fundingRate: parseFloat(ticker.funding_rate),
+          fundingTime: Date.now(),
           nextFundingTime: Date.now() + 8 * 60 * 60 * 1000,
           exchange: 'Gate.io',
         }));
@@ -84,6 +87,7 @@ export const gateioAPI = {
           symbol: normalizeSymbol(ticker.contract),
           openInterest: parseFloat(ticker.total_size),
           openInterestValue: parseFloat(ticker.total_size) * parseFloat(ticker.last),
+          timestamp: Date.now(),
           exchange: 'Gate.io',
         }));
     } catch (error) {

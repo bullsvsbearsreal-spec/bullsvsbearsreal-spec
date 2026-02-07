@@ -59,12 +59,14 @@ export const phemexAPI = {
 
           return {
             symbol: normalizeSymbol(ticker.symbol),
+            lastPrice: price,
             price,
             priceChangePercent24h: changePercent,
             high24h: high,
             low24h: low,
             volume24h: scaleVolume(ticker.volumeEv),
             quoteVolume24h: scaleVolume(ticker.turnoverEv),
+            timestamp: Date.now(),
             exchange: 'Phemex',
           };
         });
@@ -89,6 +91,7 @@ export const phemexAPI = {
         .map(ticker => ({
           symbol: normalizeSymbol(ticker.symbol),
           fundingRate: scaleFundingRate(ticker.fundingRateEr),
+          fundingTime: Date.now(),
           nextFundingTime: Date.now() + 8 * 60 * 60 * 1000,
           exchange: 'Phemex',
         }));
@@ -117,6 +120,7 @@ export const phemexAPI = {
             symbol: normalizeSymbol(ticker.symbol),
             openInterest: oi,
             openInterestValue: oi * price,
+            timestamp: Date.now(),
             exchange: 'Phemex',
           };
         });

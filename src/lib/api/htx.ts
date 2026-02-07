@@ -39,12 +39,14 @@ export const htxAPI = {
           const changePercent = open > 0 ? ((price - open) / open) * 100 : 0;
           return {
             symbol: normalizeSymbol(ticker.contract_code),
+            lastPrice: price,
             price,
             priceChangePercent24h: changePercent,
             high24h: parseFloat(ticker.high),
             low24h: parseFloat(ticker.low),
             volume24h: parseFloat(ticker.vol),
             quoteVolume24h: parseFloat(ticker.trade_turnover),
+            timestamp: Date.now(),
             exchange: 'HTX',
           };
         });
@@ -67,6 +69,7 @@ export const htxAPI = {
         .map((item: any) => ({
           symbol: normalizeSymbol(item.contract_code),
           fundingRate: parseFloat(item.funding_rate) * 100,
+          fundingTime: Date.now(),
           nextFundingTime: item.next_funding_time,
           exchange: 'HTX',
         }));
@@ -90,6 +93,7 @@ export const htxAPI = {
           symbol: normalizeSymbol(item.contract_code),
           openInterest: parseFloat(item.volume),
           openInterestValue: parseFloat(item.value),
+          timestamp: Date.now(),
           exchange: 'HTX',
         }));
     } catch (error) {

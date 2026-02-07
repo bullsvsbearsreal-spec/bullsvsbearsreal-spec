@@ -41,12 +41,14 @@ export const mexcAPI = {
 
       return tickers.map(ticker => ({
         symbol: normalizeSymbol(ticker.symbol),
+        lastPrice: ticker.lastPrice,
         price: ticker.lastPrice,
         priceChangePercent24h: ticker.riseFallRate * 100,
         high24h: ticker.high24Price,
         low24h: ticker.lower24Price,
         volume24h: ticker.volume24,
         quoteVolume24h: ticker.amount24,
+        timestamp: Date.now(),
         exchange: 'MEXC',
       }));
     } catch (error) {
@@ -70,6 +72,7 @@ export const mexcAPI = {
         .map(ticker => ({
           symbol: normalizeSymbol(ticker.symbol),
           fundingRate: ticker.fundingRate,
+          fundingTime: Date.now(),
           nextFundingTime: Date.now() + 8 * 60 * 60 * 1000,
           exchange: 'MEXC',
         }));
@@ -95,6 +98,7 @@ export const mexcAPI = {
           symbol: normalizeSymbol(ticker.symbol),
           openInterest: ticker.holdVol,
           openInterestValue: ticker.holdVol * ticker.lastPrice,
+          timestamp: Date.now(),
           exchange: 'MEXC',
         }));
     } catch (error) {

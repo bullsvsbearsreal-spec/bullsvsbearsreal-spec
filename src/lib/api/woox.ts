@@ -37,12 +37,14 @@ export const wooxAPI = {
           const price = ticker.mark_price || ticker.index_price;
           return {
             symbol: normalizeSymbol(ticker.symbol),
+            lastPrice: price,
             price,
             priceChangePercent24h: 0, // Calculate from 24h data if available
             high24h: 0,
             low24h: 0,
             volume24h: ticker.volume || 0,
             quoteVolume24h: (ticker.volume || 0) * price,
+            timestamp: Date.now(),
             exchange: 'WOO X',
           };
         });
@@ -65,6 +67,7 @@ export const wooxAPI = {
         .map((item: any) => ({
           symbol: normalizeSymbol(item.symbol),
           fundingRate: (item.last_funding_rate || 0) * 100,
+          fundingTime: Date.now(),
           nextFundingTime: item.next_funding_time || Date.now() + 8 * 60 * 60 * 1000,
           exchange: 'WOO X',
         }));
@@ -88,6 +91,7 @@ export const wooxAPI = {
           symbol: normalizeSymbol(item.symbol),
           openInterest: item.open_interest,
           openInterestValue: item.open_interest * (item.mark_price || item.index_price),
+          timestamp: Date.now(),
           exchange: 'WOO X',
         }));
     } catch (error) {

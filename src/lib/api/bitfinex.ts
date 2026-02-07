@@ -35,12 +35,14 @@ export const bitfinexAPI = {
 
           return {
             symbol: normalizeSymbol(ticker[0]),
+            lastPrice: price,
             price,
             priceChangePercent24h: dailyChangePercent,
             high24h: high,
             low24h: low,
             volume24h: volume,
             quoteVolume24h: volume * price,
+            timestamp: Date.now(),
             exchange: 'Bitfinex',
           };
         });
@@ -62,6 +64,7 @@ export const bitfinexAPI = {
         .map((item: any) => ({
           symbol: normalizeSymbol(item[0]),
           fundingRate: (item[10] || 0) * 100, // Current funding rate
+          fundingTime: Date.now(),
           nextFundingTime: item[11] || Date.now() + 3600000,
           exchange: 'Bitfinex',
         }))
@@ -85,6 +88,7 @@ export const bitfinexAPI = {
           symbol: normalizeSymbol(item[0]),
           openInterest: item[18], // Open interest
           openInterestValue: item[18] * (item[3] || 0), // OI * mark price
+          timestamp: Date.now(),
           exchange: 'Bitfinex',
         }));
     } catch (error) {

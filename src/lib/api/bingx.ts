@@ -51,12 +51,14 @@ export const bingxAPI = {
 
       return tickers.map(ticker => ({
         symbol: normalizeSymbol(ticker.symbol),
+        lastPrice: parseFloat(ticker.lastPrice),
         price: parseFloat(ticker.lastPrice),
         priceChangePercent24h: parseFloat(ticker.priceChangePercent),
         high24h: parseFloat(ticker.highPrice),
         low24h: parseFloat(ticker.lowPrice),
         volume24h: parseFloat(ticker.volume),
         quoteVolume24h: parseFloat(ticker.quoteVolume),
+        timestamp: Date.now(),
         exchange: 'BingX',
       }));
     } catch (error) {
@@ -80,6 +82,7 @@ export const bingxAPI = {
         .map(rate => ({
           symbol: normalizeSymbol(rate.symbol),
           fundingRate: parseFloat(rate.fundingRate || rate.lastFundingRate),
+          fundingTime: Date.now(),
           nextFundingTime: rate.nextFundingTime,
           exchange: 'BingX',
         }));
@@ -118,6 +121,7 @@ export const bingxAPI = {
             symbol: normalizeSymbol(oi.symbol),
             openInterest,
             openInterestValue: openInterest * price,
+            timestamp: Date.now(),
             exchange: 'BingX',
           };
         });

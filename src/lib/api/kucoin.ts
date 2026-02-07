@@ -46,12 +46,14 @@ export const kucoinAPI = {
         .filter((c: any) => c.symbol.endsWith('USDTM'))
         .map((contract: any) => ({
           symbol: normalizeSymbol(contract.symbol),
+          lastPrice: contract.markPrice,
           price: contract.markPrice,
           priceChangePercent24h: 0, // Need separate endpoint
           high24h: 0,
           low24h: 0,
           volume24h: parseFloat(contract.turnoverOf24h) || 0,
           quoteVolume24h: parseFloat(contract.turnoverOf24h) || 0,
+          timestamp: Date.now(),
           exchange: 'KuCoin',
         }));
     } catch (error) {
@@ -73,6 +75,7 @@ export const kucoinAPI = {
         .map((contract: any) => ({
           symbol: normalizeSymbol(contract.symbol),
           fundingRate: contract.fundingFeeRate,
+          fundingTime: Date.now(),
           nextFundingTime: contract.nextFundingRateTime,
           exchange: 'KuCoin',
         }));
@@ -96,6 +99,7 @@ export const kucoinAPI = {
           symbol: normalizeSymbol(contract.symbol),
           openInterest: parseFloat(contract.openInterest),
           openInterestValue: parseFloat(contract.openInterest) * contract.markPrice,
+          timestamp: Date.now(),
           exchange: 'KuCoin',
         }));
     } catch (error) {
