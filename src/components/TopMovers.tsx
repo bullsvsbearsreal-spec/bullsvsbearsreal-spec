@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Flame, Snowflake } from 'lucide-react';
+import { Flame } from 'lucide-react';
 import { TokenIconSimple } from './TokenIcon';
 import { fetchTopMovers } from '@/lib/api/aggregator';
 import { TickerData } from '@/lib/api/types';
@@ -34,49 +34,39 @@ export default function TopMovers() {
   const items = view === 'gainers' ? gainers : losers;
 
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+    <div className="glass-card rounded-2xl p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-            view === 'gainers' ? 'bg-success/20' : 'bg-danger/20'
-          }`}>
-            {view === 'gainers' ? (
-              <Flame className="w-5 h-5 text-success" />
-            ) : (
-              <Snowflake className="w-5 h-5 text-danger" />
-            )}
+          <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+            <Flame className="w-5 h-5 text-hub-yellow" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">
-              Top {view === 'gainers' ? 'Gainers' : 'Losers'}
-            </h3>
+            <h3 className="text-lg font-bold text-white">Top Movers</h3>
             <p className="text-hub-gray-text text-xs">24h price change</p>
           </div>
         </div>
 
         {/* Toggle */}
-        <div className="flex rounded-xl overflow-hidden bg-hub-gray/30 border border-hub-gray/30">
+        <div className="flex rounded-lg overflow-hidden bg-hub-gray/30">
           <button
             onClick={() => setView('gainers')}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1 ${
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
               view === 'gainers'
-                ? 'bg-success text-black'
+                ? 'bg-hub-yellow text-black'
                 : 'text-hub-gray-text hover:text-white'
             }`}
           >
-            <TrendingUp className="w-3 h-3" />
             Gainers
           </button>
           <button
             onClick={() => setView('losers')}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1 ${
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
               view === 'losers'
-                ? 'bg-danger text-white'
+                ? 'bg-hub-yellow text-black'
                 : 'text-hub-gray-text hover:text-white'
             }`}
           >
-            <TrendingDown className="w-3 h-3" />
             Losers
           </button>
         </div>
@@ -86,7 +76,7 @@ export default function TopMovers() {
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-xl" />
+            <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-lg" />
           ))}
         </div>
       ) : (
@@ -94,32 +84,23 @@ export default function TopMovers() {
           {items.slice(0, 5).map((item, index) => (
             <div
               key={item.symbol}
-              className="flex items-center justify-between p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all group"
+              className="flex items-center justify-between p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="text-hub-gray-text text-xs w-5">{index + 1}</span>
-                <TokenIconSimple symbol={item.symbol} size={32} />
-                <span className="text-white font-medium group-hover:text-hub-yellow transition-colors">
-                  {item.symbol}
-                </span>
+                <span className="text-hub-gray-text text-xs w-4 font-mono">{index + 1}</span>
+                <TokenIconSimple symbol={item.symbol} size={28} />
+                <span className="text-white font-medium">{item.symbol}</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-white font-mono text-sm">
+                <span className="text-hub-gray-text font-mono text-sm">
                   {formatPrice(item.lastPrice)}
                 </span>
-                <div className={`flex items-center gap-1 min-w-[80px] justify-end ${
+                <span className={`font-semibold text-sm min-w-[70px] text-right ${
                   item.priceChangePercent24h >= 0 ? 'text-success' : 'text-danger'
                 }`}>
-                  {item.priceChangePercent24h >= 0 ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  <span className="font-semibold text-sm">
-                    {item.priceChangePercent24h >= 0 ? '+' : ''}
-                    {item.priceChangePercent24h.toFixed(2)}%
-                  </span>
-                </div>
+                  {item.priceChangePercent24h >= 0 ? '+' : ''}
+                  {item.priceChangePercent24h.toFixed(2)}%
+                </span>
               </div>
             </div>
           ))}

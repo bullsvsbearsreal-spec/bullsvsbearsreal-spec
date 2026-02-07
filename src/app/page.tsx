@@ -14,10 +14,10 @@ import OIChangeWidget from '@/components/OIChangeWidget';
 import LongShortRatio from '@/components/LongShortRatio';
 import MarketIndices from '@/components/MarketIndices';
 import CoinSearch from '@/components/CoinSearch';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 import {
-  Sparkles, ArrowRight, TrendingUp, Zap, BarChart3, Newspaper,
-  DollarSign, Activity, Globe, ExternalLink
+  Sparkles, ArrowRight, TrendingUp, Zap, BarChart3, Newspaper
 } from 'lucide-react';
 
 // Import API functions
@@ -74,8 +74,8 @@ export default function Home() {
         {/* Hero Section */}
         <section className="mb-10 animate-slideUp">
           <div className="flex items-center gap-2 mb-4">
-            <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-hub-yellow/20 to-hub-orange/20 border border-hub-yellow/30">
-              <span className="text-xs font-semibold text-hub-yellow flex items-center gap-1.5">
+            <div className="px-3 py-1.5 rounded-lg bg-hub-yellow/10">
+              <span className="text-xs font-medium text-hub-yellow flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3" />
                 Live Market Data
               </span>
@@ -84,7 +84,7 @@ export default function Home() {
 
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
             <span className="text-white">Welcome to </span>
-            <span className="text-gradient animate-shine">InfoHub</span>
+            <span className="text-gradient">InfoHub</span>
           </h1>
 
           <p className="text-hub-gray-text text-lg md:text-xl max-w-2xl mb-8">
@@ -147,7 +147,7 @@ export default function Home() {
         <section className="mb-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Funding Rates Preview */}
-            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
@@ -164,9 +164,9 @@ export default function Home() {
               </div>
 
               {loading ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="animate-pulse h-10 bg-hub-gray/30 rounded-lg" />
+                    <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-lg" />
                   ))}
                 </div>
               ) : (
@@ -174,10 +174,11 @@ export default function Home() {
                   {topFunding.map((item, index) => (
                     <div
                       key={`${item.symbol}-${item.exchange}-${index}`}
-                      className="flex items-center justify-between p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all"
+                      className="flex items-center justify-between p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-hub-gray-text text-xs w-4">{index + 1}</span>
+                        <span className="text-hub-gray-text text-xs w-4 font-mono">{index + 1}</span>
+                        <TokenIconSimple symbol={item.symbol} size={24} />
                         <span className="text-white font-medium text-sm">{item.symbol}</span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -198,7 +199,7 @@ export default function Home() {
             <OIChangeWidget />
 
             {/* News Preview */}
-            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
@@ -215,22 +216,22 @@ export default function Home() {
               </div>
 
               {loading ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {[1, 2, 3, 4].map((i) => (
                     <div key={i} className="animate-pulse h-16 bg-hub-gray/30 rounded-lg" />
                   ))}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {latestNews.map((article, index) => (
                     <a
                       key={article.id || index}
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all group"
+                      className="block p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
                     >
-                      <h4 className="text-white text-sm font-medium line-clamp-2 group-hover:text-hub-yellow transition-colors">
+                      <h4 className="text-white text-sm font-medium line-clamp-2">
                         {article.title}
                       </h4>
                       <div className="flex items-center gap-2 mt-2">
@@ -248,14 +249,14 @@ export default function Home() {
 
         {/* Data Sources */}
         <section className="mb-10">
-          <div className="bg-hub-gray/30 rounded-xl p-6">
+          <div className="glass-card rounded-2xl p-6">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-white font-semibold text-lg">Connected Exchanges</h3>
                 <p className="text-hub-gray-text text-sm mt-1">Real-time data from 8 exchanges</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
+                <span className="h-2 w-2 rounded-full bg-success"></span>
                 <span className="text-xs text-hub-gray-text">All Connected</span>
               </div>
             </div>
@@ -264,7 +265,7 @@ export default function Home() {
               {['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'].map((exchange) => (
                 <div
                   key={exchange}
-                  className="flex items-center justify-center gap-2 py-3 rounded-lg bg-hub-gray/40 hover:bg-hub-gray/50 transition-colors"
+                  className="flex items-center justify-center py-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
                 >
                   <span className="text-white text-sm font-medium">{exchange}</span>
                 </div>
@@ -288,7 +289,7 @@ function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-hub-yellow to-hub-orange rounded-xl flex items-center justify-center shadow-lg shadow-hub-yellow/20">
+              <div className="w-10 h-10 bg-gradient-to-br from-hub-yellow to-hub-orange rounded-xl flex items-center justify-center">
                 <span className="text-hub-black font-bold">iH</span>
               </div>
               <span className="text-xl font-bold">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { TokenIconSimple } from './TokenIcon';
 import { fetchLongShortRatio } from '@/lib/api/aggregator';
 
@@ -43,11 +43,11 @@ export default function LongShortRatio() {
   }, []);
 
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+    <div className="glass-card rounded-2xl p-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-          <Users className="w-5 h-5 text-purple-400" />
+        <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+          <Users className="w-5 h-5 text-hub-yellow" />
         </div>
         <div>
           <h3 className="text-lg font-bold text-white">Long/Short Ratio</h3>
@@ -59,7 +59,7 @@ export default function LongShortRatio() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse h-16 bg-hub-gray/30 rounded-xl" />
+            <div key={i} className="animate-pulse h-16 bg-hub-gray/30 rounded-lg" />
           ))}
         </div>
       ) : (
@@ -69,7 +69,7 @@ export default function LongShortRatio() {
             return (
               <div
                 key={item.symbol}
-                className="p-3 rounded-xl bg-hub-gray/30"
+                className="p-3 rounded-lg bg-hub-gray/20"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -79,20 +79,12 @@ export default function LongShortRatio() {
                   <span className={`text-xs font-medium ${
                     isLongDominant ? 'text-success' : 'text-danger'
                   }`}>
-                    {isLongDominant ? (
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" /> Bullish
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        <TrendingDown className="w-3 h-3" /> Bearish
-                      </span>
-                    )}
+                    {isLongDominant ? 'Bullish' : 'Bearish'}
                   </span>
                 </div>
 
                 {/* Progress bar */}
-                <div className="flex h-2 rounded-full overflow-hidden bg-hub-gray/50">
+                <div className="flex h-1.5 rounded-full overflow-hidden bg-hub-gray/40">
                   <div
                     className="bg-success transition-all duration-500"
                     style={{ width: `${item.longRatio}%` }}
@@ -106,10 +98,10 @@ export default function LongShortRatio() {
                 {/* Labels */}
                 <div className="flex justify-between mt-2 text-xs">
                   <span className="text-success">
-                    Long {item.longRatio.toFixed(2)}%
+                    Long {item.longRatio.toFixed(1)}%
                   </span>
                   <span className="text-danger">
-                    Short {item.shortRatio.toFixed(2)}%
+                    Short {item.shortRatio.toFixed(1)}%
                   </span>
                 </div>
               </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
+import { TokenIconSimple } from './TokenIcon';
 import { fetchOIChanges } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
 
@@ -35,12 +36,12 @@ export default function OIChangeWidget() {
   }, []);
 
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+    <div className="glass-card rounded-2xl p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-blue-400" />
+          <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-hub-yellow" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Top Open Interest</h3>
@@ -53,7 +54,7 @@ export default function OIChangeWidget() {
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-xl" />
+            <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-lg" />
           ))}
         </div>
       ) : (
@@ -61,15 +62,11 @@ export default function OIChangeWidget() {
           {oiData.slice(0, 5).map((item, index) => (
             <div
               key={`${item.symbol}-${item.exchange}`}
-              className="flex items-center justify-between p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all"
+              className="flex items-center justify-between p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="text-hub-gray-text text-xs w-5">{index + 1}</span>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/30 to-blue-600/20 flex items-center justify-center">
-                  <span className="text-xs font-bold text-blue-400">
-                    {item.symbol.slice(0, 2)}
-                  </span>
-                </div>
+                <span className="text-hub-gray-text text-xs w-4 font-mono">{index + 1}</span>
+                <TokenIconSimple symbol={item.symbol} size={28} />
                 <div>
                   <span className="text-white font-medium">{item.symbol}</span>
                   <span className="text-hub-gray-text text-xs ml-2">{item.exchange}</span>

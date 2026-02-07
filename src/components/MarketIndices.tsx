@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Activity, TrendingUp, TrendingDown, DollarSign, Bitcoin } from 'lucide-react';
+import { Activity, DollarSign, Bitcoin } from 'lucide-react';
 import { fetchAllTickers } from '@/lib/api/aggregator';
 
 interface IndexData {
@@ -81,10 +81,10 @@ export default function MarketIndices() {
   }, []);
 
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+    <div className="glass-card rounded-2xl p-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-hub-yellow/20 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
           <Activity className="w-5 h-5 text-hub-yellow" />
         </div>
         <div>
@@ -97,7 +97,7 @@ export default function MarketIndices() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="animate-pulse h-14 bg-hub-gray/30 rounded-xl" />
+            <div key={i} className="animate-pulse h-14 bg-hub-gray/30 rounded-lg" />
           ))}
         </div>
       ) : (
@@ -105,7 +105,7 @@ export default function MarketIndices() {
           {indices.map((index) => (
             <div
               key={index.name}
-              className="flex items-center justify-between p-3 rounded-xl bg-hub-gray/30 hover:bg-hub-gray/40 transition-all"
+              className="flex items-center justify-between p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center text-hub-yellow">
@@ -115,16 +115,11 @@ export default function MarketIndices() {
               </div>
               <div className="text-right">
                 <div className="text-white font-semibold">{index.value}</div>
-                <div className={`text-xs flex items-center gap-1 justify-end ${
+                <span className={`text-xs ${
                   index.change >= 0 ? 'text-success' : 'text-danger'
                 }`}>
-                  {index.change >= 0 ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
                   {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)}%
-                </div>
+                </span>
               </div>
             </div>
           ))}

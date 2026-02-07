@@ -143,24 +143,24 @@ export default function LiquidationHeatmap() {
     const intensity = Math.min((value / maxValue) * 100, 100);
     if (isLong) {
       // Red for longs (price dropped)
-      if (intensity > 70) return 'bg-red-500';
-      if (intensity > 40) return 'bg-red-600';
-      return 'bg-red-700';
+      if (intensity > 70) return 'bg-danger';
+      if (intensity > 40) return 'bg-danger/80';
+      return 'bg-danger/60';
     } else {
       // Green for shorts (price rose)
-      if (intensity > 70) return 'bg-green-500';
-      if (intensity > 40) return 'bg-green-600';
-      return 'bg-green-700';
+      if (intensity > 70) return 'bg-success';
+      if (intensity > 40) return 'bg-success/80';
+      return 'bg-success/60';
     }
   };
 
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+    <div className="glass-card rounded-2xl p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-orange-400" />
+          <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-hub-yellow" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Liquidation Heatmap</h3>
@@ -171,7 +171,7 @@ export default function LiquidationHeatmap() {
         </div>
 
         {/* Timeframe selector */}
-        <div className="flex rounded-xl overflow-hidden bg-hub-gray/30 border border-hub-gray/30">
+        <div className="flex rounded-lg overflow-hidden bg-hub-gray/30">
           {(['1h', '4h', '12h', '24h'] as const).map((tf) => (
             <button
               key={tf}
@@ -189,34 +189,33 @@ export default function LiquidationHeatmap() {
       </div>
 
       {/* Total Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-hub-gray/30 rounded-xl p-3 text-center">
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-hub-gray/20 rounded-lg p-3 text-center">
           <div className="text-xs text-hub-gray-text mb-1">{timeframe} Rekt</div>
           <div className="text-lg font-bold text-white">{formatValue(totals.total)}</div>
         </div>
-        <div className="bg-success/10 border border-success/20 rounded-xl p-3 text-center">
-          <div className="text-xs text-success mb-1">Long</div>
-          <div className="text-lg font-bold text-success">{formatValue(totals.longs)}</div>
+        <div className="bg-hub-gray/20 rounded-lg p-3 text-center">
+          <div className="text-xs text-hub-gray-text mb-1">Long</div>
+          <div className="text-lg font-bold text-danger">{formatValue(totals.longs)}</div>
         </div>
-        <div className="bg-danger/10 border border-danger/20 rounded-xl p-3 text-center">
-          <div className="text-xs text-danger mb-1">Short</div>
-          <div className="text-lg font-bold text-danger">{formatValue(totals.shorts)}</div>
+        <div className="bg-hub-gray/20 rounded-lg p-3 text-center">
+          <div className="text-xs text-hub-gray-text mb-1">Short</div>
+          <div className="text-lg font-bold text-success">{formatValue(totals.shorts)}</div>
         </div>
       </div>
 
       {/* Treemap Grid */}
       {sortedLiqs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-hub-gray-text">
-          <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
+          <RefreshCw className="w-6 h-6 animate-spin mb-3 opacity-50" />
           <p className="text-sm">Collecting liquidation data...</p>
-          <p className="text-xs mt-1">Large liquidations will appear here</p>
+          <p className="text-xs mt-1 opacity-70">Large liquidations will appear here</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
           {sortedLiqs.map((liq, index) => {
             // Determine dominant side
             const isLongDominant = liq.longValue > liq.shortValue;
-            const dominantValue = isLongDominant ? liq.longValue : liq.shortValue;
             const bgColor = getColorIntensity(liq.totalValue, isLongDominant);
 
             // Size based on value (larger values get more height)
@@ -225,7 +224,7 @@ export default function LiquidationHeatmap() {
             return (
               <div
                 key={liq.symbol}
-                className={`${bgColor} ${sizeClass} rounded-xl p-3 flex flex-col justify-between transition-all hover:scale-[1.02] cursor-pointer`}
+                className={`${bgColor} ${sizeClass} rounded-lg p-3 flex flex-col justify-between transition-transform hover:scale-[1.02]`}
               >
                 <div className="text-white font-bold text-sm md:text-base">
                   {liq.symbol}
@@ -242,11 +241,11 @@ export default function LiquidationHeatmap() {
       {/* Legend */}
       <div className="flex items-center justify-center gap-6 mt-4 text-xs text-hub-gray-text">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-red-500" />
+          <div className="w-3 h-3 rounded bg-danger" />
           <span>Long Liquidations</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-green-500" />
+          <div className="w-3 h-3 rounded bg-success" />
           <span>Short Liquidations</span>
         </div>
       </div>
