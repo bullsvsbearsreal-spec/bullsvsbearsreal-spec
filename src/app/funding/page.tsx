@@ -290,7 +290,8 @@ export default function FundingPage() {
     return rate >= 0 ? `+${formatted}%` : `${formatted}%`;
   };
 
-  const getRateColor = (rate: number) => {
+  const getRateColor = (rate: number | null | undefined) => {
+    if (rate === null || rate === undefined || isNaN(rate)) return 'text-hub-gray-text';
     if (rate > 0.05) return 'text-success';
     if (rate < -0.05) return 'text-danger';
     return 'text-hub-gray-text';
@@ -577,7 +578,8 @@ export default function FundingPage() {
                     </thead>
                     <tbody>
                       {filteredAndSorted.slice(0, 100).map((fr, index) => {
-                        const annualized = fr.fundingRate * 3 * 365;
+                        const rate = fr.fundingRate ?? 0;
+                        const annualized = rate * 3 * 365;
                         return (
                           <tr
                             key={`${fr.symbol}-${fr.exchange}-${index}`}
@@ -595,8 +597,8 @@ export default function FundingPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <span className={`font-mono font-semibold ${getRateColor(fr.fundingRate)}`}>
-                                {formatRate(fr.fundingRate)}
+                              <span className={`font-mono font-semibold ${getRateColor(rate)}`}>
+                                {formatRate(rate)}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right">
