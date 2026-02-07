@@ -326,20 +326,18 @@ export default function FundingPage() {
               Real-time perpetual funding rates across all major exchanges
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {lastUpdate && (
-              <span className="text-sm text-hub-gray-text flex items-center gap-1">
-                <Clock className="w-4 h-4" />
+              <span className="text-sm text-hub-gray-text">
                 {lastUpdate.toLocaleTimeString()}
               </span>
             )}
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-hub-yellow/20 hover:bg-hub-yellow/30 border border-hub-yellow/30 rounded-xl text-hub-yellow transition-colors disabled:opacity-50"
+              className="text-hub-gray-text hover:text-white transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>

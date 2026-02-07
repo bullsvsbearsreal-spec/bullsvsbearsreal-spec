@@ -144,21 +144,15 @@ export default function Header() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            {/* Search Button */}
-            <Link
-              href="/"
-              className="p-2.5 rounded-xl text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all duration-300"
-            >
+            {/* Search */}
+            <button className="text-hub-gray-text hover:text-white transition-colors">
               <Search className="w-5 h-5" />
-            </Link>
+            </button>
 
-            {/* Live Status Badge */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-              </span>
-              <span className="text-xs text-success font-medium">Live</span>
+            {/* Live Status */}
+            <div className="hidden sm:flex items-center gap-1.5 text-emerald-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              <span className="text-sm">Live</span>
             </div>
 
             {/* Mobile menu button */}
