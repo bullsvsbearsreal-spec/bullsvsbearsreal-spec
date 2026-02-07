@@ -13,7 +13,10 @@ type SortOrder = 'asc' | 'desc';
 type ViewMode = 'table' | 'heatmap' | 'arbitrage';
 
 // Exchange list for heatmap columns
-const ALL_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'];
+const ALL_EXCHANGES = [
+  'Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
+  'Gate.io', 'MEXC', 'Kraken', 'BingX', 'KuCoin', 'HTX', 'Bitfinex', 'WOO X'
+];
 
 // Exchange colors for the selector
 const EXCHANGE_COLORS: Record<string, string> = {
@@ -25,6 +28,14 @@ const EXCHANGE_COLORS: Record<string, string> = {
   'dYdX': 'bg-purple-500',
   'Aster': 'bg-pink-500',
   'Lighter': 'bg-emerald-400',
+  'Gate.io': 'bg-blue-500',
+  'MEXC': 'bg-blue-400',
+  'Kraken': 'bg-indigo-500',
+  'BingX': 'bg-sky-400',
+  'KuCoin': 'bg-teal-500',
+  'HTX': 'bg-blue-600',
+  'Bitfinex': 'bg-green-600',
+  'WOO X': 'bg-slate-400',
 };
 
 // Priority symbols that should always appear first
@@ -306,6 +317,16 @@ export default function FundingPage() {
       'Bitget': 'bg-cyan-500/20 text-cyan-400',
       'Hyperliquid': 'bg-green-500/20 text-green-400',
       'dYdX': 'bg-purple-500/20 text-purple-400',
+      'Aster': 'bg-pink-500/20 text-pink-400',
+      'Lighter': 'bg-emerald-500/20 text-emerald-400',
+      'Gate.io': 'bg-blue-500/20 text-blue-400',
+      'MEXC': 'bg-blue-400/20 text-blue-300',
+      'Kraken': 'bg-indigo-500/20 text-indigo-400',
+      'BingX': 'bg-sky-500/20 text-sky-400',
+      'KuCoin': 'bg-teal-500/20 text-teal-400',
+      'HTX': 'bg-blue-600/20 text-blue-400',
+      'Bitfinex': 'bg-green-600/20 text-green-400',
+      'WOO X': 'bg-slate-500/20 text-slate-400',
     };
     return colors[exchange] || 'bg-hub-gray/50 text-hub-gray-text';
   };
