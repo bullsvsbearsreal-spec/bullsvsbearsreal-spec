@@ -80,7 +80,7 @@ export interface ExchangeAPIConfig {
   requiresAuth: boolean;
 }
 
-export type SupportedExchange = 'binance' | 'bybit' | 'okx' | 'bitget';
+export type SupportedExchange = 'binance' | 'bybit' | 'okx' | 'bitget' | 'gateio' | 'mexc' | 'kraken' | 'bingx' | 'phemex';
 
 export const EXCHANGE_CONFIGS: Record<SupportedExchange, ExchangeAPIConfig> = {
   binance: {
@@ -109,6 +109,36 @@ export const EXCHANGE_CONFIGS: Record<SupportedExchange, ExchangeAPIConfig> = {
     baseUrl: 'https://api.bitget.com',
     wsUrl: 'wss://ws.bitget.com',
     rateLimit: 600,
+    requiresAuth: false,
+  },
+  gateio: {
+    name: 'Gate.io',
+    baseUrl: 'https://api.gateio.ws/api/v4',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  mexc: {
+    name: 'MEXC',
+    baseUrl: 'https://contract.mexc.com/api/v1',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  kraken: {
+    name: 'Kraken',
+    baseUrl: 'https://futures.kraken.com/derivatives/api/v3',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  bingx: {
+    name: 'BingX',
+    baseUrl: 'https://open-api.bingx.com',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  phemex: {
+    name: 'Phemex',
+    baseUrl: 'https://api.phemex.com',
+    rateLimit: 300,
     requiresAuth: false,
   },
 };

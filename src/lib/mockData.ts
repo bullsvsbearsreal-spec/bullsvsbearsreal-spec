@@ -11,6 +11,8 @@ export const exchanges: Exchange[] = [
   { id: 'kucoin', name: 'KuCoin', type: 'CEX' },
   { id: 'mexc', name: 'MEXC', type: 'CEX' },
   { id: 'kraken', name: 'Kraken', type: 'CEX' },
+  { id: 'bingx', name: 'BingX', type: 'CEX' },
+  { id: 'phemex', name: 'Phemex', type: 'CEX' },
   { id: 'hyperliquid', name: 'Hyperliquid', type: 'DEX' },
   { id: 'gmx', name: 'GMX', type: 'DEX' },
   { id: 'gtrade', name: 'gTrade', type: 'DEX' },

@@ -195,5 +195,166 @@ export async function GET() {
     console.error('dYdX tickers error:', error);
   }
 
+  // Gate.io
+  try {
+    const res = await fetchWithTimeout('https://api.gateio.ws/api/v4/futures/usdt/contracts');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const gateData = data
+          .filter((t: any) => t.name.endsWith('_USDT'))
+          .map((ticker: any) => {
+            const lastPrice = parseFloat(ticker.last_price) || parseFloat(ticker.mark_price) || 0;
+            return {
+              symbol: ticker.name.replace('_USDT', ''),
+              exchange: 'Gate.io',
+              lastPrice,
+              price: lastPrice,
+              priceChangePercent24h: parseFloat(ticker.change_percentage) || 0,
+              changePercent24h: parseFloat(ticker.change_percentage) || 0,
+              high24h: parseFloat(ticker.high_24h) || 0,
+              low24h: parseFloat(ticker.low_24h) || 0,
+              volume24h: parseFloat(ticker.volume_24h) || 0,
+              quoteVolume24h: parseFloat(ticker.volume_24h_usd) || 0,
+            };
+          })
+          .filter((item: any) => item.lastPrice > 0);
+        results.push(...gateData);
+      }
+    }
+  } catch (error) {
+    console.error('Gate.io tickers error:', error);
+  }
+
+  // MEXC
+  try {
+    const res = await fetchWithTimeout('https://contract.mexc.com/api/v1/contract/ticker');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const mexcData = json.data
+          .filter((t: any) => t.symbol.endsWith('_USDT'))
+          .map((ticker: any) => {
+            const lastPrice = parseFloat(ticker.lastPrice);
+            return {
+              symbol: ticker.symbol.replace('_USDT', ''),
+              exchange: 'MEXC',
+              lastPrice,
+              price: lastPrice,
+              priceChangePercent24h: parseFloat(ticker.riseFallRate) * 100 || 0,
+              changePercent24h: parseFloat(ticker.riseFallRate) * 100 || 0,
+              high24h: parseFloat(ticker.high24Price) || 0,
+              low24h: parseFloat(ticker.low24Price) || 0,
+              volume24h: parseFloat(ticker.volume24) || 0,
+              quoteVolume24h: parseFloat(ticker.amount24) || 0,
+            };
+          })
+          .filter((item: any) => item.lastPrice > 0);
+        results.push(...mexcData);
+      }
+    }
+  } catch (error) {
+    console.error('MEXC tickers error:', error);
+  }
+
+  // Kraken Futures
+  try {
+    const res = await fetchWithTimeout('https://futures.kraken.com/derivatives/api/v3/tickers');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.result === 'success' && Array.isArray(json.tickers)) {
+        const krakenData = json.tickers
+          .filter((t: any) => t.symbol.startsWith('PF_') && t.symbol.endsWith('USD'))
+          .map((ticker: any) => {
+            let sym = ticker.symbol.replace('PF_', '').replace('USD', '');
+            if (sym === 'XBT') sym = 'BTC';
+            const lastPrice = ticker.last || ticker.markPrice || 0;
+            const open = ticker.open24h || lastPrice;
+            const changePercent = open > 0 ? ((lastPrice - open) / open) * 100 : 0;
+            return {
+              symbol: sym,
+              exchange: 'Kraken',
+              lastPrice,
+              price: lastPrice,
+              priceChangePercent24h: changePercent,
+              changePercent24h: changePercent,
+              high24h: ticker.high24h || 0,
+              low24h: ticker.low24h || 0,
+              volume24h: ticker.vol24h || 0,
+              quoteVolume24h: (ticker.vol24h || 0) * lastPrice,
+            };
+          })
+          .filter((item: any) => item.lastPrice > 0);
+        results.push(...krakenData);
+      }
+    }
+  } catch (error) {
+    console.error('Kraken tickers error:', error);
+  }
+
+  // BingX
+  try {
+    const res = await fetchWithTimeout('https://open-api.bingx.com/openApi/swap/v2/quote/ticker');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 0 && Array.isArray(json.data)) {
+        const bingxData = json.data
+          .filter((t: any) => t.symbol.endsWith('-USDT'))
+          .map((ticker: any) => {
+            const lastPrice = parseFloat(ticker.lastPrice);
+            return {
+              symbol: ticker.symbol.replace('-USDT', ''),
+              exchange: 'BingX',
+              lastPrice,
+              price: lastPrice,
+              priceChangePercent24h: parseFloat(ticker.priceChangePercent) || 0,
+              changePercent24h: parseFloat(ticker.priceChangePercent) || 0,
+              high24h: parseFloat(ticker.highPrice) || 0,
+              low24h: parseFloat(ticker.lowPrice) || 0,
+              volume24h: parseFloat(ticker.volume) || 0,
+              quoteVolume24h: parseFloat(ticker.quoteVolume) || 0,
+            };
+          })
+          .filter((item: any) => item.lastPrice > 0);
+        results.push(...bingxData);
+      }
+    }
+  } catch (error) {
+    console.error('BingX tickers error:', error);
+  }
+
+  // Phemex
+  try {
+    const res = await fetchWithTimeout('https://api.phemex.com/md/v2/ticker/24hr/all');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 0 && Array.isArray(json.result)) {
+        const phemexData = json.result
+          .filter((t: any) => t.symbol && t.symbol.endsWith('USDT'))
+          .map((ticker: any) => {
+            const lastPrice = (ticker.lastEp || 0) / 1e4;
+            const openPrice = (ticker.openEp || 0) / 1e4;
+            const changePercent = openPrice > 0 ? ((lastPrice - openPrice) / openPrice) * 100 : 0;
+            return {
+              symbol: ticker.symbol.replace('USDT', ''),
+              exchange: 'Phemex',
+              lastPrice,
+              price: lastPrice,
+              priceChangePercent24h: changePercent,
+              changePercent24h: changePercent,
+              high24h: (ticker.highEp || 0) / 1e4,
+              low24h: (ticker.lowEp || 0) / 1e4,
+              volume24h: (ticker.volumeEv || 0) / 1e4,
+              quoteVolume24h: (ticker.turnoverEv || 0) / 1e4,
+            };
+          })
+          .filter((item: any) => item.lastPrice > 0);
+        results.push(...phemexData);
+      }
+    }
+  } catch (error) {
+    console.error('Phemex tickers error:', error);
+  }
+
   return NextResponse.json(results);
 }

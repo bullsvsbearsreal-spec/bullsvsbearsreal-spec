@@ -258,5 +258,129 @@ export async function GET() {
     console.error('Lighter funding error:', error);
   }
 
+  // Gate.io
+  try {
+    const res = await fetchWithTimeout('https://api.gateio.ws/api/v4/futures/usdt/contracts');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const gateData = data
+          .filter((item: any) => item.name.endsWith('_USDT') && item.funding_rate_indicative != null)
+          .map((item: any) => ({
+            symbol: item.name.replace('_USDT', ''),
+            exchange: 'Gate.io',
+            fundingRate: parseFloat(item.funding_rate_indicative) * 100,
+            markPrice: parseFloat(item.mark_price) || 0,
+            indexPrice: parseFloat(item.index_price) || 0,
+            nextFundingTime: (item.funding_next_apply || 0) * 1000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...gateData);
+      }
+    }
+  } catch (error) {
+    console.error('Gate.io funding error:', error);
+  }
+
+  // MEXC
+  try {
+    const res = await fetchWithTimeout('https://contract.mexc.com/api/v1/contract/ticker');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const mexcData = json.data
+          .filter((item: any) => item.symbol.endsWith('_USDT') && item.fundingRate != null)
+          .map((item: any) => ({
+            symbol: item.symbol.replace('_USDT', ''),
+            exchange: 'MEXC',
+            fundingRate: parseFloat(item.fundingRate) * 100,
+            markPrice: parseFloat(item.fairPrice) || 0,
+            indexPrice: parseFloat(item.indexPrice) || 0,
+            nextFundingTime: item.nextSettlementTime || Date.now() + 28800000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...mexcData);
+      }
+    }
+  } catch (error) {
+    console.error('MEXC funding error:', error);
+  }
+
+  // Kraken Futures
+  try {
+    const res = await fetchWithTimeout('https://futures.kraken.com/derivatives/api/v3/tickers');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.result === 'success' && Array.isArray(json.tickers)) {
+        const krakenData = json.tickers
+          .filter((item: any) => item.symbol.startsWith('PF_') && item.symbol.endsWith('USD') && item.fundingRate != null)
+          .map((item: any) => {
+            let sym = item.symbol.replace('PF_', '').replace('USD', '');
+            if (sym === 'XBT') sym = 'BTC';
+            return {
+              symbol: sym,
+              exchange: 'Kraken',
+              fundingRate: parseFloat(item.fundingRate) * 100,
+              markPrice: item.markPrice || 0,
+              indexPrice: item.indexPrice || 0,
+              nextFundingTime: Date.now() + 3600000,
+            };
+          })
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...krakenData);
+      }
+    }
+  } catch (error) {
+    console.error('Kraken funding error:', error);
+  }
+
+  // BingX
+  try {
+    const res = await fetchWithTimeout('https://open-api.bingx.com/openApi/swap/v2/quote/premiumIndex');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 0 && Array.isArray(json.data)) {
+        const bingxData = json.data
+          .filter((item: any) => item.symbol.endsWith('-USDT') && item.lastFundingRate != null)
+          .map((item: any) => ({
+            symbol: item.symbol.replace('-USDT', ''),
+            exchange: 'BingX',
+            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            markPrice: parseFloat(item.markPrice) || 0,
+            indexPrice: parseFloat(item.indexPrice) || 0,
+            nextFundingTime: item.nextFundingTime || Date.now() + 28800000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...bingxData);
+      }
+    }
+  } catch (error) {
+    console.error('BingX funding error:', error);
+  }
+
+  // Phemex
+  try {
+    const res = await fetchWithTimeout('https://api.phemex.com/md/v2/ticker/24hr/all');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 0 && Array.isArray(json.result)) {
+        const phemexData = json.result
+          .filter((item: any) => item.symbol && item.symbol.endsWith('USDT') && item.fundingRateEr != null)
+          .map((item: any) => ({
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Phemex',
+            fundingRate: (item.fundingRateEr || 0) / 1e8 * 100,
+            markPrice: (item.markEp || 0) / 1e4,
+            indexPrice: (item.indexEp || 0) / 1e4,
+            nextFundingTime: Date.now() + 28800000,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+        results.push(...phemexData);
+      }
+    }
+  } catch (error) {
+    console.error('Phemex funding error:', error);
+  }
+
   return NextResponse.json(results);
 }

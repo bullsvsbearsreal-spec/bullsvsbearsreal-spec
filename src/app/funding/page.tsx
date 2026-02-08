@@ -13,7 +13,7 @@ type SortOrder = 'asc' | 'desc';
 type ViewMode = 'table' | 'heatmap' | 'arbitrage';
 
 // Exchange list for heatmap columns
-const ALL_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'];
+const ALL_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Gate.io', 'MEXC', 'Kraken', 'BingX', 'Phemex', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'];
 
 // Exchange colors for the selector
 const EXCHANGE_COLORS: Record<string, string> = {
@@ -21,6 +21,11 @@ const EXCHANGE_COLORS: Record<string, string> = {
   'Bybit': 'bg-orange-500',
   'OKX': 'bg-white',
   'Bitget': 'bg-cyan-400',
+  'Gate.io': 'bg-emerald-500',
+  'MEXC': 'bg-teal-500',
+  'Kraken': 'bg-violet-500',
+  'BingX': 'bg-blue-600',
+  'Phemex': 'bg-lime-400',
   'Hyperliquid': 'bg-green-400',
   'dYdX': 'bg-purple-500',
   'Aster': 'bg-pink-500',

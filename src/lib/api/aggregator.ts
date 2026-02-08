@@ -4,6 +4,11 @@ import { okxAPI } from './okx';
 import { bitgetAPI } from './bitget';
 import { hyperliquidAPI } from './hyperliquid';
 import { dydxAPI } from './dydx';
+import { gateioAPI } from './gateio';
+import { mexcAPI } from './mexc';
+import { krakenAPI } from './kraken';
+import { bingxAPI } from './bingx';
+import { phemexAPI } from './phemex';
 import { getGlobalData } from './coingecko';
 import { TickerData, FundingRateData, OpenInterestData, AggregatedLiquidations } from './types';
 
@@ -354,4 +359,4 @@ export async function fetchFundingArbitrage(): Promise<Array<{
 }
 
 // Export individual exchange APIs for direct access
-export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI };
+export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI, gateioAPI, mexcAPI, krakenAPI, bingxAPI, phemexAPI };

@@ -105,6 +105,24 @@ export function KrakenLogo({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
+export function BingXLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#2354E6"/>
+      <text x="63" y="78" textAnchor="middle" fill="#FFFFFF" fontWeight="bold" fontSize="32">BX</text>
+    </svg>
+  );
+}
+
+export function PhemexLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#C8FF00"/>
+      <text x="63" y="78" textAnchor="middle" fill="#000000" fontWeight="bold" fontSize="32">PH</text>
+    </svg>
+  );
+}
+
 // DEX Logos
 export function HyperliquidLogo({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
@@ -200,6 +218,8 @@ export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps
   kucoin: KucoinLogo,
   mexc: MEXCLogo,
   kraken: KrakenLogo,
+  bingx: BingXLogo,
+  phemex: PhemexLogo,
   hyperliquid: HyperliquidLogo,
   gmx: GMXLogo,
   dydx: DYDXLogo,
@@ -223,6 +243,8 @@ export const exchangeColors: Record<string, string> = {
   kucoin: '#24AE8F',
   mexc: '#00B897',
   kraken: '#5741D9',
+  bingx: '#2354E6',
+  phemex: '#C8FF00',
   hyperliquid: '#00D1FF',
   gmx: '#2D42FC',
   dydx: '#6966FF',
