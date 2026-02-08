@@ -12,6 +12,7 @@
   --hub-yellow-light: #FFD700;
   --hub-yellow-dark: #FF8C00;
   --hub-orange: #FF6B00;
+  color-scheme: dark;
 }
 
 * {
@@ -22,6 +23,35 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Skip to content link for accessibility */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 1.5rem;
+  background: var(--hub-yellow);
+  color: black;
+  font-weight: 600;
+  border-radius: 0 0 0.5rem 0;
+  text-decoration: none;
+}
+.skip-to-content:focus {
+  left: 0;
+}
+
+/* Focus-visible indicators for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--hub-yellow);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
 }
 
 body {
@@ -481,6 +511,16 @@ body::before {
   opacity: 0.03;
   pointer-events: none;
   z-index: 0;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Responsive adjustments */

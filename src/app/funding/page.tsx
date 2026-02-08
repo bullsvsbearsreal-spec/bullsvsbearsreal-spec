@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { fetchAllFundingRates, fetchFundingArbitrage } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
-import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, ArrowUpDown, Grid3X3, Table, Shuffle, Settings2, Check, LayoutGrid, Crown, Gem, Dog, Layers, Coins, Bot, Gamepad2, Rocket, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, Grid3X3, Table, Shuffle, Settings2, Check, LayoutGrid, Crown, Gem, Dog, Layers, Coins, Bot, Gamepad2, Rocket, ChevronDown } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange';
@@ -340,7 +340,8 @@ export default function FundingPage() {
             <button
               onClick={fetchData}
               disabled={loading}
-              className="text-hub-gray-text hover:text-white transition-colors disabled:opacity-50"
+              aria-label="Refresh funding rates"
+              className="p-2 text-hub-gray-text hover:text-white transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -527,28 +528,31 @@ export default function FundingPage() {
                         <th
                           className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
                           onClick={() => handleSort('symbol')}
+                          aria-sort={sortField === 'symbol' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                         >
                           <div className="flex items-center gap-2">
                             Symbol
-                            <ArrowUpDown className="w-4 h-4" />
+                            {sortField === 'symbol' ? (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4 text-hub-yellow" /> : <ArrowDown className="w-4 h-4 text-hub-yellow" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
                           </div>
                         </th>
                         <th
                           className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
                           onClick={() => handleSort('exchange')}
+                          aria-sort={sortField === 'exchange' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                         >
                           <div className="flex items-center gap-2">
                             Exchange
-                            <ArrowUpDown className="w-4 h-4" />
+                            {sortField === 'exchange' ? (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4 text-hub-yellow" /> : <ArrowDown className="w-4 h-4 text-hub-yellow" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
                           </div>
                         </th>
                         <th
                           className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
                           onClick={() => handleSort('fundingRate')}
+                          aria-sort={sortField === 'fundingRate' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                         >
                           <div className="flex items-center gap-2 justify-end">
                             Funding Rate
-                            <ArrowUpDown className="w-4 h-4" />
+                            {sortField === 'fundingRate' ? (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4 text-hub-yellow" /> : <ArrowDown className="w-4 h-4 text-hub-yellow" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
                           </div>
                         </th>
                         <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">

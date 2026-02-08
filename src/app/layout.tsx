@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://info-hub.io'),
   title: 'InfoHub | Real-Time Trading Data',
-  description: 'Your one-stop destination for real-time trading data. Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
+  description: 'Your one-stop destination for real-time trading data. Funding rates, open interest, liquidations, and market analytics across 13 major exchanges.',
   keywords: ['trading', 'funding rates', 'open interest', 'liquidations', 'market data', 'derivatives', 'perpetuals'],
   authors: [{ name: 'InfoHub' }],
   creator: 'InfoHub',
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     url: 'https://info-hub.io',
     siteName: 'InfoHub',
     title: 'InfoHub | Real-Time Trading Data',
-    description: 'Your one-stop destination for real-time trading data. Funding rates, open interest, liquidations, and market analytics across 6 major exchanges.',
+    description: 'Your one-stop destination for real-time trading data. Funding rates, open interest, liquidations, and market analytics across 13 major exchanges.',
     images: [
       {
         url: '/og-image.svg',
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'InfoHub | Real-Time Trading Data',
-    description: 'Your one-stop destination for real-time trading data across 6 major exchanges.',
+    description: 'Your one-stop destination for real-time trading data across 13 major exchanges.',
     images: ['/og-image.svg'],
     creator: '@infohub',
   },
@@ -77,6 +77,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
       </head>
       <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
+        <a href="#main-content" className="skip-to-content">Skip to content</a>
         {children}
       </body>
     </html>

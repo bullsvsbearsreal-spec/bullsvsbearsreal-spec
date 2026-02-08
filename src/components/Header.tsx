@@ -103,13 +103,15 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1" ref={dropdownRef}>
+          <nav className="hidden md:flex items-center gap-1" ref={dropdownRef} aria-label="Main navigation">
             {navItems.map((item) => (
               <div key={item.name} className="relative">
                 {item.children ? (
                   // Dropdown menu
                   <button
                     onClick={() => setOpenDropdown(openDropdown === item.name ? null : item.name)}
+                    aria-expanded={openDropdown === item.name}
+                    aria-haspopup="true"
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                       isActive(item.href, item.children)
                         ? 'text-hub-yellow bg-hub-yellow/10'
@@ -137,11 +139,12 @@ export default function Header() {
 
                 {/* Dropdown Content */}
                 {item.children && openDropdown === item.name && (
-                  <div className="absolute top-full left-0 mt-2 w-72 py-2 bg-hub-gray/95 backdrop-blur-xl border border-hub-gray-light/20 rounded-2xl shadow-2xl shadow-black/50 animate-fadeIn">
+                  <div role="menu" className="absolute top-full left-0 mt-2 w-72 py-2 bg-hub-gray/95 backdrop-blur-xl border border-hub-gray-light/20 rounded-2xl shadow-2xl shadow-black/50 animate-fadeIn">
                     {item.children.map((child) => (
                       <Link
                         key={child.name}
                         href={child.href}
+                        role="menuitem"
                         onClick={() => setOpenDropdown(null)}
                         className={`flex items-start gap-3 px-4 py-3 mx-2 rounded-xl transition-all duration-200 ${
                           pathname === child.href
@@ -178,7 +181,8 @@ export default function Header() {
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
-                className="p-2 rounded-lg text-hub-gray-text hover:text-white hover:bg-hub-gray/30 transition-all"
+                aria-label="Search coins"
+                className="p-2.5 rounded-lg text-hub-gray-text hover:text-white hover:bg-hub-gray/30 transition-all"
               >
                 <Search className="w-5 h-5" />
               </button>
@@ -186,8 +190,10 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="md:hidden p-2 rounded-lg text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all"
+              className="md:hidden p-2.5 rounded-lg text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
             >
               <div className="relative w-6 h-6">
                 <Menu className={`w-6 h-6 absolute transition-all duration-300 ${mobileMenuOpen ? 'opacity-0 rotate-90' : 'opacity-100 rotate-0'}`} />

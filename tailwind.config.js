@@ -22,8 +22,8 @@ module.exports = {
           'yellow-dark': '#FF8C00',
           orange: '#FF6B00',
           white: '#ffffff',
-          'gray-text': '#888888',
-          'gray-text-light': '#aaaaaa',
+          'gray-text': '#9ca3af',
+          'gray-text-light': '#b0b0b0',
         },
         // Semantic colors
         success: '#22c55e',

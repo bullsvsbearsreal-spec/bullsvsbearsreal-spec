@@ -70,7 +70,7 @@ export default function Home() {
       <TopStatsBar />
       <MarketTicker />
 
-      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="main-content" className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
         <section className="mb-10 animate-slideUp">
           <div className="flex items-center gap-2 mb-4">
@@ -253,7 +253,7 @@ export default function Home() {
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-white font-semibold text-lg">Connected Exchanges</h3>
-                <p className="text-hub-gray-text text-sm mt-1">Real-time data from 8 exchanges</p>
+                <p className="text-hub-gray-text text-sm mt-1">Real-time data from 13 exchanges</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-success"></span>
@@ -261,8 +261,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              {['Binance', 'Bybit', 'OKX', 'Bitget', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'].map((exchange) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
+              {['Binance', 'Bybit', 'OKX', 'Bitget', 'Gate.io', 'MEXC', 'Kraken', 'BingX', 'Phemex', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'].map((exchange) => (
                 <div
                   key={exchange}
                   className="flex items-center justify-center py-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
@@ -331,8 +331,9 @@ function Footer() {
               <li><span className="text-hub-gray-text text-sm">Bybit</span></li>
               <li><span className="text-hub-gray-text text-sm">OKX</span></li>
               <li><span className="text-hub-gray-text text-sm">Bitget</span></li>
-              <li><span className="text-hub-gray-text text-sm">Hyperliquid</span></li>
-              <li><span className="text-hub-gray-text text-sm">dYdX</span></li>
+              <li><span className="text-hub-gray-text text-sm">Gate.io / MEXC / Kraken</span></li>
+              <li><span className="text-hub-gray-text text-sm">BingX / Phemex</span></li>
+              <li><span className="text-hub-gray-text text-sm">Hyperliquid / dYdX</span></li>
             </ul>
           </div>
         </div>
