@@ -194,15 +194,16 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'Lighter',
     fetcher: async (fetchFn) => {
+      const FOREX_SYMBOLS = new Set(['USDCAD', 'GBPUSD', 'NZDUSD', 'USDKRW', 'EURUSD', 'USDCHF', 'USDJPY', 'AUDUSD']);
       const res = await fetchFn('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates');
       if (!res.ok) return [];
       const data = await res.json();
       const fundingRates = data.funding_rates || data;
       if (!Array.isArray(fundingRates)) return [];
       return fundingRates
-        .filter((item: any) => item.exchange === 'lighter' && item.symbol)
+        .filter((item: any) => item.exchange === 'lighter' && item.symbol && !FOREX_SYMBOLS.has(item.symbol))
         .map((item: any) => ({
-          symbol: item.symbol.replace('-PERP', '').replace('USDT', '').replace('USDC', '').replace('1000', ''),
+          symbol: item.symbol,
           exchange: 'Lighter',
           fundingRate: parseFloat(item.rate || '0') * 100,
           markPrice: 0,
@@ -266,17 +267,22 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const json = await res.json();
       if (json.result !== 'success' || !Array.isArray(json.tickers)) return [];
       return json.tickers
-        .filter((item: any) => item.symbol.startsWith('PF_') && item.symbol.endsWith('USD') && item.fundingRate != null)
+        .filter((item: any) => item.symbol.startsWith('PF_') && item.symbol.endsWith('USD') && item.fundingRate != null && item.markPrice > 0)
         .map((item: any) => {
           let sym = item.symbol.replace('PF_', '').replace('USD', '');
           if (sym === 'XBT') sym = 'BTC';
+          const markPrice = parseFloat(item.markPrice) || 0;
+          // Kraken fundingRate is ABSOLUTE (per contract unit), not relative
+          // Convert to relative rate: fundingRate / markPrice, then * 100 for percentage
+          // Kraken settles every 4h; we normalize to 8h equivalent (* 2)
+          const absoluteRate = parseFloat(item.fundingRate);
+          const relativeRate = markPrice > 0 ? (absoluteRate / markPrice) * 2 : 0;
           return {
             symbol: sym,
             exchange: 'Kraken',
-            // Kraken returns funding rate already as a percentage decimal
-            fundingRate: parseFloat(item.fundingRate),
-            markPrice: item.markPrice || 0,
-            indexPrice: item.indexPrice || 0,
+            fundingRate: relativeRate * 100,
+            markPrice,
+            indexPrice: parseFloat(item.indexPrice) || 0,
             nextFundingTime: Date.now() + 3600000,
           };
         })
@@ -331,5 +337,5 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 ];
 
 // Paused exchanges (kept for reference):
-// gTrade (Gains Network) - Funding rate model differs significantly from CEXes
-// GMX v2 (Arbitrum) - Uses continuous per-second funding rates with 1e30 precision
+// gTrade (Gains Network) - All API endpoints unreachable (backend-api.gains.trade, etc.)
+// GMX v2 (Arbitrum) - No REST funding rate endpoint; requires on-chain contract queries
