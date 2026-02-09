@@ -3,22 +3,20 @@ import { TickerData, FundingRateData, OpenInterestData } from './types';
 
 const BASE_URL = 'https://api.phemex.com';
 
-// Phemex uses scaled integers: prices are in 1e4 (rEv) or 1e8 (rEp) format
-const PRICE_SCALE = 1e4;
-const RATIO_SCALE = 1e8;
+// Phemex v2 API returns real precision strings (Rp/Rr/Rv suffixes)
+// No scaled integers - all values are human-readable strings
 
 // Phemex Perpetual API client
 export const phemexAPI = {
   async getTickers(): Promise<TickerData[]> {
     try {
       const response = await axios.get(`${BASE_URL}/md/v2/ticker/24hr/all`);
-      if (response.data.code !== 0) return [];
-      const tickers = response.data.result || [];
+      const tickers = Array.isArray(response.data.result) ? response.data.result : [];
       return tickers
         .filter((t: any) => t.symbol && t.symbol.endsWith('USDT'))
         .map((ticker: any) => {
-          const lastPrice = (ticker.lastEp || 0) / PRICE_SCALE;
-          const openPrice = (ticker.openEp || 0) / PRICE_SCALE;
+          const lastPrice = parseFloat(ticker.closeRp) || parseFloat(ticker.markPriceRp) || 0;
+          const openPrice = parseFloat(ticker.openRp) || lastPrice;
           const change24h = lastPrice - openPrice;
           const changePercent = openPrice > 0 ? (change24h / openPrice) * 100 : 0;
           return {
@@ -28,10 +26,10 @@ export const phemexAPI = {
             change24h,
             priceChangePercent24h: changePercent,
             changePercent24h: changePercent,
-            high24h: (ticker.highEp || 0) / PRICE_SCALE,
-            low24h: (ticker.lowEp || 0) / PRICE_SCALE,
-            volume24h: (ticker.volumeEv || 0) / PRICE_SCALE,
-            quoteVolume24h: (ticker.turnoverEv || 0) / PRICE_SCALE,
+            high24h: parseFloat(ticker.highRp) || 0,
+            low24h: parseFloat(ticker.lowRp) || 0,
+            volume24h: parseFloat(ticker.volumeRq) || 0,
+            quoteVolume24h: parseFloat(ticker.turnoverRv) || 0,
             timestamp: Date.now(),
             exchange: 'Phemex',
           };
@@ -44,22 +42,20 @@ export const phemexAPI = {
 
   async getFundingRates(): Promise<FundingRateData[]> {
     try {
-      // Phemex ticker endpoint includes funding rate data
       const response = await axios.get(`${BASE_URL}/md/v2/ticker/24hr/all`);
-      if (response.data.code !== 0) return [];
-      const tickers = response.data.result || [];
+      const tickers = Array.isArray(response.data.result) ? response.data.result : [];
       return tickers
-        .filter((t: any) => t.symbol && t.symbol.endsWith('USDT') && t.fundingRateEr != null)
+        .filter((t: any) => t.symbol && t.symbol.endsWith('USDT') && t.fundingRateRr != null)
         .map((item: any) => {
-          const fundingRate = (item.fundingRateEr || 0) / RATIO_SCALE * 100;
+          const fundingRate = parseFloat(item.fundingRateRr) * 100;
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Phemex',
             fundingRate: isNaN(fundingRate) ? 0 : fundingRate,
             fundingTime: Date.now(),
             nextFundingTime: Date.now() + 28800000,
-            markPrice: (item.markEp || 0) / PRICE_SCALE,
-            indexPrice: (item.indexEp || 0) / PRICE_SCALE,
+            markPrice: parseFloat(item.markPriceRp) || 0,
+            indexPrice: parseFloat(item.indexPriceRp) || 0,
           };
         })
         .filter((item: FundingRateData) => !isNaN(item.fundingRate));
@@ -72,8 +68,7 @@ export const phemexAPI = {
   async getOpenInterest(symbol?: string): Promise<OpenInterestData[]> {
     try {
       const response = await axios.get(`${BASE_URL}/md/v2/ticker/24hr/all`);
-      if (response.data.code !== 0) return [];
-      const tickers = response.data.result || [];
+      const tickers = Array.isArray(response.data.result) ? response.data.result : [];
       return tickers
         .filter((t: any) => {
           if (!t.symbol || !t.symbol.endsWith('USDT')) return false;
@@ -82,8 +77,8 @@ export const phemexAPI = {
         })
         .slice(0, 30)
         .map((item: any) => {
-          const oi = (item.openInterestEv || 0) / PRICE_SCALE;
-          const price = (item.lastEp || 0) / PRICE_SCALE;
+          const oi = parseFloat(item.openInterestRv) || 0;
+          const price = parseFloat(item.closeRp || item.markPriceRp) || 0;
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Phemex',

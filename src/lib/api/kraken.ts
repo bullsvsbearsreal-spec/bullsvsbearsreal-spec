@@ -48,8 +48,8 @@ export const krakenAPI = {
       return response.data.tickers
         .filter((t: any) => t.symbol.startsWith('PF_') && t.symbol.endsWith('USD') && t.fundingRate != null)
         .map((item: any) => {
-          // Kraken funding rates are already in decimal form (e.g., 0.0001)
-          const fundingRate = parseFloat(item.fundingRate) * 100;
+          // Kraken returns funding rate already as a percentage decimal (e.g., 0.0186 = 0.0186%)
+          const fundingRate = parseFloat(item.fundingRate);
           let sym = item.symbol.replace('PF_', '').replace('USD', '');
           if (sym === 'XBT') sym = 'BTC';
           return {

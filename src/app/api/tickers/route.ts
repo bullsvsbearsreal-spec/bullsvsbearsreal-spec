@@ -328,12 +328,15 @@ export async function GET() {
     const res = await fetchWithTimeout('https://api.phemex.com/md/v2/ticker/24hr/all');
     if (res.ok) {
       const json = await res.json();
-      if (json.code === 0 && Array.isArray(json.result)) {
-        const phemexData = json.result
+      // Phemex v2 API returns { result: [...] } with no code field
+      const phemexResult = Array.isArray(json.result) ? json.result : [];
+      if (phemexResult.length > 0) {
+        const phemexData = phemexResult
+          // Fields use Rp/Rr/Rv suffixes (real precision strings)
           .filter((t: any) => t.symbol && t.symbol.endsWith('USDT'))
           .map((ticker: any) => {
-            const lastPrice = (ticker.lastEp || 0) / 1e4;
-            const openPrice = (ticker.openEp || 0) / 1e4;
+            const lastPrice = parseFloat(ticker.closeRp) || parseFloat(ticker.markPriceRp) || 0;
+            const openPrice = parseFloat(ticker.openRp) || lastPrice;
             const changePercent = openPrice > 0 ? ((lastPrice - openPrice) / openPrice) * 100 : 0;
             return {
               symbol: ticker.symbol.replace('USDT', ''),
@@ -342,10 +345,10 @@ export async function GET() {
               price: lastPrice,
               priceChangePercent24h: changePercent,
               changePercent24h: changePercent,
-              high24h: (ticker.highEp || 0) / 1e4,
-              low24h: (ticker.lowEp || 0) / 1e4,
-              volume24h: (ticker.volumeEv || 0) / 1e4,
-              quoteVolume24h: (ticker.turnoverEv || 0) / 1e4,
+              high24h: parseFloat(ticker.highRp) || 0,
+              low24h: parseFloat(ticker.lowRp) || 0,
+              volume24h: parseFloat(ticker.volumeRq) || 0,
+              quoteVolume24h: parseFloat(ticker.turnoverRv) || 0,
             };
           })
           .filter((item: any) => item.lastPrice > 0);

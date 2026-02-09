@@ -315,12 +315,15 @@ export async function GET() {
     const res = await fetchWithTimeout('https://api.phemex.com/md/v2/ticker/24hr/all');
     if (res.ok) {
       const json = await res.json();
-      if (json.code === 0 && Array.isArray(json.result)) {
-        const phemexData = json.result
-          .filter((t: any) => t.symbol && t.symbol.endsWith('USDT') && t.openInterestEv)
+      // Phemex v2 API returns { result: [...] } with no code field
+      const phemexResult = Array.isArray(json.result) ? json.result : [];
+      if (phemexResult.length > 0) {
+        const phemexData = phemexResult
+          // Fields use Rp/Rv suffixes (real precision strings)
+          .filter((t: any) => t.symbol && t.symbol.endsWith('USDT') && t.openInterestRv)
           .map((item: any) => {
-            const oi = (item.openInterestEv || 0) / 1e4;
-            const price = (item.lastEp || 0) / 1e4;
+            const oi = parseFloat(item.openInterestRv) || 0;
+            const price = parseFloat(item.closeRp || item.markPriceRp) || 0;
             return {
               symbol: item.symbol.replace('USDT', ''),
               exchange: 'Phemex',

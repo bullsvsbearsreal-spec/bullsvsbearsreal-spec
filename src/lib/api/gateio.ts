@@ -39,9 +39,9 @@ export const gateioAPI = {
     try {
       const response = await axios.get(`${BASE_URL}/futures/usdt/contracts`);
       return response.data
-        .filter((t: any) => t.name.endsWith('_USDT') && t.funding_rate_indicative != null)
+        .filter((t: any) => t.name.endsWith('_USDT') && (t.funding_rate != null || t.funding_rate_indicative != null))
         .map((item: any) => {
-          const fundingRate = parseFloat(item.funding_rate_indicative) * 100;
+          const fundingRate = parseFloat(item.funding_rate || item.funding_rate_indicative) * 100;
           return {
             symbol: item.name.replace('_USDT', ''),
             exchange: 'Gate.io',

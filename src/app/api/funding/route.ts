@@ -265,11 +265,11 @@ export async function GET() {
       const data = await res.json();
       if (Array.isArray(data)) {
         const gateData = data
-          .filter((item: any) => item.name.endsWith('_USDT') && item.funding_rate_indicative != null)
+          .filter((item: any) => item.name.endsWith('_USDT') && (item.funding_rate != null || item.funding_rate_indicative != null))
           .map((item: any) => ({
             symbol: item.name.replace('_USDT', ''),
             exchange: 'Gate.io',
-            fundingRate: parseFloat(item.funding_rate_indicative) * 100,
+            fundingRate: parseFloat(item.funding_rate || item.funding_rate_indicative) * 100,
             markPrice: parseFloat(item.mark_price) || 0,
             indexPrice: parseFloat(item.index_price) || 0,
             nextFundingTime: (item.funding_next_apply || 0) * 1000,
@@ -320,7 +320,8 @@ export async function GET() {
             return {
               symbol: sym,
               exchange: 'Kraken',
-              fundingRate: parseFloat(item.fundingRate) * 100,
+              // Kraken returns funding rate already as a percentage decimal (e.g., 0.0186 = 0.0186%)
+              fundingRate: parseFloat(item.fundingRate),
               markPrice: item.markPrice || 0,
               indexPrice: item.indexPrice || 0,
               nextFundingTime: Date.now() + 3600000,
@@ -363,15 +364,18 @@ export async function GET() {
     const res = await fetchWithTimeout('https://api.phemex.com/md/v2/ticker/24hr/all');
     if (res.ok) {
       const json = await res.json();
-      if (json.code === 0 && Array.isArray(json.result)) {
-        const phemexData = json.result
-          .filter((item: any) => item.symbol && item.symbol.endsWith('USDT') && item.fundingRateEr != null)
+      // Phemex v2 API returns { result: [...] } with no code field
+      const phemexResult = Array.isArray(json.result) ? json.result : [];
+      if (phemexResult.length > 0) {
+        const phemexData = phemexResult
+          // Fields use Rp/Rr/Rv suffixes (real precision strings), not Ep/Er/Ev (scaled ints)
+          .filter((item: any) => item.symbol && item.symbol.endsWith('USDT') && item.fundingRateRr != null)
           .map((item: any) => ({
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Phemex',
-            fundingRate: (item.fundingRateEr || 0) / 1e8 * 100,
-            markPrice: (item.markEp || 0) / 1e4,
-            indexPrice: (item.indexEp || 0) / 1e4,
+            fundingRate: parseFloat(item.fundingRateRr) * 100,
+            markPrice: parseFloat(item.markPriceRp) || 0,
+            indexPrice: parseFloat(item.indexPriceRp) || 0,
             nextFundingTime: Date.now() + 28800000,
           }))
           .filter((item: any) => !isNaN(item.fundingRate));
