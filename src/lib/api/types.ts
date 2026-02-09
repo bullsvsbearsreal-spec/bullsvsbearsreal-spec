@@ -80,7 +80,7 @@ export interface ExchangeAPIConfig {
   requiresAuth: boolean;
 }
 
-export type SupportedExchange = 'binance' | 'bybit' | 'okx' | 'bitget' | 'gateio' | 'mexc' | 'kraken' | 'bingx' | 'phemex';
+export type SupportedExchange = 'binance' | 'bybit' | 'okx' | 'bitget' | 'gateio' | 'mexc' | 'kraken' | 'bingx' | 'phemex' | 'hyperliquid' | 'dydx' | 'aster' | 'lighter';
 
 export const EXCHANGE_CONFIGS: Record<SupportedExchange, ExchangeAPIConfig> = {
   binance: {
@@ -138,6 +138,30 @@ export const EXCHANGE_CONFIGS: Record<SupportedExchange, ExchangeAPIConfig> = {
   phemex: {
     name: 'Phemex',
     baseUrl: 'https://api.phemex.com',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  hyperliquid: {
+    name: 'Hyperliquid',
+    baseUrl: 'https://api.hyperliquid.xyz',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  dydx: {
+    name: 'dYdX',
+    baseUrl: 'https://indexer.dydx.trade',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  aster: {
+    name: 'Aster',
+    baseUrl: 'https://perp-api.asterfi.io',
+    rateLimit: 300,
+    requiresAuth: false,
+  },
+  lighter: {
+    name: 'Lighter',
+    baseUrl: 'https://mainnet.lighter.xyz',
     rateLimit: 300,
     requiresAuth: false,
   },

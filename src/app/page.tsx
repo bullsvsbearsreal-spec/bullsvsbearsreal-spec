@@ -19,6 +19,8 @@ import { CoinSearchResult } from '@/lib/api/coingecko';
 import {
   Sparkles, ArrowRight, TrendingUp, Zap, BarChart3, Newspaper
 } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
+import { isValidNumber } from '@/lib/utils/format';
 
 // Import API functions
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
@@ -37,7 +39,7 @@ export default function Home() {
         // Fetch funding rates
         const fundingData = await fetchAllFundingRates();
         const validFunding = fundingData
-          .filter(fr => fr && typeof fr.fundingRate === 'number' && !isNaN(fr.fundingRate) && isFinite(fr.fundingRate))
+          .filter(fr => fr && isValidNumber(fr.fundingRate))
           .sort((a, b) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
           .slice(0, 5);
         setTopFunding(validFunding);
@@ -262,7 +264,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
-              {['Binance', 'Bybit', 'OKX', 'Bitget', 'Gate.io', 'MEXC', 'Kraken', 'BingX', 'Phemex', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter'].map((exchange) => (
+              {ALL_EXCHANGES.map((exchange) => (
                 <div
                   key={exchange}
                   className="flex items-center justify-center py-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"

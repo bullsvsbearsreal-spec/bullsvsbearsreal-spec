@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import { fetchAllOpenInterest, aggregateOpenInterestBySymbol, aggregateOpenInterestByExchange } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
 import { BarChart3, RefreshCw, Clock, AlertTriangle, ArrowUpDown, TrendingUp, TrendingDown } from 'lucide-react';
+import { getExchangeBadgeColor } from '@/lib/constants';
 
 type SortField = 'symbol' | 'openInterestValue' | 'exchange';
 type SortOrder = 'asc' | 'desc';
@@ -95,17 +96,6 @@ export default function OpenInterestPage() {
     return `$${value.toFixed(2)}`;
   };
 
-  const getExchangeColor = (exchange: string) => {
-    const colors: Record<string, string> = {
-      'Binance': 'bg-yellow-500/20 text-yellow-400',
-      'Bybit': 'bg-orange-500/20 text-orange-400',
-      'OKX': 'bg-blue-500/20 text-blue-400',
-      'Bitget': 'bg-cyan-500/20 text-cyan-400',
-      'Hyperliquid': 'bg-green-500/20 text-green-400',
-      'dYdX': 'bg-purple-500/20 text-purple-400',
-    };
-    return colors[exchange] || 'bg-hub-gray/50 text-hub-gray-text';
-  };
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -164,7 +154,7 @@ export default function OpenInterestPage() {
                 const percentage = totalOI > 0 ? (value / totalOI) * 100 : 0;
                 return (
                   <div key={exchange} className="text-center">
-                    <span className={`inline-block px-3 py-1 rounded-lg text-sm font-medium ${getExchangeColor(exchange)}`}>
+                    <span className={`inline-block px-3 py-1 rounded-lg text-sm font-medium ${getExchangeBadgeColor(exchange)}`}>
                       {exchange}
                     </span>
                     <div className="text-xl font-bold text-white mt-2">{formatValue(value)}</div>
@@ -342,7 +332,7 @@ export default function OpenInterestPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(oi.exchange)}`}>
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeBadgeColor(oi.exchange)}`}>
                           {oi.exchange}
                         </span>
                       </td>

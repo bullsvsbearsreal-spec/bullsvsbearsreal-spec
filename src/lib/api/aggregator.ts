@@ -11,6 +11,7 @@ import { bingxAPI } from './bingx';
 import { phemexAPI } from './phemex';
 import { getGlobalData } from './coingecko';
 import { TickerData, FundingRateData, OpenInterestData, AggregatedLiquidations } from './types';
+import { isValidNumber } from '@/lib/utils/format';
 
 // Simple in-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -256,11 +257,7 @@ export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers:
   if (cached) return cached;
 
   const tickers = await fetchAllTickers();
-  const validTickers = tickers.filter(t =>
-    t.priceChangePercent24h !== undefined &&
-    !isNaN(t.priceChangePercent24h) &&
-    isFinite(t.priceChangePercent24h)
-  );
+  const validTickers = tickers.filter(t => isValidNumber(t.priceChangePercent24h));
   const sorted = [...validTickers].sort((a, b) => b.priceChangePercent24h - a.priceChangePercent24h);
 
   const result = {

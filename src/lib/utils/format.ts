@@ -3,6 +3,13 @@
 export type SafeNumber = number | null | undefined;
 
 /**
+ * Check if a value is a valid, finite number
+ */
+export function isValidNumber(value: unknown): value is number {
+  return typeof value === 'number' && !isNaN(value) && isFinite(value);
+}
+
+/**
  * Safely format a price with proper decimal places
  * Handles very small prices like PEPE, SHIB, BONK, etc.
  */
