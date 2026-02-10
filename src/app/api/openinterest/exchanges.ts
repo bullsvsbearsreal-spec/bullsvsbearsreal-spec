@@ -1,4 +1,5 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
+import { isCryptoSymbol } from '../_shared/fetch';
 
 type OIData = {
   symbol: string;
@@ -241,7 +242,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oi,
             openInterestValue: oi * price,
           };
-        });
+        })
+        .filter((item: any) => isCryptoSymbol(item.symbol));
     },
   },
 
@@ -264,7 +266,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oi,
             openInterestValue: oi * price,
           };
-        });
+        })
+        .filter((item: any) => isCryptoSymbol(item.symbol));
     },
   },
 

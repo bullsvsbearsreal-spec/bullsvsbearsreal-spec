@@ -1,4 +1,5 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
+import { isCryptoSymbol } from '../_shared/fetch';
 
 type TickerData = {
   symbol: string;
@@ -254,7 +255,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             quoteVolume24h: (ticker.vol24h || 0) * lastPrice,
           };
         })
-        .filter((item: any) => item.lastPrice > 0);
+        .filter((item: any) => item.lastPrice > 0 && isCryptoSymbol(item.symbol));
     },
   },
 
@@ -283,7 +284,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             quoteVolume24h: parseFloat(ticker.quoteVolume) || 0,
           };
         })
-        .filter((item: any) => item.lastPrice > 0);
+        .filter((item: any) => item.lastPrice > 0 && isCryptoSymbol(item.symbol));
     },
   },
 

@@ -1,5 +1,5 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
-import { fetchWithTimeout } from '../_shared/fetch';
+import { fetchWithTimeout, isCryptoSymbol } from '../_shared/fetch';
 
 type FundingData = {
   symbol: string;
@@ -286,7 +286,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             nextFundingTime: Date.now() + 3600000,
           };
         })
-        .filter((item: any) => !isNaN(item.fundingRate));
+        .filter((item: any) => !isNaN(item.fundingRate) && isCryptoSymbol(item.symbol));
     },
   },
 
@@ -308,7 +308,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           indexPrice: parseFloat(item.indexPrice) || 0,
           nextFundingTime: item.nextFundingTime || Date.now() + 28800000,
         }))
-        .filter((item: any) => !isNaN(item.fundingRate));
+        .filter((item: any) => !isNaN(item.fundingRate) && isCryptoSymbol(item.symbol));
     },
   },
 
