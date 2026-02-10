@@ -319,4 +319,270 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .filter((item: any) => item.lastPrice > 0);
     },
   },
+
+  // BitMEX
+  {
+    name: 'BitMEX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://www.bitmex.com/api/v1/instrument/active');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.symbol.endsWith('USDT') && t.lastPrice)
+        .map((ticker: any) => ({
+          symbol: ticker.symbol.replace('USDT', ''),
+          exchange: 'BitMEX',
+          lastPrice: parseFloat(ticker.lastPrice),
+          price: parseFloat(ticker.lastPrice),
+          priceChangePercent24h: (parseFloat(ticker.lastChangePcnt) || 0) * 100,
+          changePercent24h: (parseFloat(ticker.lastChangePcnt) || 0) * 100,
+          high24h: parseFloat(ticker.highPrice) || 0,
+          low24h: parseFloat(ticker.lowPrice) || 0,
+          volume24h: parseFloat(ticker.volume24h) || 0,
+          quoteVolume24h: parseFloat(ticker.turnover24h) || 0,
+        }))
+        .filter((item: any) => item.lastPrice > 0);
+    },
+  },
+
+  // KuCoin
+  {
+    name: 'KuCoin',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-futures.kucoin.com/api/v1/contracts/active');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.code !== '200000' && json.code !== 200000) return [];
+      return (json.data || [])
+        .filter((t: any) => t.symbol.endsWith('USDTM') && t.lastTradePrice)
+        .map((ticker: any) => ({
+          symbol: ticker.symbol.replace('USDTM', ''),
+          exchange: 'KuCoin',
+          lastPrice: parseFloat(ticker.lastTradePrice),
+          price: parseFloat(ticker.lastTradePrice),
+          priceChangePercent24h: (parseFloat(ticker.priceChgPct) || 0) * 100,
+          changePercent24h: (parseFloat(ticker.priceChgPct) || 0) * 100,
+          high24h: parseFloat(ticker.highPrice) || 0,
+          low24h: parseFloat(ticker.lowPrice) || 0,
+          volume24h: parseFloat(ticker.volumeOf24h) || 0,
+          quoteVolume24h: parseFloat(ticker.turnoverOf24h) || 0,
+        }))
+        .filter((item: any) => item.lastPrice > 0);
+    },
+  },
+
+  // Deribit (BTC + ETH only)
+  {
+    name: 'Deribit',
+    fetcher: async (fetchFn) => {
+      const instruments = ['BTC-PERPETUAL', 'ETH-PERPETUAL'];
+      const promises = instruments.map(async (inst) => {
+        try {
+          const res = await fetchFn(`https://www.deribit.com/api/v2/public/ticker?instrument_name=${inst}`, {}, 5000);
+          if (!res.ok) return null;
+          const json = await res.json();
+          const r = json.result;
+          if (!r) return null;
+          const stats = r.stats || {};
+          return {
+            symbol: inst.replace('-PERPETUAL', ''),
+            exchange: 'Deribit',
+            lastPrice: parseFloat(r.last_price) || 0,
+            price: parseFloat(r.last_price) || 0,
+            priceChangePercent24h: parseFloat(stats.price_change) || 0,
+            changePercent24h: parseFloat(stats.price_change) || 0,
+            high24h: parseFloat(stats.high) || 0,
+            low24h: parseFloat(stats.low) || 0,
+            volume24h: parseFloat(stats.volume) || 0,
+            quoteVolume24h: parseFloat(stats.volume_usd) || 0,
+          };
+        } catch { return null; }
+      });
+      return (await Promise.all(promises)).filter((item): item is TickerData => item !== null && item.lastPrice > 0);
+    },
+  },
+
+  // HTX (Huobi)
+  {
+    name: 'HTX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.hbdm.com/linear-swap-ex/market/detail/batch_merged');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.status !== 'ok' || !Array.isArray(json.ticks)) return [];
+      return json.ticks
+        .filter((t: any) => {
+          const code = t.contract_code || '';
+          return code.endsWith('-USDT') && !/-\d{6}$/.test(code);
+        })
+        .map((ticker: any) => {
+          const lastPrice = parseFloat(ticker.close) || 0;
+          const openPrice = parseFloat(ticker.open) || lastPrice;
+          const changePercent = openPrice > 0 ? ((lastPrice - openPrice) / openPrice) * 100 : 0;
+          return {
+            symbol: ticker.contract_code.replace('-USDT', ''),
+            exchange: 'HTX',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: changePercent,
+            changePercent24h: changePercent,
+            high24h: parseFloat(ticker.high) || 0,
+            low24h: parseFloat(ticker.low) || 0,
+            volume24h: parseFloat(ticker.amount) || 0,
+            quoteVolume24h: parseFloat(ticker.trade_turnover) || 0,
+          };
+        })
+        .filter((item: any) => item.lastPrice > 0);
+    },
+  },
+
+  // Bitfinex
+  {
+    name: 'Bitfinex',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-pub.bitfinex.com/v2/tickers?symbols=ALL');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => Array.isArray(t) && typeof t[0] === 'string' && t[0].endsWith('F0:USTF0'))
+        .map((ticker: any) => {
+          // [symbol, bid, bidSize, ask, askSize, dailyChange, dailyChangePercent, lastPrice, volume, high, low]
+          const lastPrice = parseFloat(ticker[7]) || 0;
+          return {
+            symbol: ticker[0].replace('t', '').replace('F0:USTF0', ''),
+            exchange: 'Bitfinex',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: (parseFloat(ticker[6]) || 0) * 100,
+            changePercent24h: (parseFloat(ticker[6]) || 0) * 100,
+            high24h: parseFloat(ticker[9]) || 0,
+            low24h: parseFloat(ticker[10]) || 0,
+            volume24h: parseFloat(ticker[8]) || 0,
+            quoteVolume24h: (parseFloat(ticker[8]) || 0) * lastPrice,
+          };
+        })
+        .filter((item: any) => item.lastPrice > 0 && item.symbol.length > 0);
+    },
+  },
+
+  // WhiteBIT
+  {
+    name: 'WhiteBIT',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://whitebit.com/api/v4/public/futures');
+      if (!res.ok) return [];
+      const json = await res.json();
+      const items = json.result || json;
+      if (!Array.isArray(items)) return [];
+      return items
+        .filter((t: any) => t.ticker_id && t.ticker_id.endsWith('_PERP') && t.last_price)
+        .map((ticker: any) => {
+          const lastPrice = parseFloat(ticker.last_price) || 0;
+          return {
+            symbol: ticker.ticker_id.replace('_PERP', ''),
+            exchange: 'WhiteBIT',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: 0,
+            changePercent24h: 0,
+            high24h: parseFloat(ticker.high) || 0,
+            low24h: parseFloat(ticker.low) || 0,
+            volume24h: parseFloat(ticker.stock_volume) || 0,
+            quoteVolume24h: parseFloat(ticker.money_volume) || 0,
+          };
+        })
+        .filter((item: any) => item.lastPrice > 0);
+    },
+  },
+
+  // Coinbase International
+  {
+    name: 'Coinbase',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.international.coinbase.com/api/v1/instruments');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.instrument_type === 'PERP' && t.quote)
+        .map((ticker: any) => {
+          const lastPrice = parseFloat(ticker.quote?.mark_price) || 0;
+          return {
+            symbol: ticker.symbol.replace('-PERP', ''),
+            exchange: 'Coinbase',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: 0,
+            changePercent24h: 0,
+            high24h: 0,
+            low24h: 0,
+            volume24h: parseFloat(ticker.base_volume_24h) || 0,
+            quoteVolume24h: parseFloat(ticker.notional_volume_24h) || 0,
+          };
+        })
+        .filter((item: any) => item.lastPrice > 0);
+    },
+  },
+
+  // CoinEx
+  {
+    name: 'CoinEx',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.coinex.com/v2/futures/ticker?market=');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.code !== 0 || !Array.isArray(json.data)) return [];
+      return json.data
+        .filter((t: any) => t.market.endsWith('USDT'))
+        .map((ticker: any) => {
+          const lastPrice = parseFloat(ticker.last) || 0;
+          const openPrice = parseFloat(ticker.open) || lastPrice;
+          const changePercent = openPrice > 0 ? ((lastPrice - openPrice) / openPrice) * 100 : 0;
+          return {
+            symbol: ticker.market.replace('USDT', ''),
+            exchange: 'CoinEx',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: changePercent,
+            changePercent24h: changePercent,
+            high24h: parseFloat(ticker.high) || 0,
+            low24h: parseFloat(ticker.low) || 0,
+            volume24h: parseFloat(ticker.volume) || 0,
+            quoteVolume24h: parseFloat(ticker.value) || 0,
+          };
+        })
+        .filter((item: any) => item.lastPrice > 0);
+    },
+  },
+
+  // Crypto.com
+  {
+    name: 'Crypto.com',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.crypto.com/exchange/v1/public/get-tickers');
+      if (!res.ok) return [];
+      const json = await res.json();
+      const items = json.result?.data || [];
+      return items
+        .filter((t: any) => t.i && t.i.endsWith('USD-PERP'))
+        .map((ticker: any) => {
+          const lastPrice = parseFloat(ticker.a) || 0;
+          return {
+            symbol: ticker.i.replace('USD-PERP', ''),
+            exchange: 'Crypto.com',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: (parseFloat(ticker.c) || 0) * 100,
+            changePercent24h: (parseFloat(ticker.c) || 0) * 100,
+            high24h: parseFloat(ticker.h) || 0,
+            low24h: parseFloat(ticker.l) || 0,
+            volume24h: parseFloat(ticker.v) || 0,
+            quoteVolume24h: parseFloat(ticker.vv) || 0,
+          };
+        })
+        .filter((item: any) => item.lastPrice > 0);
+    },
+  },
 ];

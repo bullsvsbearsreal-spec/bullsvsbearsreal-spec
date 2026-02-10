@@ -334,8 +334,247 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
+
+  // BitMEX
+  {
+    name: 'BitMEX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://www.bitmex.com/api/v1/instrument/active');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((item: any) => item.symbol.endsWith('USDT') && item.fundingRate != null)
+        .map((item: any) => ({
+          symbol: item.symbol.replace('USDT', ''),
+          exchange: 'BitMEX',
+          fundingRate: parseFloat(item.fundingRate) * 100,
+          markPrice: parseFloat(item.markPrice) || 0,
+          indexPrice: parseFloat(item.indicativeSettlePrice) || 0,
+          nextFundingTime: item.fundingTimestamp ? new Date(item.fundingTimestamp).getTime() : Date.now() + 28800000,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // KuCoin
+  {
+    name: 'KuCoin',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-futures.kucoin.com/api/v1/contracts/active');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.code !== '200000' && json.code !== 200000) return [];
+      const items = json.data || [];
+      return items
+        .filter((item: any) => item.symbol.endsWith('USDTM') && item.fundingFeeRate != null)
+        .map((item: any) => ({
+          symbol: item.symbol.replace('USDTM', ''),
+          exchange: 'KuCoin',
+          fundingRate: parseFloat(item.fundingFeeRate) * 100,
+          markPrice: parseFloat(item.markPrice) || 0,
+          indexPrice: parseFloat(item.indexPrice) || 0,
+          nextFundingTime: item.nextFundingRateTime || Date.now() + 28800000,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Deribit (BTC + ETH perpetuals only)
+  {
+    name: 'Deribit',
+    fetcher: async (fetchFn) => {
+      const instruments = ['BTC-PERPETUAL', 'ETH-PERPETUAL'];
+      const promises = instruments.map(async (inst) => {
+        try {
+          const res = await fetchFn(`https://www.deribit.com/api/v2/public/ticker?instrument_name=${inst}`, {}, 5000);
+          if (!res.ok) return null;
+          const json = await res.json();
+          const r = json.result;
+          if (!r) return null;
+          return {
+            symbol: inst.replace('-PERPETUAL', ''),
+            exchange: 'Deribit',
+            fundingRate: (parseFloat(r.funding_8h) || 0) * 100,
+            markPrice: parseFloat(r.mark_price) || 0,
+            indexPrice: parseFloat(r.index_price) || 0,
+            nextFundingTime: Date.now() + 3600000,
+          };
+        } catch { return null; }
+      });
+      return (await Promise.all(promises)).filter((item): item is FundingData => item !== null && !isNaN(item.fundingRate));
+    },
+  },
+
+  // HTX (Huobi)
+  {
+    name: 'HTX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.hbdm.com/linear-swap-api/v1/swap_batch_funding_rate');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.status !== 'ok' || !Array.isArray(json.data)) return [];
+      return json.data
+        .filter((item: any) => {
+          const code = item.contract_code || '';
+          // Only perpetual swaps (e.g. BTC-USDT), exclude dated futures (e.g. ETH-USDT-260220)
+          return code.endsWith('-USDT') && !/-\d{6}$/.test(code) && item.funding_rate != null;
+        })
+        .map((item: any) => ({
+          symbol: item.contract_code.replace('-USDT', ''),
+          exchange: 'HTX',
+          fundingRate: parseFloat(item.funding_rate) * 100,
+          markPrice: 0,
+          indexPrice: 0,
+          nextFundingTime: item.next_funding_time || Date.now() + 28800000,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Bitfinex
+  {
+    name: 'Bitfinex',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-pub.bitfinex.com/v2/status/deriv?keys=ALL');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((item: any) => Array.isArray(item) && typeof item[0] === 'string' && item[0].endsWith('F0:USTF0'))
+        .map((item: any) => ({
+          symbol: item[0].replace('t', '').replace('F0:USTF0', ''),
+          exchange: 'Bitfinex',
+          fundingRate: (parseFloat(item[9]) || 0) * 100,
+          markPrice: parseFloat(item[15]) || 0,
+          indexPrice: parseFloat(item[4]) || 0,
+          nextFundingTime: item[8] || Date.now() + 28800000,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate) && item.symbol.length > 0);
+    },
+  },
+
+  // WhiteBIT
+  {
+    name: 'WhiteBIT',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://whitebit.com/api/v4/public/futures');
+      if (!res.ok) return [];
+      const json = await res.json();
+      const items = json.result || json;
+      if (!Array.isArray(items)) return [];
+      return items
+        .filter((item: any) => item.ticker_id && item.ticker_id.endsWith('_PERP') && item.funding_rate != null)
+        .map((item: any) => ({
+          symbol: item.ticker_id.replace('_PERP', ''),
+          exchange: 'WhiteBIT',
+          fundingRate: parseFloat(item.funding_rate) * 100,
+          markPrice: parseFloat(item.last_price) || 0,
+          indexPrice: parseFloat(item.index_price) || 0,
+          nextFundingTime: item.next_funding_rate_timestamp ? item.next_funding_rate_timestamp * 1000 : Date.now() + 28800000,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Coinbase International
+  {
+    name: 'Coinbase',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.international.coinbase.com/api/v1/instruments');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((item: any) => item.instrument_type === 'PERP' && item.quote?.predicted_funding != null)
+        .map((item: any) => ({
+          symbol: item.symbol.replace('-PERP', ''),
+          exchange: 'Coinbase',
+          fundingRate: parseFloat(item.quote.predicted_funding) * 100,
+          markPrice: parseFloat(item.quote?.mark_price) || 0,
+          indexPrice: parseFloat(item.quote?.index_price) || 0,
+          nextFundingTime: Date.now() + 3600000,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // CoinEx (ticker has OI but no funding; funding needs per-symbol calls — fetch top symbols only)
+  {
+    name: 'CoinEx',
+    fetcher: async (fetchFn) => {
+      // Get ticker data for top symbols by volume
+      const tickerRes = await fetchFn('https://api.coinex.com/v2/futures/ticker?market=');
+      if (!tickerRes.ok) return [];
+      const tickerJson = await tickerRes.json();
+      if (tickerJson.code !== 0 || !Array.isArray(tickerJson.data)) return [];
+      const usdtMarkets = tickerJson.data
+        .filter((t: any) => t.market.endsWith('USDT'))
+        .sort((a: any, b: any) => parseFloat(b.value || '0') - parseFloat(a.value || '0'))
+        .slice(0, 40);
+      const promises = usdtMarkets.map(async (t: any) => {
+        try {
+          const res = await fetchFn(`https://api.coinex.com/v2/futures/funding-rate?market=${t.market}`, {}, 5000);
+          if (!res.ok) return null;
+          const json = await res.json();
+          if (json.code !== 0 || !json.data) return null;
+          const rate = parseFloat(json.data.latest_funding_rate || json.data.next_funding_rate || '0');
+          return {
+            symbol: t.market.replace('USDT', ''),
+            exchange: 'CoinEx',
+            fundingRate: rate * 100,
+            markPrice: parseFloat(json.data.mark_price || t.mark_price) || 0,
+            indexPrice: parseFloat(t.index_price) || 0,
+            nextFundingTime: json.data.next_funding_time ? parseInt(json.data.next_funding_time) : Date.now() + 28800000,
+          };
+        } catch { return null; }
+      });
+      return (await Promise.all(promises)).filter((item): item is FundingData => item !== null && !isNaN(item.fundingRate));
+    },
+  },
+
+  // Crypto.com
+  {
+    name: 'Crypto.com',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.crypto.com/exchange/v1/public/get-tickers');
+      if (!res.ok) return [];
+      const json = await res.json();
+      const items = json.result?.data || [];
+      // Get perp tickers for prices/OI, then fetch funding for top symbols
+      const perps = items.filter((t: any) => t.i && t.i.endsWith('USD-PERP'));
+      const topPerps = perps
+        .sort((a: any, b: any) => parseFloat(b.vv || '0') - parseFloat(a.vv || '0'))
+        .slice(0, 40);
+      const promises = topPerps.map(async (t: any) => {
+        try {
+          const frRes = await fetchFn(
+            `https://api.crypto.com/exchange/v1/public/get-valuations?instrument_name=${encodeURIComponent(t.i)}&valuation_type=funding_rate`,
+            {},
+            5000
+          );
+          if (!frRes.ok) return null;
+          const frJson = await frRes.json();
+          const frData = frJson.result?.data;
+          if (!Array.isArray(frData) || frData.length === 0) return null;
+          const latest = frData[frData.length - 1];
+          return {
+            symbol: t.i.replace('USD-PERP', ''),
+            exchange: 'Crypto.com',
+            fundingRate: parseFloat(latest.v) * 100,
+            markPrice: parseFloat(t.a) || 0,
+            indexPrice: 0,
+            nextFundingTime: Date.now() + 3600000,
+          };
+        } catch { return null; }
+      });
+      return (await Promise.all(promises)).filter((item): item is FundingData => item !== null && !isNaN(item.fundingRate));
+    },
+  },
 ];
 
 // Paused exchanges (kept for reference):
 // gTrade (Gains Network) - All API endpoints unreachable (backend-api.gains.trade, etc.)
 // GMX v2 (Arbitrum) - No REST funding rate endpoint; requires on-chain contract queries
+// Bitunix - No public funding rate endpoint found
+// LBank - Futures domain (fapi.lbank.com) unreachable

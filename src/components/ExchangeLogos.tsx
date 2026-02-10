@@ -197,6 +197,61 @@ export function AsterLogo({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
+export function BitMEXLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#E4002B"/>
+      <text x="63" y="74" textAnchor="middle" fill="#FFFFFF" fontWeight="bold" fontSize="28">BMX</text>
+    </svg>
+  );
+}
+
+export function BitfinexLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#16B157"/>
+      <path fill="#FFFFFF" d="M63 30l30 33-30 33-30-33 30-33zm0 15l-15 18 15 18 15-18-15-18z"/>
+    </svg>
+  );
+}
+
+export function WhiteBITLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#E0E0E0"/>
+      <text x="63" y="74" textAnchor="middle" fill="#1A1A1A" fontWeight="bold" fontSize="26">WB</text>
+    </svg>
+  );
+}
+
+export function CoinbaseLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#0052FF"/>
+      <circle cx="63" cy="63" r="30" fill="#FFFFFF"/>
+      <circle cx="63" cy="63" r="12" fill="#0052FF"/>
+    </svg>
+  );
+}
+
+export function CoinExLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#3CC8C8"/>
+      <text x="63" y="74" textAnchor="middle" fill="#FFFFFF" fontWeight="bold" fontSize="28">CX</text>
+    </svg>
+  );
+}
+
+export function CryptoComLogo({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#002D74"/>
+      <path fill="#FFFFFF" d="M63 30c-18.2 0-33 14.8-33 33s14.8 33 33 33 33-14.8 33-33-14.8-33-33-33zm0 55c-12.1 0-22-9.9-22-22s9.9-22 22-22 22 9.9 22 22-9.9 22-22 22z"/>
+    </svg>
+  );
+}
+
 export function LighterLogo({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
@@ -229,6 +284,12 @@ export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps
   gtrade: GTradeLogo,
   aster: AsterLogo,
   lighter: LighterLogo,
+  bitmex: BitMEXLogo,
+  bitfinex: BitfinexLogo,
+  whitebit: WhiteBITLogo,
+  coinbase: CoinbaseLogo,
+  coinex: CoinExLogo,
+  'crypto.com': CryptoComLogo,
 };
 
 // Exchange brand colors for styling
@@ -254,6 +315,12 @@ export const exchangeColors: Record<string, string> = {
   gtrade: '#14B8A6',
   aster: '#EC4899',
   lighter: '#34D399',
+  bitmex: '#E4002B',
+  bitfinex: '#16B157',
+  whitebit: '#E0E0E0',
+  coinbase: '#0052FF',
+  coinex: '#3CC8C8',
+  'crypto.com': '#002D74',
 };
 
 // Generic exchange logo component

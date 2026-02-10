@@ -294,4 +294,207 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         });
     },
   },
+
+  // BitMEX
+  {
+    name: 'BitMEX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://www.bitmex.com/api/v1/instrument/active');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.symbol.endsWith('USDT') && t.openInterest)
+        .map((item: any) => ({
+          symbol: item.symbol.replace('USDT', ''),
+          exchange: 'BitMEX',
+          openInterest: parseFloat(item.openInterest) || 0,
+          openInterestValue: parseFloat(item.openValue) || (parseFloat(item.openInterest) * parseFloat(item.lastPrice)) || 0,
+        }));
+    },
+  },
+
+  // KuCoin
+  {
+    name: 'KuCoin',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-futures.kucoin.com/api/v1/contracts/active');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.code !== '200000' && json.code !== 200000) return [];
+      return (json.data || [])
+        .filter((t: any) => t.symbol.endsWith('USDTM') && t.openInterest)
+        .map((item: any) => {
+          const oi = parseFloat(item.openInterest) || 0;
+          const price = parseFloat(item.lastTradePrice) || 0;
+          return {
+            symbol: item.symbol.replace('USDTM', ''),
+            exchange: 'KuCoin',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        });
+    },
+  },
+
+  // Deribit (BTC + ETH only)
+  {
+    name: 'Deribit',
+    fetcher: async (fetchFn) => {
+      const instruments = ['BTC-PERPETUAL', 'ETH-PERPETUAL'];
+      const promises = instruments.map(async (inst) => {
+        try {
+          const res = await fetchFn(`https://www.deribit.com/api/v2/public/ticker?instrument_name=${inst}`, {}, 5000);
+          if (!res.ok) return null;
+          const json = await res.json();
+          const r = json.result;
+          if (!r) return null;
+          const oi = parseFloat(r.open_interest) || 0;
+          const price = parseFloat(r.mark_price) || 0;
+          return {
+            symbol: inst.replace('-PERPETUAL', ''),
+            exchange: 'Deribit',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        } catch { return null; }
+      });
+      return (await Promise.all(promises)).filter((item): item is OIData => item !== null);
+    },
+  },
+
+  // HTX (Huobi)
+  {
+    name: 'HTX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.hbdm.com/linear-swap-api/v1/swap_open_interest?contract_type=swap&business_type=all');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.status !== 'ok' || !Array.isArray(json.data)) return [];
+      return json.data
+        .filter((t: any) => {
+          const code = t.contract_code || '';
+          return code.endsWith('-USDT') && !/-\d{6}$/.test(code);
+        })
+        .map((item: any) => ({
+          symbol: item.contract_code.replace('-USDT', ''),
+          exchange: 'HTX',
+          openInterest: parseFloat(item.amount) || 0,
+          openInterestValue: parseFloat(item.value) || 0,
+        }));
+    },
+  },
+
+  // Bitfinex
+  {
+    name: 'Bitfinex',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-pub.bitfinex.com/v2/status/deriv?keys=ALL');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((item: any) => Array.isArray(item) && typeof item[0] === 'string' && item[0].endsWith('F0:USTF0'))
+        .map((item: any) => ({
+          symbol: item[0].replace('t', '').replace('F0:USTF0', ''),
+          exchange: 'Bitfinex',
+          openInterest: parseFloat(item[18]) || 0,
+          openInterestValue: parseFloat(item[6]) || 0,
+        }))
+        .filter((item: any) => item.openInterestValue > 0 && item.symbol.length > 0);
+    },
+  },
+
+  // WhiteBIT
+  {
+    name: 'WhiteBIT',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://whitebit.com/api/v4/public/futures');
+      if (!res.ok) return [];
+      const json = await res.json();
+      const items = json.result || json;
+      if (!Array.isArray(items)) return [];
+      return items
+        .filter((t: any) => t.ticker_id && t.ticker_id.endsWith('_PERP') && t.open_interest)
+        .map((item: any) => {
+          const oi = parseFloat(item.open_interest) || 0;
+          const price = parseFloat(item.last_price) || 0;
+          return {
+            symbol: item.ticker_id.replace('_PERP', ''),
+            exchange: 'WhiteBIT',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        });
+    },
+  },
+
+  // Coinbase International
+  {
+    name: 'Coinbase',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.international.coinbase.com/api/v1/instruments');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.instrument_type === 'PERP' && t.base_open_interest)
+        .map((item: any) => {
+          const oi = parseFloat(item.base_open_interest) || 0;
+          const price = parseFloat(item.quote?.mark_price) || 0;
+          return {
+            symbol: item.symbol.replace('-PERP', ''),
+            exchange: 'Coinbase',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        });
+    },
+  },
+
+  // CoinEx
+  {
+    name: 'CoinEx',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.coinex.com/v2/futures/ticker?market=');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.code !== 0 || !Array.isArray(json.data)) return [];
+      return json.data
+        .filter((t: any) => t.market.endsWith('USDT') && t.open_interest_volume)
+        .map((item: any) => {
+          const oi = parseFloat(item.open_interest_volume) || 0;
+          const price = parseFloat(item.last) || 0;
+          return {
+            symbol: item.market.replace('USDT', ''),
+            exchange: 'CoinEx',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        });
+    },
+  },
+
+  // Crypto.com
+  {
+    name: 'Crypto.com',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.crypto.com/exchange/v1/public/get-tickers');
+      if (!res.ok) return [];
+      const json = await res.json();
+      const items = json.result?.data || [];
+      return items
+        .filter((t: any) => t.i && t.i.endsWith('USD-PERP') && t.oi)
+        .map((item: any) => {
+          const oi = parseFloat(item.oi) || 0;
+          const price = parseFloat(item.a) || 0;
+          return {
+            symbol: item.i.replace('USD-PERP', ''),
+            exchange: 'Crypto.com',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        });
+    },
+  },
 ];
