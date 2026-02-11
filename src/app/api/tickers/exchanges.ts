@@ -506,7 +506,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
-        .filter((t: any) => t.instrument_type === 'PERP' && t.quote)
+        .filter((t: any) => (t.type === 'PERP' || t.instrument_type === 'PERP') && t.quote)
         .map((ticker: any) => {
           const lastPrice = parseFloat(ticker.quote?.mark_price) || 0;
           return {
@@ -518,8 +518,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             changePercent24h: 0,
             high24h: 0,
             low24h: 0,
-            volume24h: parseFloat(ticker.base_volume_24h) || 0,
-            quoteVolume24h: parseFloat(ticker.notional_volume_24h) || 0,
+            volume24h: parseFloat(ticker.qty_24hr) || parseFloat(ticker.base_volume_24h) || 0,
+            quoteVolume24h: parseFloat(ticker.notional_24hr) || parseFloat(ticker.notional_volume_24h) || 0,
           };
         })
         .filter((item: any) => item.lastPrice > 0);

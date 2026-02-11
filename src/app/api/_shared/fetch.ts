@@ -59,6 +59,33 @@ export function isTop500Symbol(symbol: string, top500: Set<string>): boolean {
   return top500.has(symbol.toUpperCase());
 }
 
+// Binance domain fallback — fapi.binance.com is geo-blocked in some regions
+const BINANCE_FAPI_DOMAINS = [
+  'https://fapi.binance.com',
+  'https://fapi.binance.me',
+];
+
+// Bybit domain fallback — api.bybit.com is geo-blocked in some regions
+const BYBIT_API_DOMAINS = [
+  'https://api.bybit.com',
+  'https://api.bytick.com',
+];
+
+// Rewrite URL to try alternate domains when primary is blocked
+function getDomainFallbacks(url: string): string[] {
+  for (const primary of BINANCE_FAPI_DOMAINS) {
+    if (url.startsWith(primary)) {
+      return BINANCE_FAPI_DOMAINS.filter(d => d !== primary).map(d => url.replace(primary, d));
+    }
+  }
+  for (const primary of BYBIT_API_DOMAINS) {
+    if (url.startsWith(primary)) {
+      return BYBIT_API_DOMAINS.filter(d => d !== primary).map(d => url.replace(primary, d));
+    }
+  }
+  return [];
+}
+
 // Helper function for fetch with timeout
 export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000): Promise<Response> {
   const controller = new AbortController();
@@ -70,9 +97,45 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
       headers: { ...commonHeaders, ...options.headers },
     });
     clearTimeout(id);
+    // If geo-blocked (451/403), try fallback domains
+    if (response.status === 451 || response.status === 403) {
+      const fallbacks = getDomainFallbacks(url);
+      for (const fallbackUrl of fallbacks) {
+        try {
+          const controller2 = new AbortController();
+          const id2 = setTimeout(() => controller2.abort(), timeout);
+          const fallbackResponse = await fetch(fallbackUrl, {
+            ...options,
+            signal: controller2.signal,
+            headers: { ...commonHeaders, ...options.headers },
+          });
+          clearTimeout(id2);
+          if (fallbackResponse.ok) return fallbackResponse;
+        } catch {
+          continue;
+        }
+      }
+    }
     return response;
   } catch (error) {
     clearTimeout(id);
+    // On network error, also try fallbacks
+    const fallbacks = getDomainFallbacks(url);
+    for (const fallbackUrl of fallbacks) {
+      try {
+        const controller2 = new AbortController();
+        const id2 = setTimeout(() => controller2.abort(), timeout);
+        const fallbackResponse = await fetch(fallbackUrl, {
+          ...options,
+          signal: controller2.signal,
+          headers: { ...commonHeaders, ...options.headers },
+        });
+        clearTimeout(id2);
+        if (fallbackResponse.ok) return fallbackResponse;
+      } catch {
+        continue;
+      }
+    }
     throw error;
   }
 }

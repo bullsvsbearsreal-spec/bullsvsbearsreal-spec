@@ -438,9 +438,9 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
-        .filter((t: any) => t.instrument_type === 'PERP' && t.base_open_interest)
+        .filter((t: any) => (t.type === 'PERP' || t.instrument_type === 'PERP') && (t.open_interest || t.base_open_interest))
         .map((item: any) => {
-          const oi = parseFloat(item.base_open_interest) || 0;
+          const oi = parseFloat(item.open_interest) || parseFloat(item.base_open_interest) || 0;
           const price = parseFloat(item.quote?.mark_price) || 0;
           return {
             symbol: item.symbol.replace('-PERP', ''),

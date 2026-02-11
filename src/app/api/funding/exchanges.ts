@@ -494,7 +494,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
-        .filter((item: any) => item.instrument_type === 'PERP' && item.quote?.predicted_funding != null)
+        .filter((item: any) => (item.type === 'PERP' || item.instrument_type === 'PERP') && item.quote?.predicted_funding != null)
         .map((item: any) => ({
           symbol: item.symbol.replace('-PERP', ''),
           exchange: 'Coinbase',
