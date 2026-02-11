@@ -84,21 +84,28 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
   }
 }
 
+// Asset class type for funding rate queries
+export type AssetClassFilter = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'all';
+
 // Fetch funding rates from all exchanges via API route (to avoid CORS)
-export async function fetchAllFundingRates(): Promise<FundingRateData[]> {
-  const cached = getCached<FundingRateData[]>('fundingRates');
+export async function fetchAllFundingRates(assetClass: AssetClassFilter = 'crypto'): Promise<FundingRateData[]> {
+  const cacheKey = `fundingRates_${assetClass}`;
+  const cached = getCached<FundingRateData[]>(cacheKey);
   if (cached) return cached;
 
   try {
     // Use the server-side API route to avoid CORS issues
-    const response = await fetch('/api/funding');
+    const url = assetClass === 'crypto'
+      ? '/api/funding'
+      : `/api/funding?assetClass=${assetClass}`;
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error('Failed to fetch funding rates');
     }
     const json = await response.json();
     // API returns { data, health, meta } — extract data array
     const allRates = Array.isArray(json) ? json : (json.data ?? json);
-    setCache('fundingRates', allRates);
+    setCache(cacheKey, allRates);
     return allRates;
   } catch (error) {
     console.error('Error fetching funding rates:', error);
@@ -114,7 +121,7 @@ export async function fetchAllFundingRates(): Promise<FundingRateData[]> {
       }
     });
 
-    setCache('fundingRates', allRates);
+    setCache(cacheKey, allRates);
     return allRates;
   }
 }

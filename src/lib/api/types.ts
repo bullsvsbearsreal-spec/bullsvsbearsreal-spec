@@ -36,6 +36,7 @@ export interface FundingRateData {
   markPrice?: number;
   indexPrice?: number;
   type?: 'cex' | 'dex';
+  assetClass?: 'crypto' | 'stocks' | 'forex' | 'commodities';
 }
 
 export interface OpenInterestData {

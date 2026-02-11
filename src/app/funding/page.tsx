@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
-import { fetchAllFundingRates, fetchFundingArbitrage } from '@/lib/api/aggregator';
+import { fetchAllFundingRates, fetchFundingArbitrage, type AssetClassFilter } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
-import { RefreshCw, AlertTriangle, Check, Settings2 } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { ALL_EXCHANGES, EXCHANGE_COLORS, CATEGORIES, CATEGORY_ICONS, PRIORITY_SYMBOLS, DEX_EXCHANGES, isExchangeDex } from '@/lib/constants';
-import type { Category } from '@/lib/constants';
+import { ALL_EXCHANGES, EXCHANGE_COLORS, CATEGORIES, CATEGORY_ICONS, PRIORITY_SYMBOLS, DEX_EXCHANGES, isExchangeDex, getCategoriesForAssetClass } from '@/lib/constants';
+import type { Category, AssetClass } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { useApiData } from '@/hooks/useApiData';
 import FundingStats from './components/FundingStats';
@@ -20,24 +20,45 @@ type SortOrder = 'asc' | 'desc';
 type ViewMode = 'heatmap' | 'table' | 'arbitrage';
 type VenueFilter = 'all' | 'cex' | 'dex';
 
+const ASSET_CLASS_TABS: { key: AssetClass; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: 'crypto', label: 'Crypto', icon: TrendingUp },
+  { key: 'stocks', label: 'Stocks', icon: BarChart3 },
+  { key: 'forex', label: 'Forex', icon: DollarSign },
+  { key: 'commodities', label: 'Commodities', icon: CommodityIcon },
+];
+
+const ASSET_CLASS_SUBTITLES: Record<AssetClass, string> = {
+  crypto: 'Real-time perpetual funding',
+  stocks: 'Real-time stock perp funding',
+  forex: 'Real-time forex perp funding',
+  commodities: 'Real-time commodity perp funding',
+};
+
 export default function FundingPage() {
   const [sortField, setSortField] = useState<SortField>('fundingRate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [categoryFilter, setCategoryFilter] = useState<Category>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(new Set(ALL_EXCHANGES));
   const [showExchangeSelector, setShowExchangeSelector] = useState(false);
   const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
+  const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
+
+  // Get dynamic categories/icons/priorities for current asset class
+  const { categories: activeCategories, icons: activeCategoryIcons, prioritySymbols: activePrioritySymbols } = useMemo(
+    () => getCategoriesForAssetClass(assetClass),
+    [assetClass]
+  );
 
   const fetcher = useCallback(async () => {
     const [data, arbData] = await Promise.all([
-      fetchAllFundingRates(),
-      fetchFundingArbitrage(),
+      fetchAllFundingRates(assetClass as AssetClassFilter),
+      assetClass === 'crypto' ? fetchFundingArbitrage() : Promise.resolve([]),
     ]);
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
     return { fundingRates: validData, arbitrageData: arbData };
-  }, []);
+  }, [assetClass]);
 
   const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
     fetcher,
@@ -46,6 +67,12 @@ export default function FundingPage() {
 
   const fundingRates = data?.fundingRates ?? [];
   const arbitrageData = data?.arbitrageData ?? [];
+
+  const handleAssetClassChange = (newAssetClass: AssetClass) => {
+    setAssetClass(newAssetClass);
+    setCategoryFilter('all'); // Reset category on asset class change
+    setSearchTerm('');
+  };
 
   const toggleExchange = (exchange: string) => {
     setSelectedExchanges(prev => {
@@ -81,7 +108,7 @@ export default function FundingPage() {
     if (categoryFilter === 'all') return null;
     if (categoryFilter === 'highest') return highestRateSymbols;
     if (categoryFilter === 'lowest') return lowestRateSymbols;
-    return CATEGORIES[categoryFilter].symbols;
+    return activeCategories[categoryFilter]?.symbols || null;
   };
   const categorySymbols = getCategorySymbols();
 
@@ -90,8 +117,8 @@ export default function FundingPage() {
     .sort((a, b) => {
       if (categoryFilter === 'highest') return getSymbolAvgRate(b) - getSymbolAvgRate(a);
       if (categoryFilter === 'lowest') return getSymbolAvgRate(a) - getSymbolAvgRate(b);
-      const aPriority = PRIORITY_SYMBOLS.indexOf(a);
-      const bPriority = PRIORITY_SYMBOLS.indexOf(b);
+      const aPriority = activePrioritySymbols.indexOf(a);
+      const bPriority = activePrioritySymbols.indexOf(b);
       if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
       if (aPriority !== -1) return -1;
       if (bPriority !== -1) return 1;
@@ -125,7 +152,7 @@ export default function FundingPage() {
       if (categoryFilter !== 'all') {
         if (categoryFilter === 'highest') return highestRateSymbols.includes(fr.symbol);
         if (categoryFilter === 'lowest') return lowestRateSymbols.includes(fr.symbol);
-        return CATEGORIES[categoryFilter].symbols.includes(fr.symbol);
+        return (activeCategories[categoryFilter]?.symbols || []).includes(fr.symbol);
       }
       return true;
     })
@@ -155,8 +182,10 @@ export default function FundingPage() {
   const viewTabs: { key: ViewMode; label: string }[] = [
     { key: 'table', label: 'Table' },
     { key: 'heatmap', label: 'Heatmap' },
-    { key: 'arbitrage', label: 'Arbitrage' },
+    ...(assetClass === 'crypto' ? [{ key: 'arbitrage' as ViewMode, label: 'Arbitrage' }] : []),
   ];
+
+  const categoryKeys = Object.keys(activeCategories);
 
   return (
     <div className="min-h-screen bg-black">
@@ -167,7 +196,7 @@ export default function FundingPage() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-xl font-bold text-white">Funding Rates</h1>
-            <p className="text-neutral-500 text-sm">Real-time perpetual funding across {ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</p>
+            <p className="text-neutral-500 text-sm">{ASSET_CLASS_SUBTITLES[assetClass]} across {ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</p>
           </div>
           <div className="flex items-center gap-3">
             {lastUpdate && (
@@ -186,6 +215,31 @@ export default function FundingPage() {
           </div>
         </div>
 
+        {/* Asset Class Tabs */}
+        <div className="flex items-center gap-1 mb-4 p-1 bg-white/[0.03] rounded-xl border border-white/[0.06] w-fit">
+          {ASSET_CLASS_TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => handleAssetClassChange(key)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                assetClass === key
+                  ? 'bg-hub-yellow text-black shadow-sm'
+                  : 'text-neutral-500 hover:text-white hover:bg-white/[0.05]'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+              {assetClass === key && fundingRates.length > 0 && (
+                <span className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  assetClass === key ? 'bg-black/20 text-black' : 'bg-white/10 text-neutral-400'
+                }`}>
+                  {fundingRates.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Stats */}
         <FundingStats
           fundingRates={fundingRates}
@@ -197,8 +251,8 @@ export default function FundingPage() {
         {/* Controls */}
         <div className="flex flex-col lg:flex-row gap-3 mb-4">
           <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(CATEGORIES) as Category[]).map((cat) => {
-              const IconComponent = CATEGORY_ICONS[cat];
+            {categoryKeys.map((cat) => {
+              const IconComponent = activeCategoryIcons[cat];
               return (
                 <button
                   key={cat}
@@ -210,7 +264,7 @@ export default function FundingPage() {
                   }`}
                 >
                   {IconComponent && <IconComponent className="w-3 h-3" />}
-                  {CATEGORIES[cat].name}
+                  {activeCategories[cat].name}
                 </button>
               );
             })}
@@ -318,7 +372,16 @@ export default function FundingPage() {
         {loading && fundingRates.length === 0 ? (
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-12 text-center">
             <RefreshCw className="w-5 h-5 text-hub-yellow animate-spin mx-auto mb-2" />
-            <span className="text-neutral-500 text-sm">Loading funding rates...</span>
+            <span className="text-neutral-500 text-sm">Loading {assetClass} funding rates...</span>
+          </div>
+        ) : fundingRates.length === 0 && !loading ? (
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-12 text-center">
+            <div className="text-neutral-600 text-sm mb-2">No {assetClass} funding data available</div>
+            <p className="text-neutral-700 text-xs">
+              {assetClass === 'forex' && 'Forex perps are available on Lighter, Aster, dYdX, and gTrade (where enabled).'}
+              {assetClass === 'stocks' && 'Stock perps are available on Gate.io, Aster, Phemex, Lighter, and gTrade.'}
+              {assetClass === 'commodities' && 'Commodity perps (gold, silver, oil) are available on Lighter, Aster, Phemex, and gTrade.'}
+            </p>
           </div>
         ) : (
           <>
@@ -328,7 +391,7 @@ export default function FundingPage() {
             {viewMode === 'heatmap' && (
               <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} />
             )}
-            {viewMode === 'arbitrage' && (
+            {viewMode === 'arbitrage' && assetClass === 'crypto' && (
               <FundingArbitrageView arbitrageData={arbitrageData} />
             )}
           </>
@@ -336,9 +399,34 @@ export default function FundingPage() {
 
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
-            <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
-            Funding paid every 8h. Annualized = Rate x 3 x 365.
+            {assetClass === 'crypto' && (
+              <>
+                <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
+                <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
+                Funding paid every 8h. Annualized = Rate x 3 x 365.
+              </>
+            )}
+            {assetClass === 'stocks' && (
+              <>
+                <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
+                <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
+                Stock perps trade 24/7 on DEXs. Funding rates reflect demand to hold synthetic equity exposure.
+              </>
+            )}
+            {assetClass === 'forex' && (
+              <>
+                <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
+                <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
+                Forex perp rates approximate traditional swap rates. Some exchanges may show zero if funding is disabled.
+              </>
+            )}
+            {assetClass === 'commodities' && (
+              <>
+                <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
+                <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
+                Commodity perps (gold, silver, oil) provide 24/7 exposure to physical commodity prices.
+              </>
+            )}
           </p>
         </div>
       </main>

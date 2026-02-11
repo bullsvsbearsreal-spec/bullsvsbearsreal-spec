@@ -1,5 +1,6 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { fetchWithTimeout, isCryptoSymbol } from '../_shared/fetch';
+import { normalizeSymbol, GTRADE_GROUP_ASSET_CLASS, type AssetClass } from './normalize';
 
 type FundingData = {
   symbol: string;
@@ -9,6 +10,7 @@ type FundingData = {
   indexPrice: number;
   nextFundingTime: number;
   type?: 'cex' | 'dex'; // CEX vs DEX classification
+  assetClass?: 'crypto' | 'stocks' | 'forex' | 'commodities';
 };
 
 export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
@@ -198,21 +200,23 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map(([key, market]: [string, any]) => {
           const rate = parseFloat(market.nextFundingRate);
           if (isNaN(rate)) return null;
+          const normalized = normalizeSymbol(key, 'dydx');
           return {
-            symbol: key.replace('-USD', ''),
+            symbol: normalized.symbol,
             exchange: 'dYdX',
             fundingRate: rate * 8 * 100, // hourly → 8h, fraction → %
             markPrice: parseFloat(market.oraclePrice) || 0,
             indexPrice: parseFloat(market.oraclePrice) || 0,
             nextFundingTime: Date.now() + 3600000,
             type: 'dex' as const,
+            assetClass: normalized.assetClass,
           };
         })
         .filter(Boolean);
     },
   },
 
-  // Aster DEX
+  // Aster DEX — stocks, forex, commodities + crypto
   {
     name: 'Aster',
     fetcher: async (fetchFn) => {
@@ -222,40 +226,47 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!Array.isArray(data)) return [];
       return data
         .filter((item: any) => item.symbol && item.lastFundingRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', '').replace('USDC', ''),
-          exchange: 'Aster',
-          fundingRate: parseFloat(item.lastFundingRate) * 100,
-          markPrice: parseFloat(item.markPrice || '0'),
-          indexPrice: parseFloat(item.indexPrice || '0'),
-          nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
-          type: 'dex' as const,
-        }))
+        .map((item: any) => {
+          const normalized = normalizeSymbol(item.symbol, 'aster');
+          return {
+            symbol: normalized.symbol,
+            exchange: 'Aster',
+            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            markPrice: parseFloat(item.markPrice || '0'),
+            indexPrice: parseFloat(item.indexPrice || '0'),
+            nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
+            type: 'dex' as const,
+            assetClass: normalized.assetClass,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
 
-  // Lighter
+  // Lighter — stocks, forex, commodities + crypto (removed FOREX_SYMBOLS blocklist)
   {
     name: 'Lighter',
     fetcher: async (fetchFn) => {
-      const FOREX_SYMBOLS = new Set(['USDCAD', 'GBPUSD', 'NZDUSD', 'USDKRW', 'EURUSD', 'USDCHF', 'USDJPY', 'AUDUSD']);
       const res = await fetchFn('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates');
       if (!res.ok) return [];
       const data = await res.json();
       const fundingRates = data.funding_rates || data;
       if (!Array.isArray(fundingRates)) return [];
       return fundingRates
-        .filter((item: any) => item.exchange === 'lighter' && item.symbol && !FOREX_SYMBOLS.has(item.symbol))
-        .map((item: any) => ({
-          symbol: item.symbol,
-          exchange: 'Lighter',
-          fundingRate: parseFloat(item.rate || '0') * 100,
-          markPrice: 0,
-          indexPrice: 0,
-          nextFundingTime: Date.now() + 3600000,
-          type: 'dex' as const,
-        }))
+        .filter((item: any) => item.exchange === 'lighter' && item.symbol)
+        .map((item: any) => {
+          const normalized = normalizeSymbol(item.symbol, 'lighter');
+          return {
+            symbol: normalized.symbol,
+            exchange: 'Lighter',
+            fundingRate: parseFloat(item.rate || '0') * 100,
+            markPrice: 0,
+            indexPrice: 0,
+            nextFundingTime: Date.now() + 3600000,
+            type: 'dex' as const,
+            assetClass: normalized.assetClass,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
     },
   },
@@ -300,7 +311,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Gate.io
+  // Gate.io — includes xStocks (AAPLX_USDT, TSLAX_USDT, etc.)
   {
     name: 'Gate.io',
     fetcher: async (fetchFn) => {
@@ -311,18 +322,22 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return data
         .filter((item: any) =>
           item.name.endsWith('_USDT') &&
-          isCryptoSymbol(item.name.replace('_USDT', '')) &&
           (item.funding_rate != null || item.funding_rate_indicative != null)
         )
-        .map((item: any) => ({
-          symbol: item.name.replace('_USDT', ''),
-          exchange: 'Gate.io',
-          fundingRate: parseFloat(item.funding_rate || item.funding_rate_indicative) * 100,
-          markPrice: parseFloat(item.mark_price) || 0,
-          indexPrice: parseFloat(item.index_price) || 0,
-          nextFundingTime: (item.funding_next_apply || 0) * 1000,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const rawSymbol = item.name.replace('_USDT', '');
+          const normalized = normalizeSymbol(rawSymbol, 'gate.io');
+          return {
+            symbol: normalized.symbol,
+            exchange: 'Gate.io',
+            fundingRate: parseFloat(item.funding_rate || item.funding_rate_indicative) * 100,
+            markPrice: parseFloat(item.mark_price) || 0,
+            indexPrice: parseFloat(item.index_price) || 0,
+            nextFundingTime: (item.funding_next_apply || 0) * 1000,
+            type: 'cex' as const,
+            assetClass: normalized.assetClass,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -383,7 +398,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // BingX
+  // BingX — includes tokenized stocks (NCSK*)
   {
     name: 'BingX',
     fetcher: async (fetchFn) => {
@@ -393,20 +408,25 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (json.code !== 0 || !Array.isArray(json.data)) return [];
       return json.data
         .filter((item: any) => item.symbol.endsWith('-USDT') && item.lastFundingRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('-USDT', ''),
-          exchange: 'BingX',
-          fundingRate: parseFloat(item.lastFundingRate) * 100,
-          markPrice: parseFloat(item.markPrice) || 0,
-          indexPrice: parseFloat(item.indexPrice) || 0,
-          nextFundingTime: item.nextFundingTime || Date.now() + 28800000,
-          type: 'cex' as const,
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate) && isCryptoSymbol(item.symbol));
+        .map((item: any) => {
+          const rawSymbol = item.symbol.replace('-USDT', '');
+          const normalized = normalizeSymbol(rawSymbol, 'bingx');
+          return {
+            symbol: normalized.symbol,
+            exchange: 'BingX',
+            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            markPrice: parseFloat(item.markPrice) || 0,
+            indexPrice: parseFloat(item.indexPrice) || 0,
+            nextFundingTime: item.nextFundingTime || Date.now() + 28800000,
+            type: 'cex' as const,
+            assetClass: normalized.assetClass,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
 
-  // Phemex
+  // Phemex — includes stock perps (TSLA, AAPL, NVDA, etc.) and commodities (XAU, XAG)
   {
     name: 'Phemex',
     fetcher: async (fetchFn) => {
@@ -417,15 +437,19 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (phemexResult.length === 0) return [];
       return phemexResult
         .filter((item: any) => item.symbol && item.symbol.endsWith('USDT') && item.fundingRateRr != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Phemex',
-          fundingRate: parseFloat(item.fundingRateRr) * 100,
-          markPrice: parseFloat(item.markPriceRp) || 0,
-          indexPrice: parseFloat(item.indexPriceRp) || 0,
-          nextFundingTime: Date.now() + 28800000,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const normalized = normalizeSymbol(item.symbol, 'phemex');
+          return {
+            symbol: normalized.symbol,
+            exchange: 'Phemex',
+            fundingRate: parseFloat(item.fundingRateRr) * 100,
+            markPrice: parseFloat(item.markPriceRp) || 0,
+            indexPrice: parseFloat(item.indexPriceRp) || 0,
+            nextFundingTime: Date.now() + 28800000,
+            type: 'cex' as const,
+            assetClass: normalized.assetClass,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -704,8 +728,6 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
       const pairs: { from: string; to: string; groupIndex: string }[] = raw.pairs || [];
       const results: FundingData[] = [];
-      // Crypto group indices: 0=crypto, 10=altcoins, 11=crypto-degen
-      const CRYPTO_GROUPS = new Set([0, 10, 11]);
 
       // Use USDC collateral (most active for crypto trading)
       const collateral = (raw.collaterals || []).find((c: any) => c.symbol === 'USDC' && c.isActive);
@@ -725,8 +747,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const pair = pairs[i];
           if (!pair || !pair.from) continue;
 
-          // Only include crypto pairs
-          if (!CRYPTO_GROUPS.has(parseInt(pair.groupIndex))) continue;
+          // Determine asset class from group index
+          const groupIdx = parseInt(pair.groupIndex);
+          const assetClass: AssetClass = GTRADE_GROUP_ASSET_CLASS[groupIdx] || 'crypto';
 
           const params = fundingParams[i];
           const data = fundingData[i];
@@ -801,8 +824,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (Math.abs(fundingRate8h) < 0.00001) continue;
 
           // Build symbol — gTrade pairs are like "BTC/USD", we want "BTC"
-          const symbol = pair.from;
-          if (!isCryptoSymbol(symbol)) continue;
+          // For forex, construct pair symbol: EUR + USD → EURUSD
+          let symbol = pair.from;
+          if (assetClass === 'forex') {
+            symbol = pair.from + (pair.to || 'USD');
+          }
 
           results.push({
             symbol,
@@ -812,6 +838,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             indexPrice: 0,
             nextFundingTime: 0, // gTrade funding is continuous, no discrete funding time
             type: 'dex' as const,
+            assetClass,
           });
         } catch {
           continue;
