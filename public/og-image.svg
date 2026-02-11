@@ -1,29 +1,25 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="og-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="og-bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0D0D0D"/>
       <stop offset="100%" stop-color="#1A1A1A"/>
     </linearGradient>
-    <linearGradient id="og-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="og-grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset="50%" stop-color="#FFA500"/>
-      <stop offset="100%" stop-color="#FF8C00"/>
+      <stop offset="40%" stop-color="#FFA500"/>
+      <stop offset="100%" stop-color="#FF7700"/>
     </linearGradient>
-    <linearGradient id="og-text-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="og-text" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#FFD700"/>
       <stop offset="100%" stop-color="#FF8C00"/>
     </linearGradient>
     <filter id="og-glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="40" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <!-- Background -->
-  <rect width="1200" height="630" fill="url(#og-bg-grad)"/>
+  <rect width="1200" height="630" fill="url(#og-bg)"/>
 
   <!-- Grid pattern -->
   <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
@@ -31,24 +27,36 @@
   </pattern>
   <rect width="1200" height="630" fill="url(#grid)"/>
 
-  <!-- Glow effect -->
-  <circle cx="600" cy="315" r="200" fill="#FFA500" opacity="0.1" filter="url(#og-glow)"/>
+  <!-- Glow -->
+  <circle cx="600" cy="280" r="200" fill="#FFA500" opacity="0.08" filter="url(#og-glow)"/>
 
   <!-- Logo Icon -->
-  <rect x="440" y="180" width="120" height="120" rx="28" fill="url(#og-logo-grad)"/>
-  <text x="474" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="68" font-weight="800" fill="#000" font-style="italic">i</text>
-  <text x="510" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="68" font-weight="800" fill="#000">H</text>
+  <rect x="440" y="160" width="120" height="120" rx="28" fill="url(#og-grad)"/>
+  <!-- Hub ring -->
+  <circle cx="500" cy="223" r="18" stroke="#000" stroke-width="7" fill="none" opacity="0.85"/>
+  <circle cx="500" cy="223" r="5" fill="#000" opacity="0.85"/>
+  <!-- Spokes -->
+  <rect x="497.5" y="188" width="5" height="18" rx="2.5" fill="#000" opacity="0.85"/>
+  <rect x="497.5" y="238" width="5" height="14" rx="2.5" fill="#000" opacity="0.85"/>
+  <rect x="465" y="220.5" width="16" height="5" rx="2.5" fill="#000" opacity="0.85"/>
+  <rect x="519" y="220.5" width="16" height="5" rx="2.5" fill="#000" opacity="0.85"/>
+  <!-- i-dot -->
+  <circle cx="500" cy="184" r="7" fill="#000" opacity="0.85"/>
+  <!-- Endpoint nodes -->
+  <circle cx="465" cy="223" r="3" fill="#000" opacity="0.5"/>
+  <circle cx="535" cy="223" r="3" fill="#000" opacity="0.5"/>
+  <circle cx="500" cy="252" r="3" fill="#000" opacity="0.5"/>
 
   <!-- Wordmark -->
-  <text x="575" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="#FFFFFF">Info</text>
-  <text x="720" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="url(#og-text-grad)">Hub</text>
+  <text x="575" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="#FFFFFF">Info</text>
+  <text x="720" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="url(#og-text)">Hub</text>
 
   <!-- Tagline -->
-  <text x="600" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#B3B3B3" text-anchor="middle">Real-time Crypto Market Data</text>
+  <text x="600" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#B3B3B3" text-anchor="middle">Real-time Crypto Market Data</text>
 
   <!-- Features -->
-  <text x="600" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#808080" text-anchor="middle">Funding Rates  |  Open Interest  |  Liquidations  |  6 Exchanges</text>
+  <text x="600" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#808080" text-anchor="middle">Funding Rates  |  Open Interest  |  Liquidations  |  20+ Exchanges</text>
 
-  <!-- Bottom accent line -->
-  <rect x="400" y="480" width="400" height="4" rx="2" fill="url(#og-logo-grad)" opacity="0.6"/>
+  <!-- Bottom accent -->
+  <rect x="400" y="460" width="400" height="4" rx="2" fill="url(#og-grad)" opacity="0.6"/>
 </svg>

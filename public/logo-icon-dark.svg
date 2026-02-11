@@ -1,28 +1,27 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="darkBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="darkBg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1A1A1A"/>
       <stop offset="100%" stop-color="#0A0A0A"/>
     </linearGradient>
-    <linearGradient id="accentGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFDF00"/>
-      <stop offset="50%" stop-color="#FFAA00"/>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="40%" stop-color="#FFA500"/>
       <stop offset="100%" stop-color="#FF7700"/>
     </linearGradient>
-    <filter id="glowDark" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#FF9500" flood-opacity="0.5"/>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#FFA500" flood-opacity="0.5"/>
     </filter>
   </defs>
-
-  <!-- Dark background -->
-  <rect x="32" y="32" width="448" height="448" rx="88" fill="url(#darkBgGrad)" stroke="url(#accentGradDark)" stroke-width="3"/>
-
-  <!-- Letter i with gradient -->
-  <circle cx="160" cy="140" r="32" fill="url(#accentGradDark)" filter="url(#glowDark)"/>
-  <rect x="128" y="196" width="64" height="188" rx="12" fill="url(#accentGradDark)" filter="url(#glowDark)"/>
-
-  <!-- Letter H with gradient -->
-  <rect x="232" y="128" width="64" height="256" rx="12" fill="url(#accentGradDark)" filter="url(#glowDark)"/>
-  <rect x="360" y="128" width="64" height="256" rx="12" fill="url(#accentGradDark)" filter="url(#glowDark)"/>
-  <rect x="232" y="224" width="192" height="64" rx="12" fill="url(#accentGradDark)" filter="url(#glowDark)"/>
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#darkBg)" stroke="url(#neonGrad)" stroke-width="3"/>
+  <circle cx="256" cy="276" r="78" stroke="url(#neonGrad)" stroke-width="28" fill="none" filter="url(#glow)"/>
+  <circle cx="256" cy="276" r="22" fill="url(#neonGrad)" filter="url(#glow)"/>
+  <rect x="244" y="132" width="24" height="86" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
+  <rect x="244" y="338" width="24" height="64" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
+  <rect x="108" y="264" width="70" height="24" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
+  <rect x="334" y="264" width="70" height="24" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
+  <circle cx="256" cy="116" r="28" fill="url(#neonGrad)" filter="url(#glow)"/>
+  <circle cx="104" cy="276" r="14" fill="url(#neonGrad)" opacity="0.7"/>
+  <circle cx="408" cy="276" r="14" fill="url(#neonGrad)" opacity="0.7"/>
+  <circle cx="256" cy="402" r="14" fill="url(#neonGrad)" opacity="0.7"/>
 </svg>

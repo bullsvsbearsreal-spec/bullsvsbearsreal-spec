@@ -1,31 +1,26 @@
 <svg width="1500" height="500" viewBox="0 0 1500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="tw-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="tw-bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0D0D0D"/>
       <stop offset="100%" stop-color="#1A1A1A"/>
     </linearGradient>
-    <linearGradient id="tw-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="tw-grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset="50%" stop-color="#FFA500"/>
-      <stop offset="100%" stop-color="#FF8C00"/>
+      <stop offset="40%" stop-color="#FFA500"/>
+      <stop offset="100%" stop-color="#FF7700"/>
     </linearGradient>
-    <linearGradient id="tw-text-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="tw-text" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#FFD700"/>
       <stop offset="100%" stop-color="#FF8C00"/>
     </linearGradient>
     <filter id="tw-glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="60" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <!-- Background -->
-  <rect width="1500" height="500" fill="url(#tw-bg-grad)"/>
+  <rect width="1500" height="500" fill="url(#tw-bg)"/>
 
-  <!-- Grid pattern -->
   <pattern id="tw-grid" width="50" height="50" patternUnits="userSpaceOnUse">
     <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(255,165,0,0.04)" stroke-width="1"/>
   </pattern>
@@ -35,18 +30,24 @@
   <circle cx="200" cy="250" r="300" fill="#FFA500" opacity="0.03" filter="url(#tw-glow)"/>
   <circle cx="1300" cy="250" r="300" fill="#FF8C00" opacity="0.03" filter="url(#tw-glow)"/>
 
-  <!-- Logo centered -->
-  <rect x="550" y="150" width="100" height="100" rx="24" fill="url(#tw-logo-grad)"/>
-  <text x="580" y="218" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#000" font-style="italic">i</text>
-  <text x="610" y="218" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#000">H</text>
+  <!-- Logo Icon -->
+  <rect x="560" y="145" width="100" height="100" rx="24" fill="url(#tw-grad)"/>
+  <!-- Hub mark (scaled) -->
+  <circle cx="610" cy="198" r="16" stroke="#000" stroke-width="6" fill="none" opacity="0.85"/>
+  <circle cx="610" cy="198" r="4.5" fill="#000" opacity="0.85"/>
+  <rect x="608" y="167" width="4.5" height="16" rx="2.25" fill="#000" opacity="0.85"/>
+  <rect x="608" y="212" width="4.5" height="12" rx="2.25" fill="#000" opacity="0.85"/>
+  <rect x="579" y="196" width="14" height="4.5" rx="2.25" fill="#000" opacity="0.85"/>
+  <rect x="627" y="196" width="14" height="4.5" rx="2.25" fill="#000" opacity="0.85"/>
+  <circle cx="610" cy="163" r="6" fill="#000" opacity="0.85"/>
 
   <!-- Wordmark -->
-  <text x="665" y="218" font-family="system-ui, -apple-system, sans-serif" font-size="60" font-weight="700" fill="#FFFFFF">Info</text>
-  <text x="785" y="218" font-family="system-ui, -apple-system, sans-serif" font-size="60" font-weight="700" fill="url(#tw-text-grad)">Hub</text>
+  <text x="675" y="212" font-family="system-ui, -apple-system, sans-serif" font-size="60" font-weight="700" fill="#FFFFFF">Info</text>
+  <text x="795" y="212" font-family="system-ui, -apple-system, sans-serif" font-size="60" font-weight="700" fill="url(#tw-text)">Hub</text>
 
   <!-- Tagline -->
-  <text x="750" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#808080" text-anchor="middle">Real-time Crypto Market Intelligence</text>
+  <text x="750" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#808080" text-anchor="middle">Real-time Crypto Market Intelligence</text>
 
-  <!-- Bottom accent -->
-  <rect x="600" y="340" width="300" height="3" rx="1.5" fill="url(#tw-logo-grad)" opacity="0.5"/>
+  <!-- Accent -->
+  <rect x="600" y="330" width="300" height="3" rx="1.5" fill="url(#tw-grad)" opacity="0.5"/>
 </svg>

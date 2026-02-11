@@ -34,19 +34,27 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
           <stop offset="1" stopColor="#FF8C00" />
         </linearGradient>
       </defs>
-      {/* Rounded square bg */}
-      <rect width="40" height="40" rx="10" fill={`url(#${uid})`} />
-      {/* iH monogram - crisp geometric */}
-      {/* dot of i */}
-      <circle cx="12.5" cy="11" r="2.5" fill="#000" />
-      {/* stem of i */}
-      <rect x="10" y="16" width="5" height="15" rx="1.5" fill="#000" />
-      {/* H left */}
-      <rect x="19" y="9" width="5" height="22" rx="1.5" fill="#000" />
-      {/* H right */}
-      <rect x="28" y="9" width="5" height="22" rx="1.5" fill="#000" />
-      {/* H cross */}
-      <rect x="19" y="17.5" width="14" height="5" rx="1.5" fill="#000" />
+      {/* Squircle bg */}
+      <rect x="2.5" y="2.5" width="35" height="35" rx="8" fill={`url(#${uid})`} />
+      {/* Hub network mark */}
+      {/* Hub ring */}
+      <circle cx="20" cy="22" r="6.1" stroke="#000" strokeWidth="2.2" fill="none" opacity={0.85} />
+      {/* Hub core */}
+      <circle cx="20" cy="22" r="1.7" fill="#000" opacity={0.85} />
+      {/* Top spoke */}
+      <rect x="19.1" y="10.5" width="1.8" height="6.8" rx="0.9" fill="#000" opacity={0.85} />
+      {/* Bottom spoke */}
+      <rect x="19.1" y="26.8" width="1.8" height="5" rx="0.9" fill="#000" opacity={0.85} />
+      {/* Left spoke */}
+      <rect x="8.5" y="21.1" width="5.5" height="1.8" rx="0.9" fill="#000" opacity={0.85} />
+      {/* Right spoke */}
+      <rect x="26" y="21.1" width="5.5" height="1.8" rx="0.9" fill="#000" opacity={0.85} />
+      {/* i-dot (information node) */}
+      <circle cx="20" cy="9.2" r="2.2" fill="#000" opacity={0.85} />
+      {/* Endpoint nodes */}
+      <circle cx="8.2" cy="22" r="1.1" fill="#000" opacity={0.6} />
+      <circle cx="31.8" cy="22" r="1.1" fill="#000" opacity={0.6} />
+      <circle cx="20" cy="31.5" r="1.1" fill="#000" opacity={0.6} />
     </svg>
   );
 

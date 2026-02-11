@@ -46,7 +46,7 @@ export default function Logo({
 
   const colors = getColors();
 
-  // Icon only (iH badge)
+  // Icon only (hub network mark)
   const IconLogo = () => (
     <svg
       width={dimensions.icon}
@@ -67,7 +67,7 @@ export default function Logo({
         </filter>
       </defs>
 
-      {/* Background rounded square */}
+      {/* Squircle background */}
       <rect
         x="4"
         y="4"
@@ -78,30 +78,25 @@ export default function Logo({
         filter={animated ? 'url(#logo-shadow)' : undefined}
       />
 
-      {/* Letter "i" */}
-      <text
-        x="28"
-        y="68"
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontSize="52"
-        fontWeight="800"
-        fill={colors.secondary}
-        fontStyle="italic"
-      >
-        i
-      </text>
-
-      {/* Letter "H" */}
-      <text
-        x="48"
-        y="68"
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontSize="52"
-        fontWeight="800"
-        fill={colors.secondary}
-      >
-        H
-      </text>
+      {/* Hub network mark */}
+      {/* Hub ring */}
+      <circle cx="50" cy="55" r="15.3" stroke={colors.secondary} strokeWidth="5.5" fill="none" opacity={0.85} />
+      {/* Hub core */}
+      <circle cx="50" cy="55" r="4.3" fill={colors.secondary} opacity={0.85} />
+      {/* Top spoke */}
+      <rect x="47.7" y="26" width="4.6" height="17" rx="2.3" fill={colors.secondary} opacity={0.85} />
+      {/* Bottom spoke */}
+      <rect x="47.7" y="67" width="4.6" height="12.5" rx="2.3" fill={colors.secondary} opacity={0.85} />
+      {/* Left spoke */}
+      <rect x="21" y="52.7" width="13.7" height="4.6" rx="2.3" fill={colors.secondary} opacity={0.85} />
+      {/* Right spoke */}
+      <rect x="65.3" y="52.7" width="13.7" height="4.6" rx="2.3" fill={colors.secondary} opacity={0.85} />
+      {/* i-dot (information node) */}
+      <circle cx="50" cy="23" r="5.5" fill={colors.secondary} opacity={0.85} />
+      {/* Endpoint nodes */}
+      <circle cx="20.5" cy="55" r="2.7" fill={colors.secondary} opacity={0.6} />
+      <circle cx="79.5" cy="55" r="2.7" fill={colors.secondary} opacity={0.6} />
+      <circle cx="50" cy="79.5" r="2.7" fill={colors.secondary} opacity={0.6} />
     </svg>
   );
 

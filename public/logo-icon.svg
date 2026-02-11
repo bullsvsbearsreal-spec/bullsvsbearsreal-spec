@@ -1,76 +1,35 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Premium gradient -->
-    <linearGradient id="premiumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFDF00"/>
-      <stop offset="25%" stop-color="#FFD000"/>
-      <stop offset="50%" stop-color="#FFAA00"/>
-      <stop offset="75%" stop-color="#FF9500"/>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="40%" stop-color="#FFA500"/>
       <stop offset="100%" stop-color="#FF7700"/>
     </linearGradient>
-
-    <!-- Shine effect -->
-    <linearGradient id="shineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="white" stop-opacity="0.4"/>
-      <stop offset="50%" stop-color="white" stop-opacity="0.1"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0"/>
-    </linearGradient>
-
-    <!-- Shadow filter -->
-    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#FF9500" flood-opacity="0.35"/>
-    </filter>
-
-    <!-- Inner shadow for depth -->
-    <filter id="innerGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur"/>
-      <feOffset in="blur" dx="0" dy="2"/>
-      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.3 0"/>
-      <feBlend in2="SourceGraphic"/>
-    </filter>
   </defs>
 
-  <!-- Main background shape -->
-  <rect
-    x="32"
-    y="32"
-    width="448"
-    height="448"
-    rx="88"
-    fill="url(#premiumGrad)"
-    filter="url(#dropShadow)"
-  />
+  <!-- Squircle background -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#brandGrad)"/>
 
-  <!-- Shine overlay -->
-  <rect
-    x="32"
-    y="32"
-    width="448"
-    height="224"
-    rx="88"
-    fill="url(#shineGrad)"
-    clip-path="inset(0 0 50% 0 round 88px)"
-  />
+  <!-- Central hub ring -->
+  <circle cx="256" cy="276" r="78" stroke="#000" stroke-width="28" fill="none" opacity="0.85"/>
 
-  <!-- Letter i -->
-  <g fill="#000000">
-    <!-- i dot - perfectly round -->
-    <circle cx="160" cy="140" r="32" opacity="0.9"/>
-    <!-- i stem - rounded rectangle -->
-    <rect x="128" y="196" width="64" height="188" rx="12" opacity="0.9"/>
-  </g>
+  <!-- Hub core dot -->
+  <circle cx="256" cy="276" r="22" fill="#000" opacity="0.85"/>
 
-  <!-- Letter H -->
-  <g fill="#000000" opacity="0.9">
-    <!-- H left vertical -->
-    <rect x="232" y="128" width="64" height="256" rx="12"/>
-    <!-- H right vertical -->
-    <rect x="360" y="128" width="64" height="256" rx="12"/>
-    <!-- H horizontal bar -->
-    <rect x="232" y="224" width="192" height="64" rx="12"/>
-  </g>
+  <!-- Top spoke (connects to i-dot) -->
+  <rect x="244" y="132" width="24" height="86" rx="12" fill="#000" opacity="0.85"/>
+  <!-- Bottom spoke -->
+  <rect x="244" y="338" width="24" height="64" rx="12" fill="#000" opacity="0.85"/>
+  <!-- Left spoke -->
+  <rect x="108" y="264" width="70" height="24" rx="12" fill="#000" opacity="0.85"/>
+  <!-- Right spoke -->
+  <rect x="334" y="264" width="70" height="24" rx="12" fill="#000" opacity="0.85"/>
 
-  <!-- Subtle top highlight line -->
-  <rect x="72" y="56" width="368" height="6" rx="3" fill="white" opacity="0.25"/>
+  <!-- i-dot — the information node -->
+  <circle cx="256" cy="116" r="28" fill="#000" opacity="0.85"/>
+
+  <!-- Outer endpoint nodes -->
+  <circle cx="104" cy="276" r="14" fill="#000" opacity="0.6"/>
+  <circle cx="408" cy="276" r="14" fill="#000" opacity="0.6"/>
+  <circle cx="256" cy="402" r="14" fill="#000" opacity="0.6"/>
 </svg>
