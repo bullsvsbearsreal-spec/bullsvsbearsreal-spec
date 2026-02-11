@@ -12,9 +12,5 @@ export async function GET() {
     getTop500Symbols(),
   ]);
   const filtered = results.filter(r => isTop500Symbol(r.symbol, top500));
-  const res = NextResponse.json(filtered);
-  res.headers.set('X-Top500-Size', String(top500.size));
-  res.headers.set('X-Total-Before', String(results.length));
-  res.headers.set('X-Total-After', String(filtered.length));
-  return res;
+  return NextResponse.json(filtered);
 }
