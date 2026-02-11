@@ -270,6 +270,7 @@ export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps
   deribit: DeribitLogo,
   htx: HTXLogo,
   gate: GateLogo,
+  'gate.io': GateLogo,
   kucoin: KucoinLogo,
   mexc: MEXCLogo,
   kraken: KrakenLogo,

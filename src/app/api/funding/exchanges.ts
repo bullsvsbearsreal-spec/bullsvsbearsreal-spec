@@ -121,7 +121,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Hyperliquid
+  // Hyperliquid — funding is HOURLY; normalize to 8h equivalent (* 8)
   {
     name: 'Hyperliquid',
     fetcher: async (fetchFn) => {
@@ -137,7 +137,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any, index: number) => ({
           symbol: json[0].universe[index]?.name || `ASSET${index}`,
           exchange: 'Hyperliquid',
-          fundingRate: parseFloat(item.funding) * 100,
+          fundingRate: parseFloat(item.funding) * 8 * 100,
           markPrice: parseFloat(item.markPx),
           indexPrice: parseFloat(item.oraclePx),
           nextFundingTime: Date.now() + 3600000,
@@ -146,7 +146,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // dYdX
+  // dYdX — nextFundingRate is HOURLY; normalize to 8h equivalent (* 8)
   {
     name: 'dYdX',
     fetcher: async (fetchFn) => {
@@ -159,7 +159,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map(([key, market]: [string, any]) => ({
           symbol: key.replace('-USD', ''),
           exchange: 'dYdX',
-          fundingRate: parseFloat(market.nextFundingRate) * 100,
+          fundingRate: parseFloat(market.nextFundingRate) * 8 * 100,
           markPrice: parseFloat(market.oraclePrice),
           indexPrice: parseFloat(market.oraclePrice),
           nextFundingTime: Date.now() + 3600000,
@@ -345,14 +345,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!Array.isArray(data)) return [];
       return data
         .filter((item: any) => item.symbol.endsWith('USDT') && item.fundingRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'BitMEX',
-          fundingRate: parseFloat(item.fundingRate) * 100,
-          markPrice: parseFloat(item.markPrice) || 0,
-          indexPrice: parseFloat(item.indicativeSettlePrice) || 0,
-          nextFundingTime: item.fundingTimestamp ? new Date(item.fundingTimestamp).getTime() : Date.now() + 28800000,
-        }))
+        .map((item: any) => {
+          let sym = item.symbol.replace('USDT', '');
+          if (sym === 'XBT') sym = 'BTC';
+          return {
+            symbol: sym,
+            exchange: 'BitMEX',
+            fundingRate: parseFloat(item.fundingRate) * 100,
+            markPrice: parseFloat(item.markPrice) || 0,
+            indexPrice: parseFloat(item.indicativeSettlePrice) || 0,
+            nextFundingTime: item.fundingTimestamp ? new Date(item.fundingTimestamp).getTime() : Date.now() + 28800000,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -368,14 +372,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const items = json.data || [];
       return items
         .filter((item: any) => item.symbol.endsWith('USDTM') && item.fundingFeeRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDTM', ''),
-          exchange: 'KuCoin',
-          fundingRate: parseFloat(item.fundingFeeRate) * 100,
-          markPrice: parseFloat(item.markPrice) || 0,
-          indexPrice: parseFloat(item.indexPrice) || 0,
-          nextFundingTime: item.nextFundingRateTime || Date.now() + 28800000,
-        }))
+        .map((item: any) => {
+          let sym = item.symbol.replace('USDTM', '');
+          if (sym === 'XBT') sym = 'BTC';
+          return {
+            symbol: sym,
+            exchange: 'KuCoin',
+            fundingRate: parseFloat(item.fundingFeeRate) * 100,
+            markPrice: parseFloat(item.markPrice) || 0,
+            indexPrice: parseFloat(item.indexPrice) || 0,
+            nextFundingTime: item.nextFundingRateTime || Date.now() + 28800000,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -477,7 +485,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Coinbase International
+  // Coinbase International — predicted_funding is HOURLY; normalize to 8h equivalent (* 8)
   {
     name: 'Coinbase',
     fetcher: async (fetchFn) => {
@@ -490,7 +498,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.symbol.replace('-PERP', ''),
           exchange: 'Coinbase',
-          fundingRate: parseFloat(item.quote.predicted_funding) * 100,
+          fundingRate: parseFloat(item.quote.predicted_funding) * 8 * 100,
           markPrice: parseFloat(item.quote?.mark_price) || 0,
           indexPrice: parseFloat(item.quote?.index_price) || 0,
           nextFundingTime: Date.now() + 3600000,
@@ -574,7 +582,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 ];
 
 // Paused exchanges (kept for reference):
-// gTrade (Gains Network) - All API endpoints unreachable (backend-api.gains.trade, etc.)
+// gTrade (Gains Network) - API is reachable (backend-arbitrum.gains.trade/trading-variables)
+//   but funding rate is velocity-based (v10 model), computed dynamically from OI skew windows.
+//   No pre-calculated rate endpoint; would require on-the-fly calculation from oiWindows data.
 // GMX v2 (Arbitrum) - No REST funding rate endpoint; requires on-chain contract queries
 // Bitunix - No public funding rate endpoint found
 // LBank - Futures domain (fapi.lbank.com) unreachable

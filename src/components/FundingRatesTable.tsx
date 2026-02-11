@@ -201,7 +201,7 @@ export default function FundingRatesTable() {
             Positive rates: Longs pay shorts | Negative rates: Shorts pay longs
           </p>
           <span className="text-xs text-hub-gray-text">
-            {fundingRates.length} rates from 4 exchanges
+            {fundingRates.length} rates from {new Set(fundingRates.map(r => r.exchange)).size} exchanges
           </span>
         </div>
       </div>

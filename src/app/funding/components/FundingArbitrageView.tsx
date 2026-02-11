@@ -1,4 +1,5 @@
 import { TokenIconSimple } from '@/components/TokenIcon';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { Shuffle } from 'lucide-react';
 import { formatRate, getExchangeColor } from '../utils';
 
@@ -50,9 +51,12 @@ export default function FundingArbitrageView({ arbitrageData }: FundingArbitrage
                 <div className="bg-danger/10 border border-danger/20 rounded-xl p-3">
                   <div className="text-danger text-xs mb-1">SHORT here (highest rate)</div>
                   <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(highestEx.exchange)}`}>
-                      {highestEx.exchange}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <ExchangeLogo exchange={highestEx.exchange.toLowerCase()} size={18} />
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(highestEx.exchange)}`}>
+                        {highestEx.exchange}
+                      </span>
+                    </div>
                     <span className="text-danger font-mono font-bold">
                       {formatRate(highestEx.rate)}
                     </span>
@@ -61,9 +65,12 @@ export default function FundingArbitrageView({ arbitrageData }: FundingArbitrage
                 <div className="bg-success/10 border border-success/20 rounded-xl p-3">
                   <div className="text-success text-xs mb-1">LONG here (lowest rate)</div>
                   <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(lowestEx.exchange)}`}>
-                      {lowestEx.exchange}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <ExchangeLogo exchange={lowestEx.exchange.toLowerCase()} size={18} />
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(lowestEx.exchange)}`}>
+                        {lowestEx.exchange}
+                      </span>
+                    </div>
                     <span className="text-success font-mono font-bold">
                       {formatRate(lowestEx.rate)}
                     </span>
@@ -78,6 +85,7 @@ export default function FundingArbitrageView({ arbitrageData }: FundingArbitrage
                     key={ex.exchange}
                     className="flex items-center gap-2 px-2 py-1 rounded-lg bg-hub-gray/30 text-xs"
                   >
+                    <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={14} />
                     <span className="text-hub-gray-text">{ex.exchange}:</span>
                     <span className={ex.rate >= 0 ? 'text-success' : 'text-danger'}>
                       {formatRate(ex.rate)}

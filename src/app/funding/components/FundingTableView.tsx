@@ -1,7 +1,9 @@
 import { FundingRateData } from '@/lib/api/types';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatRate, getRateColor, getExchangeColor } from '../utils';
+import { isValidNumber } from '@/lib/utils/format';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
 type SortOrder = 'asc' | 'desc';
@@ -61,6 +63,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
           <tbody>
             {data.slice(0, 100).map((fr, index) => {
               const annualized = fr.fundingRate * 3 * 365;
+              const hasMarkPrice = isValidNumber(fr.markPrice) && fr.markPrice > 0;
               return (
                 <tr
                   key={`${fr.symbol}-${fr.exchange}-${index}`}
@@ -73,9 +76,12 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
-                      {fr.exchange}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <ExchangeLogo exchange={fr.exchange.toLowerCase()} size={20} />
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
+                        {fr.exchange}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className={`font-mono font-semibold ${getRateColor(fr.fundingRate)}`}>
@@ -89,7 +95,9 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className="text-white font-mono">
-                      ${fr.markPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) || '-'}
+                      {hasMarkPrice
+                        ? `$${fr.markPrice!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`
+                        : '-'}
                     </span>
                   </td>
                 </tr>
