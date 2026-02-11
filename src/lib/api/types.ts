@@ -80,7 +80,7 @@ export interface ExchangeAPIConfig {
   requiresAuth: boolean;
 }
 
-export type SupportedExchange = 'binance' | 'bybit' | 'okx' | 'bitget' | 'gateio' | 'mexc' | 'kraken' | 'bingx' | 'phemex' | 'hyperliquid' | 'dydx' | 'aster' | 'lighter';
+export type SupportedExchange = 'binance' | 'bybit' | 'okx' | 'bitget' | 'gateio' | 'mexc' | 'kraken' | 'bingx' | 'phemex' | 'hyperliquid' | 'dydx' | 'aster' | 'lighter' | 'gtrade';
 
 export const EXCHANGE_CONFIGS: Record<SupportedExchange, ExchangeAPIConfig> = {
   binance: {
@@ -163,6 +163,12 @@ export const EXCHANGE_CONFIGS: Record<SupportedExchange, ExchangeAPIConfig> = {
     name: 'Lighter',
     baseUrl: 'https://mainnet.lighter.xyz',
     rateLimit: 300,
+    requiresAuth: false,
+  },
+  gtrade: {
+    name: 'gTrade',
+    baseUrl: 'https://backend-arbitrum.gains.trade',
+    rateLimit: 60,
     requiresAuth: false,
   },
 };

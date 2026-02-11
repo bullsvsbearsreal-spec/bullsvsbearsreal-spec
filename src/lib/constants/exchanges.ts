@@ -3,7 +3,7 @@ export const ALL_EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'Gate.io', 'MEXC',
   'Kraken', 'BingX', 'Phemex', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
   'BitMEX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
-  'Coinbase', 'CoinEx', 'Crypto.com',
+  'Coinbase', 'CoinEx', 'Crypto.com', 'gTrade',
 ] as const;
 
 export type ExchangeName = (typeof ALL_EXCHANGES)[number];
@@ -32,6 +32,7 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'Coinbase': 'bg-blue-500',
   'CoinEx': 'bg-teal-400',
   'Crypto.com': 'bg-indigo-500',
+  'gTrade': 'bg-teal-500',
 };
 
 // Exchange badge colors for table cells
@@ -58,6 +59,7 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'Coinbase': 'bg-blue-500/20 text-blue-300',
   'CoinEx': 'bg-teal-400/20 text-teal-300',
   'Crypto.com': 'bg-indigo-500/20 text-indigo-400',
+  'gTrade': 'bg-teal-500/20 text-teal-400',
 };
 
 export function getExchangeBadgeColor(exchange: string): string {

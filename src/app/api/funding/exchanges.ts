@@ -579,12 +579,144 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return (await Promise.all(promises)).filter((item): item is FundingData => item !== null && !isNaN(item.fundingRate));
     },
   },
+  // gTrade (Gains Network) - velocity-based funding model, calculated from raw trading variables
+  {
+    name: 'gTrade',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://backend-arbitrum.gains.trade/trading-variables', {}, 8000);
+      if (!res.ok) return [];
+      const raw = await res.json();
+
+      // Precision constants from gTrade smart contracts
+      const PRECISION = {
+        SKEW_COEFF_PER_YEAR: 1e26,
+        ABS_VELOCITY_PER_YEAR_CAP: 1e7,
+        ABS_RATE_PER_SECOND_CAP: 1e10,
+        FUNDING_RATE_PER_SECOND_P: 1e18,
+        OI_TOKEN: 1e18,
+        COLLATERAL_PRECISION: 1e6, // USDC default
+      };
+      const ONE_YEAR = 365 * 24 * 60 * 60;
+
+      const pairs: { from: string; to: string; groupIndex: string }[] = raw.pairs || [];
+      const results: FundingData[] = [];
+      // Crypto group indices: 0=crypto, 10=altcoins, 11=crypto-degen
+      const CRYPTO_GROUPS = new Set([0, 10, 11]);
+
+      // Use USDC collateral (most active for crypto trading)
+      const collateral = (raw.collaterals || []).find((c: any) => c.symbol === 'USDC' && c.isActive);
+      if (!collateral) return [];
+
+      const fundingParams = collateral.fundingFees?.pairParams || [];
+      const fundingData = collateral.fundingFees?.pairData || [];
+      const pairOis = collateral.pairOis || [];
+      const collateralPrecision = collateral.collateralConfig?.precision
+        ? parseInt(collateral.collateralConfig.precision) : PRECISION.COLLATERAL_PRECISION;
+      const collateralPriceUsd = collateral.prices?.collateralPriceUsd || 1;
+
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+
+      for (let i = 0; i < Math.min(pairs.length, fundingParams.length, fundingData.length); i++) {
+        try {
+          const pair = pairs[i];
+          if (!pair || !pair.from) continue;
+
+          // Only include crypto pairs
+          if (!CRYPTO_GROUPS.has(parseInt(pair.groupIndex))) continue;
+
+          const params = fundingParams[i];
+          const data = fundingData[i];
+          if (!params || !data) continue;
+
+          // Check if funding fees are enabled for this pair
+          if (!params.fundingFeesEnabled) continue;
+
+          // Parse OI in tokens — skip pairs with no activity
+          const oi = pairOis[i];
+          const oiLongToken = oi?.token ? Number(oi.token.oiLongToken) / PRECISION.OI_TOKEN : 0;
+          const oiShortToken = oi?.token ? Number(oi.token.oiShortToken) / PRECISION.OI_TOKEN : 0;
+          if (oiLongToken === 0 && oiShortToken === 0) continue;
+
+          // Parse params with contract precision
+          const skewCoefficientPerYear = Number(params.skewCoefficientPerYear) / PRECISION.SKEW_COEFF_PER_YEAR;
+          const absoluteVelocityPerYearCap = Number(params.absoluteVelocityPerYearCap) / PRECISION.ABS_VELOCITY_PER_YEAR_CAP;
+          const absoluteRatePerSecondCap = Number(params.absoluteRatePerSecondCap) / PRECISION.ABS_RATE_PER_SECOND_CAP;
+          const thetaThresholdUsd = Number(params.thetaThresholdUsd);
+
+          // Parse pair data
+          const lastFundingRatePerSecondP = Number(data.lastFundingRatePerSecondP) / PRECISION.FUNDING_RATE_PER_SECOND_P;
+          const lastFundingUpdateTs = Number(data.lastFundingUpdateTs);
+
+          // Calculate net exposure
+          const netExposureToken = oiLongToken - oiShortToken;
+          // Derive token price from collateral OI / token OI ratio
+          const oiLongCollateral = oi?.collateral ? Number(oi.collateral.oiLongCollateral) / collateralPrecision : 0;
+          const oiShortCollateral = oi?.collateral ? Number(oi.collateral.oiShortCollateral) / collateralPrecision : 0;
+          const tokenPrice = ((oiLongCollateral + oiShortCollateral) * collateralPriceUsd) / (oiLongToken + oiShortToken);
+          const netExposureUsd = netExposureToken * tokenPrice;
+
+          // --- Core velocity-based funding rate calculation (from gTrade v10 SDK) ---
+
+          // Step 1: Calculate current funding velocity per year
+          let currentVelocityPerYear = 0;
+          if (netExposureToken !== 0 && skewCoefficientPerYear !== 0 && absoluteVelocityPerYearCap !== 0) {
+            if (Math.abs(netExposureUsd) >= thetaThresholdUsd) {
+              const absVelocity = Math.abs(netExposureToken) * skewCoefficientPerYear;
+              const cappedVelocity = Math.min(absVelocity, absoluteVelocityPerYearCap);
+              currentVelocityPerYear = netExposureToken < 0 ? -cappedVelocity : cappedVelocity;
+            }
+          }
+
+          // Step 2: Calculate current funding rate per second
+          const secondsSinceLastUpdate = currentTimestamp - lastFundingUpdateTs;
+          let currentFundingRatePerSecondP = lastFundingRatePerSecondP;
+
+          if (absoluteRatePerSecondCap !== 0 && currentVelocityPerYear !== 0 && secondsSinceLastUpdate > 0) {
+            const ratePerSecondCap = absoluteRatePerSecondCap * (currentVelocityPerYear < 0 ? -1 : 1);
+
+            if (ratePerSecondCap !== lastFundingRatePerSecondP) {
+              const secondsToReachCap = ((ratePerSecondCap - lastFundingRatePerSecondP) * ONE_YEAR) / currentVelocityPerYear;
+
+              if (secondsSinceLastUpdate > secondsToReachCap) {
+                currentFundingRatePerSecondP = ratePerSecondCap;
+              } else {
+                currentFundingRatePerSecondP = lastFundingRatePerSecondP +
+                  (secondsSinceLastUpdate * currentVelocityPerYear) / ONE_YEAR;
+              }
+            } else {
+              currentFundingRatePerSecondP = ratePerSecondCap;
+            }
+          }
+
+          // Step 3: Convert per-second rate to 8h percentage
+          const fundingRate8h = currentFundingRatePerSecondP * 8 * 3600 * 100;
+
+          // Skip pairs with essentially zero rate
+          if (Math.abs(fundingRate8h) < 0.00001) continue;
+
+          // Build symbol — gTrade pairs are like "BTC/USD", we want "BTC"
+          const symbol = pair.from;
+          if (!isCryptoSymbol(symbol)) continue;
+
+          results.push({
+            symbol,
+            exchange: 'gTrade',
+            fundingRate: fundingRate8h,
+            markPrice: tokenPrice,
+            indexPrice: 0,
+            nextFundingTime: 0, // gTrade funding is continuous, no discrete funding time
+          });
+        } catch {
+          continue;
+        }
+      }
+
+      return results;
+    },
+  },
 ];
 
 // Paused exchanges (kept for reference):
-// gTrade (Gains Network) - API is reachable (backend-arbitrum.gains.trade/trading-variables)
-//   but funding rate is velocity-based (v10 model), computed dynamically from OI skew windows.
-//   No pre-calculated rate endpoint; would require on-the-fly calculation from oiWindows data.
 // GMX v2 (Arbitrum) - No REST funding rate endpoint; requires on-chain contract queries
 // Bitunix - No public funding rate endpoint found
 // LBank - Futures domain (fapi.lbank.com) unreachable
