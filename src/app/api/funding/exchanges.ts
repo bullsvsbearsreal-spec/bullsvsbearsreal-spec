@@ -689,7 +689,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           }
 
           // Step 3: Convert per-second rate to 8h percentage
-          const fundingRate8h = currentFundingRatePerSecondP * 8 * 3600 * 100;
+          // The "P" suffix means the rate is already a percentage fraction,
+          // so we only multiply by seconds (no extra *100)
+          const fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
           // Skip pairs with essentially zero rate
           if (Math.abs(fundingRate8h) < 0.00001) continue;
