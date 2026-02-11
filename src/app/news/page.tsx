@@ -30,61 +30,38 @@ export default function NewsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-hub-black">
-      {/* Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-hub-yellow/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-hub-orange/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-black">
       <Header />
       <MarketTicker />
 
-      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-                <Newspaper className="w-5 h-5 text-hub-yellow" />
-              </div>
-              <h1 className="text-3xl font-bold text-white">Market News</h1>
-            </div>
-            <p className="text-hub-gray-text">
-              Real-time news from across the market
-            </p>
+            <h1 className="text-xl font-bold text-white">Market News</h1>
+            <p className="text-neutral-600 text-xs mt-0.5">Real-time news from across the market</p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={refreshNews}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-gray/30 border border-hub-gray/30 text-hub-gray-text hover:text-white hover:border-hub-yellow/30 transition-all disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-            <span className="flex items-center gap-2 px-3 py-2 rounded-xl bg-success/10 border border-success/20">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-              </span>
-              <span className="text-xs text-success font-medium">Live</span>
-            </span>
-          </div>
+          <button
+            onClick={refreshNews}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-md text-neutral-400 text-xs transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
         {/* News Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="animate-pulse bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+              <div key={i} className="animate-pulse bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
                 <div className="flex gap-4">
-                  <div className="w-24 h-20 bg-hub-gray/30 rounded-xl" />
+                  <div className="w-24 h-20 bg-white/[0.04] rounded-xl" />
                   <div className="flex-1 space-y-3">
-                    <div className="h-4 bg-hub-gray/30 rounded w-3/4" />
-                    <div className="h-4 bg-hub-gray/30 rounded w-1/2" />
-                    <div className="h-3 bg-hub-gray/30 rounded w-1/4" />
+                    <div className="h-4 bg-white/[0.04] rounded w-3/4" />
+                    <div className="h-4 bg-white/[0.04] rounded w-1/2" />
+                    <div className="h-3 bg-white/[0.04] rounded w-1/4" />
                   </div>
                 </div>
               </div>
@@ -105,7 +82,7 @@ export default function NewsPage() {
               href="https://www.cryptocompare.com/news/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-hub-gray/30 border border-hub-gray/30 rounded-xl text-hub-gray-text hover:text-white hover:border-hub-yellow/30 transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white/[0.04] border border-white/[0.06] rounded-xl text-neutral-600 hover:text-white hover:border-hub-yellow/30 transition-all"
             >
               View More on CryptoCompare
               <ExternalLink className="w-4 h-4" />
@@ -114,11 +91,10 @@ export default function NewsPage() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-hub-gray/20 mt-16">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <p className="text-center text-hub-gray-text text-sm">
-            © 2026 InfoHub. News powered by CryptoCompare.
+      <footer className="border-t border-white/[0.04] mt-8">
+        <div className="max-w-[1400px] mx-auto px-4 py-6">
+          <p className="text-center text-neutral-700 text-[10px]">
+            &copy; 2026 InfoHub. News powered by CryptoCompare.
           </p>
         </div>
       </footer>
@@ -135,14 +111,14 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`group block bg-hub-gray/20 hover:bg-hub-gray/30 border border-hub-gray/30 hover:border-hub-yellow/30 rounded-2xl transition-all duration-300 ${
-        featured ? 'md:col-span-2 p-6' : 'p-5'
+      className={`group block bg-[#0d0d0d] hover:bg-[#111] border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all ${
+        featured ? 'md:col-span-2 p-4' : 'p-3'
       }`}
     >
       <div className={`flex gap-4 ${featured ? 'flex-col md:flex-row' : ''}`}>
         {/* Image */}
         {article.imageurl && (
-          <div className={`flex-shrink-0 ${featured ? 'w-full md:w-48 h-40' : 'w-24 h-20'} rounded-xl overflow-hidden bg-hub-gray/30`}>
+          <div className={`flex-shrink-0 ${featured ? 'w-full md:w-48 h-40' : 'w-24 h-20'} rounded-xl overflow-hidden bg-white/[0.04]`}>
             <img
               src={article.imageurl}
               alt=""
@@ -166,7 +142,7 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
                 {cat}
               </span>
             ))}
-            <span className="flex items-center gap-1 text-xs text-hub-gray-text">
+            <span className="flex items-center gap-1 text-xs text-neutral-600">
               <Clock className="w-3 h-3" />
               {timeAgo}
             </span>
@@ -181,17 +157,17 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
 
           {/* Description for featured */}
           {featured && article.body && (
-            <p className="text-hub-gray-text text-sm line-clamp-2 mb-3">
+            <p className="text-neutral-600 text-sm line-clamp-2 mb-3">
               {article.body.substring(0, 200)}...
             </p>
           )}
 
           {/* Source */}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-hub-gray-text">
+            <span className="text-xs text-neutral-600">
               {article.source_info?.name || article.source}
             </span>
-            <ExternalLink className="w-4 h-4 text-hub-gray-text group-hover:text-hub-yellow transition-colors" />
+            <ExternalLink className="w-4 h-4 text-neutral-600 group-hover:text-hub-yellow transition-colors" />
           </div>
         </div>
       </div>

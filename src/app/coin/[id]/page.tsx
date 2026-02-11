@@ -35,13 +35,13 @@ export default function CoinPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-hub-black">
+      <div className="min-h-screen bg-black">
         <Header />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 w-32 bg-hub-gray/30 rounded-lg" />
-            <div className="h-64 bg-hub-gray/30 rounded-2xl" />
-            <div className="h-96 bg-hub-gray/30 rounded-2xl" />
+            <div className="h-8 w-32 bg-white/[0.04] rounded-lg" />
+            <div className="h-64 bg-white/[0.04] rounded-xl" />
+            <div className="h-96 bg-white/[0.04] rounded-xl" />
           </div>
         </main>
       </div>
@@ -50,12 +50,12 @@ export default function CoinPage() {
 
   if (!coin) {
     return (
-      <div className="min-h-screen bg-hub-black">
+      <div className="min-h-screen bg-black">
         <Header />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-20">
             <h1 className="text-2xl font-bold text-white mb-4">Coin not found</h1>
-            <p className="text-hub-gray-text mb-6">The coin "{coinId}" could not be found.</p>
+            <p className="text-neutral-600 mb-6">The coin "{coinId}" could not be found.</p>
             <button
               onClick={() => router.push('/')}
               className="px-6 py-3 bg-hub-yellow text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
@@ -76,21 +76,21 @@ export default function CoinPage() {
   const otherEvents = events.filter(e => !e.categories.some(c => c.name.toLowerCase().includes('unlock')));
 
   return (
-    <div className="min-h-screen bg-hub-black">
+    <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-hub-gray-text hover:text-white mb-6 transition-colors"
+          className="flex items-center gap-2 text-neutral-600 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
 
         {/* Coin Header */}
-        <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-3xl p-8 mb-8">
+        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Coin Info */}
             <div className="flex items-center gap-4">
@@ -98,8 +98,8 @@ export default function CoinPage() {
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-3xl font-bold text-white">{coin.name}</h1>
-                  <span className="text-xl text-hub-gray-text">{coin.symbol.toUpperCase()}</span>
-                  <span className="px-2 py-1 bg-hub-gray/50 rounded-lg text-xs text-hub-gray-text">
+                  <span className="text-xl text-neutral-600">{coin.symbol.toUpperCase()}</span>
+                  <span className="px-2 py-1 bg-white/[0.06] rounded-lg text-xs text-neutral-600">
                     Rank #{coin.market_cap_rank}
                   </span>
                 </div>
@@ -115,11 +115,11 @@ export default function CoinPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-              <button className="p-3 bg-hub-gray/30 hover:bg-hub-gray/50 rounded-xl transition-colors">
-                <Bell className="w-5 h-5 text-hub-gray-text" />
+              <button className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
+                <Bell className="w-5 h-5 text-neutral-600" />
               </button>
-              <button className="p-3 bg-hub-gray/30 hover:bg-hub-gray/50 rounded-xl transition-colors">
-                <Share2 className="w-5 h-5 text-hub-gray-text" />
+              <button className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
+                <Share2 className="w-5 h-5 text-neutral-600" />
               </button>
               <a
                 href={`https://www.coingecko.com/en/coins/${coinId}`}
@@ -135,21 +135,21 @@ export default function CoinPage() {
 
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <div className="bg-hub-gray/30 rounded-xl p-4">
-              <span className="text-xs text-hub-gray-text block mb-1">Market Cap</span>
+            <div className="bg-[#111] rounded-lg p-4">
+              <span className="text-xs text-neutral-600 block mb-1">Market Cap</span>
               <span className="text-white font-bold text-lg">{formatNumber(coin.market_cap)}</span>
             </div>
-            <div className="bg-hub-gray/30 rounded-xl p-4">
-              <span className="text-xs text-hub-gray-text block mb-1">24h Volume</span>
+            <div className="bg-[#111] rounded-lg p-4">
+              <span className="text-xs text-neutral-600 block mb-1">24h Volume</span>
               <span className="text-white font-bold text-lg">{formatNumber(coin.total_volume)}</span>
             </div>
-            <div className="bg-hub-gray/30 rounded-xl p-4">
-              <span className="text-xs text-hub-gray-text block mb-1">All-Time High</span>
+            <div className="bg-[#111] rounded-lg p-4">
+              <span className="text-xs text-neutral-600 block mb-1">All-Time High</span>
               <span className="text-success font-bold text-lg">{formatPrice(coin.ath)}</span>
-              <span className="text-xs text-hub-gray-text ml-2">{formatPercent(coin.ath_change_percentage)}</span>
+              <span className="text-xs text-neutral-600 ml-2">{formatPercent(coin.ath_change_percentage)}</span>
             </div>
-            <div className="bg-hub-gray/30 rounded-xl p-4">
-              <span className="text-xs text-hub-gray-text block mb-1">All-Time Low</span>
+            <div className="bg-[#111] rounded-lg p-4">
+              <span className="text-xs text-neutral-600 block mb-1">All-Time Low</span>
               <span className="text-error font-bold text-lg">{formatPrice(coin.atl)}</span>
               <span className="text-xs text-success ml-2">{formatPercent(coin.atl_change_percentage)}</span>
             </div>
@@ -163,7 +163,7 @@ export default function CoinPage() {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors whitespace-nowrap ${
               activeTab === 'events'
                 ? 'bg-hub-yellow text-black'
-                : 'bg-hub-gray/30 text-hub-gray-text hover:text-white'
+                : 'bg-white/[0.04] text-neutral-500 hover:text-white'
             }`}
           >
             <Calendar className="w-4 h-4" />
@@ -174,7 +174,7 @@ export default function CoinPage() {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors whitespace-nowrap ${
               activeTab === 'unlocks'
                 ? 'bg-hub-yellow text-black'
-                : 'bg-hub-gray/30 text-hub-gray-text hover:text-white'
+                : 'bg-white/[0.04] text-neutral-500 hover:text-white'
             }`}
           >
             <Unlock className="w-4 h-4" />
@@ -185,7 +185,7 @@ export default function CoinPage() {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors whitespace-nowrap ${
               activeTab === 'news'
                 ? 'bg-hub-yellow text-black'
-                : 'bg-hub-gray/30 text-hub-gray-text hover:text-white'
+                : 'bg-white/[0.04] text-neutral-500 hover:text-white'
             }`}
           >
             <Flame className="w-4 h-4" />
@@ -204,10 +204,10 @@ export default function CoinPage() {
                     <EventCard key={event.id} event={event} />
                   ))
                 ) : (
-                  <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-8 text-center">
-                    <Calendar className="w-12 h-12 text-hub-gray-text mx-auto mb-4" />
+                  <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 text-center">
+                    <Calendar className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
                     <h3 className="text-white font-semibold mb-2">No upcoming events</h3>
-                    <p className="text-hub-gray-text">There are no scheduled events for {coin.symbol.toUpperCase()} at this time.</p>
+                    <p className="text-neutral-600">There are no scheduled events for {coin.symbol.toUpperCase()} at this time.</p>
                   </div>
                 )}
               </div>
@@ -220,20 +220,20 @@ export default function CoinPage() {
                     <UnlockCard key={event.id} event={event} />
                   ))
                 ) : (
-                  <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-8 text-center">
-                    <Lock className="w-12 h-12 text-hub-gray-text mx-auto mb-4" />
+                  <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 text-center">
+                    <Lock className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
                     <h3 className="text-white font-semibold mb-2">No upcoming unlocks</h3>
-                    <p className="text-hub-gray-text">There are no scheduled token unlocks for {coin.symbol.toUpperCase()}.</p>
+                    <p className="text-neutral-600">There are no scheduled token unlocks for {coin.symbol.toUpperCase()}.</p>
                   </div>
                 )}
               </div>
             )}
 
             {activeTab === 'news' && (
-              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-8 text-center">
+              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 text-center">
                 <Flame className="w-12 h-12 text-hub-yellow mx-auto mb-4" />
                 <h3 className="text-white font-semibold mb-2">News Coming Soon</h3>
-                <p className="text-hub-gray-text">Real-time news aggregation will be available in the next update.</p>
+                <p className="text-neutral-600">Real-time news aggregation will be available in the next update.</p>
               </div>
             )}
           </div>
@@ -241,23 +241,23 @@ export default function CoinPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Supply Info */}
-            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Supply Info</h3>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-hub-gray-text">Circulating</span>
+                    <span className="text-neutral-600">Circulating</span>
                     <span className="text-white">{coin.circulating_supply?.toLocaleString()}</span>
                   </div>
                   {coin.max_supply && (
                     <>
-                      <div className="h-2 bg-hub-gray/50 rounded-full overflow-hidden">
+                      <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-hub-yellow to-hub-orange rounded-full"
                           style={{ width: `${(coin.circulating_supply / coin.max_supply) * 100}%` }}
                         />
                       </div>
-                      <div className="flex justify-between text-xs mt-2 text-hub-gray-text">
+                      <div className="flex justify-between text-xs mt-2 text-neutral-600">
                         <span>{((coin.circulating_supply / coin.max_supply) * 100).toFixed(1)}%</span>
                         <span>Max: {coin.max_supply.toLocaleString()}</span>
                       </div>
@@ -266,7 +266,7 @@ export default function CoinPage() {
                 </div>
                 {coin.total_supply && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-hub-gray-text">Total Supply</span>
+                    <span className="text-neutral-600">Total Supply</span>
                     <span className="text-white">{coin.total_supply.toLocaleString()}</span>
                   </div>
                 )}
@@ -274,25 +274,25 @@ export default function CoinPage() {
             </div>
 
             {/* Price Stats */}
-            <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6">
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Price Stats</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-hub-gray-text text-sm">24h High</span>
+                  <span className="text-neutral-600 text-sm">24h High</span>
                   <span className="text-success font-medium">{formatPrice(coin.high_24h)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-hub-gray-text text-sm">24h Low</span>
+                  <span className="text-neutral-600 text-sm">24h Low</span>
                   <span className="text-error font-medium">{formatPrice(coin.low_24h)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-hub-gray-text text-sm">7d Change</span>
+                  <span className="text-neutral-600 text-sm">7d Change</span>
                   <span className={coin.price_change_percentage_7d_in_currency && coin.price_change_percentage_7d_in_currency >= 0 ? 'text-success' : 'text-error'}>
                     {formatPercent(coin.price_change_percentage_7d_in_currency)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-hub-gray-text text-sm">30d Change</span>
+                  <span className="text-neutral-600 text-sm">30d Change</span>
                   <span className={coin.price_change_percentage_30d_in_currency && coin.price_change_percentage_30d_in_currency >= 0 ? 'text-success' : 'text-error'}>
                     {formatPercent(coin.price_change_percentage_30d_in_currency)}
                   </span>
@@ -301,12 +301,12 @@ export default function CoinPage() {
             </div>
 
             {/* Warning */}
-            <div className="bg-warning/10 border border-warning/20 rounded-2xl p-4">
+            <div className="bg-warning/10 border border-warning/20 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-warning text-sm font-medium">Research Before Investing</p>
-                  <p className="text-hub-gray-text text-xs mt-1">Always do your own research. This is not financial advice.</p>
+                  <p className="text-neutral-600 text-xs mt-1">Always do your own research. This is not financial advice.</p>
                 </div>
               </div>
             </div>
@@ -322,7 +322,7 @@ function EventCard({ event }: { event: CryptoEvent }) {
   const isHot = event.is_hot || event.vote_count > 100;
 
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-6 hover:border-hub-yellow/30 transition-all">
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 hover:border-hub-yellow/30 transition-all">
       <div className="flex items-start gap-4">
         <div className="w-14 h-14 rounded-xl bg-hub-yellow/10 flex items-center justify-center text-2xl flex-shrink-0">
           {getCategoryIcon(event.categories[0]?.name || 'Event')}
@@ -331,7 +331,7 @@ function EventCard({ event }: { event: CryptoEvent }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 bg-hub-gray/50 rounded text-xs text-hub-gray-text">
+                <span className="px-2 py-0.5 bg-white/[0.06] rounded text-xs text-neutral-600">
                   {event.categories[0]?.name || 'Event'}
                 </span>
                 {isHot && (
@@ -342,7 +342,7 @@ function EventCard({ event }: { event: CryptoEvent }) {
                 )}
               </div>
               <h4 className="text-white font-semibold text-lg">{event.title}</h4>
-              <p className="text-hub-gray-text mt-2">{event.description}</p>
+              <p className="text-neutral-600 mt-2">{event.description}</p>
             </div>
             <div className="text-right flex-shrink-0">
               <span className={`text-lg font-semibold ${
@@ -352,12 +352,12 @@ function EventCard({ event }: { event: CryptoEvent }) {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-hub-gray/30">
-            <span className="flex items-center gap-1 text-sm text-hub-gray-text">
+          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/[0.06]">
+            <span className="flex items-center gap-1 text-sm text-neutral-600">
               <TrendingUp className="w-4 h-4" />
               {event.percentage}% confidence
             </span>
-            <span className="text-sm text-hub-gray-text">{event.vote_count} votes</span>
+            <span className="text-sm text-neutral-600">{event.vote_count} votes</span>
             {event.source && (
               <a href={event.proof} target="_blank" rel="noopener noreferrer" className="text-sm text-hub-yellow hover:underline ml-auto flex items-center gap-1">
                 Source <ExternalLink className="w-3 h-3" />
@@ -374,7 +374,7 @@ function UnlockCard({ event }: { event: CryptoEvent }) {
   const dateLabel = formatEventDate(event.date_event);
 
   return (
-    <div className="bg-hub-gray/20 border border-warning/30 rounded-2xl p-6">
+    <div className="bg-[#0d0d0d] border border-warning/30 rounded-xl p-6">
       <div className="flex items-start gap-4">
         <div className="w-14 h-14 rounded-xl bg-warning/10 flex items-center justify-center flex-shrink-0">
           <Unlock className="w-7 h-7 text-warning" />
@@ -386,7 +386,7 @@ function UnlockCard({ event }: { event: CryptoEvent }) {
                 Token Unlock
               </span>
               <h4 className="text-white font-semibold text-lg">{event.title}</h4>
-              <p className="text-hub-gray-text mt-2">{event.description}</p>
+              <p className="text-neutral-600 mt-2">{event.description}</p>
             </div>
             <div className="text-right flex-shrink-0">
               <span className={`text-lg font-semibold ${

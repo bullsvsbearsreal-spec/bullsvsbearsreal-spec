@@ -1,6 +1,5 @@
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { Shuffle } from 'lucide-react';
 import { formatRate, getExchangeColor } from '../utils';
 
 interface ArbitrageItem {
@@ -15,81 +14,64 @@ interface FundingArbitrageViewProps {
 
 export default function FundingArbitrageView({ arbitrageData }: FundingArbitrageViewProps) {
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
-      <div className="p-4 border-b border-hub-gray/30">
-        <h3 className="text-white font-semibold flex items-center gap-2">
-          <Shuffle className="w-5 h-5 text-hub-yellow" />
-          Funding Rate Arbitrage Opportunities
-        </h3>
-        <p className="text-hub-gray-text text-sm">Largest spread between exchanges (long on low rate, short on high rate)</p>
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/[0.06]">
+        <h3 className="text-white font-semibold text-sm">Arbitrage Opportunities</h3>
+        <p className="text-neutral-600 text-xs">Largest funding rate spreads between exchanges</p>
       </div>
-      <div className="divide-y divide-hub-gray/20">
+      <div className="divide-y divide-white/[0.04]">
         {arbitrageData.slice(0, 20).map((item, index) => {
-          const sortedExchanges = [...item.exchanges].sort((a, b) => b.rate - a.rate);
-          const highestEx = sortedExchanges[0];
-          const lowestEx = sortedExchanges[sortedExchanges.length - 1];
+          const sorted = [...item.exchanges].sort((a, b) => b.rate - a.rate);
+          const high = sorted[0];
+          const low = sorted[sorted.length - 1];
 
           return (
-            <div key={item.symbol} className="p-4 hover:bg-hub-gray/30 transition-colors">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-hub-gray-text text-sm w-6">{index + 1}</span>
-                  <TokenIconSimple symbol={item.symbol} size={32} />
-                  <span className="text-white font-bold text-lg">{item.symbol}</span>
+            <div key={item.symbol} className="px-4 py-3 hover:bg-white/[0.02] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-600 text-xs font-mono w-5">{index + 1}</span>
+                  <TokenIconSimple symbol={item.symbol} size={24} />
+                  <span className="text-white font-bold text-sm">{item.symbol}</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-hub-yellow font-bold">
-                    Spread: {item.spread.toFixed(4)}%
+                  <span className="text-hub-yellow font-bold font-mono text-sm">
+                    {item.spread.toFixed(4)}%
+                  </span>
+                  <span className="text-neutral-600 text-[10px] ml-2">
+                    {(item.spread * 3 * 365).toFixed(1)}% ann.
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-red-500/5 border border-red-500/10 rounded-lg px-3 py-2">
+                  <div className="text-red-400/60 text-[10px] uppercase tracking-wider mb-1">Short</div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <ExchangeLogo exchange={high.exchange.toLowerCase()} size={14} />
+                      <span className="text-xs text-neutral-300">{high.exchange}</span>
+                    </div>
+                    <span className="text-red-400 font-mono text-xs font-semibold">{formatRate(high.rate)}</span>
                   </div>
-                  <div className="text-hub-gray-text text-xs">
-                    Annualized: {(item.spread * 3 * 365).toFixed(2)}%
+                </div>
+                <div className="bg-green-500/5 border border-green-500/10 rounded-lg px-3 py-2">
+                  <div className="text-green-400/60 text-[10px] uppercase tracking-wider mb-1">Long</div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <ExchangeLogo exchange={low.exchange.toLowerCase()} size={14} />
+                      <span className="text-xs text-neutral-300">{low.exchange}</span>
+                    </div>
+                    <span className="text-green-400 font-mono text-xs font-semibold">{formatRate(low.rate)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-danger/10 border border-danger/20 rounded-xl p-3">
-                  <div className="text-danger text-xs mb-1">SHORT here (highest rate)</div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ExchangeLogo exchange={highestEx.exchange.toLowerCase()} size={18} />
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(highestEx.exchange)}`}>
-                        {highestEx.exchange}
-                      </span>
-                    </div>
-                    <span className="text-danger font-mono font-bold">
-                      {formatRate(highestEx.rate)}
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-success/10 border border-success/20 rounded-xl p-3">
-                  <div className="text-success text-xs mb-1">LONG here (lowest rate)</div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ExchangeLogo exchange={lowestEx.exchange.toLowerCase()} size={18} />
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(lowestEx.exchange)}`}>
-                        {lowestEx.exchange}
-                      </span>
-                    </div>
-                    <span className="text-success font-mono font-bold">
-                      {formatRate(lowestEx.rate)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* All exchanges for this symbol */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {sortedExchanges.map((ex) => (
-                  <div
-                    key={ex.exchange}
-                    className="flex items-center gap-2 px-2 py-1 rounded-lg bg-hub-gray/30 text-xs"
-                  >
-                    <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={14} />
-                    <span className="text-hub-gray-text">{ex.exchange}:</span>
-                    <span className={ex.rate >= 0 ? 'text-success' : 'text-danger'}>
-                      {formatRate(ex.rate)}
-                    </span>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {sorted.map((ex) => (
+                  <div key={ex.exchange} className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.03] text-[10px]">
+                    <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={12} />
+                    <span className="text-neutral-500">{ex.exchange}</span>
+                    <span className={ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}>{formatRate(ex.rate)}</span>
                   </div>
                 ))}
               </div>
@@ -99,7 +81,7 @@ export default function FundingArbitrageView({ arbitrageData }: FundingArbitrage
       </div>
 
       {arbitrageData.length === 0 && (
-        <div className="p-8 text-center text-hub-gray-text">
+        <div className="p-8 text-center text-neutral-600 text-sm">
           No arbitrage opportunities found.
         </div>
       )}

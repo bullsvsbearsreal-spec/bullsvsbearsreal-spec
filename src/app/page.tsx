@@ -15,14 +15,11 @@ import LongShortRatio from '@/components/LongShortRatio';
 import MarketIndices from '@/components/MarketIndices';
 import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import {
-  Sparkles, ArrowRight, TrendingUp, Zap, BarChart3, Newspaper
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
-
-// Import API functions
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
 import { fetchCryptoNews, NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
@@ -36,7 +33,6 @@ export default function Home() {
   useEffect(() => {
     async function loadData() {
       try {
-        // Fetch funding rates
         const fundingData = await fetchAllFundingRates();
         const validFunding = fundingData
           .filter(fr => fr && isValidNumber(fr.fundingRate))
@@ -44,7 +40,6 @@ export default function Home() {
           .slice(0, 5);
         setTopFunding(validFunding);
 
-        // Fetch news
         const newsData = await fetchCryptoNews(4);
         setLatestNews(newsData);
       } catch (error) {
@@ -61,84 +56,63 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-hub-black relative">
-      {/* Animated background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-hub-yellow/5 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-hub-orange/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '-2s' }} />
-      </div>
-
+    <div className="min-h-screen bg-black">
       <Header />
       <TopStatsBar />
       <MarketTicker />
 
-      <main id="main-content" className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Hero Section */}
-        <section className="mb-10 animate-slideUp">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="px-3 py-1.5 rounded-lg bg-hub-yellow/10">
-              <span className="text-xs font-medium text-hub-yellow flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3" />
-                Live Market Data
-              </span>
-            </div>
-          </div>
-
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
-            <span className="text-white">Welcome to </span>
-            <span className="text-gradient">InfoHub</span>
+      <main className="max-w-[1400px] mx-auto px-4 py-6">
+        {/* Hero - compact, no animated backgrounds */}
+        <section className="mb-6">
+          <h1 className="text-xl font-bold text-white mb-1">
+            <span className="text-white">info</span>
+            <span className="text-hub-yellow">hub</span>
+            <span className="text-neutral-600 font-normal text-sm ml-2">Real-time derivatives data</span>
           </h1>
 
-          <p className="text-hub-gray-text text-lg md:text-xl max-w-2xl mb-8">
-            Your one-stop destination for real-time trading data.
-          </p>
-
-          {/* Search Bar */}
-          <div className="max-w-2xl mb-6">
+          <div className="max-w-lg mt-3 mb-4">
             <CoinSearch
               onSelect={handleCoinSelect}
               placeholder="Search any coin for events, unlocks & news..."
               className="w-full"
+              compact
             />
           </div>
 
-          {/* Quick Links */}
-          <div className="flex flex-wrap gap-2">
-            <Link href="/funding" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
-              <TrendingUp className="w-4 h-4 text-hub-yellow" />
-              <span className="text-white">Funding Rates</span>
-            </Link>
-            <Link href="/open-interest" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
-              <BarChart3 className="w-4 h-4 text-hub-yellow" />
-              <span className="text-white">Open Interest</span>
-            </Link>
-            <Link href="/liquidations" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
-              <Zap className="w-4 h-4 text-hub-yellow" />
-              <span className="text-white">Liquidations</span>
-            </Link>
-            <Link href="/news" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors text-sm">
-              <Newspaper className="w-4 h-4 text-hub-yellow" />
-              <span className="text-white">Market News</span>
-            </Link>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { name: 'Funding', href: '/funding' },
+              { name: 'Open Interest', href: '/open-interest' },
+              { name: 'Liquidations', href: '/liquidations' },
+              { name: 'News', href: '/news' },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="px-3 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white text-xs transition-colors"
+              >
+                {link.name}
+              </Link>
+            ))}
           </div>
         </section>
 
         {/* Stats Overview */}
-        <section className="mb-10">
+        <section className="mb-6">
           <StatsOverview />
         </section>
 
         {/* Row 1: Fear & Greed + Liquidation Heatmap */}
-        <section className="mb-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section className="mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <FearGreedIndex />
             <LiquidationHeatmap />
           </div>
         </section>
 
         {/* Row 2: Market Indices + Top Movers + Long/Short Ratio */}
-        <section className="mb-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <section className="mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <MarketIndices />
             <TopMovers />
             <LongShortRatio />
@@ -146,47 +120,39 @@ export default function Home() {
         </section>
 
         {/* Row 3: Funding Preview + OI Widget + News */}
-        <section className="mb-10">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section className="mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {/* Funding Rates Preview */}
-            <div className="glass-card rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-hub-yellow" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Top Funding</h3>
-                    <p className="text-hub-gray-text text-xs">Highest rates now</p>
-                  </div>
-                </div>
-                <Link href="/funding" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white font-semibold text-sm">Top Funding</h3>
+                <Link href="/funding" className="text-hub-yellow text-[10px] hover:underline flex items-center gap-0.5">
                   View All <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
               {loading ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-lg" />
+                    <div key={i} className="animate-pulse h-9 bg-white/[0.03] rounded-lg" />
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {topFunding.map((item, index) => (
                     <div
                       key={`${item.symbol}-${item.exchange}-${index}`}
-                      className="flex items-center justify-between p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
+                      className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="text-hub-gray-text text-xs w-4 font-mono">{index + 1}</span>
-                        <TokenIconSimple symbol={item.symbol} size={24} />
-                        <span className="text-white font-medium text-sm">{item.symbol}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
+                        <TokenIconSimple symbol={item.symbol} size={18} />
+                        <span className="text-white font-medium text-xs">{item.symbol}</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-hub-gray-text text-xs">{item.exchange}</span>
-                        <span className={`font-mono font-semibold text-sm ${
-                          item.fundingRate >= 0 ? 'text-success' : 'text-danger'
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-600 text-[10px]">{item.exchange}</span>
+                        <span className={`font-mono font-semibold text-xs ${
+                          item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
                           {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
                         </span>
@@ -201,45 +167,37 @@ export default function Home() {
             <OIChangeWidget />
 
             {/* News Preview */}
-            <div className="glass-card rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-                    <Newspaper className="w-5 h-5 text-hub-yellow" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Latest News</h3>
-                    <p className="text-hub-gray-text text-xs">Market updates</p>
-                  </div>
-                </div>
-                <Link href="/news" className="text-hub-yellow text-sm hover:underline flex items-center gap-1">
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white font-semibold text-sm">Latest News</h3>
+                <Link href="/news" className="text-hub-yellow text-[10px] hover:underline flex items-center gap-0.5">
                   View All <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
               {loading ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="animate-pulse h-16 bg-hub-gray/30 rounded-lg" />
+                    <div key={i} className="animate-pulse h-12 bg-white/[0.03] rounded-lg" />
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {latestNews.map((article, index) => (
                     <a
                       key={article.id || index}
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
+                      className="block px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
                     >
-                      <h4 className="text-white text-sm font-medium line-clamp-2">
+                      <h4 className="text-white text-xs font-medium line-clamp-2 leading-relaxed">
                         {article.title}
                       </h4>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-hub-gray-text">{article.source_info?.name || article.source}</span>
-                        <span className="text-xs text-hub-gray-text">•</span>
-                        <span className="text-xs text-hub-gray-text">{formatTimeAgo(article.published_on)}</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] text-neutral-600">{article.source_info?.name || article.source}</span>
+                        <span className="text-neutral-700">&middot;</span>
+                        <span className="text-[10px] text-neutral-600">{formatTimeAgo(article.published_on)}</span>
                       </div>
                     </a>
                   ))}
@@ -249,27 +207,25 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Data Sources */}
-        <section className="mb-10">
-          <div className="glass-card rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-white font-semibold text-lg">Connected Exchanges</h3>
-                <p className="text-hub-gray-text text-sm mt-1">Real-time data from 13 exchanges</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-success"></span>
-                <span className="text-xs text-hub-gray-text">All Connected</span>
+        {/* Connected Exchanges */}
+        <section className="mb-6">
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-white font-semibold text-sm">Connected Exchanges</h3>
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                <span className="text-[10px] text-neutral-600">{ALL_EXCHANGES.length} connected</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
+            <div className="flex flex-wrap gap-2">
               {ALL_EXCHANGES.map((exchange) => (
                 <div
                   key={exchange}
-                  className="flex items-center justify-center py-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
                 >
-                  <span className="text-white text-sm font-medium">{exchange}</span>
+                  <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                  <span className="text-neutral-400 text-xs">{exchange}</span>
                 </div>
               ))}
             </div>
@@ -277,7 +233,6 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
@@ -285,68 +240,71 @@ export default function Home() {
 
 function Footer() {
   return (
-    <footer className="border-t border-hub-gray/20 bg-hub-black/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
+    <footer className="border-t border-white/[0.04] bg-black">
+      <div className="max-w-[1400px] mx-auto px-4 py-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-hub-yellow to-hub-orange rounded-xl flex items-center justify-center">
-                <span className="text-hub-black font-bold">iH</span>
-              </div>
-              <span className="text-xl font-bold">
-                <span className="text-white">Info</span>
-                <span className="text-hub-yellow">Hub</span>
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="text-sm font-bold">
+                <span className="text-white">info</span>
+                <span className="text-hub-yellow">hub</span>
               </span>
             </div>
-            <p className="text-hub-gray-text text-sm">
-              Your one-stop destination for real-time trading data.
+            <p className="text-neutral-600 text-xs leading-relaxed">
+              Real-time derivatives data aggregated from {ALL_EXCHANGES.length}+ exchanges.
             </p>
           </div>
 
-          {/* Navigation */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Navigation</h4>
-            <ul className="space-y-2">
-              <li><Link href="/" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Dashboard</Link></li>
-              <li><Link href="/funding" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Funding Rates</Link></li>
-              <li><Link href="/open-interest" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Open Interest</Link></li>
-              <li><Link href="/liquidations" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Liquidations</Link></li>
+            <h4 className="text-neutral-400 font-medium text-xs mb-2">Navigation</h4>
+            <ul className="space-y-1.5">
+              {[
+                { name: 'Dashboard', href: '/' },
+                { name: 'Funding Rates', href: '/funding' },
+                { name: 'Open Interest', href: '/open-interest' },
+                { name: 'Liquidations', href: '/liquidations' },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-neutral-600 hover:text-hub-yellow transition-colors text-xs">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Resources */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Resources</h4>
-            <ul className="space-y-2">
-              <li><Link href="/news" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Market News</Link></li>
-              <li><Link href="/team" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Our Team</Link></li>
-              <li><Link href="/brand" className="text-hub-gray-text hover:text-hub-yellow transition-colors text-sm">Brand Assets</Link></li>
+            <h4 className="text-neutral-400 font-medium text-xs mb-2">Resources</h4>
+            <ul className="space-y-1.5">
+              {[
+                { name: 'Market News', href: '/news' },
+                { name: 'Team', href: '/team' },
+                { name: 'Brand', href: '/brand' },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-neutral-600 hover:text-hub-yellow transition-colors text-xs">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Data Sources */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Data Sources</h4>
-            <ul className="space-y-2">
-              <li><span className="text-hub-gray-text text-sm">Binance</span></li>
-              <li><span className="text-hub-gray-text text-sm">Bybit</span></li>
-              <li><span className="text-hub-gray-text text-sm">OKX</span></li>
-              <li><span className="text-hub-gray-text text-sm">Bitget</span></li>
-              <li><span className="text-hub-gray-text text-sm">Gate.io / MEXC / Kraken</span></li>
-              <li><span className="text-hub-gray-text text-sm">BingX / Phemex</span></li>
-              <li><span className="text-hub-gray-text text-sm">Hyperliquid / dYdX</span></li>
-            </ul>
+            <h4 className="text-neutral-400 font-medium text-xs mb-2">Exchanges</h4>
+            <p className="text-neutral-600 text-xs leading-relaxed">
+              Binance, Bybit, OKX, Bitget, Gate.io, MEXC, Kraken, BingX, Phemex, Hyperliquid, dYdX & more
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-between pt-8 mt-8 border-t border-hub-gray/20">
-          <p className="text-hub-gray-text text-sm mb-4 md:mb-0">
-            © 2026 InfoHub. All data for informational purposes only.
-          </p>
-          <div className="flex items-center gap-2 text-hub-gray-text text-xs">
-            <span className="h-2 w-2 rounded-full bg-success"></span>
-            <span>All systems operational</span>
+        <div className="flex items-center justify-between pt-6 mt-6 border-t border-white/[0.04]">
+          <span className="text-neutral-700 text-[10px]">
+            &copy; 2026 InfoHub. Data for informational purposes only.
+          </span>
+          <div className="flex items-center gap-1.5 text-[10px] text-neutral-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500/60"></span>
+            All systems operational
           </div>
         </div>
       </div>

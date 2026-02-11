@@ -16,48 +16,39 @@ interface FundingTableViewProps {
 }
 
 export default function FundingTableView({ data, sortField, sortOrder, onSort }: FundingTableViewProps) {
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
+    return sortOrder === 'asc'
+      ? <ArrowUp className="w-3 h-3 text-hub-yellow" />
+      : <ArrowDown className="w-3 h-3 text-hub-yellow" />;
+  };
+
   return (
-    <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-hub-gray/30">
-              <th
-                className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
-                onClick={() => onSort('symbol')}
-                aria-sort={sortField === 'symbol' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <div className="flex items-center gap-2">
-                  Symbol
-                  {sortField === 'symbol' ? (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4 text-hub-yellow" /> : <ArrowDown className="w-4 h-4 text-hub-yellow" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
-                </div>
-              </th>
-              <th
-                className="px-6 py-4 text-left text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
-                onClick={() => onSort('exchange')}
-                aria-sort={sortField === 'exchange' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <div className="flex items-center gap-2">
-                  Exchange
-                  {sortField === 'exchange' ? (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4 text-hub-yellow" /> : <ArrowDown className="w-4 h-4 text-hub-yellow" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
-                </div>
-              </th>
-              <th
-                className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text cursor-pointer hover:text-white transition-colors"
-                onClick={() => onSort('fundingRate')}
-                aria-sort={sortField === 'fundingRate' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <div className="flex items-center gap-2 justify-end">
-                  Funding Rate
-                  {sortField === 'fundingRate' ? (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4 text-hub-yellow" /> : <ArrowDown className="w-4 h-4 text-hub-yellow" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
-                </div>
-              </th>
-              <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">
-                Annualized
-              </th>
-              <th className="px-6 py-4 text-right text-sm font-semibold text-hub-gray-text">
-                Mark Price
-              </th>
+            <tr className="border-b border-white/[0.06]">
+              {[
+                { field: 'symbol' as SortField, label: 'Symbol', align: 'left' },
+                { field: 'exchange' as SortField, label: 'Exchange', align: 'left' },
+                { field: 'fundingRate' as SortField, label: 'Funding Rate', align: 'right' },
+                { field: null, label: 'Annualized', align: 'right' },
+                { field: null, label: 'Mark Price', align: 'right' },
+              ].map(({ field, label, align }) => (
+                <th
+                  key={label}
+                  className={`px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 ${
+                    align === 'right' ? 'text-right' : 'text-left'
+                  } ${field ? 'cursor-pointer hover:text-white transition-colors' : ''}`}
+                  onClick={field ? () => onSort(field) : undefined}
+                >
+                  <div className={`flex items-center gap-1.5 ${align === 'right' ? 'justify-end' : ''}`}>
+                    {label}
+                    {field && <SortIcon field={field} />}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -67,34 +58,34 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
               return (
                 <tr
                   key={`${fr.symbol}-${fr.exchange}-${index}`}
-                  className="border-b border-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
+                  className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-2">
                     <div className="flex items-center gap-2">
-                      <TokenIconSimple symbol={fr.symbol} size={28} />
-                      <span className="text-white font-semibold">{fr.symbol}</span>
+                      <TokenIconSimple symbol={fr.symbol} size={20} />
+                      <span className="text-white font-medium text-sm">{fr.symbol}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <ExchangeLogo exchange={fr.exchange.toLowerCase()} size={20} />
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <ExchangeLogo exchange={fr.exchange.toLowerCase()} size={16} />
+                      <span className={`text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
                         {fr.exchange}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`font-mono font-semibold ${getRateColor(fr.fundingRate)}`}>
+                  <td className="px-4 py-2 text-right">
+                    <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
                       {formatRate(fr.fundingRate)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`font-mono text-sm ${getRateColor(annualized)}`}>
+                  <td className="px-4 py-2 text-right">
+                    <span className={`font-mono text-xs ${getRateColor(annualized)}`}>
                       {annualized >= 0 ? '+' : ''}{annualized.toFixed(2)}%
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-white font-mono">
+                  <td className="px-4 py-2 text-right">
+                    <span className="text-neutral-400 font-mono text-xs">
                       {hasMarkPrice
                         ? `$${fr.markPrice!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`
                         : '-'}
@@ -106,6 +97,11 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
           </tbody>
         </table>
       </div>
+      {data.length > 100 && (
+        <div className="px-4 py-2 border-t border-white/[0.06] text-center">
+          <span className="text-neutral-600 text-xs">Showing 100 of {data.length} results</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3 } from 'lucide-react';
 import { TokenIconSimple } from './TokenIcon';
 import { fetchOIChanges } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
@@ -31,53 +30,44 @@ export default function OIChangeWidget() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 60000); // Refresh every minute
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="glass-card rounded-2xl p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-hub-yellow" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">Top Open Interest</h3>
-            <p className="text-hub-gray-text text-xs">By total OI value</p>
-          </div>
-        </div>
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-white font-semibold text-sm">Top Open Interest</h3>
+        <span className="text-neutral-600 text-[10px]">By value</span>
       </div>
 
-      {/* List */}
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-lg" />
+            <div key={i} className="animate-pulse h-10 bg-white/[0.03] rounded-lg" />
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {oiData.slice(0, 5).map((item, index) => (
             <div
               key={`${item.symbol}-${item.exchange}`}
-              className="flex items-center justify-between p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
+              className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-hub-gray-text text-xs w-4 font-mono">{index + 1}</span>
-                <TokenIconSimple symbol={item.symbol} size={28} />
-                <div>
-                  <span className="text-white font-medium">{item.symbol}</span>
-                  <span className="text-hub-gray-text text-xs ml-2">{item.exchange}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
+                <TokenIconSimple symbol={item.symbol} size={20} />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-white font-medium text-xs">{item.symbol}</span>
+                  <span className="text-neutral-600 text-[10px]">{item.exchange}</span>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-white font-semibold text-sm">
+                <div className="text-white font-mono font-semibold text-xs">
                   {formatValue(item.openInterestValue)}
                 </div>
-                <div className="text-hub-gray-text text-xs">
-                  {item.openInterest.toLocaleString(undefined, { maximumFractionDigits: 0 })} contracts
+                <div className="text-neutral-600 text-[10px] font-mono">
+                  {item.openInterest.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </div>
               </div>
             </div>

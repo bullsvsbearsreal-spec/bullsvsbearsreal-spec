@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Flame } from 'lucide-react';
 import { TokenIconSimple } from './TokenIcon';
 import { fetchTopMovers } from '@/lib/api/aggregator';
 import { TickerData } from '@/lib/api/types';
@@ -34,37 +33,22 @@ export default function TopMovers() {
   const items = view === 'gainers' ? gainers : losers;
 
   return (
-    <div className="glass-card rounded-2xl p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-            <Flame className="w-5 h-5 text-hub-yellow" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">Top Movers</h3>
-            <p className="text-hub-gray-text text-xs">24h price change</p>
-          </div>
-        </div>
-
-        {/* Toggle */}
-        <div className="flex rounded-lg overflow-hidden bg-hub-gray/30">
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-white font-semibold text-sm">Top Movers</h3>
+        <div className="flex rounded-md overflow-hidden bg-white/[0.04]">
           <button
             onClick={() => setView('gainers')}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              view === 'gainers'
-                ? 'bg-hub-yellow text-black'
-                : 'text-hub-gray-text hover:text-white'
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              view === 'gainers' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
             }`}
           >
             Gainers
           </button>
           <button
             onClick={() => setView('losers')}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              view === 'losers'
-                ? 'bg-hub-yellow text-black'
-                : 'text-hub-gray-text hover:text-white'
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              view === 'losers' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
             }`}
           >
             Losers
@@ -72,31 +56,30 @@ export default function TopMovers() {
         </div>
       </div>
 
-      {/* List */}
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse h-12 bg-hub-gray/30 rounded-lg" />
+            <div key={i} className="animate-pulse h-10 bg-white/[0.03] rounded-lg" />
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {items.slice(0, 5).map((item, index) => (
             <div
               key={item.symbol}
-              className="flex items-center justify-between p-3 rounded-lg bg-hub-gray/20 hover:bg-hub-gray/30 transition-colors"
+              className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-hub-gray-text text-xs w-4 font-mono">{index + 1}</span>
-                <TokenIconSimple symbol={item.symbol} size={28} />
-                <span className="text-white font-medium">{item.symbol}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
+                <TokenIconSimple symbol={item.symbol} size={20} />
+                <span className="text-white font-medium text-xs">{item.symbol}</span>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="text-hub-gray-text font-mono text-sm">
+              <div className="flex items-center gap-3">
+                <span className="text-neutral-500 font-mono text-xs">
                   {formatPrice(item.lastPrice)}
                 </span>
-                <span className={`font-semibold text-sm min-w-[70px] text-right ${
-                  item.priceChangePercent24h >= 0 ? 'text-success' : 'text-danger'
+                <span className={`font-mono font-semibold text-xs min-w-[52px] text-right ${
+                  item.priceChangePercent24h >= 0 ? 'text-green-400' : 'text-red-400'
                 }`}>
                   {item.priceChangePercent24h >= 0 ? '+' : ''}
                   {item.priceChangePercent24h.toFixed(2)}%

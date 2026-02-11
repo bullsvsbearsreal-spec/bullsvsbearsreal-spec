@@ -157,7 +157,7 @@ export default function LiquidationsPage() {
     if (value >= 1000000) return 'text-purple-400';
     if (value >= 500000) return 'text-error';
     if (value >= 100000) return 'text-orange-400';
-    return 'text-hub-gray-text';
+    return 'text-neutral-600';
   };
 
   const getSizeClass = (value: number) => {
@@ -181,17 +181,14 @@ export default function LiquidationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-hub-black">
+    <div className="min-h-screen bg-black">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Zap className="w-8 h-8 text-hub-yellow" />
-              Liquidations
-            </h1>
-            <p className="text-hub-gray-text mt-1">Real-time liquidation feed from Binance Futures</p>
+            <h1 className="text-xl font-bold text-white">Liquidations</h1>
+            <p className="text-neutral-600 text-xs mt-0.5">Real-time liquidation feed from Binance Futures</p>
           </div>
           <div className="flex items-center gap-3">
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${connected ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
@@ -200,7 +197,7 @@ export default function LiquidationsPage() {
             </div>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-xl transition-colors ${soundEnabled ? 'bg-hub-yellow/20 text-hub-yellow' : 'bg-hub-gray/30 text-hub-gray-text'}`}
+              className={`p-2 rounded-xl transition-colors ${soundEnabled ? 'bg-hub-yellow/20 text-hub-yellow' : 'bg-white/[0.04] text-neutral-600'}`}
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
@@ -209,65 +206,65 @@ export default function LiquidationsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5">
-            <span className="text-hub-gray-text text-sm">{timeframe} Liquidations</span>
-            <div className="text-2xl font-bold text-white mt-1">{stats.totalLongs + stats.totalShorts}</div>
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+            <span className="text-neutral-600 text-sm">{timeframe} Liquidations</span>
+            <div className="text-sm font-bold font-mono text-white mt-1">{stats.totalLongs + stats.totalShorts}</div>
           </div>
           <div className="bg-success/10 border border-success/30 rounded-2xl p-5">
             <span className="text-success text-sm">Longs Rekt</span>
-            <div className="text-2xl font-bold text-success mt-1">{stats.totalLongs}</div>
+            <div className="text-sm font-bold font-mono text-success mt-1">{stats.totalLongs}</div>
             <div className="text-sm text-success/70">{formatValue(stats.longValue)}</div>
           </div>
           <div className="bg-danger/10 border border-danger/30 rounded-2xl p-5">
             <span className="text-danger text-sm">Shorts Rekt</span>
-            <div className="text-2xl font-bold text-danger mt-1">{stats.totalShorts}</div>
+            <div className="text-sm font-bold font-mono text-danger mt-1">{stats.totalShorts}</div>
             <div className="text-sm text-danger/70">{formatValue(stats.shortValue)}</div>
           </div>
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-5">
-            <span className="text-hub-gray-text text-sm">Total Value</span>
-            <div className="text-2xl font-bold text-white mt-1">{formatValue(stats.longValue + stats.shortValue)}</div>
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+            <span className="text-neutral-600 text-sm">Total Value</span>
+            <div className="text-sm font-bold font-mono text-white mt-1">{formatValue(stats.longValue + stats.shortValue)}</div>
           </div>
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-5">
             <span className="text-purple-400 text-sm">Largest Liquidation</span>
             {stats.largestLiq ? (
               <>
-                <div className="text-2xl font-bold text-purple-400 mt-1">{formatValue(stats.largestLiq.value)}</div>
+                <div className="text-sm font-bold font-mono text-purple-400 mt-1">{formatValue(stats.largestLiq.value)}</div>
                 <div className="text-sm text-purple-400/70">{stats.largestLiq.symbol}</div>
               </>
             ) : (
-              <div className="text-2xl font-bold text-hub-gray-text mt-1">-</div>
+              <div className="text-sm font-bold font-mono text-neutral-600 mt-1">-</div>
             )}
           </div>
         </div>
 
         {/* Controls */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
-            <button onClick={() => setViewMode('feed')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'feed' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>
+          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
+            <button onClick={() => setViewMode('feed')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'feed' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
               <List className="w-4 h-4" /> Live Feed
             </button>
-            <button onClick={() => setViewMode('heatmap')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'heatmap' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>
+            <button onClick={() => setViewMode('heatmap')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'heatmap' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
               <Grid3X3 className="w-4 h-4" /> Heatmap
             </button>
           </div>
 
-          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
+          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
             {(['1h', '4h', '12h', '24h'] as const).map((tf) => (
-              <button key={tf} onClick={() => setTimeframe(tf)} className={`px-3 py-2 text-sm font-medium transition-colors ${timeframe === tf ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>
+              <button key={tf} onClick={() => setTimeframe(tf)} className={`px-3 py-2 text-sm font-medium transition-colors ${timeframe === tf ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
                 {tf}
               </button>
             ))}
           </div>
 
-          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
-            <button onClick={() => setFilter('all')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'all' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'}`}>All</button>
-            <button onClick={() => setFilter('long')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'long' ? 'bg-success text-black' : 'text-hub-gray-text hover:text-white'}`}>Longs</button>
-            <button onClick={() => setFilter('short')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'short' ? 'bg-danger text-white' : 'text-hub-gray-text hover:text-white'}`}>Shorts</button>
+          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
+            <button onClick={() => setFilter('all')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'all' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>All</button>
+            <button onClick={() => setFilter('long')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'long' ? 'bg-success text-black' : 'text-neutral-600 hover:text-white'}`}>Longs</button>
+            <button onClick={() => setFilter('short')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'short' ? 'bg-danger text-white' : 'text-neutral-600 hover:text-white'}`}>Shorts</button>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-hub-gray-text text-sm">Min:</span>
-            <select value={minValue} onChange={(e) => setMinValue(Number(e.target.value))} className="px-3 py-2 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50">
+            <span className="text-neutral-600 text-sm">Min:</span>
+            <select value={minValue} onChange={(e) => setMinValue(Number(e.target.value))} className="px-3 py-2 bg-hub-gray/20 border border-white/[0.06] rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50">
               <option value={1000}>$1K+</option>
               <option value={10000}>$10K+</option>
               <option value={50000}>$50K+</option>
@@ -278,7 +275,7 @@ export default function LiquidationsPage() {
         </div>
 
         {loading ? (
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-8">
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8">
             <div className="flex items-center justify-center gap-3">
               <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
               <span className="text-white">Connecting to liquidation stream...</span>
@@ -288,13 +285,13 @@ export default function LiquidationsPage() {
           <>
             {/* Heatmap View */}
             {viewMode === 'heatmap' && (
-              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden mb-6">
-                <div className="p-4 border-b border-hub-gray/30">
+              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+                <div className="p-4 border-b border-white/[0.06]">
                   <h3 className="text-white font-semibold">Liquidation Heatmap</h3>
-                  <p className="text-hub-gray-text text-sm">Aggregated liquidations by symbol ({timeframe})</p>
+                  <p className="text-neutral-600 text-sm">Aggregated liquidations by symbol ({timeframe})</p>
                 </div>
                 {sortedAggregated.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-hub-gray-text">
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-600">
                     <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
                     <p className="text-sm">Collecting liquidation data...</p>
                   </div>
@@ -321,7 +318,7 @@ export default function LiquidationsPage() {
                     })}
                   </div>
                 )}
-                <div className="p-4 border-t border-hub-gray/30 flex items-center justify-center gap-6 text-xs text-hub-gray-text">
+                <div className="p-4 border-t border-white/[0.06] flex items-center justify-center gap-6 text-xs text-neutral-600">
                   <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-500" /><span>Long Liquidations</span></div>
                   <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500" /><span>Short Liquidations</span></div>
                 </div>
@@ -330,21 +327,21 @@ export default function LiquidationsPage() {
 
             {/* Live Feed View */}
             {viewMode === 'feed' && (
-              <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-hub-gray/30 flex items-center justify-between">
+              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+                <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
                   <h3 className="text-white font-semibold">Live Feed</h3>
-                  <span className="text-hub-gray-text text-sm">{filteredLiquidations.length} liquidations</span>
+                  <span className="text-neutral-600 text-sm">{filteredLiquidations.length} liquidations</span>
                 </div>
                 <div className="max-h-[600px] overflow-y-auto">
                   {filteredLiquidations.length === 0 ? (
-                    <div className="p-8 text-center text-hub-gray-text">
+                    <div className="p-8 text-center text-neutral-600">
                       <Zap className="w-12 h-12 mx-auto mb-4 opacity-30" />
                       <p>Waiting for liquidations...</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-hub-gray/20">
                       {filteredLiquidations.map((liq) => (
-                        <div key={liq.id} className={`p-4 hover:bg-hub-gray/30 transition-colors ${liq.value >= 100000 ? 'animate-pulse-once' : ''}`}>
+                        <div key={liq.id} className={`p-4 hover:bg-white/[0.04] transition-colors ${liq.value >= 100000 ? 'animate-pulse-once' : ''}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${liq.side === 'long' ? 'bg-success/20' : 'bg-error/20'}`}>
@@ -358,14 +355,14 @@ export default function LiquidationsPage() {
                                     {liq.side.toUpperCase()}
                                   </span>
                                 </div>
-                                <div className="text-sm text-hub-gray-text mt-0.5">
+                                <div className="text-sm text-neutral-600 mt-0.5">
                                   {liq.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })} @ ${liq.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </div>
                               </div>
                             </div>
                             <div className="text-right">
                               <div className={`${getValueColor(liq.value)} ${getSizeClass(liq.value)}`}>{formatValue(liq.value)}</div>
-                              <div className="text-xs text-hub-gray-text mt-0.5">{formatTime(liq.timestamp)}</div>
+                              <div className="text-xs text-neutral-600 mt-0.5">{formatTime(liq.timestamp)}</div>
                             </div>
                           </div>
                         </div>
@@ -384,7 +381,7 @@ export default function LiquidationsPage() {
             <AlertTriangle className="w-5 h-5 text-hub-yellow flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-hub-yellow text-sm font-medium">Understanding Liquidations</p>
-              <p className="text-hub-gray-text text-sm mt-1">
+              <p className="text-neutral-600 text-sm mt-1">
                 <strong className="text-success">Long liquidation</strong> = Price dropped, long positions forcefully closed.
                 <br />
                 <strong className="text-danger">Short liquidation</strong> = Price rose, short positions forcefully closed.

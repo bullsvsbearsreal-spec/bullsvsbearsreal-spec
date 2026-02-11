@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Zap, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 interface LiquidationData {
   symbol: string;
@@ -39,7 +39,6 @@ export default function LiquidationHeatmap() {
     };
   }, []);
 
-  // Reset data when timeframe changes
   useEffect(() => {
     setLiquidations(new Map());
     setTotals({ total: 0, longs: 0, shorts: 0 });
@@ -63,7 +62,6 @@ export default function LiquidationHeatmap() {
             value: parseFloat(data.o.p) * parseFloat(data.o.q),
           };
 
-          // Check if within timeframe
           const timeframeMs = {
             '1h': 60 * 60 * 1000,
             '4h': 4 * 60 * 60 * 1000,
@@ -72,7 +70,6 @@ export default function LiquidationHeatmap() {
           }[timeframe];
 
           if (Date.now() - startTimeRef.current > timeframeMs) {
-            // Reset if exceeded timeframe
             startTimeRef.current = Date.now();
             setLiquidations(new Map());
             setTotals({ total: 0, longs: 0, shorts: 0 });
@@ -104,7 +101,6 @@ export default function LiquidationHeatmap() {
             shorts: prev.shorts + (liq.side === 'short' ? liq.value : 0),
           }));
 
-          // Dispatch event for TopStatsBar
           window.dispatchEvent(new CustomEvent('liquidationUpdate', {
             detail: {
               total: totals.total + liq.value,
@@ -130,56 +126,44 @@ export default function LiquidationHeatmap() {
     wsRef.current = ws;
   };
 
-  // Convert to sorted array for display
   const sortedLiqs = Array.from(liquidations.values())
     .sort((a, b) => b.totalValue - a.totalValue)
     .slice(0, 12);
 
-  // Calculate max value for sizing
   const maxValue = Math.max(...sortedLiqs.map(l => l.totalValue), 1);
 
-  // Get color intensity based on value
   const getColorIntensity = (value: number, isLong: boolean) => {
     const intensity = Math.min((value / maxValue) * 100, 100);
     if (isLong) {
-      // Red for longs (price dropped)
-      if (intensity > 70) return 'bg-danger';
-      if (intensity > 40) return 'bg-danger/80';
-      return 'bg-danger/60';
+      if (intensity > 70) return 'bg-red-500';
+      if (intensity > 40) return 'bg-red-500/80';
+      return 'bg-red-500/60';
     } else {
-      // Green for shorts (price rose)
-      if (intensity > 70) return 'bg-success';
-      if (intensity > 40) return 'bg-success/80';
-      return 'bg-success/60';
+      if (intensity > 70) return 'bg-green-500';
+      if (intensity > 40) return 'bg-green-500/80';
+      return 'bg-green-500/60';
     }
   };
 
   return (
-    <div className="glass-card rounded-2xl p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-hub-yellow" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">Liquidation Heatmap</h3>
-            <p className="text-hub-gray-text text-xs">
-              {connected ? 'Live' : 'Connecting...'} • {timeframe} data
-            </p>
-          </div>
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-white font-semibold text-sm">Liquidation Heatmap</h3>
+          <p className="text-neutral-600 text-[10px]">
+            {connected ? 'Live' : 'Connecting...'} &middot; {timeframe}
+          </p>
         </div>
 
-        {/* Timeframe selector */}
-        <div className="flex rounded-lg overflow-hidden bg-hub-gray/30">
+        <div className="flex rounded-md overflow-hidden bg-white/[0.04]">
           {(['1h', '4h', '12h', '24h'] as const).map((tf) => (
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`px-2 py-1 text-[10px] font-medium transition-colors ${
                 timeframe === tf
                   ? 'bg-hub-yellow text-black'
-                  : 'text-hub-gray-text hover:text-white'
+                  : 'text-neutral-500 hover:text-white'
               }`}
             >
               {tf}
@@ -188,65 +172,56 @@ export default function LiquidationHeatmap() {
         </div>
       </div>
 
-      {/* Total Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-hub-gray/20 rounded-lg p-3 text-center">
-          <div className="text-xs text-hub-gray-text mb-1">{timeframe} Rekt</div>
-          <div className="text-lg font-bold text-white">{formatValue(totals.total)}</div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="bg-white/[0.03] rounded-lg px-2.5 py-2 text-center">
+          <div className="text-[10px] text-neutral-600 mb-0.5">Rekt</div>
+          <div className="text-sm font-bold text-white font-mono">{formatValue(totals.total)}</div>
         </div>
-        <div className="bg-hub-gray/20 rounded-lg p-3 text-center">
-          <div className="text-xs text-hub-gray-text mb-1">Long</div>
-          <div className="text-lg font-bold text-danger">{formatValue(totals.longs)}</div>
+        <div className="bg-white/[0.03] rounded-lg px-2.5 py-2 text-center">
+          <div className="text-[10px] text-neutral-600 mb-0.5">Long</div>
+          <div className="text-sm font-bold text-red-400 font-mono">{formatValue(totals.longs)}</div>
         </div>
-        <div className="bg-hub-gray/20 rounded-lg p-3 text-center">
-          <div className="text-xs text-hub-gray-text mb-1">Short</div>
-          <div className="text-lg font-bold text-success">{formatValue(totals.shorts)}</div>
+        <div className="bg-white/[0.03] rounded-lg px-2.5 py-2 text-center">
+          <div className="text-[10px] text-neutral-600 mb-0.5">Short</div>
+          <div className="text-sm font-bold text-green-400 font-mono">{formatValue(totals.shorts)}</div>
         </div>
       </div>
 
-      {/* Treemap Grid */}
       {sortedLiqs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-hub-gray-text">
-          <RefreshCw className="w-6 h-6 animate-spin mb-3 opacity-50" />
-          <p className="text-sm">Collecting liquidation data...</p>
-          <p className="text-xs mt-1 opacity-70">Large liquidations will appear here</p>
+        <div className="flex flex-col items-center justify-center py-8 text-neutral-600">
+          <RefreshCw className="w-4 h-4 animate-spin mb-2 opacity-50" />
+          <p className="text-xs">Collecting liquidation data...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5">
           {sortedLiqs.map((liq, index) => {
-            // Determine dominant side
             const isLongDominant = liq.longValue > liq.shortValue;
             const bgColor = getColorIntensity(liq.totalValue, isLongDominant);
-
-            // Size based on value (larger values get more height)
-            const sizeClass = index < 3 ? 'h-24' : index < 6 ? 'h-20' : 'h-16';
+            const sizeClass = index < 3 ? 'h-20' : index < 6 ? 'h-16' : 'h-14';
 
             return (
               <div
                 key={liq.symbol}
-                className={`${bgColor} ${sizeClass} rounded-lg p-3 flex flex-col justify-between transition-transform hover:scale-[1.02]`}
+                className={`${bgColor} ${sizeClass} rounded-lg px-2.5 py-2 flex flex-col justify-between`}
               >
-                <div className="text-white font-bold text-sm md:text-base">
-                  {liq.symbol}
-                </div>
-                <div className="text-white/80 text-xs md:text-sm font-semibold">
+                <span className="text-white font-bold text-xs">{liq.symbol}</span>
+                <span className="text-white/80 text-[10px] font-mono font-semibold">
                   {formatValue(liq.totalValue)}
-                </div>
+                </span>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-6 mt-4 text-xs text-hub-gray-text">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-danger" />
-          <span>Long Liquidations</span>
+      <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-neutral-600">
+        <div className="flex items-center gap-1">
+          <div className="w-2.5 h-2.5 rounded-sm bg-red-500" />
+          <span>Long Liq</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-success" />
-          <span>Short Liquidations</span>
+        <div className="flex items-center gap-1">
+          <div className="w-2.5 h-2.5 rounded-sm bg-green-500" />
+          <span>Short Liq</span>
         </div>
       </div>
     </div>

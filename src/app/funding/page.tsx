@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
-import { TrendingUp, RefreshCw, AlertTriangle, Grid3X3, Table, Shuffle, Settings2, Check } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Check, Settings2 } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ALL_EXCHANGES, EXCHANGE_COLORS, CATEGORIES, CATEGORY_ICONS, PRIORITY_SYMBOLS } from '@/lib/constants';
 import type { Category } from '@/lib/constants';
@@ -45,15 +45,11 @@ export default function FundingPage() {
   const fundingRates = data?.fundingRates ?? [];
   const arbitrageData = data?.arbitrageData ?? [];
 
-  // Toggle exchange selection
   const toggleExchange = (exchange: string) => {
     setSelectedExchanges(prev => {
       const next = new Set(prev);
-      if (next.has(exchange)) {
-        if (next.size > 1) next.delete(exchange);
-      } else {
-        next.add(exchange);
-      }
+      if (next.has(exchange)) { if (next.size > 1) next.delete(exchange); }
+      else { next.add(exchange); }
       return next;
     });
   };
@@ -66,7 +62,6 @@ export default function FundingPage() {
     }
   };
 
-  // Calculate dynamic categories (highest/lowest funding rates)
   const getSymbolAvgRate = (symbol: string) => {
     const rates = fundingRates.filter(fr => fr.symbol === symbol);
     return rates.length > 0 ? rates.reduce((sum, fr) => sum + fr.fundingRate, 0) / rates.length : 0;
@@ -77,7 +72,6 @@ export default function FundingPage() {
 
   const highestRateSymbols = [...allSymbolsWithRates]
     .sort((a, b) => b.avgRate - a.avgRate).slice(0, 30).map(s => s.symbol);
-
   const lowestRateSymbols = [...allSymbolsWithRates]
     .sort((a, b) => a.avgRate - b.avgRate).slice(0, 30).map(s => s.symbol);
 
@@ -87,22 +81,18 @@ export default function FundingPage() {
     if (categoryFilter === 'lowest') return lowestRateSymbols;
     return CATEGORIES[categoryFilter].symbols;
   };
-
   const categorySymbols = getCategorySymbols();
 
-  // Symbols for heatmap view
   const symbols = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
     .filter(symbol => !categorySymbols || categorySymbols.includes(symbol))
     .sort((a, b) => {
       if (categoryFilter === 'highest') return getSymbolAvgRate(b) - getSymbolAvgRate(a);
       if (categoryFilter === 'lowest') return getSymbolAvgRate(a) - getSymbolAvgRate(b);
-
       const aPriority = PRIORITY_SYMBOLS.indexOf(a);
       const bPriority = PRIORITY_SYMBOLS.indexOf(b);
       if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
       if (aPriority !== -1) return -1;
       if (bPriority !== -1) return 1;
-
       const aRates = fundingRates.filter(fr => fr.symbol === a);
       const bRates = fundingRates.filter(fr => fr.symbol === b);
       const aAvg = aRates.reduce((sum, fr) => sum + Math.abs(fr.fundingRate), 0) / aRates.length;
@@ -111,7 +101,6 @@ export default function FundingPage() {
     })
     .slice(0, 50);
 
-  // Heatmap data structure
   const heatmapData = new Map<string, Map<string, number>>();
   fundingRates.forEach(fr => {
     if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
@@ -120,7 +109,6 @@ export default function FundingPage() {
 
   const visibleExchanges = ALL_EXCHANGES.filter(ex => selectedExchanges.has(ex));
 
-  // Filter and sort data for table view
   const filteredAndSorted = fundingRates
     .filter(fr => {
       if (!selectedExchanges.has(fr.exchange)) return false;
@@ -142,7 +130,6 @@ export default function FundingPage() {
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-  // Calculate stats
   const validRates = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
   const avgRate = validRates.length > 0
     ? validRates.reduce((sum, fr) => sum + fr.fundingRate, 0) / validRates.length : 0;
@@ -152,47 +139,45 @@ export default function FundingPage() {
     ? validRates.reduce((min, fr) => fr.fundingRate < min.fundingRate ? fr : min, validRates[0]) : null;
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('desc');
-    }
+    if (sortField === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortOrder('desc'); }
   };
 
+  const viewTabs: { key: ViewMode; label: string }[] = [
+    { key: 'table', label: 'Table' },
+    { key: 'heatmap', label: 'Heatmap' },
+    { key: 'arbitrage', label: 'Arbitrage' },
+  ];
+
   return (
-    <div className="min-h-screen bg-hub-black">
+    <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+        {/* Page header */}
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <TrendingUp className="w-8 h-8 text-hub-yellow" />
-              Funding Rates
-            </h1>
-            <p className="text-hub-gray-text mt-1">
-              Real-time perpetual funding rates across all major exchanges
-            </p>
+            <h1 className="text-xl font-bold text-white">Funding Rates</h1>
+            <p className="text-neutral-500 text-sm">Real-time perpetual funding across {ALL_EXCHANGES.length} exchanges</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {lastUpdate && (
-              <span className="text-sm text-hub-gray-text">
+              <span className="text-xs text-neutral-600 font-mono">
                 {lastUpdate.toLocaleTimeString()}
               </span>
             )}
             <button
               onClick={fetchData}
               disabled={loading}
-              aria-label="Refresh funding rates"
-              className="p-2 text-hub-gray-text hover:text-white transition-colors disabled:opacity-50"
+              aria-label="Refresh"
+              className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
+        {/* Stats */}
         <FundingStats
           fundingRates={fundingRates}
           avgRate={avgRate}
@@ -200,157 +185,121 @@ export default function FundingPage() {
           lowestRate={lowestRate}
         />
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {(Object.keys(CATEGORIES) as Category[]).map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
-                categoryFilter === cat
-                  ? 'bg-hub-yellow text-black'
-                  : 'bg-hub-gray/20 border border-hub-gray/30 text-hub-gray-text hover:text-white hover:border-hub-gray/50'
-              }`}
-            >
-              {(() => {
-                const IconComponent = CATEGORY_ICONS[cat];
-                return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
-              })()}
-              <span>{CATEGORIES[cat].name}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* View Mode Selector */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-hub-gray/30">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
-                viewMode === 'table' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'
-              }`}
-            >
-              <Table className="w-4 h-4" />
-              Table
-            </button>
-            <button
-              onClick={() => setViewMode('heatmap')}
-              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
-                viewMode === 'heatmap' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'
-              }`}
-            >
-              <Grid3X3 className="w-4 h-4" />
-              Heatmap
-            </button>
-            <button
-              onClick={() => setViewMode('arbitrage')}
-              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
-                viewMode === 'arbitrage' ? 'bg-hub-yellow text-black' : 'text-hub-gray-text hover:text-white'
-              }`}
-            >
-              <Shuffle className="w-4 h-4" />
-              Arbitrage
-            </button>
+        {/* Controls */}
+        <div className="flex flex-col lg:flex-row gap-3 mb-4">
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(CATEGORIES) as Category[]).map((cat) => {
+              const IconComponent = CATEGORY_ICONS[cat];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    categoryFilter === cat
+                      ? 'bg-hub-yellow text-black'
+                      : 'text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08]'
+                  }`}
+                >
+                  {IconComponent && <IconComponent className="w-3 h-3" />}
+                  {CATEGORIES[cat].name}
+                </button>
+              );
+            })}
           </div>
 
-          {viewMode === 'table' && (
-            <input
-              type="text"
-              placeholder="Search symbol..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-4 py-3 bg-hub-gray/20 border border-hub-gray/30 rounded-xl text-white placeholder-hub-gray-text focus:outline-none focus:border-hub-yellow/50"
-            />
-          )}
+          <div className="flex-1" />
 
-          {/* Exchange Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setShowExchangeSelector(!showExchangeSelector)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
-                showExchangeSelector
-                  ? 'bg-hub-yellow text-black'
-                  : 'bg-hub-gray/20 border border-hub-gray/30 text-hub-gray-text hover:text-white'
-              }`}
-            >
-              <Settings2 className="w-4 h-4" />
-              Exchanges ({selectedExchanges.size}/{ALL_EXCHANGES.length})
-            </button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+              {viewTabs.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setViewMode(key)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    viewMode === key ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            {showExchangeSelector && (
-              <div className="absolute right-0 top-full mt-2 z-50 bg-hub-dark border border-hub-gray/30 rounded-2xl p-4 shadow-xl min-w-[280px]">
-                <div className="flex items-center justify-between mb-3 pb-3 border-b border-hub-gray/30">
-                  <span className="text-white font-semibold text-sm">Select Exchanges</span>
-                  <button
-                    onClick={toggleAllExchanges}
-                    className="text-xs text-hub-yellow hover:text-hub-yellow/80 transition-colors"
-                  >
-                    {selectedExchanges.size === ALL_EXCHANGES.length ? 'Deselect All' : 'Select All'}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {ALL_EXCHANGES.map((exchange) => (
-                    <button
-                      key={exchange}
-                      onClick={() => toggleExchange(exchange)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                        selectedExchanges.has(exchange)
-                          ? 'bg-hub-gray/40 border border-hub-gray/50'
-                          : 'bg-hub-gray/10 border border-transparent hover:bg-hub-gray/20'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded-md flex items-center justify-center ${
-                        selectedExchanges.has(exchange) ? 'bg-hub-yellow' : 'bg-hub-gray/30 border border-hub-gray/50'
-                      }`}>
-                        {selectedExchanges.has(exchange) && <Check className="w-3 h-3 text-black" />}
-                      </div>
-                      <ExchangeLogo exchange={exchange.toLowerCase()} size={20} />
-                      <span className={`text-sm font-medium ${
-                        selectedExchanges.has(exchange) ? 'text-white' : 'text-hub-gray-text'
-                      }`}>
-                        {exchange}
-                      </span>
-                      <div className={`ml-auto w-2 h-2 rounded-full ${EXCHANGE_COLORS[exchange]}`} />
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {viewMode === 'table' && (
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-36 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+              />
             )}
+
+            <div className="relative">
+              <button
+                onClick={() => setShowExchangeSelector(!showExchangeSelector)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                  showExchangeSelector
+                    ? 'bg-hub-yellow text-black'
+                    : 'text-neutral-500 hover:text-white bg-white/[0.04] border border-white/[0.06]'
+                }`}
+              >
+                <Settings2 className="w-3 h-3" />
+                {selectedExchanges.size}/{ALL_EXCHANGES.length}
+              </button>
+
+              {showExchangeSelector && (
+                <div className="absolute right-0 top-full mt-1.5 z-50 bg-[#111] border border-white/[0.08] rounded-xl p-3 shadow-2xl shadow-black/80 min-w-[240px]">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/[0.06]">
+                    <span className="text-white font-medium text-xs">Exchanges</span>
+                    <button onClick={toggleAllExchanges} className="text-[10px] text-hub-yellow">
+                      {selectedExchanges.size === ALL_EXCHANGES.length ? 'None' : 'All'}
+                    </button>
+                  </div>
+                  <div className="space-y-0.5 max-h-80 overflow-y-auto">
+                    {ALL_EXCHANGES.map((exchange) => (
+                      <button
+                        key={exchange}
+                        onClick={() => toggleExchange(exchange)}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-xs ${
+                          selectedExchanges.has(exchange) ? 'bg-white/[0.06] text-white' : 'text-neutral-600 hover:text-neutral-400'
+                        }`}
+                      >
+                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center ${
+                          selectedExchanges.has(exchange) ? 'bg-hub-yellow' : 'bg-white/[0.06] border border-white/[0.1]'
+                        }`}>
+                          {selectedExchanges.has(exchange) && <Check className="w-2.5 h-2.5 text-black" />}
+                        </div>
+                        <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
+                        <span className="font-medium">{exchange}</span>
+                        <div className={`ml-auto w-1.5 h-1.5 rounded-full ${EXCHANGE_COLORS[exchange]}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Error State */}
         {error && (
-          <div className="bg-error/10 border border-error/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-error" />
-            <span className="text-error">{error}</span>
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+            <AlertTriangle className="w-4 h-4" />
+            {error}
           </div>
         )}
 
-        {/* Loading State */}
         {loading && fundingRates.length === 0 ? (
-          <div className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-8">
-            <div className="flex items-center justify-center gap-3">
-              <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
-              <span className="text-white">Loading funding rates from all exchanges...</span>
-            </div>
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-12 text-center">
+            <RefreshCw className="w-5 h-5 text-hub-yellow animate-spin mx-auto mb-2" />
+            <span className="text-neutral-500 text-sm">Loading funding rates...</span>
           </div>
         ) : (
           <>
             {viewMode === 'table' && (
-              <FundingTableView
-                data={filteredAndSorted}
-                sortField={sortField}
-                sortOrder={sortOrder}
-                onSort={handleSort}
-              />
+              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
             )}
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView
-                symbols={symbols}
-                visibleExchanges={[...visibleExchanges]}
-                heatmapData={heatmapData}
-              />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} />
             )}
             {viewMode === 'arbitrage' && (
               <FundingArbitrageView arbitrageData={arbitrageData} />
@@ -358,21 +307,12 @@ export default function FundingPage() {
           </>
         )}
 
-        {/* Info */}
-        <div className="mt-6 bg-hub-yellow/10 border border-hub-yellow/20 rounded-2xl p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-hub-yellow flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-hub-yellow text-sm font-medium">Understanding Funding Rates</p>
-              <p className="text-hub-gray-text text-sm mt-1">
-                <strong className="text-success">Positive rate</strong> = Longs pay shorts (market is bullish).
-                <br />
-                <strong className="text-danger">Negative rate</strong> = Shorts pay longs (market is bearish).
-                <br />
-                Funding is paid every 8 hours. Annualized = Rate × 3 × 365.
-              </p>
-            </div>
-          </div>
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
+            <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
+            Funding paid every 8h. Annualized = Rate x 3 x 365.
+          </p>
         </div>
       </main>
     </div>

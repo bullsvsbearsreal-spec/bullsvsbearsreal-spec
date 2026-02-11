@@ -44,9 +44,9 @@ export default function TrailerPage() {
       <ParticleBackground />
 
       {/* Progress Bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-hub-gray/30 z-50">
+      <div className="fixed top-0 left-0 right-0 h-1 bg-white/[0.06] z-50">
         <div
-          className="h-full bg-gradient-to-r from-hub-yellow to-hub-orange transition-all duration-300"
+          className="h-full bg-hub-yellow transition-all duration-300"
           style={{ width: `${((currentScene + 1) / scenes.length) * 100}%` }}
         />
       </div>
@@ -55,19 +55,19 @@ export default function TrailerPage() {
       <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
         <button
           onClick={() => setIsPlaying(!isPlaying)}
-          className="p-3 bg-hub-gray/50 hover:bg-hub-gray/70 rounded-xl transition-colors"
+          className="p-3 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg transition-colors"
         >
           {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
         </button>
         <button
           onClick={() => setIsMuted(!isMuted)}
-          className="p-3 bg-hub-gray/50 hover:bg-hub-gray/70 rounded-xl transition-colors"
+          className="p-3 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg transition-colors"
         >
           {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>
         <button
           onClick={() => router.push('/')}
-          className="px-4 py-3 bg-hub-gray/50 hover:bg-hub-gray/70 rounded-xl transition-colors text-sm font-medium"
+          className="px-4 py-3 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg transition-colors text-sm font-medium"
         >
           Skip
         </button>
@@ -84,7 +84,7 @@ export default function TrailerPage() {
             <span className="text-white">Info</span>
             <span className="text-gradient">Hub</span>
           </h1>
-          <p className="mt-4 text-xl md:text-2xl text-hub-gray-text animate-slideUp" style={{ animationDelay: '0.5s' }}>
+          <p className="mt-4 text-xl md:text-2xl text-neutral-500 animate-slideUp" style={{ animationDelay: '0.5s' }}>
             Where Data Meets Decision
           </p>
         </div>
@@ -122,7 +122,7 @@ export default function TrailerPage() {
             <span className="text-white">INFO</span>
             <span className="text-gradient">HUB</span>
           </h2>
-          <p className="mt-4 text-xl text-hub-gray-text">Your One-Stop Destination for Real-Time Trading Data</p>
+          <p className="mt-4 text-xl text-neutral-500">Your One-Stop Destination for Real-Time Trading Data</p>
         </div>
       </Scene>
 
@@ -143,12 +143,12 @@ export default function TrailerPage() {
             ].map((feature, i) => (
               <div
                 key={feature.title}
-                className="bg-hub-gray/20 border border-hub-gray/30 rounded-2xl p-4 md:p-6 animate-slideUp hover:border-hub-yellow/30 transition-all"
+                className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 md:p-6 animate-slideUp hover:border-hub-yellow/30 transition-all"
                 style={{ animationDelay: `${i * 0.1}s` }}
               >
                 <span className="text-3xl md:text-4xl">{feature.icon}</span>
                 <h3 className="mt-3 text-lg md:text-xl font-bold text-white">{feature.title}</h3>
-                <p className="text-sm text-hub-gray-text">{feature.desc}</p>
+                <p className="text-sm text-neutral-500">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -170,7 +170,7 @@ export default function TrailerPage() {
               style={{ animationDelay: `${i * 0.2}s` }}
             >
               <div className="text-5xl md:text-7xl font-black text-gradient">{stat.value}</div>
-              <div className="mt-2 text-lg md:text-xl text-hub-gray-text">{stat.label}</div>
+              <div className="mt-2 text-lg md:text-xl text-neutral-500">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -182,20 +182,20 @@ export default function TrailerPage() {
           <h2 className="text-4xl md:text-6xl font-black mb-4">
             Ready to <span className="text-gradient">Trade Smarter</span>?
           </h2>
-          <p className="text-xl text-hub-gray-text mb-8">
+          <p className="text-xl text-neutral-500 mb-8">
             Join thousands of traders using InfoHub
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={() => router.push('/')}
-              className="group flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-hub-yellow to-hub-orange text-black font-bold text-lg rounded-2xl hover:shadow-lg hover:shadow-hub-yellow/30 transition-all"
+              className="group flex items-center gap-3 px-8 py-4 bg-hub-yellow text-black font-bold text-lg rounded-xl hover:bg-hub-yellow/90 transition-all"
             >
               Launch InfoHub
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={handleReplay}
-              className="px-8 py-4 bg-hub-gray/30 hover:bg-hub-gray/50 text-white font-medium rounded-2xl transition-colors"
+              className="px-8 py-4 bg-white/[0.06] hover:bg-white/[0.1] text-white font-medium rounded-xl transition-colors"
             >
               Watch Again
             </button>
@@ -214,7 +214,7 @@ export default function TrailerPage() {
                 ? 'w-8 bg-hub-yellow'
                 : i < currentScene
                 ? 'bg-hub-yellow/50'
-                : 'bg-hub-gray/50'
+                : 'bg-white/[0.1]'
             }`}
           />
         ))}

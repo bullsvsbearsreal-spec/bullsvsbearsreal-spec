@@ -1,43 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, Percent, Activity } from 'lucide-react';
 import { fetchAllTickers, fetchAllOpenInterest, fetchAllFundingRates } from '@/lib/api/aggregator';
-
-interface StatCardProps {
-  title: string;
-  value: string;
-  change?: number;
-  icon: React.ReactNode;
-  delay?: number;
-}
-
-function StatCard({ title, value, change, icon, delay = 0 }: StatCardProps) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  return (
-    <div
-      className={`bg-hub-gray/30 rounded-xl p-4 transition-all duration-300 hover:bg-hub-gray/40 ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-      }`}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-hub-gray-text text-xs uppercase tracking-wide">{title}</span>
-        {change !== undefined && (
-          <span className={`text-xs font-semibold ${change >= 0 ? 'text-success' : 'text-danger'}`}>
-            {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-          </span>
-        )}
-      </div>
-      <p className="text-xl font-bold text-white">{value}</p>
-    </div>
-  );
-}
 
 function formatNumber(num: number | undefined | null): string {
   if (num === undefined || num === null || isNaN(num)) return '$0';
@@ -74,7 +38,6 @@ export default function StatsOverview() {
           ? fundingRates.reduce((sum, f) => sum + (f.fundingRate || 0), 0) / fundingRates.length
           : 0;
 
-        // Find top gainer and loser
         const sortedByChange = [...tickers].sort((a, b) =>
           (b.priceChangePercent24h || 0) - (a.priceChangePercent24h || 0)
         );
@@ -110,58 +73,55 @@ export default function StatsOverview() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="stat-card">
-            <div className="skeleton h-10 w-10 rounded-xl mb-4" />
-            <div className="skeleton h-4 w-20 mb-2" />
-            <div className="skeleton h-8 w-32" />
+          <div key={i} className="bg-[#111] border border-white/[0.06] rounded-lg px-3 py-2.5 animate-pulse">
+            <div className="h-3 w-16 bg-white/[0.06] rounded mb-2" />
+            <div className="h-5 w-20 bg-white/[0.06] rounded" />
           </div>
         ))}
       </div>
     );
   }
 
+  const statItems = [
+    { label: '24h Volume', value: formatNumber(stats.totalVolume) },
+    { label: 'Open Interest', value: formatNumber(stats.totalOI) },
+    {
+      label: 'Avg Funding',
+      value: `${stats.avgFunding >= 0 ? '+' : ''}${stats.avgFunding.toFixed(4)}%`,
+      color: stats.avgFunding >= 0 ? 'text-green-400' : 'text-red-400',
+    },
+    {
+      label: 'Top Gainer',
+      value: stats.topGainer.symbol,
+      sub: `${stats.topGainer.change >= 0 ? '+' : ''}${stats.topGainer.change.toFixed(1)}%`,
+      subColor: 'text-green-400',
+    },
+    {
+      label: 'Top Loser',
+      value: stats.topLoser.symbol,
+      sub: `${stats.topLoser.change.toFixed(1)}%`,
+      subColor: 'text-red-400',
+    },
+    { label: 'Markets', value: stats.activeMarkets.toString() },
+  ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      <StatCard
-        title="24h Volume"
-        value={formatNumber(stats.totalVolume)}
-        icon={<DollarSign className="w-5 h-5 text-hub-yellow" />}
-        delay={0}
-      />
-      <StatCard
-        title="Open Interest"
-        value={formatNumber(stats.totalOI)}
-        icon={<BarChart3 className="w-5 h-5 text-hub-yellow" />}
-        delay={100}
-      />
-      <StatCard
-        title="Avg Funding"
-        value={`${(stats.avgFunding >= 0 ? '+' : '')}${stats.avgFunding.toFixed(4)}%`}
-        icon={<Percent className="w-5 h-5 text-hub-yellow" />}
-        delay={200}
-      />
-      <StatCard
-        title="Top Gainer"
-        value={stats.topGainer.symbol}
-        change={stats.topGainer.change}
-        icon={<TrendingUp className="w-5 h-5 text-success" />}
-        delay={300}
-      />
-      <StatCard
-        title="Top Loser"
-        value={stats.topLoser.symbol}
-        change={stats.topLoser.change}
-        icon={<TrendingDown className="w-5 h-5 text-danger" />}
-        delay={400}
-      />
-      <StatCard
-        title="Active Markets"
-        value={stats.activeMarkets.toString()}
-        icon={<Activity className="w-5 h-5 text-hub-yellow" />}
-        delay={500}
-      />
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+      {statItems.map((item) => (
+        <div key={item.label} className="bg-[#111] border border-white/[0.06] rounded-lg px-3 py-2.5">
+          <span className="text-neutral-600 text-[10px] uppercase tracking-wider">{item.label}</span>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className={`text-sm font-bold font-mono ${item.color || 'text-white'}`}>
+              {item.value}
+            </span>
+            {item.sub && (
+              <span className={`text-[10px] font-mono ${item.subColor}`}>{item.sub}</span>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -3,291 +3,140 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  Menu, X, TrendingUp, BarChart3, Zap, Activity,
-  ChevronDown, Users, Newspaper, Search, Database
-} from 'lucide-react';
+import { Menu, X, Search } from 'lucide-react';
 import Logo from './Logo';
 import CoinSearch from './CoinSearch';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 
-interface NavItem {
-  name: string;
-  href?: string;
-  icon: any;
-  children?: { name: string; href: string; icon: any; description: string }[];
-}
-
-const navItems: NavItem[] = [
-  { name: 'Dashboard', href: '/', icon: Activity },
-  {
-    name: 'Data',
-    icon: Database,
-    children: [
-      { name: 'Funding Rates', href: '/funding', icon: TrendingUp, description: 'Real-time funding across exchanges' },
-      { name: 'Open Interest', href: '/open-interest', icon: BarChart3, description: 'Aggregated OI data' },
-      { name: 'Liquidations', href: '/liquidations', icon: Zap, description: 'Live liquidation feed' },
-    ]
-  },
-  { name: 'News', href: '/news', icon: Newspaper },
-  { name: 'Team', href: '/team', icon: Users },
+const navLinks = [
+  { name: 'Funding', href: '/funding' },
+  { name: 'Open Interest', href: '/open-interest' },
+  { name: 'Liquidations', href: '/liquidations' },
+  { name: 'News', href: '/news' },
 ];
 
 export default function Header() {
   const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setSearchOpen(false);
-      }
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setSearchOpen(false); setMobileOpen(false); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
-
-  // Close search on escape
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSearchOpen(false);
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  const isActive = (href?: string, children?: NavItem['children']) => {
-    if (href) return pathname === href;
-    if (children) return children.some(child => pathname === child.href);
-    return false;
-  };
 
   const handleCoinSelect = (coin: CoinSearchResult) => {
     setSearchOpen(false);
+    setMobileOpen(false);
     router.push(`/coin/${coin.id}`);
   };
 
   return (
-    <header
-      className={`sticky top-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? 'glass-dark shadow-lg shadow-black/20 border-b border-hub-yellow/10'
-          : 'bg-hub-black/80 backdrop-blur-md border-b border-hub-gray/20'
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center group">
-            <div className="relative">
-              <Logo size="md" />
-              <div className="absolute inset-0 bg-hub-yellow/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            </div>
-          </Link>
+    <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-sm border-b border-white/[0.06]">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-12">
+          {/* Left: Logo + Nav */}
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex-shrink-0">
+              <Logo size="sm" />
+            </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1" ref={dropdownRef} aria-label="Main navigation">
-            {navItems.map((item) => (
-              <div key={item.name} className="relative">
-                {item.children ? (
-                  // Dropdown menu
-                  <button
-                    onClick={() => setOpenDropdown(openDropdown === item.name ? null : item.name)}
-                    aria-expanded={openDropdown === item.name}
-                    aria-haspopup="true"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                      isActive(item.href, item.children)
-                        ? 'text-hub-yellow bg-hub-yellow/10'
-                        : 'text-hub-gray-text hover:text-white hover:bg-hub-gray/30'
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openDropdown === item.name ? 'rotate-180' : ''}`} />
-                  </button>
-                ) : (
-                  // Regular link
-                  <Link
-                    href={item.href!}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                      isActive(item.href)
-                        ? 'text-hub-yellow bg-hub-yellow/10'
-                        : 'text-hub-gray-text hover:text-white hover:bg-hub-gray/30'
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                )}
+            <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
+                    pathname === link.href
+                      ? 'bg-hub-yellow text-black'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
 
-                {/* Dropdown Content */}
-                {item.children && openDropdown === item.name && (
-                  <div role="menu" className="absolute top-full left-0 mt-2 w-72 py-2 bg-hub-gray/95 backdrop-blur-xl border border-hub-gray-light/20 rounded-2xl shadow-2xl shadow-black/50 animate-fadeIn">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.name}
-                        href={child.href}
-                        role="menuitem"
-                        onClick={() => setOpenDropdown(null)}
-                        className={`flex items-start gap-3 px-4 py-3 mx-2 rounded-xl transition-all duration-200 ${
-                          pathname === child.href
-                            ? 'bg-hub-yellow/10 text-hub-yellow'
-                            : 'text-hub-gray-text hover:bg-hub-gray/50 hover:text-white'
-                        }`}
-                      >
-                        <div className={`p-2 rounded-lg ${pathname === child.href ? 'bg-hub-yellow/20' : 'bg-hub-gray/50'}`}>
-                          <child.icon className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-sm">{child.name}</div>
-                          <div className="text-xs text-hub-gray-text mt-0.5">{child.description}</div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-
-          {/* Right side - Search */}
-          <div className="flex items-center gap-3" ref={searchRef}>
+          {/* Right: Search + Mobile toggle */}
+          <div className="flex items-center gap-2" ref={searchRef}>
             {searchOpen ? (
               <div className="relative">
                 <CoinSearch
                   onSelect={handleCoinSelect}
                   placeholder="Search coins..."
-                  className="w-64"
+                  className="w-60"
                   autoFocus
                 />
               </div>
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-[13px]"
                 aria-label="Search coins"
-                className="p-2.5 rounded-lg text-hub-gray-text hover:text-white hover:bg-hub-gray/30 transition-all"
               >
-                <Search className="w-5 h-5" />
+                <Search className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Search</span>
+                <kbd className="hidden sm:inline text-[10px] text-neutral-600 bg-white/[0.06] px-1.5 py-0.5 rounded ml-2">
+                  Ctrl K
+                </kbd>
               </button>
             )}
 
-            {/* Mobile menu button */}
             <button
-              className="md:hidden p-2.5 rounded-lg text-hub-gray-text hover:text-hub-yellow hover:bg-hub-gray/30 transition-all"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={mobileMenuOpen}
+              className="md:hidden p-2 text-neutral-400 hover:text-white transition-colors"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileOpen}
             >
-              <div className="relative w-6 h-6">
-                <Menu className={`w-6 h-6 absolute transition-all duration-300 ${mobileMenuOpen ? 'opacity-0 rotate-90' : 'opacity-100 rotate-0'}`} />
-                <X className={`w-6 h-6 absolute transition-all duration-300 ${mobileMenuOpen ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-90'}`} />
-              </div>
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      <div
-        className={`md:hidden absolute left-0 right-0 transition-all duration-300 ease-out ${
-          mobileMenuOpen
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 -translate-y-4 pointer-events-none'
-        }`}
-      >
-        <div className="bg-hub-gray/95 backdrop-blur-xl border-t border-hub-gray/30 mx-4 rounded-2xl mt-2 overflow-hidden shadow-2xl">
-          {/* Mobile Search */}
-          <div className="p-3 border-b border-hub-gray/20">
+      {/* Mobile nav */}
+      {mobileOpen && (
+        <div className="md:hidden bg-[#0a0a0a] border-t border-white/[0.06]">
+          <div className="p-3">
             <CoinSearch
-              onSelect={(coin) => {
-                setMobileMenuOpen(false);
-                handleCoinSelect(coin);
-              }}
+              onSelect={handleCoinSelect}
               placeholder="Search coins..."
-              className="w-full"
+              className="w-full mb-3"
             />
+            <nav className="space-y-0.5">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    pathname === link.href
+                      ? 'bg-hub-yellow/10 text-hub-yellow'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
           </div>
-
-          <nav className="p-3 space-y-1">
-            {navItems.map((item) => (
-              <div key={item.name}>
-                {item.children ? (
-                  // Mobile dropdown
-                  <div>
-                    <button
-                      onClick={() => setOpenDropdown(openDropdown === item.name ? null : item.name)}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-hub-gray-text hover:text-white hover:bg-hub-gray/30 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-hub-gray/30">
-                          <item.icon className="w-5 h-5" />
-                        </div>
-                        <span className="font-medium">{item.name}</span>
-                      </div>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === item.name ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openDropdown === item.name && (
-                      <div className="ml-4 mt-1 space-y-1">
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.name}
-                            href={child.href}
-                            onClick={() => {
-                              setMobileMenuOpen(false);
-                              setOpenDropdown(null);
-                            }}
-                            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
-                              pathname === child.href
-                                ? 'bg-hub-yellow/10 text-hub-yellow'
-                                : 'text-hub-gray-text hover:text-white hover:bg-hub-gray/30'
-                            }`}
-                          >
-                            <child.icon className="w-4 h-4" />
-                            <span className="text-sm">{child.name}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  // Mobile regular link
-                  <Link
-                    href={item.href!}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                      pathname === item.href
-                        ? 'bg-hub-yellow/10 text-hub-yellow'
-                        : 'text-hub-gray-text hover:text-white hover:bg-hub-gray/30'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${pathname === item.href ? 'bg-hub-yellow/20' : 'bg-hub-gray/30'}`}>
-                      <item.icon className="w-5 h-5" />
-                    </div>
-                    <span className="font-medium">{item.name}</span>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </nav>
         </div>
-      </div>
+      )}
     </header>
   );
 }
