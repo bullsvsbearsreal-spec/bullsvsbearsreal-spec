@@ -10,26 +10,11 @@
   <!-- Squircle background -->
   <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#brandGrad)"/>
 
-  <!-- Central hub ring -->
-  <circle cx="256" cy="276" r="78" stroke="#000" stroke-width="28" fill="none" opacity="0.85"/>
+  <!-- I letter - ultra bold geometric -->
+  <rect x="132" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
 
-  <!-- Hub core dot -->
-  <circle cx="256" cy="276" r="22" fill="#000" opacity="0.85"/>
-
-  <!-- Top spoke (connects to i-dot) -->
-  <rect x="244" y="132" width="24" height="86" rx="12" fill="#000" opacity="0.85"/>
-  <!-- Bottom spoke -->
-  <rect x="244" y="338" width="24" height="64" rx="12" fill="#000" opacity="0.85"/>
-  <!-- Left spoke -->
-  <rect x="108" y="264" width="70" height="24" rx="12" fill="#000" opacity="0.85"/>
-  <!-- Right spoke -->
-  <rect x="334" y="264" width="70" height="24" rx="12" fill="#000" opacity="0.85"/>
-
-  <!-- i-dot — the information node -->
-  <circle cx="256" cy="116" r="28" fill="#000" opacity="0.85"/>
-
-  <!-- Outer endpoint nodes -->
-  <circle cx="104" cy="276" r="14" fill="#000" opacity="0.6"/>
-  <circle cx="408" cy="276" r="14" fill="#000" opacity="0.6"/>
-  <circle cx="256" cy="402" r="14" fill="#000" opacity="0.6"/>
+  <!-- H letter - ultra bold geometric -->
+  <rect x="224" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
+  <rect x="328" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
+  <rect x="224" y="230" width="156" height="52" rx="6" fill="#000" opacity="0.9"/>
 </svg>

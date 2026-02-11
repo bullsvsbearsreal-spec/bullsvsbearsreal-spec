@@ -9,11 +9,11 @@ interface LogoProps {
 
 export default function Logo({ variant = 'full', size = 'md', className = '', animated = false }: LogoProps) {
   const sizeMap = {
-    xs: { icon: 22, text: 'text-sm', gap: 'gap-1.5' },
-    sm: { icon: 28, text: 'text-base', gap: 'gap-2' },
-    md: { icon: 34, text: 'text-lg', gap: 'gap-2' },
-    lg: { icon: 44, text: 'text-2xl', gap: 'gap-2.5' },
-    xl: { icon: 56, text: 'text-3xl', gap: 'gap-3' },
+    xs: { icon: 22, text: 11, badge: { h: 16, px: 3, py: 1, rx: 3 } },
+    sm: { icon: 28, text: 13, badge: { h: 20, px: 4, py: 2, rx: 4 } },
+    md: { icon: 34, text: 15, badge: { h: 24, px: 5, py: 3, rx: 5 } },
+    lg: { icon: 44, text: 20, badge: { h: 30, px: 6, py: 3, rx: 6 } },
+    xl: { icon: 56, text: 26, badge: { h: 38, px: 8, py: 4, rx: 7 } },
   };
 
   const dimensions = sizeMap[size];
@@ -31,30 +31,18 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
       <defs>
         <linearGradient id={uid} x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
           <stop stopColor="#FFD700" />
-          <stop offset="1" stopColor="#FF8C00" />
+          <stop offset="0.4" stopColor="#FFA500" />
+          <stop offset="1" stopColor="#FF7700" />
         </linearGradient>
       </defs>
       {/* Squircle bg */}
-      <rect x="2.5" y="2.5" width="35" height="35" rx="8" fill={`url(#${uid})`} />
-      {/* Hub network mark */}
-      {/* Hub ring */}
-      <circle cx="20" cy="22" r="6.1" stroke="#000" strokeWidth="2.2" fill="none" opacity={0.85} />
-      {/* Hub core */}
-      <circle cx="20" cy="22" r="1.7" fill="#000" opacity={0.85} />
-      {/* Top spoke */}
-      <rect x="19.1" y="10.5" width="1.8" height="6.8" rx="0.9" fill="#000" opacity={0.85} />
-      {/* Bottom spoke */}
-      <rect x="19.1" y="26.8" width="1.8" height="5" rx="0.9" fill="#000" opacity={0.85} />
-      {/* Left spoke */}
-      <rect x="8.5" y="21.1" width="5.5" height="1.8" rx="0.9" fill="#000" opacity={0.85} />
-      {/* Right spoke */}
-      <rect x="26" y="21.1" width="5.5" height="1.8" rx="0.9" fill="#000" opacity={0.85} />
-      {/* i-dot (information node) */}
-      <circle cx="20" cy="9.2" r="2.2" fill="#000" opacity={0.85} />
-      {/* Endpoint nodes */}
-      <circle cx="8.2" cy="22" r="1.1" fill="#000" opacity={0.6} />
-      <circle cx="31.8" cy="22" r="1.1" fill="#000" opacity={0.6} />
-      <circle cx="20" cy="31.5" r="1.1" fill="#000" opacity={0.6} />
+      <rect x="2.5" y="2.5" width="35" height="35" rx="7.5" fill={`url(#${uid})`} />
+      {/* I letter - bold geometric */}
+      <rect x="10.3" y="11.5" width="4" height="17" rx="0.8" fill="#000" opacity={0.9} />
+      {/* H letter - bold geometric */}
+      <rect x="17.5" y="11.5" width="4" height="17" rx="0.8" fill="#000" opacity={0.9} />
+      <rect x="25.7" y="11.5" width="4" height="17" rx="0.8" fill="#000" opacity={0.9} />
+      <rect x="17.5" y="18" width="12.2" height="4" rx="0.8" fill="#000" opacity={0.9} />
     </svg>
   );
 
@@ -62,12 +50,26 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
     return <div className={className}><IconSVG /></div>;
   }
 
+  // PornHub-style split wordmark: "Info" white + "Hub" black on gold badge
   return (
-    <div className={`flex items-center ${dimensions.gap} ${className}`}>
-      <IconSVG />
-      <span className={`font-bold tracking-tight ${dimensions.text}`}>
-        <span className="text-white">info</span>
-        <span className="text-hub-yellow">hub</span>
+    <div className={`flex items-center ${className} ${animated ? 'hover:scale-[1.02] transition-transform duration-200' : ''}`}>
+      <span
+        className="font-black tracking-tight text-white"
+        style={{ fontSize: dimensions.text, lineHeight: 1 }}
+      >
+        Info
+      </span>
+      <span
+        className="font-black tracking-tight text-black rounded-[4px] ml-[1px]"
+        style={{
+          fontSize: dimensions.text,
+          lineHeight: 1,
+          background: 'linear-gradient(135deg, #FFD700, #FFA500, #FF7700)',
+          padding: `${dimensions.badge.py}px ${dimensions.badge.px}px`,
+          borderRadius: dimensions.badge.rx,
+        }}
+      >
+        Hub
       </span>
     </div>
   );

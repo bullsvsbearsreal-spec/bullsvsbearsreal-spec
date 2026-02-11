@@ -11,12 +11,12 @@ interface LogoProps {
 }
 
 const sizeMap = {
-  xs: { icon: 24, text: 14, height: 24 },
-  sm: { icon: 32, text: 18, height: 32 },
-  md: { icon: 40, text: 22, height: 40 },
-  lg: { icon: 48, text: 28, height: 48 },
-  xl: { icon: 64, text: 36, height: 64 },
-  '2xl': { icon: 80, text: 44, height: 80 },
+  xs: { icon: 24, text: 14, height: 24, badgePx: 4, badgePy: 1, badgeRx: 3 },
+  sm: { icon: 32, text: 18, height: 32, badgePx: 5, badgePy: 2, badgeRx: 4 },
+  md: { icon: 40, text: 22, height: 40, badgePx: 6, badgePy: 3, badgeRx: 5 },
+  lg: { icon: 48, text: 28, height: 48, badgePx: 8, badgePy: 3, badgeRx: 6 },
+  xl: { icon: 64, text: 36, height: 64, badgePx: 10, badgePy: 4, badgeRx: 7 },
+  '2xl': { icon: 80, text: 44, height: 80, badgePx: 12, badgePy: 5, badgeRx: 8 },
 };
 
 export default function Logo({
@@ -32,21 +32,51 @@ export default function Logo({
   const getColors = () => {
     switch (theme) {
       case 'gradient':
-        return { primary: `url(#${gradientId})`, secondary: '#000000', text: 'white' };
+        return {
+          primary: `url(#${gradientId})`,
+          secondary: '#000000',
+          text: 'white',
+          badge: 'linear-gradient(135deg, #FFD700, #FFA500, #FF7700)',
+          badgeText: '#000000',
+        };
       case 'light':
-        return { primary: '#FFA500', secondary: '#000000', text: '#FFA500' };
+        return {
+          primary: '#FFA500',
+          secondary: '#000000',
+          text: '#FFA500',
+          badge: '#FFA500',
+          badgeText: '#000000',
+        };
       case 'dark':
-        return { primary: '#1A1A1A', secondary: '#FFA500', text: 'white' };
+        return {
+          primary: '#1A1A1A',
+          secondary: '#FFA500',
+          text: 'white',
+          badge: '#FFA500',
+          badgeText: '#000000',
+        };
       case 'mono':
-        return { primary: '#FFFFFF', secondary: '#000000', text: 'white' };
+        return {
+          primary: '#FFFFFF',
+          secondary: '#000000',
+          text: 'white',
+          badge: '#FFFFFF',
+          badgeText: '#000000',
+        };
       default:
-        return { primary: `url(#${gradientId})`, secondary: '#000000', text: 'white' };
+        return {
+          primary: `url(#${gradientId})`,
+          secondary: '#000000',
+          text: 'white',
+          badge: 'linear-gradient(135deg, #FFD700, #FFA500, #FF7700)',
+          badgeText: '#000000',
+        };
     }
   };
 
   const colors = getColors();
 
-  // Icon only (hub network mark)
+  // Icon only — bold IH on gradient squircle
   const IconLogo = () => (
     <svg
       width={dimensions.icon}
@@ -59,8 +89,8 @@ export default function Logo({
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FFD700" />
-          <stop offset="50%" stopColor="#FFA500" />
-          <stop offset="100%" stopColor="#FF8C00" />
+          <stop offset="40%" stopColor="#FFA500" />
+          <stop offset="100%" stopColor="#FF7700" />
         </linearGradient>
         <filter id="logo-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#FFA500" floodOpacity="0.3" />
@@ -78,45 +108,35 @@ export default function Logo({
         filter={animated ? 'url(#logo-shadow)' : undefined}
       />
 
-      {/* Hub network mark */}
-      {/* Hub ring */}
-      <circle cx="50" cy="55" r="15.3" stroke={colors.secondary} strokeWidth="5.5" fill="none" opacity={0.85} />
-      {/* Hub core */}
-      <circle cx="50" cy="55" r="4.3" fill={colors.secondary} opacity={0.85} />
-      {/* Top spoke */}
-      <rect x="47.7" y="26" width="4.6" height="17" rx="2.3" fill={colors.secondary} opacity={0.85} />
-      {/* Bottom spoke */}
-      <rect x="47.7" y="67" width="4.6" height="12.5" rx="2.3" fill={colors.secondary} opacity={0.85} />
-      {/* Left spoke */}
-      <rect x="21" y="52.7" width="13.7" height="4.6" rx="2.3" fill={colors.secondary} opacity={0.85} />
-      {/* Right spoke */}
-      <rect x="65.3" y="52.7" width="13.7" height="4.6" rx="2.3" fill={colors.secondary} opacity={0.85} />
-      {/* i-dot (information node) */}
-      <circle cx="50" cy="23" r="5.5" fill={colors.secondary} opacity={0.85} />
-      {/* Endpoint nodes */}
-      <circle cx="20.5" cy="55" r="2.7" fill={colors.secondary} opacity={0.6} />
-      <circle cx="79.5" cy="55" r="2.7" fill={colors.secondary} opacity={0.6} />
-      <circle cx="50" cy="79.5" r="2.7" fill={colors.secondary} opacity={0.6} />
+      {/* Bold geometric IH */}
+      {/* I letter */}
+      <rect x="25" y="28" width="10.5" height="44" rx="1.5" fill={colors.secondary} opacity={0.9} />
+
+      {/* H letter */}
+      <rect x="43" y="28" width="10.5" height="44" rx="1.5" fill={colors.secondary} opacity={0.9} />
+      <rect x="64.5" y="28" width="10.5" height="44" rx="1.5" fill={colors.secondary} opacity={0.9} />
+      <rect x="43" y="44.5" width="32" height="10.5" rx="1.5" fill={colors.secondary} opacity={0.9} />
     </svg>
   );
 
-  // Wordmark only (InfoHub text)
+  // PH-style split wordmark: "Info" in white + "Hub" in black on gold badge
   const WordmarkLogo = () => (
     <div className={`flex items-center ${animated ? 'group' : ''}`}>
       <span
-        className={`font-bold tracking-tight ${animated ? 'group-hover:text-hub-yellow transition-colors' : ''}`}
-        style={{ fontSize: dimensions.text, color: colors.text }}
+        className={`font-black tracking-tight ${animated ? 'group-hover:opacity-80 transition-opacity' : ''}`}
+        style={{ fontSize: dimensions.text, color: colors.text, lineHeight: 1 }}
       >
         Info
       </span>
       <span
-        className="font-bold tracking-tight"
+        className="font-black tracking-tight ml-[2px]"
         style={{
           fontSize: dimensions.text,
-          background: theme === 'gradient' ? 'linear-gradient(135deg, #FFD700, #FFA500, #FF8C00)' : undefined,
-          color: theme === 'gradient' ? 'transparent' : '#FFA500',
-          WebkitBackgroundClip: theme === 'gradient' ? 'text' : undefined,
-          backgroundClip: theme === 'gradient' ? 'text' : undefined,
+          lineHeight: 1,
+          color: colors.badgeText,
+          background: colors.badge,
+          padding: `${dimensions.badgePy}px ${dimensions.badgePx}px`,
+          borderRadius: dimensions.badgeRx,
         }}
       >
         Hub
@@ -124,7 +144,7 @@ export default function Logo({
     </div>
   );
 
-  // Full logo (icon + wordmark)
+  // Full logo (icon + split wordmark)
   const FullLogo = () => (
     <div className={`flex items-center gap-3 ${animated ? 'group' : ''}`}>
       <IconLogo />

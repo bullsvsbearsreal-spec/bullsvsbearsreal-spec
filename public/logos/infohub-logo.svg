@@ -2,36 +2,30 @@
   <defs>
     <linearGradient id="yellowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#FFD700"/>
-      <stop offset="50%" style="stop-color:#FFA500"/>
-      <stop offset="100%" style="stop-color:#FF8C00"/>
+      <stop offset="40%" style="stop-color:#FFA500"/>
+      <stop offset="100%" style="stop-color:#FF7700"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
   </defs>
 
-  <!-- Background pill shape -->
-  <rect x="2" y="5" width="276" height="50" rx="8" fill="#000000" stroke="#333333" stroke-width="1"/>
+  <!-- Black pill background -->
+  <rect x="2" y="5" width="276" height="50" rx="10" fill="#000000"/>
 
-  <!-- "Info" text in white -->
+  <!-- "Info" in white -->
   <text x="20" y="42" font-family="Arial Black, Arial, sans-serif" font-size="32" font-weight="900" fill="#FFFFFF" letter-spacing="-1">Info</text>
 
-  <!-- Hub badge with rounded rectangle -->
-  <rect x="108" y="10" width="80" height="40" rx="6" fill="url(#yellowGrad)" filter="url(#glow)"/>
+  <!-- Gold badge for "Hub" -->
+  <rect x="108" y="10" width="82" height="40" rx="8" fill="url(#yellowGrad)"/>
 
-  <!-- "Hub" text in black on yellow background -->
+  <!-- "Hub" in black on badge -->
   <text x="118" y="41" font-family="Arial Black, Arial, sans-serif" font-size="30" font-weight="900" fill="#000000" letter-spacing="-1">Hub</text>
 
-  <!-- Geometric accent - data bars -->
+  <!-- Data bars accent -->
   <g transform="translate(200, 15)">
-    <rect x="0" y="20" width="6" height="15" rx="1" fill="#FFFFFF" opacity="0.9"/>
-    <rect x="10" y="12" width="6" height="23" rx="1" fill="url(#yellowGrad)"/>
-    <rect x="20" y="5" width="6" height="30" rx="1" fill="#FFFFFF" opacity="0.9"/>
-    <rect x="30" y="15" width="6" height="20" rx="1" fill="url(#yellowGrad)"/>
-    <rect x="40" y="8" width="6" height="27" rx="1" fill="#FFFFFF" opacity="0.9"/>
+    <rect x="0" y="20" width="6" height="15" rx="2" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="10" y="12" width="6" height="23" rx="2" fill="url(#yellowGrad)" opacity="0.7"/>
+    <rect x="20" y="5" width="6" height="30" rx="2" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="30" y="15" width="6" height="20" rx="2" fill="url(#yellowGrad)" opacity="0.7"/>
+    <rect x="40" y="8" width="6" height="27" rx="2" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="50" y="18" width="6" height="17" rx="2" fill="url(#yellowGrad)" opacity="0.7"/>
   </g>
 </svg>

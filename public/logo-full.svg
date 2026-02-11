@@ -1,38 +1,31 @@
 <svg width="400" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FFD700"/>
       <stop offset="40%" stop-color="#FFA500"/>
       <stop offset="100%" stop-color="#FF7700"/>
     </linearGradient>
-    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset="100%" stop-color="#FF7700"/>
-    </linearGradient>
   </defs>
 
-  <!-- Icon (scaled down hub mark) -->
-  <rect x="6" y="6" width="88" height="88" rx="20" fill="url(#iconGrad)"/>
+  <!-- Black pill background -->
+  <rect x="2" y="8" width="396" height="84" rx="14" fill="#0D0D0D"/>
 
-  <!-- Hub ring -->
-  <circle cx="50" cy="53" r="15" stroke="#000" stroke-width="5.5" fill="none" opacity="0.85"/>
-  <circle cx="50" cy="53" r="4" fill="#000" opacity="0.85"/>
+  <!-- "Info" text in white - bold -->
+  <text x="28" y="64" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" letter-spacing="-1">Info</text>
 
-  <!-- Spokes -->
-  <rect x="48" y="25" width="4.5" height="16" rx="2.25" fill="#000" opacity="0.85"/>
-  <rect x="48" y="65" width="4.5" height="12" rx="2.25" fill="#000" opacity="0.85"/>
-  <rect x="21" y="51" width="13.5" height="4.5" rx="2.25" fill="#000" opacity="0.85"/>
-  <rect x="66" y="51" width="13.5" height="4.5" rx="2.25" fill="#000" opacity="0.85"/>
+  <!-- Gold badge behind "Hub" -->
+  <rect x="155" y="16" width="120" height="68" rx="10" fill="url(#badgeGrad)"/>
 
-  <!-- i-dot -->
-  <circle cx="50" cy="22" r="5.5" fill="#000" opacity="0.85"/>
+  <!-- "Hub" text in black on gold badge -->
+  <text x="168" y="64" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="44" font-weight="900" fill="#000000" letter-spacing="-1">Hub</text>
 
-  <!-- Endpoint nodes -->
-  <circle cx="21" cy="53" r="2.5" fill="#000" opacity="0.6"/>
-  <circle cx="79" cy="53" r="2.5" fill="#000" opacity="0.6"/>
-  <circle cx="50" cy="77" r="2.5" fill="#000" opacity="0.6"/>
-
-  <!-- Wordmark -->
-  <text x="110" y="64" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="42" font-weight="800" fill="#FFFFFF" letter-spacing="-1">Info</text>
-  <text x="215" y="64" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="42" font-weight="800" fill="url(#textGrad)" letter-spacing="-1">Hub</text>
+  <!-- Subtle data bars accent -->
+  <g transform="translate(296, 24)" opacity="0.7">
+    <rect x="0" y="28" width="5" height="18" rx="2" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="10" y="18" width="5" height="28" rx="2" fill="#FFA500" opacity="0.7"/>
+    <rect x="20" y="8" width="5" height="38" rx="2" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="30" y="22" width="5" height="24" rx="2" fill="#FFA500" opacity="0.7"/>
+    <rect x="40" y="12" width="5" height="34" rx="2" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="50" y="24" width="5" height="22" rx="2" fill="#FFA500" opacity="0.7"/>
+  </g>
 </svg>

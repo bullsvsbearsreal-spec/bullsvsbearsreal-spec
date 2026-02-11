@@ -4,24 +4,29 @@
       <stop offset="0%" stop-color="#1A1A1A"/>
       <stop offset="100%" stop-color="#0A0A0A"/>
     </linearGradient>
-    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="darkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FFD700"/>
       <stop offset="40%" stop-color="#FFA500"/>
       <stop offset="100%" stop-color="#FF7700"/>
     </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#FFA500" flood-opacity="0.5"/>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
-  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#darkBg)" stroke="url(#neonGrad)" stroke-width="3"/>
-  <circle cx="256" cy="276" r="78" stroke="url(#neonGrad)" stroke-width="28" fill="none" filter="url(#glow)"/>
-  <circle cx="256" cy="276" r="22" fill="url(#neonGrad)" filter="url(#glow)"/>
-  <rect x="244" y="132" width="24" height="86" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
-  <rect x="244" y="338" width="24" height="64" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
-  <rect x="108" y="264" width="70" height="24" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
-  <rect x="334" y="264" width="70" height="24" rx="12" fill="url(#neonGrad)" filter="url(#glow)"/>
-  <circle cx="256" cy="116" r="28" fill="url(#neonGrad)" filter="url(#glow)"/>
-  <circle cx="104" cy="276" r="14" fill="url(#neonGrad)" opacity="0.7"/>
-  <circle cx="408" cy="276" r="14" fill="url(#neonGrad)" opacity="0.7"/>
-  <circle cx="256" cy="402" r="14" fill="url(#neonGrad)" opacity="0.7"/>
+
+  <!-- Dark background -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#darkBg)" stroke="url(#darkGrad)" stroke-width="3"/>
+
+  <!-- Neon glow aura -->
+  <rect x="125" y="141" width="66" height="230" rx="10" fill="#FFA500" opacity="0.08" filter="url(#neonGlow)"/>
+  <rect x="217" y="141" width="170" height="230" rx="10" fill="#FFA500" opacity="0.08" filter="url(#neonGlow)"/>
+
+  <!-- I letter - neon gold -->
+  <rect x="132" y="148" width="52" height="216" rx="6" fill="url(#darkGrad)"/>
+
+  <!-- H letter - neon gold -->
+  <rect x="224" y="148" width="52" height="216" rx="6" fill="url(#darkGrad)"/>
+  <rect x="328" y="148" width="52" height="216" rx="6" fill="url(#darkGrad)"/>
+  <rect x="224" y="230" width="156" height="52" rx="6" fill="url(#darkGrad)"/>
 </svg>
