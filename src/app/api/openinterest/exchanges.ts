@@ -66,6 +66,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
   },
 
   // OKX - Two-step: OI data + prices
+  // oi = contracts, oiCcy = base currency amount — use oiCcy for correct values
   {
     name: 'OKX',
     fetcher: async (fetchFn) => {
@@ -87,45 +88,36 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       return json.data
         .filter((t: any) => t.instId.endsWith('-USDT-SWAP'))
         .map((item: any) => {
+          const oiBase = parseFloat(item.oiCcy) || 0;
           const price = priceMap.get(item.instId) || 0;
           return {
             symbol: item.instId.replace('-USDT-SWAP', ''),
             exchange: 'OKX',
-            openInterest: parseFloat(item.oi),
-            openInterestValue: parseFloat(item.oi) * price,
+            openInterest: oiBase,
+            openInterestValue: oiBase * price,
           };
         });
     },
   },
 
-  // Bitget - Two-step: OI data + prices
+  // Bitget — use tickers endpoint which has holdingAmount (base currency OI)
   {
     name: 'Bitget',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.bitget.com/api/v2/mix/market/open-interest?productType=USDT-FUTURES');
+      const res = await fetchFn('https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES');
       if (!res.ok) return [];
       const json = await res.json();
-      if (json.code !== '00000') return [];
-
-      const tickerRes = await fetchFn('https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES');
-      const priceMap = new Map();
-      if (tickerRes.ok) {
-        const tickerJson = await tickerRes.json();
-        if (tickerJson.code === '00000') {
-          tickerJson.data.forEach((t: any) => {
-            priceMap.set(t.symbol, parseFloat(t.lastPr));
-          });
-        }
-      }
+      if (json.code !== '00000' || !Array.isArray(json.data)) return [];
       return json.data
-        .filter((t: any) => t.symbol.endsWith('USDT'))
+        .filter((t: any) => t.symbol.endsWith('USDT') && t.holdingAmount)
         .map((item: any) => {
-          const price = priceMap.get(item.symbol) || 0;
+          const oiCoins = parseFloat(item.holdingAmount) || 0;
+          const price = parseFloat(item.lastPr) || parseFloat(item.markPrice) || 0;
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Bitget',
-            openInterest: parseFloat(item.openInterestCont),
-            openInterestValue: parseFloat(item.openInterestCont) * price,
+            openInterest: oiCoins,
+            openInterestValue: oiCoins * price,
           };
         });
     },
@@ -198,24 +190,42 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // MEXC
+  // MEXC — holdVol is in contracts, NOT coins. Need contractSize to convert.
+  // Two-step: fetch contract details for multiplier, then ticker for OI + price.
   {
     name: 'MEXC',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://contract.mexc.com/api/v1/contract/ticker');
-      if (!res.ok) return [];
-      const json = await res.json();
-      if (!json.success || !Array.isArray(json.data)) return [];
-      return json.data
+      const [detailRes, tickerRes] = await Promise.all([
+        fetchFn('https://contract.mexc.com/api/v1/contract/detail'),
+        fetchFn('https://contract.mexc.com/api/v1/contract/ticker'),
+      ]);
+      if (!tickerRes.ok) return [];
+      const tickerJson = await tickerRes.json();
+      if (!tickerJson.success || !Array.isArray(tickerJson.data)) return [];
+
+      // Build contractSize lookup from detail endpoint
+      const sizeMap = new Map<string, number>();
+      if (detailRes.ok) {
+        const detailJson = await detailRes.json();
+        if (detailJson.success && Array.isArray(detailJson.data)) {
+          detailJson.data.forEach((c: any) => {
+            sizeMap.set(c.symbol, parseFloat(c.contractSize) || 1);
+          });
+        }
+      }
+
+      return tickerJson.data
         .filter((t: any) => t.symbol.endsWith('_USDT'))
         .map((item: any) => {
-          const oi = parseFloat(item.holdVol) || 0;
+          const contracts = parseFloat(item.holdVol) || 0;
           const price = parseFloat(item.lastPrice) || 0;
+          const contractSize = sizeMap.get(item.symbol) || 1;
+          const oiCoins = contracts * contractSize;
           return {
             symbol: item.symbol.replace('_USDT', ''),
             exchange: 'MEXC',
-            openInterest: oi,
-            openInterestValue: oi * price,
+            openInterest: oiCoins,
+            openInterestValue: oiCoins * price,
           };
         });
     },
@@ -314,7 +324,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // KuCoin
+  // KuCoin — openInterest is in lots, multiply by 'multiplier' to get base currency amount
   {
     name: 'KuCoin',
     fetcher: async (fetchFn) => {
@@ -325,19 +335,22 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       return (json.data || [])
         .filter((t: any) => t.symbol.endsWith('USDTM') && t.openInterest)
         .map((item: any) => {
-          const oi = parseFloat(item.openInterest) || 0;
-          const price = parseFloat(item.lastTradePrice) || 0;
+          const lots = parseFloat(item.openInterest) || 0;
+          const multiplier = parseFloat(item.multiplier) || 1;
+          const price = parseFloat(item.lastTradePrice) || parseFloat(item.markPrice) || 0;
+          const oiCoins = lots * multiplier;
           return {
             symbol: item.symbol.replace('USDTM', ''),
             exchange: 'KuCoin',
-            openInterest: oi,
-            openInterestValue: oi * price,
+            openInterest: oiCoins,
+            openInterestValue: oiCoins * price,
           };
         });
     },
   },
 
   // Deribit (BTC + ETH only)
+  // open_interest is in USD (each contract = $1), NOT base currency — do NOT multiply by price
   {
     name: 'Deribit',
     fetcher: async (fetchFn) => {
@@ -349,13 +362,13 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           const json = await res.json();
           const r = json.result;
           if (!r) return null;
-          const oi = parseFloat(r.open_interest) || 0;
-          const price = parseFloat(r.mark_price) || 0;
+          const oiUsd = parseFloat(r.open_interest) || 0;
+          const price = parseFloat(r.mark_price) || 1;
           return {
             symbol: inst.replace('-PERPETUAL', ''),
             exchange: 'Deribit',
-            openInterest: oi,
-            openInterestValue: oi * price,
+            openInterest: oiUsd / price,  // Convert USD to base currency
+            openInterestValue: oiUsd,      // Already in USD
           };
         } catch { return null; }
       });
@@ -385,7 +398,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // Bitfinex
+  // Bitfinex — deriv status: [18]=OPEN_INTEREST (base currency), [15]=MARK_PRICE, [3]=DERIV_PRICE
+  // Note: [6] is INSURANCE_FUND_BALANCE, NOT openInterestValue
   {
     name: 'Bitfinex',
     fetcher: async (fetchFn) => {
@@ -395,12 +409,16 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       if (!Array.isArray(data)) return [];
       return data
         .filter((item: any) => Array.isArray(item) && typeof item[0] === 'string' && item[0].endsWith('F0:USTF0'))
-        .map((item: any) => ({
-          symbol: item[0].replace('t', '').replace('F0:USTF0', ''),
-          exchange: 'Bitfinex',
-          openInterest: parseFloat(item[18]) || 0,
-          openInterestValue: parseFloat(item[6]) || 0,
-        }))
+        .map((item: any) => {
+          const oi = parseFloat(item[18]) || 0;
+          const price = parseFloat(item[15]) || parseFloat(item[3]) || 0;
+          return {
+            symbol: item[0].replace('t', '').replace('F0:USTF0', ''),
+            exchange: 'Bitfinex',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        })
         .filter((item: any) => item.openInterestValue > 0 && item.symbol.length > 0);
     },
   },
