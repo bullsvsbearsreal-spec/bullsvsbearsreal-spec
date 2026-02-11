@@ -8,6 +8,7 @@ type FundingData = {
   markPrice: number;
   indexPrice: number;
   nextFundingTime: number;
+  type?: 'cex' | 'dex'; // CEX vs DEX classification
 };
 
 export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
@@ -27,6 +28,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.markPrice),
           indexPrice: parseFloat(item.indexPrice),
           nextFundingTime: item.nextFundingTime,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -49,6 +51,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.markPrice),
           indexPrice: parseFloat(item.indexPrice),
           nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -101,6 +104,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 markPrice,
                 indexPrice: markPrice, // OKX mark ≈ index for USDT-margined swaps
                 nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
+                type: 'cex' as const,
               };
             }
           }
@@ -132,55 +136,79 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.markPrice),
           indexPrice: parseFloat(item.indexPrice),
           nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
 
-  // Hyperliquid — funding is HOURLY; normalize to 8h equivalent (* 8)
+  // Hyperliquid (DEX) — funding is HOURLY; normalize to 8h equivalent (* 8)
   {
     name: 'Hyperliquid',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.hyperliquid.xyz/info', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
-      });
-      if (!res.ok) return [];
-      const json = await res.json();
-      if (!json || !json[1]) return [];
-      return json[1]
-        .map((item: any, index: number) => ({
-          symbol: json[0].universe[index]?.name || `ASSET${index}`,
-          exchange: 'Hyperliquid',
-          fundingRate: parseFloat(item.funding) * 8 * 100,
-          markPrice: parseFloat(item.markPx),
-          indexPrice: parseFloat(item.oraclePx),
-          nextFundingTime: Date.now() + 3600000,
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+    fetcher: async (_fetchFn) => {
+      // Direct fetch for POST — Edge Runtime handles POST better without fetchWithTimeout wrapper
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      try {
+        const res = await fetch('https://api.hyperliquid.xyz/info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!res.ok) return [];
+        const json = await res.json();
+        if (!json || !Array.isArray(json) || !json[1]) return [];
+        const universe = json[0]?.universe || [];
+        return json[1]
+          .map((item: any, index: number) => {
+            const fundingRaw = parseFloat(item.funding);
+            if (isNaN(fundingRaw)) return null;
+            return {
+              symbol: universe[index]?.name || `ASSET${index}`,
+              exchange: 'Hyperliquid',
+              fundingRate: fundingRaw * 8 * 100, // hourly → 8h, fraction → %
+              markPrice: parseFloat(item.markPx) || 0,
+              indexPrice: parseFloat(item.oraclePx) || 0,
+              nextFundingTime: Date.now() + 3600000,
+              type: 'dex' as const,
+            };
+          })
+          .filter(Boolean);
+      } catch {
+        clearTimeout(timeout);
+        return [];
+      }
     },
   },
 
-  // dYdX — nextFundingRate is HOURLY; normalize to 8h equivalent (* 8)
+  // dYdX v4 (DEX) — nextFundingRate is HOURLY; normalize to 8h equivalent (* 8)
   {
     name: 'dYdX',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://indexer.dydx.trade/v4/perpetualMarkets');
+      const res = await fetchFn('https://indexer.dydx.trade/v4/perpetualMarkets', {}, 12000);
       if (!res.ok) return [];
       const json = await res.json();
       if (!json.markets) return [];
       return Object.entries(json.markets)
-        .filter(([key]: [string, any]) => key.endsWith('-USD'))
-        .map(([key, market]: [string, any]) => ({
-          symbol: key.replace('-USD', ''),
-          exchange: 'dYdX',
-          fundingRate: parseFloat(market.nextFundingRate) * 8 * 100,
-          markPrice: parseFloat(market.oraclePrice),
-          indexPrice: parseFloat(market.oraclePrice),
-          nextFundingTime: Date.now() + 3600000,
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate));
+        .filter(([key, market]: [string, any]) =>
+          key.endsWith('-USD') && market.status === 'ACTIVE'
+        )
+        .map(([key, market]: [string, any]) => {
+          const rate = parseFloat(market.nextFundingRate);
+          if (isNaN(rate)) return null;
+          return {
+            symbol: key.replace('-USD', ''),
+            exchange: 'dYdX',
+            fundingRate: rate * 8 * 100, // hourly → 8h, fraction → %
+            markPrice: parseFloat(market.oraclePrice) || 0,
+            indexPrice: parseFloat(market.oraclePrice) || 0,
+            nextFundingTime: Date.now() + 3600000,
+            type: 'dex' as const,
+          };
+        })
+        .filter(Boolean);
     },
   },
 
@@ -201,6 +229,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.markPrice || '0'),
           indexPrice: parseFloat(item.indexPrice || '0'),
           nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
+          type: 'dex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -225,8 +254,49 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: 0,
           indexPrice: 0,
           nextFundingTime: Date.now() + 3600000,
+          type: 'dex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+    },
+  },
+
+  // Aevo (DEX) — per-instrument funding, batch top symbols
+  {
+    name: 'Aevo',
+    fetcher: async (fetchFn) => {
+      // Top symbols to query — Aevo requires per-instrument calls
+      const AEVO_SYMBOLS = [
+        'BTC', 'ETH', 'SOL', 'DOGE', 'XRP', 'AVAX', 'LINK', 'ARB',
+        'OP', 'SUI', 'NEAR', 'PEPE', 'WIF', 'TIA', 'SEI', 'JUP',
+        'W', 'ONDO', 'TON', 'ADA', 'DOT', 'MATIC',
+      ];
+      const results = await Promise.all(
+        AEVO_SYMBOLS.map(async (sym) => {
+          try {
+            const res = await fetchFn(
+              `https://api.aevo.xyz/funding?instrument_name=${sym}-PERP`,
+              {},
+              6000
+            );
+            if (!res.ok) return null;
+            const data = await res.json();
+            const rate = parseFloat(data.funding_rate);
+            if (isNaN(rate)) return null;
+            return {
+              symbol: sym,
+              exchange: 'Aevo',
+              fundingRate: rate * 8 * 100, // Aevo is hourly → 8h, fraction → %
+              markPrice: 0,
+              indexPrice: 0,
+              nextFundingTime: parseInt(data.next_epoch) / 1e6 || Date.now() + 3600000,
+              type: 'dex' as const,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+      return results.filter(Boolean) as FundingData[];
     },
   },
 
@@ -234,12 +304,16 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'Gate.io',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts');
+      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts', {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
-        .filter((item: any) => item.name.endsWith('_USDT') && (item.funding_rate != null || item.funding_rate_indicative != null))
+        .filter((item: any) =>
+          item.name.endsWith('_USDT') &&
+          isCryptoSymbol(item.name.replace('_USDT', '')) &&
+          (item.funding_rate != null || item.funding_rate_indicative != null)
+        )
         .map((item: any) => ({
           symbol: item.name.replace('_USDT', ''),
           exchange: 'Gate.io',
@@ -247,6 +321,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.mark_price) || 0,
           indexPrice: parseFloat(item.index_price) || 0,
           nextFundingTime: (item.funding_next_apply || 0) * 1000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -269,6 +344,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.fairPrice) || 0,
           indexPrice: parseFloat(item.indexPrice) || 0,
           nextFundingTime: item.nextSettlementTime || Date.now() + 28800000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -300,6 +376,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             markPrice,
             indexPrice: parseFloat(item.indexPrice) || 0,
             nextFundingTime: Date.now() + 3600000,
+            type: 'cex' as const,
           };
         })
         .filter((item: any) => !isNaN(item.fundingRate) && isCryptoSymbol(item.symbol));
@@ -323,6 +400,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.markPrice) || 0,
           indexPrice: parseFloat(item.indexPrice) || 0,
           nextFundingTime: item.nextFundingTime || Date.now() + 28800000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate) && isCryptoSymbol(item.symbol));
     },
@@ -346,6 +424,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.markPriceRp) || 0,
           indexPrice: parseFloat(item.indexPriceRp) || 0,
           nextFundingTime: Date.now() + 28800000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -371,6 +450,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indicativeSettlePrice) || 0,
             nextFundingTime: item.fundingTimestamp ? new Date(item.fundingTimestamp).getTime() : Date.now() + 28800000,
+            type: 'cex' as const,
           };
         })
         .filter((item: any) => !isNaN(item.fundingRate));
@@ -398,6 +478,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
             nextFundingTime: item.nextFundingRateTime || Date.now() + 28800000,
+            type: 'cex' as const,
           };
         })
         .filter((item: any) => !isNaN(item.fundingRate));
@@ -423,10 +504,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             markPrice: parseFloat(r.mark_price) || 0,
             indexPrice: parseFloat(r.index_price) || 0,
             nextFundingTime: Date.now() + 3600000,
+            type: 'cex' as const,
           };
         } catch { return null; }
       });
-      return (await Promise.all(promises)).filter((item): item is FundingData => item !== null && !isNaN(item.fundingRate));
+      return (await Promise.all(promises)).filter((item): item is NonNullable<typeof item> => item !== null && !isNaN(item.fundingRate)) as FundingData[];
     },
   },
 
@@ -451,6 +533,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: 0,
           indexPrice: 0,
           nextFundingTime: item.next_funding_time || Date.now() + 28800000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -473,6 +556,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item[15]) || 0,
           indexPrice: parseFloat(item[4]) || 0,
           nextFundingTime: item[8] || Date.now() + 28800000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate) && item.symbol.length > 0);
     },
@@ -496,6 +580,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.last_price) || 0,
           indexPrice: parseFloat(item.index_price) || 0,
           nextFundingTime: item.next_funding_rate_timestamp ? item.next_funding_rate_timestamp * 1000 : Date.now() + 28800000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -518,6 +603,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           markPrice: parseFloat(item.quote?.mark_price) || 0,
           indexPrice: parseFloat(item.quote?.index_price) || 0,
           nextFundingTime: Date.now() + 3600000,
+          type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
     },
@@ -550,10 +636,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             markPrice: parseFloat(json.data.mark_price || t.mark_price) || 0,
             indexPrice: parseFloat(t.index_price) || 0,
             nextFundingTime: json.data.next_funding_time ? parseInt(json.data.next_funding_time) : Date.now() + 28800000,
+            type: 'cex' as const,
           };
         } catch { return null; }
       });
-      return (await Promise.all(promises)).filter((item): item is FundingData => item !== null && !isNaN(item.fundingRate));
+      return (await Promise.all(promises)).filter((item): item is NonNullable<typeof item> => item !== null && !isNaN(item.fundingRate)) as FundingData[];
     },
   },
 
@@ -589,10 +676,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             markPrice: parseFloat(t.a) || 0,
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000,
+            type: 'cex' as const,
           };
         } catch { return null; }
       });
-      return (await Promise.all(promises)).filter((item): item is FundingData => item !== null && !isNaN(item.fundingRate));
+      return (await Promise.all(promises)).filter((item): item is NonNullable<typeof item> => item !== null && !isNaN(item.fundingRate)) as FundingData[];
     },
   },
   // gTrade (Gains Network) - velocity-based funding model, calculated from raw trading variables
@@ -723,6 +811,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             markPrice: tokenPrice,
             indexPrice: 0,
             nextFundingTime: 0, // gTrade funding is continuous, no discrete funding time
+            type: 'dex' as const,
           });
         } catch {
           continue;

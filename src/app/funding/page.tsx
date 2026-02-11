@@ -6,7 +6,7 @@ import { fetchAllFundingRates, fetchFundingArbitrage } from '@/lib/api/aggregato
 import { FundingRateData } from '@/lib/api/types';
 import { RefreshCw, AlertTriangle, Check, Settings2 } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { ALL_EXCHANGES, EXCHANGE_COLORS, CATEGORIES, CATEGORY_ICONS, PRIORITY_SYMBOLS } from '@/lib/constants';
+import { ALL_EXCHANGES, EXCHANGE_COLORS, CATEGORIES, CATEGORY_ICONS, PRIORITY_SYMBOLS, DEX_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import type { Category } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { useApiData } from '@/hooks/useApiData';
@@ -18,6 +18,7 @@ import FundingArbitrageView from './components/FundingArbitrageView';
 type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
 type SortOrder = 'asc' | 'desc';
 type ViewMode = 'heatmap' | 'table' | 'arbitrage';
+type VenueFilter = 'all' | 'cex' | 'dex';
 
 export default function FundingPage() {
   const [sortField, setSortField] = useState<SortField>('fundingRate');
@@ -27,6 +28,7 @@ export default function FundingPage() {
   const [categoryFilter, setCategoryFilter] = useState<Category>('all');
   const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(new Set(ALL_EXCHANGES));
   const [showExchangeSelector, setShowExchangeSelector] = useState(false);
+  const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
 
   const fetcher = useCallback(async () => {
     const [data, arbData] = await Promise.all([
@@ -107,11 +109,18 @@ export default function FundingPage() {
     heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
   });
 
-  const visibleExchanges = ALL_EXCHANGES.filter(ex => selectedExchanges.has(ex));
+  const visibleExchanges = ALL_EXCHANGES.filter(ex => {
+    if (!selectedExchanges.has(ex)) return false;
+    if (venueFilter === 'dex' && !isExchangeDex(ex)) return false;
+    if (venueFilter === 'cex' && isExchangeDex(ex)) return false;
+    return true;
+  });
 
   const filteredAndSorted = fundingRates
     .filter(fr => {
       if (!selectedExchanges.has(fr.exchange)) return false;
+      if (venueFilter === 'dex' && !isExchangeDex(fr.exchange)) return false;
+      if (venueFilter === 'cex' && isExchangeDex(fr.exchange)) return false;
       if (searchTerm && !fr.symbol.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (categoryFilter !== 'all') {
         if (categoryFilter === 'highest') return highestRateSymbols.includes(fr.symbol);
@@ -158,7 +167,7 @@ export default function FundingPage() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-xl font-bold text-white">Funding Rates</h1>
-            <p className="text-neutral-500 text-sm">Real-time perpetual funding across {ALL_EXCHANGES.length} exchanges</p>
+            <p className="text-neutral-500 text-sm">Real-time perpetual funding across {ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</p>
           </div>
           <div className="flex items-center gap-3">
             {lastUpdate && (
@@ -210,6 +219,21 @@ export default function FundingPage() {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2">
+            {/* CEX / DEX venue filter */}
+            <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+              {(['all', 'cex', 'dex'] as VenueFilter[]).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setVenueFilter(v)}
+                  className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    venueFilter === v ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+                  }`}
+                >
+                  {v === 'all' ? 'All' : v.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
             <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
               {viewTabs.map(({ key, label }) => (
                 <button
@@ -271,6 +295,9 @@ export default function FundingPage() {
                         </div>
                         <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
                         <span className="font-medium">{exchange}</span>
+                        {isExchangeDex(exchange) && (
+                          <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>
+                        )}
                         <div className={`ml-auto w-1.5 h-1.5 rounded-full ${EXCHANGE_COLORS[exchange]}`} />
                       </button>
                     ))}

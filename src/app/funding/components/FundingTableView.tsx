@@ -4,6 +4,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatRate, getRateColor, getExchangeColor } from '../utils';
 import { isValidNumber } from '@/lib/utils/format';
+import { isExchangeDex } from '@/lib/constants';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
 type SortOrder = 'asc' | 'desc';
@@ -72,6 +73,9 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
                       <span className={`text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
                         {fr.exchange}
                       </span>
+                      {isExchangeDex(fr.exchange) && (
+                        <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-2 text-right">

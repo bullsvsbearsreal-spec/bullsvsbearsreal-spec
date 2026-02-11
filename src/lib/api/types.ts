@@ -35,6 +35,7 @@ export interface FundingRateData {
   predictedRate?: number;
   markPrice?: number;
   indexPrice?: number;
+  type?: 'cex' | 'dex';
 }
 
 export interface OpenInterestData {

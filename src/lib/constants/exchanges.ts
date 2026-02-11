@@ -2,7 +2,7 @@
 export const ALL_EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'Gate.io', 'MEXC',
   'Kraken', 'BingX', 'Phemex', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
-  'BitMEX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
+  'Aevo', 'BitMEX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
   'Coinbase', 'CoinEx', 'Crypto.com', 'gTrade',
 ] as const;
 
@@ -23,6 +23,7 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'dYdX': 'bg-purple-500',
   'Aster': 'bg-pink-500',
   'Lighter': 'bg-emerald-400',
+  'Aevo': 'bg-rose-400',
   'BitMEX': 'bg-red-500',
   'KuCoin': 'bg-green-500',
   'Deribit': 'bg-blue-400',
@@ -50,6 +51,7 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'dYdX': 'bg-purple-500/20 text-purple-400',
   'Aster': 'bg-pink-500/20 text-pink-400',
   'Lighter': 'bg-emerald-400/20 text-emerald-300',
+  'Aevo': 'bg-rose-400/20 text-rose-300',
   'BitMEX': 'bg-red-500/20 text-red-400',
   'KuCoin': 'bg-green-500/20 text-green-400',
   'Deribit': 'bg-blue-400/20 text-blue-300',
@@ -61,6 +63,20 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'Crypto.com': 'bg-indigo-500/20 text-indigo-400',
   'gTrade': 'bg-teal-500/20 text-teal-400',
 };
+
+// DEX exchanges (on-chain / decentralized perpetual protocols)
+export const DEX_EXCHANGES: ReadonlySet<string> = new Set([
+  'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'gTrade',
+]);
+
+// CEX exchanges (centralized)
+export const CEX_EXCHANGES: ReadonlySet<string> = new Set(
+  ALL_EXCHANGES.filter(ex => !DEX_EXCHANGES.has(ex))
+);
+
+export function isExchangeDex(exchange: string): boolean {
+  return DEX_EXCHANGES.has(exchange);
+}
 
 export function getExchangeBadgeColor(exchange: string): string {
   return EXCHANGE_BADGE_COLORS[exchange] || 'bg-hub-gray/50 text-hub-gray-text';
