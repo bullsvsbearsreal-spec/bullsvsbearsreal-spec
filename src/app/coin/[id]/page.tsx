@@ -353,11 +353,15 @@ function EventCard({ event }: { event: CryptoEvent }) {
             </div>
           </div>
           <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/[0.06]">
-            <span className="flex items-center gap-1 text-sm text-neutral-600">
-              <TrendingUp className="w-4 h-4" />
-              {event.percentage}% confidence
-            </span>
-            <span className="text-sm text-neutral-600">{event.vote_count} votes</span>
+            {event.percentage > 0 && (
+              <span className="flex items-center gap-1 text-sm text-neutral-600">
+                <TrendingUp className="w-4 h-4" />
+                {event.percentage}% confidence
+              </span>
+            )}
+            {event.vote_count > 0 && (
+              <span className="text-sm text-neutral-600">{event.vote_count} votes</span>
+            )}
             {event.source && (
               <a href={event.proof} target="_blank" rel="noopener noreferrer" className="text-sm text-hub-yellow hover:underline ml-auto flex items-center gap-1">
                 Source <ExternalLink className="w-3 h-3" />

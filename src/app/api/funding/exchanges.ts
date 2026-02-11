@@ -54,14 +54,29 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // OKX - Two-step: instruments then individual funding rates
+  // OKX - Two-step: instruments + batch mark prices, then individual funding rates
   {
     name: 'OKX',
     fetcher: async (fetchFn) => {
-      const instrumentsRes = await fetchFn('https://www.okx.com/api/v5/public/instruments?instType=SWAP');
+      // Batch-fetch instruments and mark prices in parallel
+      const [instrumentsRes, markPriceRes] = await Promise.all([
+        fetchFn('https://www.okx.com/api/v5/public/instruments?instType=SWAP'),
+        fetchFn('https://www.okx.com/api/v5/public/mark-price?instType=SWAP'),
+      ]);
       if (!instrumentsRes.ok) return [];
       const instrumentsJson = await instrumentsRes.json();
       if (instrumentsJson.code !== '0') return [];
+
+      // Build mark price lookup from batch endpoint
+      const markPriceMap = new Map<string, number>();
+      if (markPriceRes.ok) {
+        const markJson = await markPriceRes.json();
+        if (markJson.code === '0' && markJson.data) {
+          for (const mp of markJson.data) {
+            markPriceMap.set(mp.instId, parseFloat(mp.markPx) || 0);
+          }
+        }
+      }
 
       const usdtSwaps = instrumentsJson.data
         .filter((inst: any) => inst.instId.endsWith('-USDT-SWAP'))
@@ -78,12 +93,13 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             const frJson = await frRes.json();
             if (frJson.code === '0' && frJson.data.length > 0) {
               const fr = frJson.data[0];
+              const markPrice = markPriceMap.get(inst.instId) || 0;
               return {
                 symbol: inst.instId.replace('-USDT-SWAP', ''),
                 exchange: 'OKX',
                 fundingRate: parseFloat(fr.fundingRate) * 100,
-                markPrice: 0,
-                indexPrice: 0,
+                markPrice,
+                indexPrice: markPrice, // OKX mark ≈ index for USDT-margined swaps
                 nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
               };
             }

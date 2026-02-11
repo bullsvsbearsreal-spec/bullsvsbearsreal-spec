@@ -95,7 +95,9 @@ export async function fetchAllFundingRates(): Promise<FundingRateData[]> {
     if (!response.ok) {
       throw new Error('Failed to fetch funding rates');
     }
-    const allRates = await response.json();
+    const json = await response.json();
+    // API returns { data, health, meta } — extract data array
+    const allRates = Array.isArray(json) ? json : (json.data ?? json);
     setCache('fundingRates', allRates);
     return allRates;
   } catch (error) {
@@ -128,7 +130,9 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
     if (!response.ok) {
       throw new Error('Failed to fetch open interest');
     }
-    const allOI = await response.json();
+    const json = await response.json();
+    // API returns { data, health, meta } — extract data array
+    const allOI = Array.isArray(json) ? json : (json.data ?? json);
     setCache('openInterest', allOI);
     return allOI;
   } catch (error) {
@@ -353,6 +357,37 @@ export async function fetchFundingArbitrage(): Promise<Array<{
 
   setCache('fundingArbitrage', arbitrageData);
   return arbitrageData;
+}
+
+// Fetch exchange health status from the funding API
+export interface ExchangeHealthInfo {
+  name: string;
+  status: 'ok' | 'error' | 'empty';
+  count: number;
+  latencyMs: number;
+  error?: string;
+}
+
+export async function fetchExchangeHealth(): Promise<{
+  funding: ExchangeHealthInfo[];
+  meta: { totalExchanges: number; activeExchanges: number };
+}> {
+  const cached = getCached<any>('exchangeHealth');
+  if (cached) return cached;
+
+  try {
+    const response = await fetch('/api/funding');
+    if (!response.ok) throw new Error('Failed to fetch');
+    const json = await response.json();
+    if (json.health && json.meta) {
+      const result = { funding: json.health, meta: json.meta };
+      setCache('exchangeHealth', result);
+      return result;
+    }
+  } catch {
+    // silent
+  }
+  return { funding: [], meta: { totalExchanges: 0, activeExchanges: 0 } };
 }
 
 // Export individual exchange APIs for direct access

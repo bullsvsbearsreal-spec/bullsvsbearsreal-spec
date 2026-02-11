@@ -1,9 +1,32 @@
 'use client';
 
-import { marketOverview } from '@/lib/mockData';
+import { useState, useEffect } from 'react';
 
 export default function FearGreedIndex() {
-  const value = marketOverview.fearGreedIndex;
+  const [value, setValue] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFearGreed = async () => {
+      try {
+        const res = await fetch('/api/fear-greed');
+        if (res.ok) {
+          const data = await res.json();
+          setValue(data.value);
+        }
+      } catch {
+        // Keep null — will show loading/fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFearGreed();
+    const interval = setInterval(fetchFearGreed, 10 * 60 * 1000); // refresh every 10 min
+    return () => clearInterval(interval);
+  }, []);
+
+  const displayValue = value ?? 50;
 
   const getLabel = (val: number) => {
     if (val <= 20) return { text: 'Extreme Fear', color: 'text-red-400' };
@@ -13,14 +36,16 @@ export default function FearGreedIndex() {
     return { text: 'Extreme Greed', color: 'text-green-400' };
   };
 
-  const label = getLabel(value);
-  const rotation = (value / 100) * 180 - 90;
+  const label = getLabel(displayValue);
+  const rotation = (displayValue / 100) * 180 - 90;
 
   return (
     <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-white font-semibold text-sm">Fear & Greed</h3>
-        <span className="text-neutral-600 text-[10px]">Market sentiment</span>
+        <span className="text-neutral-600 text-[10px]">
+          {loading ? 'Loading...' : 'Live · Alternative.me'}
+        </span>
       </div>
 
       <div className="flex flex-col items-center">
@@ -50,7 +75,7 @@ export default function FearGreedIndex() {
               stroke="url(#gaugeGradient)"
               strokeWidth="12"
               strokeLinecap="round"
-              strokeDasharray={`${(value / 100) * 251.2} 251.2`}
+              strokeDasharray={`${(displayValue / 100) * 251.2} 251.2`}
             />
           </svg>
 
@@ -68,7 +93,11 @@ export default function FearGreedIndex() {
 
         <div className="text-center mt-4">
           <div className="flex items-baseline justify-center gap-1">
-            <span className="text-3xl font-bold text-white font-mono">{value}</span>
+            {loading ? (
+              <div className="h-8 w-12 bg-white/[0.06] rounded animate-pulse" />
+            ) : (
+              <span className="text-3xl font-bold text-white font-mono">{displayValue}</span>
+            )}
             <span className="text-neutral-600 text-sm">/100</span>
           </div>
           <span className={`text-xs font-medium ${label.color}`}>{label.text}</span>

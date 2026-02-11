@@ -17,9 +17,9 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       if (!tickerRes.ok) return [];
       const tickerData = await tickerRes.json();
       const topSymbols = tickerData
-        .filter((t: any) => t.symbol.endsWith('USDT'))
+        .filter((t: any) => t.symbol.endsWith('USDT') && isCryptoSymbol(t.symbol.replace('USDT', '')))
         .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-        .slice(0, 30);
+        .slice(0, 100);
 
       const oiPromises = topSymbols.map(async (ticker: any) => {
         try {

@@ -243,10 +243,10 @@ function convertNewsToEvents(articles: NewsArticle[], coinId?: string): CryptoEv
       description: article.body?.substring(0, 200) + '...' || article.title,
       proof: article.url,
       source: article.source_info?.name || article.source || 'CryptoCompare',
-      is_hot: true,
-      vote_count: Math.floor(Math.random() * 200) + 50,
-      positive_vote_count: Math.floor(Math.random() * 180) + 40,
-      percentage: Math.floor(Math.random() * 20) + 80,
+      is_hot: false,
+      vote_count: 0, // No vote data available from news source
+      positive_vote_count: 0,
+      percentage: 0, // No confidence score — derived from news, not community votes
       categories: [{ id: 17, name: categories[0] || 'News' }],
     };
   });

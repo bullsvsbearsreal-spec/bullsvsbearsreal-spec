@@ -20,7 +20,7 @@ import { CoinSearchResult } from '@/lib/api/coingecko';
 import { ArrowRight } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
-import { fetchAllFundingRates } from '@/lib/api/aggregator';
+import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
 import { fetchCryptoNews, NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
 
@@ -28,20 +28,27 @@ export default function Home() {
   const router = useRouter();
   const [topFunding, setTopFunding] = useState<FundingRateData[]>([]);
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
+  const [exchangeHealth, setExchangeHealth] = useState<ExchangeHealthInfo[]>([]);
+  const [activeExchangeCount, setActiveExchangeCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const fundingData = await fetchAllFundingRates();
+        const [fundingData, newsData, healthData] = await Promise.all([
+          fetchAllFundingRates(),
+          fetchCryptoNews(4),
+          fetchExchangeHealth(),
+        ]);
+
         const validFunding = fundingData
           .filter(fr => fr && isValidNumber(fr.fundingRate))
           .sort((a, b) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
           .slice(0, 5);
         setTopFunding(validFunding);
-
-        const newsData = await fetchCryptoNews(4);
         setLatestNews(newsData);
+        setExchangeHealth(healthData.funding);
+        setActiveExchangeCount(healthData.meta.activeExchanges);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -211,23 +218,43 @@ export default function Home() {
         <section className="mb-6">
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-white font-semibold text-sm">Connected Exchanges</h3>
+              <h3 className="text-white font-semibold text-sm">Exchange Status</h3>
               <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                <span className="text-[10px] text-neutral-600">{ALL_EXCHANGES.length} connected</span>
+                <span className={`h-1.5 w-1.5 rounded-full ${activeExchangeCount > 0 ? 'bg-green-500' : 'bg-neutral-600'}`}></span>
+                <span className="text-[10px] text-neutral-600">
+                  {activeExchangeCount > 0 ? `${activeExchangeCount}/${ALL_EXCHANGES.length} active` : `${ALL_EXCHANGES.length} exchanges`}
+                </span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {ALL_EXCHANGES.map((exchange) => (
-                <div
-                  key={exchange}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
-                >
-                  <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
-                  <span className="text-neutral-400 text-xs">{exchange}</span>
-                </div>
-              ))}
+              {ALL_EXCHANGES.map((exchange) => {
+                const health = exchangeHealth.find(h => h.name === exchange);
+                const isActive = health?.status === 'ok';
+                const isEmpty = health?.status === 'empty';
+                return (
+                  <div
+                    key={exchange}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors ${
+                      isActive
+                        ? 'bg-green-500/5 hover:bg-green-500/10 border border-green-500/20'
+                        : isEmpty
+                          ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border border-yellow-500/20'
+                          : 'bg-white/[0.03] hover:bg-white/[0.06]'
+                    }`}
+                    title={health ? `${health.count} entries · ${health.latencyMs}ms${health.error ? ` · ${health.error}` : ''}` : exchange}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
+                      isActive ? 'bg-green-500' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
+                    }`} />
+                    <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                    <span className={`text-xs ${isActive ? 'text-neutral-300' : 'text-neutral-600'}`}>{exchange}</span>
+                    {isActive && health && (
+                      <span className="text-[9px] text-green-500/60 font-mono">{health.count}</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -304,7 +331,7 @@ function Footer() {
           </span>
           <div className="flex items-center gap-1.5 text-[10px] text-neutral-700">
             <span className="h-1.5 w-1.5 rounded-full bg-green-500/60"></span>
-            All systems operational
+            Data aggregated from {ALL_EXCHANGES.length} exchanges
           </div>
         </div>
       </div>

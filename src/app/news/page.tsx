@@ -67,6 +67,21 @@ export default function NewsPage() {
               </div>
             ))}
           </div>
+        ) : news.length === 0 ? (
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
+            <Newspaper className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
+            <h3 className="text-white font-semibold mb-1">No news available</h3>
+            <p className="text-neutral-600 text-sm mb-4">
+              The CryptoCompare news API is temporarily unavailable. Try refreshing.
+            </p>
+            <button
+              onClick={refreshNews}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-hub-yellow text-black rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Try Again
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {news.map((article, index) => (
