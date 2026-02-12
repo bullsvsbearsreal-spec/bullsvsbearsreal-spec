@@ -312,36 +312,6 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Gate.io — includes xStocks (AAPLX_USDT, TSLAX_USDT, etc.)
-  {
-    name: 'Gate.io',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts', {}, 12000);
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((item: any) =>
-          item.name.endsWith('_USDT') &&
-          (item.funding_rate != null || item.funding_rate_indicative != null)
-        )
-        .map((item: any) => {
-          const rawSymbol = item.name.replace('_USDT', '');
-          const normalized = normalizeSymbol(rawSymbol, 'gate.io');
-          return {
-            symbol: normalized.symbol,
-            exchange: 'Gate.io',
-            fundingRate: parseFloat(item.funding_rate || item.funding_rate_indicative) * 100,
-            markPrice: parseFloat(item.mark_price) || 0,
-            indexPrice: parseFloat(item.index_price) || 0,
-            nextFundingTime: (item.funding_next_apply || 0) * 1000,
-            type: 'cex' as const,
-            assetClass: normalized.assetClass,
-          };
-        })
-        .filter((item: any) => !isNaN(item.fundingRate));
-    },
-  },
 
   // MEXC
   {
@@ -455,32 +425,6 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // BitMEX
-  {
-    name: 'BitMEX',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://www.bitmex.com/api/v1/instrument/active');
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((item: any) => item.symbol.endsWith('USDT') && item.fundingRate != null)
-        .map((item: any) => {
-          let sym = item.symbol.replace('USDT', '');
-          if (sym === 'XBT') sym = 'BTC';
-          return {
-            symbol: sym,
-            exchange: 'BitMEX',
-            fundingRate: parseFloat(item.fundingRate) * 100,
-            markPrice: parseFloat(item.markPrice) || 0,
-            indexPrice: parseFloat(item.indicativeSettlePrice) || 0,
-            nextFundingTime: item.fundingTimestamp ? new Date(item.fundingTimestamp).getTime() : Date.now() + 28800000,
-            type: 'cex' as const,
-          };
-        })
-        .filter((item: any) => !isNaN(item.fundingRate));
-    },
-  },
 
   // KuCoin
   {
@@ -672,45 +616,6 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Crypto.com
-  {
-    name: 'Crypto.com',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.crypto.com/exchange/v1/public/get-tickers');
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = json.result?.data || [];
-      // Get perp tickers for prices/OI, then fetch funding for top symbols
-      const perps = items.filter((t: any) => t.i && t.i.endsWith('USD-PERP'));
-      const topPerps = perps
-        .sort((a: any, b: any) => parseFloat(b.vv || '0') - parseFloat(a.vv || '0'))
-        .slice(0, 40);
-      const promises = topPerps.map(async (t: any) => {
-        try {
-          const frRes = await fetchFn(
-            `https://api.crypto.com/exchange/v1/public/get-valuations?instrument_name=${encodeURIComponent(t.i)}&valuation_type=funding_rate`,
-            {},
-            5000
-          );
-          if (!frRes.ok) return null;
-          const frJson = await frRes.json();
-          const frData = frJson.result?.data;
-          if (!Array.isArray(frData) || frData.length === 0) return null;
-          const latest = frData[frData.length - 1];
-          return {
-            symbol: t.i.replace('USD-PERP', ''),
-            exchange: 'Crypto.com',
-            fundingRate: parseFloat(latest.v) * 100,
-            markPrice: parseFloat(t.a) || 0,
-            indexPrice: 0,
-            nextFundingTime: Date.now() + 3600000,
-            type: 'cex' as const,
-          };
-        } catch { return null; }
-      });
-      return (await Promise.all(promises)).filter((item): item is NonNullable<typeof item> => item !== null && !isNaN(item.fundingRate)) as FundingData[];
-    },
-  },
   // gTrade (Gains Network) - velocity-based funding model, calculated from raw trading variables
   {
     name: 'gTrade',

@@ -166,30 +166,6 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // Gate.io
-  {
-    name: 'Gate.io',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts');
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((t: any) => t.name.endsWith('_USDT'))
-        .map((item: any) => {
-          const oi = parseFloat(item.position_size) || 0;
-          const price = parseFloat(item.last_price) || parseFloat(item.mark_price) || 0;
-          const quantoMultiplier = parseFloat(item.quanto_multiplier) || 1;
-          return {
-            symbol: item.name.replace('_USDT', ''),
-            exchange: 'Gate.io',
-            openInterest: oi,
-            openInterestValue: oi * price * quantoMultiplier,
-          };
-        })
-        .filter((item: any) => item.openInterestValue > 0);
-    },
-  },
 
   // MEXC — holdVol is in contracts, NOT coins. Need contractSize to convert.
   // Two-step: fetch contract details for multiplier, then ticker for OI + price.
@@ -323,49 +299,6 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // BitMEX — two contract types with different OI semantics.
-  // Linear USDT: openInterest = contracts, each contract = multiplier/1e8 base coins
-  // Inverse USD: openInterest = contracts in USD (1 contract = $1)
-  // XBT = BTC in BitMEX nomenclature.
-  {
-    name: 'BitMEX',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://www.bitmex.com/api/v1/instrument/active');
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((t: any) => {
-          if (!t.openInterest) return false;
-          const isPerp = t.typ === 'FFWCSX' || t.typ === 'FFCCSX';
-          const isUSDT = t.symbol.endsWith('USDT');
-          const isUSD = t.symbol.endsWith('USD') && !t.symbol.endsWith('USDT');
-          return isPerp && (isUSDT || isUSD);
-        })
-        .map((item: any) => {
-          const price = parseFloat(item.lastPrice) || parseFloat(item.markPrice) || 1;
-          let sym = item.rootSymbol === 'XBT' ? 'BTC' : (item.rootSymbol || item.symbol.replace('USDT', '').replace('USD', ''));
-          let oiCoins: number;
-          let oiValueUSD: number;
-          if (item.isInverse) {
-            // Inverse: openInterest = number of $1 contracts → OI in USD
-            oiValueUSD = parseFloat(item.openInterest) || 0;
-            oiCoins = oiValueUSD / price;
-          } else {
-            // Linear USDT: contracts × |multiplier| / 1e8 = base currency coins
-            oiCoins = (parseFloat(item.openInterest) || 0) * Math.abs(parseFloat(item.multiplier) || 1) / 1e8;
-            oiValueUSD = oiCoins * price;
-          }
-          return {
-            symbol: sym,
-            exchange: 'BitMEX',
-            openInterest: oiCoins,
-            openInterestValue: oiValueUSD,
-          };
-        })
-        .filter((item: any) => item.openInterestValue > 1000);
-    },
-  },
 
   // KuCoin — openInterest is in lots, multiply by 'multiplier' to get base currency amount
   {
@@ -538,26 +471,4 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // Crypto.com
-  {
-    name: 'Crypto.com',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.crypto.com/exchange/v1/public/get-tickers');
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = json.result?.data || [];
-      return items
-        .filter((t: any) => t.i && t.i.endsWith('USD-PERP') && t.oi)
-        .map((item: any) => {
-          const oi = parseFloat(item.oi) || 0;
-          const price = parseFloat(item.a) || 0;
-          return {
-            symbol: item.i.replace('USD-PERP', ''),
-            exchange: 'Crypto.com',
-            openInterest: oi,
-            openInterestValue: oi * price,
-          };
-        });
-    },
-  },
 ];

@@ -168,34 +168,6 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // Gate.io
-  {
-    name: 'Gate.io',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts');
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((t: any) => t.name.endsWith('_USDT'))
-        .map((ticker: any) => {
-          const lastPrice = parseFloat(ticker.last_price) || parseFloat(ticker.mark_price) || 0;
-          return {
-            symbol: ticker.name.replace('_USDT', ''),
-            exchange: 'Gate.io',
-            lastPrice,
-            price: lastPrice,
-            priceChangePercent24h: parseFloat(ticker.change_percentage) || 0,
-            changePercent24h: parseFloat(ticker.change_percentage) || 0,
-            high24h: parseFloat(ticker.high_24h) || 0,
-            low24h: parseFloat(ticker.low_24h) || 0,
-            volume24h: parseFloat(ticker.volume_24h) || 0,
-            quoteVolume24h: parseFloat(ticker.volume_24h_usd) || 0,
-          };
-        })
-        .filter((item: any) => item.lastPrice > 0);
-    },
-  },
 
   // MEXC
   {
@@ -320,31 +292,6 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // BitMEX
-  {
-    name: 'BitMEX',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://www.bitmex.com/api/v1/instrument/active');
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((t: any) => t.symbol.endsWith('USDT') && t.lastPrice)
-        .map((ticker: any) => ({
-          symbol: ticker.symbol.replace('USDT', ''),
-          exchange: 'BitMEX',
-          lastPrice: parseFloat(ticker.lastPrice),
-          price: parseFloat(ticker.lastPrice),
-          priceChangePercent24h: (parseFloat(ticker.lastChangePcnt) || 0) * 100,
-          changePercent24h: (parseFloat(ticker.lastChangePcnt) || 0) * 100,
-          high24h: parseFloat(ticker.highPrice) || 0,
-          low24h: parseFloat(ticker.lowPrice) || 0,
-          volume24h: parseFloat(ticker.volume24h) || 0,
-          quoteVolume24h: parseFloat(ticker.turnover24h) || 0,
-        }))
-        .filter((item: any) => item.lastPrice > 0);
-    },
-  },
 
   // KuCoin
   {
@@ -557,32 +504,4 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // Crypto.com
-  {
-    name: 'Crypto.com',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.crypto.com/exchange/v1/public/get-tickers');
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = json.result?.data || [];
-      return items
-        .filter((t: any) => t.i && t.i.endsWith('USD-PERP'))
-        .map((ticker: any) => {
-          const lastPrice = parseFloat(ticker.a) || 0;
-          return {
-            symbol: ticker.i.replace('USD-PERP', ''),
-            exchange: 'Crypto.com',
-            lastPrice,
-            price: lastPrice,
-            priceChangePercent24h: (parseFloat(ticker.c) || 0) * 100,
-            changePercent24h: (parseFloat(ticker.c) || 0) * 100,
-            high24h: parseFloat(ticker.h) || 0,
-            low24h: parseFloat(ticker.l) || 0,
-            volume24h: parseFloat(ticker.v) || 0,
-            quoteVolume24h: parseFloat(ticker.vv) || 0,
-          };
-        })
-        .filter((item: any) => item.lastPrice > 0);
-    },
-  },
 ];
