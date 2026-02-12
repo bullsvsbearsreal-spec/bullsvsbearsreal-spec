@@ -4,7 +4,7 @@ import { fetchAllExchanges } from '../_shared/exchange-fetchers';
 import { tickerFetchers } from './exchanges';
 
 export const runtime = 'edge';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 
 export async function GET() {
   const results = await fetchAllExchanges(tickerFetchers, fetchWithTimeout);

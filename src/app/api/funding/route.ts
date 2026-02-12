@@ -4,7 +4,7 @@ import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { fundingFetchers } from './exchanges';
 
 export const runtime = 'edge';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 
 type AssetClassFilter = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'all';
 

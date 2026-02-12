@@ -4,7 +4,7 @@ import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { oiFetchers } from './exchanges';
 
 export const runtime = 'edge';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 
 export async function GET() {
   const [{ data, health }, top500] = await Promise.all([

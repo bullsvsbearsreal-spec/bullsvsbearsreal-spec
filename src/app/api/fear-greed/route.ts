@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 
 // Cache the result for 10 minutes to avoid hammering the API
 let cachedData: { value: number; classification: string; timestamp: number } | null = null;

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
 
 export const runtime = 'edge';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 
 // Fetch long/short ratio from Binance server-side to avoid CORS
 export async function GET(request: Request) {
