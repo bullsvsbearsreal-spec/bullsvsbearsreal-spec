@@ -1,140 +1,75 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Header from '@/components/Header';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { Zap, RefreshCw, Clock, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX, Grid3X3, List } from 'lucide-react';
-
-interface Liquidation {
-  id: string;
-  symbol: string;
-  side: 'long' | 'short';
-  price: number;
-  quantity: number;
-  value: number;
-  exchange: string;
-  timestamp: number;
-}
-
-interface AggregatedLiq {
-  symbol: string;
-  totalValue: number;
-  longValue: number;
-  shortValue: number;
-  count: number;
-}
+import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { Zap, RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX, Grid3X3, List } from 'lucide-react';
+import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
+import Footer from '@/components/Footer';
 
 type ViewMode = 'feed' | 'heatmap';
 
+const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget'] as const;
+
 export default function LiquidationsPage() {
-  const [liquidations, setLiquidations] = useState<Liquidation[]>([]);
-  const [aggregated, setAggregated] = useState<Map<string, AggregatedLiq>>(new Map());
-  const [loading, setLoading] = useState(true);
-  const [connected, setConnected] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>([...AVAILABLE_EXCHANGES]);
   const [filter, setFilter] = useState<'all' | 'long' | 'short'>('all');
   const [minValue, setMinValue] = useState(10000);
   const [timeframe, setTimeframe] = useState<'1h' | '4h' | '12h' | '24h'>('1h');
   const [viewMode, setViewMode] = useState<ViewMode>('feed');
-  const wsRef = useRef<WebSocket | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
-  // Stats
-  const [stats, setStats] = useState({
-    totalLongs: 0,
-    totalShorts: 0,
-    longValue: 0,
-    shortValue: 0,
-    largestLiq: null as Liquidation | null,
+  // Stabilize exchange array reference
+  const exchangeKey = selectedExchanges.join(',');
+  const stableExchanges = useMemo(() => selectedExchanges, [exchangeKey]);
+
+  const { liquidations, connections, stats, aggregated, clearAll } = useMultiExchangeLiquidations({
+    exchanges: stableExchanges,
+    minValue,
+    maxItems: 200,
+    onLiquidation: (liq) => {
+      if (soundEnabled && liq.value >= 100000 && audioRef.current) {
+        audioRef.current.play().catch(() => {});
+      }
+    },
   });
 
   useEffect(() => {
     audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleRQAEMSo7NGYWgkA');
-    connectWebSocket();
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
   }, []);
 
+  // Reset aggregation on timeframe change
   useEffect(() => {
-    setAggregated(new Map());
-    setStats({ totalLongs: 0, totalShorts: 0, longValue: 0, shortValue: 0, largestLiq: null });
+    clearAll();
     startTimeRef.current = Date.now();
-  }, [timeframe]);
+  }, [timeframe, clearAll]);
 
-  const connectWebSocket = () => {
-    setLoading(true);
-    const ws = new WebSocket('wss://fstream.binance.com/ws/!forceOrder@arr');
-
-    ws.onopen = () => {
-      setConnected(true);
-      setLoading(false);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.e === 'forceOrder') {
-          const liq: Liquidation = {
-            id: `${data.o.s}-${data.o.T}`,
-            symbol: data.o.s.replace('USDT', ''),
-            side: data.o.S === 'BUY' ? 'short' : 'long',
-            price: parseFloat(data.o.p),
-            quantity: parseFloat(data.o.q),
-            value: parseFloat(data.o.p) * parseFloat(data.o.q),
-            exchange: 'Binance',
-            timestamp: data.o.T,
-          };
-
-          const timeframeMs = { '1h': 3600000, '4h': 14400000, '12h': 43200000, '24h': 86400000 }[timeframe];
-          if (Date.now() - startTimeRef.current > timeframeMs) {
-            startTimeRef.current = Date.now();
-            setAggregated(new Map());
-            setStats({ totalLongs: 0, totalShorts: 0, longValue: 0, shortValue: 0, largestLiq: null });
-          }
-
-          if (liq.value >= minValue) {
-            setLiquidations(prev => [liq, ...prev].slice(0, 100));
-
-            setAggregated(prev => {
-              const newMap = new Map(prev);
-              const existing = newMap.get(liq.symbol) || { symbol: liq.symbol, totalValue: 0, longValue: 0, shortValue: 0, count: 0 };
-              existing.totalValue += liq.value;
-              existing.count += 1;
-              if (liq.side === 'long') existing.longValue += liq.value;
-              else existing.shortValue += liq.value;
-              newMap.set(liq.symbol, existing);
-              return newMap;
-            });
-
-            if (soundEnabled && liq.value >= 100000 && audioRef.current) {
-              audioRef.current.play().catch(() => {});
-            }
-
-            setStats(prev => ({
-              totalLongs: prev.totalLongs + (liq.side === 'long' ? 1 : 0),
-              totalShorts: prev.totalShorts + (liq.side === 'short' ? 1 : 0),
-              longValue: prev.longValue + (liq.side === 'long' ? liq.value : 0),
-              shortValue: prev.shortValue + (liq.side === 'short' ? liq.value : 0),
-              largestLiq: !prev.largestLiq || liq.value > prev.largestLiq.value ? liq : prev.largestLiq,
-            }));
-          }
-        }
-      } catch (err) {
-        console.error('Error parsing liquidation:', err);
+  // Periodic timeframe reset
+  useEffect(() => {
+    const timeframeMs = { '1h': 3600000, '4h': 14400000, '12h': 43200000, '24h': 86400000 }[timeframe];
+    const interval = setInterval(() => {
+      if (Date.now() - startTimeRef.current > timeframeMs) {
+        clearAll();
+        startTimeRef.current = Date.now();
       }
-    };
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [timeframe, clearAll]);
 
-    ws.onerror = () => setConnected(false);
-    ws.onclose = () => {
-      setConnected(false);
-      setTimeout(connectWebSocket, 3000);
-    };
-    wsRef.current = ws;
+  const toggleExchange = (exchange: string) => {
+    setSelectedExchanges(prev => {
+      if (prev.includes(exchange)) {
+        return prev.length > 1 ? prev.filter(e => e !== exchange) : prev;
+      }
+      return [...prev, exchange];
+    });
   };
+
+  const connectedCount = connections.filter(c => c.connected).length;
+  const isLoading = connectedCount === 0 && connections.length > 0;
 
   const filteredLiquidations = liquidations.filter(liq => {
     if (filter === 'long') return liq.side === 'long';
@@ -166,7 +101,7 @@ export default function LiquidationsPage() {
     return '';
   };
 
-  const getHeatmapColor = (item: AggregatedLiq) => {
+  const getHeatmapColor = (item: { longValue: number; shortValue: number; totalValue: number }) => {
     const isLongDominant = item.longValue > item.shortValue;
     const intensity = Math.min((item.totalValue / maxValue) * 100, 100);
     if (isLongDominant) {
@@ -188,12 +123,24 @@ export default function LiquidationsPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-xl font-bold text-white">Liquidations</h1>
-            <p className="text-neutral-600 text-xs mt-0.5">Real-time liquidation feed from Binance Futures</p>
+            <p className="text-neutral-600 text-xs mt-0.5">
+              Real-time liquidation feed across {selectedExchanges.length} exchanges
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${connected ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
-              <span className={`w-2 h-2 rounded-full ${connected ? 'bg-success animate-pulse' : 'bg-error'}`} />
-              {connected ? 'Live' : 'Disconnected'}
+            {/* Connection status dots */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+              {connections.map(conn => (
+                <div
+                  key={conn.exchange}
+                  title={`${conn.exchange}: ${conn.connected ? 'Connected' : conn.error || 'Disconnected'}`}
+                  className="flex items-center gap-1"
+                >
+                  <ExchangeLogo exchange={conn.exchange.toLowerCase()} size={14} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${conn.connected ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`} />
+                </div>
+              ))}
+              <span className="text-xs text-neutral-500 ml-1">{connectedCount}/{connections.length}</span>
             </div>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -202,6 +149,31 @@ export default function LiquidationsPage() {
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
           </div>
+        </div>
+
+        {/* Exchange Toggles */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {AVAILABLE_EXCHANGES.map(exchange => {
+            const isSelected = selectedExchanges.includes(exchange);
+            const conn = connections.find(c => c.exchange === exchange);
+            return (
+              <button
+                key={exchange}
+                onClick={() => toggleExchange(exchange)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                  isSelected
+                    ? 'bg-white/[0.06] border-white/[0.12] text-white'
+                    : 'bg-transparent border-white/[0.04] text-neutral-600 hover:text-neutral-400'
+                }`}
+              >
+                <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
+                {exchange}
+                {isSelected && conn && (
+                  <span className={`w-1.5 h-1.5 rounded-full ${conn.connected ? 'bg-green-400' : 'bg-red-500'}`} />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Stats Cards */}
@@ -229,7 +201,10 @@ export default function LiquidationsPage() {
             {stats.largestLiq ? (
               <>
                 <div className="text-sm font-bold font-mono text-purple-400 mt-1">{formatValue(stats.largestLiq.value)}</div>
-                <div className="text-sm text-purple-400/70">{stats.largestLiq.symbol}</div>
+                <div className="text-sm text-purple-400/70">
+                  {stats.largestLiq.symbol}
+                  <span className="text-purple-400/40 ml-1">({stats.largestLiq.exchange})</span>
+                </div>
               </>
             ) : (
               <div className="text-sm font-bold font-mono text-neutral-600 mt-1">-</div>
@@ -274,11 +249,11 @@ export default function LiquidationsPage() {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8">
             <div className="flex items-center justify-center gap-3">
               <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
-              <span className="text-white">Connecting to liquidation stream...</span>
+              <span className="text-white">Connecting to liquidation streams...</span>
             </div>
           </div>
         ) : (
@@ -354,6 +329,10 @@ export default function LiquidationsPage() {
                                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${liq.side === 'long' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
                                     {liq.side.toUpperCase()}
                                   </span>
+                                  <span className="flex items-center gap-1 text-neutral-600 text-xs">
+                                    <ExchangeLogo exchange={liq.exchange.toLowerCase()} size={12} />
+                                    {liq.exchange}
+                                  </span>
                                 </div>
                                 <div className="text-sm text-neutral-600 mt-0.5">
                                   {liq.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })} @ ${liq.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -385,11 +364,16 @@ export default function LiquidationsPage() {
                 <strong className="text-success">Long liquidation</strong> = Price dropped, long positions forcefully closed.
                 <br />
                 <strong className="text-danger">Short liquidation</strong> = Price rose, short positions forcefully closed.
+                <br />
+                <span className="text-neutral-700 text-xs mt-1 block">
+                  Data from {selectedExchanges.join(', ')}. Bybit subscribes to top 25 symbols. OKX and Bitget receive all SWAP liquidations.
+                </span>
               </p>
             </div>
           </div>
         </div>
       </main>
+      <Footer />
 
       <style jsx global>{`
         @keyframes pulse-once {

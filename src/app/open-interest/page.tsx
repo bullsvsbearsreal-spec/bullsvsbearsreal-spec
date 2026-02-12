@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { fetchAllOpenInterest, aggregateOpenInterestBySymbol, aggregateOpenInterestByExchange } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
 import { RefreshCw, ArrowUpDown, AlertTriangle } from 'lucide-react';
@@ -364,6 +365,7 @@ export default function OpenInterestPage() {
           Data refreshes automatically every 30 seconds
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { Copy, Check, ExternalLink, Zap, Database, Globe } from 'lucide-react';
 
 interface EndpointProps {
@@ -370,6 +371,7 @@ export default function ApiDocsPage() {
           </p>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

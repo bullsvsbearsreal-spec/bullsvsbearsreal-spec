@@ -14,7 +14,9 @@ import FundingStats from './components/FundingStats';
 import FundingTableView from './components/FundingTableView';
 import FundingHeatmapView from './components/FundingHeatmapView';
 import FundingArbitrageView from './components/FundingArbitrageView';
-import { saveFundingSnapshot, getFundingHistory, type HistoryPoint } from '@/lib/storage/fundingHistory';
+import ShareButton from '@/components/ShareButton';
+import Footer from '@/components/Footer';
+import { saveFundingSnapshot, getFundingHistory, getAccumulatedFundingBatch, type HistoryPoint, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
 type SortOrder = 'asc' | 'desc';
@@ -112,6 +114,20 @@ export default function FundingPage() {
       }
     });
     return map;
+  }, [fundingRates]);
+
+  // Build accumulated funding map (1D/7D/30D cumulative rates)
+  const accumulatedMap = useMemo(() => {
+    if (typeof window === 'undefined' || fundingRates.length === 0) return new Map<string, AccumulatedFunding>();
+    const pairs: { symbol: string; exchange: string }[] = [];
+    const seen = new Set<string>();
+    fundingRates.slice(0, 100).forEach(fr => {
+      const key = `${fr.symbol}|${fr.exchange}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      pairs.push({ symbol: fr.symbol, exchange: fr.exchange });
+    });
+    return getAccumulatedFundingBatch(pairs);
   }, [fundingRates]);
 
   const handleAssetClassChange = (newAssetClass: AssetClass) => {
@@ -250,6 +266,7 @@ export default function FundingPage() {
                 {lastUpdate.toLocaleTimeString()}
               </span>
             )}
+            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — free, no signup, 21 exchanges`} />
             <button
               onClick={fetchData}
               disabled={loading}
@@ -432,7 +449,7 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'table' && (
-              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} historyMap={historyMap} />
+              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} historyMap={historyMap} accumulatedMap={accumulatedMap} />
             )}
             {viewMode === 'heatmap' && (
               <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} />
@@ -476,6 +493,7 @@ export default function FundingPage() {
           </p>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

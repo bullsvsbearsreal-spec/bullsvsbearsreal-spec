@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       anomalies: anomalies.length > 0 ? anomalies : undefined,
       normalization: {
         basis: '8h',
-        note: 'All rates normalized to 8-hour percentage. Hourly exchanges (Hyperliquid, dYdX, Aevo, Coinbase) ×8. 4h exchanges (Kraken) ×2. Per-second (gTrade) ×28800.',
+        note: 'All rates normalized to 8-hour percentage. Hourly exchanges (Hyperliquid, dYdX, Aevo, Coinbase) ×8. 4h exchanges (Kraken) ×2. Per-second (gTrade) ×28800. OKX and CoinEx include predictedRate when available. Coinbase and dYdX report predicted/next funding as their primary rate.',
       },
     },
   });
