@@ -17,6 +17,23 @@ export async function GET(request: NextRequest) {
     getTop500Symbols(),
   ]);
 
+  // Compute implied predicted rates from mark-index price spread
+  // Formula: clamp((markPrice - indexPrice) / indexPrice × 100, ±0.75%)
+  // Exchanges with continuous/hourly funding don't have a meaningful "next 8h" prediction
+  const CONTINUOUS_EXCHANGES = new Set(['Hyperliquid', 'dYdX', 'gTrade', 'Coinbase']);
+  const PREDICTED_CLAMP = 0.75;
+
+  data.forEach(entry => {
+    // Skip if already has a real predicted rate from the exchange
+    if (entry.predictedRate !== undefined) return;
+    // Skip continuous funding model exchanges
+    if (CONTINUOUS_EXCHANGES.has(entry.exchange)) return;
+    // Need valid mark + index prices
+    if (!entry.markPrice || !entry.indexPrice || entry.indexPrice <= 0) return;
+    const premium = ((entry.markPrice - entry.indexPrice) / entry.indexPrice) * 100;
+    entry.predictedRate = Math.max(-PREDICTED_CLAMP, Math.min(PREDICTED_CLAMP, premium));
+  });
+
   let filtered;
   if (assetClass === 'all') {
     filtered = data.filter(r => {
@@ -64,7 +81,7 @@ export async function GET(request: NextRequest) {
       anomalies: anomalies.length > 0 ? anomalies : undefined,
       normalization: {
         basis: '8h',
-        note: 'All rates normalized to 8-hour percentage. Hourly exchanges (Hyperliquid, dYdX, Aevo, Coinbase) ×8. 4h exchanges (Kraken) ×2. Per-second (gTrade) ×28800. OKX and CoinEx include predictedRate when available. Coinbase and dYdX report predicted/next funding as their primary rate.',
+        note: 'All rates normalized to 8-hour percentage. Hourly exchanges (Hyperliquid, dYdX, Aevo, Coinbase) ×8. 4h exchanges (Kraken) ×2. Per-second (gTrade) ×28800. OKX and CoinEx include native predictedRate. For other exchanges with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges (Hyperliquid, dYdX, gTrade, Coinbase) are excluded from prediction.',
       },
     },
   });

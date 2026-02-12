@@ -132,6 +132,69 @@ function parseBitgetLiq(data: any): Liquidation | null {
   };
 }
 
+// Top symbols for BingX (per-symbol subscription required)
+const BINGX_SYMBOLS = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT'];
+
+function parseDeribitLiq(data: any): Liquidation | null {
+  // JSON-RPC subscription notification
+  if (data.method !== 'subscription' || !data.params?.data) return null;
+  const d = data.params.data;
+  const instrument = d.instrument_name || '';
+  // Extract symbol: BTC-PERPETUAL → BTC, ETH-PERPETUAL → ETH
+  const symbol = instrument.split('-')[0];
+  if (!symbol) return null;
+  const price = parseFloat(d.price || '0');
+  const quantity = parseFloat(d.quantity || d.amount || '0');
+  return {
+    id: `drb-${instrument}-${d.timestamp || Date.now()}`,
+    symbol,
+    side: d.direction === 'buy' ? 'short' : 'long',
+    price,
+    quantity,
+    value: price * quantity,
+    exchange: 'Deribit',
+    timestamp: d.timestamp || Date.now(),
+  };
+}
+
+function parseMexcLiq(data: any): Liquidation | null {
+  if (data.channel !== 'push.liquidation.order' || !data.data) return null;
+  const d = data.data;
+  const rawSymbol = d.symbol || '';
+  const symbol = rawSymbol.replace('_USDT', '').replace('_USDC', '');
+  const price = parseFloat(d.price || d.liquidationPrice || '0');
+  const quantity = parseFloat(d.vol || d.quantity || '0');
+  return {
+    id: `mexc-${rawSymbol}-${d.createTime || Date.now()}`,
+    symbol,
+    side: (d.side === 1 || d.side === 'Buy' || d.side === 'buy') ? 'short' : 'long',
+    price,
+    quantity,
+    value: price * quantity,
+    exchange: 'MEXC',
+    timestamp: d.createTime || Date.now(),
+  };
+}
+
+function parseBingxLiq(data: any): Liquidation | null {
+  if (!data.dataType?.includes('forceOrder') || !data.data) return null;
+  const d = data.data;
+  const rawSymbol = d.s || d.symbol || '';
+  const symbol = rawSymbol.replace('-USDT', '').replace('-USDC', '');
+  const price = parseFloat(d.p || d.price || '0');
+  const quantity = parseFloat(d.q || d.quantity || '0');
+  return {
+    id: `bx-${rawSymbol}-${d.T || d.timestamp || Date.now()}`,
+    symbol,
+    side: (d.S === 'BUY' || d.S === 'Buy') ? 'short' : 'long',
+    price,
+    quantity,
+    value: price * quantity,
+    exchange: 'BingX',
+    timestamp: d.T || d.timestamp || Date.now(),
+  };
+}
+
 function createExchangeWS(
   exchange: string,
   onMessage: (liq: Liquidation) => void,
@@ -159,6 +222,15 @@ function createExchangeWS(
         case 'Bitget':
           ws = new WebSocket('wss://ws.bitget.com/v2/ws/public');
           break;
+        case 'Deribit':
+          ws = new WebSocket('wss://www.deribit.com/ws/api/v2');
+          break;
+        case 'MEXC':
+          ws = new WebSocket('wss://contract.mexc.com/edge');
+          break;
+        case 'BingX':
+          ws = new WebSocket('wss://open-api-ws.bingx.com/market');
+          break;
         default:
           return;
       }
@@ -185,6 +257,32 @@ function createExchangeWS(
           op: 'subscribe',
           args: [{ instType: 'USDT-FUTURES', channel: 'liquidation', instId: 'default' }],
         }));
+      } else if (exchange === 'Deribit') {
+        // JSON-RPC subscribe to BTC + ETH perpetual liquidations
+        ws?.send(JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'public/subscribe',
+          params: { channels: ['trades.BTC-PERPETUAL.raw', 'trades.ETH-PERPETUAL.raw'] },
+        }));
+        // Also try liquidation-specific channels
+        ws?.send(JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'public/subscribe',
+          params: { channels: ['liquidations.BTC-PERPETUAL.raw', 'liquidations.ETH-PERPETUAL.raw'] },
+        }));
+      } else if (exchange === 'MEXC') {
+        ws?.send(JSON.stringify({ method: 'sub.liquidation.order', param: {} }));
+      } else if (exchange === 'BingX') {
+        // BingX needs per-symbol subscriptions
+        BINGX_SYMBOLS.forEach((sym, i) => {
+          ws?.send(JSON.stringify({
+            id: `bingx-${i}`,
+            reqType: 'sub',
+            dataType: `${sym}@forceOrder`,
+          }));
+        });
       }
 
       // Ping for exchanges that need it
@@ -206,16 +304,38 @@ function createExchangeWS(
             ws.send('ping');
           }
         }, 25000);
+      } else if (exchange === 'Deribit') {
+        pingTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ jsonrpc: '2.0', id: 9999, method: 'public/test', params: {} }));
+          }
+        }, 25000);
+      } else if (exchange === 'MEXC') {
+        pingTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ method: 'ping' }));
+          }
+        }, 20000);
+      } else if (exchange === 'BingX') {
+        pingTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send('Ping');
+          }
+        }, 20000);
       }
     };
 
     ws.onmessage = (event) => {
       try {
-        // Handle pong responses
-        if (event.data === 'pong' || event.data === '{"event":"pong"}') return;
+        // Handle pong responses (text-based)
+        if (event.data === 'pong' || event.data === '{"event":"pong"}' || event.data === 'Pong') return;
         const data = JSON.parse(event.data);
-        // Skip subscription confirmations and pong
+        // Skip subscription confirmations, pong, and test results
         if (data.event === 'subscribe' || data.op === 'pong' || data.ret_msg === 'pong' || data.success !== undefined) return;
+        // Skip Deribit JSON-RPC responses (subscription confirmations & test results)
+        if (data.id !== undefined && data.result !== undefined) return;
+        // Skip MEXC pong
+        if (data.channel === 'pong' || data.data === 'pong') return;
 
         let liq: Liquidation | null = null;
         switch (exchange) {
@@ -223,6 +343,9 @@ function createExchangeWS(
           case 'Bybit': liq = parseBybitLiq(data); break;
           case 'OKX': liq = parseOKXLiq(data); break;
           case 'Bitget': liq = parseBitgetLiq(data); break;
+          case 'Deribit': liq = parseDeribitLiq(data); break;
+          case 'MEXC': liq = parseMexcLiq(data); break;
+          case 'BingX': liq = parseBingxLiq(data); break;
         }
         if (liq && liq.value > 0) {
           onMessage(liq);

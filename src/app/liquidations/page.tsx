@@ -10,7 +10,7 @@ import Footer from '@/components/Footer';
 
 type ViewMode = 'feed' | 'heatmap';
 
-const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget'] as const;
+const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX'] as const;
 
 export default function LiquidationsPage() {
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>([...AVAILABLE_EXCHANGES]);
@@ -366,7 +366,7 @@ export default function LiquidationsPage() {
                 <strong className="text-danger">Short liquidation</strong> = Price rose, short positions forcefully closed.
                 <br />
                 <span className="text-neutral-700 text-xs mt-1 block">
-                  Data from {selectedExchanges.join(', ')}. Bybit subscribes to top 25 symbols. OKX and Bitget receive all SWAP liquidations.
+                  Data from {selectedExchanges.join(', ')}. Bybit subscribes to top 25 symbols. OKX and Bitget receive all SWAP liquidations. Deribit covers BTC + ETH perpetuals. BingX covers top 5 symbols.
                 </span>
               </p>
             </div>

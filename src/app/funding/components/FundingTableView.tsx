@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { FundingRateData } from '@/lib/api/types';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -98,10 +99,10 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                   className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
                 >
                   <td className="px-4 py-2">
-                    <div className="flex items-center gap-2">
+                    <Link href={`/funding/${fr.symbol}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                       <TokenIconSimple symbol={fr.symbol} size={20} />
-                      <span className="text-white font-medium text-sm">{fr.symbol}</span>
-                    </div>
+                      <span className="text-white font-medium text-sm hover:text-hub-yellow transition-colors">{fr.symbol}</span>
+                    </Link>
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1.5">
