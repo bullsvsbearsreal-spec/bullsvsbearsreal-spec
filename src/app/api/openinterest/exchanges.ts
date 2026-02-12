@@ -161,7 +161,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           exchange: 'dYdX',
           openInterest: parseFloat(market.openInterest),
           openInterestValue: parseFloat(market.openInterest) * parseFloat(market.oraclePrice),
-        }));
+        }))
+        .filter((item: any) => item.openInterestValue > 0);
     },
   },
 
@@ -257,27 +258,44 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // BingX
+  // BingX — ticker has no OI field. Use per-symbol OI endpoint.
+  // openInterest value from API is already in USDT.
   {
     name: 'BingX',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://open-api.bingx.com/openApi/swap/v2/quote/ticker');
-      if (!res.ok) return [];
-      const json = await res.json();
-      if (json.code !== 0 || !Array.isArray(json.data)) return [];
-      return json.data
-        .filter((t: any) => t.symbol.endsWith('-USDT') && t.openInterest)
-        .map((item: any) => {
-          const oi = parseFloat(item.openInterest) || 0;
-          const price = parseFloat(item.lastPrice) || 0;
+      // Step 1: Get symbol list and prices from ticker
+      const tickerRes = await fetchFn('https://open-api.bingx.com/openApi/swap/v2/quote/ticker');
+      if (!tickerRes.ok) return [];
+      const tickerJson = await tickerRes.json();
+      if (tickerJson.code !== 0 || !Array.isArray(tickerJson.data)) return [];
+
+      const topSymbols = tickerJson.data
+        .filter((t: any) => t.symbol.endsWith('-USDT') && isCryptoSymbol(t.symbol.replace('-USDT', '')))
+        .sort((a: any, b: any) => parseFloat(b.quoteVolume || '0') - parseFloat(a.quoteVolume || '0'))
+        .slice(0, 50);
+
+      // Step 2: Fetch OI per symbol
+      const oiPromises = topSymbols.map(async (ticker: any) => {
+        try {
+          const oiRes = await fetchFn(
+            `https://open-api.bingx.com/openApi/swap/v2/quote/openInterest?symbol=${ticker.symbol}`,
+            {},
+            5000
+          );
+          if (!oiRes.ok) return null;
+          const oiJson = await oiRes.json();
+          if (oiJson.code !== 0 || !oiJson.data) return null;
+          const oiValueUSD = parseFloat(oiJson.data.openInterest) || 0;
+          const price = parseFloat(ticker.lastPrice) || 1;
           return {
-            symbol: item.symbol.replace('-USDT', ''),
+            symbol: ticker.symbol.replace('-USDT', ''),
             exchange: 'BingX',
-            openInterest: oi,
-            openInterestValue: oi * price,
+            openInterest: oiValueUSD / price,
+            openInterestValue: oiValueUSD,
           };
-        })
-        .filter((item: any) => isCryptoSymbol(item.symbol));
+        } catch { return null; }
+      });
+      return (await Promise.all(oiPromises)).filter((item): item is OIData => item !== null && item.openInterestValue > 0);
     },
   },
 
@@ -305,7 +323,10 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // BitMEX
+  // BitMEX — two contract types with different OI semantics.
+  // Linear USDT: openInterest = contracts, each contract = multiplier/1e8 base coins
+  // Inverse USD: openInterest = contracts in USD (1 contract = $1)
+  // XBT = BTC in BitMEX nomenclature.
   {
     name: 'BitMEX',
     fetcher: async (fetchFn) => {
@@ -314,13 +335,35 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
-        .filter((t: any) => t.symbol.endsWith('USDT') && t.openInterest)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'BitMEX',
-          openInterest: parseFloat(item.openInterest) || 0,
-          openInterestValue: parseFloat(item.openValue) || (parseFloat(item.openInterest) * parseFloat(item.lastPrice)) || 0,
-        }));
+        .filter((t: any) => {
+          if (!t.openInterest) return false;
+          const isPerp = t.typ === 'FFWCSX' || t.typ === 'FFCCSX';
+          const isUSDT = t.symbol.endsWith('USDT');
+          const isUSD = t.symbol.endsWith('USD') && !t.symbol.endsWith('USDT');
+          return isPerp && (isUSDT || isUSD);
+        })
+        .map((item: any) => {
+          const price = parseFloat(item.lastPrice) || parseFloat(item.markPrice) || 1;
+          let sym = item.rootSymbol === 'XBT' ? 'BTC' : (item.rootSymbol || item.symbol.replace('USDT', '').replace('USD', ''));
+          let oiCoins: number;
+          let oiValueUSD: number;
+          if (item.isInverse) {
+            // Inverse: openInterest = number of $1 contracts → OI in USD
+            oiValueUSD = parseFloat(item.openInterest) || 0;
+            oiCoins = oiValueUSD / price;
+          } else {
+            // Linear USDT: contracts × |multiplier| / 1e8 = base currency coins
+            oiCoins = (parseFloat(item.openInterest) || 0) * Math.abs(parseFloat(item.multiplier) || 1) / 1e8;
+            oiValueUSD = oiCoins * price;
+          }
+          return {
+            symbol: sym,
+            exchange: 'BitMEX',
+            openInterest: oiCoins,
+            openInterestValue: oiValueUSD,
+          };
+        })
+        .filter((item: any) => item.openInterestValue > 1000);
     },
   },
 
@@ -339,8 +382,10 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           const multiplier = parseFloat(item.multiplier) || 1;
           const price = parseFloat(item.lastTradePrice) || parseFloat(item.markPrice) || 0;
           const oiCoins = lots * multiplier;
+          let sym = item.symbol.replace('USDTM', '');
+          if (sym === 'XBT') sym = 'BTC';
           return {
-            symbol: item.symbol.replace('USDTM', ''),
+            symbol: sym,
             exchange: 'KuCoin',
             openInterest: oiCoins,
             openInterestValue: oiCoins * price,
