@@ -14,9 +14,18 @@ interface FundingTableViewProps {
   sortField: SortField;
   sortOrder: SortOrder;
   onSort: (field: SortField) => void;
+  oiMap?: Map<string, number>;
 }
 
-export default function FundingTableView({ data, sortField, sortOrder, onSort }: FundingTableViewProps) {
+function formatOI(value: number): string {
+  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+  if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
+  return `$${value.toFixed(0)}`;
+}
+
+export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap }: FundingTableViewProps) {
+  const hasOI = oiMap && oiMap.size > 0;
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
     return sortOrder === 'asc'
@@ -35,6 +44,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
                 { field: 'exchange' as SortField, label: 'Exchange', align: 'left' },
                 { field: 'fundingRate' as SortField, label: 'Funding Rate', align: 'right' },
                 { field: null, label: 'Annualized', align: 'right' },
+                ...(hasOI ? [{ field: null, label: 'Open Interest', align: 'right' }] : []),
                 { field: null, label: 'Mark Price', align: 'right' },
               ].map(({ field, label, align }) => (
                 <th
@@ -88,6 +98,18 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort }:
                       {annualized >= 0 ? '+' : ''}{annualized.toFixed(2)}%
                     </span>
                   </td>
+                  {hasOI && (
+                    <td className="px-4 py-2 text-right">
+                      {(() => {
+                        const oiVal = oiMap.get(`${fr.symbol}|${fr.exchange}`);
+                        return oiVal ? (
+                          <span className="text-neutral-400 font-mono text-xs">{formatOI(oiVal)}</span>
+                        ) : (
+                          <span className="text-neutral-700 text-xs">-</span>
+                        );
+                      })()}
+                    </td>
+                  )}
                   <td className="px-4 py-2 text-right">
                     <span className="text-neutral-400 font-mono text-xs">
                       {hasMarkPrice

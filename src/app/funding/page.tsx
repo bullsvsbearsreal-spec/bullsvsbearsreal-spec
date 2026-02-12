@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
-import { fetchAllFundingRates, fetchFundingArbitrage, type AssetClassFilter } from '@/lib/api/aggregator';
+import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, type AssetClassFilter } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -52,12 +52,20 @@ export default function FundingPage() {
   );
 
   const fetcher = useCallback(async () => {
-    const [data, arbData] = await Promise.all([
+    const [data, arbData, oiData] = await Promise.all([
       fetchAllFundingRates(assetClass as AssetClassFilter),
       assetClass === 'crypto' ? fetchFundingArbitrage() : Promise.resolve([]),
+      assetClass === 'crypto' ? fetchAllOpenInterest() : Promise.resolve([]),
     ]);
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
-    return { fundingRates: validData, arbitrageData: arbData };
+    // Build OI lookup: "SYMBOL|EXCHANGE" → openInterestValue (USD)
+    const oiMap = new Map<string, number>();
+    oiData.forEach((oi: any) => {
+      if (oi.openInterestValue > 0) {
+        oiMap.set(`${oi.symbol}|${oi.exchange}`, oi.openInterestValue);
+      }
+    });
+    return { fundingRates: validData, arbitrageData: arbData, oiMap };
   }, [assetClass]);
 
   const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
@@ -67,6 +75,7 @@ export default function FundingPage() {
 
   const fundingRates = data?.fundingRates ?? [];
   const arbitrageData = data?.arbitrageData ?? [];
+  const oiMap = data?.oiMap ?? new Map<string, number>();
 
   const handleAssetClassChange = (newAssetClass: AssetClass) => {
     setAssetClass(newAssetClass);
@@ -386,7 +395,7 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'table' && (
-              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} />
             )}
             {viewMode === 'heatmap' && (
               <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} />

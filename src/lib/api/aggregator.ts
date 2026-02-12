@@ -4,7 +4,6 @@ import { okxAPI } from './okx';
 import { bitgetAPI } from './bitget';
 import { hyperliquidAPI } from './hyperliquid';
 import { dydxAPI } from './dydx';
-import { gateioAPI } from './gateio';
 import { mexcAPI } from './mexc';
 import { krakenAPI } from './kraken';
 import { bingxAPI } from './bingx';
@@ -398,4 +397,4 @@ export async function fetchExchangeHealth(): Promise<{
 }
 
 // Export individual exchange APIs for direct access
-export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI, gateioAPI, mexcAPI, krakenAPI, bingxAPI, phemexAPI };
+export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI, mexcAPI, krakenAPI, bingxAPI, phemexAPI };
