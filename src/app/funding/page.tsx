@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, type AssetClassFilter } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
@@ -14,6 +14,7 @@ import FundingStats from './components/FundingStats';
 import FundingTableView from './components/FundingTableView';
 import FundingHeatmapView from './components/FundingHeatmapView';
 import FundingArbitrageView from './components/FundingArbitrageView';
+import { saveFundingSnapshot, getFundingHistory, type HistoryPoint } from '@/lib/storage/fundingHistory';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
 type SortOrder = 'asc' | 'desc';
@@ -76,6 +77,42 @@ export default function FundingPage() {
   const fundingRates = data?.fundingRates ?? [];
   const arbitrageData = data?.arbitrageData ?? [];
   const oiMap = data?.oiMap ?? new Map<string, number>();
+
+  // Build mark prices map: first seen price per symbol (for arb view)
+  const markPricesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    fundingRates.forEach(fr => {
+      if (fr.markPrice && fr.markPrice > 0 && !map.has(fr.symbol)) {
+        map.set(fr.symbol, fr.markPrice);
+      }
+    });
+    return map;
+  }, [fundingRates]);
+
+  // Save funding snapshot for historical sparklines
+  useEffect(() => {
+    if (fundingRates.length > 0) {
+      saveFundingSnapshot(fundingRates);
+    }
+  }, [fundingRates]);
+
+  // Build history map for sparklines (only for visible rows)
+  const historyMap = useMemo(() => {
+    if (typeof window === 'undefined' || fundingRates.length === 0) return new Map<string, HistoryPoint[]>();
+    const map = new Map<string, HistoryPoint[]>();
+    // Only load history for top-100 visible rows to avoid scanning localStorage excessively
+    const seen = new Set<string>();
+    fundingRates.slice(0, 100).forEach(fr => {
+      const key = `${fr.symbol}|${fr.exchange}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const history = getFundingHistory(fr.symbol, fr.exchange, 7);
+      if (history.length >= 2) {
+        map.set(key, history);
+      }
+    });
+    return map;
+  }, [fundingRates]);
 
   const handleAssetClassChange = (newAssetClass: AssetClass) => {
     setAssetClass(newAssetClass);
@@ -395,13 +432,13 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'table' && (
-              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} />
+              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} historyMap={historyMap} />
             )}
             {viewMode === 'heatmap' && (
               <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} />
             )}
             {viewMode === 'arbitrage' && assetClass === 'crypto' && (
-              <FundingArbitrageView arbitrageData={arbitrageData} />
+              <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} />
             )}
           </>
         )}

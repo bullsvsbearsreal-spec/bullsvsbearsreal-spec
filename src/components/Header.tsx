@@ -13,6 +13,7 @@ const navLinks = [
   { name: 'Open Interest', href: '/open-interest' },
   { name: 'Liquidations', href: '/liquidations' },
   { name: 'News', href: '/news' },
+  { name: 'API', href: '/api-docs' },
 ];
 
 export default function Header() {

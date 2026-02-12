@@ -5,6 +5,8 @@ import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatRate, getRateColor, getExchangeColor } from '../utils';
 import { isValidNumber } from '@/lib/utils/format';
 import { isExchangeDex } from '@/lib/constants';
+import FundingSparkline from './FundingSparkline';
+import type { HistoryPoint } from '@/lib/storage/fundingHistory';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
 type SortOrder = 'asc' | 'desc';
@@ -15,6 +17,7 @@ interface FundingTableViewProps {
   sortOrder: SortOrder;
   onSort: (field: SortField) => void;
   oiMap?: Map<string, number>;
+  historyMap?: Map<string, HistoryPoint[]>;
 }
 
 function formatOI(value: number): string {
@@ -24,8 +27,9 @@ function formatOI(value: number): string {
   return `$${value.toFixed(0)}`;
 }
 
-export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap }: FundingTableViewProps) {
+export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap, historyMap }: FundingTableViewProps) {
   const hasOI = oiMap && oiMap.size > 0;
+  const hasHistory = historyMap && historyMap.size > 0;
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
     return sortOrder === 'asc'
@@ -43,6 +47,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                 { field: 'symbol' as SortField, label: 'Symbol', align: 'left' },
                 { field: 'exchange' as SortField, label: 'Exchange', align: 'left' },
                 { field: 'fundingRate' as SortField, label: 'Funding Rate', align: 'right' },
+                ...(hasHistory ? [{ field: null, label: '7d', align: 'center' }] : []),
                 { field: null, label: 'Annualized', align: 'right' },
                 ...(hasOI ? [{ field: null, label: 'Open Interest', align: 'right' }] : []),
                 { field: null, label: 'Mark Price', align: 'right' },
@@ -93,6 +98,15 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                       {formatRate(fr.fundingRate)}
                     </span>
                   </td>
+                  {hasHistory && (
+                    <td className="px-4 py-2 text-center">
+                      <FundingSparkline
+                        history={historyMap.get(`${fr.symbol}|${fr.exchange}`) || []}
+                        width={72}
+                        height={22}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-2 text-right">
                     <span className={`font-mono text-xs ${getRateColor(annualized)}`}>
                       {annualized >= 0 ? '+' : ''}{annualized.toFixed(2)}%
