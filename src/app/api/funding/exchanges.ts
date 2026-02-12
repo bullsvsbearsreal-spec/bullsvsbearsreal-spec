@@ -212,7 +212,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             assetClass: normalized.assetClass,
           };
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter((item: any) => item.fundingRate !== 0); // dYdX returns 0 for many active markets — filter noise
     },
   },
 
@@ -652,14 +653,17 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (!res.ok) return null;
           const json = await res.json();
           if (json.code !== 0 || !json.data) return null;
-          const rate = parseFloat(json.data.latest_funding_rate || json.data.next_funding_rate || '0');
+          // CoinEx returns data as array: [{latest_funding_rate, ...}]
+          const frData = Array.isArray(json.data) ? json.data[0] : json.data;
+          if (!frData) return null;
+          const rate = parseFloat(frData.latest_funding_rate || frData.next_funding_rate || '0');
           return {
             symbol: t.market.replace('USDT', ''),
             exchange: 'CoinEx',
             fundingRate: rate * 100,
-            markPrice: parseFloat(json.data.mark_price || t.mark_price) || 0,
+            markPrice: parseFloat(frData.mark_price || t.mark_price) || 0,
             indexPrice: parseFloat(t.index_price) || 0,
-            nextFundingTime: json.data.next_funding_time ? parseInt(json.data.next_funding_time) : Date.now() + 28800000,
+            nextFundingTime: frData.next_funding_time ? parseInt(frData.next_funding_time) : Date.now() + 28800000,
             type: 'cex' as const,
           };
         } catch { return null; }

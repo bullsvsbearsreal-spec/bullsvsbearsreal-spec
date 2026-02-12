@@ -15,7 +15,7 @@ export const KNOWN_STOCKS = new Set([
   'PLTR', 'UBER', 'ABNB', 'SNOW', 'CRM', 'ORCL', 'SHOP', 'NET', 'BA',
   'DIS', 'JPM', 'V', 'MA', 'WMT', 'KO', 'PEP', 'JNJ', 'PFE', 'LLY',
   'UNH', 'BRK', 'XOM', 'CVX', 'PG', 'NKE', 'MCD', 'HD', 'COST',
-  'CSCO', 'ACN', 'ASML', 'RDDT', 'APP', 'IBM', 'GME', 'GE', 'RACE', 'CRCL',
+  'CSCO', 'ACN', 'ASML', 'RDDT', 'APP', 'IBM', 'GME', 'GE', 'RACE', 'CRCL', 'WDC',
   // ETFs / Indices
   'SPY', 'SPX', 'QQQ', 'IWM', 'DIA', 'ARKK',
 ]);
@@ -140,9 +140,10 @@ function normalizeGateio(raw: string): NormalizeResult {
  */
 function normalizeAster(raw: string): NormalizeResult {
   let symbol = raw;
+  const hadShield = symbol.startsWith('SHIELD');
 
-  // Strip SHIELD prefix (hedge variants)
-  if (symbol.startsWith('SHIELD')) {
+  // Strip SHIELD prefix (hedge variants of stocks/forex/commodities)
+  if (hadShield) {
     symbol = symbol.slice(6); // Remove 'SHIELD'
   }
 
@@ -167,6 +168,10 @@ function normalizeAster(raw: string): NormalizeResult {
       : canonicalForward;
     return { symbol: canonical, assetClass: 'forex' };
   }
+
+  // SHIELD prefix = hedge variant of a non-crypto asset (e.g., SHIELDSTXUSDT = Seagate stock)
+  // If no known classification matched, SHIELD symbols default to stocks
+  if (hadShield) return { symbol, assetClass: 'stocks' };
 
   return { symbol, assetClass: 'crypto' };
 }
