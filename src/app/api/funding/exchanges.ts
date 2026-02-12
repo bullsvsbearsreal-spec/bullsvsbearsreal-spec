@@ -513,7 +513,12 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Bitfinex
+  // Bitfinex — REST /v2/status/deriv returns flat arrays per instrument
+  // Official field mapping (docs.bitfinex.com/reference/rest-public-derivatives-status):
+  //   [0]=KEY, [1]=MTS, [3]=DERIV_PRICE, [4]=SPOT_PRICE, [6]=INSURANCE_FUND_BALANCE,
+  //   [8]=NEXT_FUNDING_EVT_MTS, [9]=NEXT_FUNDING_ACCRUED, [10]=NEXT_FUNDING_STEP,
+  //   [12]=CURRENT_FUNDING (8h rate as fraction), [15]=MARK_PRICE, [18]=OPEN_INTEREST,
+  //   [22]=CLAMP_MIN, [23]=CLAMP_MAX
   {
     name: 'Bitfinex',
     fetcher: async (fetchFn) => {
@@ -526,7 +531,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item[0].replace('t', '').replace('F0:USTF0', ''),
           exchange: 'Bitfinex',
-          fundingRate: (parseFloat(item[9]) || 0) * 100,
+          fundingRate: (parseFloat(item[12]) || 0) * 100, // [12] = CURRENT_FUNDING (8h rate)
           markPrice: parseFloat(item[15]) || 0,
           indexPrice: parseFloat(item[4]) || 0,
           nextFundingTime: item[8] || Date.now() + 28800000,
