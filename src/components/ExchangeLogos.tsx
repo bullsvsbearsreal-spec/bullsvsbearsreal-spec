@@ -127,8 +127,10 @@ export function PhemexLogo({ className = '', size = 24 }: ExchangeLogoProps) {
 export function HyperliquidLogo({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#00D1FF"/>
-      <path fill="#FFFFFF" d="M38 35h50l-25 56-25-56z"/>
+      <rect width="126" height="126" rx="20" fill="#0B1018"/>
+      <ellipse cx="46" cy="63" rx="18" ry="26" fill="#7AEDC1"/>
+      <ellipse cx="80" cy="63" rx="18" ry="26" fill="#7AEDC1"/>
+      <ellipse cx="63" cy="63" rx="8" ry="18" fill="#0B1018"/>
     </svg>
   );
 }
@@ -307,7 +309,7 @@ export const exchangeColors: Record<string, string> = {
   kraken: '#5741D9',
   bingx: '#2354E6',
   phemex: '#C8FF00',
-  hyperliquid: '#00D1FF',
+  hyperliquid: '#7AEDC1',
   gmx: '#2D42FC',
   dydx: '#6966FF',
   aevo: '#000000',
