@@ -301,7 +301,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'Lighter',
-            fundingRate: parseFloat(item.rate || '0') * 100, // 8h-equivalent fraction → %
+            fundingRate: (parseFloat(item.rate || '0') * 100) / 8, // API returns 8h-normalized; divide by 8 for native 1h rate
+            fundingInterval: '1h' as const,
             markPrice: market.price,
             indexPrice: market.price,
             nextFundingTime: Date.now() + 3600000,
