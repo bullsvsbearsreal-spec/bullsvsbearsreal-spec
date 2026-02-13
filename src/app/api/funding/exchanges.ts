@@ -228,7 +228,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           };
         })
         .filter(Boolean)
-        .filter((item: any) => item.fundingRate !== 0) // dYdX returns 0 for many active markets — filter noise
+        // Keep 0% rates — a zero funding rate is valid data (balanced market)
         .filter((item: any) => item.assetClass !== 'forex'); // dYdX forex pairs are illiquid — exclude
     },
   },
@@ -310,7 +310,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             assetClass: normalized.assetClass,
           };
         })
-        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+        .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
 
