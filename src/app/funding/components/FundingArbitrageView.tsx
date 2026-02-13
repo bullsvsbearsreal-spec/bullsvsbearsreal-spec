@@ -6,6 +6,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRate, getExchangeColor } from '../utils';
 import { isExchangeDex } from '@/lib/constants';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from 'lucide-react';
+import Pagination from './Pagination';
 
 interface ArbitrageItem {
   symbol: string;
@@ -20,6 +21,8 @@ interface FundingArbitrageViewProps {
 }
 
 type SortKey = 'spread' | 'annualized' | 'dailyPnl' | 'symbol' | 'oi';
+
+const ROWS_PER_PAGE = 30;
 
 function formatUSD(value: number): string {
   if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
@@ -47,6 +50,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
   const [sortKey, setSortKey] = useState<SortKey>('spread');
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handlePortfolioChange = (val: number) => {
     setPortfolio(val);
@@ -107,8 +111,13 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
         case 'oi': cmp = a.totalOI - b.totalOI; break;
       }
       return sortAsc ? cmp : -cmp;
-    }).slice(0, 30);
+    });
   }, [enriched, sortKey, sortAsc]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / ROWS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIdx = (safeCurrentPage - 1) * ROWS_PER_PAGE;
+  const pageData = sortedData.slice(startIdx, startIdx + ROWS_PER_PAGE);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -187,7 +196,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
             </tr>
           </thead>
           <tbody>
-            {sortedData.map((item, index) => (
+            {pageData.map((item, index) => (
               <>
                 <tr
                   key={item.symbol}
@@ -197,7 +206,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
                   <td className="px-3 py-2 text-neutral-600 text-xs font-mono">
                     <div className="flex items-center gap-1">
                       {expandedRow === item.symbol ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                      {index + 1}
+                      {startIdx + index + 1}
                     </div>
                   </td>
                   <td className="px-3 py-2">
@@ -288,6 +297,15 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
           No arbitrage opportunities found.
         </div>
       )}
+
+      <Pagination
+        currentPage={safeCurrentPage}
+        totalPages={totalPages}
+        totalItems={sortedData.length}
+        rowsPerPage={ROWS_PER_PAGE}
+        onPageChange={setCurrentPage}
+        label="opportunities"
+      />
 
       {/* Footer note */}
       <div className="px-4 py-2 border-t border-white/[0.06]">

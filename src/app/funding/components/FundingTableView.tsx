@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { FundingRateData } from '@/lib/api/types';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -7,10 +10,13 @@ import { formatRate, getRateColor, getExchangeColor } from '../utils';
 import { isValidNumber } from '@/lib/utils/format';
 import { isExchangeDex } from '@/lib/constants';
 import FundingSparkline from './FundingSparkline';
+import Pagination from './Pagination';
 import type { HistoryPoint } from '@/lib/storage/fundingHistory';
 
 type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
 type SortOrder = 'asc' | 'desc';
+
+const ROWS_PER_PAGE = 100;
 
 interface AccumulatedData {
   d1: number;
@@ -36,10 +42,17 @@ function formatOI(value: number): string {
 }
 
 export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap, historyMap, accumulatedMap }: FundingTableViewProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+
   const hasOI = oiMap && oiMap.size > 0;
   const hasHistory = historyMap && historyMap.size > 0;
   const hasAccumulated = accumulatedMap && accumulatedMap.size > 0;
-  const visibleData = data.slice(0, 100);
+
+  const totalPages = Math.max(1, Math.ceil(data.length / ROWS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIdx = (safeCurrentPage - 1) * ROWS_PER_PAGE;
+  const visibleData = data.slice(startIdx, startIdx + ROWS_PER_PAGE);
+
   const hasPredicted = visibleData.some(fr => fr.predictedRate !== undefined && fr.predictedRate !== null);
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -201,11 +214,16 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
           </tbody>
         </table>
       </div>
-      {data.length > 100 && (
-        <div className="px-4 py-2.5 border-t border-white/[0.06] text-center bg-white/[0.01]">
-          <span className="text-neutral-500 text-xs">Showing top 100 of {data.length} results. Use search or filters to narrow down.</span>
-        </div>
-      )}
+
+      <Pagination
+        currentPage={safeCurrentPage}
+        totalPages={totalPages}
+        totalItems={data.length}
+        rowsPerPage={ROWS_PER_PAGE}
+        onPageChange={setCurrentPage}
+        label="results"
+      />
+
       {data.length === 0 && (
         <div className="px-4 py-8 text-center">
           <p className="text-neutral-500 text-sm">No results match your filters</p>
