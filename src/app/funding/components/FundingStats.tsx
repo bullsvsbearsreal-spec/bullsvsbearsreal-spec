@@ -1,4 +1,5 @@
 import { FundingRateData } from '@/lib/api/types';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRate, getRateColor } from '../utils';
 
 interface FundingStatsProps {
@@ -27,6 +28,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
           <div className="flex items-baseline gap-2 mt-0.5">
             <span className="text-lg font-bold text-green-400 font-mono">{formatRate(highestRate.fundingRate)}</span>
             <span className="text-green-400/50 text-xs">{highestRate.symbol}</span>
+            <ExchangeLogo exchange={highestRate.exchange.toLowerCase()} size={14} />
           </div>
         )}
       </div>
@@ -36,6 +38,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
           <div className="flex items-baseline gap-2 mt-0.5">
             <span className="text-lg font-bold text-red-400 font-mono">{formatRate(lowestRate.fundingRate)}</span>
             <span className="text-red-400/50 text-xs">{lowestRate.symbol}</span>
+            <ExchangeLogo exchange={lowestRate.exchange.toLowerCase()} size={14} />
           </div>
         )}
       </div>
