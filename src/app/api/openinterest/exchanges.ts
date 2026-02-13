@@ -127,9 +127,13 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
   {
     name: 'Hyperliquid',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.hyperliquid.xyz/info', {
+      const res = await fetchFn(`https://api.hyperliquid.xyz/info?_t=${Date.now()}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
         body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
       });
       if (!res.ok) return [];

@@ -5,6 +5,8 @@ import { fundingFetchers } from './exchanges';
 
 export const runtime = 'edge';
 export const preferredRegion = 'dxb1';
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 type AssetClassFilter = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'all';
 

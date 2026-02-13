@@ -158,11 +158,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 12000);
       try {
-        const res = await fetch('https://api.hyperliquid.xyz/info', {
+        // Cache-busting: Hyperliquid's CDN can serve stale data to datacenter IPs.
+        // Use unique nonce in body + no-cache headers + Next.js no-store to force fresh response.
+        const res = await fetch(`https://api.hyperliquid.xyz/info?_t=${Date.now()}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+          },
           body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
           signal: controller.signal,
+          cache: 'no-store' as RequestCache,
         });
         clearTimeout(timeout);
         if (!res.ok) return [];
