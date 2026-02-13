@@ -210,7 +210,7 @@ export default function FundingPage() {
       const bAvg = bRates.reduce((sum, fr) => sum + norm(fr), 0) / bRates.length;
       return bAvg - aAvg;
     })
-    .slice(0, 50);
+;
 
   const heatmapData = new Map<string, Map<string, number>>();
   fundingRates.forEach(fr => {
