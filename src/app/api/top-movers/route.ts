@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCache, setCache, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'edge';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-// Cache for 30 minutes
+// L1: In-memory cache (instant, lost on cold start)
 let cachedData: { gainers: any[]; losers: any[] } | null = null;
+let allCoinsCache: any[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes (budget: ~48 calls/day)
 
@@ -16,10 +18,43 @@ let exchangeSymbolsCacheTime = 0;
 const EXCHANGE_SYMBOLS_TTL = 5 * 60 * 1000;
 
 const CMC_API_KEY = process.env.CMC_API_KEY || '';
+const DB_CACHE_KEY = 'top-movers';
+const DB_CACHE_TTL = 1800; // 30 min
 
 export async function GET(request: NextRequest) {
+  const mode = request.nextUrl.searchParams.get('mode');
+  const isHeatmap = mode === 'heatmap';
+
+  // L1: In-memory
   if (cachedData && Date.now() - cacheTime < CACHE_TTL) {
+    if (isHeatmap && allCoinsCache) {
+      return NextResponse.json({ coins: allCoinsCache });
+    }
     return NextResponse.json(cachedData);
+  }
+
+  // L2: DB cache
+  if (isDBConfigured()) {
+    try {
+      if (isHeatmap) {
+        const dbCoins = await getCache<any[]>('heatmap-coins');
+        if (dbCoins) {
+          allCoinsCache = dbCoins;
+          cacheTime = Date.now();
+          return NextResponse.json({ coins: dbCoins });
+        }
+      }
+      const dbData = await getCache<typeof cachedData>(DB_CACHE_KEY);
+      if (dbData) {
+        cachedData = dbData;
+        cacheTime = Date.now();
+        if (isHeatmap) {
+          // DB had top-movers but not heatmap — fall through to fetch
+        } else {
+          return NextResponse.json(cachedData);
+        }
+      }
+    } catch { /* proceed to fetch */ }
   }
 
   try {
@@ -41,7 +76,6 @@ export async function GET(request: NextRequest) {
     const coins = (json.data || [])
       .filter((c: any) =>
         c.quote?.USD?.percent_change_24h != null &&
-        // Only include coins traded on InfoHub exchanges (or all top-500 if exchange fetch failed)
         (exchangeSymbols.size === 0 || exchangeSymbols.has(c.symbol?.toUpperCase()))
       )
       .map((c: any) => ({
@@ -61,7 +95,20 @@ export async function GET(request: NextRequest) {
       gainers: sorted.slice(0, 10),
       losers: sorted.slice(-10).reverse(),
     };
+    allCoinsCache = sorted;
     cacheTime = Date.now();
+
+    // Also cache the full top-500 symbol list for getTop500Symbols() to reuse
+    if (isDBConfigured()) {
+      const allSymbols = (json.data || []).map((c: any) => c.symbol?.toUpperCase()).filter(Boolean);
+      setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
+      setCache('top500-symbols', allSymbols, DB_CACHE_TTL).catch(() => {});
+      setCache('heatmap-coins', sorted, DB_CACHE_TTL).catch(() => {});
+    }
+
+    if (isHeatmap) {
+      return NextResponse.json({ coins: sorted });
+    }
     return NextResponse.json(cachedData);
   } catch (error) {
     console.error('Top movers CMC error:', error);

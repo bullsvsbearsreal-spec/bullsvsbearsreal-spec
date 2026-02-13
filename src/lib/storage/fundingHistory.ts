@@ -269,6 +269,91 @@ function pruneOldSnapshots(maxAge: number): void {
   keysToRemove.forEach(k => localStorage.removeItem(k));
 }
 
+// ─── DB-backed functions (prefer over localStorage when DB is available) ────
+
+/**
+ * Fetch funding history from the database API.
+ * Falls back to localStorage if DB is not available or returns empty.
+ */
+export async function fetchFundingHistoryFromDB(
+  symbol: string,
+  exchange?: string,
+  days: number = 30
+): Promise<HistoryPoint[]> {
+  try {
+    const params = new URLSearchParams({ symbol, days: String(days) });
+    if (exchange) params.set('exchange', exchange);
+
+    const res = await fetch(`/api/history/funding?${params}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.points && json.points.length > 0) {
+      return json.points;
+    }
+  } catch {
+    // DB unavailable — fall through to localStorage
+  }
+
+  // Fallback to localStorage
+  if (exchange) {
+    return getFundingHistory(symbol, exchange, days);
+  }
+  return getSymbolHistory(symbol, days);
+}
+
+/**
+ * Fetch accumulated funding from DB, falling back to localStorage.
+ */
+export async function fetchAccumulatedFromDB(
+  symbol: string,
+  exchange: string
+): Promise<AccumulatedFunding> {
+  try {
+    const res = await fetch(
+      `/api/history/funding?symbol=${symbol}&exchange=${exchange}&days=30`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const points: HistoryPoint[] = json.points || [];
+
+    if (points.length > 0) {
+      const now = Date.now();
+      const cutoff1d = now - 1 * 24 * 60 * 60 * 1000;
+      const cutoff7d = now - 7 * 24 * 60 * 60 * 1000;
+
+      // Group into 8h periods and sum
+      const periodMap = new Map<number, number[]>();
+      points.forEach(p => {
+        const periodStart = Math.floor(p.t / EIGHT_HOURS_MS) * EIGHT_HOURS_MS;
+        if (!periodMap.has(periodStart)) periodMap.set(periodStart, []);
+        periodMap.get(periodStart)!.push(p.rate);
+      });
+
+      let d1 = 0, d7 = 0, d30 = 0;
+      periodMap.forEach((rates, periodStart) => {
+        const avgRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+        d30 += avgRate;
+        if (periodStart >= cutoff7d) d7 += avgRate;
+        if (periodStart >= cutoff1d) d1 += avgRate;
+      });
+
+      return { d1, d7, d30 };
+    }
+  } catch {
+    // DB unavailable
+  }
+
+  // Fallback to localStorage
+  return {
+    d1: getAccumulatedFunding(symbol, exchange, 1),
+    d7: getAccumulatedFunding(symbol, exchange, 7),
+    d30: getAccumulatedFunding(symbol, exchange, 30),
+  };
+}
+
 /**
  * Get storage statistics for debugging.
  */

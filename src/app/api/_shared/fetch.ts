@@ -1,4 +1,5 @@
 // Shared fetch utilities for Edge Runtime API routes
+import { getCache, setCache, isDBConfigured } from '@/lib/db';
 
 // Filter out tokenized stocks, indices, and known non-crypto symbols
 // BingX lists NCSK* (tokenized equities), *X stock indices (AAPLX, NVDAX, SPYX)
@@ -28,9 +29,24 @@ const TOP500_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 const CMC_API_KEY = process.env.CMC_API_KEY || '';
 
 export async function getTop500Symbols(): Promise<Set<string>> {
+  // L1: In-memory cache
   if (top500Cache && Date.now() - top500Cache.timestamp < TOP500_CACHE_TTL) {
     return top500Cache.symbols;
   }
+
+  // L2: DB cache (may have been populated by top-movers route)
+  if (isDBConfigured()) {
+    try {
+      const dbSymbols = await getCache<string[]>('top500-symbols');
+      if (dbSymbols && dbSymbols.length > 100) {
+        const symbols = new Set<string>(dbSymbols);
+        top500Cache = { symbols, timestamp: Date.now() };
+        return symbols;
+      }
+    } catch { /* proceed to CMC */ }
+  }
+
+  // Fetch from CMC
   try {
     const res = await fetch(
       'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=500&sort=market_cap&convert=USD',
@@ -41,11 +57,14 @@ export async function getTop500Symbols(): Promise<Set<string>> {
     );
     if (!res.ok) throw new Error(`CMC top500 failed: ${res.status}`);
     const json = await res.json();
-    const symbols = new Set<string>(
-      (json.data || []).map((c: any) => c.symbol?.toUpperCase()).filter(Boolean)
-    );
+    const symbolArray = (json.data || []).map((c: any) => c.symbol?.toUpperCase()).filter(Boolean);
+    const symbols = new Set<string>(symbolArray);
     if (symbols.size > 100) {
       top500Cache = { symbols, timestamp: Date.now() };
+      // Store in DB for other routes to reuse
+      if (isDBConfigured()) {
+        setCache('top500-symbols', symbolArray, 1800).catch(() => {});
+      }
     }
     return symbols;
   } catch {
