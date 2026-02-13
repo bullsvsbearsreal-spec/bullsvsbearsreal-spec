@@ -267,7 +267,17 @@ export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers:
   if (cached) return cached;
 
   const tickers = await fetchAllTickers();
-  const validTickers = tickers.filter(t => isValidNumber(t.priceChangePercent24h));
+
+  // Count how many exchanges list each symbol
+  const exchangeCount = new Map<string, number>();
+  tickers.forEach(t => exchangeCount.set(t.symbol, (exchangeCount.get(t.symbol) || 0) + 1));
+
+  const validTickers = tickers.filter(t =>
+    isValidNumber(t.priceChangePercent24h) &&
+    t.quoteVolume24h >= 1_000_000 && // Min $1M volume — filters ghost/delisted pairs
+    Math.abs(t.priceChangePercent24h) <= 200 && // Cap at 200% — beyond is squeeze/delisting noise
+    (exchangeCount.get(t.symbol) || 0) >= 2 // Must be on 2+ exchanges (filters ghost pairs)
+  );
   const sorted = [...validTickers].sort((a, b) => b.priceChangePercent24h - a.priceChangePercent24h);
 
   const result = {
