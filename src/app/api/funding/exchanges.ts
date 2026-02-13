@@ -260,7 +260,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Lighter — stocks, forex, commodities + crypto (removed FOREX_SYMBOLS blocklist)
+  // Lighter — stocks, forex, commodities + crypto; funding settles HOURLY
   {
     name: 'Lighter',
     fetcher: async (fetchFn) => {
@@ -276,7 +276,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'Lighter',
-            fundingRate: parseFloat(item.rate || '0') * 100,
+            fundingRate: parseFloat(item.rate || '0') * 100, // native 1h fraction → %
+            fundingInterval: '1h' as const,
             markPrice: 0,
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000,
