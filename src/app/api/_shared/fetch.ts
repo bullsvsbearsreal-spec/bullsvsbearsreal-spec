@@ -21,27 +21,28 @@ export const commonHeaders = {
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
-// Top 500 coins by market cap — cached for 10 minutes
+// Top 500 coins by market cap — cached for 30 minutes (CMC)
 let top500Cache: { symbols: Set<string>; timestamp: number } | null = null;
-const TOP500_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const TOP500_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+const CMC_API_KEY = process.env.CMC_API_KEY || '';
 
 export async function getTop500Symbols(): Promise<Set<string>> {
   if (top500Cache && Date.now() - top500Cache.timestamp < TOP500_CACHE_TTL) {
     return top500Cache.symbols;
   }
   try {
-    const [page1, page2] = await Promise.all([
-      fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false', {
-        headers: commonHeaders,
-        signal: AbortSignal.timeout(8000),
-      }).then(r => r.ok ? r.json() : []),
-      fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=false', {
-        headers: commonHeaders,
-        signal: AbortSignal.timeout(8000),
-      }).then(r => r.ok ? r.json() : []),
-    ]);
+    const res = await fetch(
+      'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=500&sort=market_cap&convert=USD',
+      {
+        headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY, 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+    if (!res.ok) throw new Error(`CMC top500 failed: ${res.status}`);
+    const json = await res.json();
     const symbols = new Set<string>(
-      [...page1, ...page2].map((c: any) => c.symbol?.toUpperCase()).filter(Boolean)
+      (json.data || []).map((c: any) => c.symbol?.toUpperCase()).filter(Boolean)
     );
     if (symbols.size > 100) {
       top500Cache = { symbols, timestamp: Date.now() };
@@ -54,7 +55,7 @@ export async function getTop500Symbols(): Promise<Set<string>> {
 }
 
 export function isTop500Symbol(symbol: string, top500: Set<string>): boolean {
-  // Empty set means CoinGecko failed — allow all to avoid dropping data
+  // Empty set means CMC failed — allow all to avoid dropping data
   if (top500.size === 0) return true;
   return top500.has(symbol.toUpperCase());
 }

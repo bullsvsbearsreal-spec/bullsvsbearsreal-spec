@@ -5,10 +5,12 @@ export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-// Cache the result for 10 minutes to avoid hammering the API
+// Cache the result for 30 minutes to conserve CMC API quota
 let cachedData: { value: number; classification: string; timestamp: number } | null = null;
 let cacheTime = 0;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+const CMC_API_KEY = process.env.CMC_API_KEY || '';
 
 export async function GET() {
   // Return cache if fresh
@@ -16,6 +18,30 @@ export async function GET() {
     return NextResponse.json(cachedData);
   }
 
+  // Try CMC first
+  try {
+    const res = await fetch('https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest', {
+      headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY, 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data) {
+        cachedData = {
+          value: json.data.value ?? 50,
+          classification: json.data.value_classification || 'Neutral',
+          timestamp: json.data.update_time ? new Date(json.data.update_time).getTime() : Date.now(),
+        };
+        cacheTime = Date.now();
+        return NextResponse.json(cachedData);
+      }
+    }
+  } catch (error) {
+    console.error('CMC Fear & Greed error:', error);
+  }
+
+  // Fallback to alternative.me (free, no key needed)
   try {
     const res = await fetch('https://api.alternative.me/fng/?limit=1', {
       signal: AbortSignal.timeout(5000),
@@ -34,29 +60,18 @@ export async function GET() {
         return NextResponse.json(cachedData);
       }
     }
-
-    // Fallback if API fails but we have stale cache
-    if (cachedData) {
-      return NextResponse.json(cachedData);
-    }
-
-    // Ultimate fallback — neutral
-    return NextResponse.json({
-      value: 50,
-      classification: 'Neutral',
-      timestamp: Date.now(),
-    });
   } catch (error) {
-    console.error('Fear & Greed API error:', error);
-
-    if (cachedData) {
-      return NextResponse.json(cachedData);
-    }
-
-    return NextResponse.json({
-      value: 50,
-      classification: 'Neutral',
-      timestamp: Date.now(),
-    });
+    console.error('alternative.me Fear & Greed fallback error:', error);
   }
+
+  // Return stale cache or neutral fallback
+  if (cachedData) {
+    return NextResponse.json(cachedData);
+  }
+
+  return NextResponse.json({
+    value: 50,
+    classification: 'Neutral',
+    timestamp: Date.now(),
+  });
 }

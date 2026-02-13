@@ -122,13 +122,13 @@ export default function CoinPage() {
                 <Share2 className="w-5 h-5 text-neutral-600" />
               </button>
               <a
-                href={`https://www.coingecko.com/en/coins/${coinId}`}
+                href={`https://coinmarketcap.com/currencies/${coinId}/`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-3 bg-hub-yellow/10 hover:bg-hub-yellow/20 text-hub-yellow rounded-xl transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
-                CoinGecko
+                CoinMarketCap
               </a>
             </div>
           </div>
@@ -145,13 +145,25 @@ export default function CoinPage() {
             </div>
             <div className="bg-[#111] rounded-lg p-4">
               <span className="text-xs text-neutral-600 block mb-1">All-Time High</span>
-              <span className="text-success font-bold text-lg">{formatPrice(coin.ath)}</span>
-              <span className="text-xs text-neutral-600 ml-2">{formatPercent(coin.ath_change_percentage)}</span>
+              {coin.ath > 0 ? (
+                <>
+                  <span className="text-success font-bold text-lg">{formatPrice(coin.ath)}</span>
+                  <span className="text-xs text-neutral-600 ml-2">{formatPercent(coin.ath_change_percentage)}</span>
+                </>
+              ) : (
+                <span className="text-neutral-600 font-bold text-lg">N/A</span>
+              )}
             </div>
             <div className="bg-[#111] rounded-lg p-4">
               <span className="text-xs text-neutral-600 block mb-1">All-Time Low</span>
-              <span className="text-error font-bold text-lg">{formatPrice(coin.atl)}</span>
-              <span className="text-xs text-success ml-2">{formatPercent(coin.atl_change_percentage)}</span>
+              {coin.atl > 0 ? (
+                <>
+                  <span className="text-error font-bold text-lg">{formatPrice(coin.atl)}</span>
+                  <span className="text-xs text-success ml-2">{formatPercent(coin.atl_change_percentage)}</span>
+                </>
+              ) : (
+                <span className="text-neutral-600 font-bold text-lg">N/A</span>
+              )}
             </div>
           </div>
         </div>
@@ -277,14 +289,18 @@ export default function CoinPage() {
             <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Price Stats</h3>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-neutral-600 text-sm">24h High</span>
-                  <span className="text-success font-medium">{formatPrice(coin.high_24h)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-600 text-sm">24h Low</span>
-                  <span className="text-error font-medium">{formatPrice(coin.low_24h)}</span>
-                </div>
+                {coin.high_24h > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 text-sm">24h High</span>
+                    <span className="text-success font-medium">{formatPrice(coin.high_24h)}</span>
+                  </div>
+                )}
+                {coin.low_24h > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 text-sm">24h Low</span>
+                    <span className="text-error font-medium">{formatPrice(coin.low_24h)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-neutral-600 text-sm">7d Change</span>
                   <span className={coin.price_change_percentage_7d_in_currency && coin.price_change_percentage_7d_in_currency >= 0 ? 'text-success' : 'text-error'}>
