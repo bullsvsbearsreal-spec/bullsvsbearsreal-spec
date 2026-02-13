@@ -25,10 +25,11 @@ export default function StatsOverview() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [tickers, oiData, fundingRates] = await Promise.all([
+        const [tickers, oiData, fundingRates, moversRes] = await Promise.all([
           fetchAllTickers(),
           fetchAllOpenInterest(),
           fetchAllFundingRates(),
+          fetch('/api/top-movers').then(r => r.json()).catch(() => ({ gainers: [], losers: [] })),
         ]);
 
         const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
@@ -38,34 +39,21 @@ export default function StatsOverview() {
           ? fundingRates.reduce((sum, f) => sum + (f.fundingRate || 0), 0) / fundingRates.length
           : 0;
 
-        // Count exchanges per symbol to filter ghost/delisted pairs
-        const exchangeCount = new Map<string, number>();
-        tickers.forEach((t: any) => exchangeCount.set(t.symbol, (exchangeCount.get(t.symbol) || 0) + 1));
-
-        // Filter for meaningful movers: volume, sane % change, listed on 2+ exchanges
-        const meaningfulTickers = tickers.filter(t =>
-          (t.quoteVolume24h || 0) >= 1_000_000 &&
-          Math.abs(t.priceChangePercent24h || 0) <= 200 &&
-          (exchangeCount.get(t.symbol) || 0) >= 2
-        );
-        const sortedByChange = [...(meaningfulTickers.length > 0 ? meaningfulTickers : tickers)].sort((a, b) =>
-          (b.priceChangePercent24h || 0) - (a.priceChangePercent24h || 0)
-        );
-
-        const topGainer = sortedByChange[0];
-        const topLoser = sortedByChange[sortedByChange.length - 1];
+        // Top gainer/loser from CMC spot market data (accurate, real-time)
+        const topGainerCoin = moversRes.gainers?.[0];
+        const topLoserCoin = moversRes.losers?.[0];
 
         setStats({
           totalVolume,
           totalOI,
           avgFunding,
           topGainer: {
-            symbol: (topGainer?.symbol || '').replace('USDT', ''),
-            change: topGainer?.priceChangePercent24h || 0,
+            symbol: topGainerCoin?.symbol || '-',
+            change: topGainerCoin?.change24h || 0,
           },
           topLoser: {
-            symbol: (topLoser?.symbol || '').replace('USDT', ''),
-            change: topLoser?.priceChangePercent24h || 0,
+            symbol: topLoserCoin?.symbol || '-',
+            change: topLoserCoin?.change24h || 0,
           },
           activeMarkets: tickers.length,
         });

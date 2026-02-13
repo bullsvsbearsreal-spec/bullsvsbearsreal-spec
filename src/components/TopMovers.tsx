@@ -2,22 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import { TokenIconSimple } from './TokenIcon';
-import { fetchTopMovers } from '@/lib/api/aggregator';
-import { TickerData } from '@/lib/api/types';
 import { formatPrice } from '@/lib/utils/format';
 
+interface CMCMover {
+  symbol: string;
+  name: string;
+  slug: string;
+  cmcId: number;
+  price: number;
+  change24h: number;
+  marketCap: number;
+  volume24h: number;
+}
+
 export default function TopMovers() {
-  const [gainers, setGainers] = useState<TickerData[]>([]);
-  const [losers, setLosers] = useState<TickerData[]>([]);
+  const [gainers, setGainers] = useState<CMCMover[]>([]);
+  const [losers, setLosers] = useState<CMCMover[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'gainers' | 'losers'>('gainers');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await fetchTopMovers();
-        setGainers(data.gainers);
-        setLosers(data.losers);
+        const res = await fetch('/api/top-movers');
+        const data = await res.json();
+        setGainers(data.gainers || []);
+        setLosers(data.losers || []);
       } catch (error) {
         console.error('Failed to fetch top movers:', error);
       } finally {
@@ -26,7 +36,7 @@ export default function TopMovers() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -76,13 +86,13 @@ export default function TopMovers() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-neutral-500 font-mono text-xs">
-                  {formatPrice(item.lastPrice)}
+                  {formatPrice(item.price)}
                 </span>
                 <span className={`font-mono font-semibold text-xs min-w-[52px] text-right ${
-                  item.priceChangePercent24h >= 0 ? 'text-green-400' : 'text-red-400'
+                  item.change24h >= 0 ? 'text-green-400' : 'text-red-400'
                 }`}>
-                  {item.priceChangePercent24h >= 0 ? '+' : ''}
-                  {item.priceChangePercent24h.toFixed(2)}%
+                  {item.change24h >= 0 ? '+' : ''}
+                  {item.change24h.toFixed(2)}%
                 </span>
               </div>
             </div>
