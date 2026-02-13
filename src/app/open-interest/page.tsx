@@ -336,9 +336,12 @@ export default function OpenInterestPage() {
                         </div>
                       </td>
                       <td className="px-4 py-2">
-                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getExchangeBadgeColor(oi.exchange)}`}>
-                          {oi.exchange}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <ExchangeLogo exchange={oi.exchange.toLowerCase()} size={16} />
+                          <span className={`text-xs font-medium ${getExchangeBadgeColor(oi.exchange)}`}>
+                            {oi.exchange}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-2 text-right">
                         <span className="text-neutral-500 font-mono">
