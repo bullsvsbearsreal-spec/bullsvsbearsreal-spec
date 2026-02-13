@@ -146,7 +146,7 @@ export default function MarketHeatmapPage() {
 
   const rects = useMemo(() => {
     if (coins.length === 0) return [];
-    return squarify(coins, 0, 0, 100, 100);
+    return squarify(coins, 0, 0, 100, 60);
   }, [coins]);
 
   const stats = useMemo(() => {
@@ -246,11 +246,19 @@ export default function MarketHeatmapPage() {
           </div>
         )}
 
+        {/* Empty state */}
+        {!isLoading && !error && rects.length === 0 && data && (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="text-neutral-500 text-sm mb-2">No heatmap data available</div>
+            <div className="text-neutral-600 text-xs">Market data may be temporarily unavailable</div>
+          </div>
+        )}
+
         {/* Heatmap */}
         {!isLoading && rects.length > 0 && (
           <div
             className="relative w-full bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden"
-            style={{ paddingBottom: '100%' }}
+            style={{ paddingBottom: '60%' }}
             onMouseMove={handleMouseMove}
           >
             <div className="absolute inset-0">

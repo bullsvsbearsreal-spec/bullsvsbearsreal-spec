@@ -4,8 +4,6 @@ import { useState, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
-import { fetchAllOpenInterest, fetchAllFundingRates, fetchAllTickers, aggregateOpenInterestByExchange } from '@/lib/api/aggregator';
-import { OpenInterestData, FundingRateData, TickerData } from '@/lib/api/types';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { RefreshCw, AlertTriangle, BarChart3, Table } from 'lucide-react';
 import {
@@ -78,17 +76,24 @@ export default function ExchangeComparisonPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC');
 
   const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApiData<{
-    oi: OpenInterestData[];
-    funding: FundingRateData[];
-    tickers: TickerData[];
+    oi: any[];
+    funding: any[];
+    tickers: any[];
   }>({
     fetcher: useCallback(async () => {
-      const [oi, funding, tickers] = await Promise.all([
-        fetchAllOpenInterest(),
-        fetchAllFundingRates(),
-        fetchAllTickers(),
+      const [oiRes, fundingRes, tickerRes] = await Promise.all([
+        fetch('/api/openinterest'),
+        fetch('/api/funding'),
+        fetch('/api/tickers'),
       ]);
-      return { oi, funding, tickers };
+      const oiJson = oiRes.ok ? await oiRes.json() : { data: [] };
+      const fundingJson = fundingRes.ok ? await fundingRes.json() : { data: [] };
+      const tickerJson = tickerRes.ok ? await tickerRes.json() : [];
+      return {
+        oi: oiJson.data || [],
+        funding: fundingJson.data || [],
+        tickers: Array.isArray(tickerJson) ? tickerJson : [],
+      };
     }, []),
     refreshInterval: 60000,
   });
@@ -100,10 +105,11 @@ export default function ExchangeComparisonPage() {
     const statsMap = new Map<string, ExchangeStats>();
 
     // OI per exchange
-    oi.forEach(item => {
-      if (!statsMap.has(item.exchange)) {
-        statsMap.set(item.exchange, {
-          exchange: item.exchange,
+    oi.forEach((item: any) => {
+      const ex = item.exchange || 'Unknown';
+      if (!statsMap.has(ex)) {
+        statsMap.set(ex, {
+          exchange: ex,
           totalOI: 0,
           avgFunding: 0,
           symbolCount: 0,
@@ -111,15 +117,16 @@ export default function ExchangeComparisonPage() {
           fundingBySymbol: new Map(),
         });
       }
-      statsMap.get(item.exchange)!.totalOI += item.openInterestValue;
+      statsMap.get(ex)!.totalOI += item.openInterestValue || 0;
     });
 
     // Funding per exchange
     const fundingCounts = new Map<string, { sum: number; count: number }>();
-    funding.forEach(fr => {
-      if (!statsMap.has(fr.exchange)) {
-        statsMap.set(fr.exchange, {
-          exchange: fr.exchange,
+    funding.forEach((fr: any) => {
+      const ex = fr.exchange || 'Unknown';
+      if (!statsMap.has(ex)) {
+        statsMap.set(ex, {
+          exchange: ex,
           totalOI: 0,
           avgFunding: 0,
           symbolCount: 0,
@@ -127,10 +134,10 @@ export default function ExchangeComparisonPage() {
           fundingBySymbol: new Map(),
         });
       }
-      const s = statsMap.get(fr.exchange)!;
+      const s = statsMap.get(ex)!;
       s.fundingBySymbol.set(fr.symbol, fr.fundingRate);
-      if (!fundingCounts.has(fr.exchange)) fundingCounts.set(fr.exchange, { sum: 0, count: 0 });
-      const fc = fundingCounts.get(fr.exchange)!;
+      if (!fundingCounts.has(ex)) fundingCounts.set(ex, { sum: 0, count: 0 });
+      const fc = fundingCounts.get(ex)!;
       fc.sum += fr.fundingRate;
       fc.count += 1;
     });
@@ -142,7 +149,7 @@ export default function ExchangeComparisonPage() {
 
     // Symbol count and volume from tickers
     const tickerSymbolSets = new Map<string, Set<string>>();
-    tickers.forEach(t => {
+    tickers.forEach((t: any) => {
       const ex = t.exchange || 'Unknown';
       if (!statsMap.has(ex)) {
         statsMap.set(ex, {
@@ -194,7 +201,7 @@ export default function ExchangeComparisonPage() {
   const availableSymbols = useMemo(() => {
     if (!data) return ['BTC', 'ETH'];
     const symSet = new Set<string>();
-    data.funding.forEach(fr => symSet.add(fr.symbol));
+    data.funding.forEach((fr: any) => symSet.add(fr.symbol));
     return Array.from(symSet).sort();
   }, [data]);
 
@@ -287,6 +294,14 @@ export default function ExchangeComparisonPage() {
         {isLoading && (
           <div className="flex items-center justify-center py-20">
             <RefreshCw className="w-6 h-6 text-neutral-500 animate-spin" />
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && !error && sorted.length === 0 && data && (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="text-neutral-500 text-sm mb-2">No exchange data available</div>
+            <div className="text-neutral-600 text-xs">Exchange data may be temporarily unavailable</div>
           </div>
         )}
 

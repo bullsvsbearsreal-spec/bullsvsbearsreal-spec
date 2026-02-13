@@ -116,12 +116,24 @@ export default function LongShortPage() {
   }, []);
 
   const chartData = useMemo(() => {
-    if (!data?.points) return [];
-    return data.points.map(p => ({
-      timestamp: p.timestamp,
-      longRatio: p.longRatio,
-      shortRatio: p.shortRatio,
-    }));
+    if (!data) return [];
+    // Handle historical array response
+    if (data.points && data.points.length > 0) {
+      return data.points.map(p => ({
+        timestamp: p.timestamp,
+        longRatio: p.longRatio,
+        shortRatio: p.shortRatio,
+      }));
+    }
+    // Handle single-point fallback response (no points array)
+    if ((data as any).longRatio != null) {
+      return [{
+        timestamp: (data as any).timestamp || Date.now(),
+        longRatio: (data as any).longRatio,
+        shortRatio: (data as any).shortRatio,
+      }];
+    }
+    return [];
   }, [data]);
 
   const latest = chartData.length > 0 ? chartData[chartData.length - 1] : null;
@@ -250,6 +262,13 @@ export default function LongShortPage() {
         {isLoading && (
           <div className="flex items-center justify-center py-20">
             <RefreshCw className="w-6 h-6 text-neutral-500 animate-spin" />
+          </div>
+        )}
+
+        {!isLoading && chartData.length === 0 && !error && (
+          <div className="flex flex-col items-center justify-center py-16 mb-6">
+            <div className="text-neutral-500 text-sm mb-2">No chart data available</div>
+            <div className="text-neutral-600 text-xs">Binance Long/Short data may be temporarily unavailable</div>
           </div>
         )}
 
