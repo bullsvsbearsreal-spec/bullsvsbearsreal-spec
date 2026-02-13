@@ -128,11 +128,11 @@ export default function MarketHeatmapPage() {
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApiData<{ coins: CoinData[] }>({
-    fetcher: async () => {
+    fetcher: useCallback(async () => {
       const res = await fetch('/api/top-movers?mode=heatmap');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
-    },
+    }, []),
     refreshInterval: 60000,
   });
 
