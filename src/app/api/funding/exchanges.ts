@@ -266,21 +266,44 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'Lighter',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates');
-      if (!res.ok) return [];
-      const data = await res.json();
+      // Fetch funding rates + orderBookDetails (for prices & OI) in parallel
+      const [ratesRes, detailsRes] = await Promise.all([
+        fetchFn('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates'),
+        fetchFn('https://mainnet.zklighter.elliot.ai/api/v1/orderBookDetails').catch(() => null),
+      ]);
+      if (!ratesRes.ok) return [];
+      const data = await ratesRes.json();
       const fundingRates = data.funding_rates || data;
       if (!Array.isArray(fundingRates)) return [];
+
+      // Build price/OI lookup from orderBookDetails
+      const priceMap: Record<string, { price: number; oi: number }> = {};
+      if (detailsRes && detailsRes.ok) {
+        try {
+          const details = await detailsRes.json();
+          const books = details.order_book_details || [];
+          for (const b of books) {
+            if (b.symbol && b.last_trade_price) {
+              priceMap[b.symbol] = {
+                price: parseFloat(b.last_trade_price) || 0,
+                oi: parseFloat(b.open_interest) || 0,
+              };
+            }
+          }
+        } catch { /* ignore */ }
+      }
+
       return fundingRates
         .filter((item: any) => item.exchange === 'lighter' && item.symbol)
         .map((item: any) => {
           const normalized = normalizeSymbol(item.symbol, 'lighter');
+          const market = priceMap[item.symbol] || { price: 0, oi: 0 };
           return {
             symbol: normalized.symbol,
             exchange: 'Lighter',
             fundingRate: parseFloat(item.rate || '0') * 100, // 8h-equivalent fraction → %
-            markPrice: 0,
-            indexPrice: 0,
+            markPrice: market.price,
+            indexPrice: market.price,
             nextFundingTime: Date.now() + 3600000,
             type: 'dex' as const,
             assetClass: normalized.assetClass,

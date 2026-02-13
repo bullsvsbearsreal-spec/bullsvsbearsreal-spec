@@ -173,6 +173,30 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
   },
 
 
+  // Lighter — orderBookDetails has open_interest (in base units) + last_trade_price
+  {
+    name: 'Lighter',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://mainnet.zklighter.elliot.ai/api/v1/orderBookDetails');
+      if (!res.ok) return [];
+      const json = await res.json();
+      const books = json.order_book_details || [];
+      return books
+        .filter((b: any) => b.market_type === 'perp' && b.status === 'active' && b.open_interest > 0)
+        .map((b: any) => {
+          const oi = parseFloat(b.open_interest) || 0;
+          const price = parseFloat(b.last_trade_price) || 0;
+          return {
+            symbol: b.symbol,
+            exchange: 'Lighter',
+            openInterest: oi,
+            openInterestValue: oi * price,
+          };
+        })
+        .filter((item: any) => item.openInterestValue > 0);
+    },
+  },
+
   // MEXC — holdVol is in contracts, NOT coins. Need contractSize to convert.
   // Two-step: fetch contract details for multiplier, then ticker for OI + price.
   {
