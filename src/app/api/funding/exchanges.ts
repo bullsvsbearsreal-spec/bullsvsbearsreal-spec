@@ -199,7 +199,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // dYdX v4 (DEX) — nextFundingRate is HOURLY; normalize to 8h equivalent (* 8)
+  // dYdX v4 (DEX) — funding settles HOURLY; return native 1h rate
   {
     name: 'dYdX',
     fetcher: async (fetchFn) => {
@@ -218,7 +218,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'dYdX',
-            fundingRate: rate * 8 * 100, // hourly → 8h, fraction → %
+            fundingRate: rate * 100, // native 1h fraction → %
+            fundingInterval: '1h' as const,
             markPrice: parseFloat(market.oraclePrice) || 0,
             indexPrice: parseFloat(market.oraclePrice) || 0,
             nextFundingTime: Date.now() + 3600000,
