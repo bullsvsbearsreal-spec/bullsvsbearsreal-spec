@@ -26,6 +26,9 @@ export default function LiquidationsPage() {
   const exchangeKey = selectedExchanges.join(',');
   const stableExchanges = useMemo(() => selectedExchanges, [exchangeKey]);
 
+  // Track exchange breakdown per symbol
+  const exchangeBreakdownRef = useRef<Map<string, Record<string, number>>>(new Map());
+
   const { liquidations, connections, stats, aggregated, clearAll } = useMultiExchangeLiquidations({
     exchanges: stableExchanges,
     minValue,
@@ -34,6 +37,11 @@ export default function LiquidationsPage() {
       if (soundEnabled && liq.value >= 100000 && audioRef.current) {
         audioRef.current.play().catch(() => {});
       }
+      // Track exchange breakdown
+      const bd = exchangeBreakdownRef.current;
+      if (!bd.has(liq.symbol)) bd.set(liq.symbol, {});
+      const symBd = bd.get(liq.symbol)!;
+      symBd[liq.exchange] = (symBd[liq.exchange] || 0) + liq.value;
     },
   });
 
@@ -44,6 +52,7 @@ export default function LiquidationsPage() {
   // Reset aggregation on timeframe change
   useEffect(() => {
     clearAll();
+    exchangeBreakdownRef.current.clear();
     startTimeRef.current = Date.now();
   }, [timeframe, clearAll]);
 
@@ -185,6 +194,23 @@ export default function LiquidationsPage() {
           })}
         </div>
 
+        {/* Top Liquidations Ticker */}
+        {liquidations.length > 0 && (
+          <div className="mb-4 overflow-hidden rounded-xl bg-[#0d0d0d] border border-white/[0.06]">
+            <div className="flex animate-scroll-x">
+              {[...liquidations].sort((a, b) => b.value - a.value).slice(0, 15).map((liq, i) => (
+                <div key={liq.id} className="flex items-center gap-2 px-4 py-2 whitespace-nowrap flex-shrink-0">
+                  <span className={`w-1.5 h-1.5 rounded-full ${liq.side === 'long' ? 'bg-red-500' : 'bg-green-500'}`} />
+                  <span className="text-white text-xs font-medium">{liq.symbol}</span>
+                  <span className={`text-xs font-mono ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>{formatValue(liq.value)}</span>
+                  <span className="text-neutral-600 text-[10px]">{liq.exchange}</span>
+                  {i < 14 && <span className="text-neutral-700 mx-1">|</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
@@ -283,7 +309,11 @@ export default function LiquidationsPage() {
                   <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
                     {sortedAggregated.map((item, index) => {
                       const isLongDominant = item.longValue > item.shortValue;
-                      const sizeClass = index < 3 ? 'h-28' : index < 8 ? 'h-24' : 'h-20';
+                      const sizeClass = index < 3 ? 'h-32' : index < 8 ? 'h-28' : 'h-24';
+                      // Exchange breakdown for this symbol
+                      const bd = exchangeBreakdownRef.current.get(item.symbol) || {};
+                      const bdEntries = Object.entries(bd).sort((a, b) => b[1] - a[1]);
+                      const bdTotal = bdEntries.reduce((s, [, v]) => s + v, 0) || 1;
                       return (
                         <div key={item.symbol} className={`${getHeatmapColor(item)} ${sizeClass} rounded-xl p-3 flex flex-col justify-between transition-all hover:scale-[1.02] cursor-pointer`}>
                           <div>
@@ -295,7 +325,23 @@ export default function LiquidationsPage() {
                           </div>
                           <div>
                             <div className="font-semibold text-sm">{formatValue(item.totalValue)}</div>
-                            <div className="opacity-60 text-xs">{isLongDominant ? 'Longs' : 'Shorts'} dominant</div>
+                            <div className="opacity-60 text-xs mb-1">{isLongDominant ? 'Longs' : 'Shorts'} dominant</div>
+                            {/* Exchange breakdown bar */}
+                            {bdEntries.length > 1 && (
+                              <div className="flex h-1.5 rounded-full overflow-hidden bg-black/20">
+                                {bdEntries.slice(0, 4).map(([ex, val]) => (
+                                  <div
+                                    key={ex}
+                                    title={`${ex}: ${formatValue(val)}`}
+                                    className="h-full opacity-80"
+                                    style={{
+                                      width: `${(val / bdTotal) * 100}%`,
+                                      backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : '#888',
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -391,6 +437,16 @@ export default function LiquidationsPage() {
         }
         .animate-pulse-once {
           animation: pulse-once 1s ease-out;
+        }
+        @keyframes scroll-x {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-scroll-x {
+          animation: scroll-x 30s linear infinite;
+        }
+        .animate-scroll-x:hover {
+          animation-play-state: paused;
         }
       `}</style>
     </div>

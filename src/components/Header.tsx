@@ -12,6 +12,9 @@ const navLinks = [
   { name: 'Funding', href: '/funding' },
   { name: 'Open Interest', href: '/open-interest' },
   { name: 'Liquidations', href: '/liquidations' },
+  { name: 'Heatmap', href: '/market-heatmap' },
+  { name: 'Long/Short', href: '/longshort' },
+  { name: 'Exchanges', href: '/exchange-comparison' },
   { name: 'News', href: '/news' },
   { name: 'API', href: '/api-docs' },
 ];
