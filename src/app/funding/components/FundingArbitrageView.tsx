@@ -228,7 +228,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
                     <div className="flex items-center gap-1.5">
                       <ExchangeLogo exchange={item.high.exchange.toLowerCase()} size={14} />
                       <span className="text-xs text-neutral-300">{item.high.exchange}</span>
-                      {isExchangeDex(item.high.exchange) && <span className="px-1 py-0.5 rounded text-[7px] font-bold bg-purple-500/20 text-purple-400">DEX</span>}
+                      {isExchangeDex(item.high.exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
                       <span className="text-red-400 font-mono text-[11px] ml-auto">{formatRate(item.high.rate)}</span>
                     </div>
                   </td>
@@ -236,7 +236,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
                     <div className="flex items-center gap-1.5">
                       <ExchangeLogo exchange={item.low.exchange.toLowerCase()} size={14} />
                       <span className="text-xs text-neutral-300">{item.low.exchange}</span>
-                      {isExchangeDex(item.low.exchange) && <span className="px-1 py-0.5 rounded text-[7px] font-bold bg-purple-500/20 text-purple-400">DEX</span>}
+                      {isExchangeDex(item.low.exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
                       <span className="text-green-400 font-mono text-[11px] ml-auto">{formatRate(item.low.rate)}</span>
                     </div>
                   </td>
@@ -267,7 +267,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
                           <div key={ex.exchange} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.04]">
                             <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={14} />
                             <span className="text-neutral-400 text-[11px]">{ex.exchange}</span>
-                            {isExchangeDex(ex.exchange) && <span className="px-0.5 py-0.5 rounded text-[7px] font-bold bg-purple-500/20 text-purple-400">DEX</span>}
+                            {isExchangeDex(ex.exchange) && <span className="px-0.5 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
                             <span className={`font-mono text-[11px] font-semibold ${ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                               {formatRate(ex.rate)}
                             </span>

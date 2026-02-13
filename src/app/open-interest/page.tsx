@@ -22,6 +22,8 @@ export default function OpenInterestPage() {
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'all' | 'aggregated'>('all');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 100;
 
   const fetchData = async () => {
     try {
@@ -103,7 +105,7 @@ export default function OpenInterestPage() {
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -271,7 +273,7 @@ export default function OpenInterestPage() {
                           <div className="w-32 h-2 bg-white/[0.04] rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-hub-yellow to-hub-orange rounded-full"
-                              style={{ width: `${Math.min(percentage * 2, 100)}%` }}
+                              style={{ width: `${Math.min(percentage, 100)}%` }}
                             />
                           </div>
                         </td>
@@ -322,7 +324,7 @@ export default function OpenInterestPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAndSorted.map((oi, index) => (
+                  {filteredAndSorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((oi, index) => (
                     <tr
                       key={`${oi.symbol}-${oi.exchange}-${index}`}
                       className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
@@ -330,7 +332,7 @@ export default function OpenInterestPage() {
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <span className="text-white font-semibold">{oi.symbol}</span>
-                          <span className="text-neutral-600 text-sm">/USDT</span>
+                          <span className="text-neutral-500 text-sm">/USDT</span>
                         </div>
                       </td>
                       <td className="px-4 py-2">
@@ -339,7 +341,7 @@ export default function OpenInterestPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        <span className="text-neutral-600 font-mono">
+                        <span className="text-neutral-500 font-mono">
                           {oi.openInterest.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                       </td>
@@ -352,8 +354,36 @@ export default function OpenInterestPage() {
               </table>
             </div>
 
+            {/* Pagination */}
+            {filteredAndSorted.length > PAGE_SIZE && (
+              <div className="px-4 py-2.5 border-t border-white/[0.06] flex items-center justify-between">
+                <span className="text-neutral-500 text-xs">
+                  Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, filteredAndSorted.length)} of {filteredAndSorted.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="px-2.5 py-1 rounded text-xs text-neutral-400 hover:text-white bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-neutral-500 text-xs px-2">
+                    {page + 1} / {Math.ceil(filteredAndSorted.length / PAGE_SIZE)}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(Math.ceil(filteredAndSorted.length / PAGE_SIZE) - 1, p + 1))}
+                    disabled={(page + 1) * PAGE_SIZE >= filteredAndSorted.length}
+                    className="px-2.5 py-1 rounded text-xs text-neutral-400 hover:text-white bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
             {filteredAndSorted.length === 0 && !loading && (
-              <div className="p-8 text-center text-neutral-600">
+              <div className="p-8 text-center text-neutral-500">
                 No open interest data found matching your criteria.
               </div>
             )}

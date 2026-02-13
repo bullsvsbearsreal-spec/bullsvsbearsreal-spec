@@ -68,13 +68,13 @@ export default function Home() {
       <TopStatsBar />
       <MarketTicker />
 
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Hero - compact, no animated backgrounds */}
         <section className="mb-6">
           <h1 className="text-xl font-bold text-white mb-1">
             <span className="text-white">info</span>
             <span className="text-hub-yellow">hub</span>
-            <span className="text-neutral-600 font-normal text-sm ml-2">Real-time derivatives data</span>
+            <span className="text-neutral-500 font-normal text-sm ml-2">Real-time derivatives data</span>
           </h1>
 
           <div className="max-w-lg mt-3 mb-4">
@@ -111,7 +111,7 @@ export default function Home() {
 
         {/* Row 1: Fear & Greed + Liquidation Heatmap */}
         <section className="mb-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FearGreedIndex />
             <LiquidationHeatmap />
           </div>
@@ -119,7 +119,7 @@ export default function Home() {
 
         {/* Row 2: Market Indices + Top Movers + Long/Short Ratio */}
         <section className="mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <MarketIndices />
             <TopMovers />
             <LongShortRatio />
@@ -132,7 +132,7 @@ export default function Home() {
             {/* Funding Rates Preview */}
             <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-white font-semibold text-sm">Top Funding</h3>
+                <h2 className="text-white font-semibold text-sm">Top Funding</h2>
                 <Link href="/funding" className="text-hub-yellow text-[10px] hover:underline flex items-center gap-0.5">
                   View All <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -152,12 +152,12 @@ export default function Home() {
                       className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
+                        <span className="text-neutral-500 text-[10px] font-mono w-3">{index + 1}</span>
                         <TokenIconSimple symbol={item.symbol} size={18} />
                         <span className="text-white font-medium text-xs">{item.symbol}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-neutral-600 text-[10px]">{item.exchange}</span>
+                        <span className="text-neutral-500 text-[10px]">{item.exchange}</span>
                         <span className={`font-mono font-semibold text-xs ${
                           item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
@@ -176,7 +176,7 @@ export default function Home() {
             {/* News Preview */}
             <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-white font-semibold text-sm">Latest News</h3>
+                <h2 className="text-white font-semibold text-sm">Latest News</h2>
                 <Link href="/news" className="text-hub-yellow text-[10px] hover:underline flex items-center gap-0.5">
                   View All <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -218,7 +218,7 @@ export default function Home() {
         <section className="mb-6">
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-white font-semibold text-sm">Exchange Status</h3>
+              <h2 className="text-white font-semibold text-sm">Exchange Status</h2>
               <div className="flex items-center gap-1.5">
                 <span className={`h-1.5 w-1.5 rounded-full ${activeExchangeCount > 0 ? 'bg-green-500' : 'bg-neutral-600'}`}></span>
                 <span className="text-[10px] text-neutral-600">
@@ -242,7 +242,7 @@ export default function Home() {
                           ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border border-yellow-500/20'
                           : 'bg-white/[0.03] hover:bg-white/[0.06]'
                     }`}
-                    title={health ? `${health.count} entries · ${health.latencyMs}ms${health.error ? ` · ${health.error}` : ''}` : exchange}
+                    title={health ? `${exchange}: ${health.count} trading pairs · Latency: ${health.latencyMs}ms${health.error ? ` · Error: ${health.error}` : ''}` : exchange}
                   >
                     <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
                       isActive ? 'bg-green-500' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
@@ -269,7 +269,7 @@ function Footer() {
   return (
     <footer className="border-t border-white/[0.04] bg-black">
       <div className="max-w-[1400px] mx-auto px-4 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div>
             <div className="flex items-center gap-1.5 mb-3">
               <span className="text-sm font-bold">

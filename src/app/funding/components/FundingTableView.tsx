@@ -55,10 +55,10 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
     { field: 'exchange', label: 'Exchange', align: 'left' },
     { field: 'fundingRate', label: 'Funding Rate', align: 'right' },
     ...(hasPredicted ? [{ field: 'predictedRate' as SortField, label: 'Predicted', align: 'right' }] : []),
-    ...(hasHistory ? [{ field: null as SortField | null, label: '7d', align: 'center' }] : []),
+    ...(hasHistory ? [{ field: null as SortField | null, label: '7d Trend', align: 'center' }] : []),
     ...(hasAccumulated ? [
-      { field: null as SortField | null, label: 'Acc 1D', align: 'right' },
-      { field: null as SortField | null, label: 'Acc 7D', align: 'right' },
+      { field: null as SortField | null, label: 'Cumul. 1D', align: 'right' },
+      { field: null as SortField | null, label: 'Cumul. 7D', align: 'right' },
     ] : []),
     { field: null, label: 'Annualized', align: 'right' },
     ...(hasOI ? [{ field: null as SortField | null, label: 'Open Interest', align: 'right' }] : []),
@@ -74,10 +74,15 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
               {columns.map(({ field, label, align }) => (
                 <th
                   key={label}
+                  scope="col"
                   className={`px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 ${
                     align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'
                   } ${field ? 'cursor-pointer hover:text-white transition-colors' : ''}`}
                   onClick={field ? () => onSort(field) : undefined}
+                  onKeyDown={field ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSort(field); } } : undefined}
+                  tabIndex={field ? 0 : undefined}
+                  role={field ? 'button' : undefined}
+                  aria-sort={field && sortField === field ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
                 >
                   <div className={`flex items-center gap-1.5 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : ''}`}>
                     {label}
@@ -197,8 +202,14 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
         </table>
       </div>
       {data.length > 100 && (
-        <div className="px-4 py-2 border-t border-white/[0.06] text-center">
-          <span className="text-neutral-600 text-xs">Showing 100 of {data.length} results</span>
+        <div className="px-4 py-2.5 border-t border-white/[0.06] text-center bg-white/[0.01]">
+          <span className="text-neutral-500 text-xs">Showing top 100 of {data.length} results. Use search or filters to narrow down.</span>
+        </div>
+      )}
+      {data.length === 0 && (
+        <div className="px-4 py-8 text-center">
+          <p className="text-neutral-500 text-sm">No results match your filters</p>
+          <p className="text-neutral-600 text-xs mt-1">Try adjusting your search, category, or exchange filters</p>
         </div>
       )}
     </div>

@@ -63,7 +63,7 @@ export default function TopStatsBar() {
     { label: 'OI', value: formatLargeNumber(stats.totalOpenInterest) },
     { label: 'BTC Dom', value: `${stats.btcDominance?.toFixed(1) || '54.2'}%` },
     {
-      label: 'L/S',
+      label: 'Long/Short',
       value: `${stats.btcLongShort.longRatio.toFixed(1)}/${stats.btcLongShort.shortRatio.toFixed(1)}`,
       color: isLongDominant ? 'text-green-400' : 'text-red-400',
     },

@@ -77,7 +77,15 @@ export default function LiquidationsPage() {
     return true;
   });
 
-  const sortedAggregated = Array.from(aggregated.values()).sort((a, b) => b.totalValue - a.totalValue).slice(0, 20);
+  const sortedAggregated = Array.from(aggregated.values())
+    .map(item => {
+      // Apply long/short filter to heatmap
+      if (filter === 'long') return { ...item, totalValue: item.longValue, shortValue: 0 };
+      if (filter === 'short') return { ...item, totalValue: item.shortValue, longValue: 0 };
+      return item;
+    })
+    .filter(item => item.totalValue > 0)
+    .sort((a, b) => b.totalValue - a.totalValue).slice(0, 20);
   const maxValue = Math.max(...sortedAggregated.map(l => l.totalValue), 1);
 
   const formatValue = (value: number) => {
@@ -105,20 +113,20 @@ export default function LiquidationsPage() {
     const isLongDominant = item.longValue > item.shortValue;
     const intensity = Math.min((item.totalValue / maxValue) * 100, 100);
     if (isLongDominant) {
-      if (intensity > 70) return 'bg-red-500';
-      if (intensity > 40) return 'bg-red-600';
-      return 'bg-red-700';
+      if (intensity > 70) return 'bg-red-500 text-white';
+      if (intensity > 40) return 'bg-red-600 text-white';
+      return 'bg-red-700/80 text-red-100';
     } else {
-      if (intensity > 70) return 'bg-green-500';
-      if (intensity > 40) return 'bg-green-600';
-      return 'bg-green-700';
+      if (intensity > 70) return 'bg-green-500 text-white';
+      if (intensity > 40) return 'bg-green-600 text-white';
+      return 'bg-green-700/80 text-green-100';
     }
   };
 
   return (
     <div className="min-h-screen bg-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
@@ -144,7 +152,8 @@ export default function LiquidationsPage() {
             </div>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-xl transition-colors ${soundEnabled ? 'bg-hub-yellow/20 text-hub-yellow' : 'bg-white/[0.04] text-neutral-600'}`}
+              aria-label={soundEnabled ? 'Disable sound alerts' : 'Enable sound alerts'}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${soundEnabled ? 'bg-hub-yellow/20 text-hub-yellow' : 'bg-white/[0.04] text-neutral-500'}`}
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
@@ -182,12 +191,12 @@ export default function LiquidationsPage() {
             <span className="text-neutral-600 text-sm">{timeframe} Liquidations</span>
             <div className="text-sm font-bold font-mono text-white mt-1">{stats.totalLongs + stats.totalShorts}</div>
           </div>
-          <div className="bg-success/10 border border-success/30 rounded-2xl p-5">
+          <div className="bg-success/10 border border-success/30 rounded-xl p-5">
             <span className="text-success text-sm">Longs Rekt</span>
             <div className="text-sm font-bold font-mono text-success mt-1">{stats.totalLongs}</div>
             <div className="text-sm text-success/70">{formatValue(stats.longValue)}</div>
           </div>
-          <div className="bg-danger/10 border border-danger/30 rounded-2xl p-5">
+          <div className="bg-danger/10 border border-danger/30 rounded-xl p-5">
             <span className="text-danger text-sm">Shorts Rekt</span>
             <div className="text-sm font-bold font-mono text-danger mt-1">{stats.totalShorts}</div>
             <div className="text-sm text-danger/70">{formatValue(stats.shortValue)}</div>
@@ -196,7 +205,7 @@ export default function LiquidationsPage() {
             <span className="text-neutral-600 text-sm">Total Value</span>
             <div className="text-sm font-bold font-mono text-white mt-1">{formatValue(stats.longValue + stats.shortValue)}</div>
           </div>
-          <div className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-5">
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-5">
             <span className="text-purple-400 text-sm">Largest Liquidation</span>
             {stats.largestLiq ? (
               <>
@@ -280,13 +289,13 @@ export default function LiquidationsPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <TokenIconSimple symbol={item.symbol} size={20} />
-                              <span className="text-white font-bold text-sm md:text-base">{item.symbol}</span>
+                              <span className="font-bold text-sm md:text-base">{item.symbol}</span>
                             </div>
-                            <div className="text-white/70 text-xs">{item.count} liqs</div>
+                            <div className="opacity-70 text-xs">{item.count} liqs</div>
                           </div>
                           <div>
-                            <div className="text-white font-semibold text-sm">{formatValue(item.totalValue)}</div>
-                            <div className="text-white/60 text-xs">{isLongDominant ? 'Longs' : 'Shorts'} dominant</div>
+                            <div className="font-semibold text-sm">{formatValue(item.totalValue)}</div>
+                            <div className="opacity-60 text-xs">{isLongDominant ? 'Longs' : 'Shorts'} dominant</div>
                           </div>
                         </div>
                       );

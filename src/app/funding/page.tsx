@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, type AssetClassFilter } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
@@ -47,6 +47,19 @@ export default function FundingPage() {
   const [showExchangeSelector, setShowExchangeSelector] = useState(false);
   const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
   const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
+  const exchangeSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Close exchange selector on Escape or click outside
+  useEffect(() => {
+    if (!showExchangeSelector) return;
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowExchangeSelector(false); };
+    const handleClick = (e: MouseEvent) => {
+      if (exchangeSelectorRef.current && !exchangeSelectorRef.current.contains(e.target as Node)) setShowExchangeSelector(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    document.addEventListener('mousedown', handleClick);
+    return () => { window.removeEventListener('keydown', handleKey); document.removeEventListener('mousedown', handleClick); };
+  }, [showExchangeSelector]);
 
   // Get dynamic categories/icons/priorities for current asset class
   const { categories: activeCategories, icons: activeCategoryIcons, prioritySymbols: activePrioritySymbols } = useMemo(
@@ -263,7 +276,7 @@ export default function FundingPage() {
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -289,10 +302,12 @@ export default function FundingPage() {
         </div>
 
         {/* Asset Class Tabs */}
-        <div className="flex items-center gap-1 mb-4 p-1 bg-white/[0.03] rounded-xl border border-white/[0.06] w-fit">
+        <div className="flex items-center gap-1 mb-4 p-1 bg-white/[0.03] rounded-xl border border-white/[0.06] w-fit" role="tablist" aria-label="Asset class">
           {ASSET_CLASS_TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
+              role="tab"
+              aria-selected={assetClass === key}
               onClick={() => handleAssetClassChange(key)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 assetClass === key
@@ -381,11 +396,12 @@ export default function FundingPage() {
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-36 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+                aria-label="Search symbols"
+                className="w-full sm:w-36 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
               />
             )}
 
-            <div className="relative">
+            <div className="relative" ref={exchangeSelectorRef}>
               <button
                 onClick={() => setShowExchangeSelector(!showExchangeSelector)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
@@ -423,7 +439,7 @@ export default function FundingPage() {
                         <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
                         <span className="font-medium">{exchange}</span>
                         {isExchangeDex(exchange) && (
-                          <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>
+                          <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>
                         )}
                         <div className={`ml-auto w-1.5 h-1.5 rounded-full ${EXCHANGE_COLORS[exchange]}`} />
                       </button>

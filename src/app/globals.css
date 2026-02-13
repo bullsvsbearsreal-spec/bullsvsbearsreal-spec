@@ -33,6 +33,9 @@ html { scroll-behavior: smooth; }
 *:focus-visible { outline: 2px solid var(--hub-yellow); outline-offset: 2px; border-radius: 4px; }
 *:focus:not(:focus-visible) { outline: none; }
 
+/* Tooltip: also show on focus */
+.tooltip-trigger:focus-within .tooltip { @apply visible opacity-100; }
+
 body {
   max-width: 100vw; overflow-x: hidden;
   background: #000; color: #e5e5e5;
@@ -188,7 +191,10 @@ body {
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+    animation-duration: 0.2s !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.2s !important; scroll-behavior: auto !important;
+  }
+  .animate-ticker, .animate-pulse, .pulse-success, .pulse-danger {
+    animation: none !important;
   }
 }

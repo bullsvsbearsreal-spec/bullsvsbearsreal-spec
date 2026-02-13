@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import MarketTicker from '@/components/MarketTicker';
 import { Newspaper, ExternalLink, Clock, TrendingUp, Filter, RefreshCw } from 'lucide-react';
 import { fetchCryptoNews, NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
+import Footer from '@/components/Footer';
 
 export default function NewsPage() {
   const [news, setNews] = useState<NewsArticle[]>([]);
@@ -34,12 +35,12 @@ export default function NewsPage() {
       <Header />
       <MarketTicker />
 
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-white">Market News</h1>
-            <p className="text-neutral-600 text-xs mt-0.5">Real-time news from across the market</p>
+            <p className="text-neutral-500 text-xs mt-0.5">Real-time news from across the market</p>
           </div>
           <button
             onClick={refreshNews}
@@ -106,13 +107,7 @@ export default function NewsPage() {
         )}
       </main>
 
-      <footer className="border-t border-white/[0.04] mt-8">
-        <div className="max-w-[1400px] mx-auto px-4 py-6">
-          <p className="text-center text-neutral-700 text-[10px]">
-            &copy; 2026 InfoHub. News powered by CryptoCompare.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -139,7 +134,16 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
               alt=""
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
+                const img = e.target as HTMLImageElement;
+                img.style.display = 'none';
+                const parent = img.parentElement;
+                if (parent) {
+                  parent.classList.add('flex', 'items-center', 'justify-center');
+                  const placeholder = document.createElement('div');
+                  placeholder.className = 'text-neutral-700';
+                  placeholder.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>';
+                  parent.appendChild(placeholder);
+                }
               }}
             />
           </div>

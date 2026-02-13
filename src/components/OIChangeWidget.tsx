@@ -16,21 +16,24 @@ function formatValue(num: number): string {
 export default function OIChangeWidget() {
   const [oiData, setOIData] = useState<OpenInterestData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const data = await fetchOIChanges();
+      setOIData(data);
+      setError(false);
+    } catch (err) {
+      console.error('Failed to fetch OI changes:', err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await fetchOIChanges();
-        setOIData(data);
-      } catch (error) {
-        console.error('Failed to fetch OI changes:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
+    loadData();
+    const interval = setInterval(loadData, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -46,6 +49,11 @@ export default function OIChangeWidget() {
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="animate-pulse h-10 bg-white/[0.03] rounded-lg" />
           ))}
+        </div>
+      ) : error ? (
+        <div className="text-center py-6">
+          <p className="text-neutral-500 text-xs mb-2">Failed to load data</p>
+          <button onClick={() => { setLoading(true); loadData(); }} className="text-hub-yellow text-xs hover:underline">Retry</button>
         </div>
       ) : (
         <div className="space-y-1">

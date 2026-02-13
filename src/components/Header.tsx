@@ -99,10 +99,11 @@ export default function Header() {
             )}
 
             <button
-              className="md:hidden p-2 text-neutral-400 hover:text-white transition-colors"
+              className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
+              aria-controls="mobile-nav"
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -112,20 +113,25 @@ export default function Header() {
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <div className="md:hidden bg-[#0a0a0a] border-t border-white/[0.06]">
+        <div
+          className="md:hidden bg-[#0a0a0a] border-t border-white/[0.06]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
           <div className="p-3">
             <CoinSearch
               onSelect={handleCoinSelect}
               placeholder="Search coins..."
               className="w-full mb-3"
             />
-            <nav className="space-y-0.5">
+            <nav className="space-y-0.5" aria-label="Mobile navigation">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center ${
                     pathname === link.href
                       ? 'bg-hub-yellow/10 text-hub-yellow'
                       : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'

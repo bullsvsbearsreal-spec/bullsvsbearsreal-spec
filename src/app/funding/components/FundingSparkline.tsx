@@ -57,6 +57,8 @@ export default function FundingSparkline({ history, width = 80, height = 24 }: F
         width={width}
         height={height}
         className="overflow-visible"
+        role="img"
+        aria-label={`7-day funding rate trend: ${history[history.length - 1]?.rate >= history[0]?.rate ? 'upward' : 'downward'}`}
         onMouseLeave={() => setTooltip(null)}
       >
         <path

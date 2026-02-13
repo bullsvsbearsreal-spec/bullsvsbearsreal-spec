@@ -26,9 +26,9 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.04]">
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider sticky left-0 bg-[#0d0d0d] z-10">Symbol</th>
+              <th scope="col" className="px-3 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider sticky left-0 bg-[#0d0d0d] z-10">Symbol</th>
               {visibleExchanges.map(ex => (
-                <th key={ex} className="px-1 py-2 text-center text-[10px] font-medium text-neutral-600">
+                <th key={ex} scope="col" className="px-1 py-2 text-center text-[10px] font-medium text-neutral-600">
                   <div className="flex items-center justify-center gap-1">
                     <ExchangeLogo exchange={ex.toLowerCase()} size={14} />
                     <span className="hidden lg:inline">{ex}</span>

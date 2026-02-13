@@ -95,7 +95,11 @@ export default function CoinSearch({
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className={`w-full pl-9 pr-9 ${compact ? 'py-2' : 'py-2.5'} bg-[#111] border border-white/[0.06] rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/30 transition-colors`}
+          aria-label="Search coins"
+          aria-autocomplete="list"
+          aria-expanded={isOpen}
+          role="combobox"
+          className={`w-full pl-9 pr-9 ${compact ? 'py-2' : 'py-2.5'} bg-[#111] border border-white/[0.06] rounded-lg text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/30 transition-colors`}
         />
         {query && (
           <button
