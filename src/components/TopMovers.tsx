@@ -81,7 +81,7 @@ export default function TopMovers() {
             >
               <div className="flex items-center gap-2">
                 <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
-                <TokenIconSimple symbol={item.symbol} size={20} />
+                <TokenIconSimple symbol={item.symbol} size={20} cmcId={item.cmcId} />
                 <span className="text-white font-medium text-xs">{item.symbol}</span>
               </div>
               <div className="flex items-center gap-3">

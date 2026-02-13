@@ -6,6 +6,7 @@ interface TokenIconProps {
   symbol: string;
   size?: number;
   className?: string;
+  cmcId?: number;
 }
 
 // Map common symbol variations to their canonical file names
@@ -141,8 +142,8 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
   );
 }
 
-// Simple version for lists — tries local PNG → local SVG → remote CDN → letter fallback
-export function TokenIconSimple({ symbol, size = 24, className = '' }: TokenIconProps) {
+// Simple version for lists — tries local PNG → local SVG → CMC CDN → GitHub CDN → letter fallback
+export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: TokenIconProps) {
   const normalizedSymbol = symbol.toUpperCase().replace(/[-_]/g, '');
   const mappedSymbol = symbolMap[normalizedSymbol] || normalizedSymbol.toLowerCase();
   const fallbackText = normalizedSymbol.slice(0, 2);
@@ -157,8 +158,20 @@ export function TokenIconSimple({ symbol, size = 24, className = '' }: TokenIcon
       return;
     }
 
-    // Try remote CDN if local SVG failed
+    // Try CMC CDN if local SVG failed (when cmcId is available)
+    if (src.endsWith('.svg') && src.includes('/tokens/') && cmcId) {
+      img.src = `https://s2.coinmarketcap.com/static/img/coins/128x128/${cmcId}.png`;
+      return;
+    }
+
+    // Try GitHub CDN if CMC CDN failed or no cmcId
     if (src.endsWith('.svg') && src.includes('/tokens/')) {
+      img.src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${mappedSymbol}.png`;
+      return;
+    }
+
+    // Try GitHub CDN if CMC CDN failed
+    if (src.includes('coinmarketcap.com')) {
       img.src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${mappedSymbol}.png`;
       return;
     }
@@ -172,7 +185,7 @@ export function TokenIconSimple({ symbol, size = 24, className = '' }: TokenIcon
         </div>
       `;
     }
-  }, [mappedSymbol, size, fallbackText]);
+  }, [mappedSymbol, size, fallbackText, cmcId]);
 
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>
