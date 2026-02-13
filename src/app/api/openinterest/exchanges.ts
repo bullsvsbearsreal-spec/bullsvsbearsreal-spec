@@ -150,16 +150,18 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // dYdX
+  // dYdX — exclude forex pairs (EUR-USD, GBP-USD, etc.)
   {
     name: 'dYdX',
     fetcher: async (fetchFn) => {
+      const DYDX_FOREX = new Set(['EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD', 'SEK', 'NOK', 'TRY', 'ZAR', 'SGD', 'HKD', 'KRW', 'MXN', 'BRL', 'TWD', 'INR']);
       const res = await fetchFn('https://indexer.dydx.trade/v4/perpetualMarkets');
       if (!res.ok) return [];
       const json = await res.json();
       if (!json.markets) return [];
       return Object.entries(json.markets)
         .filter(([key]: [string, any]) => key.endsWith('-USD'))
+        .filter(([key]: [string, any]) => !DYDX_FOREX.has(key.replace('-USD', '')))
         .map(([key, market]: [string, any]) => ({
           symbol: key.replace('-USD', ''),
           exchange: 'dYdX',

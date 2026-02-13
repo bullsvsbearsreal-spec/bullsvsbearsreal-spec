@@ -227,7 +227,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           };
         })
         .filter(Boolean)
-        .filter((item: any) => item.fundingRate !== 0); // dYdX returns 0 for many active markets — filter noise
+        .filter((item: any) => item.fundingRate !== 0) // dYdX returns 0 for many active markets — filter noise
+        .filter((item: any) => item.assetClass !== 'forex'); // dYdX forex pairs are illiquid — exclude
     },
   },
 
