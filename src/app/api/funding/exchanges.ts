@@ -10,6 +10,7 @@ type FundingData = {
   markPrice: number;
   indexPrice: number;
   nextFundingTime: number;
+  fundingInterval?: '1h' | '4h' | '8h'; // Settlement interval (default: 8h)
   type?: 'cex' | 'dex'; // CEX vs DEX classification
   assetClass?: 'crypto' | 'stocks' | 'forex' | 'commodities';
 };
@@ -149,7 +150,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Hyperliquid (DEX) — funding is HOURLY; normalize to 8h equivalent (* 8)
+  // Hyperliquid (DEX) — funding settles HOURLY; return native 1h rate
   {
     name: 'Hyperliquid',
     fetcher: async (_fetchFn) => {
@@ -175,7 +176,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             return {
               symbol: universe[index]?.name || `ASSET${index}`,
               exchange: 'Hyperliquid',
-              fundingRate: fundingRaw * 8 * 100, // hourly → 8h, fraction → %
+              fundingRate: fundingRaw * 100, // native 1h fraction → %
+              fundingInterval: '1h' as const,
               markPrice: parseFloat(item.markPx) || 0,
               indexPrice: parseFloat(item.oraclePx) || 0,
               nextFundingTime: Date.now() + 3600000,

@@ -32,6 +32,7 @@ export interface FundingRateData {
   fundingRate: number;
   fundingTime: number;
   nextFundingTime: number;
+  fundingInterval?: '1h' | '4h' | '8h';
   predictedRate?: number;
   markPrice?: number;
   indexPrice?: number;

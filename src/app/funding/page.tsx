@@ -155,7 +155,13 @@ export default function FundingPage() {
 
   const getSymbolAvgRate = (symbol: string) => {
     const rates = fundingRates.filter(fr => fr.symbol === symbol);
-    return rates.length > 0 ? rates.reduce((sum, fr) => sum + fr.fundingRate, 0) / rates.length : 0;
+    if (rates.length === 0) return 0;
+    // Normalize to 8h basis for cross-exchange comparison
+    const sum8h = rates.reduce((sum, fr) => {
+      const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
+      return sum + fr.fundingRate * mult;
+    }, 0);
+    return sum8h / rates.length;
   };
 
   const allSymbolsWithRates = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
@@ -186,8 +192,9 @@ export default function FundingPage() {
       if (bPriority !== -1) return 1;
       const aRates = fundingRates.filter(fr => fr.symbol === a);
       const bRates = fundingRates.filter(fr => fr.symbol === b);
-      const aAvg = aRates.reduce((sum, fr) => sum + Math.abs(fr.fundingRate), 0) / aRates.length;
-      const bAvg = bRates.reduce((sum, fr) => sum + Math.abs(fr.fundingRate), 0) / bRates.length;
+      const norm = (fr: typeof aRates[0]) => { const m = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1; return Math.abs(fr.fundingRate) * m; };
+      const aAvg = aRates.reduce((sum, fr) => sum + norm(fr), 0) / aRates.length;
+      const bAvg = bRates.reduce((sum, fr) => sum + norm(fr), 0) / bRates.length;
       return bAvg - aAvg;
     })
     .slice(0, 50);
@@ -230,7 +237,10 @@ export default function FundingPage() {
 
   const validRates = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
   const avgRate = validRates.length > 0
-    ? validRates.reduce((sum, fr) => sum + fr.fundingRate, 0) / validRates.length : 0;
+    ? validRates.reduce((sum, fr) => {
+        const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
+        return sum + fr.fundingRate * mult;
+      }, 0) / validRates.length : 0;
   const highestRate = validRates.length > 0
     ? validRates.reduce((max, fr) => fr.fundingRate > max.fundingRate ? fr : max, validRates[0]) : null;
   const lowestRate = validRates.length > 0
@@ -466,7 +476,7 @@ export default function FundingPage() {
               <>
                 <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
                 <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
-                Funding paid every 8h. Annualized = Rate x 3 x 365.
+                Most exchanges pay every 8h. Hyperliquid pays hourly (marked /1h). Annualized adjusts per interval.
               </>
             )}
             {assetClass === 'stocks' && (

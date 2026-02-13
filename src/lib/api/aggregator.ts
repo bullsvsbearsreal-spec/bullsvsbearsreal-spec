@@ -337,11 +337,12 @@ export async function fetchFundingArbitrage(): Promise<Array<{
 
   const fundingRates = await fetchAllFundingRates();
 
-  // Group by symbol
+  // Group by symbol — normalize all rates to 8h basis for fair comparison
   const symbolMap = new Map<string, Array<{ exchange: string; rate: number }>>();
   fundingRates.forEach(fr => {
+    const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
     const existing = symbolMap.get(fr.symbol) || [];
-    existing.push({ exchange: fr.exchange, rate: fr.fundingRate });
+    existing.push({ exchange: fr.exchange, rate: fr.fundingRate * mult });
     symbolMap.set(fr.symbol, existing);
   });
 

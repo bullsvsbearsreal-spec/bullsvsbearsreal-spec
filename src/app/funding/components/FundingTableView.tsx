@@ -89,7 +89,8 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
           </thead>
           <tbody>
             {visibleData.map((fr, index) => {
-              const annualized = fr.fundingRate * 3 * 365;
+              const periodsPerDay = fr.fundingInterval === '1h' ? 24 : fr.fundingInterval === '4h' ? 6 : 3;
+              const annualized = fr.fundingRate * periodsPerDay * 365;
               const hasMarkPrice = isValidNumber(fr.markPrice) && fr.markPrice > 0;
               const pairKey = `${fr.symbol}|${fr.exchange}`;
               const accumulated = hasAccumulated ? accumulatedMap.get(pairKey) : undefined;
@@ -119,6 +120,9 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                     <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
                       {formatRate(fr.fundingRate)}
                     </span>
+                    {fr.fundingInterval && fr.fundingInterval !== '8h' && (
+                      <span className="text-neutral-600 text-[9px] ml-0.5">/{fr.fundingInterval}</span>
+                    )}
                   </td>
                   {hasPredicted && (
                     <td className="px-4 py-2 text-right">

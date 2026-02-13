@@ -100,12 +100,17 @@ export default function SymbolFundingPage() {
     return getAccumulatedFundingBatch(pairs);
   }, [symbolRates]);
 
-  // Stats
+  // Stats — normalize all rates to 8h basis for average comparison
   const stats = useMemo(() => {
     if (symbolRates.length === 0) return null;
-    const rates = symbolRates.map((r: FundingRateData) => r.fundingRate);
-    const avg = rates.reduce((a: number, b: number) => a + b, 0) / rates.length;
-    const sorted = [...symbolRates].sort((a: FundingRateData, b: FundingRateData) => b.fundingRate - a.fundingRate);
+    const normalize8h = (r: FundingRateData) => {
+      if (r.fundingInterval === '1h') return r.fundingRate * 8;
+      if (r.fundingInterval === '4h') return r.fundingRate * 2;
+      return r.fundingRate;
+    };
+    const rates8h = symbolRates.map(normalize8h);
+    const avg = rates8h.reduce((a: number, b: number) => a + b, 0) / rates8h.length;
+    const sorted = [...symbolRates].sort((a: FundingRateData, b: FundingRateData) => normalize8h(b) - normalize8h(a));
     const highest = sorted[0];
     const lowest = sorted[sorted.length - 1];
     let totalOI = 0;
@@ -382,7 +387,8 @@ export default function SymbolFundingPage() {
                     {symbolRates
                       .sort((a: FundingRateData, b: FundingRateData) => b.fundingRate - a.fundingRate)
                       .map((fr: FundingRateData, i: number) => {
-                        const annualized = fr.fundingRate * 3 * 365;
+                        const periodsPerDay = fr.fundingInterval === '1h' ? 24 : fr.fundingInterval === '4h' ? 6 : 3;
+                        const annualized = fr.fundingRate * periodsPerDay * 365;
                         const pairKey = `${fr.symbol}|${fr.exchange}`;
                         const oiVal = oiMap.get(pairKey);
                         const accumulated = accumulatedMap.get(pairKey);
@@ -407,6 +413,9 @@ export default function SymbolFundingPage() {
                               <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
                                 {formatRate(fr.fundingRate)}
                               </span>
+                              {fr.fundingInterval && fr.fundingInterval !== '8h' && (
+                                <span className="text-neutral-600 text-[9px] ml-0.5">/{fr.fundingInterval}</span>
+                              )}
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               {fr.predictedRate !== undefined && fr.predictedRate !== null ? (

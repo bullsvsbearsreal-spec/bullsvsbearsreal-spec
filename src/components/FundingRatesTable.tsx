@@ -42,7 +42,10 @@ export default function FundingRatesTable() {
     ? fundingRates.filter(r => r.symbol === selectedSymbol)
     : fundingRates;
 
-  const calculateAnnualized = (rate: number | undefined | null) => ((rate ?? 0) * 3 * 365).toFixed(2);
+  const calculateAnnualized = (rate: number | undefined | null, interval?: '1h' | '4h' | '8h') => {
+    const periodsPerDay = interval === '1h' ? 24 : interval === '4h' ? 6 : 3;
+    return ((rate ?? 0) * periodsPerDay * 365).toFixed(2);
+  };
   const safeRate = (rate: number | undefined | null) => rate ?? 0;
 
   return (
@@ -143,7 +146,7 @@ export default function FundingRatesTable() {
             </thead>
             <tbody>
               {filteredRates.slice(0, 15).map((rate, index) => {
-                const annualized = parseFloat(calculateAnnualized(rate.fundingRate));
+                const annualized = parseFloat(calculateAnnualized(rate.fundingRate, rate.fundingInterval));
                 return (
                   <tr
                     key={`${rate.symbol}-${rate.exchange}-${index}`}

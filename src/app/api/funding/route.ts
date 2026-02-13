@@ -51,12 +51,15 @@ export async function GET(request: NextRequest) {
     filtered = data.filter(r => r.assetClass === assetClass);
   }
 
-  // Anomaly detection: flag rates > 5% per 8h (1,825% annualized)
-  // This catches API format changes where an exchange returns pre-formatted values
-  const ANOMALY_THRESHOLD = 5; // 5% per 8h
+  // Anomaly detection: flag rates > 1,825% annualized
+  // Threshold per interval: 5% per 8h, 0.625% per 1h, 2.5% per 4h
+  const ANOMALY_THRESHOLD_8H = 5;
   const anomalies: { symbol: string; exchange: string; rate: number; action: string }[] = [];
   filtered = filtered.map(r => {
-    if (Math.abs(r.fundingRate) > ANOMALY_THRESHOLD) {
+    const threshold = r.fundingInterval === '1h' ? ANOMALY_THRESHOLD_8H / 8
+      : r.fundingInterval === '4h' ? ANOMALY_THRESHOLD_8H / 2
+      : ANOMALY_THRESHOLD_8H;
+    if (Math.abs(r.fundingRate) > threshold) {
       anomalies.push({
         symbol: r.symbol,
         exchange: r.exchange,
@@ -64,7 +67,7 @@ export async function GET(request: NextRequest) {
         action: 'capped',
       });
       // Cap to threshold rather than exclude — preserves directional signal
-      return { ...r, fundingRate: Math.sign(r.fundingRate) * ANOMALY_THRESHOLD };
+      return { ...r, fundingRate: Math.sign(r.fundingRate) * threshold };
     }
     return r;
   });
@@ -80,8 +83,8 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now(),
       anomalies: anomalies.length > 0 ? anomalies : undefined,
       normalization: {
-        basis: '8h',
-        note: 'All rates normalized to 8-hour percentage. Hourly exchanges (Hyperliquid, dYdX, Aevo, Coinbase) ×8. 4h exchanges (Kraken) ×2. Per-second (gTrade) ×28800. OKX and CoinEx include native predictedRate. For other exchanges with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges (Hyperliquid, dYdX, gTrade, Coinbase) are excluded from prediction.',
+        basis: 'native',
+        note: 'Rates in native interval percentage. Most exchanges are 8h. Hyperliquid is 1h (fundingInterval field). dYdX, Aevo, Coinbase are hourly but normalized to 8h. Kraken is 4h normalized to 8h. gTrade is per-second normalized to 8h. OKX and CoinEx include native predictedRate. For other exchanges with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
       },
     },
   });
