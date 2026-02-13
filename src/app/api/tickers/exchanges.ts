@@ -74,18 +74,23 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       if (json.code !== '0') return [];
       return json.data
         .filter((t: any) => t.instId.endsWith('-USDT-SWAP'))
-        .map((ticker: any) => ({
-          symbol: ticker.instId.replace('-USDT-SWAP', ''),
-          exchange: 'OKX',
-          lastPrice: parseFloat(ticker.last),
-          price: parseFloat(ticker.last),
-          priceChangePercent24h: ((parseFloat(ticker.last) - parseFloat(ticker.open24h)) / parseFloat(ticker.open24h)) * 100,
-          changePercent24h: ((parseFloat(ticker.last) - parseFloat(ticker.open24h)) / parseFloat(ticker.open24h)) * 100,
-          high24h: parseFloat(ticker.high24h),
-          low24h: parseFloat(ticker.low24h),
-          volume24h: parseFloat(ticker.vol24h),
-          quoteVolume24h: parseFloat(ticker.volCcy24h),
-        }));
+        .map((ticker: any) => {
+          const lastPrice = parseFloat(ticker.last);
+          // volCcy24h is BASE currency volume, not USD — multiply by price for USD volume
+          const baseCurrencyVol = parseFloat(ticker.volCcy24h) || 0;
+          return {
+            symbol: ticker.instId.replace('-USDT-SWAP', ''),
+            exchange: 'OKX',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: ((lastPrice - parseFloat(ticker.open24h)) / parseFloat(ticker.open24h)) * 100,
+            changePercent24h: ((lastPrice - parseFloat(ticker.open24h)) / parseFloat(ticker.open24h)) * 100,
+            high24h: parseFloat(ticker.high24h),
+            low24h: parseFloat(ticker.low24h),
+            volume24h: parseFloat(ticker.vol24h),
+            quoteVolume24h: baseCurrencyVol * lastPrice,
+          };
+        });
     },
   },
 

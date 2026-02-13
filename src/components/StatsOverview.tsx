@@ -38,7 +38,9 @@ export default function StatsOverview() {
           ? fundingRates.reduce((sum, f) => sum + (f.fundingRate || 0), 0) / fundingRates.length
           : 0;
 
-        const sortedByChange = [...tickers].sort((a, b) =>
+        // Filter for meaningful movers: minimum $1M 24h volume to avoid micro-cap noise
+        const meaningfulTickers = tickers.filter(t => (t.quoteVolume24h || 0) >= 1_000_000);
+        const sortedByChange = [...(meaningfulTickers.length > 0 ? meaningfulTickers : tickers)].sort((a, b) =>
           (b.priceChangePercent24h || 0) - (a.priceChangePercent24h || 0)
         );
 
