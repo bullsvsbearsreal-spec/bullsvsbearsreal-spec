@@ -1,7 +1,7 @@
 'use client';
 
 // Exchange logos using real PNG images from /exchanges/ directory
-// Aster and Lighter use SVG fallbacks (no public logo sources available)
+// Lighter uses SVG fallback (no public logo source available)
 
 interface ExchangeLogoProps {
   className?: string;
@@ -13,19 +13,10 @@ const PNG_EXCHANGES = new Set([
   'binance', 'bybit', 'okx', 'bitget', 'deribit', 'htx', 'kucoin',
   'mexc', 'kraken', 'bingx', 'phemex', 'hyperliquid', 'gmx', 'dydx',
   'aevo', 'vertex', 'drift', 'gtrade', 'bitfinex', 'whitebit',
-  'coinbase', 'coinex',
+  'coinbase', 'coinex', 'aster',
 ]);
 
 // SVG fallbacks for exchanges without downloadable logos
-function AsterLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
-  return (
-    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#EC4899"/>
-      <path fill="#FFFFFF" d="M63 25l8 23h24l-19 14 7 23-20-15-20 15 7-23-19-14h24z"/>
-    </svg>
-  );
-}
-
 function LighterLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
@@ -63,7 +54,6 @@ function CryptoComLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
 }
 
 const svgFallbacks: Record<string, React.ComponentType<ExchangeLogoProps>> = {
-  aster: AsterLogoSVG,
   lighter: LighterLogoSVG,
   bitmex: BitMEXLogoSVG,
   gate: GateLogoSVG,
