@@ -38,8 +38,16 @@ export default function StatsOverview() {
           ? fundingRates.reduce((sum, f) => sum + (f.fundingRate || 0), 0) / fundingRates.length
           : 0;
 
-        // Filter for meaningful movers: minimum $1M 24h volume to avoid micro-cap noise
-        const meaningfulTickers = tickers.filter(t => (t.quoteVolume24h || 0) >= 1_000_000);
+        // Count exchanges per symbol to filter ghost/delisted pairs
+        const exchangeCount = new Map<string, number>();
+        tickers.forEach((t: any) => exchangeCount.set(t.symbol, (exchangeCount.get(t.symbol) || 0) + 1));
+
+        // Filter for meaningful movers: volume, sane % change, listed on 2+ exchanges
+        const meaningfulTickers = tickers.filter(t =>
+          (t.quoteVolume24h || 0) >= 1_000_000 &&
+          Math.abs(t.priceChangePercent24h || 0) <= 200 &&
+          (exchangeCount.get(t.symbol) || 0) >= 2
+        );
         const sortedByChange = [...(meaningfulTickers.length > 0 ? meaningfulTickers : tickers)].sort((a, b) =>
           (b.priceChangePercent24h || 0) - (a.priceChangePercent24h || 0)
         );
