@@ -19,7 +19,7 @@ export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const CRON_SECRET = process.env.CRON_SECRET || '';
+const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
 const MAX_SYMBOLS = 100; // Only store top 100 symbols to control storage
 
 export async function GET(request: NextRequest) {
