@@ -26,7 +26,7 @@ const symbolMap: Record<string, string> = {
   'FRAX': 'frax', 'CVX': 'cvx', 'PENDLE': 'pendle', 'SSV': 'ssv', 'EIGEN': 'eigen',
   'ETHFI': 'ethfi', 'W': 'w', 'ENA': 'ena', 'TON': 'ton', 'NOT': 'not',
   'KAS': 'kas', 'RENDER': 'render', 'FET': 'fet', 'AGIX': 'agix', 'OCEAN': 'ocean',
-  'TAO': 'tau', 'WLD': 'wld', 'ARKM': 'arkm', 'CFX': 'cfx', 'MINA': 'mina',
+  'TAO': 'tao', 'WLD': 'wld', 'ARKM': 'arkm', 'CFX': 'cfx', 'MINA': 'mina',
   'ROSE': 'rose', 'ZIL': 'zil', 'KAVA': 'kava', 'OSMO': 'osmo', 'ICP': 'icp',
   'HBAR': 'hbar', 'QNT': 'qnt', 'EGLD': 'egld', 'FLOW': 'flow', 'XTZ': 'xtz',
   'THETA': 'theta', 'NEO': 'neo', 'EOS': 'eos', 'IOTA': 'iota', 'XMR': 'xmr',
@@ -49,6 +49,15 @@ const symbolMap: Record<string, string> = {
   'AI': 'ai', 'XAI': 'xai', 'ACE': 'ace', 'NFP': 'nfp', 'MYRO': 'myro',
   'ONDO': 'ondo', 'AEVO': 'aevo', 'BOME': 'bome', 'SLERF': 'slerf',
   'ETHW': 'ethw', 'POW': 'pow', 'MEW': 'mew', 'TRUMP': 'trump', 'MELANIA': 'melania',
+  // Newer tokens (2024-2025)
+  'PNUT': 'pnut', 'FARTCOIN': 'fartcoin', 'VIRTUAL': 'virtual', 'GOAT': 'goat',
+  'GRASS': 'grass', 'IO': 'io', 'NEIRO': 'neiro', 'POPCAT': 'popcat', 'LISTA': 'lista',
+  'ZRO': 'zro', 'MORPHO': 'morpho', 'SAFE': 'safe', 'USUAL': 'usual', 'HYPE': 'hype',
+  'BERA': 'bera', 'KAITO': 'kaito', 'ANIME': 'anime', 'IP': 'ip', 'S': 'sonic',
+  'SONIC': 'sonic', 'MOG': 'mog', 'BRETT': 'brett', 'ZETA': 'zeta', 'OMNI': 'omni',
+  'DOGS': 'dogs', 'HMSTR': 'hmstr', 'CATI': 'cati', 'PONKE': 'ponke', 'BANANA': 'banana',
+  'ACT': 'act', 'AI16Z': 'ai16z', 'BB': 'bb', 'REZ': 'rez', 'SOLV': 'solv',
+  'NFT': 'nft',
 };
 
 // Local tokens directory has:
