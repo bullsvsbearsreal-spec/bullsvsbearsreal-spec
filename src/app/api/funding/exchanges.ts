@@ -260,7 +260,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Lighter — stocks, forex, commodities + crypto; funding settles HOURLY
+  // Lighter — stocks, forex, commodities + crypto
+  // Lighter settles hourly but their API returns 8h-normalized rates
+  // (confirmed: UI shows rate/8 as "1h", and rate*3*365 matches UI annualized)
   {
     name: 'Lighter',
     fetcher: async (fetchFn) => {
@@ -276,8 +278,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'Lighter',
-            fundingRate: parseFloat(item.rate || '0') * 100, // native 1h fraction → %
-            fundingInterval: '1h' as const,
+            fundingRate: parseFloat(item.rate || '0') * 100, // 8h-equivalent fraction → %
             markPrice: 0,
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000,
