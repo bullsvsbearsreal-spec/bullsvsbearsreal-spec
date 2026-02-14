@@ -46,6 +46,7 @@ const navCategories: NavCategory[] = [
     items: [
       { name: 'Fear & Greed', href: '/fear-greed' },
       { name: 'Whale Alert', href: '/whale-alert' },
+      { name: 'HL Whales', href: '/hl-whales' },
       { name: 'News', href: '/news' },
     ],
   },
