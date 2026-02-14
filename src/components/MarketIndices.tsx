@@ -68,7 +68,7 @@ export default function MarketIndices() {
   }, []);
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+    <div className="card-premium p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-white font-semibold text-sm">Market Index</h3>
         <span className="text-neutral-600 text-[10px]">Key indicators</span>
@@ -85,7 +85,7 @@ export default function MarketIndices() {
           {indices.map((index) => (
             <div
               key={index.name}
-              className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+              className="data-row-premium flex items-center justify-between"
             >
               <span className="text-neutral-400 text-xs">{index.name}</span>
               <div className="flex items-center gap-2">

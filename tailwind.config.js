@@ -44,6 +44,9 @@ module.exports = {
         'fade-in': 'fadeIn 0.3s ease-out',
         'scale-in': 'scaleIn 0.15s ease-out',
         'ticker': 'ticker 30s linear infinite',
+        'mesh': 'meshPulse 8s ease-in-out infinite',
+        'glow-line': 'glowLine 3s ease-in-out infinite',
+        'enter': 'enterUp 0.5s ease-out both',
       },
       keyframes: {
         shimmer: {
@@ -74,10 +77,26 @@ module.exports = {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
         },
+        meshPulse: {
+          '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+          '50%': { opacity: '0.7', transform: 'scale(1.05)' },
+        },
+        glowLine: {
+          '0%, 100%': { opacity: '0.4' },
+          '50%': { opacity: '1' },
+        },
+        enterUp: {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       boxShadow: {
         'glow-sm': '0 0 8px rgba(255, 165, 0, 0.2)',
         'glow-md': '0 0 16px rgba(255, 165, 0, 0.25)',
+        'glow-lg': '0 0 32px rgba(255, 165, 0, 0.15)',
+        'inner-glow': 'inset 0 1px 0 rgba(255, 165, 0, 0.1)',
+        'card': '0 1px 3px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.3)',
+        'card-hover': '0 2px 8px rgba(0,0,0,0.6), 0 12px 32px rgba(0,0,0,0.4), 0 0 1px rgba(255,165,0,0.15)',
       },
     },
   },

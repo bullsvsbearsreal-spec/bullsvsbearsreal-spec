@@ -66,7 +66,7 @@ export default function StatsOverview() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="bg-[#111] border border-white/[0.06] rounded-lg px-3 py-2.5 animate-pulse">
+          <div key={i} className="card-premium px-3 py-2.5 animate-pulse">
             <div className="h-3 w-16 bg-white/[0.06] rounded mb-2" />
             <div className="h-5 w-20 bg-white/[0.06] rounded" />
           </div>
@@ -101,10 +101,10 @@ export default function StatsOverview() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
       {statItems.map((item) => (
-        <div key={item.label} className="bg-[#111] border border-white/[0.06] rounded-lg px-3 py-2.5">
-          <span className="text-neutral-600 text-[10px] uppercase tracking-wider">{item.label}</span>
+        <div key={item.label} className="card-premium px-3 py-2.5">
+          <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-medium">{item.label}</span>
           <div className="flex items-baseline gap-1.5 mt-0.5">
-            <span className={`text-sm font-bold font-mono ${item.color || 'text-white'}`}>
+            <span className={`text-sm font-bold font-mono tabular-nums ${item.color || 'text-white'}`}>
               {item.value}
             </span>
             {item.sub && (

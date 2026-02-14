@@ -40,7 +40,7 @@ export default function FearGreedIndex() {
   const rotation = (displayValue / 100) * 180 - 90;
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 h-full">
+    <div className="card-premium p-4 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-white font-semibold text-sm">Fear & Greed</h3>
         <span className="text-neutral-600 text-[10px]">
