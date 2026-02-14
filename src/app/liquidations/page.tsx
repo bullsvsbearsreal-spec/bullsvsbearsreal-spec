@@ -4,11 +4,11 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import Header from '@/components/Header';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { Zap, RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX, Grid3X3, List } from 'lucide-react';
+import { Zap, RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX, Grid3X3, List, Clock, BarChart3 } from 'lucide-react';
 import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import Footer from '@/components/Footer';
 
-type ViewMode = 'feed' | 'heatmap';
+type ViewMode = 'feed' | 'heatmap' | 'timebucket' | 'pricelevel';
 
 const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX'] as const;
 
@@ -256,6 +256,12 @@ export default function LiquidationsPage() {
             <button onClick={() => setViewMode('heatmap')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'heatmap' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
               <Grid3X3 className="w-4 h-4" /> Heatmap
             </button>
+            <button onClick={() => setViewMode('timebucket')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'timebucket' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
+              <Clock className="w-4 h-4" /> Timeline
+            </button>
+            <button onClick={() => setViewMode('pricelevel')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'pricelevel' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
+              <BarChart3 className="w-4 h-4" /> By Price
+            </button>
           </div>
 
           <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
@@ -354,6 +360,172 @@ export default function LiquidationsPage() {
                 </div>
               </div>
             )}
+
+            {/* Timeline (Time Bucket) View */}
+            {viewMode === 'timebucket' && (() => {
+              // Bucket liquidations into 5-min intervals
+              const bucketMs = 5 * 60 * 1000;
+              const buckets = new Map<number, { long: number; short: number; count: number }>();
+              filteredLiquidations.forEach((liq) => {
+                const bucketKey = Math.floor(liq.timestamp / bucketMs) * bucketMs;
+                const b = buckets.get(bucketKey) || { long: 0, short: 0, count: 0 };
+                if (liq.side === 'long') b.long += liq.value;
+                else b.short += liq.value;
+                b.count++;
+                buckets.set(bucketKey, b);
+              });
+              const bucketArr: Array<{ time: number; long: number; short: number; count: number }> = [];
+              buckets.forEach((v, k) => bucketArr.push({ time: k, ...v }));
+              bucketArr.sort((a, b) => a.time - b.time);
+              const maxBucket = Math.max(...bucketArr.map((b) => b.long + b.short), 1);
+
+              return (
+                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+                  <div className="p-4 border-b border-white/[0.06]">
+                    <h3 className="text-white font-semibold">Liquidation Timeline</h3>
+                    <p className="text-neutral-600 text-sm">5-minute buckets showing liquidation intensity</p>
+                  </div>
+                  {bucketArr.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-neutral-600">
+                      <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
+                      <p className="text-sm">Collecting liquidation data...</p>
+                    </div>
+                  ) : (
+                    <div className="p-4">
+                      <div className="flex items-end gap-1 h-[200px]">
+                        {bucketArr.map((b) => {
+                          const total = b.long + b.short;
+                          const longPct = total > 0 ? (b.long / total) * 100 : 50;
+                          const height = (total / maxBucket) * 100;
+                          return (
+                            <div
+                              key={b.time}
+                              className="flex-1 flex flex-col justify-end min-w-[4px] group relative"
+                              title={`${new Date(b.time).toLocaleTimeString()} — ${b.count} liqs — Long: ${formatValue(b.long)} / Short: ${formatValue(b.short)}`}
+                            >
+                              <div className="w-full rounded-t-sm overflow-hidden" style={{ height: `${height}%` }}>
+                                <div className="bg-red-500/80" style={{ height: `${longPct}%` }} />
+                                <div className="bg-green-500/80" style={{ height: `${100 - longPct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-between mt-2 text-[10px] text-neutral-600">
+                        {bucketArr.length > 0 && <span>{new Date(bucketArr[0].time).toLocaleTimeString()}</span>}
+                        {bucketArr.length > 1 && <span>{new Date(bucketArr[bucketArr.length - 1].time).toLocaleTimeString()}</span>}
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-4 border-t border-white/[0.06] flex items-center justify-center gap-6 text-xs text-neutral-600">
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-500" /><span>Long Liquidations</span></div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500" /><span>Short Liquidations</span></div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Price Level View */}
+            {viewMode === 'pricelevel' && (() => {
+              // Group liquidations by symbol, then by price level clusters
+              const symbolPrices = new Map<string, Array<{ price: number; value: number; side: string }>>();
+              filteredLiquidations.forEach((liq) => {
+                if (!symbolPrices.has(liq.symbol)) symbolPrices.set(liq.symbol, []);
+                symbolPrices.get(liq.symbol)!.push({ price: liq.price, value: liq.value, side: liq.side });
+              });
+
+              // Top 10 symbols by total liquidation value
+              const symbolTotals: Array<{ symbol: string; total: number; entries: Array<{ price: number; value: number; side: string }> }> = [];
+              symbolPrices.forEach((entries, symbol) => {
+                const total = entries.reduce((s, e) => s + e.value, 0);
+                symbolTotals.push({ symbol, total, entries });
+              });
+              symbolTotals.sort((a, b) => b.total - a.total);
+              const top = symbolTotals.slice(0, 8);
+
+              return (
+                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+                  <div className="p-4 border-b border-white/[0.06]">
+                    <h3 className="text-white font-semibold">Liquidations by Price Level</h3>
+                    <p className="text-neutral-600 text-sm">Clustered liquidation levels for top symbols</p>
+                  </div>
+                  {top.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-neutral-600">
+                      <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
+                      <p className="text-sm">Collecting liquidation data...</p>
+                    </div>
+                  ) : (
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {top.map(({ symbol, total, entries }) => {
+                        // Cluster into price bins
+                        const prices = entries.map((e) => e.price).sort((a, b) => a - b);
+                        const minP = prices[0];
+                        const maxP = prices[prices.length - 1];
+                        const range = maxP - minP || 1;
+                        const binCount = Math.min(8, entries.length);
+                        const binSize = range / binCount;
+                        const bins: Array<{ minPrice: number; maxPrice: number; longVal: number; shortVal: number }> = [];
+                        for (let i = 0; i < binCount; i++) {
+                          bins.push({
+                            minPrice: minP + i * binSize,
+                            maxPrice: minP + (i + 1) * binSize,
+                            longVal: 0,
+                            shortVal: 0,
+                          });
+                        }
+                        entries.forEach((e) => {
+                          const idx = Math.min(Math.floor((e.price - minP) / binSize), binCount - 1);
+                          if (idx >= 0 && idx < bins.length) {
+                            if (e.side === 'long') bins[idx].longVal += e.value;
+                            else bins[idx].shortVal += e.value;
+                          }
+                        });
+                        const maxBinVal = Math.max(...bins.map((b) => b.longVal + b.shortVal), 1);
+
+                        return (
+                          <div key={symbol} className="border border-white/[0.04] rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-3">
+                              <TokenIconSimple symbol={symbol} size={18} />
+                              <span className="text-sm font-semibold text-white">{symbol}</span>
+                              <span className="text-xs text-neutral-500">{formatValue(total)}</span>
+                            </div>
+                            <div className="space-y-1">
+                              {bins.map((bin, i) => {
+                                const binTotal = bin.longVal + bin.shortVal;
+                                const width = (binTotal / maxBinVal) * 100;
+                                const longPct = binTotal > 0 ? (bin.longVal / binTotal) * 100 : 0;
+                                return (
+                                  <div key={i} className="flex items-center gap-2">
+                                    <span className="text-[10px] font-mono text-neutral-500 w-24 text-right">
+                                      ${bin.minPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </span>
+                                    <div className="flex-1 h-4 bg-white/[0.04] rounded-sm overflow-hidden flex">
+                                      {bin.longVal > 0 && (
+                                        <div className="bg-red-500/70 h-full" style={{ width: `${longPct * width / 100}%` }} />
+                                      )}
+                                      {bin.shortVal > 0 && (
+                                        <div className="bg-green-500/70 h-full" style={{ width: `${(100 - longPct) * width / 100}%` }} />
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] font-mono text-neutral-600 w-16">
+                                      {binTotal > 0 ? formatValue(binTotal) : ''}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="p-4 border-t border-white/[0.06] flex items-center justify-center gap-6 text-xs text-neutral-600">
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-500" /><span>Long Liquidations</span></div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500" /><span>Short Liquidations</span></div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Live Feed View */}
             {viewMode === 'feed' && (
