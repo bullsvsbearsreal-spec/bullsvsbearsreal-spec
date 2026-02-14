@@ -61,18 +61,53 @@ function jsonOk(data: unknown) {
 async function fetchEthWallet(address: string) {
   const base = 'https://api.etherscan.io/api';
 
-  // Fetch balance, recent txns, and ERC-20 transfers in parallel
-  const [balRes, txRes, tokenRes] = await Promise.all([
-    fetch(`${base}?module=account&action=balance&address=${address}&tag=latest`),
-    fetch(`${base}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc`),
-    fetch(`${base}?module=account&action=tokentx&address=${address}&page=1&offset=20&sort=desc`),
-  ]);
+  // Fetch balance, recent txns, and ERC-20 transfers sequentially to respect
+  // Etherscan's 1-req/5s rate limit for keyless access. We overlap where safe.
+  const balRes = await fetch(
+    `${base}?module=account&action=balance&address=${address}&tag=latest`,
+    { signal: AbortSignal.timeout(10000) },
+  );
+  const balJson = await balRes.json() as { status: string; result: string; message?: string };
 
-  const [balJson, txJson, tokenJson] = await Promise.all([
-    balRes.json() as Promise<{ status: string; result: string }>,
-    txRes.json() as Promise<{ status: string; result: EthTransaction[] }>,
-    tokenRes.json() as Promise<{ status: string; result: EthTokenTransfer[] }>,
-  ]);
+  // If balance call itself returns an error result, Etherscan is blocking us
+  if (balJson.message === 'NOTOK' || balJson.status === '0') {
+    // Still attempt to return what we can — balance might be a string error
+    const rawBal = typeof balJson.result === 'string' && /^\d+$/.test(balJson.result)
+      ? balJson.result
+      : '0';
+    return {
+      chain: 'eth' as const,
+      address,
+      balance: (Number(BigInt(rawBal)) / 1e18).toFixed(6),
+      balanceRaw: Number(BigInt(rawBal)) / 1e18,
+      transactions: [],
+      tokens: [],
+    };
+  }
+
+  // Small delay to stay under rate limit
+  await new Promise(r => setTimeout(r, 1000));
+
+  let txJson: { status: string; result: EthTransaction[] } = { status: '0', result: [] };
+  let tokenJson: { status: string; result: EthTokenTransfer[] } = { status: '0', result: [] };
+
+  try {
+    const txRes = await fetch(
+      `${base}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc`,
+      { signal: AbortSignal.timeout(10000) },
+    );
+    txJson = await txRes.json();
+  } catch { /* swallow — we'll return empty transactions */ }
+
+  await new Promise(r => setTimeout(r, 1000));
+
+  try {
+    const tokenRes = await fetch(
+      `${base}?module=account&action=tokentx&address=${address}&page=1&offset=20&sort=desc`,
+      { signal: AbortSignal.timeout(10000) },
+    );
+    tokenJson = await tokenRes.json();
+  } catch { /* swallow — we'll return empty tokens */ }
 
   // Parse balance (wei -> ETH)
   const balanceWei = BigInt(balJson.result || '0');

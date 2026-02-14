@@ -178,10 +178,17 @@ export default function WalletTrackerPage() {
   }, [tickers]);
 
   /* ---- fetch wallet data ------------------------------------------- */
-  const walletFetcher = useCallback(() => {
-    if (!activeAddress || !activeChain) return Promise.resolve(null);
-    return fetch(`/api/wallet?address=${encodeURIComponent(activeAddress)}&chain=${activeChain}`)
-      .then((r) => r.json()) as Promise<WalletData | null>;
+  const walletFetcher = useCallback(async () => {
+    if (!activeAddress || !activeChain) return null;
+    const res = await fetch(`/api/wallet?address=${encodeURIComponent(activeAddress)}&chain=${activeChain}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    // Ensure arrays are always present
+    return {
+      ...json,
+      transactions: json.transactions ?? [],
+      tokens: json.tokens ?? [],
+    } as WalletData;
   }, [activeAddress, activeChain]);
 
   const {
@@ -485,7 +492,7 @@ export default function WalletTrackerPage() {
             </div>
 
             {/* Token balances (ETH only) */}
-            {activeChain === 'eth' && walletData && walletData.tokens.length > 0 && (
+            {activeChain === 'eth' && walletData && walletData.tokens && walletData.tokens.length > 0 && (
               <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-white/[0.06]">
                   <h3 className="text-sm font-semibold text-white">ERC-20 Tokens</h3>
@@ -528,7 +535,7 @@ export default function WalletTrackerPage() {
                 </div>
               ) : walletError ? (
                 <div className="p-8 text-center text-red-400 text-sm">{walletError}</div>
-              ) : walletData && walletData.transactions.length === 0 ? (
+              ) : walletData && (!walletData.transactions || walletData.transactions.length === 0) ? (
                 <div className="p-8 text-center text-neutral-600 text-sm">No transactions found</div>
               ) : walletData ? (
                 <>
