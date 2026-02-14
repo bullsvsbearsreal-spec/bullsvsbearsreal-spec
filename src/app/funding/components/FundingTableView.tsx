@@ -66,6 +66,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
   const columns: ColumnDef[] = [
     { field: 'symbol', label: 'Symbol', align: 'left' },
     { field: 'exchange', label: 'Exchange', align: 'left' },
+    { field: null, label: 'Interval', align: 'center' },
     { field: 'fundingRate', label: 'Funding Rate', align: 'right' },
     ...(hasPredicted ? [{ field: 'predictedRate' as SortField, label: 'Predicted', align: 'right' }] : []),
     ...(hasHistory ? [{ field: null as SortField | null, label: '7d Trend', align: 'center' }] : []),
@@ -134,16 +135,21 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-2 text-center">
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold leading-none ${
+                      fr.fundingInterval === '1h'
+                        ? 'bg-amber-500/15 text-amber-400'
+                        : fr.fundingInterval === '4h'
+                        ? 'bg-blue-500/15 text-blue-400'
+                        : 'bg-white/[0.04] text-neutral-500'
+                    }`} title={`Funding fee settled every ${fr.fundingInterval === '1h' ? '1 hour' : fr.fundingInterval === '4h' ? '4 hours' : '8 hours'}`}>
+                      {fr.fundingInterval === '1h' ? '1H' : fr.fundingInterval === '4h' ? '4H' : '8H'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
                       {formatRate(fr.fundingRate)}
                     </span>
-                    {fr.fundingInterval === '1h' && (
-                      <span className="text-amber-400 text-[10px] ml-0.5 font-bold cursor-help" title={`${formatRate(fr.fundingRate)} funding fee every 1 hour`}>*</span>
-                    )}
-                    {fr.fundingInterval === '4h' && (
-                      <span className="text-blue-400 text-[10px] ml-0.5 font-bold cursor-help" title={`${formatRate(fr.fundingRate)} funding fee every 4 hours`}>**</span>
-                    )}
                   </td>
                   {hasPredicted && (
                     <td className="px-4 py-2 text-right">
