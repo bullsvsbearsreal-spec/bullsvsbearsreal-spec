@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       while (toolRounds <= MAX_TOOL_ROUNDS) {
         // Check if this round should stream (only the final text response)
         const response = await client.messages.create({
-          model: 'claude-3-5-haiku-latest',
+          model: 'claude-haiku-4-5-20251001',
           max_tokens: MAX_TOKENS,
           system: systemPrompt,
           tools: CHAT_TOOLS,
