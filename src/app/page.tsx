@@ -76,15 +76,17 @@ export default function Home() {
           <div className="absolute inset-0 hero-mesh pointer-events-none" aria-hidden="true" />
 
           <div className="relative">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-white">
                 <span className="text-white">info</span><span className="text-hub-yellow">hub</span>
               </h1>
-              <span className="text-neutral-500 text-sm">Real-time derivatives data</span>
-              <span className="live-dot ml-1" />
+              <span className="live-dot" />
             </div>
+            <p className="text-neutral-500 text-[13px] mb-5">
+              Funding, OI, liquidations & sentiment — pulled from {ALL_EXCHANGES.length} exchanges so you don&apos;t have to.
+            </p>
 
-            <div className="max-w-lg mb-4">
+            <div className="max-w-lg mb-5">
               <CoinSearch
                 onSelect={handleCoinSelect}
                 placeholder="Search any coin for events, unlocks & news..."
