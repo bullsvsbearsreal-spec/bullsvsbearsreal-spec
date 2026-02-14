@@ -164,7 +164,7 @@ export default function ApiDocsPage() {
   return (
     <div className="min-h-screen bg-black">
       <Header />
-      <main className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 page-enter">
         {/* Hero */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-2">InfoHub Public API</h1>

@@ -54,7 +54,7 @@ export default function Pagination({ currentPage, totalPages, totalItems, rowsPe
               onClick={() => onPageChange(page)}
               className={`min-w-[28px] h-7 rounded-md text-xs font-medium transition-colors ${
                 page === currentPage
-                  ? 'bg-hub-yellow text-black'
+                  ? 'bg-hub-yellow text-black shadow-sm shadow-hub-yellow/20'
                   : 'text-neutral-500 hover:text-white hover:bg-white/[0.06]'
               }`}
             >

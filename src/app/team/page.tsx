@@ -37,7 +37,7 @@ export default function TeamPage() {
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main className="max-w-[1400px] mx-auto px-4 py-6 page-enter">
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-white">Team</h1>

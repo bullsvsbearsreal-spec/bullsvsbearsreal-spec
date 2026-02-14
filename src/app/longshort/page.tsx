@@ -145,7 +145,7 @@ export default function LongShortPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 page-enter">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>

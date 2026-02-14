@@ -99,7 +99,7 @@ export default function OpenInterestPage() {
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6 page-enter">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>

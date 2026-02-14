@@ -43,7 +43,7 @@ export default function TopMovers() {
   const items = view === 'gainers' ? gainers : losers;
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+    <div className="card-hub p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-white font-semibold text-sm">Top Movers</h3>
         <div className="flex rounded-md overflow-hidden bg-white/[0.04]">
@@ -77,7 +77,7 @@ export default function TopMovers() {
           {items.slice(0, 5).map((item, index) => (
             <div
               key={item.symbol}
-              className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+              className="flex items-center justify-between px-2.5 py-2 rounded-lg data-row-hub"
             >
               <div className="flex items-center gap-2">
                 <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>

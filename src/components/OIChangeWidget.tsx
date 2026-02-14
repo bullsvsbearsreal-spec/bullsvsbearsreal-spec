@@ -31,7 +31,7 @@ export default function OIChangeWidget() {
   }, []);
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+    <div className="card-hub p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-white font-semibold text-sm">Top Open Interest</h3>
         <span className="text-neutral-600 text-[10px]">By value</span>
@@ -53,7 +53,7 @@ export default function OIChangeWidget() {
           {oiData.slice(0, 5).map((item, index) => (
             <div
               key={`${item.symbol}-${item.exchange}`}
-              className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+              className="flex items-center justify-between px-2.5 py-2 rounded-lg data-row-hub"
             >
               <div className="flex items-center gap-2">
                 <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
