@@ -53,6 +53,13 @@ interface WhaleData {
   positionCount: number;
   positions: WhalePosition[];
   lastUpdated: number;
+  // Leaderboard performance data
+  allTimePnl?: number;
+  allTimeRoi?: number;
+  dayPnl?: number;
+  weekPnl?: number;
+  monthPnl?: number;
+  volume?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -231,13 +238,18 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-            <div className="flex items-center gap-3 mt-0.5">
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               <span className="text-neutral-500 text-xs">
                 {whale.positionCount} position{whale.positionCount !== 1 ? 's' : ''}
               </span>
               <span className={`text-xs font-mono ${pnlColor}`}>
                 uPnL {fmtPnl(totalPnl)}
               </span>
+              {whale.allTimePnl != null && (
+                <span className={`text-xs font-mono ${whale.allTimePnl >= 0 ? 'text-green-500/60' : 'text-red-500/60'}`}>
+                  AT {fmtPnl(whale.allTimePnl)}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -280,6 +292,42 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
               <div className="text-red-400 font-mono text-sm font-bold mt-0.5">{fmtUSD(shortNotional)}</div>
             </div>
           </div>
+
+          {/* Leaderboard performance row */}
+          {(whale.allTimePnl != null || whale.dayPnl != null) && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 pb-3">
+              {whale.allTimePnl != null && (
+                <div className={`${whale.allTimePnl >= 0 ? 'bg-green-500/5' : 'bg-red-500/5'} rounded-lg px-3 py-2`}>
+                  <span className="text-neutral-600 text-[10px] uppercase tracking-wider">All-Time PnL</span>
+                  <div className={`font-mono text-sm font-bold mt-0.5 ${whale.allTimePnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {fmtPnl(whale.allTimePnl)}
+                  </div>
+                </div>
+              )}
+              {whale.dayPnl != null && (
+                <div className={`${whale.dayPnl >= 0 ? 'bg-green-500/5' : 'bg-red-500/5'} rounded-lg px-3 py-2`}>
+                  <span className="text-neutral-600 text-[10px] uppercase tracking-wider">24h PnL</span>
+                  <div className={`font-mono text-sm font-bold mt-0.5 ${whale.dayPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {fmtPnl(whale.dayPnl)}
+                  </div>
+                </div>
+              )}
+              {whale.weekPnl != null && (
+                <div className={`${whale.weekPnl >= 0 ? 'bg-green-500/5' : 'bg-red-500/5'} rounded-lg px-3 py-2`}>
+                  <span className="text-neutral-600 text-[10px] uppercase tracking-wider">7d PnL</span>
+                  <div className={`font-mono text-sm font-bold mt-0.5 ${whale.weekPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {fmtPnl(whale.weekPnl)}
+                  </div>
+                </div>
+              )}
+              {whale.volume != null && whale.volume > 0 && (
+                <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                  <span className="text-neutral-600 text-[10px] uppercase tracking-wider">All-Time Volume</span>
+                  <div className="text-white font-mono text-sm font-bold mt-0.5">{fmtUSD(whale.volume)}</div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Positions header */}
           <div className="flex items-center gap-2 px-4 py-1 text-[10px] uppercase tracking-wider text-neutral-600">
@@ -636,16 +684,17 @@ export default function HLWhalesPage() {
         {/* Info callout */}
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            <span className="text-hub-yellow font-medium">Hyperliquid Whale Tracker</span> monitors the on-chain
-            positions of major traders on Hyperliquid, a decentralized perpetuals exchange.
-            All data is fetched directly from the Hyperliquid L1 blockchain via the public{' '}
+            <span className="text-hub-yellow font-medium">Hyperliquid Whale Tracker</span> dynamically tracks the
+            top traders from the Hyperliquid leaderboard. Whale addresses are fetched from the public leaderboard,
+            then live positions are queried via the{' '}
             <code className="text-neutral-400 bg-white/[0.04] px-1 rounded">clearinghouseState</code> API — no
             authentication needed. <span className="text-green-400">Long</span> = betting on price increase.{' '}
             <span className="text-red-400">Short</span> = betting on price decrease.{' '}
             <span className="text-white">uPnL</span> = unrealized profit/loss.{' '}
+            <span className="text-white">AT PnL</span> = all-time realized + unrealized PnL from leaderboard.{' '}
             <span className="text-white">ROE</span> = return on equity (margin).
             Use the &quot;Track Wallet&quot; button to add any Hyperliquid address.
-            Data refreshes every 60 seconds.
+            Data refreshes every 90 seconds. Leaderboard updates every 5 minutes.
           </p>
         </div>
       </main>

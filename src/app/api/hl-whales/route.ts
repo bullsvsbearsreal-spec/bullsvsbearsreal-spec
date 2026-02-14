@@ -49,6 +49,20 @@ interface HLClearingHouseState {
   time: number;
 }
 
+interface LeaderboardRow {
+  ethAddress: string;
+  accountValue: string;
+  displayName: string | null;
+  windowPerformances: Array<[
+    string, // period: "day" | "week" | "month" | "allTime"
+    { pnl: string; roi: string; vlm: string }
+  ]>;
+}
+
+interface LeaderboardResponse {
+  leaderboardRows: LeaderboardRow[];
+}
+
 export interface WhaleData {
   address: string;
   label: string;
@@ -71,44 +85,86 @@ export interface WhaleData {
     cumulativeFunding: number;
   }>;
   lastUpdated: number;
+  // Leaderboard performance data
+  allTimePnl?: number;
+  allTimeRoi?: number;
+  dayPnl?: number;
+  weekPnl?: number;
+  monthPnl?: number;
+  volume?: number;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Known whale addresses (curated, public)                            */
-/* ------------------------------------------------------------------ */
-
-const WHALE_WALLETS: Array<{ address: string; label: string }> = [
-  // Major known Hyperliquid whales — public on-chain addresses
-  { address: '0x31ca8395cf837de08b24da3f660e77761dfb974b', label: 'HyperWhale' },
-  { address: '0xe5e4e69e2b48e83c41d1a97c1714274c08cb6443', label: 'Whale Alpha' },
-  { address: '0x4a79ba1078e4c7697c386e4cedf82e6f7027d781', label: 'Degen Giant' },
-  { address: '0xb6bfceb19f462dfc3ef7539b18bbdcb65d3a006f', label: 'OI King' },
-  { address: '0x32e5de888caba8b0e40c2fc07c96c4c7a5c7f5a6', label: 'Perp Lord' },
-  { address: '0xd11f24de21e16a16e5abb05fb8b0f0c40c993550', label: 'HL Trader 1' },
-  { address: '0xf35fe4518590d08f2ed2b56a6f0131ab01f5e5c8', label: 'HL Trader 2' },
-  { address: '0x0e82295049054f0fcc6dd22f89a2ddbb81e09650', label: 'Vault Whale' },
-  { address: '0xc64cc00b46150e1c8fa2e4b1027e42da5f3e2472', label: 'Size Master' },
-  { address: '0x6211fd05e4f7af2d83d787d1237a46ae1b21d504', label: 'HL Trader 3' },
-  { address: '0xa079f9c72e47e4c3a73e3a2ec88be2ac6a1d855a', label: 'Leverage Ape' },
-  { address: '0x8588f45d3e80901ae27baa12e13d5fad0f627a91', label: 'Smart Whale' },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Cache                                                              */
 /* ------------------------------------------------------------------ */
 
-const MEM_CACHE_TTL = 60_000; // 1 minute
-const DB_CACHE_TTL = 120;     // 2 minutes
-const CACHE_KEY = 'hl-whales:all';
+const MEM_CACHE_TTL = 90_000;          // 1.5 minutes
+const DB_CACHE_TTL = 180;              // 3 minutes
+const LEADERBOARD_CACHE_TTL = 300_000; // 5 minutes
+const CACHE_KEY = 'hl-whales:v2';
+
 let memCache: { data: WhaleData[]; time: number } | null = null;
+let leaderboardCache: { data: LeaderboardRow[]; time: number } | null = null;
 
 /* ------------------------------------------------------------------ */
-/*  Fetch single whale                                                 */
+/*  Fetch leaderboard (top traders by account value)                   */
+/* ------------------------------------------------------------------ */
+
+async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
+  // Return cached leaderboard if fresh
+  if (leaderboardCache && Date.now() - leaderboardCache.time < LEADERBOARD_CACHE_TTL) {
+    return leaderboardCache.data;
+  }
+
+  try {
+    const res = await fetch('https://stats-data.hyperliquid.xyz/Mainnet/leaderboard', {
+      signal: AbortSignal.timeout(10_000),
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!res.ok) {
+      // Return stale cache on error
+      if (leaderboardCache) return leaderboardCache.data;
+      throw new Error(`Leaderboard API returned ${res.status}`);
+    }
+
+    const data = (await res.json()) as LeaderboardResponse;
+    const rows = data.leaderboardRows || [];
+
+    // Cache the leaderboard
+    leaderboardCache = { data: rows, time: Date.now() };
+    return rows;
+  } catch {
+    // Return stale cache on error
+    if (leaderboardCache) return leaderboardCache.data;
+    return [];
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Extract performance data from leaderboard row                      */
+/* ------------------------------------------------------------------ */
+
+function extractPerformance(row: LeaderboardRow) {
+  const perf: Record<string, { pnl: number; roi: number; vlm: number }> = {};
+  for (const [period, data] of row.windowPerformances) {
+    perf[period] = {
+      pnl: parseFloat(data.pnl) || 0,
+      roi: parseFloat(data.roi) || 0,
+      vlm: parseFloat(data.vlm) || 0,
+    };
+  }
+  return perf;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Fetch single whale's positions                                     */
 /* ------------------------------------------------------------------ */
 
 async function fetchWhaleState(
   address: string,
   label: string,
+  leaderboardPerf?: Record<string, { pnl: number; roi: number; vlm: number }>,
 ): Promise<WhaleData | null> {
   try {
     const res = await fetch('https://api.hyperliquid.xyz/info', {
@@ -160,6 +216,13 @@ async function fetchWhaleState(
       positionCount: positions.length,
       positions,
       lastUpdated: data.time || Date.now(),
+      // Leaderboard performance data (if available)
+      allTimePnl: leaderboardPerf?.allTime?.pnl,
+      allTimeRoi: leaderboardPerf?.allTime?.roi,
+      dayPnl: leaderboardPerf?.day?.pnl,
+      weekPnl: leaderboardPerf?.week?.pnl,
+      monthPnl: leaderboardPerf?.month?.pnl,
+      volume: leaderboardPerf?.allTime?.vlm,
     };
   } catch {
     return null;
@@ -167,25 +230,46 @@ async function fetchWhaleState(
 }
 
 /* ------------------------------------------------------------------ */
-/*  Fetch all whales (with concurrency control)                        */
+/*  Fetch all whales (dynamic from leaderboard)                        */
 /* ------------------------------------------------------------------ */
 
 async function fetchAllWhales(): Promise<WhaleData[]> {
-  // Fetch in batches of 4 to respect rate limits (weight 2 each, 1200 req/min)
-  const batchSize = 4;
+  // Step 1: Get top traders from the leaderboard
+  const leaderboardRows = await fetchLeaderboard();
+
+  if (leaderboardRows.length === 0) {
+    return [];
+  }
+
+  // Step 2: Pick the top 30 by account value (leaderboard is pre-sorted)
+  // Filter out very small accounts and known vault addresses
+  const HLP_VAULT = '0xdfc24b077bc1425ad1dea75bcb6f8158e10df303';
+  const candidates = leaderboardRows
+    .filter((r) => {
+      const av = parseFloat(r.accountValue) || 0;
+      return av >= 100_000 && r.ethAddress.toLowerCase() !== HLP_VAULT.toLowerCase();
+    })
+    .slice(0, 30);
+
+  // Step 3: Fetch positions for each in batches of 5
+  const batchSize = 5;
   const results: WhaleData[] = [];
 
-  for (let i = 0; i < WHALE_WALLETS.length; i += batchSize) {
-    const batch = WHALE_WALLETS.slice(i, i + batchSize);
+  for (let i = 0; i < candidates.length; i += batchSize) {
+    const batch = candidates.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map((w) => fetchWhaleState(w.address, w.label)),
+      batch.map((row) => {
+        const label = row.displayName || `Whale ${row.ethAddress.slice(0, 6)}`;
+        const perf = extractPerformance(row);
+        return fetchWhaleState(row.ethAddress, label, perf);
+      }),
     );
     for (const r of batchResults) {
       if (r) results.push(r);
     }
-    // Small delay between batches
-    if (i + batchSize < WHALE_WALLETS.length) {
-      await new Promise((r) => setTimeout(r, 200));
+    // Small delay between batches to respect rate limits
+    if (i + batchSize < candidates.length) {
+      await new Promise((r) => setTimeout(r, 150));
     }
   }
 
