@@ -7,7 +7,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatRate, getRateColor, getExchangeColor } from '../utils';
-import { isValidNumber } from '@/lib/utils/format';
+import { isValidNumber, formatUSD } from '@/lib/utils/format';
 import { isExchangeDex } from '@/lib/constants';
 import FundingSparkline from './FundingSparkline';
 import Pagination from './Pagination';
@@ -32,13 +32,6 @@ interface FundingTableViewProps {
   oiMap?: Map<string, number>;
   historyMap?: Map<string, HistoryPoint[]>;
   accumulatedMap?: Map<string, AccumulatedData>;
-}
-
-function formatOI(value: number): string {
-  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-  if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
 }
 
 export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap, historyMap, accumulatedMap }: FundingTableViewProps) {
@@ -203,7 +196,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                       {(() => {
                         const oiVal = oiMap.get(pairKey);
                         return oiVal ? (
-                          <span className="text-neutral-400 font-mono text-xs">{formatOI(oiVal)}</span>
+                          <span className="text-neutral-400 font-mono text-xs">{formatUSD(oiVal)}</span>
                         ) : (
                           <span className="text-neutral-700 text-xs">-</span>
                         );

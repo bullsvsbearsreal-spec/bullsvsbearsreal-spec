@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import { useMultiExchangeLiquidations } from '@/hooks/useMultiExchangeLiquidations';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { AlertTriangle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { formatLiqValue, formatPrice, formatRelativeTime } from '@/lib/utils/format';
 
 const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX'] as const;
 
@@ -15,28 +16,6 @@ const VALUE_THRESHOLDS = [
   { label: '$1M', value: 1_000_000 },
   { label: '$5M', value: 5_000_000 },
 ] as const;
-
-function formatValue(v: number): string {
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
-  return `$${v.toFixed(0)}`;
-}
-
-function formatPrice(p: number): string {
-  if (p >= 1_000) return `$${p.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (p >= 1) return `$${p.toFixed(2)}`;
-  return `$${p.toPrecision(4)}`;
-}
-
-function timeAgo(ts: number): string {
-  const seconds = Math.floor((Date.now() - ts) / 1000);
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
 
 export default function WhaleAlertPage() {
   const [minValue, setMinValue] = useState(100_000);
@@ -148,7 +127,7 @@ export default function WhaleAlertPage() {
           {/* Total Value */}
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Total Value</p>
-            <p className="text-2xl font-bold tabular-nums">{formatValue(whaleStats.totalValue)}</p>
+            <p className="text-2xl font-bold tabular-nums">{formatLiqValue(whaleStats.totalValue)}</p>
             <p className="text-xs text-neutral-500 mt-1">above {VALUE_THRESHOLDS.find(t => t.value === minValue)?.label}</p>
           </div>
 
@@ -156,7 +135,7 @@ export default function WhaleAlertPage() {
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Biggest Single Liq</p>
             <p className="text-2xl font-bold tabular-nums">
-              {whaleStats.biggest ? formatValue(whaleStats.biggest.value) : '--'}
+              {whaleStats.biggest ? formatLiqValue(whaleStats.biggest.value) : '--'}
             </p>
             {whaleStats.biggest && (
               <p className="text-xs text-neutral-500 mt-1">
@@ -361,7 +340,7 @@ function LiquidationRow({ liq, isNew }: { liq: { id: string; symbol: string; sid
       {/* Value */}
       <div className="text-right">
         <span className={`text-sm font-bold tabular-nums ${liq.value >= 1_000_000 ? 'text-yellow-400' : 'text-white'}`}>
-          {formatValue(liq.value)}
+          {formatLiqValue(liq.value)}
         </span>
       </div>
 
@@ -372,7 +351,7 @@ function LiquidationRow({ liq, isNew }: { liq: { id: string; symbol: string; sid
 
       {/* Time Ago */}
       <div className="text-right text-xs text-neutral-500 tabular-nums">
-        {timeAgo(liq.timestamp)}
+        {formatRelativeTime(liq.timestamp)}
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ import { fetchAllFundingRates, fetchAllOpenInterest } from '@/lib/api/aggregator
 import { FundingRateData, OpenInterestData } from '@/lib/api/types';
 import { isExchangeDex } from '@/lib/constants';
 import { formatRate, getRateColor } from '../utils';
-import { isValidNumber } from '@/lib/utils/format';
+import { isValidNumber, formatUSD } from '@/lib/utils/format';
 import { getFundingHistory, getAccumulatedFundingBatch, type HistoryPoint, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
 import FundingSparkline from '../components/FundingSparkline';
 import {
@@ -47,13 +47,6 @@ const EXCHANGE_HEX: Record<string, string> = {
 };
 
 type TimeRange = '7d' | '30d';
-
-function formatOI(value: number): string {
-  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-  if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
-}
 
 export default function SymbolFundingPage() {
   const params = useParams();
@@ -263,7 +256,7 @@ export default function SymbolFundingPage() {
                     Total OI
                   </div>
                   <div className="text-lg font-bold font-mono text-white">
-                    {stats.totalOI > 0 ? formatOI(stats.totalOI) : '—'}
+                    {stats.totalOI > 0 ? formatUSD(stats.totalOI) : '—'}
                   </div>
                   <div className="text-neutral-600 text-xs mt-1">
                     {stats.count} exchanges
@@ -463,7 +456,7 @@ export default function SymbolFundingPage() {
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               {oiVal ? (
-                                <span className="text-neutral-400 font-mono text-xs">{formatOI(oiVal)}</span>
+                                <span className="text-neutral-400 font-mono text-xs">{formatUSD(oiVal)}</span>
                               ) : (
                                 <span className="text-neutral-700 text-xs">—</span>
                               )}

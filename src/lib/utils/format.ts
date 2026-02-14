@@ -96,3 +96,38 @@ export function formatTime(timestamp: number): string {
     minute: '2-digit',
   });
 }
+
+/**
+ * Format USD value with K/M/B suffix (handles negatives via Math.abs)
+ * Replaces: formatOI, fmtUSD, formatValue, fmt across 11+ files
+ */
+export function formatUSD(num: SafeNumber, decimals?: number): string {
+  if (num === undefined || num === null || isNaN(num)) return '$0';
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(decimals ?? 2)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(decimals ?? 2)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(decimals ?? 1)}K`;
+  return `${sign}$${abs.toFixed(decimals ?? 0)}`;
+}
+
+/**
+ * Format quantity (no $ sign, adaptive decimals)
+ */
+export function formatQty(n: SafeNumber): string {
+  if (n === undefined || n === null || isNaN(n)) return '0';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(4) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(4) + 'K';
+  if (n >= 1) return n.toFixed(4);
+  return n.toFixed(8);
+}
+
+/**
+ * Format liquidation value with tiered decimals
+ */
+export function formatLiqValue(num: SafeNumber): string {
+  if (num === undefined || num === null || isNaN(num)) return '$0';
+  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+  if (num >= 1e3) return `$${(num / 1e3).toFixed(1)}K`;
+  return `$${num.toFixed(0)}`;
+}

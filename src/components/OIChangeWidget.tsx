@@ -4,14 +4,7 @@ import { useState, useEffect } from 'react';
 import { TokenIconSimple } from './TokenIcon';
 import { fetchOIChanges } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
-
-function formatValue(num: number): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0';
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  if (num >= 1e3) return `$${(num / 1e3).toFixed(1)}K`;
-  return `$${num.toFixed(0)}`;
-}
+import { formatUSD } from '@/lib/utils/format';
 
 export default function OIChangeWidget() {
   const [oiData, setOIData] = useState<OpenInterestData[]>([]);
@@ -72,7 +65,7 @@ export default function OIChangeWidget() {
               </div>
               <div className="text-right">
                 <div className="text-white font-mono font-semibold text-xs">
-                  {formatValue(item.openInterestValue)}
+                  {formatUSD(item.openInterestValue)}
                 </div>
                 <div className="text-neutral-600 text-[10px] font-mono">
                   {item.openInterest.toLocaleString(undefined, { maximumFractionDigits: 0 })}

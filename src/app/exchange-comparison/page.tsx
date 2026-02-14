@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { RefreshCw, AlertTriangle, BarChart3, Table } from 'lucide-react';
+import { formatUSD } from '@/lib/utils/format';
 import {
   BarChart,
   Bar,
@@ -35,12 +36,6 @@ const CHART_COLORS = [
   '#10b981', '#f43f5e', '#0ea5e9',
 ];
 
-function formatOI(v: number): string {
-  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
-  if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
-  return `$${(v / 1e3).toFixed(0)}K`;
-}
-
 function formatRate(r: number): string {
   return `${r >= 0 ? '+' : ''}${(r * 100).toFixed(4)}%`;
 }
@@ -52,7 +47,7 @@ function OITooltip({ active, payload }: any) {
   return (
     <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
       <div className="font-medium text-white mb-1">{d.exchange}</div>
-      <div className="text-neutral-400">Open Interest: <span className="text-white font-mono">{formatOI(d.totalOI)}</span></div>
+      <div className="text-neutral-400">Open Interest: <span className="text-white font-mono">{formatUSD(d.totalOI)}</span></div>
       <div className="text-neutral-400">Symbols: <span className="text-white font-mono">{d.symbolCount}</span></div>
     </div>
   );
@@ -314,7 +309,7 @@ export default function ExchangeComparisonPage() {
                   <div className="text-sm font-medium text-neutral-400 mb-3">Total Open Interest by Exchange</div>
                   <ResponsiveContainer width="100%" height={Math.max(300, oiChartData.length * 36)}>
                     <BarChart data={oiChartData} layout="vertical" margin={{ left: 80, right: 20 }}>
-                      <XAxis type="number" tickFormatter={formatOI} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
+                      <XAxis type="number" tickFormatter={formatUSD} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
                       <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={75} />
                       <Tooltip content={<OITooltip />} />
                       <Bar dataKey="totalOI" radius={[0, 4, 4, 0]} barSize={20}>
@@ -394,7 +389,7 @@ export default function ExchangeComparisonPage() {
                                 <span className="font-medium text-white">{s.exchange}</span>
                               </div>
                             </td>
-                            <td className="text-right px-4 py-2.5 text-white font-mono">{formatOI(s.totalOI)}</td>
+                            <td className="text-right px-4 py-2.5 text-white font-mono">{formatUSD(s.totalOI)}</td>
                             <td className={`text-right px-4 py-2.5 font-mono ${s.avgFunding >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                               {formatRate(s.avgFunding)}
                             </td>

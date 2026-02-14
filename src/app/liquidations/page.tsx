@@ -7,6 +7,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { Zap, RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Volume2, VolumeX, Grid3X3, List, Clock, BarChart3 } from 'lucide-react';
 import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import Footer from '@/components/Footer';
+import { formatLiqValue } from '@/lib/utils/format';
 
 type ViewMode = 'feed' | 'heatmap' | 'timebucket' | 'pricelevel';
 
@@ -96,12 +97,6 @@ export default function LiquidationsPage() {
     .filter(item => item.totalValue > 0)
     .sort((a, b) => b.totalValue - a.totalValue).slice(0, 20);
   const maxValue = Math.max(...sortedAggregated.map(l => l.totalValue), 1);
-
-  const formatValue = (value: number) => {
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-    if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
-    return `$${value.toFixed(0)}`;
-  };
 
   const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString();
 
@@ -202,7 +197,7 @@ export default function LiquidationsPage() {
                 <div key={liq.id} className="flex items-center gap-2 px-4 py-2 whitespace-nowrap flex-shrink-0">
                   <span className={`w-1.5 h-1.5 rounded-full ${liq.side === 'long' ? 'bg-red-500' : 'bg-green-500'}`} />
                   <span className="text-white text-xs font-medium">{liq.symbol}</span>
-                  <span className={`text-xs font-mono ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>{formatValue(liq.value)}</span>
+                  <span className={`text-xs font-mono ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>{formatLiqValue(liq.value)}</span>
                   <span className="text-neutral-600 text-[10px]">{liq.exchange}</span>
                   {i < 14 && <span className="text-neutral-700 mx-1">|</span>}
                 </div>
@@ -220,22 +215,22 @@ export default function LiquidationsPage() {
           <div className="bg-success/10 border border-success/30 rounded-xl p-5">
             <span className="text-success text-sm">Longs Rekt</span>
             <div className="text-sm font-bold font-mono text-success mt-1">{stats.totalLongs}</div>
-            <div className="text-sm text-success/70">{formatValue(stats.longValue)}</div>
+            <div className="text-sm text-success/70">{formatLiqValue(stats.longValue)}</div>
           </div>
           <div className="bg-danger/10 border border-danger/30 rounded-xl p-5">
             <span className="text-danger text-sm">Shorts Rekt</span>
             <div className="text-sm font-bold font-mono text-danger mt-1">{stats.totalShorts}</div>
-            <div className="text-sm text-danger/70">{formatValue(stats.shortValue)}</div>
+            <div className="text-sm text-danger/70">{formatLiqValue(stats.shortValue)}</div>
           </div>
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
             <span className="text-neutral-600 text-sm">Total Value</span>
-            <div className="text-sm font-bold font-mono text-white mt-1">{formatValue(stats.longValue + stats.shortValue)}</div>
+            <div className="text-sm font-bold font-mono text-white mt-1">{formatLiqValue(stats.longValue + stats.shortValue)}</div>
           </div>
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-5">
             <span className="text-purple-400 text-sm">Largest Liquidation</span>
             {stats.largestLiq ? (
               <>
-                <div className="text-sm font-bold font-mono text-purple-400 mt-1">{formatValue(stats.largestLiq.value)}</div>
+                <div className="text-sm font-bold font-mono text-purple-400 mt-1">{formatLiqValue(stats.largestLiq.value)}</div>
                 <div className="text-sm text-purple-400/70">
                   {stats.largestLiq.symbol}
                   <span className="text-purple-400/40 ml-1">({stats.largestLiq.exchange})</span>
@@ -330,7 +325,7 @@ export default function LiquidationsPage() {
                             <div className="opacity-70 text-xs">{item.count} liqs</div>
                           </div>
                           <div>
-                            <div className="font-semibold text-sm">{formatValue(item.totalValue)}</div>
+                            <div className="font-semibold text-sm">{formatLiqValue(item.totalValue)}</div>
                             <div className="opacity-60 text-xs mb-1">{isLongDominant ? 'Longs' : 'Shorts'} dominant</div>
                             {/* Exchange breakdown bar */}
                             {bdEntries.length > 1 && (
@@ -338,7 +333,7 @@ export default function LiquidationsPage() {
                                 {bdEntries.slice(0, 4).map(([ex, val]) => (
                                   <div
                                     key={ex}
-                                    title={`${ex}: ${formatValue(val)}`}
+                                    title={`${ex}: ${formatLiqValue(val)}`}
                                     className="h-full opacity-80"
                                     style={{
                                       width: `${(val / bdTotal) * 100}%`,
@@ -401,7 +396,7 @@ export default function LiquidationsPage() {
                             <div
                               key={b.time}
                               className="flex-1 flex flex-col justify-end min-w-[4px] group relative"
-                              title={`${new Date(b.time).toLocaleTimeString()} — ${b.count} liqs — Long: ${formatValue(b.long)} / Short: ${formatValue(b.short)}`}
+                              title={`${new Date(b.time).toLocaleTimeString()} — ${b.count} liqs — Long: ${formatLiqValue(b.long)} / Short: ${formatLiqValue(b.short)}`}
                             >
                               <div className="w-full rounded-t-sm overflow-hidden" style={{ height: `${height}%` }}>
                                 <div className="bg-red-500/80" style={{ height: `${longPct}%` }} />
@@ -487,7 +482,7 @@ export default function LiquidationsPage() {
                             <div className="flex items-center gap-2 mb-3">
                               <TokenIconSimple symbol={symbol} size={18} />
                               <span className="text-sm font-semibold text-white">{symbol}</span>
-                              <span className="text-xs text-neutral-500">{formatValue(total)}</span>
+                              <span className="text-xs text-neutral-500">{formatLiqValue(total)}</span>
                             </div>
                             <div className="space-y-1">
                               {bins.map((bin, i) => {
@@ -508,7 +503,7 @@ export default function LiquidationsPage() {
                                       )}
                                     </div>
                                     <span className="text-[10px] font-mono text-neutral-600 w-16">
-                                      {binTotal > 0 ? formatValue(binTotal) : ''}
+                                      {binTotal > 0 ? formatLiqValue(binTotal) : ''}
                                     </span>
                                   </div>
                                 );
@@ -567,7 +562,7 @@ export default function LiquidationsPage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className={`${getValueColor(liq.value)} ${getSizeClass(liq.value)}`}>{formatValue(liq.value)}</div>
+                              <div className={`${getValueColor(liq.value)} ${getSizeClass(liq.value)}`}>{formatLiqValue(liq.value)}</div>
                               <div className="text-xs text-neutral-600 mt-0.5">{formatTime(liq.timestamp)}</div>
                             </div>
                           </div>

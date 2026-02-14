@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { formatLiqValue } from '@/lib/utils/format';
 
 interface LiquidationData {
   symbol: string;
@@ -14,12 +15,6 @@ interface AggregatedLiq {
   totalValue: number;
   longValue: number;
   shortValue: number;
-}
-
-function formatValue(value: number): string {
-  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-  if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
-  return `$${value.toFixed(0)}`;
 }
 
 export default function LiquidationHeatmap() {
@@ -175,15 +170,15 @@ export default function LiquidationHeatmap() {
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="bg-white/[0.03] rounded-lg px-2.5 py-2 text-center">
           <div className="text-[10px] text-neutral-600 mb-0.5">Rekt</div>
-          <div className="text-sm font-bold text-white font-mono">{formatValue(totals.total)}</div>
+          <div className="text-sm font-bold text-white font-mono">{formatLiqValue(totals.total)}</div>
         </div>
         <div className="bg-white/[0.03] rounded-lg px-2.5 py-2 text-center">
           <div className="text-[10px] text-neutral-600 mb-0.5">Long</div>
-          <div className="text-sm font-bold text-red-400 font-mono">{formatValue(totals.longs)}</div>
+          <div className="text-sm font-bold text-red-400 font-mono">{formatLiqValue(totals.longs)}</div>
         </div>
         <div className="bg-white/[0.03] rounded-lg px-2.5 py-2 text-center">
           <div className="text-[10px] text-neutral-600 mb-0.5">Short</div>
-          <div className="text-sm font-bold text-green-400 font-mono">{formatValue(totals.shorts)}</div>
+          <div className="text-sm font-bold text-green-400 font-mono">{formatLiqValue(totals.shorts)}</div>
         </div>
       </div>
 
@@ -206,7 +201,7 @@ export default function LiquidationHeatmap() {
               >
                 <span className="text-white font-bold text-xs">{liq.symbol}</span>
                 <span className="text-white/80 text-[10px] font-mono font-semibold">
-                  {formatValue(liq.totalValue)}
+                  {formatLiqValue(liq.totalValue)}
                 </span>
               </div>
             );

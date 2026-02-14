@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
 import { RefreshCw, Plus, X, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { formatUSD, formatPercent, formatQty, formatPrice } from '@/lib/utils/format';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -42,30 +43,6 @@ const PIE_COLORS = [
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-function fmt(n: number, decimals = 2): string {
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
-  return `$${n.toFixed(decimals)}`;
-}
-
-function fmtPct(n: number): string {
-  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
-}
-
-function fmtQty(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(4) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(4) + 'K';
-  if (n >= 1) return n.toFixed(4);
-  return n.toFixed(8);
-}
-
-function fmtPrice(n: number): string {
-  if (n >= 1_000) return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (n >= 1) return `$${n.toFixed(2)}`;
-  if (n >= 0.01) return `$${n.toFixed(4)}`;
-  return `$${n.toFixed(8)}`;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -297,7 +274,7 @@ export default function PortfolioPage() {
               <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total Value</p>
                 <p className="text-xl font-bold font-mono">
-                  {fmt(totals.totalValue)}
+                  {formatUSD(totals.totalValue)}
                 </p>
               </div>
 
@@ -309,7 +286,7 @@ export default function PortfolioPage() {
                     totals.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'
                   }`}
                 >
-                  {totals.totalPnl >= 0 ? '+' : ''}{fmt(totals.totalPnl)}
+                  {totals.totalPnl >= 0 ? '+' : ''}{formatUSD(totals.totalPnl)}
                 </p>
               </div>
 
@@ -321,7 +298,7 @@ export default function PortfolioPage() {
                     totals.totalPnlPct >= 0 ? 'text-green-500' : 'text-red-500'
                   }`}
                 >
-                  {fmtPct(totals.totalPnlPct)}
+                  {formatPercent(totals.totalPnlPct)}
                 </p>
               </div>
 
@@ -333,7 +310,7 @@ export default function PortfolioPage() {
                     <TokenIconSimple symbol={totals.best.symbol} size={20} />
                     <span className="font-semibold text-sm">{totals.best.symbol}</span>
                     <span className="text-green-500 font-mono text-sm font-bold">
-                      {fmtPct(totals.best.pnlPct)}
+                      {formatPercent(totals.best.pnlPct)}
                     </span>
                   </div>
                 ) : (
@@ -349,7 +326,7 @@ export default function PortfolioPage() {
                     <TokenIconSimple symbol={totals.worst.symbol} size={20} />
                     <span className="font-semibold text-sm">{totals.worst.symbol}</span>
                     <span className="text-red-500 font-mono text-sm font-bold">
-                      {fmtPct(totals.worst.pnlPct)}
+                      {formatPercent(totals.worst.pnlPct)}
                     </span>
                   </div>
                 ) : (
@@ -471,13 +448,13 @@ export default function PortfolioPage() {
                               </div>
                             </td>
                             <td className="text-right px-4 py-3 font-mono text-neutral-300">
-                              {fmtQty(h.quantity)}
+                              {formatQty(h.quantity)}
                             </td>
                             <td className="text-right px-4 py-3 font-mono text-neutral-300">
-                              {fmtPrice(h.avgPrice)}
+                              {formatPrice(h.avgPrice)}
                             </td>
                             <td className="text-right px-4 py-3 font-mono text-neutral-300">
-                              {h.currentPrice > 0 ? fmtPrice(h.currentPrice) : (
+                              {h.currentPrice > 0 ? formatPrice(h.currentPrice) : (
                                 <span className="text-neutral-600">--</span>
                               )}
                             </td>
@@ -488,7 +465,7 @@ export default function PortfolioPage() {
                             >
                               {h.currentPrice > 0 ? (
                                 <>
-                                  {h.pnl >= 0 ? '+' : ''}{fmt(h.pnl)}
+                                  {h.pnl >= 0 ? '+' : ''}{formatUSD(h.pnl)}
                                 </>
                               ) : (
                                 <span className="text-neutral-600">--</span>
@@ -499,7 +476,7 @@ export default function PortfolioPage() {
                                 h.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'
                               }`}
                             >
-                              {h.currentPrice > 0 ? fmtPct(h.pnlPct) : (
+                              {h.currentPrice > 0 ? formatPercent(h.pnlPct) : (
                                 <span className="text-neutral-600">--</span>
                               )}
                             </td>

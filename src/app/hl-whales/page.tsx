@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
+import { formatUSD } from '@/lib/utils/format';
 
 
 /* ------------------------------------------------------------------ */
@@ -71,13 +72,6 @@ type SortOrder = 'asc' | 'desc';
 
 function truncAddr(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-function fmtUSD(n: number): string {
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
-  return `$${n.toFixed(0)}`;
 }
 
 function fmtPnl(n: number): string {
@@ -168,7 +162,7 @@ function PositionRow({ pos }: { pos: WhalePosition }) {
         {fmtSize(pos.size, pos.coin)}
       </div>
       <div className="w-20 sm:w-24 text-right font-mono text-neutral-400">
-        {fmtUSD(pos.positionValue)}
+        {formatUSD(pos.positionValue)}
       </div>
       <div className="hidden sm:block w-20 text-right font-mono text-neutral-500">
         {fmtPrice(pos.entryPrice)}
@@ -257,11 +251,11 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
 
         <div className="flex items-center gap-4 flex-shrink-0">
           <div className="text-right hidden sm:block">
-            <div className="text-white font-bold font-mono text-sm">{fmtUSD(whale.accountValue)}</div>
+            <div className="text-white font-bold font-mono text-sm">{formatUSD(whale.accountValue)}</div>
             <div className="text-neutral-600 text-[10px] uppercase tracking-wider">Account</div>
           </div>
           <div className="text-right sm:hidden">
-            <div className="text-white font-bold font-mono text-sm">{fmtUSD(whale.accountValue)}</div>
+            <div className="text-white font-bold font-mono text-sm">{formatUSD(whale.accountValue)}</div>
           </div>
           {expanded ? (
             <ChevronUp className="w-4 h-4 text-neutral-600" />
@@ -278,19 +272,19 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 py-3">
             <div className="bg-white/[0.03] rounded-lg px-3 py-2">
               <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Notional</span>
-              <div className="text-white font-mono text-sm font-bold mt-0.5">{fmtUSD(whale.totalNotional)}</div>
+              <div className="text-white font-mono text-sm font-bold mt-0.5">{formatUSD(whale.totalNotional)}</div>
             </div>
             <div className="bg-white/[0.03] rounded-lg px-3 py-2">
               <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Margin Used</span>
-              <div className="text-white font-mono text-sm font-bold mt-0.5">{fmtUSD(whale.marginUsed)}</div>
+              <div className="text-white font-mono text-sm font-bold mt-0.5">{formatUSD(whale.marginUsed)}</div>
             </div>
             <div className="bg-green-500/5 rounded-lg px-3 py-2">
               <span className="text-green-500/60 text-[10px] uppercase tracking-wider">Long Exposure</span>
-              <div className="text-green-400 font-mono text-sm font-bold mt-0.5">{fmtUSD(longNotional)}</div>
+              <div className="text-green-400 font-mono text-sm font-bold mt-0.5">{formatUSD(longNotional)}</div>
             </div>
             <div className="bg-red-500/5 rounded-lg px-3 py-2">
               <span className="text-red-500/60 text-[10px] uppercase tracking-wider">Short Exposure</span>
-              <div className="text-red-400 font-mono text-sm font-bold mt-0.5">{fmtUSD(shortNotional)}</div>
+              <div className="text-red-400 font-mono text-sm font-bold mt-0.5">{formatUSD(shortNotional)}</div>
             </div>
           </div>
 
@@ -324,7 +318,7 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
               {whale.volume != null && whale.volume > 0 && (
                 <div className="bg-white/[0.03] rounded-lg px-3 py-2">
                   <span className="text-neutral-600 text-[10px] uppercase tracking-wider">All-Time Volume</span>
-                  <div className="text-white font-mono text-sm font-bold mt-0.5">{fmtUSD(whale.volume)}</div>
+                  <div className="text-white font-mono text-sm font-bold mt-0.5">{formatUSD(whale.volume)}</div>
                 </div>
               )}
             </div>
@@ -547,14 +541,14 @@ export default function HLWhalesPage() {
                 <DollarSign className="w-3 h-3" />
                 Total Account Value
               </span>
-              <div className="text-lg font-bold text-white font-mono mt-0.5">{fmtUSD(stats.totalAV)}</div>
+              <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(stats.totalAV)}</div>
             </div>
             <div className="bg-[#111] border border-white/[0.06] rounded-lg px-4 py-3">
               <span className="text-neutral-500 text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <BarChart3 className="w-3 h-3" />
                 Total Notional
               </span>
-              <div className="text-lg font-bold text-white font-mono mt-0.5">{fmtUSD(stats.totalNotional)}</div>
+              <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(stats.totalNotional)}</div>
             </div>
             <div className={`bg-[#111] border ${stats.totalPnl >= 0 ? 'border-green-500/10' : 'border-red-500/10'} rounded-lg px-4 py-3`}>
               <span className={`${stats.totalPnl >= 0 ? 'text-green-500/60' : 'text-red-500/60'} text-[11px] uppercase tracking-wider flex items-center gap-1`}>

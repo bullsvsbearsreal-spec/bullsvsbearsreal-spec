@@ -5,22 +5,12 @@ import { ExchangeLogo } from './ExchangeLogos';
 import { BarChart3, TrendingUp, TrendingDown, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
+import { formatNumber, safeNumber } from '@/lib/utils/format';
 
 interface ExchangeOI {
   exchange: string;
   openInterest: number;
   change24h: number;
-}
-
-function formatNumber(num: number | undefined | null): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0';
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  return `$${num.toLocaleString()}`;
-}
-
-function safeNumber(num: number | undefined | null): number {
-  return num ?? 0;
 }
 
 export default function OpenInterestChart() {
