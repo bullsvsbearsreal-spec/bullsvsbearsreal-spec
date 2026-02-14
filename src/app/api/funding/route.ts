@@ -19,6 +19,26 @@ export async function GET(request: NextRequest) {
     getTop500Symbols(),
   ]);
 
+  // Fix mark prices: some exchanges return inaccurate or missing mark prices.
+  // gTrade derives a synthetic "tokenPrice" from OI ratios (wrong).
+  // HTX and Aevo sometimes return 0. Backfill from other exchanges' real prices.
+  const realPriceMap = new Map<string, number>();
+  data.forEach(entry => {
+    if (entry.markPrice && entry.markPrice > 0) {
+      const existing = realPriceMap.get(entry.symbol);
+      if (!existing) realPriceMap.set(entry.symbol, entry.markPrice);
+    }
+  });
+  const BAD_PRICE_EXCHANGES = new Set(['gTrade']); // Always override — derived prices are wrong
+  data.forEach(entry => {
+    const needsFix = BAD_PRICE_EXCHANGES.has(entry.exchange) || !entry.markPrice || entry.markPrice === 0;
+    if (!needsFix) return;
+    const realPrice = realPriceMap.get(entry.symbol);
+    if (realPrice) {
+      entry.markPrice = realPrice;
+    }
+  });
+
   // Compute implied predicted rates from mark-index price spread
   // Formula: clamp((markPrice - indexPrice) / indexPrice × 100, ±0.75%)
   // Exchanges with continuous/hourly funding don't have a meaningful "next 8h" prediction
