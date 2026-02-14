@@ -130,7 +130,7 @@ export default function LiquidationsPage() {
   return (
     <div className="min-h-screen bg-black">
       <Header />
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6 page-enter">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>

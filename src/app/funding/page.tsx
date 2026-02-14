@@ -307,7 +307,7 @@ export default function FundingPage() {
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 page-enter">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -342,7 +342,7 @@ export default function FundingPage() {
               onClick={() => handleAssetClassChange(key)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 assetClass === key
-                  ? 'bg-hub-yellow text-black shadow-sm shadow-hub-yellow/20'
+                  ? 'bg-hub-yellow text-black shadow-sm'
                   : 'text-neutral-500 hover:text-white hover:bg-white/[0.05]'
               }`}
             >
@@ -398,8 +398,8 @@ export default function FundingPage() {
                 <button
                   key={v}
                   onClick={() => setVenueFilter(v)}
-                  className={`px-2.5 py-1.5 text-xs font-medium transition-all duration-200 ${
-                    venueFilter === v ? 'bg-hub-yellow text-black shadow-sm shadow-hub-yellow/20' : 'text-neutral-500 hover:text-white'
+                  className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    venueFilter === v ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
                   }`}
                 >
                   {v === 'all' ? 'All' : v.toUpperCase()}
@@ -412,8 +412,8 @@ export default function FundingPage() {
                 <button
                   key={key}
                   onClick={() => setViewMode(key)}
-                  className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-                    viewMode === key ? 'bg-hub-yellow text-black shadow-sm shadow-hub-yellow/20' : 'text-neutral-500 hover:text-white'
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    viewMode === key ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
                   }`}
                 >
                   {label}
@@ -428,7 +428,7 @@ export default function FundingPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 aria-label="Search symbols"
-                className="w-full sm:w-36 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40 focus:shadow-[0_0_0_2px_rgba(255,165,0,0.08)]"
+                className="w-full sm:w-36 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
               />
             )}
 

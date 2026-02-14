@@ -195,7 +195,7 @@ export default function ExchangeReservesPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white page-enter">
+      <main className="min-h-screen bg-[#0a0a0a] text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

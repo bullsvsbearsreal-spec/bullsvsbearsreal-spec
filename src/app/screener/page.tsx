@@ -279,7 +279,7 @@ export default function ScreenerPage() {
   return (
     <div className="min-h-screen bg-black">
       <Header />
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 page-enter">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title Row */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>

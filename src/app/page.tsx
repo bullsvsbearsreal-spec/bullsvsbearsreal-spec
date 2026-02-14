@@ -68,16 +68,13 @@ export default function Home() {
       <TopStatsBar />
       <MarketTicker />
 
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6 page-enter">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Hero - compact, no animated backgrounds */}
         <section className="mb-6">
           <h1 className="text-xl font-bold text-white mb-1">
             <span className="text-white">info</span>
             <span className="text-hub-yellow">hub</span>
-            <span className="text-neutral-500 font-normal text-sm ml-2 inline-flex items-center gap-1.5">
-              <span className="live-dot" />
-              Real-time derivatives data
-            </span>
+            <span className="text-neutral-500 font-normal text-sm ml-2">Real-time derivatives data</span>
           </h1>
 
           <div className="max-w-lg mt-3 mb-4">
@@ -99,7 +96,7 @@ export default function Home() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="px-3 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-hub-yellow text-xs transition-colors"
+                className="px-3 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white text-xs transition-colors"
               >
                 {link.name}
               </Link>
@@ -114,26 +111,26 @@ export default function Home() {
 
         {/* Row 1: Fear & Greed + Liquidation Heatmap */}
         <section className="mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger-container">
-            <div className="stagger-item"><FearGreedIndex /></div>
-            <div className="stagger-item"><LiquidationHeatmap /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FearGreedIndex />
+            <LiquidationHeatmap />
           </div>
         </section>
 
         {/* Row 2: Market Indices + Top Movers + Long/Short Ratio */}
         <section className="mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 stagger-container">
-            <div className="stagger-item"><MarketIndices /></div>
-            <div className="stagger-item"><TopMovers /></div>
-            <div className="stagger-item"><LongShortRatio /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <MarketIndices />
+            <TopMovers />
+            <LongShortRatio />
           </div>
         </section>
 
         {/* Row 3: Funding Preview + OI Widget + News */}
         <section className="mb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 stagger-container">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {/* Funding Rates Preview */}
-            <div className="card-hub p-4 stagger-item">
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-white font-semibold text-sm">Top Funding</h2>
                 <Link href="/funding" className="text-hub-yellow text-[10px] hover:underline flex items-center gap-0.5">
@@ -152,7 +149,7 @@ export default function Home() {
                   {topFunding.map((item, index) => (
                     <div
                       key={`${item.symbol}-${item.exchange}-${index}`}
-                      className="flex items-center justify-between px-2.5 py-2 rounded-lg data-row-hub"
+                      className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-neutral-500 text-[10px] font-mono w-3">{index + 1}</span>
@@ -177,7 +174,7 @@ export default function Home() {
             <OIChangeWidget />
 
             {/* News Preview */}
-            <div className="card-hub p-4 stagger-item">
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-white font-semibold text-sm">Latest News</h2>
                 <Link href="/news" className="text-hub-yellow text-[10px] hover:underline flex items-center gap-0.5">
@@ -199,7 +196,7 @@ export default function Home() {
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block px-2.5 py-2 rounded-lg data-row-hub"
+                      className="block px-2.5 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
                     >
                       <h4 className="text-white text-xs font-medium line-clamp-2 leading-relaxed">
                         {article.title}
@@ -219,7 +216,7 @@ export default function Home() {
 
         {/* Connected Exchanges */}
         <section className="mb-6">
-          <div className="card-hub overflow-hidden">
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
@@ -287,7 +284,7 @@ export default function Home() {
               </div>
 
               {/* Divider */}
-              <div className="divider-hub" />
+              <div className="border-t border-white/[0.04]" />
 
               {/* DEX */}
               <div>
@@ -341,8 +338,7 @@ export default function Home() {
 
 function Footer() {
   return (
-    <footer className="border-t border-white/[0.04] bg-black relative">
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-hub-yellow/20 to-transparent" />
+    <footer className="border-t border-white/[0.04] bg-black">
       <div className="max-w-[1400px] mx-auto px-4 py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div>

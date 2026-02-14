@@ -41,7 +41,7 @@ export default function LongShortRatio() {
   }, []);
 
   return (
-    <div className="card-hub p-4">
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-white font-semibold text-sm">Long/Short Ratio</h3>
         <span className="text-neutral-600 text-[10px]">Top traders</span>

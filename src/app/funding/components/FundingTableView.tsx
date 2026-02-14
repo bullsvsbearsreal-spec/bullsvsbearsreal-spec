@@ -73,11 +73,11 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
   ];
 
   return (
-    <div className="card-hub overflow-hidden">
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/[0.06] bg-white/[0.015]">
+            <tr className="border-b border-white/[0.06]">
               {columns.map(({ field, label, align }) => (
                 <th
                   key={label}
@@ -109,7 +109,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
               return (
                 <tr
                   key={`${fr.symbol}-${fr.exchange}-${index}`}
-                  className="border-b border-white/[0.03] data-row-hub"
+                  className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
                 >
                   <td className="px-4 py-2">
                     <Link href={`/funding/${fr.symbol}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">

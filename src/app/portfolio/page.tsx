@@ -205,7 +205,7 @@ export default function PortfolioPage() {
     <div className="min-h-screen bg-black text-white">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 page-enter">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>

@@ -60,7 +60,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
         Info
       </span>
       <span
-        className="font-black tracking-tight text-black rounded-[4px] ml-[1px] transition-shadow duration-200 hover:shadow-[0_0_8px_rgba(255,165,0,0.3)]"
+        className="font-black tracking-tight text-black rounded-[4px] ml-[1px]"
         style={{
           fontSize: dimensions.text,
           lineHeight: 1,

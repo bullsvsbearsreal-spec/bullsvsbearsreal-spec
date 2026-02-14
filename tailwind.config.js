@@ -44,12 +44,6 @@ module.exports = {
         'fade-in': 'fadeIn 0.3s ease-out',
         'scale-in': 'scaleIn 0.15s ease-out',
         'ticker': 'ticker 30s linear infinite',
-        'page-enter': 'pageEnter 0.4s ease-out forwards',
-        'stagger-in': 'staggerIn 0.35s ease-out forwards',
-        'flash-green': 'flashGreen 0.6s ease-out forwards',
-        'flash-red': 'flashRed 0.6s ease-out forwards',
-        'glow-pulse': 'glowPulse 3s ease-in-out infinite',
-        'count-reveal': 'countReveal 0.4s ease-out forwards',
       },
       keyframes: {
         shimmer: {
@@ -80,38 +74,10 @@ module.exports = {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
         },
-        pageEnter: {
-          '0%': { opacity: '0', transform: 'translateY(16px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        staggerIn: {
-          '0%': { opacity: '0', transform: 'translateY(12px) scale(0.98)' },
-          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
-        },
-        flashGreen: {
-          '0%': { backgroundColor: 'rgba(34, 197, 94, 0.15)' },
-          '100%': { backgroundColor: 'transparent' },
-        },
-        flashRed: {
-          '0%': { backgroundColor: 'rgba(239, 68, 68, 0.15)' },
-          '100%': { backgroundColor: 'transparent' },
-        },
-        glowPulse: {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(255, 165, 0, 0)' },
-          '50%': { boxShadow: '0 0 20px 2px rgba(255, 165, 0, 0.08)' },
-        },
-        countReveal: {
-          '0%': { opacity: '0', transform: 'translateY(8px)', filter: 'blur(4px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)', filter: 'blur(0)' },
-        },
       },
       boxShadow: {
         'glow-sm': '0 0 8px rgba(255, 165, 0, 0.2)',
         'glow-md': '0 0 16px rgba(255, 165, 0, 0.25)',
-        'glow-lg': '0 0 24px rgba(255, 165, 0, 0.15), 0 0 48px rgba(255, 165, 0, 0.05)',
-        'glow-yellow-sm': '0 0 6px rgba(255, 165, 0, 0.1)',
-        'card-hover': '0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 165, 0, 0.1)',
-        'btn-glow': '0 2px 12px rgba(255, 165, 0, 0.25)',
       },
     },
   },

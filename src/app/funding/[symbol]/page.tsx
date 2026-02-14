@@ -155,7 +155,7 @@ export default function SymbolFundingPage() {
   return (
     <div className="min-h-screen bg-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 py-6 page-enter">
+      <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Back nav */}
         <Link
           href="/funding"

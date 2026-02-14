@@ -80,11 +80,10 @@ export default function MarketTicker() {
             return (
               <div
                 key={index}
-                className="flex items-center gap-1.5 cursor-pointer group"
+                className="flex items-center gap-1.5 cursor-pointer group transition-opacity hover:opacity-70"
               >
-                {index > 0 && <span className="w-1 h-1 rounded-full bg-white/10 mr-2" />}
                 <TokenIconSimple symbol={ticker.symbol} size={16} />
-                <span className="text-neutral-400 group-hover:text-white font-medium text-xs transition-colors">{ticker.symbol}</span>
+                <span className="text-neutral-400 font-medium text-xs">{ticker.symbol}</span>
                 <span className="text-neutral-500 font-mono text-xs">{formatPrice(ticker.price)}</span>
                 <span className={`text-xs font-mono tabular-nums ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                   {isPositive ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
@@ -94,8 +93,8 @@ export default function MarketTicker() {
           })}
         </div>
 
-        <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-black to-transparent pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black to-transparent pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black to-transparent pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black to-transparent pointer-events-none" />
       </div>
     </div>
   );

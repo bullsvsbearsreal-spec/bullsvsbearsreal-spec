@@ -184,7 +184,7 @@ export default function Header() {
   /* ------------------------------------------------------------------ */
 
   return (
-    <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/[0.06]">
+    <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-sm border-b border-white/[0.06]">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-12">
           {/* Left: Logo + Nav */}
@@ -213,9 +213,9 @@ export default function Header() {
                     {/* Category trigger */}
                     <button
                       type="button"
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors nav-active-indicator ${
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
                         hasActive
-                          ? 'text-hub-yellow active'
+                          ? 'text-hub-yellow'
                           : 'text-neutral-400 hover:text-white'
                       }`}
                       aria-expanded={isOpen}
@@ -232,16 +232,16 @@ export default function Header() {
                     {/* Dropdown panel */}
                     {isOpen && (
                       <div className="absolute top-full left-0 pt-1 z-50">
-                        <div className="bg-[#111] border border-white/[0.08] rounded-lg shadow-xl shadow-black/50 py-1 min-w-[180px] animate-[fadeIn_0.15s_ease-out]">
+                        <div className="bg-[#111] border border-white/[0.08] rounded-lg shadow-xl py-1 min-w-[180px]">
                           {cat.items.map((link) => (
                             <Link
                               key={link.href}
                               href={link.href}
                               onClick={() => setOpenDropdown(null)}
-                              className={`block px-4 py-2 text-[13px] font-medium transition-all ${
+                              className={`block px-4 py-2 text-[13px] font-medium transition-colors ${
                                 pathname === link.href
                                   ? 'bg-hub-yellow text-black'
-                                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:pl-5'
+                                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
                               }`}
                             >
                               {link.name}
@@ -270,7 +270,7 @@ export default function Header() {
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] hover:shadow-[0_0_8px_rgba(255,165,0,0.1)] transition-all text-[13px]"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-[13px]"
                 aria-label="Search coins"
               >
                 <Search className="w-3.5 h-3.5" />

@@ -37,7 +37,7 @@ export default function CoinPage() {
     return (
       <div className="min-h-screen bg-black">
         <Header />
-        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 page-enter">
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse space-y-6">
             <div className="h-8 w-32 bg-white/[0.04] rounded-lg" />
             <div className="h-64 bg-white/[0.04] rounded-xl" />
@@ -52,7 +52,7 @@ export default function CoinPage() {
     return (
       <div className="min-h-screen bg-black">
         <Header />
-        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 page-enter">
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-20">
             <h1 className="text-2xl font-bold text-white mb-4">Coin not found</h1>
             <p className="text-neutral-600 mb-6">The coin "{coinId}" could not be found.</p>
@@ -79,7 +79,7 @@ export default function CoinPage() {
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 page-enter">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button
           onClick={() => router.back()}

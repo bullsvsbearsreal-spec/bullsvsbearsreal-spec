@@ -89,7 +89,7 @@ export default function WhaleAlertPage() {
     <div className="min-h-screen bg-black text-white">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 page-enter">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Page Title */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">

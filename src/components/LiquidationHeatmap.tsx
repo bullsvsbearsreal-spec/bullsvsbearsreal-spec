@@ -141,7 +141,7 @@ export default function LiquidationHeatmap() {
   };
 
   return (
-    <div className="card-hub p-4">
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="text-white font-semibold text-sm">Liquidation Heatmap</h3>
