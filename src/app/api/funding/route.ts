@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
       entry.markPrice = realPrice;
     }
   });
+  // Remove entries that still have no valid mark price after backfill
+  const dataWithPrices = data.filter(entry => entry.markPrice && entry.markPrice > 0);
 
   // Compute implied predicted rates from mark-index price spread
   // Formula: clamp((markPrice - indexPrice) / indexPrice × 100, ±0.75%)
@@ -45,7 +47,7 @@ export async function GET(request: NextRequest) {
   const CONTINUOUS_EXCHANGES = new Set(['Hyperliquid', 'dYdX', 'gTrade', 'Coinbase']);
   const PREDICTED_CLAMP = 0.75;
 
-  data.forEach(entry => {
+  dataWithPrices.forEach(entry => {
     // Skip if already has a real predicted rate from the exchange
     if (entry.predictedRate !== undefined) return;
     // Skip continuous funding model exchanges
@@ -58,19 +60,19 @@ export async function GET(request: NextRequest) {
 
   let filtered;
   if (assetClass === 'all') {
-    filtered = data.filter(r => {
+    filtered = dataWithPrices.filter(r => {
       if (!r.assetClass || r.assetClass === 'crypto') {
         return isTop500Symbol(r.symbol, top500);
       }
       return true;
     });
   } else if (assetClass === 'crypto') {
-    filtered = data.filter(r => {
+    filtered = dataWithPrices.filter(r => {
       const ac = r.assetClass || 'crypto';
       return ac === 'crypto' && isTop500Symbol(r.symbol, top500);
     });
   } else {
-    filtered = data.filter(r => r.assetClass === assetClass);
+    filtered = dataWithPrices.filter(r => r.assetClass === assetClass);
   }
 
   // Anomaly detection: flag rates > 1,825% annualized
