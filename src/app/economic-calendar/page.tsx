@@ -435,22 +435,25 @@ export default function EconomicCalendarPage() {
           </div>
 
           {/* Category dropdown */}
-          <select
-            value={categoryFilter}
-            onChange={(e) =>
-              setCategoryFilter(
-                e.target.value as EconomicEvent['category'] | 'all'
-              )
-            }
-            className="px-3 py-2 bg-white/[0.02] border border-white/[0.06] rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50"
-          >
-            <option value="all">All Categories</option>
-            {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={categoryFilter}
+              onChange={(e) =>
+                setCategoryFilter(
+                  e.target.value as EconomicEvent['category'] | 'all'
+                )
+              }
+              className="appearance-none pl-3 pr-8 py-2 bg-white/[0.02] border border-white/[0.06] rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50 cursor-pointer [&>option]:bg-[#141414] [&>option]:text-white"
+            >
+              <option value="all">All Categories</option>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronRight className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 rotate-90" />
+          </div>
         </div>
 
         {error && (

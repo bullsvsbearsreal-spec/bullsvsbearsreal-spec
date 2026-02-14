@@ -18,7 +18,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 import { ArrowRight } from 'lucide-react';
-import { ALL_EXCHANGES } from '@/lib/constants';
+import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
@@ -216,45 +216,116 @@ export default function Home() {
 
         {/* Connected Exchanges */}
         <section className="mb-6">
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-white font-semibold text-sm">Exchange Status</h2>
-              <div className="flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 rounded-full ${activeExchangeCount > 0 ? 'bg-green-500' : 'bg-neutral-600'}`}></span>
-                <span className="text-[10px] text-neutral-600">
-                  {activeExchangeCount > 0 ? `${activeExchangeCount}/${ALL_EXCHANGES.length} active` : `${ALL_EXCHANGES.length} exchanges`}
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-white font-semibold text-sm">Exchange Status</h2>
+                <span className="text-[10px] font-mono text-neutral-500 bg-white/[0.04] px-1.5 py-0.5 rounded">
+                  {ALL_EXCHANGES.length}
                 </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  <span className="text-[10px] text-neutral-500">Active</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                  <span className="text-[10px] text-neutral-500">Empty</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500/60" />
+                  <span className="text-[10px] text-neutral-500">Down</span>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {ALL_EXCHANGES.map((exchange) => {
-                const health = exchangeHealth.find(h => h.name === exchange);
-                const isActive = health?.status === 'ok';
-                const isEmpty = health?.status === 'empty';
-                return (
-                  <div
-                    key={exchange}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-green-500/5 hover:bg-green-500/10 border border-green-500/20'
-                        : isEmpty
-                          ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border border-yellow-500/20'
-                          : 'bg-white/[0.03] hover:bg-white/[0.06]'
-                    }`}
-                    title={health ? `${exchange}: ${health.count} trading pairs · Latency: ${health.latencyMs}ms${health.error ? ` · Error: ${health.error}` : ''}` : exchange}
-                  >
-                    <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
-                      isActive ? 'bg-green-500' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
-                    }`} />
-                    <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
-                    <span className={`text-xs ${isActive ? 'text-neutral-300' : 'text-neutral-600'}`}>{exchange}</span>
-                    {isActive && health && (
-                      <span className="text-[9px] text-green-500/60 font-mono">{health.count}</span>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="p-4 space-y-4">
+              {/* CEX */}
+              <div>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Centralized</span>
+                  <span className="text-[10px] font-mono text-green-500/70">
+                    {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length}/{ALL_EXCHANGES.filter(e => !isExchangeDex(e)).length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
+                  {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).map((exchange) => {
+                    const health = exchangeHealth.find(h => h.name === exchange);
+                    const isActive = health?.status === 'ok';
+                    const isEmpty = health?.status === 'empty';
+                    return (
+                      <div
+                        key={exchange}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-green-500/5 border border-green-500/15'
+                            : isEmpty
+                              ? 'bg-yellow-500/5 border border-yellow-500/15'
+                              : health
+                                ? 'bg-red-500/5 border border-red-500/15'
+                                : 'bg-white/[0.02] border border-white/[0.04]'
+                        }`}
+                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${health.error ? ` · ${health.error}` : ''}` : exchange}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
+                          isActive ? 'bg-green-500' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
+                        }`} />
+                        <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                        <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : 'text-neutral-600'}`}>{exchange}</span>
+                        {isActive && health && (
+                          <span className="text-[9px] text-green-500/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-white/[0.04]" />
+
+              {/* DEX */}
+              <div>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Decentralized</span>
+                  <span className="text-[10px] font-mono text-green-500/70">
+                    {ALL_EXCHANGES.filter(e => isExchangeDex(e)).filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length}/{ALL_EXCHANGES.filter(e => isExchangeDex(e)).length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
+                  {ALL_EXCHANGES.filter(e => isExchangeDex(e)).map((exchange) => {
+                    const health = exchangeHealth.find(h => h.name === exchange);
+                    const isActive = health?.status === 'ok';
+                    const isEmpty = health?.status === 'empty';
+                    return (
+                      <div
+                        key={exchange}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-purple-500/5 border border-purple-500/15'
+                            : isEmpty
+                              ? 'bg-yellow-500/5 border border-yellow-500/15'
+                              : health
+                                ? 'bg-red-500/5 border border-red-500/15'
+                                : 'bg-white/[0.02] border border-white/[0.04]'
+                        }`}
+                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${health.error ? ` · ${health.error}` : ''}` : exchange}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
+                          isActive ? 'bg-purple-500' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
+                        }`} />
+                        <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                        <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : 'text-neutral-600'}`}>{exchange}</span>
+                        {isActive && health && (
+                          <span className="text-[9px] text-purple-400/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </section>

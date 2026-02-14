@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
-import { searchCoins, CoinSearchResult } from '@/lib/api/coingecko';
+import { CoinSearchResult } from '@/lib/api/coingecko';
 
 interface CoinSearchProps {
   onSelect?: (coin: CoinSearchResult) => void;
@@ -48,8 +48,13 @@ export default function CoinSearch({
     const timer = setTimeout(async () => {
       if (query.length >= 1) {
         setIsLoading(true);
-        const coins = await searchCoins(query);
-        setResults(coins);
+        try {
+          const res = await fetch(`/api/coin-search?q=${encodeURIComponent(query)}`);
+          const json = await res.json();
+          setResults(json.results || []);
+        } catch {
+          setResults([]);
+        }
         setIsLoading(false);
       } else {
         setResults([]);

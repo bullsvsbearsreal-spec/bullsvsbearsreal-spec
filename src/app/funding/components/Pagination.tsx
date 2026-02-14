@@ -29,11 +29,14 @@ export default function Pagination({ currentPage, totalPages, totalItems, rowsPe
   const startIdx = (currentPage - 1) * rowsPerPage;
 
   return (
-    <div className="px-4 py-3 border-t border-white/[0.06] flex items-center justify-between">
+    <div className="px-4 py-3 border-t border-white/[0.06] grid grid-cols-3 items-center">
+      {/* Left: item range */}
       <span className="text-neutral-600 text-xs">
         {startIdx + 1}–{Math.min(startIdx + rowsPerPage, totalItems)} of {totalItems} {label}
       </span>
-      <div className="flex items-center gap-1">
+
+      {/* Center: page buttons */}
+      <div className="flex items-center justify-center gap-1">
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
@@ -68,6 +71,11 @@ export default function Pagination({ currentPage, totalPages, totalItems, rowsPe
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Right: page indicator */}
+      <span className="text-neutral-600 text-xs text-right">
+        Page {currentPage} of {totalPages}
+      </span>
     </div>
   );
 }

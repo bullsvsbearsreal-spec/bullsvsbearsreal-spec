@@ -446,35 +446,78 @@ export default function FundingPage() {
               </button>
 
               {showExchangeSelector && (
-                <div className="absolute right-0 top-full mt-1.5 z-50 bg-[#111] border border-white/[0.08] rounded-xl p-3 shadow-2xl shadow-black/80 min-w-[240px]">
-                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/[0.06]">
-                    <span className="text-white font-medium text-xs">Exchanges</span>
-                    <button onClick={toggleAllExchanges} className="text-[10px] text-hub-yellow">
-                      {selectedExchanges.size === ALL_EXCHANGES.length ? 'None' : 'All'}
+                <div className="absolute right-0 top-full mt-1.5 z-50 bg-[#0e0e0e] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/80 min-w-[280px] overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+                    <div className="flex items-center gap-2">
+                      <Settings2 className="w-3.5 h-3.5 text-hub-yellow" />
+                      <span className="text-white font-semibold text-xs">Exchanges</span>
+                      <span className="text-[10px] text-neutral-500 font-mono">{selectedExchanges.size}/{ALL_EXCHANGES.length}</span>
+                    </div>
+                    <button onClick={toggleAllExchanges} className="text-[10px] font-semibold text-hub-yellow hover:text-hub-yellow/80 transition-colors px-2 py-0.5 rounded bg-hub-yellow/10 hover:bg-hub-yellow/15">
+                      {selectedExchanges.size === ALL_EXCHANGES.length ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
-                  <div className="space-y-0.5 max-h-80 overflow-y-auto">
-                    {ALL_EXCHANGES.map((exchange) => (
-                      <button
-                        key={exchange}
-                        onClick={() => toggleExchange(exchange)}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-xs ${
-                          selectedExchanges.has(exchange) ? 'bg-white/[0.06] text-white' : 'text-neutral-600 hover:text-neutral-400'
-                        }`}
-                      >
-                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center ${
-                          selectedExchanges.has(exchange) ? 'bg-hub-yellow' : 'bg-white/[0.06] border border-white/[0.1]'
-                        }`}>
-                          {selectedExchanges.has(exchange) && <Check className="w-2.5 h-2.5 text-black" />}
-                        </div>
-                        <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
-                        <span className="font-medium">{exchange}</span>
-                        {isExchangeDex(exchange) && (
-                          <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>
-                        )}
-                        <div className={`ml-auto w-1.5 h-1.5 rounded-full ${EXCHANGE_COLORS[exchange]}`} />
-                      </button>
-                    ))}
+
+                  <div className="p-2 max-h-[400px] overflow-y-auto">
+                    {/* CEX Section */}
+                    <div className="mb-1">
+                      <div className="px-2 py-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Centralized ({ALL_EXCHANGES.filter(e => !isExchangeDex(e)).length})</div>
+                      <div className="grid grid-cols-2 gap-0.5">
+                        {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).map((exchange) => {
+                          const active = selectedExchanges.has(exchange);
+                          return (
+                            <button
+                              key={exchange}
+                              onClick={() => toggleExchange(exchange)}
+                              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-xs ${
+                                active ? 'bg-white/[0.06] text-white' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.02]'
+                              }`}
+                            >
+                              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center transition-colors ${
+                                active ? 'bg-hub-yellow' : 'bg-white/[0.04] border border-white/[0.1]'
+                              }`}>
+                                {active && <Check className="w-2.5 h-2.5 text-black" />}
+                              </div>
+                              <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                              <span className="font-medium truncate">{exchange}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="mx-2 my-1.5 border-t border-white/[0.06]" />
+
+                    {/* DEX Section */}
+                    <div>
+                      <div className="px-2 py-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Decentralized ({ALL_EXCHANGES.filter(e => isExchangeDex(e)).length})</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-0.5">
+                        {ALL_EXCHANGES.filter(e => isExchangeDex(e)).map((exchange) => {
+                          const active = selectedExchanges.has(exchange);
+                          return (
+                            <button
+                              key={exchange}
+                              onClick={() => toggleExchange(exchange)}
+                              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-xs ${
+                                active ? 'bg-purple-500/10 text-white' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.02]'
+                              }`}
+                            >
+                              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center transition-colors ${
+                                active ? 'bg-purple-500' : 'bg-white/[0.04] border border-white/[0.1]'
+                              }`}>
+                                {active && <Check className="w-2.5 h-2.5 text-white" />}
+                              </div>
+                              <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                              <span className="font-medium truncate">{exchange}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
