@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useMultiExchangeLiquidations } from '@/hooks/useMultiExchangeLiquidations';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { AlertTriangle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX'] as const;
 
@@ -66,6 +66,16 @@ export default function WhaleAlertPage() {
       liq => liq.value >= minValue && selectedExchanges.includes(liq.exchange),
     );
   }, [liquidations, minValue, selectedExchanges]);
+
+  // Auto-scroll to top on new items if user hasn't scrolled down
+  useEffect(() => {
+    if (feedRef.current && filteredLiqs.length > 0) {
+      const el = feedRef.current;
+      if (el.scrollTop < 100) {
+        el.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [filteredLiqs.length]);
 
   // Whale-specific stats (above threshold)
   const whaleStats = useMemo(() => {
@@ -251,7 +261,13 @@ export default function WhaleAlertPage() {
 
           {/* Feed Body */}
           <div ref={feedRef} className="max-h-[600px] overflow-y-auto divide-y divide-white/[0.03]">
-            {filteredLiqs.length === 0 ? (
+            {connectedCount === 0 && filteredLiqs.length === 0 ? (
+              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
+                <RefreshCw className="w-5 h-5 text-hub-yellow animate-spin mx-auto mb-2" />
+                <span className="text-neutral-500 text-sm">Connecting to exchange feeds...</span>
+                <p className="text-neutral-700 text-xs mt-1">Establishing WebSocket connections to 7 exchanges</p>
+              </div>
+            ) : filteredLiqs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-neutral-500">
                 <AlertTriangle className="w-8 h-8 mb-3 text-neutral-600" />
                 <p className="text-sm">No whale liquidations yet</p>
@@ -278,6 +294,12 @@ export default function WhaleAlertPage() {
               </span>
             </span>
           ))}
+        </div>
+
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            Whale Alert monitors large liquidation events across 7 major exchanges in real-time via WebSocket feeds. A liquidation occurs when a leveraged position is forcefully closed due to insufficient margin. Large liquidations ($1M+) often signal significant market stress and can cascade into further price movements. Green dots indicate active exchange connections.
+          </p>
         </div>
       </main>
 

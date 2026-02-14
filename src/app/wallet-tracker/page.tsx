@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check } from 'lucide-react';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle } from 'lucide-react';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApiData } from '@/hooks/useApiData';
 import { formatRelativeTime } from '@/lib/utils/format';
@@ -126,9 +126,16 @@ function SkeletonRow() {
 
 function BalanceSkeleton() {
   return (
-    <div className="animate-pulse space-y-3">
-      <div className="w-48 h-10 bg-white/[0.06] rounded" />
-      <div className="w-32 h-5 bg-white/[0.06] rounded" />
+    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5 animate-pulse">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 rounded-xl bg-white/[0.06]" />
+        <div>
+          <div className="h-3 w-24 bg-white/[0.06] rounded mb-2" />
+          <div className="h-3 w-40 bg-white/[0.06] rounded" />
+        </div>
+      </div>
+      <div className="h-10 w-48 bg-white/[0.06] rounded mb-2" />
+      <div className="h-5 w-32 bg-white/[0.06] rounded" />
     </div>
   );
 }
@@ -453,7 +460,10 @@ export default function WalletTrackerPage() {
                   {walletLoading && !walletData ? (
                     <BalanceSkeleton />
                   ) : walletError ? (
-                    <div className="text-red-400 text-sm">{walletError}</div>
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      {walletError}
+                    </div>
                   ) : walletData ? (
                     <>
                       <div className="flex items-center gap-3 mb-1">
@@ -483,8 +493,8 @@ export default function WalletTrackerPage() {
                 </div>
 
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold"
-                  style={{ backgroundColor: `${CHAIN_CONFIG[activeChain].color}20`, color: CHAIN_CONFIG[activeChain].color }}
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold border border-white/[0.1]"
+                  style={{ backgroundColor: `${CHAIN_CONFIG[activeChain].color}20`, color: CHAIN_CONFIG[activeChain].color, boxShadow: `0 4px 12px ${CHAIN_CONFIG[activeChain].color}20` }}
                 >
                   {CHAIN_CONFIG[activeChain].symbol.charAt(0)}
                 </div>
@@ -534,7 +544,12 @@ export default function WalletTrackerPage() {
                   ))}
                 </div>
               ) : walletError ? (
-                <div className="p-8 text-center text-red-400 text-sm">{walletError}</div>
+                <div className="p-4">
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 flex items-center gap-2 text-red-400 text-sm">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    {walletError}
+                  </div>
+                </div>
               ) : walletData && (!walletData.transactions || walletData.transactions.length === 0) ? (
                 <div className="p-8 text-center text-neutral-600 text-sm">No transactions found</div>
               ) : walletData ? (
@@ -656,6 +671,11 @@ export default function WalletTrackerPage() {
             {savedWallets.length}/10 wallet{savedWallets.length !== 1 ? 's' : ''} saved
           </div>
         )}
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            Wallet Tracker supports Ethereum (0x addresses), Bitcoin (1/3/bc1 addresses), and Solana (base58 addresses). ETH balances are fetched via public RPC nodes, transactions via Etherscan and Blockscout. BTC data comes from Blockchain.info and Mempool.space. SOL data from Solana mainnet RPC. Data caches for 2 minutes. Saved wallets are stored locally in your browser (max 10).
+          </p>
+        </div>
       </main>
 
       <Footer />

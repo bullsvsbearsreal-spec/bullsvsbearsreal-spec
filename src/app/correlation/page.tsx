@@ -326,8 +326,24 @@ export default function CorrelationPage() {
 
         {/* Loading */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <RefreshCw className="w-6 h-6 text-neutral-500 animate-spin" />
+          <div className="space-y-4">
+            {/* Stats skeleton */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                  <div className="h-3 w-20 bg-white/[0.06] rounded mb-3" />
+                  <div className="h-7 w-28 bg-white/[0.06] rounded" />
+                </div>
+              ))}
+            </div>
+            {/* Matrix skeleton */}
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 animate-pulse">
+              <div className="grid grid-cols-6 gap-1">
+                {Array.from({ length: 36 }).map((_, i) => (
+                  <div key={i} className="aspect-square bg-white/[0.04] rounded-[3px]" />
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -341,6 +357,7 @@ export default function CorrelationPage() {
 
         {/* Correlation Matrix */}
         {!isLoading && matrix.length > 0 && (
+          <div className="relative">
           <div
             className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3 sm:p-4 overflow-x-auto"
             onMouseMove={handleMouseMove}
@@ -445,8 +462,8 @@ export default function CorrelationPage() {
               <div
                 className="fixed z-50 pointer-events-none bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-3 shadow-xl"
                 style={{
-                  left: tooltipPos.x + 14,
-                  top: tooltipPos.y + 14,
+                  left: tooltipPos.x + 260 > window.innerWidth ? tooltipPos.x - 260 : tooltipPos.x + 14,
+                  top: tooltipPos.y + 200 > window.innerHeight ? tooltipPos.y - 200 : tooltipPos.y + 14,
                 }}
               >
                 <div className="flex items-center gap-2 mb-1.5">
@@ -490,6 +507,8 @@ export default function CorrelationPage() {
                 </div>
               </div>
             )}
+          </div>
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#0d0d0d] to-transparent md:hidden" />
           </div>
         )}
 
@@ -576,8 +595,8 @@ export default function CorrelationPage() {
 
         {/* Methodology note */}
         {!isLoading && matrix.length > 0 && (
-          <div className="mt-4 mb-2 p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl">
-            <p className="text-[11px] text-neutral-500 leading-relaxed">
+          <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+            <p className="text-neutral-500 text-xs leading-relaxed">
               <strong className="text-neutral-400">Methodology:</strong> Correlation is computed
               using the Pearson coefficient on 24h price change percentages across common
               exchanges. Each symbol pair uses only exchanges where both assets are listed.

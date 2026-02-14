@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
-import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface FearGreedEntry {
@@ -116,7 +116,7 @@ export default function FearGreedPage() {
     return res.json() as Promise<HistoryResponse>;
   }, [timeframe]);
 
-  const { data, isLoading, isRefreshing, lastUpdate, refresh } = useApiData<HistoryResponse>({
+  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApiData<HistoryResponse>({
     fetcher,
     refreshInterval: 60000,
   });
@@ -181,13 +181,37 @@ export default function FearGreedPage() {
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12">
-            <div className="flex items-center justify-center gap-3">
-              <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
-              <span className="text-white">Loading fear & greed data...</span>
-            </div>
+        {error && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {error}
           </div>
+        )}
+
+        {isLoading ? (
+          <>
+            {/* Skeleton: Gauge + Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+              {/* Gauge skeleton */}
+              <div className="md:col-span-2 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 flex items-center justify-center animate-pulse">
+                <div className="w-48 h-48 rounded-full bg-white/[0.06]" />
+              </div>
+              {/* Stat card skeletons */}
+              <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                    <div className="h-3 w-20 bg-white/[0.06] rounded mb-2" />
+                    <div className="h-8 w-24 bg-white/[0.06] rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Skeleton: Chart */}
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+              <div className="h-4 w-40 bg-white/[0.06] rounded mb-4" />
+              <div className="h-64 bg-white/[0.04] rounded-lg" />
+            </div>
+          </>
         ) : (
           <>
             {/* Current Value + Stats Row */}
@@ -340,6 +364,8 @@ export default function FearGreedPage() {
                         fill="url(#fearGreedGradient)"
                         dot={false}
                         activeDot={{ r: 5, fill: '#fff', stroke: '#FFA500', strokeWidth: 2 }}
+                        isAnimationActive={true}
+                        animationDuration={500}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -411,6 +437,12 @@ export default function FearGreedPage() {
             </div>
           </>
         )}
+
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            The Fear & Greed Index measures crypto market sentiment on a scale of 0-100. It combines volatility (25%), market volume (25%), social media sentiment (15%), surveys (15%), Bitcoin dominance (10%), and Google Trends (10%). Values below 25 indicate Extreme Fear (potential buying opportunity), while values above 75 suggest Extreme Greed (potential correction risk). Data updates daily.
+          </p>
+        </div>
       </main>
       <Footer />
     </div>

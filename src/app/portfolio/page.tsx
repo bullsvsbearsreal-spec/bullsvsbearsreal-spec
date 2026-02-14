@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
-import { RefreshCw, Plus, X, Edit2, Trash2 } from 'lucide-react';
+import { RefreshCw, Plus, X, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -94,7 +94,7 @@ export default function PortfolioPage() {
     return (await res.json()) as Ticker[];
   }, []);
 
-  const { data: tickers, isLoading, isRefreshing, lastUpdate, refresh } = useApiData<Ticker[]>({
+  const { data: tickers, isLoading, isRefreshing, lastUpdate, refresh, error: priceError } = useApiData<Ticker[]>({
     fetcher,
     refreshInterval: 30_000,
   });
@@ -261,6 +261,13 @@ export default function PortfolioPage() {
             </button>
           </div>
         </div>
+
+        {priceError && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {priceError}
+          </div>
+        )}
 
         {/* Empty state */}
         {holdings.length === 0 && !isLoading && (
@@ -530,18 +537,33 @@ export default function PortfolioPage() {
 
         {/* Loading skeleton */}
         {isLoading && holdings.length > 0 && (
-          <div className="flex items-center justify-center py-12 text-neutral-500 text-sm gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            Loading live prices...
+          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.04] animate-pulse">
+                <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                <div className="w-14 h-4 bg-white/[0.06] rounded" />
+                <div className="w-14 h-4 bg-white/[0.06] rounded" />
+                <div className="w-8 h-4 bg-white/[0.06] rounded" />
+              </div>
+            ))}
           </div>
         )}
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            Portfolio values use real-time prices from the highest-volume exchange. P&amp;L is calculated as unrealized gain/loss based on your average entry price. Allocation percentages are based on current market value. All holdings data is stored locally in your browser and never sent to any server. Prices refresh every 30 seconds.
+          </p>
+        </div>
       </main>
 
       <Footer />
 
       {/* Modal overlay */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-[#111] border border-white/[0.08] rounded-xl w-full max-w-md shadow-2xl animate-scale-in">
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">

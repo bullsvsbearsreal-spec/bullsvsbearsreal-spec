@@ -83,7 +83,7 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
   const isPast = days < 0;
 
   return (
-    <div className={`bg-[#0d0d0d] border rounded-xl p-4 transition-colors hover:border-white/[0.12] ${
+    <div className={`bg-[#0d0d0d] border rounded-xl p-4 transition-all duration-200 hover:border-white/[0.12] ${
       unlock.isLarge ? 'border-yellow-500/30' : 'border-white/[0.06]'
     } ${isPast ? 'opacity-50' : ''}`}>
       <div className="flex items-start justify-between gap-3">
@@ -222,13 +222,13 @@ function CalendarView({
             <button
               key={day}
               onClick={() => onSelectDate(isSelected ? null : cellDate)}
-              className={`relative aspect-square rounded-lg flex flex-col items-center justify-center text-sm transition-all ${
+              className={`relative aspect-square rounded-lg flex flex-col items-center justify-center text-sm transition-all duration-150 ${
                 isSelected
                   ? 'bg-hub-yellow text-black font-bold'
                   : isToday
                     ? 'bg-white/[0.06] text-white font-semibold ring-1 ring-hub-yellow/50'
                     : hasUnlocks
-                      ? 'bg-white/[0.04] text-white hover:bg-white/[0.08]'
+                      ? 'bg-white/[0.04] text-white hover:bg-white/[0.08] hover:scale-[1.02]'
                       : 'text-neutral-600 hover:bg-white/[0.04]'
               }`}
             >
@@ -292,7 +292,7 @@ export default function TokenUnlocksPage() {
     return res.json() as Promise<ApiResponse>;
   }, []);
 
-  const { data, isLoading, isRefreshing, lastUpdate, refresh } = useApiData<ApiResponse>({
+  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApiData<ApiResponse>({
     fetcher,
     refreshInterval: 5 * 60 * 1000,
   });
@@ -384,11 +384,40 @@ export default function TokenUnlocksPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
         {isLoading ? (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12">
-            <div className="flex items-center justify-center gap-3">
-              <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
-              <span className="text-white">Loading token unlocks...</span>
+          <div className="space-y-4">
+            {/* Stat cards skeleton */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                  <div className="h-3 w-20 bg-white/[0.06] rounded mb-3" />
+                  <div className="h-7 w-28 bg-white/[0.06] rounded" />
+                </div>
+              ))}
+            </div>
+            {/* Unlock cards skeleton */}
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-white/[0.06]" />
+                    <div className="h-4 w-24 bg-white/[0.06] rounded" />
+                    <div className="ml-auto h-4 w-16 bg-white/[0.06] rounded" />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="h-3 w-20 bg-white/[0.06] rounded" />
+                    <div className="h-3 w-24 bg-white/[0.06] rounded" />
+                    <div className="h-3 w-16 bg-white/[0.06] rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ) : (
@@ -551,6 +580,12 @@ export default function TokenUnlocksPage() {
             </div>
           </>
         )}
+
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            Token unlocks release previously locked tokens into circulation, increasing supply. Cliff unlocks release a large amount at once (higher price impact), while linear unlocks distribute tokens gradually. The &apos;% of Supply&apos; metric indicates potential dilution &mdash; unlocks above 1% of total supply are highlighted as large events. Investor and team unlocks often create selling pressure. Data is curated from public vesting schedules.
+          </p>
+        </div>
       </main>
       <Footer />
     </div>

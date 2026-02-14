@@ -17,6 +17,7 @@ import {
   List,
   Clock,
   Filter,
+  AlertTriangle,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -118,7 +119,7 @@ export default function EconomicCalendarPage() {
     return res.json() as Promise<ApiResponse>;
   }, [monthKey]);
 
-  const { data, isLoading, isRefreshing, refresh, lastUpdate } =
+  const { data, error, isLoading, isRefreshing, refresh, lastUpdate } =
     useApiData<ApiResponse>({
       fetcher,
       refreshInterval: 5 * 60 * 1000,
@@ -452,11 +453,44 @@ export default function EconomicCalendarPage() {
           </select>
         </div>
 
+        {error && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
         {isLoading ? (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12">
-            <div className="flex items-center justify-center gap-3">
-              <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
-              <span className="text-white">Loading economic calendar...</span>
+          <div className="space-y-4">
+            {/* Stats skeleton */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                  <div className="h-3 w-24 bg-white/[0.06] rounded mb-3" />
+                  <div className="h-7 w-20 bg-white/[0.06] rounded" />
+                </div>
+              ))}
+            </div>
+            {/* Calendar grid skeleton */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                <div className="h-6 w-40 bg-white/[0.06] rounded mb-4" />
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <div key={i} className="aspect-square bg-white/[0.04] rounded" />
+                  ))}
+                </div>
+              </div>
+              {/* Sidebar skeleton */}
+              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                <div className="h-4 w-32 bg-white/[0.06] rounded mb-4" />
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="mb-3">
+                    <div className="h-3 w-full bg-white/[0.06] rounded mb-2" />
+                    <div className="h-3 w-3/4 bg-white/[0.06] rounded" />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -663,7 +697,22 @@ export default function EconomicCalendarPage() {
                     Upcoming Events
                   </h3>
                 </div>
-                {upcomingEvents.length === 0 ? (
+                {upcomingEvents.length === 0 && !data ? (
+                  <div className="divide-y divide-white/[0.04]">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-3 animate-pulse">
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full mt-1.5 bg-white/[0.06] flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-3 w-3/4 bg-white/[0.06] rounded mb-2" />
+                            <div className="h-2 w-1/2 bg-white/[0.06] rounded" />
+                          </div>
+                          <div className="h-3 w-8 bg-white/[0.06] rounded flex-shrink-0" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : upcomingEvents.length === 0 ? (
                   <div className="p-6 text-center text-neutral-600 text-sm">
                     No upcoming events this month
                   </div>
@@ -771,6 +820,11 @@ export default function EconomicCalendarPage() {
             </div>
           </div>
         )}
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            Economic events like FOMC rate decisions, CPI inflation data, and Non-Farm Payrolls significantly impact crypto markets. High-impact events (marked red) often cause 2-5% price swings in Bitcoin within hours. FOMC meetings are the most watched — hawkish surprises typically pressure crypto prices, while dovish signals drive rallies. Calendar data includes US, EU, and crypto-specific events. Dates are based on officially published schedules.
+          </p>
+        </div>
       </main>
       <Footer />
     </div>

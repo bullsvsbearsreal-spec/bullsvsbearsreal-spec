@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
-import { RefreshCw, Plus, X, Star, Copy, Check } from 'lucide-react';
+import { RefreshCw, Plus, X, Star, Copy, Check, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { getWatchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
 import { formatPrice, formatNumber, formatFundingRate, formatPercent } from '@/lib/utils/format';
@@ -99,7 +99,7 @@ export default function WatchlistPage() {
     [],
   );
 
-  const { data: tickers, isLoading: loadingTickers, lastUpdate, refresh: refreshTickers } = useApiData({
+  const { data: tickers, isLoading: loadingTickers, error: tickerError, lastUpdate, refresh: refreshTickers } = useApiData({
     fetcher: tickerFetcher,
     refreshInterval: 30_000,
   });
@@ -228,10 +228,12 @@ export default function WatchlistPage() {
     }
   };
 
-  const sortIndicator = (field: SortField) => {
-    if (sortField !== field) return '';
-    return sortOrder === 'asc' ? ' \u25B2' : ' \u25BC';
-  };
+  function SortIcon({ field, currentField, currentOrder }: { field: string; currentField: string; currentOrder: 'asc' | 'desc' }) {
+    if (field !== currentField) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
+    return currentOrder === 'asc'
+      ? <ArrowUp className="w-3 h-3 text-hub-yellow" />
+      : <ArrowDown className="w-3 h-3 text-hub-yellow" />;
+  }
 
   /* ------------------------------------------------------------------ */
   /*  Render                                                             */
@@ -275,7 +277,7 @@ export default function WatchlistPage() {
             </button>
 
             {lastUpdate && (
-              <span className="text-[11px] text-neutral-600 hidden sm:inline">
+              <span className="text-[11px] text-neutral-600">
                 Updated {lastUpdate.toLocaleTimeString()}
               </span>
             )}
@@ -329,6 +331,14 @@ export default function WatchlistPage() {
           </div>
         </div>
 
+        {/* ---------- error banner ------------------------------------- */}
+        {tickerError && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {tickerError}
+          </div>
+        )}
+
         {/* ---------- empty state -------------------------------------- */}
         {watchlist.length === 0 && (
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
@@ -360,7 +370,21 @@ export default function WatchlistPage() {
         {watchlist.length > 0 && (
           <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
             {loadingTickers && !tickers ? (
-              <div className="p-12 text-center text-neutral-600 text-sm">Loading data...</div>
+              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/[0.06]">
+                  <div className="h-4 w-32 bg-white/[0.06] rounded animate-pulse" />
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.04] animate-pulse">
+                    <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                    <div className="w-24 h-4 bg-white/[0.06] rounded" />
+                    <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                    <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                    <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                    <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
@@ -381,8 +405,10 @@ export default function WatchlistPage() {
                             sortField === field ? 'text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300'
                           } ${field !== 'symbol' ? 'text-right' : ''}`}
                         >
-                          {label}
-                          {sortIndicator(field)}
+                          <span className="inline-flex items-center gap-1">
+                            {label}
+                            <SortIcon field={field} currentField={sortField} currentOrder={sortOrder} />
+                          </span>
                         </th>
                       ))}
                       <th className="px-4 py-3 w-10" />
@@ -458,6 +484,11 @@ export default function WatchlistPage() {
             {watchlist.length} coin{watchlist.length !== 1 ? 's' : ''} in watchlist
           </div>
         )}
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+          <p className="text-neutral-500 text-xs leading-relaxed">
+            Watchlist data is aggregated from 17+ exchanges. Prices show the highest-volume match. Funding rates are averaged across all exchanges offering the pair. Open Interest is the sum across all exchanges. Data refreshes every 30 seconds. Your watchlist is stored locally in your browser.
+          </p>
+        </div>
       </main>
 
       <Footer />
