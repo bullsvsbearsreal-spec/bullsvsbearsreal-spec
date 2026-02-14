@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import ChatWidget from '@/components/chat/ChatWidget'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
@@ -83,6 +84,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         {children}
+        <ChatWidget />
       </body>
     </html>
   )
