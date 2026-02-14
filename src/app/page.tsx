@@ -17,7 +17,7 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, TrendingUp, Radio, Zap, BarChart3, Newspaper, Shield } from 'lucide-react';
+import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
@@ -72,31 +72,19 @@ export default function Home() {
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* ═══ Hero Section ═══ */}
-        <section className="relative py-8 mb-2">
-          {/* Ambient mesh background */}
-          <div className="absolute inset-0 hero-mesh animate-mesh pointer-events-none" aria-hidden="true" />
+        <section className="relative pt-6 pb-4 mb-2">
+          <div className="absolute inset-0 hero-mesh pointer-events-none" aria-hidden="true" />
 
           <div className="relative">
-            {/* Tagline */}
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-hub-yellow/[0.08] border border-hub-yellow/[0.15]">
-                <span className="live-dot" />
-                <span className="text-hub-yellow text-[11px] font-semibold tracking-wide">LIVE</span>
-              </div>
-              <span className="text-neutral-500 text-sm">Real-time derivatives intelligence</span>
+            <div className="flex items-center gap-3 mb-4">
+              <h1 className="text-xl font-bold text-white">
+                <span className="text-white">info</span><span className="text-hub-yellow">hub</span>
+              </h1>
+              <span className="text-neutral-500 text-sm">Real-time derivatives data</span>
+              <span className="live-dot ml-1" />
             </div>
 
-            {/* Title */}
-            <h1 className="text-3xl sm:text-4xl font-black text-white mb-2 tracking-tight">
-              Derivatives data
-              <span className="text-gradient"> at a glance</span>
-            </h1>
-            <p className="text-neutral-500 text-sm max-w-lg mb-6">
-              Funding rates, open interest, liquidations, and market sentiment across {ALL_EXCHANGES.length}+ exchanges — aggregated in real time.
-            </p>
-
-            {/* Search */}
-            <div className="max-w-xl mb-6">
+            <div className="max-w-lg mb-4">
               <CoinSearch
                 onSelect={handleCoinSelect}
                 placeholder="Search any coin for events, unlocks & news..."
@@ -105,10 +93,9 @@ export default function Home() {
               />
             </div>
 
-            {/* Quick nav pills */}
             <div className="flex flex-wrap gap-2">
               {[
-                { name: 'Funding Rates', href: '/funding', icon: Activity },
+                { name: 'Funding', href: '/funding', icon: Activity },
                 { name: 'Open Interest', href: '/open-interest', icon: BarChart3 },
                 { name: 'Liquidations', href: '/liquidations', icon: Zap },
                 { name: 'Screener', href: '/screener', icon: TrendingUp },
@@ -117,11 +104,10 @@ export default function Home() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="group flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-hub-yellow/30 hover:bg-hub-yellow/[0.05] text-neutral-400 hover:text-white text-xs font-medium transition-all duration-200"
+                  className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-hub-yellow/30 hover:bg-hub-yellow/[0.05] text-neutral-400 hover:text-white text-xs font-medium transition-all duration-200"
                 >
-                  <link.icon className="w-3.5 h-3.5 text-neutral-500 group-hover:text-hub-yellow transition-colors" />
+                  <link.icon className="w-3 h-3 text-neutral-500 group-hover:text-hub-yellow transition-colors" />
                   {link.name}
-                  <ArrowRight className="w-3 h-3 opacity-0 -ml-1 group-hover:opacity-100 group-hover:ml-0 transition-all duration-200" />
                 </Link>
               ))}
             </div>
