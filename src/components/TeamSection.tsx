@@ -26,7 +26,7 @@ const teamMembers: TeamMember[] = [
     stats: [],
   },
   {
-    name: 'MF.0X',
+    name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
     bio: 'Strategic advisor with deep expertise in market analysis and trading infrastructure development.',
@@ -34,6 +34,7 @@ const teamMembers: TeamMember[] = [
       { label: 'Trading Volume', value: '$1B+/year' },
       { label: 'Experience', value: '15+ Years' },
     ],
+    socials: { twitter: 'https://x.com/snakether' },
   },
 ];
 
@@ -82,7 +83,20 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
         <div className="flex-1">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <h3 className="text-2xl font-bold text-white">{member.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-2xl font-bold text-white">{member.name}</h3>
+                {member.socials?.twitter && (
+                  <a
+                    href={member.socials.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-neutral-500 hover:text-hub-yellow transition-colors"
+                    title="Twitter / X"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                  </a>
+                )}
+              </div>
               <p className="text-hub-yellow font-medium">{member.role}</p>
             </div>
             <div className="flex items-center gap-2">
