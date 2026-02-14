@@ -9,8 +9,8 @@ export const runtime = 'edge';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
-const MAX_TOOL_ROUNDS = 3;
-const MAX_TOKENS = 400;
+const MAX_TOOL_ROUNDS = 5;
+const MAX_TOKENS = 600;
 
 interface ChatRequestBody {
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -50,7 +50,38 @@ export async function POST(request: NextRequest) {
   }
 
   const origin = new URL(request.url).origin;
-  const systemPrompt = buildSystemPrompt(body.context || {});
+
+  // Fetch live market context for system prompt (lightweight, cached)
+  let btcPrice: number | undefined;
+  let btcChange: number | undefined;
+  let btcOI: number | undefined;
+  try {
+    const [tickerRes, oiRes] = await Promise.all([
+      fetch(`${origin}/api/tickers`).then((r) => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${origin}/api/openinterest`).then((r) => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    if (tickerRes?.data) {
+      const btcTickers = (tickerRes.data as any[]).filter((t: any) => t.symbol === 'BTC');
+      if (btcTickers.length > 0) {
+        btcPrice = btcTickers.reduce((s: number, t: any) => s + (t.lastPrice || 0), 0) / btcTickers.length;
+        btcChange = btcTickers[0]?.priceChangePercent24h ?? btcTickers[0]?.change24h;
+      }
+    }
+    if (oiRes?.data) {
+      btcOI = (oiRes.data as any[])
+        .filter((e: any) => e.symbol === 'BTC')
+        .reduce((s: number, e: any) => s + (e.openInterest || 0), 0);
+    }
+  } catch {
+    // Non-critical — Guard works fine without ambient context
+  }
+
+  const systemPrompt = buildSystemPrompt({
+    ...body.context,
+    btcPrice,
+    btcChange,
+    btcOI,
+  });
 
   // Only send last 10 messages to stay within token budget
   const recentMessages = body.messages.slice(-10).map((m) => ({

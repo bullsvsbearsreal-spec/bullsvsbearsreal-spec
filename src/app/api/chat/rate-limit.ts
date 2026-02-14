@@ -10,7 +10,7 @@ interface RateLimitEntry {
 
 const ipLimits = new Map<string, RateLimitEntry>();
 const WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
-const MAX_PER_IP = 15; // 15 messages per IP per day
+const MAX_PER_IP = 30; // 30 messages per IP per day
 const MAX_INPUT_LENGTH = 500;
 
 // Global hourly limit

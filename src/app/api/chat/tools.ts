@@ -6,7 +6,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_funding_rates',
     description:
-      'Get current funding rates across all exchanges. Can filter by symbol. Returns rate, exchange, predicted rate, mark price, and funding interval.',
+      'Get current funding rates across all exchanges. USE WHEN: user asks about funding rates, market bias, carry trades, whether longs or shorts are dominant, or any question about a specific coin (always check funding). Returns rate, exchange, predicted rate, and interval.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -25,7 +25,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_open_interest',
     description:
-      'Get current open interest data across all exchanges. Returns OI in USD by symbol and exchange. Useful for gauging market positioning.',
+      'Get current open interest in USD by symbol and exchange. USE WHEN: user asks about positioning, conviction, whether new money is entering, or any coin-specific question (always pair with funding). Rising OI = new positions opening. Falling OI = positions closing.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -39,7 +39,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_fear_greed_index',
     description:
-      'Get the current Crypto Fear & Greed Index (0-100 scale). Classifications: Extreme Fear (0-24), Fear (25-44), Neutral (45-55), Greed (56-74), Extreme Greed (75-100).',
+      'Get current Fear & Greed Index (0-100) with 7-day history. USE WHEN: user asks about market sentiment, mood, whether to buy/sell, or any broad market question. Extreme Fear (<20) = contrarian buy signal. Extreme Greed (>80) = caution.',
     input_schema: {
       type: 'object' as const,
       properties: {},
@@ -47,7 +47,8 @@ export const CHAT_TOOLS: Tool[] = [
   },
   {
     name: 'get_top_movers',
-    description: "Get today's top gainers and losers by 24h price change percentage.",
+    description:
+      "Get today's top gainers and losers by 24h price change. USE WHEN: user asks what's moving, what's hot, what to watch, or for a market overview.",
     input_schema: {
       type: 'object' as const,
       properties: {},
@@ -56,7 +57,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_long_short_ratio',
     description:
-      'Get the Binance global long/short account ratio for a symbol. Shows the percentage of accounts that are long vs short.',
+      'Get Binance global long/short account ratio. USE WHEN: user asks about retail positioning, crowd sentiment for a specific pair, or whether traders are leaning long/short. High long ratio = crowded long (contrarian short signal).',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -75,7 +76,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_whale_positions',
     description:
-      'Get current positions of top Hyperliquid whale traders. Shows account value, open positions with size/leverage/PnL, and performance metrics. Can filter by a specific coin to see which whales are trading it.',
+      'Get positions of top Hyperliquid whale traders with account value, leverage, PnL. USE WHEN: user asks about smart money, whale activity, institutional positioning, or what big players are doing. Can filter by coin to see which whales hold a specific asset.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -89,7 +90,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_token_unlocks',
     description:
-      'Get upcoming token unlock events. Shows token name, unlock date, amount, percentage of supply, and whether it is cliff or linear vesting.',
+      'Get upcoming token unlock events with dates, amounts, and supply %. USE WHEN: user asks about upcoming supply events, potential sell pressure, or vesting schedules. Large unlocks (>5% supply) often cause selling pressure.',
     input_schema: {
       type: 'object' as const,
       properties: {},
@@ -98,7 +99,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_tickers',
     description:
-      'Get real-time prices, 24h price changes, and volumes for symbols across exchanges. Use this when the user asks about current prices.',
+      'Get real-time prices, 24h changes, and volumes across exchanges. USE WHEN: user asks about current price of any coin, volume, or needs price data for analysis.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -112,7 +113,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_funding_history',
     description:
-      'Get historical funding rate data for a symbol over the past N days (max 90). Shows average rates over time for trend analysis.',
+      'Get historical funding rates for a symbol over N days (max 90). USE WHEN: user asks about funding trends, whether current rate is normal, or for historical comparison. Shows average, min, max, and recent trend direction.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -135,7 +136,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_economic_calendar',
     description:
-      'Get upcoming economic events (FOMC meetings, CPI releases, NFP, etc.) that may impact crypto markets. Includes impact rating and dates.',
+      'Get upcoming economic events (FOMC, CPI, NFP, etc.). USE WHEN: user asks about macro events, catalysts, or what could move markets this week. High-impact events like FOMC often cause volatility.',
     input_schema: {
       type: 'object' as const,
       properties: {},
@@ -144,7 +145,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'analyze_portfolio',
     description:
-      "Analyze the user's portfolio holdings against current market prices. Calculates unrealized P&L, portfolio allocation, and risk exposure. Only works if user has configured holdings in the Portfolio page.",
+      "Analyze user's portfolio vs current prices. Calculates PnL, allocation, and exposure. USE WHEN: user asks about their portfolio, holdings, or how their positions are doing. Requires portfolio configured on Portfolio page.",
     input_schema: {
       type: 'object' as const,
       properties: {},
@@ -153,13 +154,13 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'find_arbitrage_opportunities',
     description:
-      'Find the best funding rate arbitrage opportunities by comparing rates across exchanges for the same symbol. Shows the spread, exchanges involved, and estimated annualized carry.',
+      'Find best funding rate arbitrage opportunities across exchanges. USE WHEN: user asks about trading opportunities, free money, arb, carry trades, or spreads. Shows specific exchanges to go long/short and estimated annualized return.',
     input_schema: {
       type: 'object' as const,
       properties: {
         minSpread: {
           type: 'number',
-          description: 'Minimum funding rate spread to show in percentage (default: 0.01)',
+          description: 'Minimum funding rate spread in % (default: 0.01)',
         },
       },
     },
@@ -167,7 +168,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_liquidations',
     description:
-      'Get recent large liquidations across exchanges. Shows which positions got liquidated, the size, price, and exchange. Useful for gauging market stress and forced selling/buying.',
+      'Get large underwater positions from whale traders (liquidation proxy). USE WHEN: user asks about liquidations, market stress, who is getting rekt, or potential forced selling. Shows positions with biggest negative PnL.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -181,7 +182,7 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_oi_history',
     description:
-      'Get historical open interest data for a symbol over the past N days (max 90). Shows whether OI is building (bullish conviction) or declining (positions closing).',
+      'Get historical OI for a symbol over N days (max 90). USE WHEN: analyzing OI trends — is OI building (new conviction) or declining (positions closing)? Combine with price direction for divergence analysis.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -200,13 +201,13 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_correlation',
     description:
-      'Get cross-exchange price correlation data. Shows how a symbol performs across different exchanges and its 24h price change consistency. Useful for spotting exchange-specific anomalies.',
+      'Get cross-exchange price correlation data for a symbol. USE WHEN: user asks about price discrepancies between exchanges, or wants to verify if price action is consistent. Useful for spotting exchange-specific anomalies or manipulation.',
     input_schema: {
       type: 'object' as const,
       properties: {
         symbol: {
           type: 'string',
-          description: 'Optional symbol to focus on (e.g., BTC, ETH). If omitted, returns top 20 by volume.',
+          description: 'Optional symbol (e.g., BTC, ETH). If omitted, returns top 20 by volume.',
         },
       },
     },
