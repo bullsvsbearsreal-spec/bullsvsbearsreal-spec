@@ -413,8 +413,11 @@ export default function SymbolFundingPage() {
                               <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
                                 {formatRate(fr.fundingRate)}
                               </span>
-                              {fr.fundingInterval && fr.fundingInterval !== '8h' && (
-                                <span className="text-neutral-600 text-[9px] ml-0.5">/{fr.fundingInterval}</span>
+                              {fr.fundingInterval === '1h' && (
+                                <span className="text-amber-400 text-[10px] ml-0.5 font-bold cursor-help" title={`${formatRate(fr.fundingRate)} funding fee every 1 hour`}>*</span>
+                              )}
+                              {fr.fundingInterval === '4h' && (
+                                <span className="text-blue-400 text-[10px] ml-0.5 font-bold cursor-help" title={`${formatRate(fr.fundingRate)} funding fee every 4 hours`}>**</span>
                               )}
                             </td>
                             <td className="px-4 py-2.5 text-right">

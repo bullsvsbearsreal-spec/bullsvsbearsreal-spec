@@ -139,10 +139,10 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                       {formatRate(fr.fundingRate)}
                     </span>
                     {fr.fundingInterval === '1h' && (
-                      <span className="text-amber-400 text-[10px] ml-0.5 font-bold cursor-help" title="1-hour payout interval">*</span>
+                      <span className="text-amber-400 text-[10px] ml-0.5 font-bold cursor-help" title={`${formatRate(fr.fundingRate)} funding fee every 1 hour`}>*</span>
                     )}
                     {fr.fundingInterval === '4h' && (
-                      <span className="text-blue-400 text-[10px] ml-0.5 font-bold cursor-help" title="4-hour payout interval">**</span>
+                      <span className="text-blue-400 text-[10px] ml-0.5 font-bold cursor-help" title={`${formatRate(fr.fundingRate)} funding fee every 4 hours`}>**</span>
                     )}
                   </td>
                   {hasPredicted && (

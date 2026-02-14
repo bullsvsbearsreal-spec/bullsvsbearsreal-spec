@@ -130,7 +130,9 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
                           className={`${getHeatmapColor(rate)} rounded px-1.5 py-1.5 text-center text-[11px] font-mono text-white/80 ${
                             isActiveCol ? 'ring-1 ring-hub-yellow/30' : ''
                           }`}
-                          title={`${symbol} on ${ex}: ${rate !== undefined ? formatRate(rate) : 'N/A'}${interval ? ` (${interval} payout)` : ''}`}
+                          title={rate !== undefined && interval
+                            ? `${formatRate(rate)} funding fee every ${interval === '1h' ? '1 hour' : '4 hours'}`
+                            : `${symbol} on ${ex}: ${rate !== undefined ? formatRate(rate) : 'N/A'} (8h payout)`}
                         >
                           {rate !== undefined ? formatRate(rate) : '-'}
                           {interval === '1h' && <span className="text-amber-400 text-[8px] ml-0.5 font-bold">*</span>}
