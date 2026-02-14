@@ -5,6 +5,7 @@
 
 interface ToolInput {
   symbol?: string;
+  coin?: string;
   assetClass?: string;
   period?: string;
   exchange?: string;
@@ -35,7 +36,7 @@ export async function executeTool(
       case 'get_long_short_ratio':
         return await getLongShort(input, ctx);
       case 'get_whale_positions':
-        return await getWhalePositions(ctx);
+        return await getWhalePositions(input, ctx);
       case 'get_token_unlocks':
         return await getTokenUnlocks(ctx);
       case 'get_tickers':
@@ -48,6 +49,12 @@ export async function executeTool(
         return await analyzePortfolio(ctx);
       case 'find_arbitrage_opportunities':
         return await findArbitrage(input, ctx);
+      case 'get_liquidations':
+        return await getLiquidations(input, ctx);
+      case 'get_oi_history':
+        return await getOiHistory(input, ctx);
+      case 'get_correlation':
+        return await getCorrelation(input, ctx);
       default:
         return `Unknown tool: ${toolName}`;
     }
@@ -172,21 +179,42 @@ async function getLongShort(input: ToolInput, ctx: ExecuteContext): Promise<stri
   return `Long/Short Ratio for ${symbol} (${period} intervals):\n${rows.join('\n')}`;
 }
 
-async function getWhalePositions(ctx: ExecuteContext): Promise<string> {
+async function getWhalePositions(input: ToolInput, ctx: ExecuteContext): Promise<string> {
   const data = await fetchApi(ctx, '/api/hl-whales');
-  const whales: any[] = (data.data || []).slice(0, 10);
+  const allWhales: any[] = data || [];
+  const coinFilter = (input.coin || input.symbol)?.toUpperCase();
 
-  if (whales.length === 0) return 'No whale data available.';
+  if (allWhales.length === 0) return 'No whale data available.';
 
+  if (coinFilter) {
+    // Filter whales who have positions in this coin
+    const relevant: Array<{ whale: any; position: any }> = [];
+    allWhales.forEach((w: any) => {
+      const pos = (w.positions || []).find((p: any) => p.coin?.toUpperCase() === coinFilter);
+      if (pos) relevant.push({ whale: w, position: pos });
+    });
+
+    if (relevant.length === 0) return `No whales currently have ${coinFilter} positions on Hyperliquid.`;
+
+    relevant.sort((a, b) => Math.abs(b.position.positionValue || 0) - Math.abs(a.position.positionValue || 0));
+    const rows = relevant.slice(0, 15).map(({ whale, position }) => {
+      const p = position;
+      return `${whale.label || whale.address?.slice(0, 10)}... (AV: $${formatNum(whale.accountValue)}) | ${p.side} ${p.coin}: $${formatNum(Math.abs(p.positionValue || p.size * p.entryPrice))} @ ${p.leverage}x | PnL: $${formatNum(p.unrealizedPnl)} (${(p.roe * 100).toFixed(1)}%)`;
+    });
+    return `Whales with ${coinFilter} positions on Hyperliquid:\n${rows.join('\n')}`;
+  }
+
+  // Top 10 whales overview
+  const whales = allWhales.slice(0, 10);
   const rows = whales.map((w: any) => {
     const positions = (w.positions || [])
       .slice(0, 3)
       .map(
         (p: any) =>
-          `  ${p.coin} ${p.side}: $${formatNum(p.szi * p.entryPrice)} @ ${p.leverage}x (PnL: $${formatNum(p.unrealizedPnl)})`,
+          `  ${p.coin} ${p.side}: $${formatNum(Math.abs(p.positionValue || p.size * p.entryPrice))} @ ${p.leverage}x (PnL: $${formatNum(p.unrealizedPnl)})`,
       )
       .join('\n');
-    return `${w.label || w.address?.slice(0, 10)}... | AV: $${formatNum(w.accountValue)} | Day PnL: $${formatNum(w.performance?.day?.pnl)}\n${positions}`;
+    return `${w.label || w.address?.slice(0, 10)}... | AV: $${formatNum(w.accountValue)} | Positions: ${w.positionCount}\n${positions}`;
   });
   return `Top Hyperliquid Whales:\n${rows.join('\n\n')}`;
 }
@@ -375,6 +403,106 @@ async function findArbitrage(input: ToolInput, ctx: ExecuteContext): Promise<str
       `${o.symbol}: Spread ${o.spread.toFixed(4)}% (${o.annualized.toFixed(0)}% APR)\n  Long on ${o.long.exchange} (${o.long.rate.toFixed(4)}%) / Short on ${o.short.exchange} (${o.short.rate.toFixed(4)}%)`,
   );
   return `Top Funding Arbitrage Opportunities:\n${rows.join('\n\n')}\n\nNote: Actual returns depend on exchange fees, withdrawal costs, and execution.`;
+}
+
+// ---- New Tools: Liquidations, OI History, Correlation ----
+
+async function getLiquidations(input: ToolInput, ctx: ExecuteContext): Promise<string> {
+  // The correlation API has exchange-level data with volume; use tickers for liquidation proxy
+  // InfoHub doesn't have a dedicated liquidation API endpoint yet, so approximate from whale data
+  const data = await fetchApi(ctx, '/api/hl-whales');
+  const whales: any[] = data || [];
+
+  // Find positions with large negative PnL (recent liquidation-like events)
+  const bigLosses: Array<{ whale: string; coin: string; side: string; pnl: number; value: number; leverage: number }> = [];
+  whales.forEach((w: any) => {
+    (w.positions || []).forEach((p: any) => {
+      if (p.unrealizedPnl < -1000) {
+        bigLosses.push({
+          whale: w.label || w.address?.slice(0, 10) + '...',
+          coin: p.coin,
+          side: p.side,
+          pnl: p.unrealizedPnl,
+          value: Math.abs(p.positionValue || p.size * p.entryPrice),
+          leverage: p.leverage,
+        });
+      }
+    });
+  });
+
+  if (bigLosses.length === 0) return 'No significant underwater positions found among tracked whales.';
+
+  bigLosses.sort((a, b) => a.pnl - b.pnl); // Most negative first
+  const rows = bigLosses.slice(0, 15).map(
+    (l) => `${l.whale} | ${l.coin} ${l.side} $${formatNum(l.value)} @ ${l.leverage}x | PnL: $${formatNum(l.pnl)}`,
+  );
+
+  if (input.symbol) {
+    const sym = input.symbol.toUpperCase();
+    const filtered = bigLosses.filter((l) => l.coin.toUpperCase() === sym);
+    if (filtered.length === 0) return `No significant underwater ${sym} positions found.`;
+    const fRows = filtered.slice(0, 10).map(
+      (l) => `${l.whale} | ${l.side} $${formatNum(l.value)} @ ${l.leverage}x | PnL: $${formatNum(l.pnl)}`,
+    );
+    return `Underwater ${sym} positions (whale traders):\n${fRows.join('\n')}`;
+  }
+
+  return `Largest underwater whale positions:\n${rows.join('\n')}`;
+}
+
+async function getOiHistory(input: ToolInput, ctx: ExecuteContext): Promise<string> {
+  const sym = input.symbol?.toUpperCase();
+  if (!sym) return 'Symbol is required for OI history.';
+  const days = Math.min(input.days || 7, 90);
+  const data = await fetchApi(ctx, `/api/history/oi?symbol=${sym}&days=${days}`);
+  const points: any[] = data.points || data.data || [];
+
+  if (points.length === 0) {
+    // Fallback: get current OI snapshot
+    const oiData = await fetchApi(ctx, '/api/openinterest');
+    const entries: any[] = oiData.data || [];
+    const filtered = entries.filter((r: any) => r.symbol === sym);
+    if (filtered.length === 0) return `No OI data for ${sym}.`;
+    const total = filtered.reduce((s: number, r: any) => s + (r.openInterest || 0), 0);
+    return `${sym} Current OI: $${formatNum(total)} across ${filtered.length} exchanges.\nHistorical OI data not available for this symbol.`;
+  }
+
+  const values = points.map((p: any) => p.totalOi || p.openInterest || 0);
+  const first = values[0];
+  const last = values[values.length - 1];
+  const change = first > 0 ? ((last - first) / first * 100) : 0;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+
+  return `${sym} OI over ${days} days:\nCurrent: $${formatNum(last)}\n${days}d change: ${change >= 0 ? '+' : ''}${change.toFixed(1)}%\nHigh: $${formatNum(max)} | Low: $${formatNum(min)}\nTrend: ${change > 5 ? 'Building (bullish conviction)' : change < -5 ? 'Declining (positions closing)' : 'Flat'}\nData points: ${points.length}`;
+}
+
+async function getCorrelation(input: ToolInput, ctx: ExecuteContext): Promise<string> {
+  const data = await fetchApi(ctx, '/api/correlation');
+  const symbols: any[] = data.symbols || [];
+
+  if (symbols.length === 0) return 'No correlation data available.';
+
+  if (input.symbol) {
+    const sym = input.symbol.toUpperCase();
+    const found = symbols.find((s: any) => s.symbol === sym);
+    if (!found) return `No correlation data for ${sym}.`;
+
+    const changes = (found.changes || [])
+      .filter((c: any) => c.change24h !== 0)
+      .sort((a: any, b: any) => b.change24h - a.change24h);
+    const rows = changes.map(
+      (c: any) => `${c.exchange}: ${c.change24h >= 0 ? '+' : ''}${c.change24h.toFixed(2)}%`,
+    );
+    return `${sym} 24h change across exchanges (avg: ${found.avgChange >= 0 ? '+' : ''}${found.avgChange?.toFixed(2)}%):\n${rows.join('\n')}\nAvg price: $${formatNum(found.avgPrice)} | Volume: $${formatNum(found.totalVolume)} | Exchanges: ${found.exchangeCount}`;
+  }
+
+  // Top 20 overview
+  const top = symbols.slice(0, 20);
+  const rows = top.map(
+    (s: any) => `${s.symbol}: ${s.avgChange >= 0 ? '+' : ''}${s.avgChange?.toFixed(2)}% | $${formatNum(s.avgPrice)} | Vol: $${formatNum(s.totalVolume)} | ${s.exchangeCount} exchanges`,
+  );
+  return `Market overview (24h changes):\n${rows.join('\n')}`;
 }
 
 // ---- Helpers ----

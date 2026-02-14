@@ -75,10 +75,15 @@ export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_whale_positions',
     description:
-      'Get current positions of top Hyperliquid whale traders. Shows account value, open positions with size/leverage/PnL, and performance metrics.',
+      'Get current positions of top Hyperliquid whale traders. Shows account value, open positions with size/leverage/PnL, and performance metrics. Can filter by a specific coin to see which whales are trading it.',
     input_schema: {
       type: 'object' as const,
-      properties: {},
+      properties: {
+        coin: {
+          type: 'string',
+          description: 'Optional coin to filter positions by (e.g., BTC, ETH, SOL). Shows only whales with positions in this coin.',
+        },
+      },
     },
   },
   {
@@ -155,6 +160,53 @@ export const CHAT_TOOLS: Tool[] = [
         minSpread: {
           type: 'number',
           description: 'Minimum funding rate spread to show in percentage (default: 0.01)',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_liquidations',
+    description:
+      'Get recent large liquidations across exchanges. Shows which positions got liquidated, the size, price, and exchange. Useful for gauging market stress and forced selling/buying.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Optional symbol to filter (e.g., BTC, ETH)',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_oi_history',
+    description:
+      'Get historical open interest data for a symbol over the past N days (max 90). Shows whether OI is building (bullish conviction) or declining (positions closing).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol (e.g., BTC, ETH)',
+        },
+        days: {
+          type: 'number',
+          description: 'Number of days of history (1-90). Default: 7',
+        },
+      },
+      required: ['symbol'],
+    },
+  },
+  {
+    name: 'get_correlation',
+    description:
+      'Get cross-exchange price correlation data. Shows how a symbol performs across different exchanges and its 24h price change consistency. Useful for spotting exchange-specific anomalies.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Optional symbol to focus on (e.g., BTC, ETH). If omitted, returns top 20 by volume.',
         },
       },
     },
