@@ -101,7 +101,7 @@ export interface WhaleData {
 const MEM_CACHE_TTL = 90_000;          // 1.5 minutes
 const DB_CACHE_TTL = 180;              // 3 minutes
 const LEADERBOARD_CACHE_TTL = 300_000; // 5 minutes
-const CACHE_KEY = 'hl-whales:v2';
+const CACHE_KEY = 'hl-whales:v3';
 
 let memCache: { data: WhaleData[]; time: number } | null = null;
 let leaderboardCache: { data: LeaderboardRow[]; time: number } | null = null;
@@ -233,42 +233,61 @@ async function fetchWhaleState(
 /*  Fetch all whales (dynamic from leaderboard)                        */
 /* ------------------------------------------------------------------ */
 
+// Known vault / contract addresses that aren't individual traders
+const EXCLUDED_ADDRESSES = new Set([
+  '0xdfc24b077bc1425ad1dea75bcb6f8158e10df303', // HLP Vault
+  '0xa822a9ce67b0b03b03f18ba5a7a85b8fbb975cb5', // Bridge/deposit contract ~$14B
+  '0x24de6b7723f2ab79af5e3b43e2cd8b88bf157c22', // Bridge/deposit contract ~$2B
+  '0xe6111266a97e23e40a2b5f0f8c1b55626f6e582a', // Deposit contract ~$1B
+  '0x393d0b8707adf0fe5ad1ac7a4fc93db45ce22936', // Deposit contract ~$700M
+].map((a) => a.toLowerCase()));
+
+// Minimum account value to be considered a "whale"
+const MIN_WHALE_AV = 5_000_000; // $5M
+// Maximum candidates to check (we scan more to find 25 active traders)
+const MAX_CANDIDATES = 60;
+// Target number of active whales to return
+const TARGET_WHALES = 25;
+
 async function fetchAllWhales(): Promise<WhaleData[]> {
-  // Step 1: Get top traders from the leaderboard
+  // Step 1: Get all traders from the leaderboard
   const leaderboardRows = await fetchLeaderboard();
 
   if (leaderboardRows.length === 0) {
     return [];
   }
 
-  // Step 2: Pick the top 30 by account value (leaderboard is pre-sorted)
-  // Filter out very small accounts and known vault addresses
-  const HLP_VAULT = '0xdfc24b077bc1425ad1dea75bcb6f8158e10df303';
+  // Step 2: Sort by account value descending (leaderboard is NOT sorted by AV)
+  // Filter out known vaults/contracts and small accounts
   const candidates = leaderboardRows
     .filter((r) => {
       const av = parseFloat(r.accountValue) || 0;
-      return av >= 100_000 && r.ethAddress.toLowerCase() !== HLP_VAULT.toLowerCase();
+      return av >= MIN_WHALE_AV && !EXCLUDED_ADDRESSES.has(r.ethAddress.toLowerCase());
     })
-    .slice(0, 30);
+    .sort((a, b) => (parseFloat(b.accountValue) || 0) - (parseFloat(a.accountValue) || 0))
+    .slice(0, MAX_CANDIDATES);
 
-  // Step 3: Fetch positions for each in batches of 5
-  const batchSize = 5;
+  // Step 3: Fetch positions in batches, stop once we have enough active traders
+  const batchSize = 6;
   const results: WhaleData[] = [];
 
-  for (let i = 0; i < candidates.length; i += batchSize) {
+  for (let i = 0; i < candidates.length && results.length < TARGET_WHALES; i += batchSize) {
     const batch = candidates.slice(i, i + batchSize);
     const batchResults = await Promise.all(
       batch.map((row) => {
-        const label = row.displayName || `Whale ${row.ethAddress.slice(0, 6)}`;
+        const label = row.displayName || `Whale ${row.ethAddress.slice(0, 8)}`;
         const perf = extractPerformance(row);
         return fetchWhaleState(row.ethAddress, label, perf);
       }),
     );
     for (const r of batchResults) {
-      if (r) results.push(r);
+      // Only include traders with at least 1 active position (not idle wallets)
+      if (r && r.positionCount > 0) {
+        results.push(r);
+      }
     }
     // Small delay between batches to respect rate limits
-    if (i + batchSize < candidates.length) {
+    if (i + batchSize < candidates.length && results.length < TARGET_WHALES) {
       await new Promise((r) => setTimeout(r, 150));
     }
   }

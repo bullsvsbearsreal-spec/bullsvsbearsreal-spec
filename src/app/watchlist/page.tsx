@@ -56,7 +56,7 @@ function normalizeSymbol(raw: string): string {
   return raw
     .toUpperCase()
     .replace(/[-_]/g, '')
-    .replace(/(USDT|USD|USDC|BUSD|PERP|SWAP|1000)$/i, '')
+    .replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '')
     .replace(/^1000/, '');
 }
 

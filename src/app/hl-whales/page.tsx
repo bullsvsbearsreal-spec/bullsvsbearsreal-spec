@@ -215,6 +215,7 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         className="w-full px-4 py-3.5 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -391,7 +392,7 @@ export default function HLWhalesPage() {
   const [customError, setCustomError] = useState('');
 
   const handleAddCustom = async () => {
-    const addr = customAddress.trim();
+    const addr = customAddress.trim().toLowerCase();
     if (!addr || !addr.startsWith('0x') || addr.length !== 42) {
       setCustomError('Enter a valid 0x address (42 characters)');
       return;
@@ -400,12 +401,11 @@ export default function HLWhalesPage() {
     setCustomLoading(true);
     try {
       const res = await fetch(`/api/hl-whales?address=${addr}&label=Custom`);
+      const json = await res.json();
       if (!res.ok) {
-        const json = await res.json();
         throw new Error(json.error || 'Failed to fetch');
       }
-      const data = (await res.json()) as WhaleData;
-      setCustomWhale(data);
+      setCustomWhale(json as WhaleData);
       setShowAddCustom(false);
       setCustomAddress('');
     } catch (err) {
@@ -498,7 +498,7 @@ export default function HLWhalesPage() {
               Hyperliquid Whale Tracker
             </h1>
             <p className="text-neutral-600 text-xs mt-0.5">
-              Real-time positions of top traders on Hyperliquid · Powered by on-chain data
+              Live positions of top traders ($5M+) from the Hyperliquid leaderboard
             </p>
           </div>
           <div className="flex items-center gap-3">
