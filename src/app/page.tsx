@@ -83,7 +83,7 @@ export default function Home() {
               <span className="live-dot" />
             </div>
             <p className="text-neutral-500 text-[13px] mb-5">
-              Funding, OI, liquidations & sentiment — pulled from {ALL_EXCHANGES.length} exchanges so you don&apos;t have to.
+              Real-time derivatives intelligence across {ALL_EXCHANGES.length} exchanges.
             </p>
 
             <div className="max-w-lg mb-5">
