@@ -22,8 +22,8 @@ export default function LongShortRatio() {
           symbols.map(async (symbol) => {
             const data = await fetchLongShortRatio(symbol);
             return {
-              symbol: symbol.replace('USDT', ''),
               ...data,
+              symbol: symbol.replace('USDT', ''),
             };
           })
         );

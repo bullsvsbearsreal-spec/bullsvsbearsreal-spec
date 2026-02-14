@@ -308,28 +308,14 @@ export async function getGlobalData(): Promise<any> {
   if (cached) return cached;
 
   try {
-    const response = await fetch(
-      `${CMC_API}/v1/global-metrics/quotes/latest?convert=USD`,
-      { headers: cmcHeaders, signal: AbortSignal.timeout(10000) }
-    );
-    if (!response.ok) throw new Error(`CMC global failed: ${response.status}`);
-    const json = await response.json();
-    const d = json.data || {};
-    const q = d.quote?.USD || {};
+    // Use server-side proxy to avoid CORS when called from client components
+    const response = await fetch('/api/global-stats', { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error(`Global stats proxy failed: ${response.status}`);
+    const result = await response.json();
 
-    // Return in CoinGecko-compatible shape so aggregator.ts doesn't break
-    const result = {
-      total_market_cap: { usd: q.total_market_cap || 0 },
-      total_volume: { usd: q.total_volume_24h || 0 },
-      market_cap_percentage: {
-        btc: d.btc_dominance || 0,
-        eth: d.eth_dominance || 0,
-      },
-      market_cap_change_percentage_24h_usd: q.total_market_cap_yesterday_percentage_change || 0,
-      active_cryptocurrencies: d.active_cryptocurrencies || 0,
-    };
-
-    setCache(cacheKey, result);
+    if (result) {
+      setCache(cacheKey, result);
+    }
     return result;
   } catch (error) {
     console.error('CMC global data error:', error);
