@@ -26,6 +26,7 @@ const navCategories: NavCategory[] = [
   {
     label: 'Trading',
     items: [
+      { name: 'Screener', href: '/screener' },
       { name: 'Funding', href: '/funding' },
       { name: 'Open Interest', href: '/open-interest' },
       { name: 'Liquidations', href: '/liquidations' },
