@@ -18,6 +18,7 @@ interface FundingArbitrageViewProps {
   arbitrageData: ArbitrageItem[];
   oiMap?: Map<string, number>;
   markPrices?: Map<string, number>;
+  intervalMap?: Map<string, string>; // "SYMBOL|EXCHANGE" → "1h" | "4h"
 }
 
 type SortKey = 'spread' | 'annualized' | 'dailyPnl' | 'symbol' | 'oi';
@@ -39,7 +40,14 @@ function formatPnl(value: number): string {
 
 const TAKER_FEE = 0.10; // 0.10% round-trip fee estimate (0.05% each side)
 
-export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices }: FundingArbitrageViewProps) {
+function IntervalMark({ symbol, exchange, intervalMap }: { symbol: string; exchange: string; intervalMap?: Map<string, string> }) {
+  const interval = intervalMap?.get(`${symbol}|${exchange}`);
+  if (interval === '1h') return <span className="text-amber-400 text-[8px] font-bold ml-0.5" title="1h payout">*</span>;
+  if (interval === '4h') return <span className="text-blue-400 text-[8px] font-bold ml-0.5" title="4h payout">**</span>;
+  return null;
+}
+
+export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices, intervalMap }: FundingArbitrageViewProps) {
   const [portfolio, setPortfolio] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ih_arb_portfolio');
@@ -238,7 +246,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
                       <ExchangeLogo exchange={item.high.exchange.toLowerCase()} size={14} />
                       <span className="text-xs text-neutral-300">{item.high.exchange}</span>
                       {isExchangeDex(item.high.exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
-                      <span className="text-red-400 font-mono text-[11px] ml-auto">{formatRate(item.high.rate)}</span>
+                      <span className="text-red-400 font-mono text-[11px] ml-auto">{formatRate(item.high.rate)}<IntervalMark symbol={item.symbol} exchange={item.high.exchange} intervalMap={intervalMap} /></span>
                     </div>
                   </td>
                   <td className="px-3 py-2">
@@ -246,7 +254,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
                       <ExchangeLogo exchange={item.low.exchange.toLowerCase()} size={14} />
                       <span className="text-xs text-neutral-300">{item.low.exchange}</span>
                       {isExchangeDex(item.low.exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
-                      <span className="text-green-400 font-mono text-[11px] ml-auto">{formatRate(item.low.rate)}</span>
+                      <span className="text-green-400 font-mono text-[11px] ml-auto">{formatRate(item.low.rate)}<IntervalMark symbol={item.symbol} exchange={item.low.exchange} intervalMap={intervalMap} /></span>
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -278,7 +286,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
                             <span className="text-neutral-400 text-[11px]">{ex.exchange}</span>
                             {isExchangeDex(ex.exchange) && <span className="px-0.5 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
                             <span className={`font-mono text-[11px] font-semibold ${ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {formatRate(ex.rate)}
+                              {formatRate(ex.rate)}<IntervalMark symbol={item.symbol} exchange={ex.exchange} intervalMap={intervalMap} />
                             </span>
                           </div>
                         ))}
@@ -308,7 +316,13 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices 
       />
 
       {/* Footer note */}
-      <div className="px-4 py-2 border-t border-white/[0.06]">
+      <div className="px-4 py-2 border-t border-white/[0.06] space-y-1">
+        <div className="flex items-center gap-3 text-[10px]">
+          <span className="text-neutral-600">Payout interval:</span>
+          <span className="text-neutral-500">No mark = 8h</span>
+          <span className="text-amber-400 font-bold">*</span><span className="text-neutral-500 -ml-2">= 1h</span>
+          <span className="text-blue-400 font-bold">**</span><span className="text-neutral-500 -ml-2">= 4h</span>
+        </div>
         <p className="text-neutral-700 text-[10px]">
           PnL estimates assume equal position size on short &amp; long sides. Fee estimate: {TAKER_FEE}% round-trip (taker). Actual fees vary by exchange &amp; VIP tier. Not financial advice.
         </p>

@@ -18,9 +18,10 @@ interface FundingHeatmapViewProps {
   symbols: string[];
   visibleExchanges: string[];
   heatmapData: Map<string, Map<string, number>>;
+  intervalMap?: Map<string, string>; // "SYMBOL|EXCHANGE" → "1h" | "4h"
 }
 
-export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapData }: FundingHeatmapViewProps) {
+export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapData, intervalMap }: FundingHeatmapViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [exchangeSort, setExchangeSort] = useState<ExchangeSort | null>(null);
 
@@ -68,10 +69,14 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
               : 'Click an exchange name to sort by its funding rate'}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-[10px]">
+        <div className="flex items-center gap-3 text-[10px] flex-wrap">
           <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-red-500" /><span className="text-neutral-500">&lt;-0.1%</span></div>
           <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-neutral-700" /><span className="text-neutral-500">~0%</span></div>
           <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-green-500" /><span className="text-neutral-500">&gt;+0.1%</span></div>
+          <span className="text-neutral-700">|</span>
+          <span className="text-amber-400 font-bold">*</span><span className="text-neutral-500">1h</span>
+          <span className="text-blue-400 font-bold">**</span><span className="text-neutral-500">4h</span>
+          <span className="text-neutral-600">no mark=8h</span>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -118,15 +123,18 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
                   {visibleExchanges.map(ex => {
                     const rate = rates?.get(ex);
                     const isActiveCol = exchangeSort?.exchange === ex;
+                    const interval = intervalMap?.get(`${symbol}|${ex}`);
                     return (
                       <td key={ex} className="px-0.5 py-0.5">
                         <div
                           className={`${getHeatmapColor(rate)} rounded px-1.5 py-1.5 text-center text-[11px] font-mono text-white/80 ${
                             isActiveCol ? 'ring-1 ring-hub-yellow/30' : ''
                           }`}
-                          title={`${symbol} on ${ex}: ${rate !== undefined ? formatRate(rate) : 'N/A'}`}
+                          title={`${symbol} on ${ex}: ${rate !== undefined ? formatRate(rate) : 'N/A'}${interval ? ` (${interval} payout)` : ''}`}
                         >
                           {rate !== undefined ? formatRate(rate) : '-'}
+                          {interval === '1h' && <span className="text-amber-400 text-[8px] ml-0.5 font-bold">*</span>}
+                          {interval === '4h' && <span className="text-blue-400 text-[8px] ml-0.5 font-bold">**</span>}
                         </div>
                       </td>
                     );

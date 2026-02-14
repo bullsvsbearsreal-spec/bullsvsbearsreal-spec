@@ -138,8 +138,11 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                     <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
                       {formatRate(fr.fundingRate)}
                     </span>
-                    {fr.fundingInterval && fr.fundingInterval !== '8h' && (
-                      <span className="text-neutral-600 text-[9px] ml-0.5">/{fr.fundingInterval}</span>
+                    {fr.fundingInterval === '1h' && (
+                      <span className="text-amber-400 text-[10px] ml-0.5 font-bold cursor-help" title="1-hour payout interval">*</span>
+                    )}
+                    {fr.fundingInterval === '4h' && (
+                      <span className="text-blue-400 text-[10px] ml-0.5 font-bold cursor-help" title="4-hour payout interval">**</span>
                     )}
                   </td>
                   {hasPredicted && (
@@ -213,6 +216,16 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Funding interval legend */}
+      <div className="px-4 py-2 border-t border-white/[0.04] flex items-center gap-4 text-[10px]">
+        <span className="text-neutral-600">Payout interval:</span>
+        <span className="text-neutral-500">No mark = 8h (standard)</span>
+        <span className="text-amber-400 font-bold">*</span>
+        <span className="text-neutral-500 -ml-2.5">= 1h payout</span>
+        <span className="text-blue-400 font-bold">**</span>
+        <span className="text-neutral-500 -ml-2.5">= 4h payout</span>
       </div>
 
       <Pagination

@@ -213,9 +213,13 @@ export default function FundingPage() {
 ;
 
   const heatmapData = new Map<string, Map<string, number>>();
+  const intervalMap = new Map<string, string>(); // "SYMBOL|EXCHANGE" → interval
   fundingRates.forEach(fr => {
     if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
     heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
+    if (fr.fundingInterval && fr.fundingInterval !== '8h') {
+      intervalMap.set(`${fr.symbol}|${fr.exchange}`, fr.fundingInterval);
+    }
   });
 
   const visibleExchanges = ALL_EXCHANGES.filter(ex => {
@@ -478,10 +482,10 @@ export default function FundingPage() {
               <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} historyMap={historyMap} accumulatedMap={accumulatedMap} />
             )}
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} />
             )}
             {viewMode === 'arbitrage' && assetClass === 'crypto' && (
-              <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} />
+              <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} />
             )}
           </>
         )}
