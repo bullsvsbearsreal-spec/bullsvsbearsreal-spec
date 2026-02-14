@@ -33,6 +33,7 @@ const navCategories: NavCategory[] = [
       { name: 'Liquidations', href: '/liquidations' },
       { name: 'Long/Short', href: '/longshort' },
       { name: 'CVD', href: '/cvd' },
+      { name: 'Options', href: '/options' },
     ],
   },
   {
