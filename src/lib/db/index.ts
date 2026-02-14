@@ -215,6 +215,45 @@ export async function getFundingHistory(
   }
 }
 
+/**
+ * Bulk fetch daily-average funding rates for multiple symbols over N days.
+ * Returns Map<symbol, Array<{ day: string (YYYY-MM-DD), rate: number }>>
+ */
+export async function getBulkFundingHistory(
+  symbols: string[],
+  days: number = 7,
+): Promise<Map<string, Array<{ day: string; rate: number }>>> {
+  const result = new Map<string, Array<{ day: string; rate: number }>>();
+  if (symbols.length === 0) return result;
+
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = await sql`
+      SELECT symbol,
+             DATE(ts) AS day,
+             AVG(rate) AS rate
+      FROM funding_snapshots
+      WHERE symbol = ANY(${symbols})
+        AND ts > NOW() - ${intervalStr}::interval
+      GROUP BY symbol, DATE(ts)
+      ORDER BY symbol, day
+    `;
+
+    rows.forEach((r: any) => {
+      const sym = r.symbol as string;
+      if (!result.has(sym)) result.set(sym, []);
+      result.get(sym)!.push({
+        day: String(r.day).slice(0, 10), // YYYY-MM-DD
+        rate: Number(r.rate),
+      });
+    });
+  } catch (e) {
+    console.error('DB getBulkFundingHistory error:', e);
+  }
+  return result;
+}
+
 export async function getOIHistory(
   symbol: string,
   days: number = 7

@@ -28,6 +28,7 @@ const navCategories: NavCategory[] = [
     items: [
       { name: 'Screener', href: '/screener' },
       { name: 'Funding', href: '/funding' },
+      { name: 'Funding Heatmap', href: '/funding-heatmap' },
       { name: 'Open Interest', href: '/open-interest' },
       { name: 'Liquidations', href: '/liquidations' },
       { name: 'Long/Short', href: '/longshort' },
