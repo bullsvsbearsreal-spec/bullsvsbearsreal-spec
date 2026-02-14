@@ -56,6 +56,7 @@ const navCategories: NavCategory[] = [
     label: 'Portfolio',
     items: [
       { name: 'Watchlist', href: '/watchlist' },
+      { name: 'Alerts', href: '/alerts' },
       { name: 'Portfolio', href: '/portfolio' },
       { name: 'Wallet Tracker', href: '/wallet-tracker' },
     ],

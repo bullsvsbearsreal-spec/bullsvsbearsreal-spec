@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import ChatWidget from '@/components/chat/ChatWidget'
+import AlertEngine from '@/components/AlertEngine'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
@@ -85,6 +86,7 @@ export default function RootLayout({
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         {children}
         <ChatWidget />
+        <AlertEngine />
       </body>
     </html>
   )
