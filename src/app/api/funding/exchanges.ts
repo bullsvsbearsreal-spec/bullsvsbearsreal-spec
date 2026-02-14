@@ -778,7 +778,22 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // Step 3: Convert per-second rate to 8h percentage
           // The "P" suffix means the rate is already a percentage fraction,
           // so we only multiply by seconds (no extra *100)
-          const fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
+          let fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
+
+          // Normalize by OI skew to match gTrade UI display
+          // gTrade's raw fundingRatePerSecondP is the total funding pool rate.
+          // The UI normalizes by OI ratio: when one side dominates, the raw rate
+          // gets divided by (dominantOI / smallerOI) so the displayed rate
+          // reflects what each unit of the dominant side actually pays.
+          // When OI is balanced, ratio ≈ 1 and this is a no-op.
+          if (params.aprMultiplierEnabled && oiLongToken > 0 && oiShortToken > 0) {
+            const oiRatio = oiLongToken > oiShortToken
+              ? oiLongToken / oiShortToken
+              : oiShortToken / oiLongToken;
+            if (oiRatio > 1 && oiRatio < 100) {
+              fundingRate8h = fundingRate8h / oiRatio;
+            }
+          }
 
           // Skip pairs with essentially zero rate
           if (Math.abs(fundingRate8h) < 0.00001) continue;
