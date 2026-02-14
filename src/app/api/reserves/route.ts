@@ -28,7 +28,8 @@ interface ExchangeReserve {
 
 export async function GET() {
   try {
-    const res = await fetch('https://api.llama.fi/lite/v2/protocols', {
+    // Must use full /protocols — the /lite/v2/protocols strips CEX category
+    const res = await fetch('https://api.llama.fi/protocols', {
       next: { revalidate: 300 }, // 5-min cache
     });
 
