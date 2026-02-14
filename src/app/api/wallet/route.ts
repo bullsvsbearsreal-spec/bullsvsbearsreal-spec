@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCache, setCache, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'edge';
 export const preferredRegion = 'dxb1';
@@ -40,6 +41,40 @@ interface BtcTx {
   out: Array<{ addr?: string; value: number }>;
 }
 
+interface WalletResult {
+  chain: 'eth' | 'btc' | 'sol';
+  address: string;
+  balance: string;
+  balanceRaw: number;
+  transactions: Array<{
+    hash: string;
+    from: string;
+    to: string;
+    value: string;
+    timestamp: number;
+    direction: string;
+    isError?: boolean;
+    error?: boolean;
+  }>;
+  tokens: Array<{
+    symbol: string;
+    name: string;
+    balance: number;
+    decimals: number;
+  }>;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Config                                                             */
+/* ------------------------------------------------------------------ */
+
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || '';
+const CACHE_TTL = 120; // 2 minutes in seconds
+
+// L1: In-memory cache
+const memCache = new Map<string, { data: WalletResult; time: number }>();
+const MEM_CACHE_TTL = 2 * 60 * 1000; // 2 min
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -55,67 +90,150 @@ function jsonOk(data: unknown) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  ETH wallet handler                                                 */
+/*  ETH: Balance via Ankr public RPC (no key, no rate limit)           */
 /* ------------------------------------------------------------------ */
 
-async function fetchEthWallet(address: string) {
-  const base = 'https://api.etherscan.io/api';
+async function fetchEthBalanceViaRPC(address: string): Promise<number> {
+  // Try multiple free RPC endpoints as fallbacks
+  const rpcEndpoints = [
+    'https://rpc.ankr.com/eth',
+    'https://eth.llamarpc.com',
+    'https://1rpc.io/eth',
+    'https://ethereum-rpc.publicnode.com',
+  ];
 
-  // Fetch balance, recent txns, and ERC-20 transfers sequentially to respect
-  // Etherscan's 1-req/5s rate limit for keyless access. We overlap where safe.
-  const balRes = await fetch(
-    `${base}?module=account&action=balance&address=${address}&tag=latest`,
-    { signal: AbortSignal.timeout(10000) },
-  );
-  const balJson = await balRes.json() as { status: string; result: string; message?: string };
+  for (const rpc of rpcEndpoints) {
+    try {
+      const res = await fetch(rpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_getBalance',
+          params: [address, 'latest'],
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
 
-  // If balance call itself returns an error result, Etherscan is blocking us
-  if (balJson.message === 'NOTOK' || balJson.status === '0') {
-    // Still attempt to return what we can — balance might be a string error
-    const rawBal = typeof balJson.result === 'string' && /^\d+$/.test(balJson.result)
-      ? balJson.result
-      : '0';
-    return {
-      chain: 'eth' as const,
-      address,
-      balance: (Number(BigInt(rawBal)) / 1e18).toFixed(6),
-      balanceRaw: Number(BigInt(rawBal)) / 1e18,
-      transactions: [],
-      tokens: [],
-    };
+      if (!res.ok) continue;
+      const json = await res.json() as { result?: string; error?: { message: string } };
+      if (json.error || !json.result) continue;
+
+      // Convert hex wei to ETH
+      const wei = BigInt(json.result);
+      return Number(wei) / 1e18;
+    } catch {
+      continue; // Try next RPC
+    }
   }
 
-  // Small delay to stay under rate limit
-  await new Promise(r => setTimeout(r, 1000));
+  return -1; // All RPCs failed
+}
 
+/* ------------------------------------------------------------------ */
+/*  ETH: Transactions via Etherscan (with API key support)             */
+/* ------------------------------------------------------------------ */
+
+async function fetchEtherscanData(address: string) {
+  const base = 'https://api.etherscan.io/api';
+  const apiKeyParam = ETHERSCAN_API_KEY ? `&apikey=${ETHERSCAN_API_KEY}` : '';
+
+  let txJson: { status: string; result: EthTransaction[] } = { status: '0', result: [] };
+  let tokenJson: { status: string; result: EthTokenTransfer[] } = { status: '0', result: [] };
+
+  // Fetch transactions
+  try {
+    const txRes = await fetch(
+      `${base}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc${apiKeyParam}`,
+      { signal: AbortSignal.timeout(10000) },
+    );
+    const raw = await txRes.json();
+    if (raw.status === '1' && Array.isArray(raw.result)) {
+      txJson = raw;
+    }
+  } catch { /* swallow */ }
+
+  // Delay between requests (Etherscan rate limit)
+  const delay = ETHERSCAN_API_KEY ? 250 : 1200;
+  await new Promise(r => setTimeout(r, delay));
+
+  // Fetch token transfers
+  try {
+    const tokenRes = await fetch(
+      `${base}?module=account&action=tokentx&address=${address}&page=1&offset=20&sort=desc${apiKeyParam}`,
+      { signal: AbortSignal.timeout(10000) },
+    );
+    const raw = await tokenRes.json();
+    if (raw.status === '1' && Array.isArray(raw.result)) {
+      tokenJson = raw;
+    }
+  } catch { /* swallow */ }
+
+  return { txJson, tokenJson };
+}
+
+/* ------------------------------------------------------------------ */
+/*  ETH: Transactions via Blockscout (free, no key, datacenter-ok)     */
+/* ------------------------------------------------------------------ */
+
+async function fetchBlockscoutData(address: string) {
   let txJson: { status: string; result: EthTransaction[] } = { status: '0', result: [] };
   let tokenJson: { status: string; result: EthTokenTransfer[] } = { status: '0', result: [] };
 
   try {
     const txRes = await fetch(
-      `${base}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc`,
-      { signal: AbortSignal.timeout(10000) },
+      `https://eth.blockscout.com/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc`,
+      { signal: AbortSignal.timeout(12000) },
     );
-    txJson = await txRes.json();
-  } catch { /* swallow — we'll return empty transactions */ }
-
-  await new Promise(r => setTimeout(r, 1000));
+    const raw = await txRes.json();
+    if (raw.status === '1' && Array.isArray(raw.result)) {
+      txJson = raw;
+    }
+  } catch { /* swallow */ }
 
   try {
     const tokenRes = await fetch(
-      `${base}?module=account&action=tokentx&address=${address}&page=1&offset=20&sort=desc`,
-      { signal: AbortSignal.timeout(10000) },
+      `https://eth.blockscout.com/api?module=account&action=tokentx&address=${address}&page=1&offset=20&sort=desc`,
+      { signal: AbortSignal.timeout(12000) },
     );
-    tokenJson = await tokenRes.json();
-  } catch { /* swallow — we'll return empty tokens */ }
+    const raw = await tokenRes.json();
+    if (raw.status === '1' && Array.isArray(raw.result)) {
+      tokenJson = raw;
+    }
+  } catch { /* swallow */ }
 
-  // Parse balance (wei -> ETH)
-  const balanceWei = BigInt(balJson.result || '0');
-  const balanceEth = Number(balanceWei) / 1e18;
+  return { txJson, tokenJson };
+}
+
+/* ------------------------------------------------------------------ */
+/*  ETH wallet handler (multi-provider)                                */
+/* ------------------------------------------------------------------ */
+
+async function fetchEthWallet(address: string): Promise<WalletResult> {
+  // 1. Get balance via free RPC (reliable from datacenters)
+  const balanceEth = await fetchEthBalanceViaRPC(address);
+
+  if (balanceEth < 0) {
+    throw new Error('Unable to fetch ETH balance — all RPC endpoints failed');
+  }
+
+  // 2. Get transactions — try Etherscan first, fall back to Blockscout
+  let txData = await fetchEtherscanData(address);
+
+  // If Etherscan returned nothing, try Blockscout
+  const etherscanWorked = Array.isArray(txData.txJson.result) && txData.txJson.result.length > 0;
+  if (!etherscanWorked) {
+    const blockscoutData = await fetchBlockscoutData(address);
+    // Use Blockscout data if it has more results
+    if (Array.isArray(blockscoutData.txJson.result) && blockscoutData.txJson.result.length > 0) {
+      txData = blockscoutData;
+    }
+  }
 
   // Parse transactions
-  const transactions = Array.isArray(txJson.result)
-    ? txJson.result.map((tx) => ({
+  const transactions = Array.isArray(txData.txJson.result)
+    ? txData.txJson.result.map((tx) => ({
         hash: tx.hash,
         from: tx.from,
         to: tx.to,
@@ -126,10 +244,10 @@ async function fetchEthWallet(address: string) {
       }))
     : [];
 
-  // Aggregate ERC-20 tokens by contract address (deduplicate)
+  // Aggregate ERC-20 tokens by contract address
   const tokenMap = new Map<string, { symbol: string; name: string; balance: number; decimals: number }>();
-  if (Array.isArray(tokenJson.result)) {
-    for (const t of tokenJson.result) {
+  if (Array.isArray(txData.tokenJson.result)) {
+    for (const t of txData.tokenJson.result) {
       const key = t.contractAddress.toLowerCase();
       const decimals = Number(t.tokenDecimal) || 18;
       const value = Number(BigInt(t.value || '0')) / Math.pow(10, decimals);
@@ -166,25 +284,76 @@ async function fetchEthWallet(address: string) {
 /*  BTC wallet handler                                                 */
 /* ------------------------------------------------------------------ */
 
-async function fetchBtcWallet(address: string) {
-  const res = await fetch(`https://blockchain.info/rawaddr/${address}?limit=20`, {
-    headers: { Accept: 'application/json' },
-  });
+async function fetchBtcWallet(address: string): Promise<WalletResult> {
+  // Try blockchain.info first, then blockchair as fallback
+  let data: { final_balance: number; txs: BtcTx[] } | null = null;
 
-  if (!res.ok) {
-    throw new Error(`Blockchain.info API error: ${res.status}`);
+  try {
+    const res = await fetch(`https://blockchain.info/rawaddr/${address}?limit=20`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (res.ok) {
+      data = await res.json();
+    }
+  } catch { /* try fallback */ }
+
+  if (!data) {
+    // Fallback: mempool.space API
+    try {
+      const addrRes = await fetch(`https://mempool.space/api/address/${address}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (addrRes.ok) {
+        const addrData = await addrRes.json() as {
+          chain_stats: { funded_txo_sum: number; spent_txo_sum: number };
+        };
+        const balance = (addrData.chain_stats.funded_txo_sum - addrData.chain_stats.spent_txo_sum);
+
+        const txRes = await fetch(`https://mempool.space/api/address/${address}/txs`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        const txsRaw = txRes.ok ? await txRes.json() as Array<{
+          txid: string;
+          status: { block_time?: number };
+          vin: Array<{ prevout?: { scriptpubkey_address?: string; value: number } }>;
+          vout: Array<{ scriptpubkey_address?: string; value: number }>;
+        }> : [];
+
+        const balanceBtc = balance / 1e8;
+        const transactions = txsRaw.slice(0, 20).map((tx) => {
+          const isOutgoing = tx.vin.some(
+            (inp) => inp.prevout?.scriptpubkey_address?.toLowerCase() === address.toLowerCase(),
+          );
+          const totalOut = tx.vout.reduce((s, o) => s + (o.value || 0), 0);
+          return {
+            hash: tx.txid,
+            from: isOutgoing ? address : tx.vin[0]?.prevout?.scriptpubkey_address || 'unknown',
+            to: isOutgoing ? (tx.vout[0]?.scriptpubkey_address || 'unknown') : address,
+            value: (totalOut / 1e8).toFixed(8),
+            timestamp: (tx.status.block_time ?? 0) * 1000,
+            direction: isOutgoing ? 'out' : 'in',
+          };
+        });
+
+        return {
+          chain: 'btc' as const,
+          address,
+          balance: balanceBtc.toFixed(8),
+          balanceRaw: balanceBtc,
+          transactions,
+          tokens: [],
+        };
+      }
+    } catch { /* both failed */ }
+
+    throw new Error('Unable to fetch BTC wallet data — all providers failed');
   }
 
-  const data = await res.json() as {
-    final_balance: number;
-    txs: BtcTx[];
-  };
-
-  // Balance: satoshis -> BTC
+  // Parse blockchain.info response
   const balanceBtc = (data.final_balance ?? 0) / 1e8;
 
   const transactions = (data.txs ?? []).map((tx) => {
-    // Determine direction: if any input is from our address, it is outgoing
     const isOutgoing = tx.inputs.some(
       (inp) => inp.prev_out?.addr?.toLowerCase() === address.toLowerCase(),
     );
@@ -213,56 +382,76 @@ async function fetchBtcWallet(address: string) {
 /*  SOL wallet handler                                                 */
 /* ------------------------------------------------------------------ */
 
-async function fetchSolWallet(address: string) {
-  const rpcUrl = 'https://api.mainnet-beta.solana.com';
+async function fetchSolWallet(address: string): Promise<WalletResult> {
+  // Try multiple Solana RPC endpoints
+  const rpcEndpoints = [
+    'https://api.mainnet-beta.solana.com',
+    'https://rpc.ankr.com/solana',
+    'https://solana-rpc.publicnode.com',
+  ];
 
-  // Fetch balance and recent signatures in parallel
-  const [balRes, sigRes] = await Promise.all([
-    fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'getBalance',
-        params: [address],
-      }),
-    }),
-    fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'getSignaturesForAddress',
-        params: [address, { limit: 20 }],
-      }),
-    }),
-  ]);
+  let balanceSol = -1;
+  let signatures: Array<{
+    signature: string;
+    blockTime: number | null;
+    err: unknown;
+  }> = [];
 
-  const balJson = await balRes.json() as {
-    result?: { value: number };
-    error?: { message: string };
-  };
-  const sigJson = await sigRes.json() as {
-    result?: Array<{
-      signature: string;
-      blockTime: number | null;
-      err: unknown;
-      memo: string | null;
-    }>;
-    error?: { message: string };
-  };
+  for (const rpc of rpcEndpoints) {
+    try {
+      const [balRes, sigRes] = await Promise.all([
+        fetch(rpc, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'getBalance',
+            params: [address],
+          }),
+          signal: AbortSignal.timeout(8000),
+        }),
+        fetch(rpc, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'getSignaturesForAddress',
+            params: [address, { limit: 20 }],
+          }),
+          signal: AbortSignal.timeout(8000),
+        }),
+      ]);
 
-  if (balJson.error) {
-    throw new Error(`Solana RPC error: ${balJson.error.message}`);
+      const balJson = await balRes.json() as {
+        result?: { value: number };
+        error?: { message: string };
+      };
+      const sigJson = await sigRes.json() as {
+        result?: Array<{
+          signature: string;
+          blockTime: number | null;
+          err: unknown;
+        }>;
+        error?: { message: string };
+      };
+
+      if (!balJson.error && balJson.result) {
+        balanceSol = (balJson.result.value ?? 0) / 1e9;
+        signatures = sigJson.result ?? [];
+        break; // Success, stop trying other RPCs
+      }
+    } catch {
+      continue; // Try next RPC
+    }
   }
 
-  // Lamports -> SOL
-  const lamports = balJson.result?.value ?? 0;
-  const balanceSol = lamports / 1e9;
+  if (balanceSol < 0) {
+    throw new Error('Unable to fetch SOL balance — all RPC endpoints failed');
+  }
 
-  const transactions = (sigJson.result ?? []).map((sig) => ({
+  const transactions = signatures.map((sig) => ({
     hash: sig.signature,
     from: address,
     to: '',
@@ -298,8 +487,27 @@ export async function GET(request: NextRequest) {
     return errorResponse('Invalid or missing chain parameter. Use eth, btc, or sol.');
   }
 
+  const cacheKey = `wallet:${chain}:${address.toLowerCase()}`;
+
+  // L1: In-memory cache
+  const memCached = memCache.get(cacheKey);
+  if (memCached && Date.now() - memCached.time < MEM_CACHE_TTL) {
+    return jsonOk(memCached.data);
+  }
+
+  // L2: DB cache
+  if (isDBConfigured()) {
+    try {
+      const dbData = await getCache<WalletResult>(cacheKey);
+      if (dbData) {
+        memCache.set(cacheKey, { data: dbData, time: Date.now() });
+        return jsonOk(dbData);
+      }
+    } catch { /* DB miss — proceed to fetch */ }
+  }
+
   try {
-    let data;
+    let data: WalletResult;
     switch (chain) {
       case 'eth':
         data = await fetchEthWallet(address);
@@ -311,8 +519,20 @@ export async function GET(request: NextRequest) {
         data = await fetchSolWallet(address);
         break;
     }
+
+    // Store in caches
+    memCache.set(cacheKey, { data, time: Date.now() });
+    if (isDBConfigured()) {
+      setCache(cacheKey, data, CACHE_TTL).catch(() => {});
+    }
+
     return jsonOk(data);
   } catch (err) {
+    // On error, return stale cache if available
+    if (memCached) {
+      return jsonOk(memCached.data);
+    }
+
     const message = err instanceof Error ? err.message : 'Unknown error fetching wallet data';
     return errorResponse(message, 502);
   }
