@@ -281,8 +281,9 @@ async function fetchAllWhales(): Promise<WhaleData[]> {
       }),
     );
     for (const r of batchResults) {
-      // Only include traders with at least 1 active position (not idle wallets)
-      if (r && r.positionCount > 0) {
+      // Only include traders with active positions AND meaningful account value
+      // Leaderboard AV can be stale — check live AV is at least $100K
+      if (r && r.positionCount > 0 && r.accountValue >= 100_000) {
         results.push(r);
       }
     }

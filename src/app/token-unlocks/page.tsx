@@ -284,6 +284,7 @@ export default function TokenUnlocksPage() {
   const [minValue, setMinValue] = useState(0);
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [upcomingOnly, setUpcomingOnly] = useState(true);
   const [calendarDate, setCalendarDate] = useState<Date | null>(null);
 
   const fetcher = useCallback(async () => {
@@ -316,9 +317,10 @@ export default function TokenUnlocksPage() {
   const listUnlocks = useMemo(() => {
     const now = new Date();
     const upcoming = filtered.filter(u => new Date(u.unlockDate) >= now).sort((a, b) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime());
+    if (upcomingOnly) return upcoming;
     const past = filtered.filter(u => new Date(u.unlockDate) < now).sort((a, b) => new Date(b.unlockDate).getTime() - new Date(a.unlockDate).getTime());
     return [...upcoming, ...past];
-  }, [filtered]);
+  }, [filtered, upcomingOnly]);
 
   // Stats
   const stats = useMemo(() => {
@@ -474,6 +476,18 @@ export default function TokenUnlocksPage() {
                   </button>
                 )}
               </div>
+
+              {/* Upcoming only toggle */}
+              <button
+                onClick={() => setUpcomingOnly(!upcomingOnly)}
+                className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors border ${
+                  upcomingOnly
+                    ? 'bg-hub-yellow/20 text-hub-yellow border-hub-yellow/30'
+                    : 'bg-white/[0.04] text-neutral-500 hover:text-white border-white/[0.06]'
+                }`}
+              >
+                {upcomingOnly ? 'Upcoming Only' : 'All Events'}
+              </button>
 
               {/* Filter toggle */}
               <button

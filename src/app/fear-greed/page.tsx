@@ -207,9 +207,23 @@ export default function FearGreedPage() {
               </div>
             </div>
             {/* Skeleton: Chart */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse mb-8">
               <div className="h-4 w-40 bg-white/[0.06] rounded mb-4" />
               <div className="h-64 bg-white/[0.04] rounded-lg" />
+            </div>
+            {/* Skeleton: History Table */}
+            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden animate-pulse">
+              <div className="p-4 border-b border-white/[0.06]">
+                <div className="h-4 w-28 bg-white/[0.06] rounded mb-2" />
+                <div className="h-3 w-44 bg-white/[0.04] rounded" />
+              </div>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
+                  <div className="h-3 w-36 bg-white/[0.06] rounded" />
+                  <div className="h-4 w-8 bg-white/[0.06] rounded" />
+                  <div className="h-5 w-20 bg-white/[0.06] rounded-full" />
+                </div>
+              ))}
             </div>
           </>
         ) : (

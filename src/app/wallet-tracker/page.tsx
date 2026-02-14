@@ -78,9 +78,10 @@ const CHAIN_CONFIG = {
 } as const;
 
 const PRESET_WALLETS = [
-  { label: 'Binance Hot Wallet', address: '0x28C6c06298d514Db089934071355E5743bf21d60', chain: 'eth' as const },
   { label: 'Vitalik', address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045', chain: 'eth' as const },
-  { label: 'Bitcoin Genesis', address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', chain: 'btc' as const },
+  { label: 'Binance Hot', address: '0x28C6c06298d514Db089934071355E5743bf21d60', chain: 'eth' as const },
+  { label: 'BTC Genesis', address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', chain: 'btc' as const },
+  { label: 'SOL Whale', address: 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', chain: 'sol' as const },
 ];
 
 /* ------------------------------------------------------------------ */

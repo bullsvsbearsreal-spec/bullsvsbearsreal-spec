@@ -531,13 +531,14 @@ export default function EconomicCalendarPage() {
 
                   {/* Day headers */}
                   <div className="grid grid-cols-7 border-b border-white/[0.06]">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(
-                      (day) => (
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(
+                      (day, i) => (
                         <div
-                          key={day}
+                          key={i}
                           className="py-2 text-center text-xs font-medium text-neutral-600"
                         >
-                          {day}
+                          <span className="sm:hidden">{day}</span>
+                          <span className="hidden sm:inline">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}</span>
                         </div>
                       )
                     )}
@@ -550,7 +551,7 @@ export default function EconomicCalendarPage() {
                         return (
                           <div
                             key={`empty-${idx}`}
-                            className="min-h-[80px] border-b border-r border-white/[0.04] bg-black/20"
+                            className="min-h-[52px] sm:min-h-[80px] border-b border-r border-white/[0.04] bg-black/20"
                           />
                         );
                       }
@@ -577,7 +578,7 @@ export default function EconomicCalendarPage() {
                             setSelectedDate(cellDate);
                             setQuickFilter('month');
                           }}
-                          className={`min-h-[80px] p-1.5 border-b border-r border-white/[0.04] text-left transition-colors hover:bg-white/[0.04] ${
+                          className={`min-h-[52px] sm:min-h-[80px] p-1 sm:p-1.5 border-b border-r border-white/[0.04] text-left transition-colors hover:bg-white/[0.04] ${
                             isSelected
                               ? 'bg-hub-yellow/10 border-hub-yellow/30'
                               : ''
