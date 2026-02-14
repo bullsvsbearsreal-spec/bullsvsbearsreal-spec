@@ -43,11 +43,38 @@ export default function FundingPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(new Set(ALL_EXCHANGES));
+  const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set(ALL_EXCHANGES);
+    try {
+      const saved = localStorage.getItem('infohub:funding:exchanges');
+      if (saved) {
+        const arr = JSON.parse(saved) as string[];
+        const valid = arr.filter(e => (ALL_EXCHANGES as readonly string[]).includes(e));
+        if (valid.length > 0) return new Set(valid);
+      }
+    } catch {}
+    return new Set(ALL_EXCHANGES);
+  });
   const [showExchangeSelector, setShowExchangeSelector] = useState(false);
-  const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
+  const [venueFilter, setVenueFilter] = useState<VenueFilter>(() => {
+    if (typeof window === 'undefined') return 'all';
+    return (localStorage.getItem('infohub:funding:venue') as VenueFilter) || 'all';
+  });
   const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
   const exchangeSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Persist exchange selection & venue filter to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('infohub:funding:exchanges', JSON.stringify(Array.from(selectedExchanges)));
+    } catch {}
+  }, [selectedExchanges]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('infohub:funding:venue', venueFilter);
+    } catch {}
+  }, [venueFilter]);
 
   // Close exchange selector on Escape or click outside
   useEffect(() => {
