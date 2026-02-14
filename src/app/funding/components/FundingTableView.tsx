@@ -225,13 +225,20 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
       </div>
 
       {/* Funding interval legend */}
-      <div className="px-4 py-2 border-t border-white/[0.04] flex items-center gap-4 text-[10px]">
-        <span className="text-neutral-600">Payout interval:</span>
-        <span className="text-neutral-500">No mark = 8h (standard)</span>
-        <span className="text-amber-400 font-bold">*</span>
-        <span className="text-neutral-500 -ml-2.5">= 1h payout</span>
-        <span className="text-blue-400 font-bold">**</span>
-        <span className="text-neutral-500 -ml-2.5">= 4h payout</span>
+      <div className="px-4 py-3 border-t border-white/[0.06] flex items-center gap-4 text-xs">
+        <span className="text-neutral-400 font-medium">Payout interval:</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/[0.04] text-neutral-500">8H</span>
+          <span className="text-neutral-300">Standard</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400">1H</span>
+          <span className="text-neutral-300">Hourly payout</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400">4H</span>
+          <span className="text-neutral-300">4-hour payout</span>
+        </div>
       </div>
 
       <Pagination
