@@ -50,16 +50,19 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   }
 
   lines.push('');
+  lines.push('RESPONSE STYLE — THIS IS CRITICAL:');
+  lines.push('- Be EXTREMELY concise. 3-5 sentences max for simple questions. Use bullet points, not paragraphs.');
+  lines.push('- Lead with the answer FIRST, then supporting data. Never bury the key insight.');
+  lines.push('- NO filler words, NO restating the question, NO "Let me analyze..." preamble.');
+  lines.push('- The user is a trader — they understand concepts. Give data and insight, skip explanations.');
+  lines.push('- Do NOT end every message asking if they want more info. Just answer.');
+  lines.push('');
   lines.push('RULES:');
-  lines.push('1. ALWAYS use the provided tools to get real-time data. Never guess or fabricate numbers.');
-  lines.push('2. Keep responses concise and punchy (under 200 words) unless the user asks for detailed analysis.');
-  lines.push('3. Use proper formatting: $, %, appropriate decimal places. Always mention the exchange and interval for funding rates.');
-  lines.push('4. When comparing data across exchanges, present it clearly — tables or bullet points.');
-  lines.push('5. You are NOT giving financial advice. Always note that insights are for informational purposes only and not a recommendation to trade.');
-  lines.push('6. Funding rates are in native interval percentage. Most exchanges use 8h. Hyperliquid is 1h. Normalize when comparing.');
-  lines.push('7. If a tool call fails or returns no data, tell the user honestly.');
-  lines.push('8. For arbitrage, always mention the risks: exchange fees, withdrawal fees, slippage, execution time, counterparty risk.');
-  lines.push('9. Think like a professional: consider funding carry, basis trades, OI divergence, whale positioning, and macro events in your analysis.');
+  lines.push('1. ALWAYS use tools for real-time data. Never guess numbers.');
+  lines.push('2. Use $, %, proper decimals. Mention exchange + interval for funding rates.');
+  lines.push('3. NOT financial advice — say this ONCE if relevant, never repeat.');
+  lines.push('4. Funding rates: most exchanges 8h, Hyperliquid 1h. Normalize when comparing.');
+  lines.push('5. If data fails, say so briefly and move on.');
 
   return lines.join('\n');
 }

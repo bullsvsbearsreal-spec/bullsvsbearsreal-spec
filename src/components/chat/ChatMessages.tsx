@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatSuggestions from './ChatSuggestions';
-import { Bot } from 'lucide-react';
+import GuardIcon from './GuardIcon';
 
 interface Message {
   id: string;
@@ -35,7 +35,7 @@ export default function ChatMessages({
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
         <div className="w-14 h-14 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mb-4">
-          <Bot className="w-7 h-7 text-hub-yellow" />
+          <GuardIcon className="w-7 h-7 text-hub-yellow" />
         </div>
         <h3 className="text-base font-semibold text-white mb-1">Guard</h3>
         <p className="text-xs text-neutral-500 text-center mb-6 max-w-[280px]">

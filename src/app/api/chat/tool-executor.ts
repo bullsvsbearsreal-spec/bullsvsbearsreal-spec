@@ -128,15 +128,15 @@ async function getOpenInterest(input: ToolInput, ctx: ExecuteContext): Promise<s
 
 async function getFearGreed(ctx: ExecuteContext): Promise<string> {
   const data = await fetchApi(ctx, '/api/fear-greed?history=true&limit=7');
-  const current = data.data || data;
-  const value = current.value ?? current.fgi?.now?.value;
-  const classification = current.classification ?? current.fgi?.now?.valueText;
-  const history = current.history || [];
+  const current = data.current || data;
+  const value = current.value;
+  const classification = current.classification;
+  const history = data.history || [];
 
   let result = `Fear & Greed Index: ${value} (${classification})`;
   if (history.length > 0) {
     const recent = history.slice(0, 7).map(
-      (h: any) => `${new Date(h.timestamp * 1000).toLocaleDateString()}: ${h.value} (${h.classification})`,
+      (h: any) => `${new Date(h.timestamp).toLocaleDateString()}: ${h.value} (${h.classification})`,
     );
     result += `\n\nLast 7 days:\n${recent.join('\n')}`;
   }
@@ -149,10 +149,10 @@ async function getTopMovers(ctx: ExecuteContext): Promise<string> {
   const losers: any[] = (data.losers || []).slice(0, 10);
 
   const gRows = gainers.map(
-    (t: any) => `${t.symbol}: +${t.priceChangePercent24h?.toFixed(2)}% ($${formatNum(t.lastPrice)})`,
+    (t: any) => `${t.symbol}: +${(t.change24h ?? t.priceChangePercent24h)?.toFixed(2)}% ($${formatNum(t.price ?? t.lastPrice)})`,
   );
   const lRows = losers.map(
-    (t: any) => `${t.symbol}: ${t.priceChangePercent24h?.toFixed(2)}% ($${formatNum(t.lastPrice)})`,
+    (t: any) => `${t.symbol}: ${(t.change24h ?? t.priceChangePercent24h)?.toFixed(2)}% ($${formatNum(t.price ?? t.lastPrice)})`,
   );
   return `Top Gainers (24h):\n${gRows.join('\n')}\n\nTop Losers (24h):\n${lRows.join('\n')}`;
 }

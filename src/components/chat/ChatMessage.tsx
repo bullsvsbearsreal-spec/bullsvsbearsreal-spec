@@ -1,6 +1,7 @@
 'use client';
 
-import { User, Bot, Loader2 } from 'lucide-react';
+import { User, Loader2 } from 'lucide-react';
+import GuardIcon from './GuardIcon';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
@@ -33,7 +34,7 @@ export default function ChatMessage({ role, content, isStreaming, toolName }: Ch
             : 'bg-white/[0.06] text-neutral-400'
         }`}
       >
-        {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+        {isUser ? <User className="w-3.5 h-3.5" /> : <GuardIcon className="w-4 h-4" />}
       </div>
 
       {/* Bubble */}

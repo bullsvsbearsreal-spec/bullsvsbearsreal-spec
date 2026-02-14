@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Bot, X, Trash2, Minus } from 'lucide-react';
+import { X, Trash2, Minus } from 'lucide-react';
+import GuardIcon from './GuardIcon';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
 import ChatSuggestions from './ChatSuggestions';
@@ -224,7 +225,7 @@ export default function ChatWidget() {
             flex items-center justify-center group"
           aria-label="Open Guard AI chat"
         >
-          <Bot className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+          <GuardIcon className="w-6 h-6 group-hover:rotate-12 transition-transform" />
         </button>
       )}
 
@@ -246,7 +247,7 @@ export default function ChatWidget() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-hub-yellow/15 flex items-center justify-center">
-                <Bot className="w-4 h-4 text-hub-yellow" />
+                <GuardIcon className="w-5 h-5 text-hub-yellow" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-white leading-none">Guard</h3>

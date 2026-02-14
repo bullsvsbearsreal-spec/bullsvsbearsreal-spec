@@ -10,7 +10,7 @@ export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 const MAX_TOOL_ROUNDS = 3;
-const MAX_TOKENS = 800;
+const MAX_TOKENS = 400;
 
 interface ChatRequestBody {
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
