@@ -42,6 +42,7 @@ const navCategories: NavCategory[] = [
       { name: 'Heatmap', href: '/market-heatmap' },
       { name: 'Dominance', href: '/dominance' },
       { name: 'Exchanges', href: '/exchange-comparison' },
+      { name: 'Exchange Reserves', href: '/exchange-reserves' },
       { name: 'Stablecoin Flows', href: '/stablecoin-flows' },
       { name: 'Correlation', href: '/correlation' },
       { name: 'Token Unlocks', href: '/token-unlocks' },
