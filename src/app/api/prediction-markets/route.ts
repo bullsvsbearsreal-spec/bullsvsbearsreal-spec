@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // --- Polymarket fetcher ---
 async function fetchPolymarket(): Promise<PredictionMarket[]> {
   const res = await fetchWithTimeout(
-    'https://gamma-api.polymarket.com/markets?limit=200&active=true&order=volume24hr&ascending=false',
+    'https://gamma-api.polymarket.com/markets?limit=200&active=true&closed=false&order=volume24hr&ascending=false',
     {},
     15000
   );
@@ -18,15 +18,28 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
   const markets: any[] = await res.json();
 
   return markets
-    .filter((m: any) => m.outcomePrices && m.active && m.volume !== '0')
+    .filter((m: any) => {
+      if (!m.outcomePrices || !m.active || m.closed) return false;
+      if (m.volume === '0' || m.volume === 0) return false;
+      // Filter out resolved markets (YES near 0 or 1)
+      let prices: number[] = [0.5, 0.5];
+      try {
+        const parsed = typeof m.outcomePrices === 'string'
+          ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+        prices = parsed.map((p: any) => parseFloat(p) || 0.5);
+      } catch { /* */ }
+      const yesPrice = prices[0] ?? 0.5;
+      // Skip markets that are essentially resolved (YES < 0.02 or > 0.98)
+      if (yesPrice < 0.02 || yesPrice > 0.98) return false;
+      return true;
+    })
     .map((m: any) => {
       let prices: number[] = [0.5, 0.5];
       try {
         const parsed = typeof m.outcomePrices === 'string'
-          ? JSON.parse(m.outcomePrices)
-          : m.outcomePrices;
+          ? JSON.parse(m.outcomePrices) : m.outcomePrices;
         prices = parsed.map((p: any) => parseFloat(p) || 0.5);
-      } catch { /* use defaults */ }
+      } catch { /* */ }
 
       return {
         id: String(m.id || m.conditionId || ''),
@@ -49,42 +62,103 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
 function extractCategory(m: any): string {
   if (m.tags && Array.isArray(m.tags) && m.tags.length > 0) return m.tags[0];
   if (m.groupItemTitle) return m.groupItemTitle;
+  // Infer category from question keywords
+  const q = (m.question || '').toLowerCase();
+  if (/bitcoin|btc|ethereum|eth|crypto|solana|xrp/i.test(q)) return 'Crypto';
+  if (/fed |interest rate|inflation|gdp|cpi|recession|tariff/i.test(q)) return 'Economics';
+  if (/trump|biden|election|president|congress|senate|government|shutdown/i.test(q)) return 'Politics';
+  if (/win on|match|game|championship|nba|nfl|fifa|uefa|league/i.test(q)) return 'Sports';
+  if (/openai|ai |deepseek|google|apple|tesla|spacex/i.test(q)) return 'Tech';
   return 'Other';
 }
 
 // --- Kalshi fetcher ---
+// The default /markets endpoint returns low-quality sports parlays.
+// Instead, fetch from specific interesting series that have real prediction markets.
+const KALSHI_SERIES = [
+  // Crypto
+  'KXBTC2026200', 'KXETHMAXMON', 'KXETHMINY', 'KXETHFLIP', 'KXBCH', 'KXDJTCHAIN',
+  'KXTEXASBTC', 'KXETHE', 'KXETHETF', 'KXCRYPTODAY1',
+  // Economics
+  'KXRATECUTCOUNT', 'CPIYOY', 'KXAVGTARIFF', 'KXGDPYEAR', 'KXACPICORE-',
+  'FXEURO', 'KXGASD', 'KXFEDDISSENT', 'KXFEDEMPLOYEES', 'KXCPICN', 'CPIAR',
+  'TNOTED', 'KXREVSOL', 'CPIGAS',
+  // Politics
+  'GOVSHUT', 'KXTARIFFSGLOBAL', 'KXTARIFFSEU', 'KXTARIFFSMEX', 'KXTARIFFRATEPRC',
+  'KXTARIFFSCOPPER', 'KXVOTESHUTDOWNH', 'KXGOVREOPEN2025',
+  'KXTRUMPMOSCOW', 'KXTRUMPZELENSKYY', 'KXUSAIRANAGREEMENT', 'KXCONTEMPT',
+  'KXFULLLIDBEFORE8PM', 'KXLEAVEADMIN', 'KXAISECURITY',
+  // Tech / Science
+  'KXOPENAIPROFIT', 'KXDEEPSEEKR2RELEASE', 'AITURING', 'KXAIOPEN',
+  'KXCOMPBANCHINESEAI', 'KXANTITRUSTOAIMSFT', 'GOOGLECEOCHANGE', 'APPLEAI',
+  // Events
+  'KXNEWPOPE', 'KXELONMARS',
+  // Financials
+  'KXOAIANTH', 'KXRAMPBREX', 'KXDEELRIP',
+];
+
 async function fetchKalshi(): Promise<PredictionMarket[]> {
-  const res = await fetchWithTimeout(
-    'https://api.elections.kalshi.com/trade-api/v2/markets?limit=200&status=open',
-    {},
-    15000
-  );
-  if (!res.ok) throw new Error(`Kalshi HTTP ${res.status}`);
-  const json: any = await res.json();
-  const markets: any[] = json.markets || [];
+  const allMarkets: PredictionMarket[] = [];
+  const seen = new Set<string>();
 
-  return markets
-    .filter((m: any) => m.status === 'active' || m.status === 'open')
-    .map((m: any) => {
-      const yesBid = (m.yes_bid ?? m.last_price ?? 50) / 100;
-      const noBid = (m.no_bid ?? (100 - (m.last_price ?? 50))) / 100;
+  // Fetch markets from each interesting series in parallel (batched)
+  const batchSize = 10;
+  for (let i = 0; i < KALSHI_SERIES.length; i += batchSize) {
+    const batch = KALSHI_SERIES.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map(series =>
+        fetchWithTimeout(
+          `https://api.elections.kalshi.com/trade-api/v2/markets?limit=20&series_ticker=${series}&status=open`,
+          {},
+          10000
+        ).then(r => r.ok ? r.json() : { markets: [] })
+      )
+    );
 
-      return {
-        id: m.ticker || '',
-        platform: 'kalshi' as const,
-        question: m.title || m.ticker || '',
-        slug: m.ticker || '',
-        yesPrice: Math.max(0, Math.min(1, yesBid)),
-        noPrice: Math.max(0, Math.min(1, noBid)),
-        volume24h: m.volume_24h || 0,
-        totalVolume: m.volume || 0,
-        liquidity: 0,
-        openInterest: m.open_interest || 0,
-        endDate: m.close_time || '',
-        category: m.category || 'Other',
-        active: true,
-      };
-    });
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue;
+      const markets: any[] = result.value.markets || [];
+      for (const m of markets) {
+        if (!m.ticker || seen.has(m.ticker)) continue;
+        // Only include markets with actual price data
+        if ((m.yes_bid === 0 || m.yes_bid == null) && (m.last_price === 0 || m.last_price == null)) continue;
+        seen.add(m.ticker);
+
+        const yesBid = (m.yes_bid ?? m.last_price ?? 50) / 100;
+        const noBid = (m.no_bid ?? (100 - (m.last_price ?? 50))) / 100;
+
+        // Infer category from series ticker
+        const seriesTicker = m.series_ticker || m.ticker || '';
+        let category = m.category || 'Other';
+        if (!category || category === 'Other') {
+          if (/BTC|ETH|CRYPTO|BCH|DJT/i.test(seriesTicker)) category = 'Crypto';
+          else if (/CPI|GDP|FED|RATE|TARIFF|FXEURO|TNOTE|GAS|INFLATION/i.test(seriesTicker)) category = 'Economics';
+          else if (/TRUMP|GOV|SHUTDOWN|IRAN|ADMIN|VOTE|LEAV/i.test(seriesTicker)) category = 'Politics';
+          else if (/AI|OPENAI|DEEP|GOOGLE|APPLE|TURING/i.test(seriesTicker)) category = 'Tech';
+        }
+
+        allMarkets.push({
+          id: m.ticker,
+          platform: 'kalshi' as const,
+          question: m.title || m.ticker,
+          slug: m.ticker,
+          yesPrice: Math.max(0, Math.min(1, yesBid)),
+          noPrice: Math.max(0, Math.min(1, noBid)),
+          volume24h: m.volume_24h || 0,
+          totalVolume: m.volume || 0,
+          liquidity: 0,
+          openInterest: m.open_interest || 0,
+          endDate: m.close_time || '',
+          category,
+          active: true,
+        });
+      }
+    }
+  }
+
+  // Sort by total volume descending
+  allMarkets.sort((a, b) => b.totalVolume - a.totalVolume);
+  return allMarkets;
 }
 
 // --- Market matching engine ---
@@ -113,12 +187,12 @@ function matchMarkets(
     }
   }
 
-  // Pass 2: Keyword fuzzy matching
-  const SIMILARITY_THRESHOLD = 0.4;
+  // Pass 2: Keyword fuzzy matching (lower threshold since we're comparing different phrasings)
+  const SIMILARITY_THRESHOLD = 0.3;
   for (const poly of polymarkets) {
     if (usedPoly.has(poly.id)) continue;
     const polyKW = extractKeywords(poly.question);
-    if (polyKW.length < 2) continue; // skip very short questions
+    if (polyKW.length < 2) continue;
 
     let bestMatch: PredictionMarket | null = null;
     let bestScore = 0;
