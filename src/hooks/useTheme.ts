@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
-type Theme = 'orange' | 'green';
+export type Theme = 'orange' | 'green' | 'blue';
 
 function getTheme(): Theme {
   if (typeof document === 'undefined') return 'orange';
-  return document.documentElement.dataset.theme === 'green' ? 'green' : 'orange';
+  const t = document.documentElement.dataset.theme;
+  if (t === 'green') return 'green';
+  if (t === 'blue') return 'blue';
+  return 'orange';
 }
 
 let listeners: (() => void)[] = [];

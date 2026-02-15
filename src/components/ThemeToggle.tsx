@@ -3,43 +3,53 @@
 import { useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'infohub-theme';
+const THEMES = ['orange', 'green', 'blue'] as const;
+type Theme = (typeof THEMES)[number];
+
+const THEME_COLORS: Record<Theme, { bg: string; shadow: string; label: string }> = {
+  orange: { bg: '#FFA500', shadow: 'rgba(255,165,0,0.5)', label: 'Orange' },
+  green:  { bg: '#00DC82', shadow: 'rgba(0,220,130,0.5)', label: 'Green' },
+  blue:   { bg: '#7B61FF', shadow: 'rgba(123,97,255,0.5)', label: 'Blue' },
+};
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'orange' | 'green'>('orange');
+  const [theme, setTheme] = useState<Theme>('orange');
 
-  // Read saved theme on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'green') setTheme('green');
+    const saved = localStorage.getItem(STORAGE_KEY) as Theme | null;
+    if (saved && THEMES.includes(saved)) setTheme(saved);
   }, []);
 
-  const toggle = () => {
-    const next = theme === 'orange' ? 'green' : 'orange';
+  const cycle = () => {
+    const idx = THEMES.indexOf(theme);
+    const next = THEMES[(idx + 1) % THEMES.length];
     setTheme(next);
 
-    if (next === 'green') {
-      document.documentElement.dataset.theme = 'green';
-      localStorage.setItem(STORAGE_KEY, 'green');
-    } else {
+    if (next === 'orange') {
       delete document.documentElement.dataset.theme;
       localStorage.removeItem(STORAGE_KEY);
+    } else {
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem(STORAGE_KEY, next);
     }
   };
 
+  const c = THEME_COLORS[theme];
+
   return (
     <button
-      onClick={toggle}
-      className="relative w-8 h-4 rounded-full bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.15] transition-colors flex items-center px-0.5"
-      aria-label={`Switch to ${theme === 'orange' ? 'green' : 'orange'} theme`}
-      title={`Theme: ${theme}`}
+      onClick={cycle}
+      className="relative flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition-colors"
+      aria-label={`Theme: ${c.label}. Click to switch.`}
+      title={`Theme: ${c.label}`}
     >
       <div
-        className={`w-3 h-3 rounded-full transition-all duration-200 ${
-          theme === 'orange'
-            ? 'translate-x-0 bg-[#FFA500] shadow-[0_0_6px_rgba(255,165,0,0.5)]'
-            : 'translate-x-3.5 bg-[#00DC82] shadow-[0_0_6px_rgba(0,220,130,0.5)]'
-        }`}
+        className="w-2.5 h-2.5 rounded-full transition-all duration-200"
+        style={{ background: c.bg, boxShadow: `0 0 6px ${c.shadow}` }}
       />
+      <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider hidden sm:inline">
+        {c.label}
+      </span>
     </button>
   );
 }
