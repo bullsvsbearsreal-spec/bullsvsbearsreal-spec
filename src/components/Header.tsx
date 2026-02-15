@@ -234,7 +234,7 @@ export default function Header() {
                     {/* Dropdown panel */}
                     {isOpen && (
                       <div className="absolute top-full left-0 pt-1 z-50">
-                        <div className="bg-[#111] border border-white/[0.08] rounded-lg shadow-xl py-1 min-w-[180px]">
+                        <div className="bg-hub-darker border border-white/[0.08] rounded-lg shadow-xl py-1 min-w-[180px]">
                           {cat.items.map((link) => (
                             <Link
                               key={link.href}
@@ -302,7 +302,7 @@ export default function Header() {
       {mobileOpen && (
         <div
           id="mobile-nav"
-          className="md:hidden bg-[#0a0a0a] border-t border-white/[0.06]"
+          className="md:hidden bg-hub-dark border-t border-white/[0.06]"
           role="dialog"
           aria-modal="true"
           aria-label="Navigation menu"

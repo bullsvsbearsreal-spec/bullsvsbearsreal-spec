@@ -30,6 +30,7 @@
 
 /* ═══ Theme: Green ═══ */
 [data-theme="green"] {
+  /* Accent palette */
   --hub-accent-rgb: 0 220 130;          /* #00DC82 */
   --hub-accent-light-rgb: 52 237 170;   /* #34EDAA */
   --hub-accent-dark-rgb: 0 184 107;     /* #00B86B */
@@ -39,6 +40,37 @@
   --hub-accent-light: #34EDAA;
   --hub-accent-dark: #00B86B;
   --hub-accent-secondary: #009E5C;
+
+  /* Green-tinted surfaces */
+  --hub-black: #030806;
+  --hub-dark: #060d08;
+  --hub-darker: #0a0f0c;
+  --hub-gray: #0f1a12;
+  --hub-gray-light: #162218;
+  --hub-gray-medium: #1c2a1f;
+
+  /* Stronger borders for green contrast */
+  --hub-border: rgba(255, 255, 255, 0.08);
+  --hub-border-hover: rgba(255, 255, 255, 0.16);
+}
+
+/* Green theme — body & scrollbar */
+[data-theme="green"] body {
+  background: #030806;
+}
+[data-theme="green"] ::-webkit-scrollbar-thumb {
+  background: #1a3324;
+}
+[data-theme="green"] ::-webkit-scrollbar-thumb:hover {
+  background: #264a34;
+}
+[data-theme="green"] ::selection {
+  background: rgb(0 220 130 / 0.20);
+}
+
+/* Green theme — header */
+[data-theme="green"] header {
+  background: rgba(3, 8, 6, 0.92);
 }
 
 * { box-sizing: border-box; padding: 0; margin: 0; }
@@ -267,6 +299,83 @@ body {
     height: 1px;
     background: linear-gradient(90deg, transparent, rgb(var(--hub-accent-rgb) / 0.25), transparent);
   }
+}
+
+/* ═══ Green Theme — Visual Overrides ═══ */
+
+/* Surfaces */
+[data-theme="green"] .surface-0 { background: #060d08; }
+[data-theme="green"] .surface-1 { background: #0a0f0c; }
+[data-theme="green"] .surface-2 { background: #0f1510; }
+
+/* Glass cards */
+[data-theme="green"] .glass-card { background: #0a0f0c; }
+[data-theme="green"] .glass-dark { background: #060d08; }
+[data-theme="green"] .glass { background: #0a0f0c; }
+
+/* Card premium — green glow on hover */
+[data-theme="green"] .card-premium {
+  background: #080f0a;
+}
+[data-theme="green"] .card-premium::before {
+  background: linear-gradient(90deg, transparent, rgb(0 220 130 / 0.50), transparent);
+  opacity: 0.7;
+}
+[data-theme="green"] .card-premium:hover {
+  border-color: rgba(0, 220, 130, 0.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 12px 32px rgba(0,0,0,0.4), 0 0 20px rgba(0, 220, 130, 0.08);
+}
+
+/* Stat card — stronger green accent line */
+[data-theme="green"] .stat-card {
+  background: #0a0f0c;
+}
+[data-theme="green"] .stat-card::before {
+  background: linear-gradient(90deg, transparent, rgb(0 220 130 / 0.45), transparent);
+}
+
+/* Hero mesh — stronger green radials with cyan */
+[data-theme="green"] .hero-mesh {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgb(0 220 130 / 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 80% 30%, rgb(0 184 107 / 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 50% 80%, rgb(0 200 180 / 0.05) 0%, transparent 70%);
+}
+
+/* Buttons — green glow hover */
+[data-theme="green"] .btn-primary:hover {
+  opacity: 1;
+  transform: scale(1.02);
+  box-shadow: 0 0 16px rgba(0, 220, 130, 0.25);
+}
+[data-theme="green"] .btn-secondary:hover {
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.12);
+}
+
+/* Data rows — subtle green tint */
+[data-theme="green"] .data-row:hover {
+  background: rgba(0, 220, 130, 0.03);
+}
+[data-theme="green"] .data-row-premium:hover {
+  background: rgba(0, 220, 130, 0.03);
+}
+
+/* Glow — stronger for green */
+[data-theme="green"] .glow-text {
+  text-shadow: 0 0 10px rgb(0 220 130 / 0.5);
+}
+[data-theme="green"] .glow-box {
+  box-shadow: 0 0 16px rgb(0 220 130 / 0.20);
+}
+
+/* Noise bg — slightly more visible on green */
+[data-theme="green"] .noise-bg::after {
+  opacity: 0.03;
+}
+
+/* Mobile nav */
+[data-theme="green"] #mobile-nav {
+  background: #060d08;
 }
 
 @keyframes skeleton { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
