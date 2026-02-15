@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
 import { CURATED_MAPPINGS, extractKeywords, keywordSimilarity } from '@/lib/api/prediction-markets/mappings';
-import type { PredictionMarket, PredictionArbitrage, PredictionMarketsResponse } from '@/lib/api/prediction-markets/types';
+import type { PredictionMarket, PredictionArbitrage, PredictionMarketsResponse, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
 export const runtime = 'edge';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
-// --- Polymarket fetcher ---
+// ─── Polymarket ──────────────────────────────────────────────
 async function fetchPolymarket(): Promise<PredictionMarket[]> {
   const res = await fetchWithTimeout(
     'https://gamma-api.polymarket.com/markets?limit=200&active=true&closed=false&order=volume24hr&ascending=false',
@@ -21,7 +21,6 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
     .filter((m: any) => {
       if (!m.outcomePrices || !m.active || m.closed) return false;
       if (m.volume === '0' || m.volume === 0) return false;
-      // Filter out resolved markets (YES near 0 or 1)
       let prices: number[] = [0.5, 0.5];
       try {
         const parsed = typeof m.outcomePrices === 'string'
@@ -29,7 +28,6 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
         prices = parsed.map((p: any) => parseFloat(p) || 0.5);
       } catch { /* */ }
       const yesPrice = prices[0] ?? 0.5;
-      // Skip markets that are essentially resolved (YES < 0.02 or > 0.98)
       if (yesPrice < 0.02 || yesPrice > 0.98) return false;
       return true;
     })
@@ -53,41 +51,30 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
         liquidity: parseFloat(m.liquidity) || 0,
         openInterest: 0,
         endDate: m.endDate || '',
-        category: extractCategory(m),
+        category: inferCategory(m.question || '', m.tags),
         active: true,
+        url: `https://polymarket.com/event/${m.slug || ''}`,
       };
     });
 }
 
-function extractCategory(m: any): string {
-  if (m.tags && Array.isArray(m.tags) && m.tags.length > 0) return m.tags[0];
-  if (m.groupItemTitle) return m.groupItemTitle;
-  // Infer category from question keywords
-  const q = (m.question || '').toLowerCase();
-  if (/bitcoin|btc|ethereum|eth|crypto|solana|xrp/i.test(q)) return 'Crypto';
-  if (/fed |interest rate|inflation|gdp|cpi|recession|tariff/i.test(q)) return 'Economics';
-  if (/trump|biden|election|president|congress|senate|government|shutdown/i.test(q)) return 'Politics';
-  if (/win on|match|game|championship|nba|nfl|fifa|uefa|league/i.test(q)) return 'Sports';
-  if (/openai|ai |deepseek|google|apple|tesla|spacex/i.test(q)) return 'Tech';
-  return 'Other';
-}
-
-// --- Kalshi fetcher ---
-// The default /markets endpoint returns low-quality sports parlays.
-// Instead, fetch from specific interesting series that have real prediction markets.
+// ─── Kalshi ──────────────────────────────────────────────────
+// Curated series with actual volume — skip dead daily tickers (KXBTCD, KXETHD)
 const KALSHI_SERIES = [
-  // Crypto
-  'KXBTC2026200', 'KXETHMAXMON', 'KXETHMINY', 'KXETHFLIP', 'KXBCH', 'KXDJTCHAIN',
-  'KXTEXASBTC', 'KXETHE', 'KXETHETF', 'KXCRYPTODAY1',
+  // Crypto (yearly targets — high volume)
+  'KXBTCMAXY', 'KXBTCMINY', 'KXBTC2026200', 'KXETHMAXMON', 'KXETHMINY',
+  'KXETHFLIP', 'KXBCH', 'KXDJTCHAIN', 'KXTEXASBTC', 'KXETHE', 'KXETHETF',
+  'KXCRYPTODAY1',
   // Economics
-  'KXRATECUTCOUNT', 'CPIYOY', 'KXAVGTARIFF', 'KXGDPYEAR', 'KXACPICORE-',
-  'FXEURO', 'KXGASD', 'KXFEDDISSENT', 'KXFEDEMPLOYEES', 'KXCPICN', 'CPIAR',
-  'TNOTED', 'KXREVSOL', 'CPIGAS',
+  'KXFED', 'KXRATECUTCOUNT', 'CPIYOY', 'KXAVGTARIFF', 'KXGDPYEAR',
+  'KXACPICORE-', 'FXEURO', 'KXGASD', 'KXFEDDISSENT', 'KXFEDEMPLOYEES',
+  'KXCPICN', 'CPIAR', 'TNOTED', 'KXREVSOL', 'CPIGAS',
   // Politics
-  'GOVSHUT', 'KXTARIFFSGLOBAL', 'KXTARIFFSEU', 'KXTARIFFSMEX', 'KXTARIFFRATEPRC',
-  'KXTARIFFSCOPPER', 'KXVOTESHUTDOWNH', 'KXGOVREOPEN2025',
+  'GOVSHUT', 'KXTARIFFSGLOBAL', 'KXTARIFFSEU', 'KXTARIFFSMEX',
+  'KXTARIFFRATEPRC', 'KXTARIFFSCOPPER', 'KXVOTESHUTDOWNH', 'KXGOVREOPEN2025',
   'KXTRUMPMOSCOW', 'KXTRUMPZELENSKYY', 'KXUSAIRANAGREEMENT', 'KXCONTEMPT',
-  'KXFULLLIDBEFORE8PM', 'KXLEAVEADMIN', 'KXAISECURITY',
+  'KXFULLLIDBEFORE8PM', 'KXLEAVEADMIN', 'KXAISECURITY', 'KXDEPORTATIONS',
+  'KXPRESNOMFEDCHAIR',
   // Tech / Science
   'KXOPENAIPROFIT', 'KXDEEPSEEKR2RELEASE', 'AITURING', 'KXAIOPEN',
   'KXCOMPBANCHINESEAI', 'KXANTITRUSTOAIMSFT', 'GOOGLECEOCHANGE', 'APPLEAI',
@@ -101,7 +88,6 @@ async function fetchKalshi(): Promise<PredictionMarket[]> {
   const allMarkets: PredictionMarket[] = [];
   const seen = new Set<string>();
 
-  // Fetch markets from each interesting series in parallel (batched)
   const batchSize = 10;
   for (let i = 0; i < KALSHI_SERIES.length; i += batchSize) {
     const batch = KALSHI_SERIES.slice(i, i + batchSize);
@@ -120,20 +106,18 @@ async function fetchKalshi(): Promise<PredictionMarket[]> {
       const markets: any[] = result.value.markets || [];
       for (const m of markets) {
         if (!m.ticker || seen.has(m.ticker)) continue;
-        // Only include markets with actual price data
         if ((m.yes_bid === 0 || m.yes_bid == null) && (m.last_price === 0 || m.last_price == null)) continue;
         seen.add(m.ticker);
 
         const yesBid = (m.yes_bid ?? m.last_price ?? 50) / 100;
         const noBid = (m.no_bid ?? (100 - (m.last_price ?? 50))) / 100;
 
-        // Infer category from series ticker
         const seriesTicker = m.series_ticker || m.ticker || '';
         let category = m.category || 'Other';
         if (!category || category === 'Other') {
           if (/BTC|ETH|CRYPTO|BCH|DJT/i.test(seriesTicker)) category = 'Crypto';
           else if (/CPI|GDP|FED|RATE|TARIFF|FXEURO|TNOTE|GAS|INFLATION/i.test(seriesTicker)) category = 'Economics';
-          else if (/TRUMP|GOV|SHUTDOWN|IRAN|ADMIN|VOTE|LEAV/i.test(seriesTicker)) category = 'Politics';
+          else if (/TRUMP|GOV|SHUTDOWN|IRAN|ADMIN|VOTE|LEAV|DEPORT/i.test(seriesTicker)) category = 'Politics';
           else if (/AI|OPENAI|DEEP|GOOGLE|APPLE|TURING/i.test(seriesTicker)) category = 'Tech';
         }
 
@@ -151,122 +135,286 @@ async function fetchKalshi(): Promise<PredictionMarket[]> {
           endDate: m.close_time || '',
           category,
           active: true,
+          url: `https://kalshi.com/markets/${m.ticker}`,
         });
       }
     }
   }
 
-  // Sort by total volume descending
   allMarkets.sort((a, b) => b.totalVolume - a.totalVolume);
   return allMarkets;
 }
 
-// --- Market matching engine ---
-function matchMarkets(
-  polymarkets: PredictionMarket[],
-  kalshiMarkets: PredictionMarket[]
+// ─── Manifold Markets ────────────────────────────────────────
+async function fetchManifold(): Promise<PredictionMarket[]> {
+  const res = await fetchWithTimeout(
+    'https://api.manifold.markets/v0/search-markets?term=&sort=24-hour-vol&limit=200&filter=open&contractType=BINARY',
+    {},
+    15000
+  );
+  if (!res.ok) throw new Error(`Manifold HTTP ${res.status}`);
+  const markets: any[] = await res.json();
+
+  return markets
+    .filter((m: any) => {
+      if (m.isResolved) return false;
+      if (m.probability == null) return false;
+      const p = m.probability;
+      if (p < 0.02 || p > 0.98) return false;
+      return true;
+    })
+    .map((m: any) => {
+      const p = m.probability ?? 0.5;
+      return {
+        id: String(m.id || ''),
+        platform: 'manifold' as const,
+        question: m.question || '',
+        slug: m.slug || '',
+        yesPrice: p,
+        noPrice: +(1 - p).toFixed(4),
+        volume24h: m.volume24Hours || 0,
+        totalVolume: m.volume || 0,
+        liquidity: m.totalLiquidity || 0,
+        openInterest: 0,
+        endDate: m.closeTime ? new Date(m.closeTime).toISOString() : '',
+        category: inferCategory(m.question || ''),
+        active: true,
+        url: m.url || `https://manifold.markets/${m.creatorUsername}/${m.slug}`,
+        forecasters: m.uniqueBettorCount || 0,
+      };
+    });
+}
+
+// ─── Metaculus ────────────────────────────────────────────────
+async function fetchMetaculus(): Promise<PredictionMarket[]> {
+  const res = await fetchWithTimeout(
+    'https://www.metaculus.com/api2/questions/?limit=100&status=open&order_by=-forecasts_count&type=forecast',
+    { headers: { 'Accept': 'application/json' } },
+    15000
+  );
+  if (!res.ok) throw new Error(`Metaculus HTTP ${res.status}`);
+  const data: any = await res.json();
+  const questions: any[] = data.results || [];
+
+  return questions
+    .filter((q: any) => {
+      if (q.resolved || q.status !== 'open') return false;
+      // Only binary questions
+      const type = q.question?.type || q.possibilities?.type;
+      if (type && type !== 'binary') return false;
+      // Need a probability
+      const prob = getMetaculusProbability(q);
+      if (prob == null || prob < 0.02 || prob > 0.98) return false;
+      return true;
+    })
+    .map((q: any) => {
+      const prob = getMetaculusProbability(q) ?? 0.5;
+      const categories = q.projects?.category || [];
+      const catName = Array.isArray(categories) && categories.length > 0
+        ? categories[0].name || 'Other'
+        : 'Other';
+
+      return {
+        id: String(q.id || ''),
+        platform: 'metaculus' as const,
+        question: q.title || q.short_title || '',
+        slug: q.url_title || String(q.id),
+        yesPrice: prob,
+        noPrice: +(1 - prob).toFixed(4),
+        volume24h: 0,
+        totalVolume: 0,
+        liquidity: 0,
+        openInterest: 0,
+        endDate: q.scheduled_close_time || q.question?.scheduled_close_time || '',
+        category: inferCategory(q.title || '', undefined, catName),
+        active: true,
+        url: `https://www.metaculus.com/questions/${q.id}`,
+        forecasters: q.nr_forecasters || q.forecasts_count || 0,
+      };
+    });
+}
+
+function getMetaculusProbability(q: any): number | null {
+  // Try nested aggregation first (newer format)
+  const agg = q.question?.aggregations?.recency_weighted?.latest;
+  if (agg?.centers && agg.centers.length > 0) {
+    return agg.centers[0];
+  }
+  // Try community prediction (older format)
+  if (q.community_prediction?.full?.q2 != null) {
+    return q.community_prediction.full.q2;
+  }
+  return null;
+}
+
+// ─── Shared helpers ──────────────────────────────────────────
+function inferCategory(question: string, tags?: any, fallback?: string): string {
+  if (tags && Array.isArray(tags) && tags.length > 0) return tags[0];
+  const q = question.toLowerCase();
+  if (/bitcoin|btc|ethereum|eth|crypto|solana|xrp|defi/i.test(q)) return 'Crypto';
+  if (/fed |interest rate|inflation|gdp|cpi|recession|tariff|economy/i.test(q)) return 'Economics';
+  if (/trump|biden|election|president|congress|senate|government|shutdown|republican|democrat/i.test(q)) return 'Politics';
+  if (/win on|match|game|championship|nba|nfl|fifa|uefa|league|super bowl/i.test(q)) return 'Sports';
+  if (/openai|ai |deepseek|google|apple|tesla|spacex|agi|artificial/i.test(q)) return 'Tech';
+  if (/war|iran|russia|ukraine|china|military|strike|nuclear/i.test(q)) return 'Geopolitics';
+  if (fallback && fallback !== 'Other') return fallback;
+  return 'Other';
+}
+
+// ─── Cross-platform matching ─────────────────────────────────
+function matchAllPlatforms(
+  platformData: Record<PredictionPlatform, PredictionMarket[]>
 ): PredictionArbitrage[] {
-  const matched: PredictionArbitrage[] = [];
-  const usedPoly = new Set<string>();
-  const usedKalshi = new Set<string>();
+  const allMatches: PredictionArbitrage[] = [];
+  const platforms = Object.keys(platformData) as PredictionPlatform[];
 
-  // Pass 1: Curated regex mappings
-  for (const mapping of CURATED_MAPPINGS) {
-    const polyRe = new RegExp(mapping.polymarketMatch, 'i');
-    const kalshiRe = new RegExp(mapping.kalshiMatch, 'i');
+  // Match every pair of platforms
+  for (let i = 0; i < platforms.length; i++) {
+    for (let j = i + 1; j < platforms.length; j++) {
+      const pA = platforms[i];
+      const pB = platforms[j];
+      const marketsA = platformData[pA];
+      const marketsB = platformData[pB];
+      if (marketsA.length === 0 || marketsB.length === 0) continue;
 
-    const poly = polymarkets.find(m => !usedPoly.has(m.id) && polyRe.test(m.question));
-    const kalshi = kalshiMarkets.find(m =>
-      !usedKalshi.has(m.id) && (kalshiRe.test(m.question) || kalshiRe.test(m.id))
-    );
-
-    if (poly && kalshi) {
-      usedPoly.add(poly.id);
-      usedKalshi.add(kalshi.id);
-      matched.push(buildArbitrage(poly, kalshi, 'curated', mapping.label, mapping.category));
+      const matches = matchPair(marketsA, marketsB, pA, pB);
+      allMatches.push(...matches);
     }
   }
 
-  // Pass 2: Keyword fuzzy matching (lower threshold since we're comparing different phrasings)
+  return allMatches.sort((a, b) => b.spreadPercent - a.spreadPercent);
+}
+
+function matchPair(
+  marketsA: PredictionMarket[],
+  marketsB: PredictionMarket[],
+  platformA: PredictionPlatform,
+  platformB: PredictionPlatform
+): PredictionArbitrage[] {
+  const matched: PredictionArbitrage[] = [];
+  const usedA = new Set<string>();
+  const usedB = new Set<string>();
+
+  // Pass 1: Curated regex mappings (only for polymarket↔kalshi)
+  if (
+    (platformA === 'polymarket' && platformB === 'kalshi') ||
+    (platformA === 'kalshi' && platformB === 'polymarket')
+  ) {
+    const poly = platformA === 'polymarket' ? marketsA : marketsB;
+    const kalshi = platformA === 'kalshi' ? marketsA : marketsB;
+    const polyUsed = platformA === 'polymarket' ? usedA : usedB;
+    const kalshiUsed = platformA === 'kalshi' ? usedA : usedB;
+
+    for (const mapping of CURATED_MAPPINGS) {
+      const polyRe = new RegExp(mapping.polymarketMatch, 'i');
+      const kalshiRe = new RegExp(mapping.kalshiMatch, 'i');
+
+      const pMatch = poly.find(m => !polyUsed.has(m.id) && polyRe.test(m.question));
+      const kMatch = kalshi.find(m =>
+        !kalshiUsed.has(m.id) && (kalshiRe.test(m.question) || kalshiRe.test(m.id))
+      );
+
+      if (pMatch && kMatch) {
+        polyUsed.add(pMatch.id);
+        kalshiUsed.add(kMatch.id);
+        const a = platformA === 'polymarket' ? pMatch : kMatch;
+        const b = platformA === 'polymarket' ? kMatch : pMatch;
+        matched.push(buildArbitrage(a, b, 'curated', mapping.label, mapping.category));
+      }
+    }
+  }
+
+  // Pass 2: Keyword fuzzy matching
   const SIMILARITY_THRESHOLD = 0.3;
-  for (const poly of polymarkets) {
-    if (usedPoly.has(poly.id)) continue;
-    const polyKW = extractKeywords(poly.question);
-    if (polyKW.length < 2) continue;
+  for (const mA of marketsA) {
+    if (usedA.has(mA.id)) continue;
+    const kwA = extractKeywords(mA.question);
+    if (kwA.length < 2) continue;
 
     let bestMatch: PredictionMarket | null = null;
     let bestScore = 0;
 
-    for (const kalshi of kalshiMarkets) {
-      if (usedKalshi.has(kalshi.id)) continue;
-      const kalshiKW = extractKeywords(kalshi.question);
-      if (kalshiKW.length < 2) continue;
+    for (const mB of marketsB) {
+      if (usedB.has(mB.id)) continue;
+      const kwB = extractKeywords(mB.question);
+      if (kwB.length < 2) continue;
 
-      const score = keywordSimilarity(polyKW, kalshiKW);
+      const score = keywordSimilarity(kwA, kwB);
       if (score > bestScore && score >= SIMILARITY_THRESHOLD) {
         bestScore = score;
-        bestMatch = kalshi;
+        bestMatch = mB;
       }
     }
 
     if (bestMatch) {
-      usedPoly.add(poly.id);
-      usedKalshi.add(bestMatch.id);
-      matched.push(buildArbitrage(poly, bestMatch, 'auto', poly.question, poly.category));
+      usedA.add(mA.id);
+      usedB.add(bestMatch.id);
+      matched.push(buildArbitrage(mA, bestMatch, 'auto', mA.question, mA.category));
     }
   }
 
-  return matched.sort((a, b) => b.spreadPercent - a.spreadPercent);
+  return matched;
 }
 
 function buildArbitrage(
-  poly: PredictionMarket,
-  kalshi: PredictionMarket,
+  a: PredictionMarket,
+  b: PredictionMarket,
   matchType: 'curated' | 'auto',
   question: string,
   category: string
 ): PredictionArbitrage {
-  const spread = Math.abs(poly.yesPrice - kalshi.yesPrice);
-  const direction = poly.yesPrice < kalshi.yesPrice ? 'buy-poly-yes' : 'buy-kalshi-yes';
+  const spread = Math.abs(a.yesPrice - b.yesPrice);
+  const cheaper = a.yesPrice < b.yesPrice ? a.platform : b.platform;
 
   return {
-    id: `${poly.id}_${kalshi.id}`,
+    id: `${a.id}_${b.id}`,
     matchType,
     question,
     category,
-    polymarket: poly,
-    kalshi,
+    platformA: a,
+    platformB: b,
     spread,
     spreadPercent: +(spread * 100).toFixed(2),
-    direction,
-    polymarketUrl: `https://polymarket.com/event/${poly.slug}`,
-    kalshiUrl: `https://kalshi.com/markets/${kalshi.slug}`,
+    direction: `buy-${cheaper}-yes`,
+    urlA: a.url,
+    urlB: b.url,
   };
 }
 
+// ─── Main handler ────────────────────────────────────────────
 export async function GET(_request: NextRequest) {
   const errors: string[] = [];
 
-  const [polyResult, kalshiResult] = await Promise.allSettled([
+  const [polyResult, kalshiResult, manifoldResult, metaculusResult] = await Promise.allSettled([
     fetchPolymarket(),
     fetchKalshi(),
+    fetchManifold(),
+    fetchMetaculus(),
   ]);
 
   const poly = polyResult.status === 'fulfilled' ? polyResult.value : [];
   const kalshi = kalshiResult.status === 'fulfilled' ? kalshiResult.value : [];
+  const manifold = manifoldResult.status === 'fulfilled' ? manifoldResult.value : [];
+  const metaculus = metaculusResult.status === 'fulfilled' ? metaculusResult.value : [];
 
   if (polyResult.status === 'rejected') errors.push(`Polymarket: ${polyResult.reason}`);
   if (kalshiResult.status === 'rejected') errors.push(`Kalshi: ${kalshiResult.reason}`);
+  if (manifoldResult.status === 'rejected') errors.push(`Manifold: ${manifoldResult.reason}`);
+  if (metaculusResult.status === 'rejected') errors.push(`Metaculus: ${metaculusResult.reason}`);
 
-  const arbitrage = matchMarkets(poly, kalshi);
+  const platformData = { polymarket: poly, kalshi, manifold, metaculus };
+  const arbitrage = matchAllPlatforms(platformData);
 
   const response: PredictionMarketsResponse = {
     arbitrage,
-    polymarketMarkets: poly,
-    kalshiMarkets: kalshi,
+    markets: platformData,
     meta: {
-      polymarketCount: poly.length,
-      kalshiCount: kalshi.length,
+      counts: {
+        polymarket: poly.length,
+        kalshi: kalshi.length,
+        manifold: manifold.length,
+        metaculus: metaculus.length,
+      },
       matchedCount: arbitrage.length,
       timestamp: Date.now(),
       ...(errors.length > 0 ? { errors } : {}),

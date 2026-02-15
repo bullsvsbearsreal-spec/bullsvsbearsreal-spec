@@ -14,11 +14,18 @@ export default function StatsCards({ arbitrage, meta }: StatsCardsProps) {
     : 0;
   const curatedCount = arbitrage.filter(a => a.matchType === 'curated').length;
 
+  const totalMarkets = meta
+    ? Object.values(meta.counts).reduce((s, n) => s + n, 0)
+    : 0;
+  const activePlatforms = meta
+    ? Object.values(meta.counts).filter(c => c > 0).length
+    : 0;
+
   const stats = [
     { label: 'Matched Pairs', value: String(arbitrage.length), sub: `${curatedCount} curated` },
     { label: 'Best Spread', value: `${bestSpread.toFixed(1)}%`, sub: arbitrage[0]?.question?.slice(0, 30) || '-' },
     { label: 'Avg Spread', value: `${avgSpread.toFixed(1)}%`, sub: 'across all pairs' },
-    { label: 'Platforms', value: `${meta?.polymarketCount ?? 0} / ${meta?.kalshiCount ?? 0}`, sub: 'Polymarket / Kalshi' },
+    { label: 'Markets', value: String(totalMarkets), sub: `${activePlatforms} platforms` },
   ];
 
   return (

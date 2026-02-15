@@ -10,8 +10,16 @@ import { RefreshCw, AlertTriangle } from 'lucide-react';
 import StatsCards from './components/StatsCards';
 import ArbitrageView from './components/ArbitrageView';
 import BrowseView from './components/BrowseView';
+import type { PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
 type ViewMode = 'arbitrage' | 'browse';
+
+const PLATFORM_LABELS: Record<PredictionPlatform, string> = {
+  polymarket: 'Polymarket',
+  kalshi: 'Kalshi',
+  manifold: 'Manifold',
+  metaculus: 'Metaculus',
+};
 
 export default function PredictionMarketsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('arbitrage');
@@ -26,18 +34,30 @@ export default function PredictionMarketsPage() {
   });
 
   const arbitrage = data?.arbitrage ?? [];
-  const polymarkets = data?.polymarketMarkets ?? [];
-  const kalshiMarkets = data?.kalshiMarkets ?? [];
+  const markets = data?.markets ?? { polymarket: [], kalshi: [], manifold: [], metaculus: [] };
   const meta = data?.meta;
 
-  // Extract unique categories
+  const totalMarkets = meta
+    ? Object.values(meta.counts).reduce((s, n) => s + n, 0)
+    : 0;
+
+  const activePlatforms = meta
+    ? (Object.entries(meta.counts) as [PredictionPlatform, number][])
+        .filter(([, c]) => c > 0)
+        .map(([p]) => PLATFORM_LABELS[p])
+    : [];
+
+  // Extract unique categories from all platforms
   const categories = useMemo(() => {
     const cats = new Set<string>();
     arbitrage.forEach(a => cats.add(a.category));
-    polymarkets.forEach(m => { if (m.category) cats.add(m.category); });
-    kalshiMarkets.forEach(m => { if (m.category) cats.add(m.category); });
+    for (const list of Object.values(markets)) {
+      for (const m of list) {
+        if (m.category) cats.add(m.category);
+      }
+    }
     return ['all', ...Array.from(cats).sort()];
-  }, [arbitrage, polymarkets, kalshiMarkets]);
+  }, [arbitrage, markets]);
 
   return (
     <div className="min-h-screen bg-black">
@@ -48,8 +68,8 @@ export default function PredictionMarketsPage() {
           <div>
             <h1 className="text-xl font-bold text-white">Prediction Markets</h1>
             <p className="text-neutral-500 text-sm">
-              Cross-platform arbitrage: Polymarket vs Kalshi
-              {meta ? ` \u00b7 ${meta.matchedCount} matched` : ''}
+              Cross-platform arbitrage across {activePlatforms.length} platforms
+              {meta ? ` \u00b7 ${meta.matchedCount} matched \u00b7 ${totalMarkets} markets` : ''}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -151,8 +171,7 @@ export default function PredictionMarketsPage() {
             )}
             {viewMode === 'browse' && (
               <BrowseView
-                polymarkets={polymarkets}
-                kalshiMarkets={kalshiMarkets}
+                markets={markets}
                 searchTerm={searchTerm}
                 categoryFilter={categoryFilter}
               />
@@ -163,9 +182,9 @@ export default function PredictionMarketsPage() {
         {/* Disclaimer */}
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            Prices represent implied probabilities (0-100%). A spread indicates the same event is priced differently on each platform.
-            Higher spreads may represent arbitrage opportunities but consider fees, liquidity, and resolution risk.
-            Polymarket fees: ~2% on profit. Kalshi fees: ~$0.07/contract. Not financial advice.
+            Prices represent implied probabilities (0-100%). A spread indicates the same event is priced differently across platforms.
+            Polymarket and Manifold use play money / crypto. Kalshi uses real USD. Metaculus uses crowd forecasting (no trading).
+            Not financial advice.
           </p>
         </div>
 

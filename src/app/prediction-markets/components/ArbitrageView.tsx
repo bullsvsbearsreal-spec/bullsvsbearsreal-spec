@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import Pagination from '@/app/funding/components/Pagination';
-import type { PredictionArbitrage } from '@/lib/api/prediction-markets/types';
+import type { PredictionArbitrage, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
 interface ArbitrageViewProps {
   arbitrage: PredictionArbitrage[];
@@ -11,9 +11,23 @@ interface ArbitrageViewProps {
   categoryFilter: string;
 }
 
-type SortKey = 'spread' | 'question' | 'category' | 'polyPrice' | 'kalshiPrice';
+type SortKey = 'spread' | 'question' | 'category' | 'priceA' | 'priceB';
 
 const ROWS_PER_PAGE = 30;
+
+const PLATFORM_LABELS: Record<PredictionPlatform, string> = {
+  polymarket: 'Polymarket',
+  kalshi: 'Kalshi',
+  manifold: 'Manifold',
+  metaculus: 'Metaculus',
+};
+
+const PLATFORM_COLORS: Record<PredictionPlatform, string> = {
+  polymarket: 'text-purple-400',
+  kalshi: 'text-blue-400',
+  manifold: 'text-green-400',
+  metaculus: 'text-orange-400',
+};
 
 function pct(v: number): string {
   return `${(v * 100).toFixed(1)}%`;
@@ -22,6 +36,7 @@ function pct(v: number): string {
 function vol(v: number): string {
   if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  if (v === 0) return '-';
   return `$${v.toFixed(0)}`;
 }
 
@@ -50,8 +65,8 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
         case 'spread': cmp = a.spreadPercent - b.spreadPercent; break;
         case 'question': cmp = a.question.localeCompare(b.question); break;
         case 'category': cmp = a.category.localeCompare(b.category); break;
-        case 'polyPrice': cmp = a.polymarket.yesPrice - b.polymarket.yesPrice; break;
-        case 'kalshiPrice': cmp = a.kalshi.yesPrice - b.kalshi.yesPrice; break;
+        case 'priceA': cmp = a.platformA.yesPrice - b.platformA.yesPrice; break;
+        case 'priceB': cmp = a.platformB.yesPrice - b.platformB.yesPrice; break;
       }
       return sortAsc ? cmp : -cmp;
     });
@@ -77,7 +92,7 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
       <div className="px-4 py-3 border-b border-white/[0.06]">
         <h3 className="text-white font-semibold text-sm">Arbitrage Opportunities</h3>
         <p className="text-neutral-600 text-xs">
-          Same events priced differently on Polymarket vs Kalshi
+          Same events priced differently across platforms
         </p>
       </div>
 
@@ -92,23 +107,27 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
               <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('category')}>
                 <div className="flex items-center gap-1">Category <SortIcon k="category" /></div>
               </th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('polyPrice')}>
-                <div className="flex items-center gap-1 justify-end">Polymarket <SortIcon k="polyPrice" /></div>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Platforms</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('priceA')}>
+                <div className="flex items-center gap-1 justify-end">Price A <SortIcon k="priceA" /></div>
               </th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('kalshiPrice')}>
-                <div className="flex items-center gap-1 justify-end">Kalshi <SortIcon k="kalshiPrice" /></div>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('priceB')}>
+                <div className="flex items-center gap-1 justify-end">Price B <SortIcon k="priceB" /></div>
               </th>
               <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('spread')}>
                 <div className="flex items-center gap-1 justify-end">Spread <SortIcon k="spread" /></div>
               </th>
               <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Match</th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Action</th>
             </tr>
           </thead>
           <tbody>
             {pageData.map((item, index) => {
               const isExpanded = expandedRow === item.id;
-              const cheaper = item.direction === 'buy-poly-yes' ? 'Polymarket' : 'Kalshi';
+              const labelA = PLATFORM_LABELS[item.platformA.platform];
+              const labelB = PLATFORM_LABELS[item.platformB.platform];
+              const colorA = PLATFORM_COLORS[item.platformA.platform];
+              const colorB = PLATFORM_COLORS[item.platformB.platform];
+              const cheaper = item.platformA.yesPrice < item.platformB.yesPrice ? labelA : labelB;
 
               return (
                 <>
@@ -132,18 +151,23 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1 text-[10px]">
+                        <span className={colorA}>{labelA}</span>
+                        <span className="text-neutral-600">vs</span>
+                        <span className={colorB}>{labelB}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[10px] text-neutral-600">YES</span>
-                        <span className={`font-mono text-sm font-semibold ${item.direction === 'buy-poly-yes' ? 'text-green-400' : 'text-white'}`}>
-                          {pct(item.polymarket.yesPrice)}
+                        <span className={`font-mono text-sm font-semibold ${item.platformA.yesPrice < item.platformB.yesPrice ? 'text-green-400' : 'text-white'}`}>
+                          {pct(item.platformA.yesPrice)}
                         </span>
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[10px] text-neutral-600">YES</span>
-                        <span className={`font-mono text-sm font-semibold ${item.direction === 'buy-kalshi-yes' ? 'text-green-400' : 'text-white'}`}>
-                          {pct(item.kalshi.yesPrice)}
+                        <span className={`font-mono text-sm font-semibold ${item.platformB.yesPrice < item.platformA.yesPrice ? 'text-green-400' : 'text-white'}`}>
+                          {pct(item.platformB.yesPrice)}
                         </span>
                       </div>
                     </td>
@@ -161,11 +185,6 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
                         {item.matchType === 'curated' ? 'CURATED' : 'AUTO'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="text-[10px] text-neutral-500">
-                        Buy <span className="text-green-400 font-semibold">{cheaper}</span>
-                      </span>
-                    </td>
                   </tr>
 
                   {/* Expanded row */}
@@ -173,102 +192,23 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
                     <tr key={`${item.id}-detail`} className="bg-white/[0.01]">
                       <td colSpan={8} className="px-6 py-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Polymarket details */}
-                          <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-semibold text-white">Polymarket</span>
-                              <a
-                                href={item.polymarketUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-hub-yellow text-[10px] flex items-center gap-1 hover:underline"
-                                onClick={e => e.stopPropagation()}
-                              >
-                                Open <ExternalLink className="w-3 h-3" />
-                              </a>
-                            </div>
-                            <div className="space-y-1 text-xs">
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">YES</span>
-                                <span className="text-white font-mono">{pct(item.polymarket.yesPrice)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">NO</span>
-                                <span className="text-white font-mono">{pct(item.polymarket.noPrice)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">24h Volume</span>
-                                <span className="text-neutral-300 font-mono">{vol(item.polymarket.volume24h)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">Total Volume</span>
-                                <span className="text-neutral-300 font-mono">{vol(item.polymarket.totalVolume)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">Liquidity</span>
-                                <span className="text-neutral-300 font-mono">{vol(item.polymarket.liquidity)}</span>
-                              </div>
-                              {item.polymarket.endDate && (
-                                <div className="flex justify-between">
-                                  <span className="text-neutral-500">Expires</span>
-                                  <span className="text-neutral-300">{new Date(item.polymarket.endDate).toLocaleDateString()}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Kalshi details */}
-                          <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-semibold text-white">Kalshi</span>
-                              <a
-                                href={item.kalshiUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-hub-yellow text-[10px] flex items-center gap-1 hover:underline"
-                                onClick={e => e.stopPropagation()}
-                              >
-                                Open <ExternalLink className="w-3 h-3" />
-                              </a>
-                            </div>
-                            <div className="space-y-1 text-xs">
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">YES</span>
-                                <span className="text-white font-mono">{pct(item.kalshi.yesPrice)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">NO</span>
-                                <span className="text-white font-mono">{pct(item.kalshi.noPrice)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">24h Volume</span>
-                                <span className="text-neutral-300 font-mono">{vol(item.kalshi.volume24h)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">Total Volume</span>
-                                <span className="text-neutral-300 font-mono">{vol(item.kalshi.totalVolume)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-neutral-500">Open Interest</span>
-                                <span className="text-neutral-300 font-mono">{vol(item.kalshi.openInterest)}</span>
-                              </div>
-                              {item.kalshi.endDate && (
-                                <div className="flex justify-between">
-                                  <span className="text-neutral-500">Expires</span>
-                                  <span className="text-neutral-300">{new Date(item.kalshi.endDate).toLocaleDateString()}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                          <PlatformDetail market={item.platformA} url={item.urlA} />
+                          <PlatformDetail market={item.platformB} url={item.urlB} />
                         </div>
 
-                        {/* Polymarket question (full) */}
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-[11px] text-neutral-500">Strategy:</span>
+                          <span className="text-[11px] text-green-400 font-medium">
+                            Buy YES on {cheaper} ({pct(Math.min(item.platformA.yesPrice, item.platformB.yesPrice))})
+                          </span>
+                        </div>
+
                         <div className="mt-2">
                           <p className="text-[11px] text-neutral-600 leading-relaxed">
-                            <span className="text-neutral-500 font-medium">Polymarket:</span> {item.polymarket.question}
+                            <span className={`font-medium ${colorA}`}>{labelA}:</span> {item.platformA.question}
                           </p>
                           <p className="text-[11px] text-neutral-600 leading-relaxed">
-                            <span className="text-neutral-500 font-medium">Kalshi:</span> {item.kalshi.question}
+                            <span className={`font-medium ${colorB}`}>{labelB}:</span> {item.platformB.question}
                           </p>
                         </div>
                       </td>
@@ -295,6 +235,74 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
         onPageChange={setCurrentPage}
         label="opportunities"
       />
+    </div>
+  );
+}
+
+function PlatformDetail({ market, url }: { market: PredictionArbitrage['platformA']; url: string }) {
+  const label = PLATFORM_LABELS[market.platform];
+  const color = PLATFORM_COLORS[market.platform];
+
+  return (
+    <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-xs font-semibold ${color}`}>{label}</span>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-hub-yellow text-[10px] flex items-center gap-1 hover:underline"
+          onClick={e => e.stopPropagation()}
+        >
+          Open <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between">
+          <span className="text-neutral-500">YES</span>
+          <span className="text-white font-mono">{pct(market.yesPrice)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-neutral-500">NO</span>
+          <span className="text-white font-mono">{pct(market.noPrice)}</span>
+        </div>
+        {market.volume24h > 0 && (
+          <div className="flex justify-between">
+            <span className="text-neutral-500">24h Volume</span>
+            <span className="text-neutral-300 font-mono">{vol(market.volume24h)}</span>
+          </div>
+        )}
+        {market.totalVolume > 0 && (
+          <div className="flex justify-between">
+            <span className="text-neutral-500">Total Volume</span>
+            <span className="text-neutral-300 font-mono">{vol(market.totalVolume)}</span>
+          </div>
+        )}
+        {market.liquidity > 0 && (
+          <div className="flex justify-between">
+            <span className="text-neutral-500">Liquidity</span>
+            <span className="text-neutral-300 font-mono">{vol(market.liquidity)}</span>
+          </div>
+        )}
+        {market.openInterest > 0 && (
+          <div className="flex justify-between">
+            <span className="text-neutral-500">Open Interest</span>
+            <span className="text-neutral-300 font-mono">{vol(market.openInterest)}</span>
+          </div>
+        )}
+        {market.forecasters != null && market.forecasters > 0 && (
+          <div className="flex justify-between">
+            <span className="text-neutral-500">Forecasters</span>
+            <span className="text-neutral-300 font-mono">{market.forecasters.toLocaleString()}</span>
+          </div>
+        )}
+        {market.endDate && (
+          <div className="flex justify-between">
+            <span className="text-neutral-500">Expires</span>
+            <span className="text-neutral-300">{new Date(market.endDate).toLocaleDateString()}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
