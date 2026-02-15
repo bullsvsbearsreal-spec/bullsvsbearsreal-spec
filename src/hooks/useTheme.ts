@@ -2,14 +2,11 @@
 
 import { useSyncExternalStore } from 'react';
 
-export type Theme = 'orange' | 'green' | 'blue';
+export type Theme = 'orange' | 'green';
 
 function getTheme(): Theme {
   if (typeof document === 'undefined') return 'orange';
-  const t = document.documentElement.dataset.theme;
-  if (t === 'green') return 'green';
-  if (t === 'blue') return 'blue';
-  return 'orange';
+  return document.documentElement.dataset.theme === 'green' ? 'green' : 'orange';
 }
 
 let listeners: (() => void)[] = [];
