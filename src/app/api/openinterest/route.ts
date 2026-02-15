@@ -14,7 +14,21 @@ export async function GET() {
     getTop500Symbols(),
   ]);
 
-  const filtered = data.filter(r => isTop500Symbol(r.symbol, top500));
+  // Allow symbols listed on 2+ exchanges even if not top 500
+  const exchangeCountMap = new Map<string, Set<string>>();
+  data.forEach(r => {
+    const sym = r.symbol.toUpperCase();
+    if (!exchangeCountMap.has(sym)) exchangeCountMap.set(sym, new Set());
+    exchangeCountMap.get(sym)!.add(r.exchange);
+  });
+  const multiExchangeSymbols = new Set<string>();
+  exchangeCountMap.forEach((exchanges, sym) => {
+    if (exchanges.size >= 2) multiExchangeSymbols.add(sym);
+  });
+
+  const filtered = data.filter(r =>
+    isTop500Symbol(r.symbol, top500) || multiExchangeSymbols.has(r.symbol.toUpperCase())
+  );
 
   return NextResponse.json({
     data: filtered,

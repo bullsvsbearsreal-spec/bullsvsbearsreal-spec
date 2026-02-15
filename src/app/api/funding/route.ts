@@ -58,18 +58,33 @@ export async function GET(request: NextRequest) {
     entry.predictedRate = Math.max(-PREDICTED_CLAMP, Math.min(PREDICTED_CLAMP, premium));
   });
 
+  // Build set of crypto symbols listed on 2+ exchanges — legitimate even if not top 500
+  const exchangeCountMap = new Map<string, Set<string>>();
+  dataWithPrices.forEach(r => {
+    if (!r.assetClass || r.assetClass === 'crypto') {
+      const sym = r.symbol.toUpperCase();
+      if (!exchangeCountMap.has(sym)) exchangeCountMap.set(sym, new Set());
+      exchangeCountMap.get(sym)!.add(r.exchange);
+    }
+  });
+  const multiExchangeSymbols = new Set<string>();
+  exchangeCountMap.forEach((exchanges, sym) => {
+    if (exchanges.size >= 2) multiExchangeSymbols.add(sym);
+  });
+
+  const isAllowed = (symbol: string) =>
+    isTop500Symbol(symbol, top500) || multiExchangeSymbols.has(symbol.toUpperCase());
+
   let filtered;
   if (assetClass === 'all') {
     filtered = dataWithPrices.filter(r => {
-      if (!r.assetClass || r.assetClass === 'crypto') {
-        return isTop500Symbol(r.symbol, top500);
-      }
+      if (!r.assetClass || r.assetClass === 'crypto') return isAllowed(r.symbol);
       return true;
     });
   } else if (assetClass === 'crypto') {
     filtered = dataWithPrices.filter(r => {
       const ac = r.assetClass || 'crypto';
-      return ac === 'crypto' && isTop500Symbol(r.symbol, top500);
+      return ac === 'crypto' && isAllowed(r.symbol);
     });
   } else {
     filtered = dataWithPrices.filter(r => r.assetClass === assetClass);
