@@ -42,7 +42,7 @@ data = resp.json()
 print(len(data["data"]), "entries")`;
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full px-5 py-4 flex items-center gap-3 hover:bg-white/[0.02] transition-colors text-left"
@@ -162,7 +162,7 @@ const OI_EXCHANGES = [
 
 export default function ApiDocsPage() {
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8">
         {/* Hero */}
@@ -188,7 +188,7 @@ export default function ApiDocsPage() {
         </div>
 
         {/* Base URL */}
-        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <span className="text-neutral-500 text-xs">Base URL</span>
@@ -341,7 +341,7 @@ export default function ApiDocsPage() {
         </div>
 
         {/* Comparison */}
-        <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+        <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-5">
           <h3 className="text-white font-semibold text-sm mb-3">InfoHub API vs CoinGlass API</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">

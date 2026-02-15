@@ -133,7 +133,7 @@ export default function CVDPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -190,29 +190,29 @@ export default function CVDPage() {
             <>
               {/* Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Buy Volume</p>
                   <p className="text-lg font-bold text-green-400">${formatCompact(data.totalBuyVol)}</p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Sell Volume</p>
                   <p className="text-lg font-bold text-red-400">${formatCompact(data.totalSellVol)}</p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Net Delta</p>
                   <p className={`text-lg font-bold flex items-center gap-1 ${data.netDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {data.netDelta >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     ${formatCompact(Math.abs(data.netDelta))}
                   </p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Trades</p>
                   <p className="text-lg font-bold text-white">{data.tradeCount.toLocaleString()}</p>
                 </div>
               </div>
 
               {/* Buy/Sell Pressure Bar */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <div className="flex justify-between text-xs mb-2">
                   <span className="text-green-400">Buy {buyPct.toFixed(1)}%</span>
                   <span className="text-red-400">Sell {(100 - buyPct).toFixed(1)}%</span>
@@ -224,7 +224,7 @@ export default function CVDPage() {
               </div>
 
               {/* CVD Chart */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-3">CVD Line</h2>
                 <div className="h-[200px]">
                   <CVDChart buckets={data.buckets} />
@@ -240,7 +240,7 @@ export default function CVDPage() {
               </div>
 
               {/* Volume Bars */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-1">Buy/Sell Volume</h2>
                 <p className="text-xs text-neutral-600 mb-3">Green = buy aggressor (above), Red = sell aggressor (below)</p>
                 <div className="h-[100px]">
@@ -251,7 +251,7 @@ export default function CVDPage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

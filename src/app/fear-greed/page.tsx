@@ -95,7 +95,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   const cls = getClassification(data.value);
 
   return (
-    <div className="bg-[#1a1a1a] border border-white/[0.12] rounded-xl px-4 py-3 shadow-xl">
+    <div className="bg-hub-gray border border-white/[0.12] rounded-xl px-4 py-3 shadow-xl">
       <p className="text-neutral-500 text-xs">{data.fullDate}</p>
       <div className="flex items-center gap-2 mt-1">
         <span className="text-lg font-bold text-white">{data.value}</span>
@@ -153,7 +153,7 @@ export default function FearGreedPage() {
   const currentClassification = getClassification(currentValue);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page Header */}
@@ -193,13 +193,13 @@ export default function FearGreedPage() {
             {/* Skeleton: Gauge + Stats */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
               {/* Gauge skeleton */}
-              <div className="md:col-span-2 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 flex items-center justify-center animate-pulse">
+              <div className="md:col-span-2 bg-hub-darker border border-white/[0.06] rounded-xl p-6 flex items-center justify-center animate-pulse">
                 <div className="w-48 h-48 rounded-full bg-white/[0.06]" />
               </div>
               {/* Stat card skeletons */}
               <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                  <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                     <div className="h-3 w-20 bg-white/[0.06] rounded mb-2" />
                     <div className="h-8 w-24 bg-white/[0.06] rounded" />
                   </div>
@@ -207,12 +207,12 @@ export default function FearGreedPage() {
               </div>
             </div>
             {/* Skeleton: Chart */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse mb-8">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse mb-8">
               <div className="h-4 w-40 bg-white/[0.06] rounded mb-4" />
               <div className="h-64 bg-white/[0.04] rounded-lg" />
             </div>
             {/* Skeleton: History Table */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden animate-pulse">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden animate-pulse">
               <div className="p-4 border-b border-white/[0.06]">
                 <div className="h-4 w-28 bg-white/[0.06] rounded mb-2" />
                 <div className="h-3 w-44 bg-white/[0.04] rounded" />
@@ -231,7 +231,7 @@ export default function FearGreedPage() {
             {/* Current Value + Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
               {/* Gauge */}
-              <div className="md:col-span-2 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 flex items-center justify-center">
+              <div className="md:col-span-2 bg-hub-darker border border-white/[0.06] rounded-xl p-6 flex items-center justify-center">
                 <div className="relative flex items-center justify-center">
                   <GaugeCircle value={currentValue} size={200} />
                 </div>
@@ -239,7 +239,7 @@ export default function FearGreedPage() {
 
               {/* Stats Cards */}
               <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
                   <span className="text-neutral-500 text-sm">Current Value</span>
                   <div className="text-2xl font-bold font-mono mt-1" style={{ color: currentClassification.color }}>
                     {currentValue}
@@ -248,7 +248,7 @@ export default function FearGreedPage() {
                     {currentClassification.label}
                   </div>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
                   <span className="text-neutral-500 text-sm">7d Average</span>
                   <div className="text-2xl font-bold font-mono text-white mt-1">
                     {stats.avg7d}
@@ -257,7 +257,7 @@ export default function FearGreedPage() {
                     {getClassification(stats.avg7d).label}
                   </div>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
                   <span className="text-neutral-500 text-sm">30d Average</span>
                   <div className="text-2xl font-bold font-mono text-white mt-1">
                     {stats.avg30d}
@@ -266,7 +266,7 @@ export default function FearGreedPage() {
                     {getClassification(stats.avg30d).label}
                   </div>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5 col-span-2 md:col-span-1">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 col-span-2 md:col-span-1">
                   <span className="text-neutral-500 text-sm">7d Trend</span>
                   <div className="flex items-center gap-2 mt-1">
                     {stats.trend >= 0 ? (
@@ -284,7 +284,7 @@ export default function FearGreedPage() {
                 </div>
 
                 {/* Classification Legend */}
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5 col-span-2">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 col-span-2">
                   <span className="text-neutral-500 text-sm">Classification</span>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="flex items-center gap-2">
@@ -329,7 +329,7 @@ export default function FearGreedPage() {
             </div>
 
             {/* Chart */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 md:p-6 mb-8">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 md:p-6 mb-8">
               <div className="mb-4">
                 <h3 className="text-white font-semibold">Fear & Greed History</h3>
                 <p className="text-neutral-600 text-sm">Last {TIMEFRAME_LABELS[timeframe]} sentiment values</p>
@@ -406,14 +406,14 @@ export default function FearGreedPage() {
             </div>
 
             {/* History Table */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
               <div className="p-4 border-b border-white/[0.06]">
                 <h3 className="text-white font-semibold">Daily Values</h3>
                 <p className="text-neutral-600 text-sm">Individual daily readings</p>
               </div>
               <div className="max-h-[400px] overflow-y-auto">
                 <table className="w-full">
-                  <thead className="sticky top-0 bg-[#0d0d0d] z-10">
+                  <thead className="sticky top-0 bg-hub-darker z-10">
                     <tr className="border-b border-white/[0.06]">
                       <th className="text-left text-neutral-500 text-xs font-medium px-4 py-3">Date</th>
                       <th className="text-right text-neutral-500 text-xs font-medium px-4 py-3">Value</th>

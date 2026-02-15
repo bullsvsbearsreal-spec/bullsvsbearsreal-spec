@@ -41,7 +41,7 @@ export default function TopStatsBar() {
 
   if (loading || !stats) {
     return (
-      <div className="border-b border-white/[0.04] bg-[#0a0a0a]">
+      <div className="border-b border-white/[0.04] bg-hub-dark">
         <div className="max-w-[1400px] mx-auto px-4 py-2">
           <div className="flex items-center gap-6">
             {[1, 2, 3, 4].map((i) => (
@@ -70,7 +70,7 @@ export default function TopStatsBar() {
   ];
 
   return (
-    <div className="border-b border-white/[0.04] bg-[#0a0a0a]">
+    <div className="border-b border-white/[0.04] bg-hub-dark">
       <div className="max-w-[1400px] mx-auto px-4 py-1.5">
         <div className="flex items-center gap-6 overflow-x-auto text-xs">
           {items.map((item) => (

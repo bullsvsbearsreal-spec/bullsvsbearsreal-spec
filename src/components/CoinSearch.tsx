@@ -104,7 +104,7 @@ export default function CoinSearch({
           aria-autocomplete="list"
           aria-expanded={isOpen}
           role="combobox"
-          className={`w-full pl-9 pr-9 ${compact ? 'py-2' : 'py-2.5'} bg-[#111] border border-white/[0.06] rounded-lg text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/30 transition-colors`}
+          className={`w-full pl-9 pr-9 ${compact ? 'py-2' : 'py-2.5'} bg-hub-darker border border-white/[0.06] rounded-lg text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/30 transition-colors`}
         />
         {query && (
           <button
@@ -122,7 +122,7 @@ export default function CoinSearch({
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-[#111] border border-white/[0.06] rounded-lg shadow-2xl overflow-hidden z-50">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-hub-darker border border-white/[0.06] rounded-lg shadow-2xl overflow-hidden z-50">
           {results.length > 0 ? (
             <div className="max-h-64 overflow-y-auto">
               <div className="px-3 py-1.5 border-b border-white/[0.04]">

@@ -10,12 +10,12 @@ module.exports = {
     extend: {
       colors: {
         hub: {
-          black: '#000000',
-          dark: '#0a0a0a',
-          darker: '#111111',
-          gray: '#1a1a1a',
-          'gray-light': '#222222',
-          'gray-medium': '#2a2a2a',
+          black: 'var(--hub-black)',
+          dark: 'var(--hub-dark)',
+          darker: 'var(--hub-darker)',
+          gray: 'var(--hub-gray)',
+          'gray-light': 'var(--hub-gray-light)',
+          'gray-medium': 'var(--hub-gray-medium)',
           // Accent colors — driven by CSS variables for theme switching
           yellow: 'rgb(var(--hub-accent-rgb) / <alpha-value>)',
           'yellow-light': 'rgb(var(--hub-accent-light-rgb) / <alpha-value>)',

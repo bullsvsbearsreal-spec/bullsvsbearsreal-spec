@@ -107,7 +107,7 @@ function fmtPrice(n: number): string {
 
 function StatSkeleton() {
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
       <div className="h-3 w-20 bg-white/[0.06] rounded mb-3" />
       <div className="h-7 w-28 bg-white/[0.06] rounded" />
     </div>
@@ -116,7 +116,7 @@ function StatSkeleton() {
 
 function WhaleCardSkeleton() {
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-white/[0.06]" />
@@ -205,7 +205,7 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
   const pnlColor = totalPnl >= 0 ? 'text-green-400' : 'text-red-400';
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden transition-all duration-200 hover:border-white/[0.1]">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden transition-all duration-200 hover:border-white/[0.1]">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -481,7 +481,7 @@ export default function HLWhalesPage() {
 
   /* ---- render ------------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
@@ -529,28 +529,28 @@ export default function HLWhalesPage() {
           </div>
         ) : stats ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            <div className="bg-[#111] border border-white/[0.06] rounded-lg px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-4 py-3">
               <span className="text-neutral-500 text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <Users className="w-3 h-3" />
                 Tracked Whales
               </span>
               <div className="text-lg font-bold text-white font-mono mt-0.5">{allWhales.length}</div>
             </div>
-            <div className="bg-[#111] border border-white/[0.06] rounded-lg px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-4 py-3">
               <span className="text-neutral-500 text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <DollarSign className="w-3 h-3" />
                 Total Account Value
               </span>
               <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(stats.totalAV)}</div>
             </div>
-            <div className="bg-[#111] border border-white/[0.06] rounded-lg px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-4 py-3">
               <span className="text-neutral-500 text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <BarChart3 className="w-3 h-3" />
                 Total Notional
               </span>
               <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(stats.totalNotional)}</div>
             </div>
-            <div className={`bg-[#111] border ${stats.totalPnl >= 0 ? 'border-green-500/10' : 'border-red-500/10'} rounded-lg px-4 py-3`}>
+            <div className={`bg-hub-darker border ${stats.totalPnl >= 0 ? 'border-green-500/10' : 'border-red-500/10'} rounded-lg px-4 py-3`}>
               <span className={`${stats.totalPnl >= 0 ? 'text-green-500/60' : 'text-red-500/60'} text-[11px] uppercase tracking-wider flex items-center gap-1`}>
                 {stats.totalPnl >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 Total uPnL
@@ -610,7 +610,7 @@ export default function HLWhalesPage() {
 
         {/* Add custom wallet panel */}
         {showAddCustom && (
-          <div className="bg-[#111] border border-white/[0.06] rounded-lg p-4 mb-4 animate-slide-down">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-4 mb-4 animate-slide-down">
             <div className="flex items-center justify-between mb-3">
               <span className="text-white text-sm font-medium">Track a Hyperliquid Wallet</span>
               <button onClick={() => setShowAddCustom(false)} className="text-neutral-500 hover:text-white transition-colors">

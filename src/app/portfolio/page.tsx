@@ -202,7 +202,7 @@ export default function PortfolioPage() {
 
   // ----- render -----
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
@@ -271,7 +271,7 @@ export default function PortfolioPage() {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
               {/* Total Value */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total Value</p>
                 <p className="text-xl font-bold font-mono">
                   {formatUSD(totals.totalValue)}
@@ -279,7 +279,7 @@ export default function PortfolioPage() {
               </div>
 
               {/* Total P&L */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total P&amp;L</p>
                 <p
                   className={`text-xl font-bold font-mono ${
@@ -291,7 +291,7 @@ export default function PortfolioPage() {
               </div>
 
               {/* Total P&L % */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total P&amp;L %</p>
                 <p
                   className={`text-xl font-bold font-mono ${
@@ -303,7 +303,7 @@ export default function PortfolioPage() {
               </div>
 
               {/* Best Performer */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Best Performer</p>
                 {totals.best ? (
                   <div className="flex items-center gap-2">
@@ -319,7 +319,7 @@ export default function PortfolioPage() {
               </div>
 
               {/* Worst Performer */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Worst Performer</p>
                 {totals.worst ? (
                   <div className="flex items-center gap-2">
@@ -338,7 +338,7 @@ export default function PortfolioPage() {
             {/* Pie chart + table */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
               {/* Pie chart */}
-              <div className="lg:col-span-1 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="lg:col-span-1 bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <h3 className="text-sm font-semibold mb-3 text-neutral-300">Allocation</h3>
                 {pieData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={240}>
@@ -362,7 +362,7 @@ export default function PortfolioPage() {
                           if (!payload?.length) return null;
                           const d = payload[0].payload;
                           return (
-                            <div className="bg-[#111] border border-white/[0.08] rounded-lg px-3 py-2 text-xs shadow-xl">
+                            <div className="bg-hub-darker border border-white/[0.08] rounded-lg px-3 py-2 text-xs shadow-xl">
                               <span className="font-semibold">{d.name}</span>
                               <span className="text-neutral-400 ml-2 font-mono">
                                 {d.pct.toFixed(1)}%
@@ -394,7 +394,7 @@ export default function PortfolioPage() {
               </div>
 
               {/* Holdings table */}
-              <div className="lg:col-span-3 bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="lg:col-span-3 bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 {/* Sort controls */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
                   <span className="text-neutral-500 text-xs">Sort by:</span>
@@ -514,7 +514,7 @@ export default function PortfolioPage() {
 
         {/* Loading skeleton */}
         {isLoading && holdings.length > 0 && (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.04] animate-pulse">
                 <div className="w-16 h-4 bg-white/[0.06] rounded" />
@@ -541,7 +541,7 @@ export default function PortfolioPage() {
       {/* Modal overlay */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#111] border border-white/[0.08] rounded-xl w-full max-w-md shadow-2xl animate-scale-in">
+          <div className="bg-hub-darker border border-white/[0.08] rounded-xl w-full max-w-md shadow-2xl animate-scale-in">
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
               <h2 className="text-lg font-semibold">

@@ -128,7 +128,7 @@ export default function LiquidationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Header */}
@@ -191,7 +191,7 @@ export default function LiquidationsPage() {
 
         {/* Top Liquidations Ticker */}
         {liquidations.length > 0 && (
-          <div className="mb-4 overflow-hidden rounded-xl bg-[#0d0d0d] border border-white/[0.06]">
+          <div className="mb-4 overflow-hidden rounded-xl bg-hub-darker border border-white/[0.06]">
             <div className="flex animate-scroll-x">
               {[...liquidations].sort((a, b) => b.value - a.value).slice(0, 15).map((liq, i) => (
                 <div key={liq.id} className="flex items-center gap-2 px-4 py-2 whitespace-nowrap flex-shrink-0">
@@ -208,7 +208,7 @@ export default function LiquidationsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
             <span className="text-neutral-600 text-sm">{timeframe} Liquidations</span>
             <div className="text-sm font-bold font-mono text-white mt-1">{stats.totalLongs + stats.totalShorts}</div>
           </div>
@@ -222,7 +222,7 @@ export default function LiquidationsPage() {
             <div className="text-sm font-bold font-mono text-danger mt-1">{stats.totalShorts}</div>
             <div className="text-sm text-danger/70">{formatLiqValue(stats.shortValue)}</div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
             <span className="text-neutral-600 text-sm">Total Value</span>
             <div className="text-sm font-bold font-mono text-white mt-1">{formatLiqValue(stats.longValue + stats.shortValue)}</div>
           </div>
@@ -286,7 +286,7 @@ export default function LiquidationsPage() {
         </div>
 
         {isLoading ? (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8">
             <div className="flex items-center justify-center gap-3">
               <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
               <span className="text-white">Connecting to liquidation streams...</span>
@@ -296,7 +296,7 @@ export default function LiquidationsPage() {
           <>
             {/* Heatmap View */}
             {viewMode === 'heatmap' && (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                 <div className="p-4 border-b border-white/[0.06]">
                   <h3 className="text-white font-semibold">Liquidation Heatmap</h3>
                   <p className="text-neutral-600 text-sm">Aggregated liquidations by symbol ({timeframe})</p>
@@ -375,7 +375,7 @@ export default function LiquidationsPage() {
               const maxBucket = Math.max(...bucketArr.map((b) => b.long + b.short), 1);
 
               return (
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                   <div className="p-4 border-b border-white/[0.06]">
                     <h3 className="text-white font-semibold">Liquidation Timeline</h3>
                     <p className="text-neutral-600 text-sm">5-minute buckets showing liquidation intensity</p>
@@ -439,7 +439,7 @@ export default function LiquidationsPage() {
               const top = symbolTotals.slice(0, 8);
 
               return (
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                   <div className="p-4 border-b border-white/[0.06]">
                     <h3 className="text-white font-semibold">Liquidations by Price Level</h3>
                     <p className="text-neutral-600 text-sm">Clustered liquidation levels for top symbols</p>
@@ -524,7 +524,7 @@ export default function LiquidationsPage() {
 
             {/* Live Feed View */}
             {viewMode === 'feed' && (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
                   <h3 className="text-white font-semibold">Live Feed</h3>
                   <span className="text-neutral-600 text-sm">{filteredLiquidations.length} liquidations</span>

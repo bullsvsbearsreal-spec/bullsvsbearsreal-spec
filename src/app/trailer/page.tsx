@@ -39,7 +39,7 @@ export default function TrailerPage() {
   };
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-black overflow-hidden relative">
+    <div ref={containerRef} className="min-h-screen bg-hub-black overflow-hidden relative">
       {/* Particle Background */}
       <ParticleBackground />
 

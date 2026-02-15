@@ -179,7 +179,7 @@ export default function OptionsPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -236,14 +236,14 @@ export default function OptionsPage() {
             <>
               {/* Key Metrics */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-[#0d0d0d] border border-hub-yellow/20 rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-hub-yellow/20 rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Max Pain</p>
                   <p className="text-xl font-bold text-hub-yellow">${data.maxPain.toLocaleString()}</p>
                   <p className={`text-xs ${maxPainDistance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {maxPainDistance >= 0 ? '+' : ''}{maxPainDistance.toFixed(1)}% from spot
                   </p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Put/Call Ratio</p>
                   <p className={`text-xl font-bold ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}>
                     {data.putCallRatio.toFixed(2)}
@@ -252,19 +252,19 @@ export default function OptionsPage() {
                     {data.putCallRatio > 1 ? 'Bearish bias' : 'Bullish bias'}
                   </p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Total Options OI</p>
                   <p className="text-xl font-bold text-white">${formatCompact(data.totalOI)}</p>
                   <p className="text-xs text-neutral-500">{data.instrumentCount} instruments</p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Spot Price</p>
                   <p className="text-xl font-bold text-white">{formatPrice(data.underlyingPrice)}</p>
                 </div>
               </div>
 
               {/* Call/Put OI comparison */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <div className="flex justify-between text-xs mb-2">
                   <span className="text-green-400">Calls ${formatCompact(data.totalCallOI)}</span>
                   <span className="text-red-400">Puts ${formatCompact(data.totalPutOI)}</span>
@@ -282,7 +282,7 @@ export default function OptionsPage() {
               </div>
 
               {/* OI by Strike Chart */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-1">Open Interest by Strike</h2>
                 <p className="text-xs text-neutral-600 mb-3">Dashed line = spot price</p>
                 <div className="h-[250px]">
@@ -300,7 +300,7 @@ export default function OptionsPage() {
 
               {/* IV Smile */}
               {data.ivSmile.length > 2 && (
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                   <h2 className="text-sm font-semibold text-white mb-1">Implied Volatility Smile</h2>
                   <p className="text-xs text-neutral-600 mb-3">Mark IV across strike prices</p>
                   <div className="h-[180px]">
@@ -320,7 +320,7 @@ export default function OptionsPage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

@@ -66,7 +66,7 @@ function MarketColumn({ title, markets, color }: { title: string; markets: Predi
   const pageData = markets.slice((safePage - 1) * ROWS_PER_PAGE, safePage * ROWS_PER_PAGE);
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
         <div>
           <h3 className={`font-semibold text-sm ${color}`}>{title}</h3>

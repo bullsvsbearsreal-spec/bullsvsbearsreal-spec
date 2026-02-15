@@ -195,7 +195,7 @@ export default function ExchangeReservesPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -235,17 +235,17 @@ export default function ExchangeReservesPage() {
             <>
               {/* Key Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-                <div className="bg-[#0d0d0d] border border-hub-yellow/20 rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-hub-yellow/20 rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Total CEX Reserves</p>
                   <p className="text-xl font-bold text-hub-yellow">${formatCompact(data.totalReserves)}</p>
                   <p className="text-xs text-neutral-500">{data.exchangeCount} exchanges tracked</p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Top 5 Dominance</p>
                   <p className="text-xl font-bold text-white">{top5Pct.toFixed(1)}%</p>
                   <p className="text-xs text-neutral-500">of total reserves</p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3 col-span-2 sm:col-span-1">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3 col-span-2 sm:col-span-1">
                   <p className="text-xs text-neutral-500">#1 Exchange</p>
                   <p className="text-xl font-bold text-white">{data.exchanges[0]?.name ?? '-'}</p>
                   <p className="text-xs text-neutral-500">
@@ -255,7 +255,7 @@ export default function ExchangeReservesPage() {
               </div>
 
               {/* Reserve Bar Chart */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-1">Reserves by Exchange</h2>
                 <p className="text-xs text-neutral-600 mb-3">Top 15 — green = positive 24h change, red = negative</p>
                 <div className="h-[300px]">
@@ -264,7 +264,7 @@ export default function ExchangeReservesPage() {
               </div>
 
               {/* Dominance Stacked Bar */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-3">Market Share</h2>
                 <div className="h-10 rounded-lg overflow-hidden flex">
                   {data.exchanges.slice(0, 8).map((ex, i) => {
@@ -312,7 +312,7 @@ export default function ExchangeReservesPage() {
               </div>
 
               {/* Exchange Table */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -455,7 +455,7 @@ export default function ExchangeReservesPage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

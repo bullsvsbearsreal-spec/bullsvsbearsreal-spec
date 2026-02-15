@@ -118,7 +118,7 @@ export default function AlertsPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -147,7 +147,7 @@ export default function AlertsPage() {
 
           {/* Create Alert Form */}
           {showForm && (
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
               <h3 className="text-sm font-semibold text-white mb-3">Create Alert</h3>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div>
@@ -239,7 +239,7 @@ export default function AlertsPage() {
                     key={`${t.alertId}-${i}`}
                     className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
                       t.dismissed
-                        ? 'bg-[#0d0d0d] border-white/[0.04] opacity-60'
+                        ? 'bg-hub-darker border-white/[0.04] opacity-60'
                         : 'bg-red-500/[0.05] border-red-500/20'
                     }`}
                   >
@@ -275,7 +275,7 @@ export default function AlertsPage() {
           <div>
             <h2 className="text-sm font-semibold text-white mb-3">Active Alerts ({alerts.length})</h2>
             {alerts.length === 0 ? (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 text-center">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
                 <Bell className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
                 <p className="text-neutral-400 text-sm">No alerts set up yet.</p>
                 <p className="text-neutral-600 text-xs mt-1">
@@ -289,8 +289,8 @@ export default function AlertsPage() {
                     key={alert.id}
                     className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
                       alert.enabled
-                        ? 'bg-[#0d0d0d] border-white/[0.06]'
-                        : 'bg-[#0d0d0d] border-white/[0.04] opacity-50'
+                        ? 'bg-hub-darker border-white/[0.06]'
+                        : 'bg-hub-darker border-white/[0.04] opacity-50'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export default function AlertsPage() {
           </div>
 
           {/* Info footer */}
-          <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

@@ -35,7 +35,7 @@ export default function CoinPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-hub-black">
         <Header />
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse space-y-6">
@@ -50,7 +50,7 @@ export default function CoinPage() {
 
   if (!coin) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-hub-black">
         <Header />
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-20">
@@ -76,7 +76,7 @@ export default function CoinPage() {
   const otherEvents = events.filter(e => !e.categories.some(c => c.name.toLowerCase().includes('unlock')));
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -90,7 +90,7 @@ export default function CoinPage() {
         </button>
 
         {/* Coin Header */}
-        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 mb-8">
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Coin Info */}
             <div className="flex items-center gap-4">
@@ -135,15 +135,15 @@ export default function CoinPage() {
 
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <div className="bg-[#111] rounded-lg p-4">
+            <div className="bg-hub-darker rounded-lg p-4">
               <span className="text-xs text-neutral-600 block mb-1">Market Cap</span>
               <span className="text-white font-bold text-lg">{formatNumber(coin.market_cap)}</span>
             </div>
-            <div className="bg-[#111] rounded-lg p-4">
+            <div className="bg-hub-darker rounded-lg p-4">
               <span className="text-xs text-neutral-600 block mb-1">24h Volume</span>
               <span className="text-white font-bold text-lg">{formatNumber(coin.total_volume)}</span>
             </div>
-            <div className="bg-[#111] rounded-lg p-4">
+            <div className="bg-hub-darker rounded-lg p-4">
               <span className="text-xs text-neutral-600 block mb-1">All-Time High</span>
               {coin.ath > 0 ? (
                 <>
@@ -154,7 +154,7 @@ export default function CoinPage() {
                 <span className="text-neutral-600 font-bold text-lg">N/A</span>
               )}
             </div>
-            <div className="bg-[#111] rounded-lg p-4">
+            <div className="bg-hub-darker rounded-lg p-4">
               <span className="text-xs text-neutral-600 block mb-1">All-Time Low</span>
               {coin.atl > 0 ? (
                 <>
@@ -216,7 +216,7 @@ export default function CoinPage() {
                     <EventCard key={event.id} event={event} />
                   ))
                 ) : (
-                  <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 text-center">
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
                     <Calendar className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
                     <h3 className="text-white font-semibold mb-2">No upcoming events</h3>
                     <p className="text-neutral-600">There are no scheduled events for {coin.symbol.toUpperCase()} at this time.</p>
@@ -232,7 +232,7 @@ export default function CoinPage() {
                     <UnlockCard key={event.id} event={event} />
                   ))
                 ) : (
-                  <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 text-center">
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
                     <Lock className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
                     <h3 className="text-white font-semibold mb-2">No upcoming unlocks</h3>
                     <p className="text-neutral-600">There are no scheduled token unlocks for {coin.symbol.toUpperCase()}.</p>
@@ -242,7 +242,7 @@ export default function CoinPage() {
             )}
 
             {activeTab === 'news' && (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8 text-center">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
                 <Flame className="w-12 h-12 text-hub-yellow mx-auto mb-4" />
                 <h3 className="text-white font-semibold mb-2">News Coming Soon</h3>
                 <p className="text-neutral-600">Real-time news aggregation will be available in the next update.</p>
@@ -253,7 +253,7 @@ export default function CoinPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Supply Info */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Supply Info</h3>
               <div className="space-y-4">
                 <div>
@@ -286,7 +286,7 @@ export default function CoinPage() {
             </div>
 
             {/* Price Stats */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Price Stats</h3>
               <div className="space-y-3">
                 {coin.high_24h > 0 && (
@@ -338,7 +338,7 @@ function EventCard({ event }: { event: CryptoEvent }) {
   const isHot = event.is_hot || event.vote_count > 100;
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 hover:border-hub-yellow/30 transition-all">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 hover:border-hub-yellow/30 transition-all">
       <div className="flex items-start gap-4">
         <div className="w-14 h-14 rounded-xl bg-hub-yellow/10 flex items-center justify-center text-2xl flex-shrink-0">
           {getCategoryIcon(event.categories[0]?.name || 'Event')}
@@ -394,7 +394,7 @@ function UnlockCard({ event }: { event: CryptoEvent }) {
   const dateLabel = formatEventDate(event.date_event);
 
   return (
-    <div className="bg-[#0d0d0d] border border-warning/30 rounded-xl p-6">
+    <div className="bg-hub-darker border border-warning/30 rounded-xl p-6">
       <div className="flex items-start gap-4">
         <div className="w-14 h-14 rounded-xl bg-warning/10 flex items-center justify-center flex-shrink-0">
           <Unlock className="w-7 h-7 text-warning" />

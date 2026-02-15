@@ -94,7 +94,7 @@ export default function FundingSparkline({ history, width = 80, height = 24 }: F
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#1a1a1a] border border-white/10 rounded px-1.5 py-0.5 whitespace-nowrap z-10 pointer-events-none"
+          className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-hub-gray border border-white/10 rounded px-1.5 py-0.5 whitespace-nowrap z-10 pointer-events-none"
           style={{ fontSize: '9px' }}
         >
           <span className={tooltip.rate >= 0 ? 'text-green-400' : 'text-red-400'}>

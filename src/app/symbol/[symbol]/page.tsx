@@ -242,7 +242,7 @@ export default function SymbolPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
           {/* Back + Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -289,26 +289,26 @@ export default function SymbolPage() {
 
           {/* Stats Row */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Price</p>
               <p className="text-lg font-bold text-white">{avgPrice > 0 ? formatPrice(avgPrice) : '-'}</p>
             </div>
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">24h Change</p>
               <p className={`text-lg font-bold flex items-center gap-1 ${avgChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {avgChange >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 {avgChange >= 0 ? '+' : ''}{avgChange.toFixed(2)}%
               </p>
             </div>
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Volume 24h</p>
               <p className="text-lg font-bold text-white">${formatCompact(totalVolume)}</p>
             </div>
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Open Interest</p>
               <p className="text-lg font-bold text-white">${formatCompact(totalOI)}</p>
             </div>
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Avg Funding</p>
               <p className={`text-lg font-bold ${avgFunding >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatFundingRate(avgFunding)}
@@ -317,7 +317,7 @@ export default function SymbolPage() {
           </div>
 
           {/* Chart Section */}
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
             {/* Interval selector */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-white">Price Chart</h2>
@@ -361,7 +361,7 @@ export default function SymbolPage() {
           {/* Two-column: Funding + OI by exchange */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Funding by exchange */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
               <h2 className="text-sm font-semibold text-white mb-3">Funding Rate by Exchange</h2>
               {funding.length === 0 ? (
                 <p className="text-xs text-neutral-500 py-4 text-center">No funding data</p>
@@ -382,7 +382,7 @@ export default function SymbolPage() {
             </div>
 
             {/* OI by exchange */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
               <h2 className="text-sm font-semibold text-white mb-3">Open Interest by Exchange</h2>
               {oi.length === 0 ? (
                 <p className="text-xs text-neutral-500 py-4 text-center">No OI data</p>
@@ -402,7 +402,7 @@ export default function SymbolPage() {
           </div>
 
           {/* Tickers across exchanges */}
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
             <h2 className="text-sm font-semibold text-white mb-3">Price Across Exchanges</h2>
             {tickers.length === 0 ? (
               <p className="text-xs text-neutral-500 py-4 text-center">No ticker data</p>
@@ -437,7 +437,7 @@ export default function SymbolPage() {
           </div>
 
           {/* Info footer */}
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

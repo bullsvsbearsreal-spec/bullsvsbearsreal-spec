@@ -31,7 +31,7 @@ export default function NewsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <MarketTicker />
 
@@ -56,7 +56,7 @@ export default function NewsPage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="animate-pulse bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
+              <div key={i} className="animate-pulse bg-hub-darker border border-white/[0.06] rounded-xl p-6">
                 <div className="flex gap-4">
                   <div className="w-24 h-20 bg-white/[0.04] rounded-xl" />
                   <div className="flex-1 space-y-3">
@@ -69,7 +69,7 @@ export default function NewsPage() {
             ))}
           </div>
         ) : news.length === 0 ? (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
             <Newspaper className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
             <h3 className="text-white font-semibold mb-1">No news available</h3>
             <p className="text-neutral-600 text-sm mb-4">
@@ -121,7 +121,7 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`group block bg-[#0d0d0d] hover:bg-[#111] border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all ${
+      className={`group block bg-hub-darker hover:bg-hub-darker border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all ${
         featured ? 'md:col-span-2 p-4' : 'p-3'
       }`}
     >

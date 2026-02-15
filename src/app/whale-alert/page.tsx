@@ -86,7 +86,7 @@ export default function WhaleAlertPage() {
     : 50;
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -116,7 +116,7 @@ export default function WhaleAlertPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Whale Count */}
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Whale Liquidations</p>
             <p className="text-2xl font-bold tabular-nums">{whaleStats.count}</p>
             <p className="text-xs text-neutral-500 mt-1">
@@ -125,14 +125,14 @@ export default function WhaleAlertPage() {
           </div>
 
           {/* Total Value */}
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Total Value</p>
             <p className="text-2xl font-bold tabular-nums">{formatLiqValue(whaleStats.totalValue)}</p>
             <p className="text-xs text-neutral-500 mt-1">above {VALUE_THRESHOLDS.find(t => t.value === minValue)?.label}</p>
           </div>
 
           {/* Biggest Single */}
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Biggest Single Liq</p>
             <p className="text-2xl font-bold tabular-nums">
               {whaleStats.biggest ? formatLiqValue(whaleStats.biggest.value) : '--'}
@@ -149,7 +149,7 @@ export default function WhaleAlertPage() {
           </div>
 
           {/* Long vs Short Ratio */}
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Long vs Short</p>
             <div className="flex items-end gap-2">
               <span className="text-lg font-bold text-emerald-400">{longRatio.toFixed(0)}%</span>
@@ -227,7 +227,7 @@ export default function WhaleAlertPage() {
         </div>
 
         {/* Liquidation Feed */}
-        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
           {/* Feed Header */}
           <div className="grid grid-cols-[2.5rem_1fr_5rem_6rem_5.5rem_4.5rem] sm:grid-cols-[2.5rem_1fr_5.5rem_7rem_6rem_5rem] gap-2 px-4 py-2.5 border-b border-white/[0.06] text-xs text-neutral-500 font-medium">
             <span />
@@ -241,7 +241,7 @@ export default function WhaleAlertPage() {
           {/* Feed Body */}
           <div ref={feedRef} className="max-h-[600px] overflow-y-auto divide-y divide-white/[0.03]">
             {connectedCount === 0 && filteredLiqs.length === 0 ? (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
                 <RefreshCw className="w-5 h-5 text-hub-yellow animate-spin mx-auto mb-2" />
                 <span className="text-neutral-500 text-sm">Connecting to exchange feeds...</span>
                 <p className="text-neutral-700 text-xs mt-1">Establishing WebSocket connections to 7 exchanges</p>

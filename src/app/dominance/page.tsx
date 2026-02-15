@@ -123,7 +123,7 @@ export default function DominancePage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -164,7 +164,7 @@ export default function DominancePage() {
             <>
               {/* Global Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Total Market Cap</p>
                   <p className="text-lg font-bold text-white">
                     {data.totalMarketCap != null ? `$${formatCompact(data.totalMarketCap)}` : '-'}
@@ -176,19 +176,19 @@ export default function DominancePage() {
                     </p>
                   )}
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">24h Volume</p>
                   <p className="text-lg font-bold text-white">
                     {data.totalVolume24h != null ? `$${formatCompact(data.totalVolume24h)}` : '-'}
                   </p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Active Cryptos</p>
                   <p className="text-lg font-bold text-white">
                     {data.activeCryptos != null ? data.activeCryptos.toLocaleString() : '-'}
                   </p>
                 </div>
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Markets</p>
                   <p className="text-lg font-bold text-white">
                     {data.markets != null ? data.markets.toLocaleString() : '-'}
@@ -199,7 +199,7 @@ export default function DominancePage() {
               {/* Dominance Gauges */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
                 {/* BTC Dominance */}
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 flex flex-col items-center">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 flex flex-col items-center">
                   <h2 className="text-sm font-semibold text-neutral-300 mb-4">BTC Dominance</h2>
                   <div className="relative">
                     <DonutChart
@@ -215,7 +215,7 @@ export default function DominancePage() {
                 </div>
 
                 {/* ETH Dominance */}
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 flex flex-col items-center">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 flex flex-col items-center">
                   <h2 className="text-sm font-semibold text-neutral-300 mb-4">ETH Dominance</h2>
                   <div className="relative">
                     <DonutChart
@@ -232,7 +232,7 @@ export default function DominancePage() {
               </div>
 
               {/* Dominance Breakdown */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-4">Market Share Breakdown</h2>
                 <div className="space-y-3">
                   {breakdown.map((entry, i) => (
@@ -270,7 +270,7 @@ export default function DominancePage() {
               </div>
 
               {/* Stacked Bar */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-3">Visual Breakdown</h2>
                 <div className="h-10 rounded-lg overflow-hidden flex">
                   {breakdown.map((entry, i) => (
@@ -311,7 +311,7 @@ export default function DominancePage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

@@ -269,7 +269,7 @@ export default function EconomicCalendarPage() {
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page header */}
@@ -308,7 +308,7 @@ export default function EconomicCalendarPage() {
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
             <span className="text-neutral-600 text-sm">Events This Week</span>
             <div className="text-lg font-bold font-mono text-white mt-1">
               {stats.weekEvents}
@@ -322,7 +322,7 @@ export default function EconomicCalendarPage() {
               {stats.highImpactMonth}
             </div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
             <span className="text-neutral-600 text-sm">Total Events</span>
             <div className="text-lg font-bold font-mono text-white mt-1">
               {filteredEvents.length}
@@ -468,7 +468,7 @@ export default function EconomicCalendarPage() {
             {/* Stats skeleton */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                   <div className="h-3 w-24 bg-white/[0.06] rounded mb-3" />
                   <div className="h-7 w-20 bg-white/[0.06] rounded" />
                 </div>
@@ -476,7 +476,7 @@ export default function EconomicCalendarPage() {
             </div>
             {/* Calendar grid skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                 <div className="h-6 w-40 bg-white/[0.06] rounded mb-4" />
                 <div className="grid grid-cols-7 gap-1">
                   {Array.from({ length: 35 }).map((_, i) => (
@@ -485,7 +485,7 @@ export default function EconomicCalendarPage() {
                 </div>
               </div>
               {/* Sidebar skeleton */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                 <div className="h-4 w-32 bg-white/[0.06] rounded mb-4" />
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="mb-3">
@@ -502,7 +502,7 @@ export default function EconomicCalendarPage() {
             <div>
               {/* Calendar view */}
               {viewMode === 'calendar' && (
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                   {/* Month navigation */}
                   <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
                     <button
@@ -644,7 +644,7 @@ export default function EconomicCalendarPage() {
               )}
 
               {/* Event list */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
                   <h3 className="text-white font-semibold">
                     {selectedDate
@@ -694,7 +694,7 @@ export default function EconomicCalendarPage() {
 
             {/* Sidebar: Upcoming events */}
             <div className="space-y-6">
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="p-4 border-b border-white/[0.06]">
                   <h3 className="text-white font-semibold flex items-center gap-2">
                     <Clock className="w-4 h-4 text-hub-yellow" />
@@ -776,7 +776,7 @@ export default function EconomicCalendarPage() {
               </div>
 
               {/* Legend */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
                   Impact Levels
                 </h4>

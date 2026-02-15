@@ -61,7 +61,7 @@ function CustomTooltip({ active, payload, label }: any) {
   const long = payload.find((p: any) => p.dataKey === 'longRatio')?.value ?? 0;
   const short = payload.find((p: any) => p.dataKey === 'shortRatio')?.value ?? 0;
   return (
-    <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
+    <div className="bg-hub-gray border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
       <div className="text-neutral-500 mb-1.5">{formatTime(label)}</div>
       <div className="flex items-center gap-2 mb-1">
         <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -143,7 +143,7 @@ export default function LongShortPage() {
   const symbolLabel = SYMBOLS.find(s => s.value === symbol)?.label || symbol.replace('USDT', '');
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
@@ -220,21 +220,21 @@ export default function LongShortPage() {
         {/* Stats Row */}
         {latest && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">Long</div>
               <div className="text-lg font-bold text-green-400 font-mono">{latest.longRatio.toFixed(2)}%</div>
             </div>
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">Short</div>
               <div className="text-lg font-bold text-red-400 font-mono">{latest.shortRatio.toFixed(2)}%</div>
             </div>
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">L/S Ratio</div>
               <div className="text-lg font-bold text-white font-mono">
                 {latest.shortRatio > 0 ? (latest.longRatio / latest.shortRatio).toFixed(3) : 'N/A'}
               </div>
             </div>
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">Trend</div>
               <div className="flex items-center gap-1">
                 {trend >= 0 ? (
@@ -273,7 +273,7 @@ export default function LongShortPage() {
         )}
 
         {!isLoading && chartData.length > 0 && (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
             <div className="text-sm font-medium text-neutral-400 mb-3">
               {symbolLabel}/USDT Long/Short Ratio History ({period})
             </div>
@@ -329,7 +329,7 @@ export default function LongShortPage() {
         )}
 
         {/* Multi-symbol table */}
-        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-white/[0.06]">
             <h2 className="text-sm font-medium text-neutral-400">All Symbols — Current Ratio</h2>
           </div>

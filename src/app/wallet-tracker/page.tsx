@@ -127,7 +127,7 @@ function SkeletonRow() {
 
 function BalanceSkeleton() {
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5 animate-pulse">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 animate-pulse">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-xl bg-white/[0.06]" />
         <div>
@@ -291,7 +291,7 @@ export default function WalletTrackerPage() {
   /* ------------------------------------------------------------------ */
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
@@ -326,7 +326,7 @@ export default function WalletTrackerPage() {
         </div>
 
         {/* ---------- address input ----------------------------------- */}
-        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="flex-1 w-full sm:w-auto">
@@ -429,7 +429,7 @@ export default function WalletTrackerPage() {
 
         {/* ---------- empty state -------------------------------------- */}
         {!activeAddress && (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
             <Search className="w-10 h-10 text-neutral-700 mx-auto mb-4" />
             <h2 className="text-lg font-semibold text-neutral-300 mb-2">
               Enter a wallet address to track
@@ -455,7 +455,7 @@ export default function WalletTrackerPage() {
         {activeAddress && activeChain && (
           <div className="space-y-6">
             {/* Balance card */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
               <div className="flex items-start justify-between">
                 <div>
                   {walletLoading && !walletData ? (
@@ -504,7 +504,7 @@ export default function WalletTrackerPage() {
 
             {/* Token balances (ETH only) */}
             {activeChain === 'eth' && walletData && walletData.tokens && walletData.tokens.length > 0 && (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-white/[0.06]">
                   <h3 className="text-sm font-semibold text-white">ERC-20 Tokens</h3>
                 </div>
@@ -533,7 +533,7 @@ export default function WalletTrackerPage() {
             )}
 
             {/* Transactions */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-white/[0.06]">
                 <h3 className="text-sm font-semibold text-white">Recent Transactions</h3>
               </div>

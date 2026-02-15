@@ -96,7 +96,7 @@ function AssetCard({ name, file, desc, size }: { name: string; file: string; des
 
 export default function BrandPage() {
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 py-6">
@@ -110,9 +110,9 @@ export default function BrandPage() {
 
         {/* Quick Download Banner */}
         <section className="mb-8">
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-20 h-20 rounded-xl bg-[#111] flex items-center justify-center border border-white/[0.06]">
+              <div className="w-20 h-20 rounded-xl bg-hub-darker flex items-center justify-center border border-white/[0.06]">
                 <Logo variant="icon" size="xl" />
               </div>
               <div className="flex-1 text-center md:text-left">
@@ -138,7 +138,7 @@ export default function BrandPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Primary Logo */}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
-              <div className="bg-[#111] rounded-xl p-12 mb-6 flex items-center justify-center">
+              <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
                 <Logo variant="full" size="xl" animated />
               </div>
               <div className="flex items-center justify-between">
@@ -155,7 +155,7 @@ export default function BrandPage() {
 
             {/* Icon Only */}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
-              <div className="bg-[#111] rounded-xl p-12 mb-6 flex items-center justify-center">
+              <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
                 <Logo variant="icon" size="xl" animated />
               </div>
               <div className="flex items-center justify-between">

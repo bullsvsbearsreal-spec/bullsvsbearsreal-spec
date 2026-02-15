@@ -24,8 +24,12 @@ import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@
 import { FundingRateData } from '@/lib/api/types';
 import { fetchCryptoNews, NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
 import Footer from '@/components/Footer';
+import { useTheme } from '@/hooks/useTheme';
+import HomeGreen from './HomeGreen';
 
 export default function Home() {
+  const theme = useTheme();
+  if (theme === 'green') return <HomeGreen />;
   const router = useRouter();
   const [topFunding, setTopFunding] = useState<FundingRateData[]>([]);
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
@@ -64,7 +68,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <TopStatsBar />
       <MarketTicker />

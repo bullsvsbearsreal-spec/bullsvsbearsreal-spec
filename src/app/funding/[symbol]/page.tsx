@@ -153,7 +153,7 @@ export default function SymbolFundingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Back nav */}
@@ -209,7 +209,7 @@ export default function SymbolFundingPage() {
             {/* Stats cards */}
             {stats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="flex items-center gap-2 text-neutral-500 text-xs mb-2">
                     <Percent className="w-3.5 h-3.5" />
                     Avg Rate
@@ -222,7 +222,7 @@ export default function SymbolFundingPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="flex items-center gap-2 text-neutral-500 text-xs mb-2">
                     <TrendingUp className="w-3.5 h-3.5" />
                     Highest
@@ -236,7 +236,7 @@ export default function SymbolFundingPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="flex items-center gap-2 text-neutral-500 text-xs mb-2">
                     <TrendingDown className="w-3.5 h-3.5" />
                     Lowest
@@ -250,7 +250,7 @@ export default function SymbolFundingPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="flex items-center gap-2 text-neutral-500 text-xs mb-2">
                     <Activity className="w-3.5 h-3.5" />
                     Total OI
@@ -266,7 +266,7 @@ export default function SymbolFundingPage() {
             )}
 
             {/* Historical Chart */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-8">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-8">
               <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
                 <div>
                   <h2 className="text-white font-semibold text-sm">Funding Rate History</h2>
@@ -354,7 +354,7 @@ export default function SymbolFundingPage() {
             </div>
 
             {/* Exchange Comparison Table */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-8">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-8">
               <div className="p-4 border-b border-white/[0.06]">
                 <h2 className="text-white font-semibold text-sm">Exchange Comparison</h2>
                 <p className="text-neutral-600 text-xs mt-0.5">
@@ -478,7 +478,7 @@ export default function SymbolFundingPage() {
 
             {/* Accumulated Funding Panel */}
             {accumulatedMap.size > 0 && (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-8">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-8">
                 <div className="p-4 border-b border-white/[0.06]">
                   <h2 className="text-white font-semibold text-sm">Accumulated Funding</h2>
                   <p className="text-neutral-600 text-xs mt-0.5">

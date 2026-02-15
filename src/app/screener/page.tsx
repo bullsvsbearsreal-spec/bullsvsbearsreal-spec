@@ -277,7 +277,7 @@ export default function ScreenerPage() {
   /* ─── Render ──────────────────────────────────────────────────── */
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title Row */}
@@ -316,7 +316,7 @@ export default function ScreenerPage() {
               { label: 'Gainers', value: stats.gainers.toString(), color: 'text-green-400' },
               { label: 'Losers', value: stats.losers.toString(), color: 'text-red-400' },
             ].map((s) => (
-              <div key={s.label} className="bg-[#0d0d0d] border border-white/[0.06] rounded-lg px-3 py-2">
+              <div key={s.label} className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2">
                 <div className="text-[10px] text-neutral-500">{s.label}</div>
                 <div className={`text-sm font-semibold ${s.color || 'text-white'}`}>{s.value}</div>
               </div>
@@ -374,7 +374,7 @@ export default function ScreenerPage() {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-4">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-white">Filter Conditions</h3>
               <button

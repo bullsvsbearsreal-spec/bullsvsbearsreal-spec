@@ -239,7 +239,7 @@ export default function CorrelationPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
@@ -268,23 +268,23 @@ export default function CorrelationPage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Avg Correlation</div>
             <div className={`text-lg font-bold font-mono ${stats.avgCorrelation >= 0.5 ? 'text-orange-400' : stats.avgCorrelation >= 0 ? 'text-neutral-300' : 'text-blue-400'}`}>
               {stats.avgCorrelation.toFixed(3)}
             </div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Most Correlated</div>
             <div className="text-sm font-bold text-orange-400 truncate">{stats.mostCorrelated.pair}</div>
             <div className="text-xs text-neutral-500 font-mono">r = {stats.mostCorrelated.r.toFixed(3)}</div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Least Correlated</div>
             <div className="text-sm font-bold text-blue-400 truncate">{stats.leastCorrelated.pair}</div>
             <div className="text-xs text-neutral-500 font-mono">r = {stats.leastCorrelated.r.toFixed(3)}</div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Valid Pairs</div>
             <div className="text-lg font-bold text-white">{stats.validPairs}</div>
             <div className="text-xs text-neutral-500">
@@ -330,14 +330,14 @@ export default function CorrelationPage() {
             {/* Stats skeleton */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                   <div className="h-3 w-20 bg-white/[0.06] rounded mb-3" />
                   <div className="h-7 w-28 bg-white/[0.06] rounded" />
                 </div>
               ))}
             </div>
             {/* Matrix skeleton */}
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 animate-pulse">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 animate-pulse">
               <div className="grid grid-cols-6 gap-1">
                 {Array.from({ length: 36 }).map((_, i) => (
                   <div key={i} className="aspect-square bg-white/[0.04] rounded-[3px]" />
@@ -359,7 +359,7 @@ export default function CorrelationPage() {
         {!isLoading && matrix.length > 0 && (
           <div className="relative">
           <div
-            className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3 sm:p-4 overflow-x-auto"
+            className="bg-hub-darker border border-white/[0.06] rounded-xl p-3 sm:p-4 overflow-x-auto"
             onMouseMove={handleMouseMove}
           >
             <div
@@ -460,7 +460,7 @@ export default function CorrelationPage() {
             {/* Tooltip */}
             {hoveredCell && (
               <div
-                className="fixed z-50 pointer-events-none bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-3 shadow-xl"
+                className="fixed z-50 pointer-events-none bg-hub-gray border border-white/[0.1] rounded-lg p-3 shadow-xl"
                 style={{
                   left: tooltipPos.x + 260 > window.innerWidth ? tooltipPos.x - 260 : tooltipPos.x + 14,
                   top: tooltipPos.y + 200 > window.innerHeight ? tooltipPos.y - 200 : tooltipPos.y + 14,
@@ -533,7 +533,7 @@ export default function CorrelationPage() {
 
         {/* Symbol details table */}
         {!isLoading && symbols.length > 0 && (
-          <div className="mt-6 bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="mt-6 bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-white/[0.06]">
               <h2 className="text-sm font-semibold text-white">Symbol Details</h2>
               <p className="text-[11px] text-neutral-500 mt-0.5">

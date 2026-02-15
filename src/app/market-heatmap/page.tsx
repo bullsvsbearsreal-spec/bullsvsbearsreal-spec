@@ -163,7 +163,7 @@ export default function MarketHeatmapPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
@@ -192,21 +192,21 @@ export default function MarketHeatmapPage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Gainers</div>
             <div className="text-lg font-bold text-green-400">{stats.gainers}</div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Losers</div>
             <div className="text-lg font-bold text-red-400">{stats.losers}</div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Avg Change</div>
             <div className={`text-lg font-bold ${stats.avgChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {stats.avgChange >= 0 ? '+' : ''}{stats.avgChange.toFixed(2)}%
             </div>
           </div>
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-3">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Total Market Cap</div>
             <div className="text-lg font-bold text-white">{formatMarketCap(stats.totalMcap)}</div>
           </div>
@@ -257,7 +257,7 @@ export default function MarketHeatmapPage() {
         {/* Heatmap */}
         {!isLoading && rects.length > 0 && (
           <div
-            className="relative w-full bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden"
+            className="relative w-full bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden"
             style={{ paddingBottom: '60%' }}
             onMouseMove={handleMouseMove}
           >
@@ -303,7 +303,7 @@ export default function MarketHeatmapPage() {
             {/* Tooltip */}
             {hoveredCoin && (
               <div
-                className="fixed z-50 pointer-events-none bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-3 shadow-xl"
+                className="fixed z-50 pointer-events-none bg-hub-gray border border-white/[0.1] rounded-lg p-3 shadow-xl"
                 style={{
                   left: tooltipPos.x + 12,
                   top: tooltipPos.y + 12,

@@ -51,7 +51,7 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /* ------------------------------------------------------------------ */
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
       <p className="text-xs text-neutral-500 mb-1">{label}</p>
       <p className="text-xl font-bold tabular-nums text-white">{value}</p>
       {sub && <p className="text-xs text-neutral-500 mt-1">{sub}</p>}
@@ -83,7 +83,7 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
   const isPast = days < 0;
 
   return (
-    <div className={`bg-[#0d0d0d] border rounded-xl p-4 transition-all duration-200 hover:border-white/[0.12] ${
+    <div className={`bg-hub-darker border rounded-xl p-4 transition-all duration-200 hover:border-white/[0.12] ${
       unlock.isLarge ? 'border-yellow-500/30' : 'border-white/[0.06]'
     } ${isPast ? 'opacity-50' : ''}`}>
       <div className="flex items-start justify-between gap-3">
@@ -353,7 +353,7 @@ export default function TokenUnlocksPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page header */}
@@ -398,7 +398,7 @@ export default function TokenUnlocksPage() {
             {/* Stat cards skeleton */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                   <div className="h-3 w-20 bg-white/[0.06] rounded mb-3" />
                   <div className="h-7 w-28 bg-white/[0.06] rounded" />
                 </div>
@@ -407,7 +407,7 @@ export default function TokenUnlocksPage() {
             {/* Unlock cards skeleton */}
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 animate-pulse">
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-8 h-8 rounded-full bg-white/[0.06]" />
                     <div className="h-4 w-24 bg-white/[0.06] rounded" />
@@ -520,7 +520,7 @@ export default function TokenUnlocksPage() {
 
             {/* Type filters (expandable) */}
             {showFilters && (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <p className="text-xs text-neutral-500 font-medium mb-3">Unlock Types</p>
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(UNLOCK_TYPES) as UnlockType[]).map(type => {
@@ -552,7 +552,7 @@ export default function TokenUnlocksPage() {
             {view === 'list' ? (
               <div className="space-y-3">
                 {listUnlocks.length === 0 ? (
-                  <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
                     <Calendar className="w-8 h-8 text-neutral-600 mx-auto mb-3" />
                     <p className="text-neutral-400 text-sm">No unlock events match your filters</p>
                     <p className="text-neutral-600 text-xs mt-1">Try adjusting the type or value filters</p>
@@ -562,7 +562,7 @@ export default function TokenUnlocksPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 md:p-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 md:p-6">
                 <CalendarView
                   unlocks={filtered}
                   selectedDate={calendarDate}
@@ -572,7 +572,7 @@ export default function TokenUnlocksPage() {
             )}
 
             {/* Legend */}
-            <div className="mt-6 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+            <div className="mt-6 bg-hub-darker border border-white/[0.06] rounded-xl p-4">
               <p className="text-xs text-neutral-500 font-medium mb-3">Legend</p>
               <div className="flex flex-wrap gap-x-6 gap-y-2">
                 {(Object.keys(UNLOCK_TYPES) as UnlockType[]).map(type => {

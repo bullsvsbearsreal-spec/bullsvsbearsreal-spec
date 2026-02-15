@@ -60,7 +60,7 @@ export default function PredictionMarketsPage() {
   }, [arbitrage, markets]);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}

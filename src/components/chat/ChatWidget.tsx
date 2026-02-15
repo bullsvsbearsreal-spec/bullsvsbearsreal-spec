@@ -239,7 +239,7 @@ export default function ChatWidget() {
             sm:bottom-5 sm:right-5
             sm:w-[400px] sm:h-[600px] sm:max-h-[80vh]
             sm:rounded-2xl
-            bg-[#0a0a0a] border border-white/[0.08]
+            bg-hub-dark border border-white/[0.08]
             flex flex-col overflow-hidden
             shadow-2xl shadow-black/50"
         >

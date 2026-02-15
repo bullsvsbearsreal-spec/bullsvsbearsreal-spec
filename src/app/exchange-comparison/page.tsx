@@ -45,7 +45,7 @@ function OITooltip({ active, payload }: any) {
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
+    <div className="bg-hub-gray border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
       <div className="font-medium text-white mb-1">{d.exchange}</div>
       <div className="text-neutral-400">Open Interest: <span className="text-white font-mono">{formatUSD(d.totalOI)}</span></div>
       <div className="text-neutral-400">Symbols: <span className="text-white font-mono">{d.symbolCount}</span></div>
@@ -58,7 +58,7 @@ function FundingTooltip({ active, payload }: any) {
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
+    <div className="bg-hub-gray border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
       <div className="font-medium text-white mb-1">{d.exchange}</div>
       <div className="text-neutral-400">Funding Rate: <span className={`font-mono ${d.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatRate(d.rate)}</span></div>
     </div>
@@ -212,7 +212,7 @@ export default function ExchangeComparisonPage() {
   }, [sorted]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
@@ -305,7 +305,7 @@ export default function ExchangeComparisonPage() {
             {viewMode === 'chart' ? (
               <div className="space-y-6">
                 {/* OI Bar Chart */}
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="text-sm font-medium text-neutral-400 mb-3">Total Open Interest by Exchange</div>
                   <ResponsiveContainer width="100%" height={Math.max(300, oiChartData.length * 36)}>
                     <BarChart data={oiChartData} layout="vertical" margin={{ left: 80, right: 20 }}>
@@ -322,7 +322,7 @@ export default function ExchangeComparisonPage() {
                 </div>
 
                 {/* Funding Rate per symbol */}
-                <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-sm font-medium text-neutral-400">
                       Funding Rate by Exchange — {selectedSymbol}
@@ -357,7 +357,7 @@ export default function ExchangeComparisonPage() {
               </div>
             ) : (
               /* Table view */
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>

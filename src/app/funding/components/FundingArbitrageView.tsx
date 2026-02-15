@@ -138,7 +138,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   };
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       {/* Header with portfolio input */}
       <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between flex-wrap gap-3">
         <div>

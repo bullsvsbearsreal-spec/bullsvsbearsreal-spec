@@ -34,7 +34,7 @@ const teamMembers: TeamMember[] = [
 
 export default function TeamPage() {
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 py-6">
@@ -94,7 +94,7 @@ export default function TeamPage() {
                       {member.stats.map((stat) => (
                         <div
                           key={stat.label}
-                          className="bg-[#111] rounded-lg px-4 py-2.5 text-center border border-white/[0.06]"
+                          className="bg-hub-darker rounded-lg px-4 py-2.5 text-center border border-white/[0.06]"
                         >
                           <div className="text-sm font-bold text-white font-mono">{stat.value}</div>
                           <div className="text-[10px] text-neutral-600 mt-0.5">{stat.label}</div>
@@ -110,7 +110,7 @@ export default function TeamPage() {
 
         {/* Join Us Section */}
         <div className="mt-8">
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-6 text-center">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 text-center">
             <h3 className="text-sm font-bold text-white mb-2">Want to Join Us?</h3>
             <p className="text-neutral-600 text-xs mb-4 max-w-lg mx-auto">
               We're always looking for talented individuals passionate about trading and data.

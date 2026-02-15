@@ -304,7 +304,7 @@ export default function FundingPage() {
   const categoryKeys = Object.keys(activeCategories);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">

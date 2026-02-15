@@ -45,7 +45,7 @@ export function LoadingOverlay({ message = 'Loading...' }: { message?: string })
  */
 export function PageLoadingCard({ message = 'Loading data...' }: { message?: string }) {
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8">
       <div className="flex items-center justify-center gap-3">
         <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
         <span className="text-white text-sm">{message}</span>

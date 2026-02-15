@@ -96,7 +96,7 @@ export default function OpenInterestPage() {
 
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-hub-black">
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
@@ -127,22 +127,22 @@ export default function OpenInterestPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="bg-[#111] border border-white/[0.06] rounded-lg px-3 py-2.5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Total OI</span>
             <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(totalOI)}</div>
           </div>
-          <div className="bg-[#111] border border-white/[0.06] rounded-lg px-3 py-2.5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Symbols</span>
             <div className="text-lg font-bold text-white font-mono mt-0.5">{symbolAggregated.size}</div>
           </div>
-          <div className="bg-[#111] border border-white/[0.06] rounded-lg px-3 py-2.5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Exchanges</span>
             <div className="text-lg font-bold text-white font-mono mt-0.5">{exchanges.length}</div>
           </div>
         </div>
 
         {/* Exchange Breakdown */}
-        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-4">
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
           <h3 className="text-white font-semibold text-sm mb-3">OI by Exchange</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {Array.from(exchangeAggregated.entries())
@@ -194,13 +194,13 @@ export default function OpenInterestPage() {
             placeholder="Search symbol..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 min-w-[160px] px-3 py-1.5 bg-[#111] border border-white/[0.06] rounded-md text-white text-xs placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/30"
+            className="flex-1 min-w-[160px] px-3 py-1.5 bg-hub-darker border border-white/[0.06] rounded-md text-white text-xs placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/30"
           />
           {viewMode === 'all' && (
             <select
               value={exchangeFilter}
               onChange={(e) => setExchangeFilter(e.target.value)}
-              className="px-3 py-1.5 bg-[#111] border border-white/[0.06] rounded-md text-white text-xs focus:outline-none focus:border-hub-yellow/30"
+              className="px-3 py-1.5 bg-hub-darker border border-white/[0.06] rounded-md text-white text-xs focus:outline-none focus:border-hub-yellow/30"
             >
               <option value="all">All Exchanges</option>
               {exchanges.map(ex => (
@@ -220,7 +220,7 @@ export default function OpenInterestPage() {
 
         {/* Loading State */}
         {loading && openInterest.length === 0 ? (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-8">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8">
             <div className="flex items-center justify-center gap-3">
               <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
               <span className="text-white">Loading open interest from all exchanges...</span>
@@ -228,7 +228,7 @@ export default function OpenInterestPage() {
           </div>
         ) : viewMode === 'aggregated' ? (
           /* Aggregated View */
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -280,7 +280,7 @@ export default function OpenInterestPage() {
           </div>
         ) : (
           /* All Data View */
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>

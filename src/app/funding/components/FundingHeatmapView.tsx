@@ -59,7 +59,7 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
   const pageSymbols = sortedSymbols.slice(startIdx, startIdx + ROWS_PER_PAGE);
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
         <div>
           <h3 className="text-white font-semibold text-sm">Funding Rate Heatmap</h3>
@@ -83,7 +83,7 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.04]">
-              <th scope="col" className="px-3 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider sticky left-0 bg-[#0d0d0d] z-10">Symbol</th>
+              <th scope="col" className="px-3 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider sticky left-0 bg-hub-darker z-10">Symbol</th>
               {visibleExchanges.map(ex => {
                 const isActive = exchangeSort?.exchange === ex;
                 return (
@@ -114,7 +114,7 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
               const rates = heatmapData.get(symbol);
               return (
                 <tr key={symbol} className="border-b border-white/[0.02]">
-                  <td className="px-3 py-1.5 sticky left-0 bg-[#0d0d0d] z-10">
+                  <td className="px-3 py-1.5 sticky left-0 bg-hub-darker z-10">
                     <div className="flex items-center gap-1.5">
                       <TokenIconSimple symbol={symbol} size={18} />
                       <span className="text-white font-medium text-xs">{symbol}</span>

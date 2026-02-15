@@ -100,7 +100,7 @@ export default function StablecoinFlowsPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -139,14 +139,14 @@ export default function StablecoinFlowsPage() {
           {data && (
             <>
               {/* Total Market Cap */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-6 py-5 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-6 py-5 mb-6">
                 <p className="text-xs text-neutral-500 mb-1">Total Stablecoin Market Cap</p>
                 <p className="text-3xl font-bold text-white">${formatCompact(data.totalMcap)}</p>
                 <p className="text-xs text-neutral-500 mt-1">{data.count} USD-pegged stablecoins tracked</p>
               </div>
 
               {/* Chain Distribution */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-5 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-4">Chain Distribution</h2>
                 {/* Stacked bar */}
                 <div className="h-8 rounded-lg overflow-hidden flex mb-4">
@@ -196,7 +196,7 @@ export default function StablecoinFlowsPage() {
               </div>
 
               {/* Stablecoin Table */}
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -287,7 +287,7 @@ export default function StablecoinFlowsPage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

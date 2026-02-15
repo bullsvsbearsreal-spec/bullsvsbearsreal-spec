@@ -88,7 +88,7 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
   };
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-white/[0.06]">
         <h3 className="text-white font-semibold text-sm">Arbitrage Opportunities</h3>
         <p className="text-neutral-600 text-xs">

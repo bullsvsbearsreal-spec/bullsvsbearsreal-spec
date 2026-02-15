@@ -240,7 +240,7 @@ export default function WatchlistPage() {
   /* ------------------------------------------------------------------ */
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
@@ -285,7 +285,7 @@ export default function WatchlistPage() {
         </div>
 
         {/* ---------- add bar ----------------------------------------- */}
-        <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 mb-6">
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             {/* Input + button */}
             <form
@@ -341,7 +341,7 @@ export default function WatchlistPage() {
 
         {/* ---------- empty state -------------------------------------- */}
         {watchlist.length === 0 && (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-12 text-center">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
             <Star className="w-10 h-10 text-neutral-700 mx-auto mb-4" />
             <h2 className="text-lg font-semibold text-neutral-300 mb-2">
               Add coins to your watchlist
@@ -368,9 +368,9 @@ export default function WatchlistPage() {
 
         {/* ---------- data table --------------------------------------- */}
         {watchlist.length > 0 && (
-          <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
             {loadingTickers && !tickers ? (
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-white/[0.06]">
                   <div className="h-4 w-32 bg-white/[0.06] rounded animate-pulse" />
                 </div>

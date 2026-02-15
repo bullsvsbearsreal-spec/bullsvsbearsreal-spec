@@ -179,7 +179,7 @@ export default function FundingHeatmapPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -222,21 +222,21 @@ export default function FundingHeatmapPage() {
           {/* Stats bar */}
           {stats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                 <p className="text-xs text-neutral-500">Symbols</p>
                 <p className="text-lg font-bold text-white">{stats.symbols}</p>
               </div>
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                 <p className="text-xs text-neutral-500">Avg Rate</p>
                 <p className={`text-lg font-bold ${stats.avgRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {formatRate(stats.avgRate)}
                 </p>
               </div>
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                 <p className="text-xs text-neutral-500">Positive Rates</p>
                 <p className="text-lg font-bold text-green-400">{stats.positivePct.toFixed(1)}%</p>
               </div>
-              <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl px-4 py-3">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                 <p className="text-xs text-neutral-500">Negative Rates</p>
                 <p className="text-lg font-bold text-red-400">{stats.negativePct.toFixed(1)}%</p>
               </div>
@@ -269,7 +269,7 @@ export default function FundingHeatmapPage() {
 
           {/* Tooltip */}
           {hoveredCell && (
-            <div className="fixed z-50 pointer-events-none bg-[#1a1a1a] border border-white/[0.1] rounded-lg px-3 py-2 shadow-xl text-xs"
+            <div className="fixed z-50 pointer-events-none bg-hub-gray border border-white/[0.1] rounded-lg px-3 py-2 shadow-xl text-xs"
               style={{ top: 'var(--tooltip-y, 0px)', left: 'var(--tooltip-x, 0px)' }}
             >
               <p className="font-semibold text-white">{hoveredCell.symbol}</p>
@@ -299,12 +299,12 @@ export default function FundingHeatmapPage() {
 
           {/* Heatmap Grid */}
           {data && allDays.length > 0 && (
-            <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse min-w-[600px]">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
-                      <th className="sticky left-0 z-10 bg-[#0d0d0d] px-3 py-2.5 text-left text-xs font-semibold text-neutral-400 w-[120px]">
+                      <th className="sticky left-0 z-10 bg-hub-darker px-3 py-2.5 text-left text-xs font-semibold text-neutral-400 w-[120px]">
                         Symbol
                       </th>
                       <th className="px-2 py-2.5 text-center text-xs font-semibold text-neutral-500 w-[70px]">
@@ -324,7 +324,7 @@ export default function FundingHeatmapPage() {
 
                       return (
                         <tr key={symbol} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                          <td className="sticky left-0 z-10 bg-[#0d0d0d] px-3 py-1.5">
+                          <td className="sticky left-0 z-10 bg-hub-darker px-3 py-1.5">
                             <div className="flex items-center gap-2">
                               <TokenIconSimple symbol={symbol} size={18} />
                               <span className="text-xs font-semibold text-white">{symbol}</span>
@@ -401,7 +401,7 @@ export default function FundingHeatmapPage() {
           </div>
 
           {/* Info footer */}
-          <div className="mt-8 bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
+          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">

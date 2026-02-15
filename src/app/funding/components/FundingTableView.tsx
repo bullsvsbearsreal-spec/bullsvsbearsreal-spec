@@ -73,7 +73,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
   ];
 
   return (
-    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
