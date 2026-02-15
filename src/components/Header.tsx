@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, Search, ChevronDown } from 'lucide-react';
 import Logo from './Logo';
 import CoinSearch from './CoinSearch';
+import ThemeToggle from './ThemeToggle';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 
 /* ------------------------------------------------------------------ */
@@ -257,8 +258,10 @@ export default function Header() {
             </nav>
           </div>
 
-          {/* Right: Search + Mobile toggle */}
+          {/* Right: Theme + Search + Mobile toggle */}
           <div className="flex items-center gap-2" ref={searchRef}>
+            <ThemeToggle />
+
             {searchOpen ? (
               <div className="relative">
                 <CoinSearch

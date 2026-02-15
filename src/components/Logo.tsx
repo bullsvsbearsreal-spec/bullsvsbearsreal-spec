@@ -30,9 +30,9 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
     >
       <defs>
         <linearGradient id={uid} x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFD700" />
-          <stop offset="0.4" stopColor="#FFA500" />
-          <stop offset="1" stopColor="#FF7700" />
+          <stop stopColor="var(--hub-accent-light)" />
+          <stop offset="0.4" stopColor="var(--hub-accent)" />
+          <stop offset="1" stopColor="var(--hub-accent-dark)" />
         </linearGradient>
       </defs>
       {/* Squircle bg */}
@@ -50,7 +50,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
     return <div className={className}><IconSVG /></div>;
   }
 
-  // PornHub-style split wordmark: "Info" white + "Hub" black on gold badge
+  // Split wordmark: "Info" white + "Hub" black on accent badge
   return (
     <div className={`flex items-center ${className} ${animated ? 'hover:scale-[1.02] transition-transform duration-200' : ''}`}>
       <span
@@ -64,7 +64,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
         style={{
           fontSize: dimensions.text,
           lineHeight: 1,
-          background: 'linear-gradient(135deg, #FFD700, #FFA500, #FF7700)',
+          background: 'linear-gradient(135deg, var(--hub-accent-light), var(--hub-accent), var(--hub-accent-dark))',
           padding: `${dimensions.badge.py}px ${dimensions.badge.px}px`,
           borderRadius: dimensions.badge.rx,
         }}
