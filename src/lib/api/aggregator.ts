@@ -407,5 +407,26 @@ export async function fetchExchangeHealth(): Promise<{
   return { funding: [], meta: { totalExchanges: 0, activeExchanges: 0 } };
 }
 
+// Prediction markets — Polymarket vs Kalshi
+export async function fetchPredictionMarkets(): Promise<import('./prediction-markets/types').PredictionMarketsResponse> {
+  const cached = getCached<import('./prediction-markets/types').PredictionMarketsResponse>('predictionMarkets');
+  if (cached) return cached;
+
+  try {
+    const response = await fetch('/api/prediction-markets');
+    if (!response.ok) throw new Error('Failed to fetch prediction markets');
+    const data = await response.json();
+    setCache('predictionMarkets', data);
+    return data;
+  } catch {
+    return {
+      arbitrage: [],
+      polymarketMarkets: [],
+      kalshiMarkets: [],
+      meta: { polymarketCount: 0, kalshiCount: 0, matchedCount: 0, timestamp: Date.now() },
+    };
+  }
+}
+
 // Export individual exchange APIs for direct access
 export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI, mexcAPI, krakenAPI, bingxAPI, phemexAPI };

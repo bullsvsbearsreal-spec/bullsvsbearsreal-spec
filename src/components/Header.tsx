@@ -34,6 +34,7 @@ const navCategories: NavCategory[] = [
       { name: 'Long/Short', href: '/longshort' },
       { name: 'CVD', href: '/cvd' },
       { name: 'Options', href: '/options' },
+      { name: 'Predictions', href: '/prediction-markets' },
     ],
   },
   {
