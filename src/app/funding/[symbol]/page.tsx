@@ -65,7 +65,7 @@ export default function SymbolFundingPage() {
 
   const { data, isLoading, error, lastUpdate } = useApiData({
     fetcher,
-    refreshInterval: 30000,
+    refreshInterval: 60000, // 60s (server caches for 2 min)
   });
 
   // Filter to this symbol

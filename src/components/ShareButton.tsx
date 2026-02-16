@@ -11,8 +11,8 @@ interface ShareButtonProps {
 }
 
 export default function ShareButton({
-  title = 'InfoHub - Free Real-Time Derivatives Data',
-  text = 'Check out funding rates on InfoHub — free, no signup, 21 exchanges',
+  title = 'InfoHub - Real-Time Derivatives Data',
+  text = 'Check out funding rates on InfoHub — 21 exchanges, real-time data',
   url,
   className = '',
 }: ShareButtonProps) {

@@ -50,7 +50,9 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
     if (!response.ok) {
       throw new Error('Failed to fetch tickers');
     }
-    const allTickers = await response.json();
+    const json = await response.json();
+    // API returns { data, health, meta } — extract data array
+    const allTickers = Array.isArray(json) ? json : (json.data ?? json);
 
     // Aggregate by symbol - use highest volume exchange as primary
     const symbolMap = new Map<string, TickerData & { exchange: string }>();

@@ -9,7 +9,7 @@ type OIData = {
 };
 
 export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
-  // Binance - Two-step: ticker for prices, then individual OI
+  // Binance - Two-step: ticker for prices, then individual OI (batched to avoid rate limits)
   {
     name: 'Binance',
     fetcher: async (fetchFn) => {
@@ -21,28 +21,39 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
         .slice(0, 100);
 
-      const oiPromises = topSymbols.map(async (ticker: any) => {
-        try {
-          const oiRes = await fetchFn(
-            `https://fapi.binance.com/fapi/v1/openInterest?symbol=${ticker.symbol}`,
-            {},
-            5000
-          );
-          if (oiRes.ok) {
-            const oiData = await oiRes.json();
-            return {
-              symbol: ticker.symbol.replace('USDT', ''),
-              exchange: 'Binance',
-              openInterest: parseFloat(oiData.openInterest),
-              openInterestValue: parseFloat(oiData.openInterest) * parseFloat(ticker.lastPrice),
-            };
-          }
-        } catch {
-          return null;
-        }
-        return null;
-      });
-      return (await Promise.all(oiPromises)).filter(Boolean) as OIData[];
+      // Process in batches of 25 to stay well within Binance rate limits (1,200 req/min)
+      const BATCH_SIZE = 25;
+      const results: OIData[] = [];
+
+      for (let i = 0; i < topSymbols.length; i += BATCH_SIZE) {
+        const batch = topSymbols.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (ticker: any) => {
+            try {
+              const oiRes = await fetchFn(
+                `https://fapi.binance.com/fapi/v1/openInterest?symbol=${ticker.symbol}`,
+                {},
+                5000
+              );
+              if (oiRes.ok) {
+                const oiData = await oiRes.json();
+                return {
+                  symbol: ticker.symbol.replace('USDT', ''),
+                  exchange: 'Binance',
+                  openInterest: parseFloat(oiData.openInterest),
+                  openInterestValue: parseFloat(oiData.openInterest) * parseFloat(ticker.lastPrice),
+                };
+              }
+            } catch {
+              return null;
+            }
+            return null;
+          })
+        );
+        results.push(...batchResults.filter(Boolean) as OIData[]);
+      }
+
+      return results;
     },
   },
 

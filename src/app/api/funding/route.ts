@@ -8,11 +8,31 @@ export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
+// ---------------------------------------------------------------------------
+// L1: In-memory cache (2-minute TTL — funding rates don't change that often)
+// ---------------------------------------------------------------------------
+interface CachedFunding {
+  body: any;
+  timestamp: number;
+}
+
+const l1Cache = new Map<string, CachedFunding>();
+const L1_TTL = 2 * 60 * 1000; // 2 minutes
+
 type AssetClassFilter = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'all';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const assetClass = (searchParams.get('assetClass') || 'crypto') as AssetClassFilter;
+
+  // L1: Return cached data if fresh
+  const cacheKey = `funding_${assetClass}`;
+  const cached = l1Cache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < L1_TTL) {
+    return NextResponse.json(cached.body, {
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    });
+  }
 
   const [{ data, health }, top500] = await Promise.all([
     fetchAllExchangesWithHealth(fundingFetchers, fetchWithTimeout),
@@ -111,7 +131,7 @@ export async function GET(request: NextRequest) {
     return r;
   });
 
-  return NextResponse.json({
+  const responseBody = {
     data: filtered,
     health,
     meta: {
@@ -126,5 +146,12 @@ export async function GET(request: NextRequest) {
         note: 'Rates in native interval percentage. Most exchanges are 8h. Hyperliquid is 1h (fundingInterval field). dYdX, Aevo, Coinbase are hourly but normalized to 8h. Kraken is 4h normalized to 8h. gTrade is per-second normalized to 8h. OKX and CoinEx include native predictedRate. For other exchanges with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
       },
     },
+  };
+
+  // Update L1 cache
+  l1Cache.set(cacheKey, { body: responseBody, timestamp: Date.now() });
+
+  return NextResponse.json(responseBody, {
+    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
   });
 }

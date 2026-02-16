@@ -16,12 +16,12 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://info-hub.io'),
-  title: 'InfoHub | Free Real-Time Derivatives Data',
-  description: 'Free real-time funding rates, open interest, liquidations, and arbitrage tools across 21 exchanges (15 CEX + 6 DEX). Multi-asset: crypto, stocks, forex, commodities. Free API included.',
+  title: 'InfoHub | Real-Time Derivatives Data',
+  description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 21 exchanges (15 CEX + 6 DEX). Multi-asset: crypto, stocks, forex, commodities.',
   keywords: [
     'funding rates', 'funding rate arbitrage', 'open interest', 'liquidations',
-    'derivatives data', 'perpetual futures', 'DEX funding rates', 'free crypto API',
-    'coinglass alternative', 'trading data', 'market analytics',
+    'derivatives data', 'perpetual futures', 'DEX funding rates', 'crypto API',
+    'trading data', 'market analytics',
   ],
   authors: [{ name: 'InfoHub' }],
   creator: 'InfoHub',
@@ -43,14 +43,14 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://info-hub.io',
     siteName: 'InfoHub',
-    title: 'InfoHub | Free Real-Time Derivatives Data',
-    description: 'Free funding rates, open interest, liquidations & arbitrage across 21 exchanges (15 CEX + 6 DEX). Multi-asset: crypto, stocks, forex, commodities. No signup, free API.',
+    title: 'InfoHub | Real-Time Derivatives Data',
+    description: 'Real-time funding rates, open interest, liquidations & arbitrage across 21 exchanges (15 CEX + 6 DEX). Multi-asset: crypto, stocks, forex, commodities.',
     images: [
       {
         url: '/og-image.svg',
         width: 1200,
         height: 630,
-        alt: 'InfoHub - Free Real-Time Derivatives Data Across 21 Exchanges',
+        alt: 'InfoHub - Real-Time Derivatives Data Across 21 Exchanges',
       },
     ],
   },
@@ -58,8 +58,8 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: 'summary_large_image',
-    title: 'InfoHub | Free Real-Time Derivatives Data',
-    description: 'Free funding rates, arbitrage tools, OI & liquidations across 21 exchanges (15 CEX + 6 DEX). No signup required. Free API.',
+    title: 'InfoHub | Real-Time Derivatives Data',
+    description: 'Real-time funding rates, arbitrage tools, OI & liquidations across 21 exchanges (15 CEX + 6 DEX).',
     images: ['/og-image.svg'],
     creator: '@infohub',
   },

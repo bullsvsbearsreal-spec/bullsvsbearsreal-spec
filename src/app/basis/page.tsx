@@ -53,7 +53,7 @@ export default function BasisPage() {
 
   const { data: fundingRates, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
     fetcher,
-    refreshInterval: 30000,
+    refreshInterval: 60000, // 60s (server caches for 2 min)
   });
 
   const rawData = fundingRates ?? [];

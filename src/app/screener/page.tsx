@@ -145,7 +145,7 @@ export default function ScreenerPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 60000); // 60s (was 30s)
     return () => clearInterval(interval);
   }, [fetchData]);
 

@@ -101,17 +101,17 @@ export default function WatchlistPage() {
 
   const { data: tickers, isLoading: loadingTickers, error: tickerError, lastUpdate, refresh: refreshTickers } = useApiData({
     fetcher: tickerFetcher,
-    refreshInterval: 30_000,
+    refreshInterval: 60_000, // 60s (was 30s)
   });
 
   const { data: fundingData, refresh: refreshFunding } = useApiData({
     fetcher: fundingFetcher,
-    refreshInterval: 30_000,
+    refreshInterval: 60_000, // 60s (was 30s)
   });
 
   const { data: oiData, refresh: refreshOI } = useApiData({
     fetcher: oiFetcher,
-    refreshInterval: 30_000,
+    refreshInterval: 60_000, // 60s (was 30s)
   });
 
   const refreshAll = useCallback(async () => {

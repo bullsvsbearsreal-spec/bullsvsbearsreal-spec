@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="flex items-center gap-3">
             <span className="text-hub-yellow font-bold text-sm">InfoHub</span>
             <span className="text-neutral-700 text-xs">
-              Free real-time derivatives data across 21 exchanges
+              Real-time derivatives data across 21 exchanges
             </span>
           </div>
           <div className="flex items-center gap-4">

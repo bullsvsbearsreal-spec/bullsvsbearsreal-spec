@@ -126,7 +126,7 @@ export function useTickers() {
       const { fetchAllTickers } = await import('@/lib/api/aggregator');
       return fetchAllTickers();
     },
-    refreshInterval: 30000,
+    refreshInterval: 60000, // 60s (was 30s — server caches for 30s anyway)
   });
 }
 
@@ -136,7 +136,7 @@ export function useFundingRates() {
       const { fetchAllFundingRates } = await import('@/lib/api/aggregator');
       return fetchAllFundingRates();
     },
-    refreshInterval: 5 * 60 * 1000,
+    refreshInterval: 5 * 60 * 1000, // 5 min (unchanged — server caches for 2 min)
   });
 }
 
@@ -146,6 +146,6 @@ export function useOpenInterest() {
       const { fetchAllOpenInterest } = await import('@/lib/api/aggregator');
       return fetchAllOpenInterest();
     },
-    refreshInterval: 2 * 60 * 1000,
+    refreshInterval: 3 * 60 * 1000, // 3 min (was 2 min — server caches for 2 min)
   });
 }

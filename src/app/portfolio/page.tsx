@@ -73,7 +73,7 @@ export default function PortfolioPage() {
 
   const { data: tickers, isLoading, isRefreshing, lastUpdate, refresh, error: priceError } = useApiData<Ticker[]>({
     fetcher,
-    refreshInterval: 30_000,
+    refreshInterval: 60_000, // 60s (was 30s)
   });
 
   // ----- price map: symbol -> best-volume ticker -----

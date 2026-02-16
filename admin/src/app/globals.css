@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #030806;
+  color: #d4d4d4;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Status colors */
+.status-ok { color: #00DC82; }
+.status-error { color: #ef4444; }
+.status-empty { color: #f59e0b; }
+.status-stale { color: #f59e0b; }
+
+.status-bg-ok { background: rgba(0, 220, 130, 0.08); }
+.status-bg-error { background: rgba(239, 68, 68, 0.08); }
+.status-bg-empty { background: rgba(245, 158, 11, 0.08); }
+
+/* Card style */
+.admin-card {
+  background: #0a0f0c;
+  border: 1px solid rgba(0, 220, 130, 0.08);
+  border-left: 2px solid rgba(0, 220, 130, 0.3);
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.admin-card:hover {
+  border-color: rgba(0, 220, 130, 0.15);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.06);
+}
+
+/* Table */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0, 220, 130, 0.12);
+  color: #00DC82;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-table th:hover {
+  color: #00ff96;
+}
+
+.admin-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(0, 220, 130, 0.04);
+}
+
+.admin-table tr:hover td {
+  background: rgba(0, 220, 130, 0.03);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 220, 130, 0.15);
+  border-radius: 3px;
+}

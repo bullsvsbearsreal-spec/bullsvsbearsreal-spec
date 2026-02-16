@@ -111,7 +111,7 @@ export default function LongShortPage() {
       setMultiData(results);
     }
     fetchMulti();
-    const interval = setInterval(fetchMulti, 30000);
+    const interval = setInterval(fetchMulti, 60000); // 60s (was 30s)
     return () => clearInterval(interval);
   }, []);
 

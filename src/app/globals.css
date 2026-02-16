@@ -598,6 +598,7 @@ body {
   transition: color 0.15s;
 }
 .g-link:hover { color: #00DC82; }
+
 @keyframes skeleton { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }

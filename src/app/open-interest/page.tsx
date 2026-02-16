@@ -43,7 +43,7 @@ export default function OpenInterestPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 60000); // 60s (server caches for 2 min)
     return () => clearInterval(interval);
   }, []);
 

@@ -113,7 +113,7 @@ export default function FundingPage() {
 
   const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
     fetcher,
-    refreshInterval: 30000,
+    refreshInterval: 60000, // 60s (server caches for 2 min)
   });
 
   const fundingRates = data?.fundingRates ?? [];
@@ -320,7 +320,7 @@ export default function FundingPage() {
                 {lastUpdate.toLocaleTimeString()}
               </span>
             )}
-            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — free, no signup, 21 exchanges`} />
+            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — 21 exchanges, real-time data`} />
             <button
               onClick={fetchData}
               disabled={loading}

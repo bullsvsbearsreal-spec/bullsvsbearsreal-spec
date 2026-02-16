@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Copy, Check, ExternalLink, Zap, Database, Globe } from 'lucide-react';
+import { Copy, Check, ExternalLink, Database, Globe } from 'lucide-react';
 
 interface EndpointProps {
   method: string;
@@ -169,13 +169,9 @@ export default function ApiDocsPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-2">InfoHub Public API</h1>
           <p className="text-neutral-400 text-sm mb-4">
-            Free, real-time crypto derivatives data. No API key required.
+            Real-time crypto derivatives data. No API key required.
           </p>
           <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-500/5 border border-green-500/10 rounded-lg">
-              <Zap className="w-4 h-4 text-green-400" />
-              <span className="text-green-400 text-xs font-medium">100% Free</span>
-            </div>
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/5 border border-blue-500/10 rounded-lg">
               <Database className="w-4 h-4 text-blue-400" />
               <span className="text-blue-400 text-xs font-medium">21 Exchanges (15 CEX + 6 DEX)</span>
@@ -338,30 +334,6 @@ export default function ApiDocsPage() {
 }`}
             example={`{ "value": 72, "classification": "Greed", "timestamp": 1770901234567 }`}
           />
-        </div>
-
-        {/* Comparison */}
-        <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-5">
-          <h3 className="text-white font-semibold text-sm mb-3">InfoHub API vs CoinGlass API</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="text-left py-2 text-neutral-500 font-medium">Feature</th>
-                  <th className="text-center py-2 text-hub-yellow font-medium">InfoHub</th>
-                  <th className="text-center py-2 text-neutral-400 font-medium">CoinGlass</th>
-                </tr>
-              </thead>
-              <tbody className="text-neutral-400">
-                <tr className="border-b border-white/[0.03]"><td className="py-2">Price</td><td className="text-center text-green-400 font-semibold">Free</td><td className="text-center">$29–$699/mo</td></tr>
-                <tr className="border-b border-white/[0.03]"><td className="py-2">Auth Required</td><td className="text-center text-green-400">No</td><td className="text-center">API Key</td></tr>
-                <tr className="border-b border-white/[0.03]"><td className="py-2">Funding Exchanges</td><td className="text-center">21 (6 DEX)</td><td className="text-center">29</td></tr>
-                <tr className="border-b border-white/[0.03]"><td className="py-2">Multi-Asset</td><td className="text-center text-green-400">Crypto + Stocks + Forex + Commodities</td><td className="text-center">Crypto only</td></tr>
-                <tr className="border-b border-white/[0.03]"><td className="py-2">Historical Data</td><td className="text-center text-neutral-600">Real-time only</td><td className="text-center">Years of history</td></tr>
-                <tr><td className="py-2">Rate Limits</td><td className="text-center">Fair use (~6 req/min)</td><td className="text-center">Tiered by plan</td></tr>
-              </tbody>
-            </table>
-          </div>
         </div>
 
         {/* Footer */}

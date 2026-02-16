@@ -208,7 +208,7 @@ export default function SymbolPage() {
 
   useEffect(() => {
     fetchData();
-    const timer = setInterval(fetchData, 30_000);
+    const timer = setInterval(fetchData, 60_000); // 60s (was 30s)
     return () => clearInterval(timer);
   }, [fetchData]);
 
