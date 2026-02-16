@@ -8,7 +8,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatRate, getRateColor, getExchangeColor } from '../utils';
 import { isValidNumber, formatUSD } from '@/lib/utils/format';
-import { isExchangeDex } from '@/lib/constants';
+import { isExchangeDex, getExchangeTradeUrl } from '@/lib/constants';
 import FundingSparkline from './FundingSparkline';
 import Pagination from './Pagination';
 import type { HistoryPoint } from '@/lib/storage/fundingHistory';
@@ -118,15 +118,25 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                     </Link>
                   </td>
                   <td className="px-4 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <ExchangeLogo exchange={fr.exchange.toLowerCase()} size={16} />
-                      <span className={`text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
-                        {fr.exchange}
-                      </span>
-                      {isExchangeDex(fr.exchange) && (
-                        <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>
-                      )}
-                    </div>
+                    {(() => {
+                      const tradeUrl = getExchangeTradeUrl(fr.exchange, fr.symbol);
+                      const inner = (
+                        <div className={`flex items-center gap-1.5 ${tradeUrl ? 'hover:opacity-80 transition-opacity' : ''}`}>
+                          <ExchangeLogo exchange={fr.exchange.toLowerCase()} size={16} />
+                          <span className={`text-xs font-medium ${getExchangeColor(fr.exchange)}`}>
+                            {fr.exchange}
+                          </span>
+                          {isExchangeDex(fr.exchange) && (
+                            <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>
+                          )}
+                        </div>
+                      );
+                      return tradeUrl ? (
+                        <a href={tradeUrl} target="_blank" rel="noopener noreferrer" title={`Trade ${fr.symbol} on ${fr.exchange}`}>
+                          {inner}
+                        </a>
+                      ) : inner;
+                    })()}
                   </td>
                   <td className="px-4 py-2 text-center">
                     <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold leading-none ${

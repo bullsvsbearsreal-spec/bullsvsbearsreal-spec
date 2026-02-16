@@ -1,4 +1,4 @@
-export { ALL_EXCHANGES, EXCHANGE_COLORS, EXCHANGE_BADGE_COLORS, getExchangeBadgeColor, DEX_EXCHANGES, CEX_EXCHANGES, isExchangeDex } from './exchanges';
+export { ALL_EXCHANGES, EXCHANGE_COLORS, EXCHANGE_BADGE_COLORS, getExchangeBadgeColor, getExchangeTradeUrl, DEX_EXCHANGES, CEX_EXCHANGES, isExchangeDex } from './exchanges';
 export type { ExchangeName } from './exchanges';
 export { PRIORITY_SYMBOLS, CATEGORY_ICONS, CATEGORIES, getCategoriesForAssetClass, STOCK_CATEGORIES, STOCK_CATEGORY_ICONS, STOCK_PRIORITY_SYMBOLS, FOREX_CATEGORIES, FOREX_CATEGORY_ICONS, FOREX_PRIORITY_SYMBOLS, COMMODITY_CATEGORIES, COMMODITY_CATEGORY_ICONS, COMMODITY_PRIORITY_SYMBOLS } from './symbols';
 export type { Category, AssetClass } from './symbols';

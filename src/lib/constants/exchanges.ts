@@ -75,3 +75,32 @@ export function isExchangeDex(exchange: string): boolean {
 export function getExchangeBadgeColor(exchange: string): string {
   return EXCHANGE_BADGE_COLORS[exchange] || 'bg-hub-gray/50 text-hub-gray-text';
 }
+
+// Generate a direct trading link to the exchange's perpetual futures page for a given symbol
+export function getExchangeTradeUrl(exchange: string, symbol: string): string | null {
+  const s = symbol.toUpperCase();
+  switch (exchange) {
+    case 'Binance':    return `https://www.binance.com/en/futures/${s}USDT`;
+    case 'Bybit':      return `https://www.bybit.com/trade/usdt/${s}USDT`;
+    case 'OKX':        return `https://www.okx.com/trade-swap/${s.toLowerCase()}-usdt-swap`;
+    case 'Bitget':     return `https://www.bitget.com/futures/usdt/${s}USDT`;
+    case 'MEXC':       return `https://futures.mexc.com/exchange/${s}_USDT`;
+    case 'Kraken':     return `https://futures.kraken.com/trade/futures/${s.toLowerCase()}-perpetual`;
+    case 'BingX':      return `https://bingx.com/en/perpetual/${s}-USDT/`;
+    case 'Phemex':     return `https://phemex.com/contract/trade/${s}USDT`;
+    case 'Hyperliquid': return `https://app.hyperliquid.xyz/trade/${s}`;
+    case 'dYdX':       return `https://trade.dydx.exchange/trade/${s}-USD`;
+    case 'Aster':      return `https://app.aster.finance/#/perpetual/${s}USDT`;
+    case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT`;
+    case 'Aevo':       return `https://app.aevo.xyz/perpetual/${s.toLowerCase()}`;
+    case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM`;
+    case 'Deribit':    return `https://www.deribit.com/futures/${s}`;
+    case 'HTX':        return `https://www.htx.com/futures/linear_swap/exchange#contract_code=${s}-USDT`;
+    case 'Bitfinex':   return `https://trading.bitfinex.com/t/${s}F0:USTF0`;
+    case 'WhiteBIT':   return `https://whitebit.com/trade/${s}_USDT?type=futures`;
+    case 'Coinbase':   return `https://www.coinbase.com/advanced-trade/spot/${s}-USDT`;
+    case 'CoinEx':     return `https://www.coinex.com/en/futures/${s}USDT`;
+    case 'gTrade':     return `https://gains.trade/trading#${s}/USD`;
+    default:           return null;
+  }
+}

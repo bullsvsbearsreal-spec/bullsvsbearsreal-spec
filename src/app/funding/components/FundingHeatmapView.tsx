@@ -6,6 +6,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRate, getHeatmapColor } from '../utils';
 import Pagination from './Pagination';
 import { ArrowUp, ArrowDown } from 'lucide-react';
+import { getExchangeTradeUrl } from '@/lib/constants';
 
 const ROWS_PER_PAGE = 50;
 
@@ -124,20 +125,33 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
                     const rate = rates?.get(ex);
                     const isActiveCol = exchangeSort?.exchange === ex;
                     const interval = intervalMap?.get(`${symbol}|${ex}`);
+                    const tradeUrl = rate !== undefined ? getExchangeTradeUrl(ex, symbol) : null;
+                    const cellClass = `${getHeatmapColor(rate)} rounded px-1.5 py-1.5 text-center text-[11px] font-mono text-white/80 ${
+                      isActiveCol ? 'ring-1 ring-hub-yellow/30' : ''
+                    } ${tradeUrl ? 'cursor-pointer hover:ring-1 hover:ring-white/30 transition-all' : ''}`;
+                    const titleText = rate !== undefined && interval
+                      ? `${formatRate(rate)} funding fee every ${interval === '1h' ? '1 hour' : '4 hours'} — click to trade on ${ex}`
+                      : rate !== undefined
+                      ? `${symbol} on ${ex}: ${formatRate(rate)} (8h payout) — click to trade on ${ex}`
+                      : `${symbol} not listed on ${ex}`;
+                    const content = (
+                      <>
+                        {rate !== undefined ? formatRate(rate) : '-'}
+                        {interval === '1h' && <span className="text-amber-400 text-[8px] ml-0.5 font-bold">*</span>}
+                        {interval === '4h' && <span className="text-blue-400 text-[8px] ml-0.5 font-bold">**</span>}
+                      </>
+                    );
                     return (
                       <td key={ex} className="px-0.5 py-0.5">
-                        <div
-                          className={`${getHeatmapColor(rate)} rounded px-1.5 py-1.5 text-center text-[11px] font-mono text-white/80 ${
-                            isActiveCol ? 'ring-1 ring-hub-yellow/30' : ''
-                          }`}
-                          title={rate !== undefined && interval
-                            ? `${formatRate(rate)} funding fee every ${interval === '1h' ? '1 hour' : '4 hours'}`
-                            : `${symbol} on ${ex}: ${rate !== undefined ? formatRate(rate) : 'N/A'} (8h payout)`}
-                        >
-                          {rate !== undefined ? formatRate(rate) : '-'}
-                          {interval === '1h' && <span className="text-amber-400 text-[8px] ml-0.5 font-bold">*</span>}
-                          {interval === '4h' && <span className="text-blue-400 text-[8px] ml-0.5 font-bold">**</span>}
-                        </div>
+                        {tradeUrl ? (
+                          <a href={tradeUrl} target="_blank" rel="noopener noreferrer" className={cellClass} title={titleText}>
+                            {content}
+                          </a>
+                        ) : (
+                          <div className={cellClass} title={titleText}>
+                            {content}
+                          </div>
+                        )}
                       </td>
                     );
                   })}
