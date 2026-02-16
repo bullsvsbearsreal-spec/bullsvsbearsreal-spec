@@ -113,7 +113,7 @@ export default function FundingPage() {
 
   const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
     fetcher,
-    refreshInterval: 60000, // 60s (server caches for 2 min)
+    refreshInterval: 30000,
   });
 
   const fundingRates = data?.fundingRates ?? [];
@@ -320,7 +320,7 @@ export default function FundingPage() {
                 {lastUpdate.toLocaleTimeString()}
               </span>
             )}
-            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — 21 exchanges, real-time data`} />
+            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — free, no signup, 21 exchanges`} />
             <button
               onClick={fetchData}
               disabled={loading}
@@ -552,7 +552,7 @@ export default function FundingPage() {
               <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} historyMap={historyMap} accumulatedMap={accumulatedMap} />
             )}
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} />
             )}
             {viewMode === 'arbitrage' && assetClass === 'crypto' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} />
