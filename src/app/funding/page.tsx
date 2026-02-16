@@ -552,7 +552,7 @@ export default function FundingPage() {
               <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} historyMap={historyMap} accumulatedMap={accumulatedMap} />
             )}
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} />
             )}
             {viewMode === 'arbitrage' && assetClass === 'crypto' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} />
