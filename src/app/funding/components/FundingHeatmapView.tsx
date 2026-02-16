@@ -126,7 +126,7 @@ export default function FundingHeatmapView({ symbols, visibleExchanges, heatmapD
                     const isActiveCol = exchangeSort?.exchange === ex;
                     const interval = intervalMap?.get(`${symbol}|${ex}`);
                     const tradeUrl = rate !== undefined ? getExchangeTradeUrl(ex, symbol) : null;
-                    const cellClass = `${getHeatmapColor(rate)} rounded px-1.5 py-1.5 text-center text-[11px] font-mono text-white/80 ${
+                    const cellClass = `block ${getHeatmapColor(rate)} rounded px-1.5 py-1.5 text-center text-[11px] font-mono text-white/80 no-underline ${
                       isActiveCol ? 'ring-1 ring-hub-yellow/30' : ''
                     } ${tradeUrl ? 'cursor-pointer hover:ring-1 hover:ring-white/30 transition-all' : ''}`;
                     const titleText = rate !== undefined && interval
