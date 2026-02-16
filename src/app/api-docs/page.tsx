@@ -157,7 +157,7 @@ const FUNDING_EXCHANGES = [
 const OI_EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'Phemex',
   'Hyperliquid', 'dYdX', 'Lighter', 'Aster', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex',
-  'WhiteBIT', 'Coinbase', 'CoinEx',
+  'WhiteBIT', 'Coinbase', 'CoinEx', 'CME',
 ];
 
 export default function ApiDocsPage() {
@@ -256,7 +256,7 @@ export default function ApiDocsPage() {
           <EndpointSection
             method="GET"
             path="/api/openinterest"
-            description="Open interest data across 19 exchanges"
+            description="Open interest data across 20 exchanges"
             response={`{
   "data": [
     {

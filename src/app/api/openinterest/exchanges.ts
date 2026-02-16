@@ -512,4 +512,52 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // CME Group (via CoinGecko derivatives API — institutional BTC/ETH futures)
+  {
+    name: 'CME',
+    fetcher: async (fetchFn) => {
+      try {
+        const res = await fetchFn(
+          'https://api.coingecko.com/api/v3/derivatives/exchanges/cme_group?include_tickers=unexpired',
+          {},
+          10000,
+        );
+        if (!res.ok) return [];
+        const json = await res.json();
+        const tickers = json.tickers || [];
+        if (!Array.isArray(tickers) || tickers.length === 0) return [];
+
+        // Aggregate OI by base currency (BTC, ETH)
+        const oiMap = new Map<string, { oi: number; price: number }>();
+        tickers.forEach((t: any) => {
+          const base = (t.base || '').toUpperCase();
+          if (!['BTC', 'ETH'].includes(base)) return;
+          const oiUsd = parseFloat(t.open_interest_usd) || 0;
+          const price = parseFloat(t.last) || parseFloat(t.converted_last?.usd) || 0;
+          if (oiUsd <= 0) return;
+          const existing = oiMap.get(base);
+          if (existing) {
+            existing.oi += oiUsd;
+            if (price > 0) existing.price = price; // Use latest price
+          } else {
+            oiMap.set(base, { oi: oiUsd, price });
+          }
+        });
+
+        const results: OIData[] = [];
+        oiMap.forEach(({ oi, price }, symbol) => {
+          results.push({
+            symbol,
+            exchange: 'CME',
+            openInterest: price > 0 ? oi / price : 0,
+            openInterestValue: oi,
+          });
+        });
+        return results;
+      } catch {
+        return [];
+      }
+    },
+  },
+
 ];

@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
-const MAX_SYMBOLS = 100; // Only store top 100 symbols to control storage
+const MAX_SYMBOLS = 300; // Store top 300 symbols for historical coverage
 
 export async function GET(request: NextRequest) {
   // Verify auth — Vercel cron sends Authorization: Bearer <CRON_SECRET>

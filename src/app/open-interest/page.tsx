@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { fetchAllOpenInterest, aggregateOpenInterestBySymbol, aggregateOpenInterestByExchange } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
-import { RefreshCw, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { RefreshCw, ArrowUpDown, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import { getExchangeBadgeColor } from '@/lib/constants';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatUSD } from '@/lib/utils/format';
@@ -13,8 +13,17 @@ import { formatUSD } from '@/lib/utils/format';
 type SortField = 'symbol' | 'openInterestValue' | 'exchange';
 type SortOrder = 'asc' | 'desc';
 
+interface OIDelta {
+  symbol: string;
+  currentOI: number;
+  change1h: number | null;
+  change4h: number | null;
+  change24h: number | null;
+}
+
 export default function OpenInterestPage() {
   const [openInterest, setOpenInterest] = useState<OpenInterestData[]>([]);
+  const [oiDeltas, setOiDeltas] = useState<Map<string, OIDelta>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -30,8 +39,17 @@ export default function OpenInterestPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchAllOpenInterest();
+      const [data, deltaRes] = await Promise.all([
+        fetchAllOpenInterest(),
+        fetch('/api/oi-delta').then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
       setOpenInterest(data);
+      // Build delta lookup map
+      if (deltaRes?.data) {
+        const map = new Map<string, OIDelta>();
+        deltaRes.data.forEach((d: OIDelta) => map.set(d.symbol, d));
+        setOiDeltas(map);
+      }
       setLastUpdate(new Date());
     } catch (err) {
       setError('Failed to fetch open interest data. Please try again.');
@@ -236,6 +254,9 @@ export default function OpenInterestPage() {
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Rank</th>
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Symbol</th>
                     <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Total OI Value</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">1h Δ</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">4h Δ</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">24h Δ</th>
                     <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">% of Total</th>
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Distribution</th>
                   </tr>
@@ -243,6 +264,12 @@ export default function OpenInterestPage() {
                 <tbody>
                   {aggregatedSorted.map(([symbol, value], index) => {
                     const percentage = totalOI > 0 ? (value / totalOI) * 100 : 0;
+                    const delta = oiDeltas.get(symbol);
+                    const fmt = (v: number | null) => {
+                      if (v == null) return <span className="text-neutral-700">—</span>;
+                      const color = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-neutral-500';
+                      return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+                    };
                     return (
                       <tr
                         key={symbol}
@@ -260,6 +287,9 @@ export default function OpenInterestPage() {
                         <td className="px-4 py-2 text-right">
                           <span className="text-white font-mono font-semibold">{formatUSD(value)}</span>
                         </td>
+                        <td className="px-4 py-2 text-right text-xs">{fmt(delta?.change1h ?? null)}</td>
+                        <td className="px-4 py-2 text-right text-xs">{fmt(delta?.change4h ?? null)}</td>
+                        <td className="px-4 py-2 text-right text-xs">{fmt(delta?.change24h ?? null)}</td>
                         <td className="px-4 py-2 text-right">
                           <span className="text-neutral-600">{percentage.toFixed(2)}%</span>
                         </td>

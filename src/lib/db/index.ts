@@ -276,6 +276,79 @@ export async function getOIHistory(
   }
 }
 
+// ─── OI Delta Queries ──────────────────────────────────────────────────────
+
+export interface OIDelta {
+  symbol: string;
+  currentOI: number;
+  change1h: number | null;
+  change4h: number | null;
+  change24h: number | null;
+}
+
+/**
+ * Get OI deltas by comparing latest snapshot with past snapshots.
+ * Returns per-symbol aggregated OI with 1h/4h/24h percentage changes.
+ */
+export async function getOIDeltas(): Promise<OIDelta[]> {
+  try {
+    const sql = getSQL();
+
+    // Get the latest snapshot timestamp and OI per symbol (summed across exchanges)
+    const rows = await sql`
+      WITH latest AS (
+        SELECT MAX(ts) AS max_ts FROM oi_snapshots WHERE ts > NOW() - INTERVAL '30 minutes'
+      ),
+      current_oi AS (
+        SELECT symbol, SUM(oi_usd) AS oi
+        FROM oi_snapshots, latest
+        WHERE ts >= latest.max_ts - INTERVAL '2 minutes'
+        GROUP BY symbol
+      ),
+      oi_1h AS (
+        SELECT symbol, SUM(oi_usd) AS oi
+        FROM oi_snapshots
+        WHERE ts BETWEEN NOW() - INTERVAL '70 minutes' AND NOW() - INTERVAL '50 minutes'
+        GROUP BY symbol
+      ),
+      oi_4h AS (
+        SELECT symbol, SUM(oi_usd) AS oi
+        FROM oi_snapshots
+        WHERE ts BETWEEN NOW() - INTERVAL '250 minutes' AND NOW() - INTERVAL '230 minutes'
+        GROUP BY symbol
+      ),
+      oi_24h AS (
+        SELECT symbol, SUM(oi_usd) AS oi
+        FROM oi_snapshots
+        WHERE ts BETWEEN NOW() - INTERVAL '1450 minutes' AND NOW() - INTERVAL '1430 minutes'
+        GROUP BY symbol
+      )
+      SELECT
+        c.symbol,
+        c.oi AS current_oi,
+        CASE WHEN h1.oi > 0 THEN ((c.oi - h1.oi) / h1.oi * 100) ELSE NULL END AS change_1h,
+        CASE WHEN h4.oi > 0 THEN ((c.oi - h4.oi) / h4.oi * 100) ELSE NULL END AS change_4h,
+        CASE WHEN h24.oi > 0 THEN ((c.oi - h24.oi) / h24.oi * 100) ELSE NULL END AS change_24h
+      FROM current_oi c
+      LEFT JOIN oi_1h h1 ON c.symbol = h1.symbol
+      LEFT JOIN oi_4h h4 ON c.symbol = h4.symbol
+      LEFT JOIN oi_24h h24 ON c.symbol = h24.symbol
+      ORDER BY c.oi DESC
+    `;
+
+    return rows.map((r: any) => ({
+      symbol: r.symbol,
+      currentOI: Number(r.current_oi),
+      change1h: r.change_1h != null ? Number(r.change_1h) : null,
+      change4h: r.change_4h != null ? Number(r.change_4h) : null,
+      change24h: r.change_24h != null ? Number(r.change_24h) : null,
+    }));
+  } catch (e) {
+    console.error('DB getOIDeltas error:', e);
+    return [];
+  }
+}
+
 // ─── Data Pruning ───────────────────────────────────────────────────────────
 
 export async function pruneOldData(keepDays: number = 90): Promise<{ funding: number; oi: number }> {

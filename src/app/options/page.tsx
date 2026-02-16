@@ -20,6 +20,22 @@ interface IVPoint {
   putIV: number;
 }
 
+interface ExchangeBreakdown {
+  exchange: string;
+  callOI: number;
+  putOI: number;
+  totalOI: number;
+  instruments: number;
+  share: number;
+}
+
+interface ExchangeHealth {
+  exchange: string;
+  status: string;
+  count: number;
+  latency: number;
+}
+
 interface OptionsResponse {
   currency: string;
   underlyingPrice: number;
@@ -31,6 +47,8 @@ interface OptionsResponse {
   instrumentCount: number;
   strikeData: StrikeData[];
   ivSmile: IVPoint[];
+  exchangeBreakdown?: ExchangeBreakdown[];
+  health?: ExchangeHealth[];
 }
 
 /* ─── OI by Strike Chart (SVG) ───────────────────────────────────── */
@@ -189,7 +207,7 @@ export default function OptionsPage() {
                 Options Data
               </h1>
               <p className="text-sm text-neutral-500 mt-1">
-                Max pain, put/call ratio, OI by strike, and implied volatility from Deribit
+                Max pain, put/call ratio, OI by strike, and implied volatility across {data?.health?.filter(h => h.status === 'ok' && h.count > 0).length || 1} exchanges
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -281,6 +299,31 @@ export default function OptionsPage() {
                 </div>
               </div>
 
+              {/* Exchange Breakdown */}
+              {data.exchangeBreakdown && data.exchangeBreakdown.length > 1 && (
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+                  <h2 className="text-sm font-semibold text-white mb-3">OI by Exchange</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {data.exchangeBreakdown.map((ex) => (
+                      <div key={ex.exchange} className="bg-white/[0.02] rounded-lg px-3 py-2">
+                        <p className="text-xs text-neutral-500">{ex.exchange}</p>
+                        <p className="text-sm font-bold text-white">${formatCompact(ex.totalOI)}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                            <div
+                              className="h-full bg-hub-yellow rounded-full transition-all"
+                              style={{ width: `${Math.min(ex.share, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-neutral-500">{ex.share.toFixed(1)}%</span>
+                        </div>
+                        <p className="text-[10px] text-neutral-600 mt-0.5">{ex.instruments} instruments</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* OI by Strike Chart */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
                 <h2 className="text-sm font-semibold text-white mb-1">Open Interest by Strike</h2>
@@ -325,8 +368,8 @@ export default function OptionsPage() {
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-xs text-neutral-400 space-y-1">
                 <p>
-                  <strong className="text-neutral-300">Options Data</strong> from Deribit — the largest
-                  crypto options exchange.
+                  <strong className="text-neutral-300">Options Data</strong> aggregated across Deribit, Binance, OKX, and Bybit.
+                  Max pain is weighted by combined OI across all exchanges.
                 </p>
                 <p>
                   <strong>Max Pain:</strong> The strike price where option holders lose the most money

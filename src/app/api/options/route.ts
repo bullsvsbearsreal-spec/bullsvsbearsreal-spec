@@ -1,27 +1,25 @@
 /**
  * GET /api/options?currency=BTC
  *
- * Proxies Deribit public API for options data.
- * Returns max pain, put/call ratio, open interest by strike, and IV data.
+ * Multi-exchange options data: Deribit + Binance + OKX + Bybit.
+ * Returns max pain, put/call ratio, open interest by strike, IV data, and per-exchange breakdown.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchWithTimeout } from '../_shared/fetch';
+import { optionsFetchers, OptionInstrument } from './exchanges';
 
 export const runtime = 'edge';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
-interface DeribitInstrument {
-  instrument_name: string;
-  option_type: string;
-  strike: number;
-  expiration_timestamp: number;
-  open_interest: number;
-  mark_iv: number;
-  underlying_price: number;
-  bid_price: number;
-  ask_price: number;
+// L1 cache: 60-second TTL
+interface CachedOptions {
+  body: any;
+  timestamp: number;
 }
+const l1Cache = new Map<string, CachedOptions>();
+const L1_TTL = 60 * 1000;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -31,58 +29,64 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Only BTC and ETH options supported' }, { status: 400 });
   }
 
+  // L1 cache check
+  const cacheKey = `options_${currency}`;
+  const cached = l1Cache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < L1_TTL) {
+    return NextResponse.json(cached.body, {
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+    });
+  }
+
   try {
-    // Fetch all option instruments with their book summaries
-    const res = await fetch(
-      `https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=${currency}&kind=option`,
-      { next: { revalidate: 60 } },
+    // Fetch from all exchanges in parallel
+    const exchangeResults = await Promise.allSettled(
+      optionsFetchers.map(async (ef) => {
+        const start = Date.now();
+        try {
+          const data = await ef.fetcher(fetchWithTimeout, currency);
+          return { name: ef.name, data, status: 'ok' as const, latency: Date.now() - start };
+        } catch (err) {
+          return { name: ef.name, data: [] as OptionInstrument[], status: 'error' as const, latency: Date.now() - start, error: String(err) };
+        }
+      })
     );
 
-    if (!res.ok) {
-      return NextResponse.json({ error: `Deribit returned ${res.status}` }, { status: 502 });
-    }
+    // Merge all instruments
+    const allInstruments: OptionInstrument[] = [];
+    const health: Array<{ exchange: string; status: string; count: number; latency: number }> = [];
 
-    const json = await res.json();
-    const instruments: any[] = json.result || [];
-
-    if (instruments.length === 0) {
-      return NextResponse.json({ error: 'No options data available' }, { status: 404 });
-    }
-
-    // Get underlying price
-    const underlyingPrice = instruments[0]?.underlying_price || 0;
-
-    // Parse instruments
-    const options: DeribitInstrument[] = instruments.map((inst: any) => {
-      // Parse instrument name: BTC-28FEB25-95000-C
-      const parts = inst.instrument_name.split('-');
-      const strike = parseFloat(parts[2]) || 0;
-      const optionType = parts[3] === 'C' ? 'call' : 'put';
-      const expiryStr = parts[1];
-
-      return {
-        instrument_name: inst.instrument_name,
-        option_type: optionType,
-        strike,
-        expiration_timestamp: inst.creation_timestamp, // approximate
-        open_interest: (inst.open_interest || 0) * underlyingPrice, // Convert from coins to USD
-        mark_iv: inst.mark_iv || 0,
-        underlying_price: underlyingPrice,
-        bid_price: inst.bid_price || 0,
-        ask_price: inst.ask_price || 0,
-      };
+    exchangeResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const r = result.value;
+        allInstruments.push(...r.data);
+        health.push({ exchange: r.name, status: r.status, count: r.data.length, latency: r.latency });
+      }
     });
 
-    // Calculate per-strike OI
+    if (allInstruments.length === 0) {
+      if (cached) {
+        return NextResponse.json(cached.body, {
+          headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
+        });
+      }
+      return NextResponse.json({ error: 'No options data available from any exchange' }, { status: 502 });
+    }
+
+    // Determine underlying price (median across exchanges)
+    const prices = allInstruments.map(i => i.underlyingPrice).filter(p => p > 0).sort((a, b) => a - b);
+    const underlyingPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+
+    // Calculate per-strike OI (merged across all exchanges)
     const strikeOI = new Map<number, { callOI: number; putOI: number }>();
-    options.forEach((opt) => {
+    allInstruments.forEach((opt) => {
       const entry = strikeOI.get(opt.strike) || { callOI: 0, putOI: 0 };
-      if (opt.option_type === 'call') entry.callOI += opt.open_interest;
-      else entry.putOI += opt.open_interest;
+      if (opt.optionType === 'call') entry.callOI += opt.openInterestUsd;
+      else entry.putOI += opt.openInterestUsd;
       strikeOI.set(opt.strike, entry);
     });
 
-    // Calculate max pain (strike where total loss is minimized)
+    // Max pain calculation (strike that minimizes total loss)
     const strikes: number[] = [];
     strikeOI.forEach((_, k) => strikes.push(k));
     strikes.sort((a, b) => a - b);
@@ -93,14 +97,8 @@ export async function GET(request: NextRequest) {
     strikes.forEach((testPrice) => {
       let totalLoss = 0;
       strikeOI.forEach((oi, strike) => {
-        // Call loss at test price
-        if (testPrice > strike) {
-          totalLoss += oi.callOI * (testPrice - strike) / underlyingPrice;
-        }
-        // Put loss at test price
-        if (testPrice < strike) {
-          totalLoss += oi.putOI * (strike - testPrice) / underlyingPrice;
-        }
+        if (testPrice > strike) totalLoss += oi.callOI * (testPrice - strike) / (underlyingPrice || 1);
+        if (testPrice < strike) totalLoss += oi.putOI * (strike - testPrice) / (underlyingPrice || 1);
       });
       if (totalLoss < minTotalLoss) {
         minTotalLoss = totalLoss;
@@ -108,7 +106,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Put/call ratio
+    // Put/Call ratio
     let totalCallOI = 0;
     let totalPutOI = 0;
     strikeOI.forEach((oi) => {
@@ -117,14 +115,10 @@ export async function GET(request: NextRequest) {
     });
     const putCallRatio = totalCallOI > 0 ? totalPutOI / totalCallOI : 0;
 
-    // Build strike data for chart (filter to relevant range around spot)
-    const relevantStrikes: Array<{
-      strike: number;
-      callOI: number;
-      putOI: number;
-    }> = [];
+    // Strike data (filtered to relevant range: 70%-130% of spot)
     const lowerBound = underlyingPrice * 0.7;
     const upperBound = underlyingPrice * 1.3;
+    const relevantStrikes: Array<{ strike: number; callOI: number; putOI: number }> = [];
     strikeOI.forEach((oi, strike) => {
       if (strike >= lowerBound && strike <= upperBound) {
         relevantStrikes.push({ strike, ...oi });
@@ -132,17 +126,17 @@ export async function GET(request: NextRequest) {
     });
     relevantStrikes.sort((a, b) => a.strike - b.strike);
 
-    // IV by strike (smile)
-    const ivSmile: Array<{ strike: number; callIV: number; putIV: number }> = [];
+    // IV smile (averaged per strike, merged across exchanges)
     const ivByStrike = new Map<number, { callIVs: number[]; putIVs: number[] }>();
-    options.forEach((opt) => {
-      if (opt.strike >= lowerBound && opt.strike <= upperBound && opt.mark_iv > 0) {
+    allInstruments.forEach((opt) => {
+      if (opt.strike >= lowerBound && opt.strike <= upperBound && opt.markIV > 0) {
         const entry = ivByStrike.get(opt.strike) || { callIVs: [], putIVs: [] };
-        if (opt.option_type === 'call') entry.callIVs.push(opt.mark_iv);
-        else entry.putIVs.push(opt.mark_iv);
+        if (opt.optionType === 'call') entry.callIVs.push(opt.markIV);
+        else entry.putIVs.push(opt.markIV);
         ivByStrike.set(opt.strike, entry);
       }
     });
+    const ivSmile: Array<{ strike: number; callIV: number; putIV: number }> = [];
     ivByStrike.forEach((ivs, strike) => {
       const avgCallIV = ivs.callIVs.length > 0 ? ivs.callIVs.reduce((s, v) => s + v, 0) / ivs.callIVs.length : 0;
       const avgPutIV = ivs.putIVs.length > 0 ? ivs.putIVs.reduce((s, v) => s + v, 0) / ivs.putIVs.length : 0;
@@ -150,7 +144,16 @@ export async function GET(request: NextRequest) {
     });
     ivSmile.sort((a, b) => a.strike - b.strike);
 
-    return NextResponse.json({
+    // Per-exchange OI breakdown
+    const exchangeOI: Record<string, { callOI: number; putOI: number; instruments: number }> = {};
+    allInstruments.forEach((opt) => {
+      if (!exchangeOI[opt.exchange]) exchangeOI[opt.exchange] = { callOI: 0, putOI: 0, instruments: 0 };
+      if (opt.optionType === 'call') exchangeOI[opt.exchange].callOI += opt.openInterestUsd;
+      else exchangeOI[opt.exchange].putOI += opt.openInterestUsd;
+      exchangeOI[opt.exchange].instruments++;
+    });
+
+    const responseBody = {
       currency,
       underlyingPrice,
       maxPain: maxPainStrike,
@@ -158,11 +161,34 @@ export async function GET(request: NextRequest) {
       totalCallOI,
       totalPutOI,
       totalOI: totalCallOI + totalPutOI,
-      instrumentCount: instruments.length,
+      instrumentCount: allInstruments.length,
       strikeData: relevantStrikes,
       ivSmile,
+      exchangeBreakdown: Object.entries(exchangeOI).map(([exchange, oi]) => ({
+        exchange,
+        callOI: oi.callOI,
+        putOI: oi.putOI,
+        totalOI: oi.callOI + oi.putOI,
+        instruments: oi.instruments,
+        share: totalCallOI + totalPutOI > 0
+          ? ((oi.callOI + oi.putOI) / (totalCallOI + totalPutOI) * 100)
+          : 0,
+      })).sort((a, b) => b.totalOI - a.totalOI),
+      health,
+    };
+
+    // Update L1 cache
+    l1Cache.set(cacheKey, { body: responseBody, timestamp: Date.now() });
+
+    return NextResponse.json(responseBody, {
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
     });
   } catch (e) {
+    if (cached) {
+      return NextResponse.json(cached.body, {
+        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
+      });
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Failed to fetch options data' },
       { status: 500 },
