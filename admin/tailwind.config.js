@@ -4,15 +4,26 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        terminal: {
-          bg: '#030806',
-          dark: '#060d08',
-          card: '#0a0f0c',
-          border: 'rgba(0, 220, 130, 0.08)',
-          'border-hover': 'rgba(0, 220, 130, 0.15)',
-          green: '#00DC82',
-          'green-dim': 'rgba(0, 220, 130, 0.6)',
+        admin: {
+          bg: 'var(--admin-bg)',
+          'surface-0': 'var(--admin-surface-0)',
+          'surface-1': 'var(--admin-surface-1)',
+          'surface-2': 'var(--admin-surface-2)',
+          border: 'var(--admin-border)',
+          'border-hover': 'var(--admin-border-hover)',
+          accent: 'var(--admin-accent)',
+          'accent-light': 'var(--admin-accent-light)',
+          'accent-dark': 'var(--admin-accent-dark)',
         },
+        terminal: {
+          bg: 'var(--admin-bg)',
+          card: 'var(--admin-surface-1)',
+          border: 'var(--admin-border)',
+          green: 'var(--admin-accent)',
+        },
+      },
+      fontFamily: {
+        mono: ['ui-monospace', 'Cascadia Code', 'Source Code Pro', 'Menlo', 'Consolas', 'monospace'],
       },
     },
   },

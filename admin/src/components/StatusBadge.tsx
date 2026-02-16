@@ -3,18 +3,22 @@ interface StatusBadgeProps {
   label?: string;
 }
 
-const styles: Record<string, string> = {
-  ok: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  error: 'bg-red-500/10 text-red-400 border-red-500/20',
-  down: 'bg-red-500/10 text-red-400 border-red-500/20',
-  empty: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  degraded: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+const styleMap: Record<string, { bg: string; text: string; border: string }> = {
+  ok:       { bg: 'rgb(var(--admin-accent-rgb) / 0.1)',  text: 'var(--admin-accent)', border: 'rgb(var(--admin-accent-rgb) / 0.2)' },
+  healthy:  { bg: 'rgb(var(--admin-accent-rgb) / 0.1)',  text: 'var(--admin-accent)', border: 'rgb(var(--admin-accent-rgb) / 0.2)' },
+  error:    { bg: 'rgba(239, 68, 68, 0.1)',  text: '#f87171', border: 'rgba(239, 68, 68, 0.2)' },
+  down:     { bg: 'rgba(239, 68, 68, 0.1)',  text: '#f87171', border: 'rgba(239, 68, 68, 0.2)' },
+  empty:    { bg: 'rgba(245, 158, 11, 0.1)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.2)' },
+  degraded: { bg: 'rgba(245, 158, 11, 0.1)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.2)' },
 };
 
 export default function StatusBadge({ status, label }: StatusBadgeProps) {
+  const s = styleMap[status] || styleMap.empty;
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wider border ${styles[status] || styles.empty}`}>
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wider"
+      style={{ background: s.bg, color: s.text, border: `1px solid ${s.border}` }}
+    >
       {label || status}
     </span>
   );

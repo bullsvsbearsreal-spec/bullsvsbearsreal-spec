@@ -10,6 +10,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html:
+          `try{var t=localStorage.getItem('infohub-admin-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}`
+        }} />
+      </head>
       <body>{children}</body>
     </html>
   );

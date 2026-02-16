@@ -2,45 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ================================================================
+   THEME: Orange (default) + Green ([data-theme="green"])
+   ================================================================ */
+
+:root {
+  --admin-bg: #000000;
+  --admin-surface-0: #0a0a0a;
+  --admin-surface-1: #111111;
+  --admin-surface-2: #161616;
+  --admin-border: rgba(255, 255, 255, 0.06);
+  --admin-border-hover: rgba(255, 255, 255, 0.12);
+
+  --admin-accent: #FFA500;
+  --admin-accent-rgb: 255 165 0;
+  --admin-accent-light: #FFD700;
+  --admin-accent-dark: #FF8C00;
+  --admin-accent-glow: rgba(255, 165, 0, 0.15);
+
+  --admin-text-primary: #e5e5e5;
+  --admin-text-secondary: #a3a3a3;
+  --admin-text-muted: #525252;
+
+  color-scheme: dark;
 }
 
+[data-theme="green"] {
+  --admin-bg: #030806;
+  --admin-surface-0: #060d08;
+  --admin-surface-1: #0a0f0c;
+  --admin-surface-2: #0f1a12;
+  --admin-border: rgba(0, 220, 130, 0.08);
+  --admin-border-hover: rgba(0, 220, 130, 0.15);
+
+  --admin-accent: #00DC82;
+  --admin-accent-rgb: 0 220 130;
+  --admin-accent-light: #34EDAA;
+  --admin-accent-dark: #00B86B;
+  --admin-accent-glow: rgba(0, 220, 130, 0.15);
+}
+
+/* ================================================================
+   BASE
+   ================================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-  background: #030806;
-  color: #d4d4d4;
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
 
-/* Status colors */
-.status-ok { color: #00DC82; }
-.status-error { color: #ef4444; }
-.status-empty { color: #f59e0b; }
-.status-stale { color: #f59e0b; }
+/* Smooth theme transitions (only when toggling, not on load) */
+html.transitioning,
+html.transitioning * {
+  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s !important;
+}
 
-.status-bg-ok { background: rgba(0, 220, 130, 0.08); }
-.status-bg-error { background: rgba(239, 68, 68, 0.08); }
-.status-bg-empty { background: rgba(245, 158, 11, 0.08); }
+/* ================================================================
+   CARDS
+   ================================================================ */
 
-/* Card style */
 .admin-card {
-  background: #0a0f0c;
-  border: 1px solid rgba(0, 220, 130, 0.08);
-  border-left: 2px solid rgba(0, 220, 130, 0.3);
-  border-radius: 4px;
-  padding: 12px 16px;
+  background: var(--admin-surface-1);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  position: relative;
 }
 
 .admin-card:hover {
-  border-color: rgba(0, 220, 130, 0.15);
-  box-shadow: 0 0 12px rgba(0, 220, 130, 0.06);
+  border-color: var(--admin-border-hover);
 }
 
-/* Table */
+/* Top accent gradient line */
+.admin-card-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(90deg, transparent, rgb(var(--admin-accent-rgb) / 0.4), transparent);
+}
+
+/* ================================================================
+   TABLE
+   ================================================================ */
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -49,9 +102,9 @@ body {
 
 .admin-table th {
   text-align: left;
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(0, 220, 130, 0.12);
-  color: #00DC82;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--admin-border-hover);
+  color: var(--admin-accent);
   font-weight: 500;
   font-size: 11px;
   text-transform: uppercase;
@@ -60,30 +113,97 @@ body {
   user-select: none;
 }
 
-.admin-table th:hover {
-  color: #00ff96;
-}
+.admin-table th:hover { opacity: 0.8; }
 
 .admin-table td {
-  padding: 6px 12px;
-  border-bottom: 1px solid rgba(0, 220, 130, 0.04);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--admin-border);
 }
 
 .admin-table tr:hover td {
-  background: rgba(0, 220, 130, 0.03);
+  background: rgb(var(--admin-accent-rgb) / 0.02);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
+.admin-table tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--admin-accent);
+}
+
+/* ================================================================
+   STATUS COLORS (semantic — not themed)
+   ================================================================ */
+
+.status-ok { color: var(--admin-accent); }
+.status-error { color: #ef4444; }
+.status-empty { color: #f59e0b; }
+
+/* ================================================================
+   PROGRESS + LATENCY BARS
+   ================================================================ */
+
+.admin-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--admin-border);
+  overflow: hidden;
+}
+
+.admin-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.latency-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--admin-border);
+  overflow: hidden;
+}
+
+.latency-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ================================================================
+   LIVE PULSE DOT
+   ================================================================ */
+
+.admin-live-dot {
   width: 6px;
   height: 6px;
+  border-radius: 50%;
+  background: var(--admin-accent);
+  box-shadow: 0 0 6px var(--admin-accent-glow);
+  animation: adminPulse 2s ease-in-out infinite;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+@keyframes adminPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--admin-accent-glow); }
+  50% { opacity: 0.4; box-shadow: 0 0 2px var(--admin-accent-glow); }
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 220, 130, 0.15);
-  border-radius: 3px;
+/* ================================================================
+   ANIMATIONS
+   ================================================================ */
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+
+.animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up,
+  .admin-live-dot { animation: none !important; }
+}
+
+/* ================================================================
+   SCROLLBAR
+   ================================================================ */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--admin-accent-glow); border-radius: 3px; }

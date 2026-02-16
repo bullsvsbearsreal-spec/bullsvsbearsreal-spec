@@ -34,38 +34,95 @@ export default function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-sm">
-      <div className="admin-card">
-        <div className="text-center mb-6">
-          <h1 className="text-terminal-green text-lg font-bold tracking-wider">INFOHUB ADMIN</h1>
-          <p className="text-neutral-600 text-xs mt-1">monitoring dashboard</p>
+    <form onSubmit={handleSubmit} className="w-full max-w-sm animate-slide-up relative z-10">
+      <div
+        className="admin-card admin-card-accent overflow-hidden"
+        style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.4), 0 0 40px var(--admin-accent-glow)' }}
+      >
+        {/* Logo */}
+        <div className="text-center mb-8 pt-2">
+          <div className="flex items-center justify-center gap-0.5 mb-3">
+            <span className="text-white font-black text-xl tracking-tight">Info</span>
+            <span
+              className="font-black text-xl tracking-tight text-black px-1.5 py-0.5 rounded"
+              style={{ background: 'linear-gradient(135deg, var(--admin-accent-light), var(--admin-accent))' }}
+            >
+              Hub
+            </span>
+          </div>
+          <div
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-[0.15em]"
+            style={{
+              color: 'var(--admin-accent)',
+              background: 'rgb(var(--admin-accent-rgb) / 0.08)',
+              border: '1px solid rgb(var(--admin-accent-rgb) / 0.15)',
+            }}
+          >
+            Admin Console
+          </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-neutral-500 uppercase tracking-wider mb-1.5">
+            <label
+              className="block text-[11px] uppercase tracking-wider mb-1.5 font-medium"
+              style={{ color: 'var(--admin-text-muted)' }}
+            >
               Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white outline-none focus:border-terminal-green/40 transition-colors"
+              className="w-full rounded px-3 py-2.5 text-sm text-white outline-none transition-all duration-200"
+              style={{
+                background: 'var(--admin-bg)',
+                border: '1px solid var(--admin-border)',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgb(var(--admin-accent-rgb) / 0.4)';
+                e.target.style.boxShadow = '0 0 0 1px rgb(var(--admin-accent-rgb) / 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--admin-border)';
+                e.target.style.boxShadow = 'none';
+              }}
               placeholder="Enter admin password"
               autoFocus
             />
           </div>
 
           {error && (
-            <p className="text-red-400 text-xs">{error}</p>
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded text-xs"
+              style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}
+            >
+              <span className="text-red-400">✕</span>
+              <span className="text-red-400">{error}</span>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={loading || !password}
-            className="w-full py-2 rounded text-sm font-medium bg-terminal-green/10 text-terminal-green border border-terminal-green/20 hover:bg-terminal-green/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-2.5 rounded text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: 'linear-gradient(135deg, rgb(var(--admin-accent-rgb) / 0.15), rgb(var(--admin-accent-rgb) / 0.08))',
+              color: 'var(--admin-accent)',
+              border: '1px solid rgb(var(--admin-accent-rgb) / 0.2)',
+            }}
           >
-            {loading ? 'Authenticating...' : 'Login'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Authenticating...
+              </span>
+            ) : (
+              'Login'
+            )}
           </button>
         </div>
       </div>

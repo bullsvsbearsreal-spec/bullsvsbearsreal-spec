@@ -11,37 +11,47 @@ interface ExchangeRow {
 }
 
 function StatusCell({ health }: { health: ExchangeHealth | null }) {
-  if (!health) return <td className="text-neutral-700 text-center">—</td>;
+  if (!health) return <td style={{ color: 'var(--admin-text-muted)' }} className="text-center">--</td>;
 
-  const color =
-    health.status === 'ok' ? 'text-emerald-400' :
-    health.status === 'error' ? 'text-red-400' : 'text-amber-400';
+  const dotColor =
+    health.status === 'ok' ? 'var(--admin-accent)' :
+    health.status === 'error' ? '#ef4444' : '#f59e0b';
 
-  const bgColor =
-    health.status === 'ok' ? '' :
-    health.status === 'error' ? 'status-bg-error' : 'status-bg-empty';
+  const textColor =
+    health.status === 'ok' ? 'var(--admin-accent)' :
+    health.status === 'error' ? '#f87171' : '#fbbf24';
 
   return (
-    <td className={`${bgColor}`}>
+    <td>
       <div className="flex items-center gap-2">
-        <span className={`${color} font-medium`}>{health.status.toUpperCase()}</span>
+        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor }} />
+        <span className="font-medium" style={{ color: textColor }}>{health.status.toUpperCase()}</span>
         {health.status === 'ok' && (
-          <span className="text-neutral-600">{health.count}</span>
+          <span style={{ color: 'var(--admin-text-muted)' }} className="text-[11px]">{health.count}</span>
         )}
       </div>
     </td>
   );
 }
 
-function LatencyCell({ health }: { health: ExchangeHealth | null }) {
-  if (!health) return <td className="text-neutral-700 text-center">—</td>;
+function LatencyCell({ latencyMs }: { latencyMs: number }) {
+  if (latencyMs === 0) return <td style={{ color: 'var(--admin-text-muted)' }} className="text-center">--</td>;
 
-  const sec = (health.latencyMs / 1000).toFixed(1);
-  const color =
-    health.latencyMs < 2000 ? 'text-neutral-500' :
-    health.latencyMs < 5000 ? 'text-amber-400' : 'text-red-400';
+  const sec = (latencyMs / 1000).toFixed(1);
+  const percent = Math.min(100, (latencyMs / 10000) * 100);
+  const color = latencyMs < 2000 ? 'var(--admin-accent)' :
+                latencyMs < 5000 ? '#f59e0b' : '#ef4444';
 
-  return <td className={color}>{sec}s</td>;
+  return (
+    <td>
+      <div className="flex items-center gap-2">
+        <div className="latency-bar w-16 flex-shrink-0">
+          <div className="latency-bar-fill" style={{ width: `${percent}%`, background: color }} />
+        </div>
+        <span className="text-[11px] tabular-nums" style={{ color }}>{sec}s</span>
+      </div>
+    </td>
+  );
 }
 
 type SortKey = 'name' | 'funding' | 'oi' | 'tickers' | 'latency';
@@ -52,7 +62,6 @@ export default function ExchangeTable({ data }: { data: HealthResponse }) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
 
-  // Merge health arrays into unified rows
   const exchangeMap = new Map<string, ExchangeRow>();
 
   for (const h of data.routes.funding.health) {
@@ -70,34 +79,19 @@ export default function ExchangeTable({ data }: { data: HealthResponse }) {
 
   let rows = Array.from(exchangeMap.values());
 
-  // Filter
   if (filter) {
     const f = filter.toLowerCase();
     rows = rows.filter(r => r.name.toLowerCase().includes(f));
   }
 
-  // Sort
   rows.sort((a, b) => {
     let cmp = 0;
     switch (sortKey) {
-      case 'name':
-        cmp = a.name.localeCompare(b.name);
-        break;
-      case 'funding':
-        cmp = (a.funding?.status || 'z').localeCompare(b.funding?.status || 'z');
-        break;
-      case 'oi':
-        cmp = (a.oi?.status || 'z').localeCompare(b.oi?.status || 'z');
-        break;
-      case 'tickers':
-        cmp = (a.tickers?.status || 'z').localeCompare(b.tickers?.status || 'z');
-        break;
-      case 'latency': {
-        const avgA = getAvgLatency(a);
-        const avgB = getAvgLatency(b);
-        cmp = avgA - avgB;
-        break;
-      }
+      case 'name': cmp = a.name.localeCompare(b.name); break;
+      case 'funding': cmp = (a.funding?.status || 'z').localeCompare(b.funding?.status || 'z'); break;
+      case 'oi': cmp = (a.oi?.status || 'z').localeCompare(b.oi?.status || 'z'); break;
+      case 'tickers': cmp = (a.tickers?.status || 'z').localeCompare(b.tickers?.status || 'z'); break;
+      case 'latency': cmp = getAvgLatency(a) - getAvgLatency(b); break;
     }
     return sortAsc ? cmp : -cmp;
   });
@@ -120,22 +114,22 @@ export default function ExchangeTable({ data }: { data: HealthResponse }) {
     return errs;
   }
 
-  const sortArrow = (key: SortKey) =>
-    sortKey === key ? (sortAsc ? ' ↑' : ' ↓') : '';
+  const sortArrow = (key: SortKey) => sortKey === key ? (sortAsc ? ' ↑' : ' ↓') : '';
 
   return (
-    <div className="admin-card !p-0 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-        <span className="text-[11px] text-neutral-500 uppercase tracking-wider">
+    <div className="admin-card admin-card-accent !p-0 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--admin-border)' }}>
+        <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--admin-text-muted)' }}>
           Exchange Health
-          <span className="text-neutral-700 ml-2">{rows.length} exchanges</span>
+          <span className="ml-2" style={{ color: 'var(--admin-text-muted)', opacity: 0.5 }}>{rows.length} exchanges</span>
         </span>
         <input
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter..."
-          className="bg-transparent border border-terminal-border rounded px-2 py-1 text-xs text-white outline-none focus:border-terminal-green/30 w-32"
+          className="rounded px-2 py-1 text-xs text-white outline-none transition-colors w-32"
+          style={{ background: 'transparent', border: '1px solid var(--admin-border)' }}
         />
       </div>
 
@@ -155,9 +149,10 @@ export default function ExchangeTable({ data }: { data: HealthResponse }) {
               const errors = getErrorText(row);
               const hasError = errors.length > 0;
               const isExpanded = expandedRow === row.name;
+              const avgLatency = getAvgLatency(row);
 
               return (
-                <tr key={row.name} className="group">
+                <tr key={row.name}>
                   <td>
                     <button
                       onClick={() => hasError && setExpandedRow(isExpanded ? null : row.name)}
@@ -169,9 +164,17 @@ export default function ExchangeTable({ data }: { data: HealthResponse }) {
                       )}
                     </button>
                     {isExpanded && errors.length > 0 && (
-                      <div className="mt-1 space-y-0.5">
+                      <div className="mt-1.5 space-y-1">
                         {errors.map((err, i) => (
-                          <div key={i} className="text-[11px] text-red-400/80 pl-3 border-l border-red-500/20">
+                          <div
+                            key={i}
+                            className="text-[11px] pl-3 py-0.5 rounded-r"
+                            style={{
+                              color: 'rgba(248, 113, 113, 0.8)',
+                              borderLeft: '2px solid rgba(239, 68, 68, 0.3)',
+                              background: 'rgba(239, 68, 68, 0.03)',
+                            }}
+                          >
                             {err}
                           </div>
                         ))}
@@ -181,12 +184,7 @@ export default function ExchangeTable({ data }: { data: HealthResponse }) {
                   <StatusCell health={row.funding} />
                   <StatusCell health={row.oi} />
                   <StatusCell health={row.tickers} />
-                  <LatencyCell health={{
-                    name: row.name,
-                    status: 'ok',
-                    count: 0,
-                    latencyMs: getAvgLatency(row) === 99999 ? 0 : getAvgLatency(row),
-                  }} />
+                  <LatencyCell latencyMs={avgLatency === 99999 ? 0 : avgLatency} />
                 </tr>
               );
             })}
