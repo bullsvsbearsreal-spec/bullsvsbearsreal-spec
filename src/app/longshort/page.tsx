@@ -297,11 +297,11 @@ export default function LongShortPage() {
                   tickLine={false}
                 />
                 <YAxis
-                  domain={[40, 60]}
+                  domain={['dataMin - 2', 'dataMax + 2']}
                   tick={{ fill: '#525252', fontSize: 10 }}
                   axisLine={{ stroke: '#262626' }}
                   tickLine={false}
-                  tickFormatter={(v) => `${v}%`}
+                  tickFormatter={(v: number) => `${v.toFixed(0)}%`}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={50} stroke="#525252" strokeDasharray="3 3" />

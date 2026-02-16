@@ -34,10 +34,27 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const [{ data, health }, top500] = await Promise.all([
-    fetchAllExchangesWithHealth(fundingFetchers, fetchWithTimeout),
-    getTop500Symbols(),
-  ]);
+  let data: any[], health: any[], top500: Set<string>;
+  try {
+    const [exchangeResult, top500Result] = await Promise.all([
+      fetchAllExchangesWithHealth(fundingFetchers, fetchWithTimeout),
+      getTop500Symbols(),
+    ]);
+    data = exchangeResult.data;
+    health = exchangeResult.health;
+    top500 = top500Result;
+  } catch (err) {
+    // If fetch fails, return stale cache if available
+    if (cached) {
+      return NextResponse.json(cached.body, {
+        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+      });
+    }
+    return NextResponse.json(
+      { error: 'Failed to fetch funding data', data: [], health: [], meta: { timestamp: Date.now() } },
+      { status: 502, headers: { 'Cache-Control': 'no-cache' } },
+    );
+  }
 
   // Fix mark prices: some exchanges return inaccurate or missing mark prices.
   // gTrade derives a synthetic "tokenPrice" from OI ratios (wrong).

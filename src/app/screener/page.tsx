@@ -97,11 +97,13 @@ export default function ScreenerPage() {
         fundingMap.set(f.symbol, cur);
       });
 
-      // Build OI map (sum by symbol)
+      // Build OI map (sum USD values by symbol)
       const oiMap = new Map<string, { total: number; count: number }>();
       oi.forEach((o: any) => {
         const cur = oiMap.get(o.symbol) || { total: 0, count: 0 };
-        cur.total += o.openInterest || o.openInterestValue || 0;
+        // Always prefer openInterestValue (USD) over openInterest (raw contracts)
+        const oiVal = o.openInterestValue || 0;
+        cur.total += oiVal;
         cur.count++;
         oiMap.set(o.symbol, cur);
       });

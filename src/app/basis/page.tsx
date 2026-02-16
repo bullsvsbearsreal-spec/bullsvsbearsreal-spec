@@ -58,7 +58,9 @@ export default function BasisPage() {
 
   const rawData = fundingRates ?? [];
 
-  // Calculate basis for each entry, filtering out invalid prices safely
+  // Calculate basis for each entry, filtering out invalid prices and extreme outliers
+  const MAX_BASIS_PCT = 50; // Filter entries with >50% basis (stale/incorrect index prices)
+
   const basisData: BasisEntry[] = useMemo(() => {
     return rawData
       .filter(fr => {
@@ -80,7 +82,8 @@ export default function BasisPage() {
           fundingRate: fr.fundingRate,
           fundingInterval: fr.fundingInterval,
         };
-      });
+      })
+      .filter(entry => Math.abs(entry.basis) <= MAX_BASIS_PCT); // Remove extreme outliers
   }, [rawData]);
 
   // Get unique exchanges
