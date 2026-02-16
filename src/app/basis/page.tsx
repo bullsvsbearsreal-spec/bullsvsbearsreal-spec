@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Search } from 'lucide-react';
-import { FundingRateData } from '@/lib/api/types';
+import { RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Search, Info } from 'lucide-react';
 import { formatPrice } from '@/lib/utils/format';
 import { useApiData } from '@/hooks/useApiData';
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
@@ -14,6 +14,8 @@ import { fetchAllFundingRates } from '@/lib/api/aggregator';
 type SortField = 'symbol' | 'exchange' | 'markPrice' | 'indexPrice' | 'basis' | 'fundingRate';
 type SortOrder = 'asc' | 'desc';
 type BasisTab = 'all' | 'premium' | 'discount';
+
+const ROWS_PER_PAGE = 50;
 
 interface BasisEntry {
   symbol: string;
@@ -26,10 +28,12 @@ interface BasisEntry {
 }
 
 function formatBasis(basis: number): string {
+  if (!isFinite(basis)) return '—';
   return basis > 0 ? '+' + basis.toFixed(4) + '%' : basis.toFixed(4) + '%';
 }
 
 function formatFundingRate(rate: number): string {
+  if (!isFinite(rate)) return '—';
   const pct = rate * 100;
   return pct > 0 ? '+' + pct.toFixed(4) + '%' : pct.toFixed(4) + '%';
 }
@@ -40,6 +44,7 @@ export default function BasisPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [basisTab, setBasisTab] = useState<BasisTab>('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetcher = useCallback(async () => {
     const data = await fetchAllFundingRates();
@@ -53,19 +58,29 @@ export default function BasisPage() {
 
   const rawData = fundingRates ?? [];
 
-  // Calculate basis for each entry, filtering out invalid prices
+  // Calculate basis for each entry, filtering out invalid prices safely
   const basisData: BasisEntry[] = useMemo(() => {
     return rawData
-      .filter(fr => fr.markPrice && fr.markPrice > 0 && fr.indexPrice && fr.indexPrice > 0)
-      .map(fr => ({
-        symbol: fr.symbol,
-        exchange: fr.exchange,
-        markPrice: fr.markPrice!,
-        indexPrice: fr.indexPrice!,
-        basis: ((fr.markPrice! - fr.indexPrice!) / fr.indexPrice!) * 100,
-        fundingRate: fr.fundingRate,
-        fundingInterval: fr.fundingInterval,
-      }));
+      .filter(fr => {
+        const mp = fr.markPrice;
+        const ip = fr.indexPrice;
+        return typeof mp === 'number' && isFinite(mp) && mp > 0 &&
+               typeof ip === 'number' && isFinite(ip) && ip > 0;
+      })
+      .map(fr => {
+        const markPrice = fr.markPrice as number;
+        const indexPrice = fr.indexPrice as number;
+        const basis = ((markPrice - indexPrice) / indexPrice) * 100;
+        return {
+          symbol: fr.symbol,
+          exchange: fr.exchange,
+          markPrice,
+          indexPrice,
+          basis: isFinite(basis) ? basis : 0,
+          fundingRate: fr.fundingRate,
+          fundingInterval: fr.fundingInterval,
+        };
+      });
   }, [rawData]);
 
   // Get unique exchanges
@@ -109,6 +124,16 @@ export default function BasisPage() {
       });
   }, [basisData, exchangeFilter, searchTerm, basisTab, sortField, sortOrder]);
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / ROWS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIdx = (safeCurrentPage - 1) * ROWS_PER_PAGE;
+  const pageItems = filteredAndSorted.slice(startIdx, startIdx + ROWS_PER_PAGE);
+
+  // Tab counts
+  const premiumCount = useMemo(() => basisData.filter(b => b.basis > 0).length, [basisData]);
+  const discountCount = useMemo(() => basisData.filter(b => b.basis < 0).length, [basisData]);
+
   // Summary stats
   const stats = useMemo(() => {
     if (basisData.length === 0) return { avg: 0, highest: null as BasisEntry | null, deepest: null as BasisEntry | null, count: 0 };
@@ -126,6 +151,7 @@ export default function BasisPage() {
       setSortField(field);
       setSortOrder('desc');
     }
+    setCurrentPage(1);
   };
 
   const SortIcon = ({ field }: { field: SortField }) => (
@@ -136,9 +162,9 @@ export default function BasisPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
             <h1 className="text-xl font-bold text-white">Basis / Premium</h1>
             <p className="text-neutral-500 text-sm">
@@ -147,17 +173,17 @@ export default function BasisPage() {
           </div>
           <div className="flex items-center gap-3">
             {lastUpdate && (
-              <span className="text-xs text-neutral-600 font-mono">
+              <span className="text-[10px] text-neutral-600 font-mono">
                 {lastUpdate.toLocaleTimeString()}
               </span>
             )}
             <button
               onClick={fetchData}
               disabled={loading}
-              aria-label="Refresh"
-              className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
           </div>
         </div>
@@ -165,79 +191,77 @@ export default function BasisPage() {
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Avg Basis</span>
+            <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Avg Basis</span>
             <div className={`text-lg font-bold font-mono tabular-nums mt-0.5 ${stats.avg > 0 ? 'text-success' : stats.avg < 0 ? 'text-danger' : 'text-white'}`}>
               {formatBasis(stats.avg)}
             </div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider flex items-center gap-1">
+            <span className="text-neutral-500 text-[10px] uppercase tracking-wider flex items-center gap-1">
               <TrendingUp className="w-3 h-3 text-success" />
               Highest Premium
             </span>
             {stats.highest ? (
               <div className="mt-0.5">
                 <span className="text-lg font-bold font-mono tabular-nums text-success">{formatBasis(stats.highest.basis)}</span>
-                <span className="text-neutral-500 text-xs ml-1.5">{stats.highest.symbol}</span>
+                <span className="text-neutral-400 text-xs ml-1.5">{stats.highest.symbol}</span>
                 <span className="text-neutral-600 text-[10px] ml-1">{stats.highest.exchange}</span>
               </div>
             ) : (
-              <div className="text-lg font-bold font-mono tabular-nums text-neutral-600 mt-0.5">--</div>
+              <div className="text-lg font-bold font-mono tabular-nums text-neutral-600 mt-0.5">—</div>
             )}
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider flex items-center gap-1">
+            <span className="text-neutral-500 text-[10px] uppercase tracking-wider flex items-center gap-1">
               <TrendingDown className="w-3 h-3 text-danger" />
               Deepest Discount
             </span>
             {stats.deepest ? (
               <div className="mt-0.5">
                 <span className="text-lg font-bold font-mono tabular-nums text-danger">{formatBasis(stats.deepest.basis)}</span>
-                <span className="text-neutral-500 text-xs ml-1.5">{stats.deepest.symbol}</span>
+                <span className="text-neutral-400 text-xs ml-1.5">{stats.deepest.symbol}</span>
                 <span className="text-neutral-600 text-[10px] ml-1">{stats.deepest.exchange}</span>
               </div>
             ) : (
-              <div className="text-lg font-bold font-mono tabular-nums text-neutral-600 mt-0.5">--</div>
+              <div className="text-lg font-bold font-mono tabular-nums text-neutral-600 mt-0.5">—</div>
             )}
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider"># Symbols</span>
+            <span className="text-neutral-500 text-[10px] uppercase tracking-wider"># Symbols</span>
             <div className="text-lg font-bold text-white font-mono tabular-nums mt-0.5">{stats.count}</div>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           {/* Basis tabs */}
-          <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+          <div className="flex rounded-lg overflow-hidden border border-white/[0.06]">
             {([
-              { key: 'all' as BasisTab, label: 'All' },
-              { key: 'premium' as BasisTab, label: 'Premium' },
-              { key: 'discount' as BasisTab, label: 'Discount' },
-            ]).map(({ key, label }) => (
+              { key: 'all' as BasisTab, label: 'All', count: basisData.length },
+              { key: 'premium' as BasisTab, label: 'Premium', count: premiumCount },
+              { key: 'discount' as BasisTab, label: 'Discount', count: discountCount },
+            ]).map(({ key, label, count }) => (
               <button
                 key={key}
-                onClick={() => setBasisTab(key)}
+                onClick={() => { setBasisTab(key); setCurrentPage(1); }}
                 className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                  basisTab === key ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+                  basisTab === key ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white bg-white/[0.04]'
                 }`}
               >
                 {label}
                 {basisTab === key && (
                   <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/20">
-                    {filteredAndSorted.length}
+                    {count}
                   </span>
                 )}
               </button>
             ))}
           </div>
 
-          <div className="flex-1" />
-
           {/* Exchange filter */}
           <select
             value={exchangeFilter}
-            onChange={(e) => setExchangeFilter(e.target.value)}
+            onChange={(e) => { setExchangeFilter(e.target.value); setCurrentPage(1); }}
             className="px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs focus:outline-none focus:border-hub-yellow/40 appearance-none cursor-pointer"
           >
             <option value="all" className="bg-hub-darker">All Exchanges</option>
@@ -247,23 +271,26 @@ export default function BasisPage() {
           </select>
 
           {/* Search */}
-          <div className="relative">
-            <Search className="w-3 h-3 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <div className="relative flex-1 min-w-[150px] max-w-[220px]">
+            <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search symbol..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Search symbols"
-              className="w-full sm:w-40 pl-7 pr-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
             />
           </div>
+
+          <span className="text-[11px] text-neutral-600 ml-auto">
+            {filteredAndSorted.length} entr{filteredAndSorted.length !== 1 ? 'ies' : 'y'}
+          </span>
         </div>
 
         {/* Error */}
         {error && (
           <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
-            <AlertTriangle className="w-4 h-4" />
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
             <button
               onClick={fetchData}
@@ -299,42 +326,42 @@ export default function BasisPage() {
                   <tr className="border-b border-white/[0.06]">
                     <th
                       onClick={() => handleSort('symbol')}
-                      className="text-left px-4 py-3 text-neutral-500 text-xs font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      className={`text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors ${sortField === 'symbol' ? 'text-hub-yellow' : 'text-neutral-500'}`}
                     >
                       Symbol
                       <SortIcon field="symbol" />
                     </th>
                     <th
                       onClick={() => handleSort('exchange')}
-                      className="text-left px-4 py-3 text-neutral-500 text-xs font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      className={`text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors ${sortField === 'exchange' ? 'text-hub-yellow' : 'text-neutral-500'}`}
                     >
                       Exchange
                       <SortIcon field="exchange" />
                     </th>
                     <th
                       onClick={() => handleSort('markPrice')}
-                      className="text-right px-4 py-3 text-neutral-500 text-xs font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      className={`text-right px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors ${sortField === 'markPrice' ? 'text-hub-yellow' : 'text-neutral-500'}`}
                     >
                       Mark Price
                       <SortIcon field="markPrice" />
                     </th>
                     <th
                       onClick={() => handleSort('indexPrice')}
-                      className="text-right px-4 py-3 text-neutral-500 text-xs font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      className={`text-right px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors ${sortField === 'indexPrice' ? 'text-hub-yellow' : 'text-neutral-500'}`}
                     >
                       Index Price
                       <SortIcon field="indexPrice" />
                     </th>
                     <th
                       onClick={() => handleSort('basis')}
-                      className="text-right px-4 py-3 text-neutral-500 text-xs font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      className={`text-right px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors ${sortField === 'basis' ? 'text-hub-yellow' : 'text-neutral-500'}`}
                     >
                       Basis %
                       <SortIcon field="basis" />
                     </th>
                     <th
                       onClick={() => handleSort('fundingRate')}
-                      className="text-right px-4 py-3 text-neutral-500 text-xs font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      className={`text-right px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors ${sortField === 'fundingRate' ? 'text-hub-yellow' : 'text-neutral-500'}`}
                     >
                       Funding Rate
                       <SortIcon field="fundingRate" />
@@ -342,42 +369,42 @@ export default function BasisPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAndSorted.length === 0 ? (
+                  {pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-neutral-600 text-sm">
-                        No matching entries
+                      <td colSpan={6} className="text-center py-12 text-neutral-500 text-sm">
+                        {searchTerm ? 'No matching entries.' : 'No entries for selected filters.'}
                       </td>
                     </tr>
                   ) : (
-                    filteredAndSorted.map((entry, idx) => (
+                    pageItems.map((entry, idx) => (
                       <tr
-                        key={`${entry.symbol}-${entry.exchange}-${idx}`}
-                        className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
+                        key={`${entry.symbol}-${entry.exchange}-${startIdx + idx}`}
+                        className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors"
                       >
                         {/* Symbol */}
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             <TokenIconSimple symbol={entry.symbol} size={20} />
-                            <span className="text-white font-medium text-sm">{entry.symbol}</span>
+                            <span className="text-white font-medium text-xs">{entry.symbol}</span>
                           </div>
                         </td>
                         {/* Exchange */}
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-2">
                           <div className="flex items-center gap-1.5">
                             <ExchangeLogo exchange={entry.exchange.toLowerCase()} size={16} />
                             <span className="text-neutral-400 text-xs">{entry.exchange}</span>
                           </div>
                         </td>
                         {/* Mark Price */}
-                        <td className="px-4 py-2.5 text-right">
+                        <td className="px-3 py-2 text-right">
                           <span className="text-white font-mono tabular-nums text-xs">{formatPrice(entry.markPrice)}</span>
                         </td>
                         {/* Index Price */}
-                        <td className="px-4 py-2.5 text-right">
+                        <td className="px-3 py-2 text-right">
                           <span className="text-neutral-400 font-mono tabular-nums text-xs">{formatPrice(entry.indexPrice)}</span>
                         </td>
                         {/* Basis % */}
-                        <td className="px-4 py-2.5 text-right">
+                        <td className="px-3 py-2 text-right">
                           <span className={`font-mono tabular-nums text-xs font-semibold ${
                             entry.basis > 0 ? 'text-success' : entry.basis < 0 ? 'text-danger' : 'text-neutral-500'
                           }`}>
@@ -385,7 +412,7 @@ export default function BasisPage() {
                           </span>
                         </td>
                         {/* Funding Rate */}
-                        <td className="px-4 py-2.5 text-right">
+                        <td className="px-3 py-2 text-right">
                           <span className={`font-mono tabular-nums text-xs ${
                             entry.fundingRate > 0 ? 'text-success' : entry.fundingRate < 0 ? 'text-danger' : 'text-neutral-500'
                           }`}>
@@ -402,25 +429,27 @@ export default function BasisPage() {
               </table>
             </div>
 
-            {/* Table footer */}
-            <div className="px-4 py-2.5 border-t border-white/[0.06] flex items-center justify-between">
-              <span className="text-neutral-600 text-xs">
-                {filteredAndSorted.length} entries
-              </span>
-              <span className="text-neutral-700 text-[10px]">
-                Auto-refreshes every 30s
-              </span>
-            </div>
+            <Pagination
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              totalItems={filteredAndSorted.length}
+              rowsPerPage={ROWS_PER_PAGE}
+              onPageChange={setCurrentPage}
+              label="entries"
+            />
           </div>
         )}
 
         {/* Info box */}
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
-          <p className="text-neutral-500 text-xs leading-relaxed">
-            <span className="text-success font-medium">Positive basis (premium)</span> = futures trading above spot; traders are bullish.{' '}
-            <span className="text-danger font-medium">Negative basis (discount)</span> = futures trading below spot; traders are bearish.{' '}
-            Basis is calculated as <span className="text-neutral-400 font-mono">(markPrice - indexPrice) / indexPrice x 100</span>.
-            Large premiums often precede funding rate increases.
+          <p className="text-neutral-500 text-xs leading-relaxed flex items-start gap-2">
+            <Info className="w-3.5 h-3.5 text-hub-yellow mt-0.5 flex-shrink-0" />
+            <span>
+              <span className="text-success font-medium">Positive basis (premium)</span> = futures trading above spot; traders are bullish.{' '}
+              <span className="text-danger font-medium">Negative basis (discount)</span> = futures trading below spot; traders are bearish.{' '}
+              Basis is calculated as <span className="text-neutral-400 font-mono">(markPrice - indexPrice) / indexPrice x 100</span>.
+              Large premiums often precede funding rate increases.
+            </span>
           </p>
         </div>
       </main>

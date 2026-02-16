@@ -143,9 +143,9 @@ async function fetchSymbolRSI(symbol: string): Promise<{
   rsi1d: number | null;
 }> {
   const [closes1h, closes4h, closes1d] = await Promise.all([
-    fetchKlines(symbol, '1h', 15),
-    fetchKlines(symbol, '4h', 15),
-    fetchKlines(symbol, '1d', 15),
+    fetchKlines(symbol, '1h', 30),
+    fetchKlines(symbol, '4h', 30),
+    fetchKlines(symbol, '1d', 30),
   ]);
 
   return {
