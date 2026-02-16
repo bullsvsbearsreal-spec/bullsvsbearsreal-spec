@@ -35,12 +35,15 @@ const navCategories: NavCategory[] = [
       { name: 'Long/Short', href: '/longshort' },
       { name: 'CVD', href: '/cvd' },
       { name: 'Options', href: '/options' },
+      { name: 'RSI Heatmap', href: '/rsi-heatmap' },
+      { name: 'Basis', href: '/basis' },
       { name: 'Predictions', href: '/prediction-markets' },
     ],
   },
   {
     label: 'Markets',
     items: [
+      { name: 'Top Movers', href: '/top-movers' },
       { name: 'Heatmap', href: '/market-heatmap' },
       { name: 'Dominance', href: '/dominance' },
       { name: 'Exchanges', href: '/exchange-comparison' },
