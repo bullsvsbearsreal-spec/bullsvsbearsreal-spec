@@ -29,14 +29,14 @@ const brandColors = {
 };
 
 const assets = [
-  { name: 'Logo Icon', file: '/logo-icon.svg', desc: 'Primary gradient logo', size: '512x512' },
-  { name: 'Logo Full', file: '/logo-full.svg', desc: 'Logo with wordmark', size: '400x100' },
-  { name: 'Logo Dark', file: '/logo-icon-dark.svg', desc: 'Dark background version', size: '512x512' },
-  { name: 'Logo White', file: '/logo-icon-white.svg', desc: 'White/light version', size: '512x512' },
-  { name: 'Favicon', file: '/favicon.svg', desc: 'Browser tab icon', size: '32x32' },
-  { name: 'OG Image', file: '/og-image.svg', desc: 'Social media preview', size: '1200x630' },
-  { name: 'Twitter Banner', file: '/twitter-header.svg', desc: 'Twitter/X header', size: '1500x500' },
-  { name: 'Discord Banner', file: '/discord-banner.svg', desc: 'Discord server', size: '960x540' },
+  { name: 'Logo Icon', file: '/api/logo-png?variant=icon&size=512', preview: '/logo-icon.svg', desc: 'Primary gradient logo', size: '512x512', format: 'PNG' },
+  { name: 'Logo Icon HD', file: '/api/logo-png?variant=icon&size=1024', preview: '/logo-icon.svg', desc: 'High-res gradient logo', size: '1024x1024', format: 'PNG' },
+  { name: 'Logo White', file: '/api/logo-png?variant=white&size=512', preview: '/logo-icon.svg', desc: 'White/light version', size: '512x512', format: 'PNG' },
+  { name: 'Logo SVG', file: '/logo-icon.svg', preview: '/logo-icon.svg', desc: 'Vector source file', size: 'Vector', format: 'SVG' },
+  { name: 'Favicon', file: '/favicon.svg', preview: '/favicon.svg', desc: 'Browser tab icon', size: '32x32', format: 'SVG' },
+  { name: 'OG Image', file: '/og-image.svg', preview: '/og-image.svg', desc: 'Social media preview', size: '1200x630', format: 'SVG' },
+  { name: 'Twitter Banner', file: '/twitter-header.svg', preview: '/twitter-header.svg', desc: 'Twitter/X header', size: '1500x500', format: 'SVG' },
+  { name: 'Discord Banner', file: '/discord-banner.svg', preview: '/discord-banner.svg', desc: 'Discord server', size: '960x540', format: 'SVG' },
 ];
 
 function CopyButton({ text }: { text: string }) {
@@ -71,12 +71,12 @@ function ColorSwatch({ name, hex, rgb }: { name: string; hex: string; rgb: strin
   );
 }
 
-function AssetCard({ name, file, desc, size }: { name: string; file: string; desc: string; size: string }) {
+function AssetCard({ name, file, preview, desc, size, format }: { name: string; file: string; preview: string; desc: string; size: string; format: string }) {
   return (
     <div className="group bg-white/[0.04] hover:bg-white/[0.04] border border-white/[0.06] hover:border-hub-yellow/30 rounded-xl p-5 transition-all">
       <div className="flex items-center justify-between mb-4">
         <div className="w-12 h-12 rounded-xl bg-white/[0.06] flex items-center justify-center group-hover:bg-hub-yellow/10 transition-colors">
-          <img src={file} alt={name} className="w-8 h-8 object-contain" />
+          <img src={preview} alt={name} className="w-8 h-8 object-contain" />
         </div>
         <span className="text-xs font-mono text-neutral-600 bg-white/[0.06] px-2 py-1 rounded-lg">{size}</span>
       </div>
@@ -88,7 +88,7 @@ function AssetCard({ name, file, desc, size }: { name: string; file: string; des
         className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-hub-yellow/10 hover:bg-hub-yellow/20 text-hub-yellow text-sm font-medium transition-colors"
       >
         <Download className="w-4 h-4" />
-        Download SVG
+        Download {format}
       </a>
     </div>
   );
@@ -117,14 +117,14 @@ export default function BrandPage() {
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h2 className="text-sm font-bold text-white mb-1">Download Logo Pack</h2>
-                <p className="text-neutral-600 text-xs mb-3">All logo variants in SVG format.</p>
+                <p className="text-neutral-600 text-xs mb-3">Download logo in PNG or SVG format.</p>
                 <a
-                  href="/logo-icon.svg"
-                  download="infohub-logo.svg"
+                  href="/api/logo-png?variant=icon&size=512"
+                  download
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-hub-yellow text-black font-semibold text-xs hover:bg-hub-yellow/90 transition-colors"
                 >
                   <FileDown className="w-3.5 h-3.5" />
-                  Download Logo
+                  Download PNG
                 </a>
               </div>
             </div>
@@ -146,9 +146,9 @@ export default function BrandPage() {
                   <h3 className="text-white font-semibold">Full Logo</h3>
                   <p className="text-neutral-600 text-sm">Icon + wordmark</p>
                 </div>
-                <a href="/logo-full.svg" download className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-yellow/10 text-hub-yellow text-sm font-medium hover:bg-hub-yellow/20 transition-colors">
+                <a href="/api/logo-png?variant=icon&size=1024" download className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-yellow/10 text-hub-yellow text-sm font-medium hover:bg-hub-yellow/20 transition-colors">
                   <Download className="w-4 h-4" />
-                  SVG
+                  PNG
                 </a>
               </div>
             </div>
@@ -163,9 +163,9 @@ export default function BrandPage() {
                   <h3 className="text-white font-semibold">Icon Mark</h3>
                   <p className="text-neutral-600 text-sm">App icons, favicons</p>
                 </div>
-                <a href="/logo-icon.svg" download className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-yellow/10 text-hub-yellow text-sm font-medium hover:bg-hub-yellow/20 transition-colors">
+                <a href="/api/logo-png?variant=icon&size=512" download className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-yellow/10 text-hub-yellow text-sm font-medium hover:bg-hub-yellow/20 transition-colors">
                   <Download className="w-4 h-4" />
-                  SVG
+                  PNG
                 </a>
               </div>
             </div>
@@ -185,7 +185,7 @@ export default function BrandPage() {
                 <img src="/logo-icon-dark.svg" alt="Dark" className="w-16 h-16 group-hover:scale-110 transition-transform" />
               </div>
               <p className="text-white text-sm font-medium">Dark</p>
-              <p className="text-neutral-600 text-xs">Neon style</p>
+              <p className="text-neutral-600 text-xs">Glow variant</p>
             </div>
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-6 text-center group hover:border-hub-yellow/30 transition-colors">
               <div className="bg-white rounded-xl p-6 mb-4 flex items-center justify-center">

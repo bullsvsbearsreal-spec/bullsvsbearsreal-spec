@@ -1,12 +1,10 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- White background -->
-  <rect x="32" y="32" width="448" height="448" rx="96" fill="#FFFFFF"/>
-
-  <!-- I letter - black -->
-  <rect x="132" y="148" width="52" height="216" rx="6" fill="#0D0D0D"/>
-
-  <!-- H letter - black -->
-  <rect x="224" y="148" width="52" height="216" rx="6" fill="#0D0D0D"/>
-  <rect x="328" y="148" width="52" height="216" rx="6" fill="#0D0D0D"/>
-  <rect x="224" y="230" width="156" height="52" rx="6" fill="#0D0D0D"/>
+<svg width="512" height="512" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="1" width="38" height="38" rx="4" fill="white"/>
+  <rect x="1.5" y="1.5" width="37" height="37" rx="3.5" stroke="#E0E0E0" stroke-width="0.3" fill="none"/>
+  <!-- Serif I -->
+  <path d="M6 9.5 L13 9.5 L13 10.2 L11.2 10.8 L11.2 28.2 L13 28.8 L13 29.5 L6 29.5 L6 28.8 L7.8 28.2 L7.8 10.8 L6 10.2 Z" fill="#0A0A0A"/>
+  <!-- Serif H -->
+  <path d="M15.5 9.5 L21.5 9.5 L21.5 10.2 L20 10.8 L20 18.8 L29.5 18.8 L29.5 10.8 L28 10.2 L28 9.5 L34 9.5 L34 10.2 L32.5 10.8 L32.5 28.2 L34 28.8 L34 29.5 L28 29.5 L28 28.8 L29.5 28.2 L29.5 20.5 L20 20.5 L20 28.2 L21.5 28.8 L21.5 29.5 L15.5 29.5 L15.5 28.8 L17 28.2 L17 10.8 L15.5 10.2 Z" fill="#0A0A0A"/>
+  <!-- Underline -->
+  <rect x="5" y="32" width="30" height="0.7" rx="0.35" fill="#0A0A0A" opacity="0.6"/>
 </svg>
