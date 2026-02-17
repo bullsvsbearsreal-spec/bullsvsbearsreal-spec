@@ -560,4 +560,46 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // Drift Protocol (Solana DEX) — uses Data API with pre-parsed values
+  {
+    name: 'Drift',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://data.api.drift.trade/stats/markets', {}, 12000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const markets: any[] = json?.markets || [];
+
+      const results: OIData[] = [];
+      for (const m of markets) {
+        try {
+          if (m.marketType !== 'perp') continue;
+
+          let symbol = (m.symbol || '').replace('-PERP', '');
+          if (!symbol) continue;
+          if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+
+          const price = parseFloat(m.oraclePrice) || 0;
+          if (price <= 0) continue;
+
+          // OI values are in base asset units (e.g., SOL count)
+          const oiLong = Math.abs(parseFloat(m.openInterest?.long) || 0);
+          const oiShort = Math.abs(parseFloat(m.openInterest?.short) || 0);
+          const totalOI = oiLong + oiShort;
+          const oiValue = totalOI * price;
+          if (oiValue < 1000) continue;
+
+          results.push({
+            symbol,
+            exchange: 'Drift',
+            openInterest: totalOI,
+            openInterestValue: oiValue,
+          });
+        } catch {
+          continue;
+        }
+      }
+      return results;
+    },
+  },
+
 ];

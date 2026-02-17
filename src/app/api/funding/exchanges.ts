@@ -823,9 +823,60 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return results;
     },
   },
+
+  // Drift Protocol (Solana DEX) — funding settles HOURLY
+  // Uses the Data API which returns pre-parsed human-readable values
+  {
+    name: 'Drift',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://data.api.drift.trade/stats/markets', {}, 12000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const markets: any[] = json?.markets || [];
+
+      const results: FundingData[] = [];
+      for (const m of markets) {
+        try {
+          if (m.marketType !== 'perp') continue;
+
+          let symbol = (m.symbol || '').replace('-PERP', '');
+          if (!symbol) continue;
+          if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+
+          const price = parseFloat(m.oraclePrice) || 0;
+          if (price <= 0) continue;
+
+          // OI filter — skip tiny markets
+          const oiL = Math.abs(parseFloat(m.openInterest?.long) || 0);
+          const oiS = Math.abs(parseFloat(m.openInterest?.short) || 0);
+          if ((oiL + oiS) * price < 1000) continue;
+
+          // fundingRate values are already hourly percentages
+          // frLong positive = longs receive; our convention: positive = longs pay
+          // So negate frLong for standard convention
+          const frLong = parseFloat(m.fundingRate?.long) || 0;
+          if (isNaN(frLong)) continue;
+
+          results.push({
+            symbol,
+            exchange: 'Drift',
+            fundingRate: -frLong, // negate: Data API positive = longs receive → our positive = longs pay
+            fundingInterval: '1h' as const,
+            markPrice: price,
+            indexPrice: price,
+            nextFundingTime: Date.now() + 3600000,
+            type: 'dex' as const,
+          });
+        } catch {
+          continue;
+        }
+      }
+      return results;
+    },
+  },
 ];
 
 // Paused exchanges (kept for reference):
-// GMX v2 (Arbitrum) - No REST funding rate endpoint; requires on-chain contract queries
+// GMX v2 (Arbitrum) - No REST funding rate endpoint; requires on-chain contract queries (BigInt precision issues)
 // Bitunix - No public funding rate endpoint found
 // LBank - Futures domain (fapi.lbank.com) unreachable

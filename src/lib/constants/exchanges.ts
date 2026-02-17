@@ -2,7 +2,7 @@
 export const ALL_EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC',
   'Kraken', 'BingX', 'Phemex', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
-  'Aevo', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
+  'Aevo', 'Drift', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
   'Coinbase', 'CoinEx', 'gTrade',
 ] as const;
 
@@ -23,6 +23,7 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'Aster': 'bg-pink-500',
   'Lighter': 'bg-emerald-400',
   'Aevo': 'bg-rose-400',
+  'Drift': 'bg-indigo-400',
   'KuCoin': 'bg-green-500',
   'Deribit': 'bg-blue-400',
   'HTX': 'bg-blue-500',
@@ -48,6 +49,7 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'Aster': 'bg-pink-500/20 text-pink-400',
   'Lighter': 'bg-emerald-400/20 text-emerald-300',
   'Aevo': 'bg-rose-400/20 text-rose-300',
+  'Drift': 'bg-indigo-400/20 text-indigo-300',
   'KuCoin': 'bg-green-500/20 text-green-400',
   'Deribit': 'bg-blue-400/20 text-blue-300',
   'HTX': 'bg-blue-500/20 text-blue-400',
@@ -60,7 +62,7 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
 
 // DEX exchanges (on-chain / decentralized perpetual protocols)
 export const DEX_EXCHANGES: ReadonlySet<string> = new Set([
-  'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'gTrade',
+  'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'Drift', 'gTrade',
 ]);
 
 // CEX exchanges (centralized)
@@ -93,6 +95,7 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Aster':      return `https://app.aster.finance/#/perpetual/${s}USDT`;
     case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT`;
     case 'Aevo':       return `https://app.aevo.xyz/perpetual/${s.toLowerCase()}`;
+    case 'Drift':      return `https://app.drift.trade/trade/${s}-PERP`;
     case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM`;
     case 'Deribit':    return `https://www.deribit.com/futures/${s}`;
     case 'HTX':        return `https://www.htx.com/futures/linear_swap/exchange#contract_code=${s}-USDT`;
