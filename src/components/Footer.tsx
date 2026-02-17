@@ -8,10 +8,22 @@ export default function Footer() {
           <div className="flex items-center gap-3">
             <span className="text-hub-yellow font-bold text-sm">InfoHub</span>
             <span className="text-neutral-700 text-xs">
-              Real-time derivatives data across 21 exchanges
+              Real-time derivatives data across 22 exchanges
             </span>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              href="/brand"
+              className="text-neutral-600 hover:text-white text-xs transition-colors"
+            >
+              Brand
+            </Link>
+            <Link
+              href="/team"
+              className="text-neutral-600 hover:text-white text-xs transition-colors"
+            >
+              Team
+            </Link>
             <Link
               href="/api-docs"
               className="text-neutral-600 hover:text-white text-xs transition-colors"

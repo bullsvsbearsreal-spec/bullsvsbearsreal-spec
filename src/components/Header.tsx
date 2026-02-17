@@ -77,6 +77,8 @@ const navCategories: NavCategory[] = [
     items: [
       { name: 'Economic Calendar', href: '/economic-calendar' },
       { name: 'API', href: '/api-docs' },
+      { name: 'Brand Kit', href: '/brand' },
+      { name: 'Team', href: '/team' },
     ],
   },
 ];
