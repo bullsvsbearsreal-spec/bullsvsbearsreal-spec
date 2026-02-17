@@ -9,6 +9,10 @@ import { RefreshCw, ArrowUpDown, AlertTriangle, TrendingUp, TrendingDown } from 
 import { getExchangeBadgeColor } from '@/lib/constants';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatUSD } from '@/lib/utils/format';
+import UpdatedAgo from '@/components/UpdatedAgo';
+import WatchlistStar from '@/components/WatchlistStar';
+import ShowMoreToggle from '@/components/ShowMoreToggle';
+import MobileCard from '@/components/MobileCard';
 
 type SortField = 'symbol' | 'openInterestValue' | 'exchange';
 type SortOrder = 'asc' | 'desc';
@@ -33,6 +37,7 @@ export default function OpenInterestPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'all' | 'aggregated'>('all');
   const [page, setPage] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const PAGE_SIZE = 100;
 
   const fetchData = async () => {
@@ -100,6 +105,9 @@ export default function OpenInterestPage() {
     .filter(([symbol]) => !searchTerm || symbol.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => b[1] - a[1]);
 
+  const AGGREGATED_DEFAULT = 20;
+  const displayedAggregated = expanded ? aggregatedSorted : aggregatedSorted.slice(0, AGGREGATED_DEFAULT);
+
   // Calculate total OI
   const totalOI = openInterest.reduce((sum, oi) => sum + oi.openInterestValue, 0);
 
@@ -127,11 +135,7 @@ export default function OpenInterestPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {lastUpdate && (
-              <span className="text-[10px] text-neutral-600">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <UpdatedAgo date={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
@@ -159,33 +163,60 @@ export default function OpenInterestPage() {
           </div>
         </div>
 
-        {/* Exchange Breakdown */}
-        <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
-          <h3 className="text-white font-semibold text-sm mb-3">OI by Exchange</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {Array.from(exchangeAggregated.entries())
-              .sort((a, b) => b[1] - a[1])
-              .map(([exchange, value]) => {
-                const percentage = totalOI > 0 ? (value / totalOI) * 100 : 0;
-                return (
-                  <div key={exchange} className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
-                      <span className="text-neutral-400 text-xs">{exchange}</span>
-                    </div>
-                    <div className="text-sm font-bold text-white font-mono">{formatUSD(value)}</div>
-                    <div className="text-[10px] text-neutral-600 font-mono">{percentage.toFixed(1)}%</div>
-                    <div className="h-1 bg-white/[0.04] rounded-full mt-1.5 overflow-hidden">
-                      <div
-                        className="h-full bg-hub-yellow rounded-full"
-                        style={{ width: `${percentage}%` }}
+        {/* OI Distribution Bar Chart */}
+        {(() => {
+          const exchangeBarColors = [
+            '#FACC15', '#F59E0B', '#FB923C', '#F97316',
+            '#EAB308', '#D97706', '#CA8A04', '#A16207',
+          ];
+          const top8 = Array.from(exchangeAggregated.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
+          const maxVal = top8.length > 0 ? top8[0][1] : 1;
+          const barHeight = 28;
+          const gap = 6;
+          const labelWidth = 90;
+          const valueWidth = 90;
+          const chartHeight = top8.length * (barHeight + gap) - gap + 8;
+          return (
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
+              <h3 className="text-white font-semibold text-sm mb-3">OI Distribution by Exchange</h3>
+              <svg width="100%" height={chartHeight} viewBox={`0 0 700 ${chartHeight}`} preserveAspectRatio="xMinYMid meet" className="overflow-visible">
+                {top8.map(([exchange, value], i) => {
+                  const pct = totalOI > 0 ? (value / totalOI) * 100 : 0;
+                  const barW = maxVal > 0 ? (value / maxVal) * (700 - labelWidth - valueWidth - 16) : 0;
+                  const y = i * (barHeight + gap);
+                  return (
+                    <g key={exchange}>
+                      <text x={0} y={y + barHeight / 2 + 4} fill="#a3a3a3" fontSize="11" fontFamily="monospace">
+                        {exchange}
+                      </text>
+                      <rect
+                        x={labelWidth}
+                        y={y}
+                        width={barW}
+                        height={barHeight}
+                        rx={4}
+                        fill={exchangeBarColors[i] || '#FACC15'}
+                        opacity={0.85}
                       />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
+                      <text
+                        x={labelWidth + barW + 8}
+                        y={y + barHeight / 2 + 4}
+                        fill="#e5e5e5"
+                        fontSize="11"
+                        fontFamily="monospace"
+                        fontWeight="600"
+                      >
+                        {formatUSD(value)} ({pct.toFixed(1)}%)
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+          );
+        })()}
 
         {/* View Toggle & Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
@@ -247,7 +278,32 @@ export default function OpenInterestPage() {
         ) : viewMode === 'aggregated' ? (
           /* Aggregated View */
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile cards (below md) */}
+            <div className="md:hidden space-y-2 p-3">
+              {displayedAggregated.map(([symbol, value]) => {
+                const delta = oiDeltas.get(symbol);
+                const fmtMobile = (v: number | null) => {
+                  if (v == null) return <span className="text-neutral-700">--</span>;
+                  const color = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-neutral-500';
+                  return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+                };
+                return (
+                  <MobileCard
+                    key={symbol}
+                    symbol={symbol}
+                    rows={[
+                      { label: 'Total OI', value: <span className="text-white">{formatUSD(value)}</span> },
+                      { label: '1h Δ', value: fmtMobile(delta?.change1h ?? null) },
+                      { label: '4h Δ', value: fmtMobile(delta?.change4h ?? null) },
+                      { label: '24h Δ', value: fmtMobile(delta?.change24h ?? null) },
+                    ]}
+                    actions={<WatchlistStar symbol={symbol} />}
+                  />
+                );
+              })}
+            </div>
+            {/* Desktop table (md and above) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
@@ -262,7 +318,7 @@ export default function OpenInterestPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {aggregatedSorted.map(([symbol, value], index) => {
+                  {displayedAggregated.map(([symbol, value], index) => {
                     const percentage = totalOI > 0 ? (value / totalOI) * 100 : 0;
                     const delta = oiDeltas.get(symbol);
                     const fmt = (v: number | null) => {
@@ -280,6 +336,7 @@ export default function OpenInterestPage() {
                         </td>
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-2">
+                            <WatchlistStar symbol={symbol} />
                             <span className="text-white font-semibold">{symbol}</span>
                             <span className="text-neutral-600 text-sm">/USDT</span>
                           </div>
@@ -307,6 +364,12 @@ export default function OpenInterestPage() {
                 </tbody>
               </table>
             </div>
+            <ShowMoreToggle
+              expanded={expanded}
+              onToggle={() => setExpanded(!expanded)}
+              totalCount={aggregatedSorted.length}
+              visibleCount={AGGREGATED_DEFAULT}
+            />
           </div>
         ) : (
           /* All Data View */

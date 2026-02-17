@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
 import { RefreshCw, Plus, X, Star, Copy, Check, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import UpdatedAgo from '@/components/UpdatedAgo';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { getWatchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
 import { formatPrice, formatNumber, formatFundingRate, formatPercent } from '@/lib/utils/format';
@@ -276,11 +277,7 @@ export default function WatchlistPage() {
               Refresh
             </button>
 
-            {lastUpdate && (
-              <span className="text-[11px] text-neutral-600">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <UpdatedAgo date={lastUpdate} />
           </div>
         </div>
 

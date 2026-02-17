@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
 import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import UpdatedAgo from '@/components/UpdatedAgo';
 import {
   AreaChart,
   Area,
@@ -155,11 +156,7 @@ export default function LongShortPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-[11px] text-neutral-600">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <UpdatedAgo date={lastUpdate} />
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${

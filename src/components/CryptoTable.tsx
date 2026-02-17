@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Sparkles, ChevronRight, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { TokenIconSimple } from './TokenIcon';
+import UpdatedAgo from './UpdatedAgo';
+import WatchlistStar from './WatchlistStar';
+import ShowMoreToggle from './ShowMoreToggle';
 import { fetchAllTickers, fetchAllFundingRates, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { TickerData, FundingRateData, OpenInterestData } from '@/lib/api/types';
 import { formatPrice, formatNumber, safeNumber } from '@/lib/utils/format';
@@ -95,6 +98,7 @@ export default function CryptoTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -188,7 +192,7 @@ export default function CryptoTable() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Top Assets</h2>
-              <p className="text-hub-gray-text text-xs">By trading volume</p>
+              <UpdatedAgo date={lastUpdate} />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -225,7 +229,7 @@ export default function CryptoTable() {
             </tr>
           </thead>
           <tbody>
-            {assets.map((asset, index) => {
+            {assets.slice(0, expanded ? assets.length : 10).map((asset, index) => {
               const sparklineData = generateSparkline(asset.change24h);
               return (
                 <tr
@@ -237,6 +241,7 @@ export default function CryptoTable() {
                       <div className="group-hover:scale-105 transition-transform">
                         <TokenIconSimple symbol={asset.symbol} size={40} />
                       </div>
+                      <WatchlistStar symbol={asset.symbol} />
                       <div>
                         <p className="font-semibold text-white group-hover:text-hub-yellow transition-colors">{asset.symbol}</p>
                         <p className="text-hub-gray-text text-xs">{asset.name}</p>
@@ -282,6 +287,12 @@ export default function CryptoTable() {
           </tbody>
         </table>
       </div>
+      <ShowMoreToggle
+        expanded={expanded}
+        onToggle={() => setExpanded(!expanded)}
+        totalCount={assets.length}
+        visibleCount={10}
+      />
     </div>
   );
 }

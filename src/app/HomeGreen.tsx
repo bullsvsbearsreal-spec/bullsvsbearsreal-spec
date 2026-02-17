@@ -17,7 +17,7 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, BarChart3, Zap, TrendingUp, Newspaper, Shield, Terminal } from 'lucide-react';
+import { ArrowRight, Activity, BarChart3, Zap, TrendingUp, Newspaper, Shield, Terminal, GitCompareArrows } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';

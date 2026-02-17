@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { TokenIconSimple } from './TokenIcon';
+import WatchlistStar from './WatchlistStar';
 import { fetchOIChanges } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
 import { formatUSD } from '@/lib/utils/format';
@@ -57,6 +58,7 @@ export default function OIChangeWidget() {
             >
               <div className="flex items-center gap-2">
                 <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
+                <WatchlistStar symbol={item.symbol} />
                 <TokenIconSimple symbol={item.symbol} size={20} />
                 <div className="flex items-center gap-1.5">
                   <span className="text-white font-medium text-xs">{item.symbol}</span>

@@ -17,7 +17,7 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield } from 'lucide-react';
+import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
@@ -101,6 +101,7 @@ export default function HomeOrange() {
                 { name: 'Open Interest', href: '/open-interest', icon: BarChart3 },
                 { name: 'Liquidations', href: '/liquidations', icon: Zap },
                 { name: 'Screener', href: '/screener', icon: TrendingUp },
+                { name: 'Compare', href: '/compare', icon: GitCompareArrows },
                 { name: 'News', href: '/news', icon: Newspaper },
               ].map((link) => (
                 <Link

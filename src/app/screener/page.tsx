@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle } from 'lucide-react';
+import UpdatedAgo from '@/components/UpdatedAgo';
 import { formatPrice, formatNumber, formatPercent, formatFundingRate, formatCompact } from '@/lib/utils/format';
 import {
   type FilterCondition,
@@ -291,11 +292,7 @@ export default function ScreenerPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {lastUpdate && (
-              <span className="text-[10px] text-neutral-600">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <UpdatedAgo date={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}

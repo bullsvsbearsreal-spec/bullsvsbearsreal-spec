@@ -5,6 +5,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import UpdatedAgo from '@/components/UpdatedAgo';
+import WatchlistStar from '@/components/WatchlistStar';
+import ShowMoreToggle from '@/components/ShowMoreToggle';
+import MobileCard from '@/components/MobileCard';
 import { RefreshCw, Search, ChevronDown, ChevronUp, TrendingUp, TrendingDown, BarChart3, Coins, Info } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -24,6 +28,7 @@ type Tab = 'gainers' | 'losers' | 'all';
 type SortField = 'symbol' | 'name' | 'price' | 'change24h' | 'marketCap' | 'volume24h';
 type SortDir = 'asc' | 'desc';
 
+const DEFAULT_ROWS = 20;
 const ROWS_PER_PAGE = 50;
 
 /* ─── Formatters ─────────────────────────────────────────────────── */
@@ -55,6 +60,7 @@ export default function TopMoversPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAll, setShowAll] = useState(false);
 
   /* ─── Data Fetching ───────────────────────────────────────────── */
 
@@ -122,11 +128,12 @@ export default function TopMoversPage() {
     return result;
   }, [coins, tab, search, sortField, sortDir]);
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIdx = (safeCurrentPage - 1) * ROWS_PER_PAGE;
-  const pageItems = filtered.slice(startIdx, startIdx + ROWS_PER_PAGE);
+  // Pagination — progressive disclosure: show DEFAULT_ROWS initially, full pagination when expanded
+  const effectivePageSize = showAll ? ROWS_PER_PAGE : DEFAULT_ROWS;
+  const totalPages = showAll ? Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE)) : 1;
+  const safeCurrentPage = showAll ? Math.min(currentPage, totalPages) : 1;
+  const startIdx = showAll ? (safeCurrentPage - 1) * ROWS_PER_PAGE : 0;
+  const pageItems = filtered.slice(startIdx, startIdx + effectivePageSize);
 
   // Tab counts
   const gainersCount = useMemo(() => coins.filter(c => (c.change24h ?? 0) > 0).length, [coins]);
@@ -174,11 +181,7 @@ export default function TopMoversPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {lastUpdate && (
-              <span className="text-[10px] text-neutral-600 font-mono">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <UpdatedAgo date={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
@@ -302,7 +305,36 @@ export default function TopMoversPage() {
         {/* Data Table */}
         {coins.length > 0 && (
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile Cards (below md) */}
+            <div className="md:hidden space-y-2 p-3">
+              {pageItems.length === 0 ? (
+                <p className="text-center py-8 text-neutral-500 text-sm">
+                  {search ? 'No coins match your search.' : 'No data available.'}
+                </p>
+              ) : pageItems.map((coin, idx) => (
+                <MobileCard
+                  key={`mobile-${coin.symbol}-${idx}`}
+                  symbol={coin.symbol}
+                  actions={<WatchlistStar symbol={coin.symbol} />}
+                  rows={[
+                    { label: 'Price', value: <span className="text-neutral-300">{fmtPrice(coin.price)}</span> },
+                    {
+                      label: '24h Change',
+                      value: (
+                        <span className={(coin.change24h ?? 0) >= 0 ? 'text-success' : 'text-danger'}>
+                          {coin.change24h != null ? `${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toFixed(2)}%` : '—'}
+                        </span>
+                      ),
+                    },
+                    { label: 'Market Cap', value: <span className="text-neutral-400">{fmt(coin.marketCap)}</span> },
+                    { label: 'Volume 24h', value: <span className="text-neutral-400">{fmt(coin.volume24h)}</span> },
+                  ]}
+                />
+              ))}
+            </div>
+
+            {/* Desktop Table (md and above) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
@@ -344,6 +376,7 @@ export default function TopMoversPage() {
                       <td className="px-3 py-2 text-[11px] text-neutral-600 font-mono">{startIdx + idx + 1}</td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
+                          <WatchlistStar symbol={coin.symbol} />
                           <TokenIconSimple symbol={coin.symbol} size={20} cmcId={coin.cmcId || undefined} />
                           <span className="font-semibold text-white text-xs">{coin.symbol}</span>
                         </div>
@@ -369,14 +402,23 @@ export default function TopMoversPage() {
               </table>
             </div>
 
-            <Pagination
-              currentPage={safeCurrentPage}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              rowsPerPage={ROWS_PER_PAGE}
-              onPageChange={setCurrentPage}
-              label="coins"
+            <ShowMoreToggle
+              expanded={showAll}
+              onToggle={() => { setShowAll(prev => !prev); setCurrentPage(1); }}
+              totalCount={filtered.length}
+              visibleCount={DEFAULT_ROWS}
             />
+
+            {showAll && totalPages > 1 && (
+              <Pagination
+                currentPage={safeCurrentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                rowsPerPage={ROWS_PER_PAGE}
+                onPageChange={setCurrentPage}
+                label="coins"
+              />
+            )}
           </div>
         )}
 

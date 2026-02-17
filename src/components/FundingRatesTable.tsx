@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ExchangeLogo } from './ExchangeLogos';
 import { TokenIconSimple } from './TokenIcon';
+import UpdatedAgo from './UpdatedAgo';
 import { Clock, ArrowUpRight, ArrowDownRight, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
@@ -59,9 +60,7 @@ export default function FundingRatesTable() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Funding Rates</h2>
-              <p className="text-hub-gray-text text-xs">
-                {lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString()}` : 'Live data from exchanges'}
-              </p>
+              <UpdatedAgo date={lastUpdate} />
             </div>
           </div>
           <div className="flex items-center gap-2">

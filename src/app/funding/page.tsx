@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, type AssetClassFilter } from '@/lib/api/aggregator';
 import { FundingRateData } from '@/lib/api/types';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
+import UpdatedAgo from '@/components/UpdatedAgo';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ALL_EXCHANGES, EXCHANGE_COLORS, CATEGORIES, CATEGORY_ICONS, PRIORITY_SYMBOLS, DEX_EXCHANGES, isExchangeDex, getCategoriesForAssetClass } from '@/lib/constants';
 import type { Category, AssetClass } from '@/lib/constants';
@@ -315,11 +316,7 @@ export default function FundingPage() {
             <p className="text-neutral-500 text-sm">{ASSET_CLASS_SUBTITLES[assetClass]} across {ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-xs text-neutral-600 font-mono">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <UpdatedAgo date={lastUpdate} />
             <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — free, no signup, 21 exchanges`} />
             <button
               onClick={fetchData}

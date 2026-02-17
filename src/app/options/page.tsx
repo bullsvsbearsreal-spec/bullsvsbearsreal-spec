@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import UpdatedAgo from '@/components/UpdatedAgo';
 import { RefreshCw, Info, Target } from 'lucide-react';
 import { formatCompact, formatPrice } from '@/lib/utils/format';
 
@@ -166,6 +167,7 @@ export default function OptionsPage() {
   const [data, setData] = useState<OptionsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -176,6 +178,7 @@ export default function OptionsPage() {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setData(json);
+      setLastUpdate(new Date());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -233,6 +236,7 @@ export default function OptionsPage() {
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
+              <UpdatedAgo date={lastUpdate} />
             </div>
           </div>
 
@@ -283,19 +287,65 @@ export default function OptionsPage() {
 
               {/* Call/Put OI comparison */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                <div className="flex justify-between text-xs mb-2">
-                  <span className="text-green-400">Calls ${formatCompact(data.totalCallOI)}</span>
-                  <span className="text-red-400">Puts ${formatCompact(data.totalPutOI)}</span>
-                </div>
-                <div className="h-4 rounded-full overflow-hidden flex">
-                  <div
-                    className="bg-green-500 h-full transition-all"
-                    style={{ width: `${(data.totalCallOI / data.totalOI) * 100}%` }}
-                  />
-                  <div
-                    className="bg-red-500 h-full transition-all"
-                    style={{ width: `${(data.totalPutOI / data.totalOI) * 100}%` }}
-                  />
+                <div className="flex items-center gap-6">
+                  {/* Donut chart */}
+                  {(() => {
+                    const callPct = (data.totalCallOI / data.totalOI) * 100;
+                    const r = 45;
+                    const circumference = 2 * Math.PI * r;
+                    const callDash = (callPct / 100) * circumference;
+                    const putDash = circumference - callDash;
+                    return (
+                      <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
+                        {/* Put arc (red background) */}
+                        <circle
+                          cx="60" cy="60" r={r}
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeWidth="14"
+                        />
+                        {/* Call arc (green foreground) */}
+                        <circle
+                          cx="60" cy="60" r={r}
+                          fill="none"
+                          stroke="#22c55e"
+                          strokeWidth="14"
+                          strokeDasharray={`${callDash} ${putDash}`}
+                          strokeDashoffset={circumference / 4}
+                          strokeLinecap="round"
+                          style={{ transform: 'rotate(-90deg)', transformOrigin: '60px 60px' }}
+                        />
+                        {/* Ratio in center */}
+                        <text x="60" y="56" textAnchor="middle" fontSize="16" fontWeight="bold" fill="white">
+                          {data.putCallRatio.toFixed(2)}
+                        </text>
+                        <text x="60" y="72" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.4)">
+                          P/C Ratio
+                        </text>
+                      </svg>
+                    );
+                  })()}
+                  {/* Bar + labels */}
+                  <div className="flex-1">
+                    <div className="flex justify-between text-xs mb-2">
+                      <span className="text-green-400">Calls ${formatCompact(data.totalCallOI)}</span>
+                      <span className="text-red-400">Puts ${formatCompact(data.totalPutOI)}</span>
+                    </div>
+                    <div className="h-4 rounded-full overflow-hidden flex">
+                      <div
+                        className="bg-green-500 h-full transition-all"
+                        style={{ width: `${(data.totalCallOI / data.totalOI) * 100}%` }}
+                      />
+                      <div
+                        className="bg-red-500 h-full transition-all"
+                        style={{ width: `${(data.totalPutOI / data.totalOI) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-neutral-500 mt-1">
+                      <span>{((data.totalCallOI / data.totalOI) * 100).toFixed(1)}%</span>
+                      <span>{((data.totalPutOI / data.totalOI) * 100).toFixed(1)}%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
