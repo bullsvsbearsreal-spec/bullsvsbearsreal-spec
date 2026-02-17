@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, ExternalLink, GitCompareArrows } from 'lucide-react';
 import Pagination from '@/app/funding/components/Pagination';
 import type { PredictionArbitrage, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
@@ -90,10 +90,17 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
   return (
     <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-white/[0.06]">
-        <h3 className="text-white font-semibold text-sm">Arbitrage Opportunities</h3>
-        <p className="text-neutral-600 text-xs">
-          Same events priced differently across platforms
-        </p>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+            <GitCompareArrows className="w-3.5 h-3.5 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-sm">Arbitrage Opportunities</h3>
+            <p className="text-neutral-600 text-xs">
+              Same events priced differently across platforms
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -172,9 +179,17 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className={`font-mono text-sm font-bold ${item.spreadPercent >= 5 ? 'text-hub-yellow' : item.spreadPercent >= 2 ? 'text-green-400' : 'text-neutral-400'}`}>
-                        {item.spreadPercent.toFixed(1)}%
-                      </span>
+                      {item.spreadPercent >= 5 ? (
+                        <span className="h-5 rounded-md px-1.5 inline-flex items-center bg-hub-yellow/10">
+                          <span className="font-mono text-sm font-bold text-hub-yellow">
+                            {item.spreadPercent.toFixed(1)}%
+                          </span>
+                        </span>
+                      ) : (
+                        <span className={`font-mono text-sm font-bold ${item.spreadPercent >= 2 ? 'text-green-400' : 'text-neutral-400'}`}>
+                          {item.spreadPercent.toFixed(1)}%
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none ${

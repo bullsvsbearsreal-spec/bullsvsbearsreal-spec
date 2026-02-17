@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, Info, Activity, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, Info, Activity, TrendingUp, TrendingDown, Hash, BarChart3, ArrowLeftRight } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -131,145 +131,194 @@ export default function CVDPage() {
   }, [data]);
 
   return (
-    <>
+    <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
-          {/* Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+        {/* Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-hub-yellow" />
+            </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                <Activity className="w-6 h-6 text-hub-yellow" />
-                Cumulative Volume Delta
-              </h1>
-              <p className="text-sm text-neutral-500 mt-1">
+              <h1 className="text-xl font-bold text-white">Cumulative Volume Delta</h1>
+              <p className="text-neutral-500 text-sm mt-0.5 flex items-center gap-1.5">
                 Buy vs sell pressure — are buyers or sellers in control?
+                {data && (
+                  <span className="flex items-center gap-1 text-green-400 text-[11px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    Live
+                  </span>
+                )}
               </p>
             </div>
+          </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+
+        {/* Symbol selector */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {SYMBOLS.map((s) => (
             <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              key={s}
+              onClick={() => setSymbol(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                symbol === s
+                  ? 'bg-hub-yellow text-black'
+                  : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+              }`}
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              {s}
             </button>
+          ))}
+        </div>
+
+        {loading && !data && (
+          <div className="flex items-center justify-center py-20">
+            <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
+            <span className="ml-3 text-neutral-400">Loading trade data...</span>
           </div>
+        )}
 
-          {/* Symbol selector */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            {SYMBOLS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setSymbol(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  symbol === s
-                    ? 'bg-hub-yellow text-black'
-                    : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+        {error && !data && (
+          <div className="text-center py-12 text-red-400">
+            <p>{error}</p>
+            <button onClick={fetchData} className="mt-3 text-sm text-hub-yellow hover:underline">Retry</button>
           </div>
+        )}
 
-          {loading && !data && (
-            <div className="flex items-center justify-center py-20">
-              <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
-              <span className="ml-3 text-neutral-400">Loading trade data...</span>
+        {data && (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-4 h-4 text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Buy Volume</p>
+                    <p className="text-lg font-bold text-green-400">${formatCompact(data.totalBuyVol)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                    <TrendingDown className="w-4 h-4 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Sell Volume</p>
+                    <p className="text-lg font-bold text-red-400">${formatCompact(data.totalSellVol)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center flex-shrink-0">
+                    <Activity className="w-4 h-4 text-hub-yellow" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Net Delta</p>
+                    <p className={`text-lg font-bold ${data.netDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {data.netDelta >= 0 ? '+' : '-'}${formatCompact(Math.abs(data.netDelta))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                    <Hash className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Trades</p>
+                    <p className="text-lg font-bold text-white">{data.tradeCount.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
 
-          {error && !data && (
-            <div className="text-center py-12 text-red-400">
-              <p>{error}</p>
-              <button onClick={fetchData} className="mt-3 text-sm text-hub-yellow hover:underline">Retry</button>
+            {/* Buy/Sell Pressure Bar */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center">
+                  <ArrowLeftRight className="w-3 h-3 text-purple-400" />
+                </div>
+                <h2 className="text-sm font-semibold text-white">Buy/Sell Pressure</h2>
+              </div>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-green-400">Buy {buyPct.toFixed(1)}%</span>
+                <span className="text-red-400">Sell {(100 - buyPct).toFixed(1)}%</span>
+              </div>
+              <div className="h-4 rounded-full overflow-hidden flex">
+                <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${buyPct}%` }} />
+                <div className="bg-red-500 h-full transition-all duration-500" style={{ width: `${100 - buyPct}%` }} />
+              </div>
             </div>
-          )}
 
-          {data && (
-            <>
-              {/* Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Buy Volume</p>
-                  <p className="text-lg font-bold text-green-400">${formatCompact(data.totalBuyVol)}</p>
+            {/* CVD Chart */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
+                  <Activity className="w-3 h-3 text-hub-yellow" />
                 </div>
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Sell Volume</p>
-                  <p className="text-lg font-bold text-red-400">${formatCompact(data.totalSellVol)}</p>
-                </div>
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Net Delta</p>
-                  <p className={`text-lg font-bold flex items-center gap-1 ${data.netDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {data.netDelta >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                    ${formatCompact(Math.abs(data.netDelta))}
-                  </p>
-                </div>
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Trades</p>
-                  <p className="text-lg font-bold text-white">{data.tradeCount.toLocaleString()}</p>
-                </div>
+                <h2 className="text-sm font-semibold text-white">CVD Line</h2>
               </div>
+              <div className="h-[200px]">
+                <CVDChart buckets={data.buckets} />
+              </div>
+              <div className="flex justify-between mt-2 text-[10px] text-neutral-600">
+                {data.buckets.length > 0 && (
+                  <>
+                    <span>{new Date(data.buckets[0].time).toLocaleTimeString()}</span>
+                    <span>{new Date(data.buckets[data.buckets.length - 1].time).toLocaleTimeString()}</span>
+                  </>
+                )}
+              </div>
+            </div>
 
-              {/* Buy/Sell Pressure Bar */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                <div className="flex justify-between text-xs mb-2">
-                  <span className="text-green-400">Buy {buyPct.toFixed(1)}%</span>
-                  <span className="text-red-400">Sell {(100 - buyPct).toFixed(1)}%</span>
+            {/* Volume Bars */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center">
+                  <BarChart3 className="w-3 h-3 text-blue-400" />
                 </div>
-                <div className="h-4 rounded-full overflow-hidden flex">
-                  <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${buyPct}%` }} />
-                  <div className="bg-red-500 h-full transition-all duration-500" style={{ width: `${100 - buyPct}%` }} />
-                </div>
+                <h2 className="text-sm font-semibold text-white">Buy/Sell Volume</h2>
               </div>
+              <p className="text-xs text-neutral-600 mb-3 ml-8">Green = buy aggressor (above), Red = sell aggressor (below)</p>
+              <div className="h-[100px]">
+                <VolumeBars buckets={data.buckets} />
+              </div>
+            </div>
+          </>
+        )}
 
-              {/* CVD Chart */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                <h2 className="text-sm font-semibold text-white mb-3">CVD Line</h2>
-                <div className="h-[200px]">
-                  <CVDChart buckets={data.buckets} />
-                </div>
-                <div className="flex justify-between mt-2 text-[10px] text-neutral-600">
-                  {data.buckets.length > 0 && (
-                    <>
-                      <span>{new Date(data.buckets[0].time).toLocaleTimeString()}</span>
-                      <span>{new Date(data.buckets[data.buckets.length - 1].time).toLocaleTimeString()}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Volume Bars */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                <h2 className="text-sm font-semibold text-white mb-1">Buy/Sell Volume</h2>
-                <p className="text-xs text-neutral-600 mb-3">Green = buy aggressor (above), Red = sell aggressor (below)</p>
-                <div className="h-[100px]">
-                  <VolumeBars buckets={data.buckets} />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Info footer */}
-          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-neutral-400 space-y-1">
-                <p>
-                  <strong className="text-neutral-300">CVD (Cumulative Volume Delta)</strong> measures
-                  the difference between buying and selling volume over time.
-                </p>
-                <p>
-                  Rising CVD = buyers dominating (bullish). Falling CVD = sellers dominating (bearish).
-                  CVD divergence from price is a powerful reversal signal.
-                </p>
-                <p>Data from Binance spot aggregate trades. Updates every 15 seconds.</p>
-              </div>
+        {/* Info footer */}
+        <div className="mt-4 bg-hub-yellow/5 border border-hub-yellow/10 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-neutral-400 space-y-1">
+              <p>
+                <strong className="text-neutral-300">CVD (Cumulative Volume Delta)</strong> measures
+                the difference between buying and selling volume over time.
+              </p>
+              <p>
+                Rising CVD = buyers dominating (bullish). Falling CVD = sellers dominating (bearish).
+                CVD divergence from price is a powerful reversal signal.
+              </p>
+              <p>Data from Binance spot aggregate trades. Updates every 15 seconds.</p>
             </div>
           </div>
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

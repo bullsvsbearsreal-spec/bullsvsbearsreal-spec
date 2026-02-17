@@ -17,7 +17,7 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows } from 'lucide-react';
+import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
@@ -63,6 +63,20 @@ export default function HomeOrange() {
     router.push(`/coin/${coin.id}`);
   };
 
+  const cexExchanges = ALL_EXCHANGES.filter(e => !isExchangeDex(e));
+  const dexExchanges = ALL_EXCHANGES.filter(e => isExchangeDex(e));
+  const activeCex = cexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length;
+  const activeDex = dexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length;
+
+  const quickLinks = [
+    { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates' },
+    { name: 'Open Interest', href: '/open-interest', icon: BarChart3, desc: 'Position sizing' },
+    { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time rekt' },
+    { name: 'Screener', href: '/screener', icon: TrendingUp, desc: 'Market scanner' },
+    { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange' },
+    { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news' },
+  ];
+
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
@@ -72,21 +86,30 @@ export default function HomeOrange() {
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* ═══ Hero Section ═══ */}
-        <section className="relative pt-6 pb-4 mb-2">
+        <section className="relative pt-8 pb-6 mb-2">
           <div className="absolute inset-0 hero-mesh pointer-events-none" aria-hidden="true" />
 
           <div className="relative">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-bold text-white">
-                <span className="text-white">info</span><span className="text-hub-yellow">hub</span>
-              </h1>
-              <span className="live-dot" />
+            {/* Title area */}
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                    <span className="text-white">info</span><span className="bg-gradient-to-r from-hub-yellow to-hub-orange bg-clip-text text-transparent">hub</span>
+                  </h1>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+                    <span className="live-dot" />
+                    <span className="text-green-400 text-[10px] font-semibold uppercase tracking-wider">Live</span>
+                  </div>
+                </div>
+                <p className="text-neutral-500 text-sm max-w-md">
+                  Real-time derivatives intelligence across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span>. Funding, OI, liquidations & more.
+                </p>
+              </div>
             </div>
-            <p className="text-neutral-500 text-[13px] mb-5">
-              Real-time derivatives intelligence across {ALL_EXCHANGES.length} exchanges.
-            </p>
 
-            <div className="max-w-lg mb-5">
+            {/* Search bar — elevated */}
+            <div className="max-w-xl mb-6">
               <CoinSearch
                 onSelect={handleCoinSelect}
                 placeholder="Search any coin for events, unlocks & news..."
@@ -95,22 +118,18 @@ export default function HomeOrange() {
               />
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {[
-                { name: 'Funding', href: '/funding', icon: Activity },
-                { name: 'Open Interest', href: '/open-interest', icon: BarChart3 },
-                { name: 'Liquidations', href: '/liquidations', icon: Zap },
-                { name: 'Screener', href: '/screener', icon: TrendingUp },
-                { name: 'Compare', href: '/compare', icon: GitCompareArrows },
-                { name: 'News', href: '/news', icon: Newspaper },
-              ].map((link) => (
+            {/* Quick access grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {quickLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-hub-yellow/30 hover:bg-hub-yellow/[0.05] text-neutral-400 hover:text-white text-xs font-medium transition-all duration-200"
+                  className="group flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow/30 hover:bg-hub-yellow/[0.04] transition-all duration-200"
                 >
-                  <link.icon className="w-3 h-3 text-neutral-500 group-hover:text-hub-yellow transition-colors" />
-                  {link.name}
+                  <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-hub-yellow/10 flex items-center justify-center transition-colors">
+                    <link.icon className="w-4 h-4 text-neutral-500 group-hover:text-hub-yellow transition-colors" />
+                  </div>
+                  <span className="text-neutral-400 group-hover:text-white text-[11px] font-medium transition-colors">{link.name}</span>
                 </Link>
               ))}
             </div>
@@ -125,9 +144,10 @@ export default function HomeOrange() {
           <StatsOverview />
         </section>
 
-        {/* ═══ Primary Widgets Row ═══ */}
-        <section className="mb-4">
+        {/* ═══ Market Pulse — Fear & Greed + Liquidation ═══ */}
+        <section className="mb-6">
           <div className="flex items-center gap-2 mb-3">
+            <Radio className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Market Pulse</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
@@ -137,9 +157,10 @@ export default function HomeOrange() {
           </div>
         </section>
 
-        {/* ═══ Secondary Widgets Row ═══ */}
-        <section className="mb-4">
+        {/* ═══ Trading Signals Row ═══ */}
+        <section className="mb-6">
           <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Trading Signals</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
@@ -153,6 +174,7 @@ export default function HomeOrange() {
         {/* ═══ Data Feeds Row ═══ */}
         <section className="mb-6">
           <div className="flex items-center gap-2 mb-3">
+            <Activity className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Data Feeds</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
@@ -162,11 +184,13 @@ export default function HomeOrange() {
             <div className="card-premium p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-3.5 h-3.5 text-hub-yellow" />
+                  <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
+                    <Activity className="w-3 h-3 text-hub-yellow" />
+                  </div>
                   <h2 className="text-white font-semibold text-sm">Top Funding</h2>
                 </div>
-                <Link href="/funding" className="text-hub-yellow/70 hover:text-hub-yellow text-[10px] font-medium flex items-center gap-0.5 transition-colors">
-                  View All <ArrowRight className="w-3 h-3" />
+                <Link href="/funding" className="group/link flex items-center gap-1 text-hub-yellow/60 hover:text-hub-yellow text-[10px] font-medium transition-colors">
+                  View All <ChevronRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
 
@@ -184,17 +208,23 @@ export default function HomeOrange() {
                       className="data-row-premium flex items-center justify-between"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
+                        <span className="text-neutral-700 text-[10px] font-mono w-3">{index + 1}</span>
                         <TokenIconSimple symbol={item.symbol} size={18} />
-                        <span className="text-white font-medium text-xs">{item.symbol}</span>
+                        <div className="flex flex-col">
+                          <span className="text-white font-medium text-xs">{item.symbol}</span>
+                          <span className="text-neutral-600 text-[9px] leading-none">{item.exchange}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-neutral-600 text-[10px]">{item.exchange}</span>
-                        <span className={`font-mono font-semibold text-xs tabular-nums ${
-                          item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
+                      <div className="flex items-center gap-2">
+                        <div className={`h-5 rounded-md px-1.5 flex items-center ${
+                          item.fundingRate >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
                         }`}>
-                          {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
-                        </span>
+                          <span className={`font-mono font-bold text-[11px] tabular-nums ${
+                            item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
+                          }`}>
+                            {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -209,11 +239,13 @@ export default function HomeOrange() {
             <div className="card-premium p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Newspaper className="w-3.5 h-3.5 text-hub-yellow" />
+                  <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
+                    <Newspaper className="w-3 h-3 text-hub-yellow" />
+                  </div>
                   <h2 className="text-white font-semibold text-sm">Latest News</h2>
                 </div>
-                <Link href="/news" className="text-hub-yellow/70 hover:text-hub-yellow text-[10px] font-medium flex items-center gap-0.5 transition-colors">
-                  View All <ArrowRight className="w-3 h-3" />
+                <Link href="/news" className="group/link flex items-center gap-1 text-hub-yellow/60 hover:text-hub-yellow text-[10px] font-medium transition-colors">
+                  View All <ChevronRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
 
@@ -231,14 +263,14 @@ export default function HomeOrange() {
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="data-row-premium block"
+                      className="data-row-premium block group/news"
                     >
-                      <h4 className="text-white text-xs font-medium line-clamp-2 leading-relaxed">
+                      <h4 className="text-neutral-300 group-hover/news:text-white text-xs font-medium line-clamp-2 leading-relaxed transition-colors">
                         {article.title}
                       </h4>
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[10px] text-neutral-600">{article.source_info?.name || article.source}</span>
-                        <span className="text-neutral-700 text-[8px]">•</span>
+                        <span className="text-[10px] text-hub-yellow/60 font-medium">{article.source_info?.name || article.source}</span>
+                        <span className="text-neutral-700 text-[8px]">&middot;</span>
                         <span className="text-[10px] text-neutral-600">{formatTimeAgo(article.published_on)}</span>
                       </div>
                     </a>
@@ -250,35 +282,36 @@ export default function HomeOrange() {
         </section>
 
         {/* ═══ Exchange Status ═══ */}
-        <section className="mb-8">
+        <section className="mb-10">
           <div className="flex items-center gap-2 mb-3">
+            <Globe className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Infrastructure</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
+            <div className="flex items-center gap-3 text-[10px]">
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />
+                <span className="text-neutral-500">Active</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                <span className="text-neutral-500">Empty</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500/60" />
+                <span className="text-neutral-500">Down</span>
+              </div>
+            </div>
           </div>
 
           <div className="card-premium overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <Shield className="w-3.5 h-3.5 text-hub-yellow" />
+            {/* Summary bar */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+              <div className="flex items-center gap-3">
+                <Shield className="w-4 h-4 text-hub-yellow" />
                 <h2 className="text-white font-semibold text-sm">Exchange Status</h2>
                 <span className="text-[10px] font-mono text-neutral-500 bg-white/[0.04] px-1.5 py-0.5 rounded">
-                  {ALL_EXCHANGES.length}
+                  {activeCex + activeDex}/{ALL_EXCHANGES.length} online
                 </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />
-                  <span className="text-[10px] text-neutral-500">Active</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-                  <span className="text-[10px] text-neutral-500">Empty</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500/60" />
-                  <span className="text-[10px] text-neutral-500">Down</span>
-                </div>
               </div>
             </div>
 
@@ -287,12 +320,14 @@ export default function HomeOrange() {
               <div>
                 <div className="flex items-center gap-2 mb-2.5">
                   <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Centralized</span>
-                  <span className="text-[10px] font-mono text-green-500/70">
-                    {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length}/{ALL_EXCHANGES.filter(e => !isExchangeDex(e)).length}
-                  </span>
+                  <div className="flex items-center gap-1 text-[10px] font-mono">
+                    <span className="text-green-500">{activeCex}</span>
+                    <span className="text-neutral-700">/</span>
+                    <span className="text-neutral-600">{cexExchanges.length}</span>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
-                  {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).map((exchange) => {
+                  {cexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
                     const isActive = health?.status === 'ok';
                     const isEmpty = health?.status === 'empty';
@@ -331,12 +366,14 @@ export default function HomeOrange() {
               <div>
                 <div className="flex items-center gap-2 mb-2.5">
                   <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Decentralized</span>
-                  <span className="text-[10px] font-mono text-green-500/70">
-                    {ALL_EXCHANGES.filter(e => isExchangeDex(e)).filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length}/{ALL_EXCHANGES.filter(e => isExchangeDex(e)).length}
-                  </span>
+                  <div className="flex items-center gap-1 text-[10px] font-mono">
+                    <span className="text-purple-400">{activeDex}</span>
+                    <span className="text-neutral-700">/</span>
+                    <span className="text-neutral-600">{dexExchanges.length}</span>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
-                  {ALL_EXCHANGES.filter(e => isExchangeDex(e)).map((exchange) => {
+                  {dexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
                     const isActive = health?.status === 'ok';
                     const isEmpty = health?.status === 'empty';

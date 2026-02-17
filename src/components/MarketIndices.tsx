@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchAllTickers } from '@/lib/api/aggregator';
+import { LineChart, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface IndexData {
   name: string;
@@ -70,7 +71,12 @@ export default function MarketIndices() {
   return (
     <div className="card-premium p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-white font-semibold text-sm">Market Index</h3>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
+            <LineChart className="w-3 h-3 text-hub-yellow" />
+          </div>
+          <h3 className="text-white font-semibold text-sm">Market Index</h3>
+        </div>
         <span className="text-neutral-600 text-[10px]">Key indicators</span>
       </div>
 
@@ -82,22 +88,33 @@ export default function MarketIndices() {
         </div>
       ) : (
         <div className="space-y-1">
-          {indices.map((index) => (
-            <div
-              key={index.name}
-              className="data-row-premium flex items-center justify-between"
-            >
-              <span className="text-neutral-400 text-xs">{index.name}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-white font-mono font-semibold text-xs">{index.value}</span>
-                <span className={`text-[10px] font-mono ${
-                  index.change >= 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)}%
-                </span>
+          {indices.map((index) => {
+            const isPositive = index.change >= 0;
+            return (
+              <div
+                key={index.name}
+                className="data-row-premium flex items-center justify-between"
+              >
+                <span className="text-neutral-400 text-xs">{index.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-mono font-semibold text-xs tabular-nums">{index.value}</span>
+                  <div className={`flex items-center gap-0.5 h-5 rounded-md px-1.5 ${
+                    isPositive ? 'bg-green-500/10' : 'bg-red-500/10'
+                  }`}>
+                    {isPositive
+                      ? <TrendingUp className="w-2.5 h-2.5 text-green-400" />
+                      : <TrendingDown className="w-2.5 h-2.5 text-red-400" />
+                    }
+                    <span className={`text-[10px] font-mono font-semibold ${
+                      isPositive ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {isPositive ? '+' : ''}{index.change.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

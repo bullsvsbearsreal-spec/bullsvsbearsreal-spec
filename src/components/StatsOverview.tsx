@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { fetchAllTickers, fetchAllOpenInterest, fetchAllFundingRates } from '@/lib/api/aggregator';
 import { formatNumber } from '@/lib/utils/format';
+import { DollarSign, BarChart3, Percent, TrendingUp, TrendingDown, Layers } from 'lucide-react';
 
 export default function StatsOverview() {
   const [stats, setStats] = useState({
@@ -32,7 +33,6 @@ export default function StatsOverview() {
           ? fundingRates.reduce((sum, f) => sum + (f.fundingRate || 0), 0) / fundingRates.length
           : 0;
 
-        // Top gainer/loser from CMC spot market data (accurate, real-time)
         const topGainerCoin = moversRes.gainers?.[0];
         const topLoserCoin = moversRes.losers?.[0];
 
@@ -66,7 +66,7 @@ export default function StatsOverview() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="card-premium px-3 py-2.5 animate-pulse">
+          <div key={i} className="card-premium px-3 py-3 animate-pulse">
             <div className="h-3 w-16 bg-white/[0.06] rounded mb-2" />
             <div className="h-5 w-20 bg-white/[0.06] rounded" />
           </div>
@@ -76,39 +76,71 @@ export default function StatsOverview() {
   }
 
   const statItems = [
-    { label: '24h Volume', value: formatNumber(stats.totalVolume) },
-    { label: 'Open Interest', value: formatNumber(stats.totalOI) },
+    {
+      label: '24h Volume',
+      value: formatNumber(stats.totalVolume),
+      icon: DollarSign,
+      iconColor: 'text-hub-yellow',
+      iconBg: 'bg-hub-yellow/10',
+    },
+    {
+      label: 'Open Interest',
+      value: formatNumber(stats.totalOI),
+      icon: BarChart3,
+      iconColor: 'text-blue-400',
+      iconBg: 'bg-blue-400/10',
+    },
     {
       label: 'Avg Funding',
       value: `${stats.avgFunding >= 0 ? '+' : ''}${stats.avgFunding.toFixed(4)}%`,
       color: stats.avgFunding >= 0 ? 'text-green-400' : 'text-red-400',
+      icon: Percent,
+      iconColor: stats.avgFunding >= 0 ? 'text-green-400' : 'text-red-400',
+      iconBg: stats.avgFunding >= 0 ? 'bg-green-500/10' : 'bg-red-500/10',
     },
     {
       label: 'Top Gainer',
       value: stats.topGainer.symbol,
       sub: `${stats.topGainer.change >= 0 ? '+' : ''}${stats.topGainer.change.toFixed(1)}%`,
       subColor: 'text-green-400',
+      icon: TrendingUp,
+      iconColor: 'text-green-400',
+      iconBg: 'bg-green-500/10',
     },
     {
       label: 'Top Loser',
       value: stats.topLoser.symbol,
       sub: `${stats.topLoser.change.toFixed(1)}%`,
       subColor: 'text-red-400',
+      icon: TrendingDown,
+      iconColor: 'text-red-400',
+      iconBg: 'bg-red-500/10',
     },
-    { label: 'Markets', value: stats.activeMarkets.toString() },
+    {
+      label: 'Markets',
+      value: stats.activeMarkets.toString(),
+      icon: Layers,
+      iconColor: 'text-purple-400',
+      iconBg: 'bg-purple-400/10',
+    },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
       {statItems.map((item) => (
-        <div key={item.label} className="card-premium px-3 py-2.5">
-          <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-medium">{item.label}</span>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
+        <div key={item.label} className="card-premium px-3 py-3 group">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`w-5 h-5 rounded-md ${item.iconBg} flex items-center justify-center`}>
+              <item.icon className={`w-3 h-3 ${item.iconColor}`} />
+            </div>
+            <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-medium">{item.label}</span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
             <span className={`text-sm font-bold font-mono tabular-nums ${item.color || 'text-white'}`}>
               {item.value}
             </span>
             {item.sub && (
-              <span className={`text-[10px] font-mono ${item.subColor}`}>{item.sub}</span>
+              <span className={`text-[10px] font-mono font-semibold ${item.subColor}`}>{item.sub}</span>
             )}
           </div>
         </div>

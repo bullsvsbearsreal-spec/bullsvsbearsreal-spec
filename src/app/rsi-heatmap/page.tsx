@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { RefreshCw, Info, Search } from 'lucide-react';
+import { RefreshCw, Info, Search, Activity, Hash, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -193,9 +193,17 @@ export default function RSIHeatmapPage() {
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <div>
-            <h1 className="text-xl font-bold text-white">RSI Heatmap</h1>
-            <p className="text-neutral-500 text-sm">Relative Strength Index across multiple timeframes</p>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-orange-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">RSI Heatmap</h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {data.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />}
+                <span className="text-neutral-500 text-sm">Relative Strength Index across multiple timeframes</span>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {lastUpdate && (
@@ -206,10 +214,9 @@ export default function RSIHeatmapPage() {
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -217,22 +224,50 @@ export default function RSIHeatmapPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Symbols</span>
-            <div className="text-lg font-bold text-white font-mono mt-0.5">{stats.total}</div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Hash className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Symbols</span>
+                <div className="text-lg font-bold text-white font-mono">{stats.total}</div>
+              </div>
+            </div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Avg RSI (1D)</span>
-            <div className={`text-lg font-bold font-mono mt-0.5 ${stats.avg1d >= 60 ? 'text-orange-400' : stats.avg1d <= 40 ? 'text-emerald-400' : 'text-white'}`}>
-              {stats.avg1d.toFixed(1)}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-orange-400" />
+              </div>
+              <div>
+                <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Avg RSI (1D)</span>
+                <div className={`text-lg font-bold font-mono ${stats.avg1d >= 60 ? 'text-orange-400' : stats.avg1d <= 40 ? 'text-emerald-400' : 'text-white'}`}>
+                  {stats.avg1d.toFixed(1)}
+                </div>
+              </div>
             </div>
           </div>
           <div className="bg-hub-darker border border-red-500/10 rounded-lg px-3 py-2.5">
-            <span className="text-red-500/60 text-[10px] uppercase tracking-wider">Overbought ≥70</span>
-            <div className="text-lg font-bold text-red-400 font-mono mt-0.5">{stats.overbought}</div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-red-400" />
+              </div>
+              <div>
+                <span className="text-red-500/60 text-[10px] uppercase tracking-wider">Overbought ≥70</span>
+                <div className="text-lg font-bold text-red-400 font-mono">{stats.overbought}</div>
+              </div>
+            </div>
           </div>
           <div className="bg-hub-darker border border-emerald-500/10 rounded-lg px-3 py-2.5">
-            <span className="text-emerald-500/60 text-[10px] uppercase tracking-wider">Oversold ≤30</span>
-            <div className="text-lg font-bold text-emerald-400 font-mono mt-0.5">{stats.oversold}</div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <TrendingDown className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <span className="text-emerald-500/60 text-[10px] uppercase tracking-wider">Oversold ≤30</span>
+                <div className="text-lg font-bold text-emerald-400 font-mono">{stats.oversold}</div>
+              </div>
+            </div>
           </div>
         </div>
 

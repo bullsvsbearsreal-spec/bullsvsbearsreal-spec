@@ -13,11 +13,11 @@ interface BrowseViewProps {
 
 const ROWS_PER_PAGE = 20;
 
-const PLATFORM_CONFIG: { key: PredictionPlatform; label: string; color: string }[] = [
-  { key: 'polymarket', label: 'Polymarket', color: 'text-purple-400' },
-  { key: 'kalshi', label: 'Kalshi', color: 'text-blue-400' },
-  { key: 'manifold', label: 'Manifold', color: 'text-green-400' },
-  { key: 'metaculus', label: 'Metaculus', color: 'text-orange-400' },
+const PLATFORM_CONFIG: { key: PredictionPlatform; label: string; color: string; dotColor: string }[] = [
+  { key: 'polymarket', label: 'Polymarket', color: 'text-purple-400', dotColor: 'bg-purple-400' },
+  { key: 'kalshi', label: 'Kalshi', color: 'text-blue-400', dotColor: 'bg-blue-400' },
+  { key: 'manifold', label: 'Manifold', color: 'text-green-400', dotColor: 'bg-green-400' },
+  { key: 'metaculus', label: 'Metaculus', color: 'text-orange-400', dotColor: 'bg-orange-400' },
 ];
 
 function pct(v: number): string {
@@ -59,7 +59,7 @@ function PriceBar({ yes }: { yes: number }) {
   );
 }
 
-function MarketColumn({ title, markets, color }: { title: string; markets: PredictionMarket[]; color: string }) {
+function MarketColumn({ title, markets, color, dotColor }: { title: string; markets: PredictionMarket[]; color: string; dotColor: string }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(markets.length / ROWS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
@@ -69,8 +69,11 @@ function MarketColumn({ title, markets, color }: { title: string; markets: Predi
     <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
         <div>
-          <h3 className={`font-semibold text-sm ${color}`}>{title}</h3>
-          <p className="text-neutral-600 text-xs">{markets.length} active markets</p>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
+            <h3 className={`font-semibold text-sm ${color}`}>{title}</h3>
+          </div>
+          <p className="text-neutral-600 text-xs ml-4">{markets.length} active markets</p>
         </div>
       </div>
 
@@ -142,7 +145,7 @@ function MarketColumn({ title, markets, color }: { title: string; markets: Predi
 
 export default function BrowseView({ markets, searchTerm, categoryFilter }: BrowseViewProps) {
   const filtered = useMemo(() => {
-    const result: { key: PredictionPlatform; label: string; color: string; markets: PredictionMarket[] }[] = [];
+    const result: { key: PredictionPlatform; label: string; color: string; dotColor: string; markets: PredictionMarket[] }[] = [];
     for (const cfg of PLATFORM_CONFIG) {
       const list = markets[cfg.key] || [];
       const f = filterMarkets(list, searchTerm, categoryFilter);
@@ -156,7 +159,7 @@ export default function BrowseView({ markets, searchTerm, categoryFilter }: Brow
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {filtered.map(p => (
-        <MarketColumn key={p.key} title={p.label} markets={p.markets} color={p.color} />
+        <MarketColumn key={p.key} title={p.label} markets={p.markets} color={p.color} dotColor={p.dotColor} />
       ))}
     </div>
   );

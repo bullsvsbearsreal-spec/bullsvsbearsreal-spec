@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
-import { RefreshCw, Info, Target } from 'lucide-react';
+import { RefreshCw, Info, Target, Crosshair, ArrowLeftRight, BarChart3, DollarSign, Activity, Globe } from 'lucide-react';
 import { formatCompact, formatPrice } from '@/lib/utils/format';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -198,244 +198,309 @@ export default function OptionsPage() {
   }, [data]);
 
   return (
-    <>
+    <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
-          {/* Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+        {/* Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
+              <Target className="w-4 h-4 text-hub-yellow" />
+            </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                <Target className="w-6 h-6 text-hub-yellow" />
-                Options Data
-              </h1>
-              <p className="text-sm text-neutral-500 mt-1">
+              <h1 className="text-xl font-bold text-white">Options Data</h1>
+              <p className="text-neutral-500 text-sm mt-0.5 flex items-center gap-1.5">
                 Max pain, put/call ratio, OI by strike, and implied volatility across {data?.health?.filter(h => h.status === 'ok' && h.count > 0).length || 1} exchanges
+                {data && !loading && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                )}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5">
-                {(['BTC', 'ETH'] as const).map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCurrency(c)}
-                    className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      currency === c
-                        ? 'bg-hub-yellow text-black'
-                        : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={fetchData}
-                disabled={loading}
-                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-              <UpdatedAgo date={lastUpdate} />
-            </div>
           </div>
-
-          {loading && !data && (
-            <div className="flex items-center justify-center py-20">
-              <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
-              <span className="ml-3 text-neutral-400">Loading options data...</span>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5">
+              {(['BTC', 'ETH'] as const).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCurrency(c)}
+                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    currency === c
+                      ? 'bg-hub-yellow text-black'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
             </div>
-          )}
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <UpdatedAgo date={lastUpdate} />
+          </div>
+        </div>
 
-          {error && !data && (
-            <div className="text-center py-12 text-red-400">
-              <p>{error}</p>
-              <button onClick={fetchData} className="mt-3 text-sm text-hub-yellow hover:underline">Retry</button>
-            </div>
-          )}
+        {loading && !data && (
+          <div className="flex items-center justify-center py-20">
+            <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
+            <span className="ml-3 text-neutral-400">Loading options data...</span>
+          </div>
+        )}
 
-          {data && (
-            <>
-              {/* Key Metrics */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-hub-darker border border-hub-yellow/20 rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Max Pain</p>
-                  <p className="text-xl font-bold text-hub-yellow">${data.maxPain.toLocaleString()}</p>
-                  <p className={`text-xs ${maxPainDistance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {maxPainDistance >= 0 ? '+' : ''}{maxPainDistance.toFixed(1)}% from spot
-                  </p>
-                </div>
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Put/Call Ratio</p>
-                  <p className={`text-xl font-bold ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}>
-                    {data.putCallRatio.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-neutral-500">
-                    {data.putCallRatio > 1 ? 'Bearish bias' : 'Bullish bias'}
-                  </p>
-                </div>
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Total Options OI</p>
-                  <p className="text-xl font-bold text-white">${formatCompact(data.totalOI)}</p>
-                  <p className="text-xs text-neutral-500">{data.instrumentCount} instruments</p>
-                </div>
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Spot Price</p>
-                  <p className="text-xl font-bold text-white">{formatPrice(data.underlyingPrice)}</p>
-                </div>
-              </div>
+        {error && !data && (
+          <div className="text-center py-12 text-red-400">
+            <p>{error}</p>
+            <button onClick={fetchData} className="mt-3 text-sm text-hub-yellow hover:underline">Retry</button>
+          </div>
+        )}
 
-              {/* Call/Put OI comparison */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-6">
-                  {/* Donut chart */}
-                  {(() => {
-                    const callPct = (data.totalCallOI / data.totalOI) * 100;
-                    const r = 45;
-                    const circumference = 2 * Math.PI * r;
-                    const callDash = (callPct / 100) * circumference;
-                    const putDash = circumference - callDash;
-                    return (
-                      <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
-                        {/* Put arc (red background) */}
-                        <circle
-                          cx="60" cy="60" r={r}
-                          fill="none"
-                          stroke="#ef4444"
-                          strokeWidth="14"
-                        />
-                        {/* Call arc (green foreground) */}
-                        <circle
-                          cx="60" cy="60" r={r}
-                          fill="none"
-                          stroke="#22c55e"
-                          strokeWidth="14"
-                          strokeDasharray={`${callDash} ${putDash}`}
-                          strokeDashoffset={circumference / 4}
-                          strokeLinecap="round"
-                          style={{ transform: 'rotate(-90deg)', transformOrigin: '60px 60px' }}
-                        />
-                        {/* Ratio in center */}
-                        <text x="60" y="56" textAnchor="middle" fontSize="16" fontWeight="bold" fill="white">
-                          {data.putCallRatio.toFixed(2)}
-                        </text>
-                        <text x="60" y="72" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.4)">
-                          P/C Ratio
-                        </text>
-                      </svg>
-                    );
-                  })()}
-                  {/* Bar + labels */}
-                  <div className="flex-1">
-                    <div className="flex justify-between text-xs mb-2">
-                      <span className="text-green-400">Calls ${formatCompact(data.totalCallOI)}</span>
-                      <span className="text-red-400">Puts ${formatCompact(data.totalPutOI)}</span>
-                    </div>
-                    <div className="h-4 rounded-full overflow-hidden flex">
-                      <div
-                        className="bg-green-500 h-full transition-all"
-                        style={{ width: `${(data.totalCallOI / data.totalOI) * 100}%` }}
-                      />
-                      <div
-                        className="bg-red-500 h-full transition-all"
-                        style={{ width: `${(data.totalPutOI / data.totalOI) * 100}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[10px] text-neutral-500 mt-1">
-                      <span>{((data.totalCallOI / data.totalOI) * 100).toFixed(1)}%</span>
-                      <span>{((data.totalPutOI / data.totalOI) * 100).toFixed(1)}%</span>
-                    </div>
+        {data && (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {/* Max Pain */}
+              <div className="bg-hub-darker border border-hub-yellow/20 rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center flex-shrink-0">
+                    <Crosshair className="w-4 h-4 text-hub-yellow" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Max Pain</p>
+                    <p className="text-xl font-bold text-hub-yellow">${data.maxPain.toLocaleString()}</p>
+                    <p className={`text-xs ${maxPainDistance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {maxPainDistance >= 0 ? '+' : ''}{maxPainDistance.toFixed(1)}% from spot
+                    </p>
                   </div>
                 </div>
               </div>
+              {/* Put/Call Ratio */}
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    data.putCallRatio > 1 ? 'bg-red-500/10' : 'bg-green-500/10'
+                  }`}>
+                    <ArrowLeftRight className={`w-4 h-4 ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Put/Call Ratio</p>
+                    <p className={`text-xl font-bold ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}>
+                      {data.putCallRatio.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {data.putCallRatio > 1 ? 'Bearish bias' : 'Bullish bias'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Total Options OI */}
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                    <BarChart3 className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Total Options OI</p>
+                    <p className="text-xl font-bold text-white">${formatCompact(data.totalOI)}</p>
+                    <p className="text-xs text-neutral-500">{data.instrumentCount} instruments</p>
+                  </div>
+                </div>
+              </div>
+              {/* Spot Price */}
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Spot Price</p>
+                    <p className="text-xl font-bold text-white">{formatPrice(data.underlyingPrice)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-              {/* Exchange Breakdown */}
-              {data.exchangeBreakdown && data.exchangeBreakdown.length > 1 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                  <h2 className="text-sm font-semibold text-white mb-3">OI by Exchange</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {data.exchangeBreakdown.map((ex) => (
-                      <div key={ex.exchange} className="bg-white/[0.02] rounded-lg px-3 py-2">
-                        <p className="text-xs text-neutral-500">{ex.exchange}</p>
-                        <p className="text-sm font-bold text-white">${formatCompact(ex.totalOI)}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                            <div
-                              className="h-full bg-hub-yellow rounded-full transition-all"
-                              style={{ width: `${Math.min(ex.share, 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-neutral-500">{ex.share.toFixed(1)}%</span>
+            {/* Call/Put OI comparison */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <ArrowLeftRight className="w-4 h-4 text-purple-400" />
+                </div>
+                <h2 className="text-sm font-semibold text-white">Call/Put OI Comparison</h2>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* Donut chart */}
+                {(() => {
+                  const callPct = (data.totalCallOI / data.totalOI) * 100;
+                  const r = 45;
+                  const circumference = 2 * Math.PI * r;
+                  const callDash = (callPct / 100) * circumference;
+                  const putDash = circumference - callDash;
+                  return (
+                    <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
+                      {/* Put arc (red background) */}
+                      <circle
+                        cx="60" cy="60" r={r}
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="14"
+                      />
+                      {/* Call arc (green foreground) */}
+                      <circle
+                        cx="60" cy="60" r={r}
+                        fill="none"
+                        stroke="#22c55e"
+                        strokeWidth="14"
+                        strokeDasharray={`${callDash} ${putDash}`}
+                        strokeDashoffset={circumference / 4}
+                        strokeLinecap="round"
+                        style={{ transform: 'rotate(-90deg)', transformOrigin: '60px 60px' }}
+                      />
+                      {/* Ratio in center */}
+                      <text x="60" y="56" textAnchor="middle" fontSize="16" fontWeight="bold" fill="white">
+                        {data.putCallRatio.toFixed(2)}
+                      </text>
+                      <text x="60" y="72" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.4)">
+                        P/C Ratio
+                      </text>
+                    </svg>
+                  );
+                })()}
+                {/* Bar + labels */}
+                <div className="flex-1">
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-green-400">Calls ${formatCompact(data.totalCallOI)}</span>
+                    <span className="text-red-400">Puts ${formatCompact(data.totalPutOI)}</span>
+                  </div>
+                  <div className="h-4 rounded-full overflow-hidden flex">
+                    <div
+                      className="bg-green-500 h-full transition-all"
+                      style={{ width: `${(data.totalCallOI / data.totalOI) * 100}%` }}
+                    />
+                    <div
+                      className="bg-red-500 h-full transition-all"
+                      style={{ width: `${(data.totalPutOI / data.totalOI) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-neutral-500 mt-1">
+                    <span>{((data.totalCallOI / data.totalOI) * 100).toFixed(1)}%</span>
+                    <span>{((data.totalPutOI / data.totalOI) * 100).toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Exchange Breakdown */}
+            {data.exchangeBreakdown && data.exchangeBreakdown.length > 1 && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center flex-shrink-0">
+                    <Globe className="w-4 h-4 text-hub-yellow" />
+                  </div>
+                  <h2 className="text-sm font-semibold text-white">OI by Exchange</h2>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {data.exchangeBreakdown.map((ex) => (
+                    <div key={ex.exchange} className="bg-white/[0.02] rounded-lg px-3 py-2">
+                      <p className="text-xs text-neutral-500">{ex.exchange}</p>
+                      <p className="text-sm font-bold text-white">${formatCompact(ex.totalOI)}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                          <div
+                            className="h-full bg-hub-yellow rounded-full transition-all"
+                            style={{ width: `${Math.min(ex.share, 100)}%` }}
+                          />
                         </div>
-                        <p className="text-[10px] text-neutral-600 mt-0.5">{ex.instruments} instruments</p>
+                        <span className="text-[10px] text-neutral-500">{ex.share.toFixed(1)}%</span>
                       </div>
-                    ))}
+                      <p className="text-[10px] text-neutral-600 mt-0.5">{ex.instruments} instruments</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* OI by Strike Chart */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2.5 mb-1">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <BarChart3 className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-white">Open Interest by Strike</h2>
+                  <p className="text-xs text-neutral-600">Dashed line = spot price</p>
+                </div>
+              </div>
+              <div className="h-[250px] mt-3">
+                <OIByStrikeChart strikes={data.strikeData} spotPrice={data.underlyingPrice} />
+              </div>
+              <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm bg-green-500/60" /> Calls
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm bg-red-500/60" /> Puts
+                </div>
+              </div>
+            </div>
+
+            {/* IV Smile */}
+            {data.ivSmile.length > 2 && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2.5 mb-1">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                    <Activity className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-white">Implied Volatility Smile</h2>
+                    <p className="text-xs text-neutral-600">Mark IV across strike prices</p>
                   </div>
                 </div>
-              )}
-
-              {/* OI by Strike Chart */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                <h2 className="text-sm font-semibold text-white mb-1">Open Interest by Strike</h2>
-                <p className="text-xs text-neutral-600 mb-3">Dashed line = spot price</p>
-                <div className="h-[250px]">
-                  <OIByStrikeChart strikes={data.strikeData} spotPrice={data.underlyingPrice} />
+                <div className="h-[180px] mt-3">
+                  <IVSmileChart points={data.ivSmile} spotPrice={data.underlyingPrice} />
                 </div>
                 <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-green-500/60" /> Calls
+                    <div className="w-3 h-2 rounded-sm bg-green-500" /> Call IV
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-red-500/60" /> Puts
+                    <div className="w-3 h-2 rounded-sm bg-red-500" /> Put IV
                   </div>
                 </div>
               </div>
+            )}
+          </>
+        )}
 
-              {/* IV Smile */}
-              {data.ivSmile.length > 2 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-                  <h2 className="text-sm font-semibold text-white mb-1">Implied Volatility Smile</h2>
-                  <p className="text-xs text-neutral-600 mb-3">Mark IV across strike prices</p>
-                  <div className="h-[180px]">
-                    <IVSmileChart points={data.ivSmile} spotPrice={data.underlyingPrice} />
-                  </div>
-                  <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-2 rounded-sm bg-green-500" /> Call IV
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-2 rounded-sm bg-red-500" /> Put IV
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Info footer */}
-          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-neutral-400 space-y-1">
-                <p>
-                  <strong className="text-neutral-300">Options Data</strong> aggregated across Deribit, Binance, OKX, and Bybit.
-                  Max pain is weighted by combined OI across all exchanges.
-                </p>
-                <p>
-                  <strong>Max Pain:</strong> The strike price where option holders lose the most money
-                  at expiry. Price tends to gravitate toward max pain near expiration.
-                </p>
-                <p>
-                  <strong>Put/Call Ratio:</strong> Above 1 = more puts than calls (bearish hedging).
-                  Below 1 = more calls (bullish speculation).
-                </p>
-                <p>Updates every 60 seconds.</p>
-              </div>
+        {/* Info footer */}
+        <div className="mt-8 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl p-4">
+          <div className="flex items-start gap-2">
+            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-neutral-400 space-y-1">
+              <p>
+                <strong className="text-neutral-300">Options Data</strong> aggregated across Deribit, Binance, OKX, and Bybit.
+                Max pain is weighted by combined OI across all exchanges.
+              </p>
+              <p>
+                <strong>Max Pain:</strong> The strike price where option holders lose the most money
+                at expiry. Price tends to gravitate toward max pain near expiration.
+              </p>
+              <p>
+                <strong>Put/Call Ratio:</strong> Above 1 = more puts than calls (bearish hedging).
+                Below 1 = more calls (bullish speculation).
+              </p>
+              <p>Updates every 60 seconds.</p>
             </div>
           </div>
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

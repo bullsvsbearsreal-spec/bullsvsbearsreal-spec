@@ -6,7 +6,7 @@ import Footer from '@/components/Footer';
 import ShareButton from '@/components/ShareButton';
 import { useApiData } from '@/hooks/useApiData';
 import { fetchPredictionMarkets } from '@/lib/api/aggregator';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Crosshair, Search, Info } from 'lucide-react';
 import StatsCards from './components/StatsCards';
 import ArbitrageView from './components/ArbitrageView';
 import BrowseView from './components/BrowseView';
@@ -65,12 +65,22 @@ export default function PredictionMarketsPage() {
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
         <div className="flex items-center justify-between mb-5">
-          <div>
-            <h1 className="text-xl font-bold text-white">Prediction Markets</h1>
-            <p className="text-neutral-500 text-sm">
-              Cross-platform arbitrage across {activePlatforms.length} platforms
-              {meta ? ` \u00b7 ${meta.matchedCount} matched \u00b7 ${totalMarkets} markets` : ''}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <Crosshair className="w-4 h-4 text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Prediction Markets</h1>
+              <div className="flex items-center gap-1.5">
+                {data && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />
+                )}
+                <p className="text-neutral-500 text-sm">
+                  Cross-platform arbitrage across {activePlatforms.length} platforms
+                  {meta ? ` \u00b7 ${meta.matchedCount} matched \u00b7 ${totalMarkets} markets` : ''}
+                </p>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {lastUpdate && (
@@ -83,7 +93,7 @@ export default function PredictionMarketsPage() {
               onClick={refresh}
               disabled={isLoading}
               aria-label="Refresh"
-              className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
+              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -101,7 +111,7 @@ export default function PredictionMarketsPage() {
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   categoryFilter === cat
                     ? 'bg-hub-yellow text-black'
                     : 'text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08]'
@@ -136,13 +146,16 @@ export default function PredictionMarketsPage() {
             </div>
 
             {/* Search */}
-            <input
-              type="text"
-              placeholder="Search markets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full sm:w-40 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
-            />
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search markets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full sm:w-40 pl-8 pr-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
+              />
+            </div>
           </div>
         </div>
 
@@ -180,7 +193,8 @@ export default function PredictionMarketsPage() {
         )}
 
         {/* Disclaimer */}
-        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10 flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-hub-yellow flex-shrink-0 mt-0.5" />
           <p className="text-neutral-500 text-xs leading-relaxed">
             Prices represent implied probabilities (0-100%). A spread indicates the same event is priced differently across platforms.
             Polymarket and Manifold use play money / crypto. Kalshi uses real USD. Metaculus uses crowd forecasting (no trading).

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { TokenIconSimple } from './TokenIcon';
 import { formatPrice } from '@/lib/utils/format';
+import { Rocket } from 'lucide-react';
 
 interface CMCMover {
   symbol: string;
@@ -45,12 +46,17 @@ export default function TopMovers() {
   return (
     <div className="card-premium p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-white font-semibold text-sm">Top Movers</h3>
-        <div className="flex rounded-md overflow-hidden bg-white/[0.04]">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
+            <Rocket className="w-3 h-3 text-hub-yellow" />
+          </div>
+          <h3 className="text-white font-semibold text-sm">Top Movers</h3>
+        </div>
+        <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
           <button
             onClick={() => setView('gainers')}
             className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              view === 'gainers' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+              view === 'gainers' ? 'bg-green-500 text-white' : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             Gainers
@@ -58,7 +64,7 @@ export default function TopMovers() {
           <button
             onClick={() => setView('losers')}
             className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              view === 'losers' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+              view === 'losers' ? 'bg-red-500 text-white' : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             Losers
@@ -80,15 +86,17 @@ export default function TopMovers() {
               className="data-row-premium flex items-center justify-between"
             >
               <div className="flex items-center gap-2">
-                <span className="text-neutral-600 text-[10px] font-mono w-3">{index + 1}</span>
+                <span className="text-neutral-700 text-[10px] font-mono w-3">{index + 1}</span>
                 <TokenIconSimple symbol={item.symbol} size={20} cmcId={item.cmcId} />
-                <span className="text-white font-medium text-xs">{item.symbol}</span>
+                <div className="flex flex-col">
+                  <span className="text-white font-medium text-xs">{item.symbol}</span>
+                  <span className="text-neutral-600 text-[9px] leading-none">{formatPrice(item.price)}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-neutral-500 font-mono text-xs">
-                  {formatPrice(item.price)}
-                </span>
-                <span className={`font-mono font-semibold text-xs min-w-[52px] text-right ${
+              <div className={`h-5 rounded-md px-1.5 flex items-center ${
+                item.change24h >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
+              }`}>
+                <span className={`font-mono font-bold text-[11px] tabular-nums ${
                   item.change24h >= 0 ? 'text-green-400' : 'text-red-400'
                 }`}>
                   {item.change24h >= 0 ? '+' : ''}

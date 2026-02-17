@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Gauge } from 'lucide-react';
 
 export default function FearGreedIndex() {
   const [value, setValue] = useState<number | null>(null);
@@ -22,18 +23,18 @@ export default function FearGreedIndex() {
     };
 
     fetchFearGreed();
-    const interval = setInterval(fetchFearGreed, 10 * 60 * 1000); // refresh every 10 min
+    const interval = setInterval(fetchFearGreed, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
   const displayValue = value ?? 50;
 
   const getLabel = (val: number) => {
-    if (val <= 20) return { text: 'Extreme Fear', color: 'text-red-400' };
-    if (val <= 40) return { text: 'Fear', color: 'text-orange-400' };
-    if (val <= 60) return { text: 'Neutral', color: 'text-hub-yellow' };
-    if (val <= 80) return { text: 'Greed', color: 'text-green-400' };
-    return { text: 'Extreme Greed', color: 'text-green-400' };
+    if (val <= 20) return { text: 'Extreme Fear', color: 'text-red-400', barColor: 'bg-red-500' };
+    if (val <= 40) return { text: 'Fear', color: 'text-orange-400', barColor: 'bg-orange-500' };
+    if (val <= 60) return { text: 'Neutral', color: 'text-hub-yellow', barColor: 'bg-hub-yellow' };
+    if (val <= 80) return { text: 'Greed', color: 'text-green-400', barColor: 'bg-green-500' };
+    return { text: 'Extreme Greed', color: 'text-green-400', barColor: 'bg-green-500' };
   };
 
   const label = getLabel(displayValue);
@@ -42,15 +43,20 @@ export default function FearGreedIndex() {
   return (
     <div className="card-premium p-4 h-full">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-white font-semibold text-sm">Fear & Greed</h3>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
+            <Gauge className="w-3 h-3 text-hub-yellow" />
+          </div>
+          <h3 className="text-white font-semibold text-sm">Fear & Greed</h3>
+        </div>
         <span className="text-neutral-600 text-[10px]">
           {loading ? 'Loading...' : 'Live · Alternative.me'}
         </span>
       </div>
 
       <div className="flex flex-col items-center">
-        <div className="relative w-48 h-24">
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 100">
+        <div className="relative w-52 h-28">
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 110">
             <defs>
               <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#ef4444" />
@@ -59,62 +65,95 @@ export default function FearGreedIndex() {
                 <stop offset="75%" stopColor="#22c55e" />
                 <stop offset="100%" stopColor="#22c55e" />
               </linearGradient>
+              <filter id="gaugeGlow">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+              </filter>
             </defs>
 
+            {/* Background track */}
             <path
-              d="M 20 90 A 80 80 0 0 1 180 90"
+              d="M 20 95 A 80 80 0 0 1 180 95"
               fill="none"
               stroke="rgba(255, 255, 255, 0.04)"
-              strokeWidth="14"
+              strokeWidth="16"
               strokeLinecap="round"
             />
 
+            {/* Glow behind active arc */}
             <path
-              d="M 20 90 A 80 80 0 0 1 180 90"
+              d="M 20 95 A 80 80 0 0 1 180 95"
+              fill="none"
+              stroke="url(#gaugeGradient)"
+              strokeWidth="18"
+              strokeLinecap="round"
+              strokeDasharray={`${(displayValue / 100) * 251.2} 251.2`}
+              opacity="0.15"
+              filter="url(#gaugeGlow)"
+            />
+
+            {/* Active arc */}
+            <path
+              d="M 20 95 A 80 80 0 0 1 180 95"
               fill="none"
               stroke="url(#gaugeGradient)"
               strokeWidth="12"
               strokeLinecap="round"
               strokeDasharray={`${(displayValue / 100) * 251.2} 251.2`}
             />
+
+            {/* Tick marks */}
+            {[0, 25, 50, 75, 100].map((tick) => {
+              const angle = (tick / 100) * Math.PI;
+              const x1 = 100 - Math.cos(angle) * 68;
+              const y1 = 95 - Math.sin(angle) * 68;
+              const x2 = 100 - Math.cos(angle) * 62;
+              const y2 = 95 - Math.sin(angle) * 62;
+              return (
+                <line key={tick} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+              );
+            })}
           </svg>
 
+          {/* Needle */}
           <div
-            className="absolute bottom-0 left-1/2 origin-bottom transition-transform duration-700 ease-out"
+            className="absolute bottom-[10px] left-1/2 origin-bottom transition-transform duration-700 ease-out"
             style={{ transform: `translateX(-50%) rotate(${rotation}deg)` }}
           >
-            <div className="w-0.5 h-16 bg-gradient-to-t from-white to-white/40 rounded-full" />
+            <div className="w-0.5 h-[60px] bg-gradient-to-t from-white to-white/30 rounded-full" />
           </div>
 
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-            <div className="w-3 h-3 bg-white rounded-full border-2 border-neutral-800" />
+          {/* Center dot */}
+          <div className="absolute bottom-[6px] left-1/2 transform -translate-x-1/2">
+            <div className="w-3 h-3 bg-white rounded-full border-2 border-neutral-800 shadow-[0_0_8px_rgba(255,255,255,0.2)]" />
           </div>
         </div>
 
-        <div className="text-center mt-4">
+        {/* Value display */}
+        <div className="text-center mt-3">
           <div className="flex items-baseline justify-center gap-1">
             {loading ? (
               <div className="h-8 w-12 bg-white/[0.06] rounded animate-pulse" />
             ) : (
-              <span className="text-3xl font-bold text-white font-mono">{displayValue}</span>
+              <span className="text-4xl font-bold text-white font-mono tabular-nums">{displayValue}</span>
             )}
-            <span className="text-neutral-600 text-sm">/100</span>
+            <span className="text-neutral-600 text-sm font-mono">/100</span>
           </div>
-          <span className={`text-xs font-medium ${label.color}`}>{label.text}</span>
+          <div className={`text-xs font-semibold ${label.color} mt-0.5`}>{label.text}</div>
         </div>
 
-        <div className="flex items-center gap-4 mt-3 text-[10px]">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-sm bg-red-500" />
-            <span className="text-neutral-600">Fear</span>
+        {/* Color legend */}
+        <div className="flex items-center gap-4 mt-4 text-[10px]">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-1.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500" />
+            <span className="text-neutral-500">Fear</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-sm bg-hub-yellow" />
-            <span className="text-neutral-600">Neutral</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-1.5 rounded-full bg-hub-yellow" />
+            <span className="text-neutral-500">Neutral</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-sm bg-green-500" />
-            <span className="text-neutral-600">Greed</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-1.5 rounded-full bg-gradient-to-r from-green-500 to-green-400" />
+            <span className="text-neutral-500">Greed</span>
           </div>
         </div>
       </div>
