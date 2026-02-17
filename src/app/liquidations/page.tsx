@@ -30,10 +30,14 @@ export default function LiquidationsPage() {
   // Track exchange breakdown per symbol
   const exchangeBreakdownRef = useRef<Map<string, Record<string, number>>>(new Map());
 
+  const timeframeMs = { '1h': 3600000, '4h': 14400000, '12h': 43200000, '24h': 86400000 }[timeframe];
+
   const { liquidations, connections, stats, aggregated, clearAll } = useMultiExchangeLiquidations({
     exchanges: stableExchanges,
     minValue,
     maxItems: 200,
+    persistKey: `ih-liq-${timeframe}`,
+    persistTtlMs: timeframeMs,
     onLiquidation: (liq) => {
       if (soundEnabled && liq.value >= 100000 && audioRef.current) {
         audioRef.current.play().catch(() => {});
@@ -206,41 +210,66 @@ export default function LiquidationsPage() {
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
-            <span className="text-neutral-600 text-sm">{timeframe} Liquidations</span>
-            <div className="text-sm font-bold font-mono text-white mt-1">{stats.totalLongs + stats.totalShorts}</div>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap className="w-3.5 h-3.5 text-hub-yellow" />
+              <span className="text-neutral-500 text-xs">{timeframe} Total</span>
+            </div>
+            <div className="text-lg font-bold font-mono text-white">{formatLiqValue(stats.longValue + stats.shortValue)}</div>
+            <div className="text-xs text-neutral-600 font-mono">{stats.totalLongs + stats.totalShorts} liquidations</div>
           </div>
-          <div className="bg-success/10 border border-success/30 rounded-xl p-5">
-            <span className="text-success text-sm">Longs Rekt</span>
-            <div className="text-sm font-bold font-mono text-success mt-1">{stats.totalLongs}</div>
-            <div className="text-sm text-success/70">{formatLiqValue(stats.longValue)}</div>
+          <div className="bg-hub-darker border border-red-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+              <span className="text-neutral-500 text-xs">Longs Rekt</span>
+            </div>
+            <div className="text-lg font-bold font-mono text-red-400">{formatLiqValue(stats.longValue)}</div>
+            <div className="text-xs text-red-400/50 font-mono">{stats.totalLongs} positions</div>
           </div>
-          <div className="bg-danger/10 border border-danger/30 rounded-xl p-5">
-            <span className="text-danger text-sm">Shorts Rekt</span>
-            <div className="text-sm font-bold font-mono text-danger mt-1">{stats.totalShorts}</div>
-            <div className="text-sm text-danger/70">{formatLiqValue(stats.shortValue)}</div>
+          <div className="bg-hub-darker border border-green-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-neutral-500 text-xs">Shorts Rekt</span>
+            </div>
+            <div className="text-lg font-bold font-mono text-green-400">{formatLiqValue(stats.shortValue)}</div>
+            <div className="text-xs text-green-400/50 font-mono">{stats.totalShorts} positions</div>
           </div>
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
-            <span className="text-neutral-600 text-sm">Total Value</span>
-            <div className="text-sm font-bold font-mono text-white mt-1">{formatLiqValue(stats.longValue + stats.shortValue)}</div>
-          </div>
-          <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-5">
-            <span className="text-purple-400 text-sm">Largest Liquidation</span>
+          <div className="bg-hub-darker border border-purple-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-neutral-500 text-xs">Largest</span>
+            </div>
             {stats.largestLiq ? (
               <>
-                <div className="text-sm font-bold font-mono text-purple-400 mt-1">{formatLiqValue(stats.largestLiq.value)}</div>
-                <div className="text-sm text-purple-400/70">
-                  {stats.largestLiq.symbol}
-                  <span className="text-purple-400/40 ml-1">({stats.largestLiq.exchange})</span>
-                </div>
+                <div className="text-lg font-bold font-mono text-purple-400">{formatLiqValue(stats.largestLiq.value)}</div>
+                <div className="text-xs text-purple-400/50">{stats.largestLiq.symbol} <span className="text-neutral-600">{stats.largestLiq.exchange}</span></div>
               </>
             ) : (
-              <div className="text-sm font-bold font-mono text-neutral-600 mt-1">-</div>
+              <div className="text-lg font-bold font-mono text-neutral-700">-</div>
             )}
           </div>
         </div>
+
+        {/* Long/Short Ratio Bar */}
+        {(stats.longValue + stats.shortValue > 0) && (() => {
+          const total = stats.longValue + stats.shortValue;
+          const longPct = (stats.longValue / total) * 100;
+          return (
+            <div className="mb-6 bg-hub-darker border border-white/[0.06] rounded-xl p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-red-400 font-mono">{longPct.toFixed(1)}% Longs</span>
+                <span className="text-[10px] text-neutral-600">Long / Short Ratio</span>
+                <span className="text-xs text-green-400 font-mono">{(100 - longPct).toFixed(1)}% Shorts</span>
+              </div>
+              <div className="flex h-2 rounded-full overflow-hidden bg-white/[0.04]">
+                <div className="bg-red-500 transition-all duration-500" style={{ width: `${longPct}%` }} />
+                <div className="bg-green-500 transition-all duration-500" style={{ width: `${100 - longPct}%` }} />
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Controls */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -307,46 +336,94 @@ export default function LiquidationsPage() {
                     <p className="text-sm">Collecting liquidation data...</p>
                   </div>
                 ) : (
-                  <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                    {sortedAggregated.map((item, index) => {
-                      const isLongDominant = item.longValue > item.shortValue;
-                      const sizeClass = index < 3 ? 'h-32' : index < 8 ? 'h-28' : 'h-24';
-                      // Exchange breakdown for this symbol
-                      const bd = exchangeBreakdownRef.current.get(item.symbol) || {};
-                      const bdEntries = Object.entries(bd).sort((a, b) => b[1] - a[1]);
-                      const bdTotal = bdEntries.reduce((s, [, v]) => s + v, 0) || 1;
-                      return (
-                        <div key={item.symbol} className={`${getHeatmapColor(item)} ${sizeClass} rounded-xl p-3 flex flex-col justify-between transition-all hover:scale-[1.02] cursor-pointer`}>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <TokenIconSimple symbol={item.symbol} size={20} />
-                              <span className="font-bold text-sm md:text-base">{item.symbol}</span>
-                            </div>
-                            <div className="opacity-70 text-xs">{item.count} liqs</div>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-sm">{formatLiqValue(item.totalValue)}</div>
-                            <div className="opacity-60 text-xs mb-1">{isLongDominant ? 'Longs' : 'Shorts'} dominant</div>
-                            {/* Exchange breakdown bar */}
-                            {bdEntries.length > 1 && (
-                              <div className="flex h-1.5 rounded-full overflow-hidden bg-black/20">
-                                {bdEntries.slice(0, 4).map(([ex, val]) => (
-                                  <div
-                                    key={ex}
-                                    title={`${ex}: ${formatLiqValue(val)}`}
-                                    className="h-full opacity-80"
-                                    style={{
-                                      width: `${(val / bdTotal) * 100}%`,
-                                      backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : '#888',
-                                    }}
-                                  />
-                                ))}
+                  <div className="p-3">
+                    {/* Top 3 — large feature tiles */}
+                    {sortedAggregated.length > 0 && (
+                      <div className={`grid gap-2 mb-2 ${sortedAggregated.length >= 3 ? 'grid-cols-3' : sortedAggregated.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        {sortedAggregated.slice(0, 3).map((item) => {
+                          const isLongDominant = item.longValue > item.shortValue;
+                          const longPct = item.totalValue > 0 ? (item.longValue / item.totalValue) * 100 : 50;
+                          const bd = exchangeBreakdownRef.current.get(item.symbol) || {};
+                          const bdEntries = Object.entries(bd).sort((a, b) => b[1] - a[1]);
+                          const bdTotal = bdEntries.reduce((s, [, v]) => s + v, 0) || 1;
+                          return (
+                            <div key={item.symbol} className={`${getHeatmapColor(item)} h-36 rounded-xl p-4 flex flex-col justify-between transition-all hover:brightness-110 cursor-pointer relative overflow-hidden`}>
+                              <div className="absolute inset-0 opacity-10 bg-gradient-to-b from-white/20 to-transparent" />
+                              <div className="relative">
+                                <div className="flex items-center gap-2">
+                                  <TokenIconSimple symbol={item.symbol} size={24} />
+                                  <span className="font-bold text-base">{item.symbol}</span>
+                                </div>
+                                <div className="opacity-70 text-xs mt-0.5">{item.count} liquidations</div>
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                              <div className="relative">
+                                <div className="font-bold text-xl">{formatLiqValue(item.totalValue)}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex h-1.5 rounded-full overflow-hidden bg-black/30 flex-1">
+                                    <div className="bg-red-400 h-full" style={{ width: `${longPct}%` }} />
+                                    <div className="bg-green-400 h-full" style={{ width: `${100 - longPct}%` }} />
+                                  </div>
+                                  <span className="text-[10px] opacity-70">{isLongDominant ? 'L' : 'S'}</span>
+                                </div>
+                                {bdEntries.length > 1 && (
+                                  <div className="flex h-1 rounded-full overflow-hidden bg-black/20 mt-1">
+                                    {bdEntries.slice(0, 4).map(([ex, val]) => (
+                                      <div
+                                        key={ex}
+                                        title={`${ex}: ${formatLiqValue(val)}`}
+                                        className="h-full opacity-80"
+                                        style={{
+                                          width: `${(val / bdTotal) * 100}%`,
+                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : '#888',
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* Remaining tiles — compact grid */}
+                    {sortedAggregated.length > 3 && (
+                      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                        {sortedAggregated.slice(3).map((item) => {
+                          const isLongDominant = item.longValue > item.shortValue;
+                          const bd = exchangeBreakdownRef.current.get(item.symbol) || {};
+                          const bdEntries = Object.entries(bd).sort((a, b) => b[1] - a[1]);
+                          const bdTotal = bdEntries.reduce((s, [, v]) => s + v, 0) || 1;
+                          return (
+                            <div key={item.symbol} className={`${getHeatmapColor(item)} h-24 rounded-lg p-3 flex flex-col justify-between transition-all hover:brightness-110 cursor-pointer`}>
+                              <div className="flex items-center gap-1.5">
+                                <TokenIconSimple symbol={item.symbol} size={16} />
+                                <span className="font-bold text-xs">{item.symbol}</span>
+                                <span className="opacity-60 text-[10px] ml-auto">{item.count}</span>
+                              </div>
+                              <div>
+                                <div className="font-semibold text-sm">{formatLiqValue(item.totalValue)}</div>
+                                {bdEntries.length > 1 && (
+                                  <div className="flex h-1 rounded-full overflow-hidden bg-black/20 mt-1">
+                                    {bdEntries.slice(0, 4).map(([ex, val]) => (
+                                      <div
+                                        key={ex}
+                                        title={`${ex}: ${formatLiqValue(val)}`}
+                                        className="h-full opacity-80"
+                                        style={{
+                                          width: `${(val / bdTotal) * 100}%`,
+                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : '#888',
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="p-4 border-t border-white/[0.06] flex items-center justify-center gap-6 text-xs text-neutral-600">

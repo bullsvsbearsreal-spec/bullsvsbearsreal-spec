@@ -40,6 +40,8 @@ interface UseMultiExchangeLiquidationsOptions {
   minValue: number;
   maxItems?: number;
   onLiquidation?: (liq: Liquidation) => void;
+  persistKey?: string; // localStorage key for persistence
+  persistTtlMs?: number; // max age of persisted data in ms
 }
 
 const RECONNECT_DELAY = 3000;
@@ -401,20 +403,79 @@ const EMPTY_STATS: LiquidationStats = {
   largestLiq: null,
 };
 
+// --- localStorage persistence helpers ---
+const STORAGE_VERSION = 1;
+
+interface PersistedLiqData {
+  v: number;
+  ts: number; // when saved
+  liquidations: Liquidation[];
+  aggregated: [string, AggregatedLiq][];
+  stats: LiquidationStats;
+}
+
+function saveToStorage(key: string, liquidations: Liquidation[], aggregated: Map<string, AggregatedLiq>, stats: LiquidationStats) {
+  try {
+    const data: PersistedLiqData = {
+      v: STORAGE_VERSION,
+      ts: Date.now(),
+      liquidations,
+      aggregated: Array.from(aggregated.entries()),
+      stats: { ...stats, largestLiq: stats.largestLiq ? { ...stats.largestLiq } : null },
+    };
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch { /* quota exceeded or unavailable */ }
+}
+
+function loadFromStorage(key: string, ttlMs: number): { liquidations: Liquidation[]; aggregated: Map<string, AggregatedLiq>; stats: LiquidationStats } | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const data: PersistedLiqData = JSON.parse(raw);
+    if (data.v !== STORAGE_VERSION) return null;
+    // Discard if too old
+    if (Date.now() - data.ts > ttlMs) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    // Filter out individual liquidations older than TTL
+    const cutoff = Date.now() - ttlMs;
+    const liqs = data.liquidations.filter(l => l.timestamp > cutoff);
+    return {
+      liquidations: liqs,
+      aggregated: new Map(data.aggregated),
+      stats: data.stats,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function useMultiExchangeLiquidations({
   exchanges,
   minValue,
   maxItems = 200,
   onLiquidation,
+  persistKey = 'ih-liq-data',
+  persistTtlMs = 3600000, // default 1h
 }: UseMultiExchangeLiquidationsOptions) {
-  const [liquidations, setLiquidations] = useState<Liquidation[]>([]);
+  // Restore from localStorage on mount
+  const restored = useRef(false);
+  const initData = useRef<ReturnType<typeof loadFromStorage>>(null);
+  if (!restored.current) {
+    initData.current = loadFromStorage(persistKey, persistTtlMs);
+    restored.current = true;
+  }
+
+  const [liquidations, setLiquidations] = useState<Liquidation[]>(initData.current?.liquidations ?? []);
   const [connections, setConnections] = useState<ConnectionStatus[]>([]);
-  const [stats, setStats] = useState<LiquidationStats>({ ...EMPTY_STATS });
-  const [aggregated, setAggregated] = useState<Map<string, AggregatedLiq>>(new Map());
+  const [stats, setStats] = useState<LiquidationStats>(initData.current?.stats ?? { ...EMPTY_STATS });
+  const [aggregated, setAggregated] = useState<Map<string, AggregatedLiq>>(initData.current?.aggregated ?? new Map());
 
   const minValueRef = useRef(minValue);
   const onLiquidationRef = useRef(onLiquidation);
   const maxItemsRef = useRef(maxItems);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { minValueRef.current = minValue; }, [minValue]);
   useEffect(() => { onLiquidationRef.current = onLiquidation; }, [onLiquidation]);
@@ -447,7 +508,25 @@ export function useMultiExchangeLiquidations({
     }));
 
     onLiquidationRef.current?.(liq);
-  }, []);
+
+    // Debounced save to localStorage (every 2s max)
+    if (!saveTimerRef.current) {
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null;
+        // Read current state via setState callback to get latest values
+        setLiquidations(cur => {
+          setAggregated(curAgg => {
+            setStats(curStats => {
+              saveToStorage(persistKey, cur, curAgg, curStats);
+              return curStats;
+            });
+            return curAgg;
+          });
+          return cur;
+        });
+      }, 2000);
+    }
+  }, [persistKey]);
 
   useEffect(() => {
     // Initialize connections status
@@ -474,7 +553,8 @@ export function useMultiExchangeLiquidations({
     setLiquidations([]);
     setAggregated(new Map());
     setStats({ ...EMPTY_STATS });
-  }, []);
+    try { localStorage.removeItem(persistKey); } catch {}
+  }, [persistKey]);
 
   return { liquidations, connections, stats, aggregated, clearAll };
 }
