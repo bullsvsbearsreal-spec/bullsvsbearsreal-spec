@@ -1,294 +1,411 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import Logo from '@/components/Logo';
+import { ArrowRight, Play, Pause, RotateCcw } from 'lucide-react';
 
+/* ── scene config ─────────────────────────────────────────────── */
+const SCENES = [
+  { id: 'black',       ms: 1800 },
+  { id: 'glitch-text', ms: 3200 },
+  { id: 'chaos',       ms: 3600 },
+  { id: 'logo-reveal', ms: 3000 },
+  { id: 'tagline',     ms: 2800 },
+  { id: 'montage-1',   ms: 2600 },
+  { id: 'montage-2',   ms: 2600 },
+  { id: 'montage-3',   ms: 2600 },
+  { id: 'montage-4',   ms: 2600 },
+  { id: 'stats',       ms: 4000 },
+  { id: 'quote',       ms: 3400 },
+  { id: 'cta',         ms: 6000 },
+] as const;
+
+const TOTAL_MS = SCENES.reduce((s, sc) => s + sc.ms, 0);
+
+/* ── page ─────────────────────────────────────────────────────── */
 export default function TrailerPage() {
   const router = useRouter();
-  const [currentScene, setCurrentScene] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
+  const frameRef = useRef<number>(0);
 
-  const scenes = [
-    { id: 'intro', duration: 3000 },
-    { id: 'problem', duration: 4000 },
-    { id: 'solution', duration: 3000 },
-    { id: 'features', duration: 6000 },
-    { id: 'stats', duration: 4000 },
-    { id: 'cta', duration: 5000 },
-  ];
+  // advance scenes + track elapsed
+  const tick = useCallback(() => {
+    const now = Date.now() - startRef.current;
+    setElapsed(now);
+
+    let acc = 0;
+    for (let i = 0; i < SCENES.length; i++) {
+      acc += SCENES[i].ms;
+      if (now < acc) { setIdx(i); break; }
+      if (i === SCENES.length - 1) setIdx(i);
+    }
+
+    frameRef.current = requestAnimationFrame(tick);
+  }, []);
 
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!playing) { cancelAnimationFrame(frameRef.current); return; }
+    startRef.current = Date.now() - elapsed;
+    frameRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, tick]);
 
-    const timer = setTimeout(() => {
-      if (currentScene < scenes.length - 1) {
-        setCurrentScene(currentScene + 1);
-      }
-    }, scenes[currentScene].duration);
+  const replay = () => { setIdx(0); setElapsed(0); startRef.current = Date.now(); setPlaying(true); };
+  const progress = Math.min(elapsed / TOTAL_MS, 1);
 
-    return () => clearTimeout(timer);
-  }, [currentScene, isPlaying, scenes]);
+  const sceneId = SCENES[idx]?.id ?? 'cta';
 
-  const handleReplay = () => {
-    setCurrentScene(0);
-    setIsPlaying(true);
-  };
+  // time within current scene (0→1)
+  let sceneStart = 0;
+  for (let i = 0; i < idx; i++) sceneStart += SCENES[i].ms;
+  const sceneT = Math.min((elapsed - sceneStart) / SCENES[idx].ms, 1);
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-hub-black overflow-hidden relative">
-      {/* Particle Background */}
-      <ParticleBackground />
+    <div className="fixed inset-0 bg-black overflow-hidden select-none" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {/* circuit bg */}
+      <CircuitBG />
 
-      {/* Progress Bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-white/[0.06] z-50">
-        <div
-          className="h-full bg-hub-yellow transition-all duration-300"
-          style={{ width: `${((currentScene + 1) / scenes.length) * 100}%` }}
+      {/* progress */}
+      <div className="fixed top-0 left-0 right-0 h-[2px] z-50 bg-white/[0.04]">
+        <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-[width] duration-100" style={{ width: `${progress * 100}%` }} />
+      </div>
+
+      {/* controls */}
+      <div className="fixed top-4 right-4 flex gap-2 z-50">
+        <Btn onClick={() => setPlaying(!playing)}>{playing ? <Pause size={16} /> : <Play size={16} />}</Btn>
+        <Btn onClick={() => router.push('/')}>Skip</Btn>
+      </div>
+
+      {/* ─── SCENES ─── */}
+
+      {sceneId === 'black' && (
+        <Centered>
+          <p className="text-neutral-600 text-sm tracking-[0.3em] uppercase animate-[fadeIn_1s_ease]">
+            info-hub.io presents
+          </p>
+        </Centered>
+      )}
+
+      {sceneId === 'glitch-text' && (
+        <Centered>
+          <div className="space-y-4 text-center">
+            <Line t={sceneT} delay={0}>The crypto market moves at light speed.</Line>
+            <Line t={sceneT} delay={0.25}>Billions liquidated in minutes.</Line>
+            <Line t={sceneT} delay={0.5}>Funding rates flip in seconds.</Line>
+          </div>
+          <ScanLines />
+        </Centered>
+      )}
+
+      {sceneId === 'chaos' && (
+        <Centered>
+          <div className="text-center">
+            <p className="text-4xl md:text-6xl lg:text-7xl font-black animate-[scaleIn_0.6s_ease]">
+              <span className="text-red-500">Scattered data.</span>
+            </p>
+            <p className="text-4xl md:text-6xl lg:text-7xl font-black mt-3 animate-[scaleIn_0.6s_0.4s_ease_both]">
+              <span className="text-red-400/80">Delayed signals.</span>
+            </p>
+            <p className="text-4xl md:text-6xl lg:text-7xl font-black mt-3 animate-[scaleIn_0.6s_0.8s_ease_both]">
+              <span className="text-red-300/60">Missed trades.</span>
+            </p>
+            <p className="text-2xl md:text-3xl font-bold text-neutral-500 mt-8 animate-[fadeIn_1s_1.5s_ease_both]">
+              Until now.
+            </p>
+          </div>
+          <ScanLines />
+        </Centered>
+      )}
+
+      {sceneId === 'logo-reveal' && (
+        <Centered>
+          <div className="flex flex-col items-center animate-[scaleIn_0.8s_ease]">
+            <div className="relative">
+              <div className="absolute -inset-16 bg-amber-500/20 blur-[100px] rounded-full animate-pulse" />
+              <CircuitIcon size={120} />
+            </div>
+            <h1 className="mt-6 text-6xl md:text-8xl lg:text-9xl font-black tracking-tight">
+              <span className="text-white">Info</span>
+              <span className="bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">Hub</span>
+            </h1>
+          </div>
+        </Centered>
+      )}
+
+      {sceneId === 'tagline' && (
+        <Centered>
+          <div className="text-center animate-[fadeIn_1s_ease]">
+            <p className="text-3xl md:text-5xl font-bold text-white">
+              Real-time data from <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">24 exchanges</span>
+            </p>
+            <p className="text-xl md:text-2xl text-neutral-500 mt-4">
+              Aggregated. Analyzed. Actionable.
+            </p>
+          </div>
+        </Centered>
+      )}
+
+      {sceneId === 'montage-1' && (
+        <MontageSlide
+          title="Liquidation Heatmap"
+          desc="See every forced closure across 24 exchanges in real-time"
+          color="#EF4444"
+          icon="🔥"
+          features={['CEX & DEX filtering', 'Timeline chart', 'Exchange heatmap', 'Sound alerts']}
         />
-      </div>
+      )}
 
-      {/* Controls */}
-      <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
-        <button
-          onClick={() => setIsPlaying(!isPlaying)}
-          className="p-3 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg transition-colors"
-        >
-          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-        </button>
-        <button
-          onClick={() => setIsMuted(!isMuted)}
-          className="p-3 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg transition-colors"
-        >
-          {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-        </button>
-        <button
-          onClick={() => router.push('/')}
-          className="px-4 py-3 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg transition-colors text-sm font-medium"
-        >
-          Skip
-        </button>
-      </div>
+      {sceneId === 'montage-2' && (
+        <MontageSlide
+          title="Funding Rates"
+          desc="Track funding across every perpetual market — spot arbitrage instantly"
+          color="#FFA500"
+          icon="💰"
+          features={['Multi-exchange comparison', 'Funding heatmap', 'Arbitrage scanner', 'Historical charts']}
+        />
+      )}
 
-      {/* Scene: Intro */}
-      <Scene isActive={currentScene === 0}>
-        <div className="flex flex-col items-center justify-center animate-fadeIn">
-          <div className="relative">
-            <div className="absolute inset-0 bg-hub-yellow/20 blur-[100px] rounded-full animate-pulse" />
-            <Logo variant="icon" size="xl" animated />
+      {sceneId === 'montage-3' && (
+        <MontageSlide
+          title="Open Interest"
+          desc="$60B+ in open interest tracked — know where the money is"
+          color="#3B82F6"
+          icon="📊"
+          features={['Total OI tracking', 'Per-exchange breakdown', 'OI change alerts', 'Historical data']}
+        />
+      )}
+
+      {sceneId === 'montage-4' && (
+        <MontageSlide
+          title="And So Much More"
+          desc="35+ tools for every dimension of the crypto market"
+          color="#8B5CF6"
+          icon="⚡"
+          features={['Long/Short Ratios', 'Whale Alerts', 'Options Flow', 'News Feed', 'Fear & Greed', 'CVD Tracker', 'Market Heatmap', 'RSI Heatmap']}
+        />
+      )}
+
+      {sceneId === 'stats' && (
+        <Centered>
+          <div className="flex flex-wrap justify-center gap-10 md:gap-20">
+            <StatCounter value="24" label="Exchanges" t={sceneT} delay={0} />
+            <StatCounter value="35+" label="Tools" t={sceneT} delay={0.15} />
+            <StatCounter value="24/7" label="Real-Time" t={sceneT} delay={0.3} />
+            <StatCounter value="$60B+" label="OI Tracked" t={sceneT} delay={0.45} />
           </div>
-          <h1 className="mt-8 text-6xl md:text-8xl font-black tracking-tight">
-            <span className="text-white">Info</span>
-            <span className="text-gradient">Hub</span>
-          </h1>
-          <p className="mt-4 text-xl md:text-2xl text-neutral-500 animate-slideUp" style={{ animationDelay: '0.5s' }}>
-            Where Data Meets Decision
-          </p>
-        </div>
-      </Scene>
+        </Centered>
+      )}
 
-      {/* Scene: Problem */}
-      <Scene isActive={currentScene === 1}>
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-3xl md:text-5xl font-bold leading-tight animate-fadeIn">
-            In a market that{' '}
-            <span className="text-error animate-pulse">never sleeps</span>...
-          </p>
-          <p className="mt-6 text-3xl md:text-5xl font-bold leading-tight animate-fadeIn" style={{ animationDelay: '1s' }}>
-            where fortunes rise and fall in{' '}
-            <span className="text-error animate-pulse">seconds</span>...
-          </p>
-          <p className="mt-6 text-3xl md:text-5xl font-bold leading-tight animate-fadeIn" style={{ animationDelay: '2s' }}>
-            one platform brings{' '}
-            <span className="text-hub-yellow">clarity</span> to chaos.
-          </p>
-        </div>
-        <GlitchOverlay />
-      </Scene>
+      {sceneId === 'quote' && (
+        <Centered>
+          <div className="text-center max-w-3xl animate-[fadeIn_1s_ease]">
+            <p className="text-3xl md:text-5xl font-black text-white leading-tight">
+              Don&apos;t trade <span className="text-neutral-500">blind</span>.
+            </p>
+            <p className="text-3xl md:text-5xl font-black mt-2 bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent leading-tight">
+              Trade informed.
+            </p>
+          </div>
+        </Centered>
+      )}
 
-      {/* Scene: Solution */}
-      <Scene isActive={currentScene === 2}>
-        <div className="flex flex-col items-center animate-scaleIn">
-          <div className="relative mb-8">
-            <div className="absolute inset-0 bg-hub-yellow/30 blur-[150px] rounded-full" />
-            <div className="w-32 h-32 md:w-48 md:h-48 bg-gradient-to-br from-hub-yellow to-hub-orange rounded-3xl flex items-center justify-center shadow-2xl shadow-hub-yellow/30">
-              <span className="text-5xl md:text-7xl font-black text-black">iH</span>
+      {sceneId === 'cta' && (
+        <Centered>
+          <div className="text-center animate-[scaleIn_0.8s_ease]">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <CircuitIcon size={48} />
+              <h2 className="text-4xl md:text-5xl font-black">
+                <span className="text-white">Info</span>
+                <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Hub</span>
+              </h2>
             </div>
-          </div>
-          <h2 className="text-5xl md:text-7xl font-black">
-            <span className="text-white">INFO</span>
-            <span className="text-gradient">HUB</span>
-          </h2>
-          <p className="mt-4 text-xl text-neutral-500">Your One-Stop Destination for Real-Time Trading Data</p>
-        </div>
-      </Scene>
-
-      {/* Scene: Features */}
-      <Scene isActive={currentScene === 3}>
-        <div className="w-full max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 animate-fadeIn">
-            Everything You Need
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-            {[
-              { icon: '📊', title: 'Real-Time Data', desc: '6 Exchanges' },
-              { icon: '🔍', title: 'Coin Search', desc: '10,000+ Coins' },
-              { icon: '💰', title: 'Funding Rates', desc: 'Live Updates' },
-              { icon: '⚡', title: 'Liquidations', desc: 'Instant Alerts' },
-              { icon: '📈', title: 'Open Interest', desc: 'Market Depth' },
-              { icon: '📰', title: 'Live News', desc: 'Real-Time Feed' },
-            ].map((feature, i) => (
-              <div
-                key={feature.title}
-                className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 md:p-6 animate-slideUp hover:border-hub-yellow/30 transition-all"
-                style={{ animationDelay: `${i * 0.1}s` }}
+            <p className="text-xl text-neutral-400 mb-10">
+              Free. No signup. Open it and trade.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                onClick={() => router.push('/')}
+                className="group flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold text-lg rounded-xl hover:brightness-110 transition-all shadow-lg shadow-amber-500/25"
               >
-                <span className="text-3xl md:text-4xl">{feature.icon}</span>
-                <h3 className="mt-3 text-lg md:text-xl font-bold text-white">{feature.title}</h3>
-                <p className="text-sm text-neutral-500">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Scene>
-
-      {/* Scene: Stats */}
-      <Scene isActive={currentScene === 4}>
-        <div className="flex flex-wrap justify-center gap-8 md:gap-16">
-          {[
-            { value: '6', label: 'Exchanges' },
-            { value: '10K+', label: 'Coins' },
-            { value: '24/7', label: 'Real-Time' },
-            { value: '∞', label: 'Possibilities' },
-          ].map((stat, i) => (
-            <div
-              key={stat.label}
-              className="text-center animate-scaleIn"
-              style={{ animationDelay: `${i * 0.2}s` }}
-            >
-              <div className="text-5xl md:text-7xl font-black text-gradient">{stat.value}</div>
-              <div className="mt-2 text-lg md:text-xl text-neutral-500">{stat.label}</div>
+                Launch InfoHub
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button
+                onClick={replay}
+                className="flex items-center gap-2 px-8 py-4 bg-white/[0.06] hover:bg-white/[0.1] text-white font-medium rounded-xl transition-colors"
+              >
+                <RotateCcw size={16} />
+                Watch Again
+              </button>
             </div>
-          ))}
-        </div>
-      </Scene>
-
-      {/* Scene: CTA */}
-      <Scene isActive={currentScene === 5}>
-        <div className="text-center animate-fadeIn">
-          <h2 className="text-4xl md:text-6xl font-black mb-4">
-            Ready to <span className="text-gradient">Trade Smarter</span>?
-          </h2>
-          <p className="text-xl text-neutral-500 mb-8">
-            Join thousands of traders using InfoHub
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={() => router.push('/')}
-              className="group flex items-center gap-3 px-8 py-4 bg-hub-yellow text-black font-bold text-lg rounded-xl hover:bg-hub-yellow/90 transition-all"
-            >
-              Launch InfoHub
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button
-              onClick={handleReplay}
-              className="px-8 py-4 bg-white/[0.06] hover:bg-white/[0.1] text-white font-medium rounded-xl transition-colors"
-            >
-              Watch Again
-            </button>
+            <p className="mt-8 text-sm text-neutral-600">info-hub.io</p>
           </div>
-        </div>
-      </Scene>
+        </Centered>
+      )}
 
-      {/* Scene Indicators */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 z-50">
-        {scenes.map((scene, i) => (
+      {/* dot nav */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-50">
+        {SCENES.map((s, i) => (
           <button
-            key={scene.id}
-            onClick={() => setCurrentScene(i)}
-            className={`w-2 h-2 rounded-full transition-all ${
-              i === currentScene
-                ? 'w-8 bg-hub-yellow'
-                : i < currentScene
-                ? 'bg-hub-yellow/50'
-                : 'bg-white/[0.1]'
+            key={s.id}
+            onClick={() => {
+              let t = 0;
+              for (let j = 0; j < i; j++) t += SCENES[j].ms;
+              setElapsed(t); startRef.current = Date.now() - t; setIdx(i);
+            }}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              i === idx ? 'w-6 bg-amber-500' : i < idx ? 'w-1.5 bg-amber-500/40' : 'w-1.5 bg-white/10'
             }`}
           />
         ))}
       </div>
 
       <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.8); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-fadeIn { animation: fadeIn 1s ease-out forwards; }
-        .animate-slideUp { animation: slideUp 1s ease-out forwards; }
-        .animate-scaleIn { animation: scaleIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes scaleIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+        @keyframes lineGrow { from{width:0} to{width:100%} }
       `}</style>
     </div>
   );
 }
 
-function Scene({ isActive, children }: { isActive: boolean; children: React.ReactNode }) {
-  if (!isActive) return null;
+/* ── sub-components ──────────────────────────────────────────── */
 
+function Centered({ children }: { children: React.ReactNode }) {
+  return <div className="fixed inset-0 flex items-center justify-center p-8">{children}</div>;
+}
+
+function Btn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-8">
+    <button onClick={onClick} className="px-3 py-2 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg transition-colors text-xs font-medium flex items-center gap-1.5 text-white/70">
       {children}
+    </button>
+  );
+}
+
+function Line({ t, delay, children }: { t: number; delay: number; children: string }) {
+  const visible = t >= delay;
+  if (!visible) return null;
+  return (
+    <p className="text-2xl md:text-4xl font-bold text-white/90 animate-[slideUp_0.8s_ease]">
+      {children}
+    </p>
+  );
+}
+
+function ScanLines() {
+  return (
+    <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{
+      background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.08) 2px, rgba(255,255,255,0.08) 4px)',
+    }} />
+  );
+}
+
+function MontageSlide({ title, desc, color, icon, features }: {
+  title: string; desc: string; color: string; icon: string; features: string[];
+}) {
+  return (
+    <Centered>
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="flex items-center gap-4 mb-4 animate-[slideUp_0.6s_ease]">
+          <span className="text-4xl">{icon}</span>
+          <h2 className="text-3xl md:text-5xl font-black text-white">{title}</h2>
+        </div>
+        <p className="text-lg md:text-xl text-neutral-400 mb-8 animate-[fadeIn_0.8s_0.2s_ease_both]">{desc}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {features.map((f, i) => (
+            <div
+              key={f}
+              className="px-4 py-3 rounded-lg border border-white/[0.06] bg-white/[0.03] animate-[slideUp_0.5s_ease_both]"
+              style={{ animationDelay: `${0.1 + i * 0.08}s`, borderLeftColor: color, borderLeftWidth: 2 }}
+            >
+              <span className="text-sm font-medium text-white/80">{f}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Centered>
+  );
+}
+
+function StatCounter({ value, label, t, delay }: { value: string; label: string; t: number; delay: number }) {
+  const visible = t >= delay;
+  if (!visible) return null;
+  return (
+    <div className="text-center animate-[scaleIn_0.6s_ease]">
+      <div className="text-5xl md:text-7xl font-black bg-gradient-to-b from-amber-400 to-orange-500 bg-clip-text text-transparent">
+        {value}
+      </div>
+      <div className="mt-2 text-base md:text-lg text-neutral-500 font-medium">{label}</div>
     </div>
   );
 }
 
-function ParticleBackground() {
+function CircuitIcon({ size }: { size: number }) {
+  const s = size;
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {Array.from({ length: 30 }).map((_, i) => (
-        <div
-          key={i}
-          className="absolute w-1 h-1 bg-hub-yellow/50 rounded-full"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `float ${5 + Math.random() * 5}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 5}s`,
-          }}
-        />
-      ))}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
-          50% { transform: translateY(-100px) translateX(50px); opacity: 0.8; }
-        }
-      `}</style>
-    </div>
+    <svg width={s} height={s} viewBox="0 0 512 512" fill="none" className="flex-shrink-0">
+      <defs>
+        <linearGradient id="tr-g" x1="40" y1="80" x2="480" y2="440" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FFD700" />
+          <stop offset="0.45" stopColor="#FFA500" />
+          <stop offset="1" stopColor="#E67300" />
+        </linearGradient>
+        <linearGradient id="tr-bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#101820" />
+          <stop offset="0.6" stopColor="#0C1219" />
+          <stop offset="1" stopColor="#080E14" />
+        </linearGradient>
+      </defs>
+      <rect x="16" y="16" width="480" height="480" rx="92" fill="url(#tr-bg)" />
+      <rect x="18" y="18" width="476" height="476" rx="90" fill="none" stroke="#D4922A" strokeWidth="1.2" strokeOpacity={0.1} />
+      <line x1="106" y1="142" x2="206" y2="142" stroke="url(#tr-g)" strokeWidth="15" strokeLinecap="round" />
+      <line x1="155" y1="142" x2="155" y2="382" stroke="url(#tr-g)" strokeWidth="15" strokeLinecap="round" />
+      <line x1="106" y1="382" x2="206" y2="382" stroke="url(#tr-g)" strokeWidth="15" strokeLinecap="round" />
+      <circle cx="106" cy="142" r="12" fill="url(#tr-g)" />
+      <circle cx="206" cy="142" r="11" fill="url(#tr-g)" />
+      <circle cx="106" cy="382" r="11" fill="url(#tr-g)" />
+      <circle cx="206" cy="382" r="12" fill="url(#tr-g)" />
+      <circle cx="155" cy="90" r="18" fill="url(#tr-g)" />
+      <circle cx="155" cy="90" r="10" fill="url(#tr-bg)" />
+      <line x1="282" y1="142" x2="282" y2="382" stroke="url(#tr-g)" strokeWidth="15" strokeLinecap="round" />
+      <line x1="408" y1="142" x2="408" y2="382" stroke="url(#tr-g)" strokeWidth="15" strokeLinecap="round" />
+      <line x1="282" y1="262" x2="408" y2="262" stroke="url(#tr-g)" strokeWidth="15" strokeLinecap="round" />
+      <circle cx="282" cy="142" r="11" fill="url(#tr-g)" />
+      <circle cx="282" cy="262" r="12" fill="url(#tr-g)" />
+      <circle cx="282" cy="382" r="11" fill="url(#tr-g)" />
+      <circle cx="408" cy="142" r="12" fill="url(#tr-g)" />
+      <circle cx="408" cy="262" r="11" fill="url(#tr-g)" />
+      <circle cx="408" cy="382" r="12" fill="url(#tr-g)" />
+    </svg>
   );
 }
 
-function GlitchOverlay() {
+function CircuitBG() {
   return (
-    <div
-      className="fixed inset-0 pointer-events-none opacity-10"
-      style={{
-        background: `repeating-linear-gradient(
-          0deg,
-          transparent,
-          transparent 2px,
-          rgba(255, 68, 68, 0.1) 2px,
-          rgba(255, 68, 68, 0.1) 4px
-        )`,
-      }}
-    />
+    <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-[0.025]">
+      <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="cbg-grid" width="80" height="80" patternUnits="userSpaceOnUse">
+            <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#FFA500" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#cbg-grid)" />
+        {/* random circuit traces */}
+        <line x1="160" y1="0" x2="160" y2="100%" stroke="#FFA500" strokeWidth="1" opacity="0.6" />
+        <line x1="480" y1="0" x2="480" y2="100%" stroke="#FFA500" strokeWidth="1" opacity="0.4" />
+        <line x1="0" y1="240" x2="100%" y2="240" stroke="#FFA500" strokeWidth="1" opacity="0.5" />
+        <line x1="0" y1="560" x2="100%" y2="560" stroke="#FFA500" strokeWidth="1" opacity="0.3" />
+        <circle cx="160" cy="240" r="4" fill="#FFA500" opacity="0.8" />
+        <circle cx="480" cy="240" r="3" fill="#FFA500" opacity="0.6" />
+        <circle cx="160" cy="560" r="3.5" fill="#FFA500" opacity="0.5" />
+        <circle cx="480" cy="560" r="4" fill="#FFA500" opacity="0.7" />
+      </svg>
+    </div>
   );
 }
