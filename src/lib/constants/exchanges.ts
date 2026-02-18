@@ -3,7 +3,7 @@ export const ALL_EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC',
   'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
   'Aevo', 'Drift', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
-  'Coinbase', 'CoinEx', 'gTrade',
+  'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'edgeX', 'Variational',
 ] as const;
 
 export type ExchangeName = (typeof ALL_EXCHANGES)[number];
@@ -34,6 +34,9 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'Coinbase': 'bg-blue-500',
   'CoinEx': 'bg-teal-400',
   'gTrade': 'bg-teal-500',
+  'Extended': 'bg-amber-400',
+  'edgeX': 'bg-sky-400',
+  'Variational': 'bg-fuchsia-400',
 };
 
 // Exchange badge colors for table cells
@@ -62,11 +65,15 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'Coinbase': 'bg-blue-500/20 text-blue-300',
   'CoinEx': 'bg-teal-400/20 text-teal-300',
   'gTrade': 'bg-teal-500/20 text-teal-400',
+  'Extended': 'bg-amber-400/20 text-amber-300',
+  'edgeX': 'bg-sky-400/20 text-sky-300',
+  'Variational': 'bg-fuchsia-400/20 text-fuchsia-300',
 };
 
 // DEX exchanges (on-chain / decentralized perpetual protocols)
 export const DEX_EXCHANGES: ReadonlySet<string> = new Set([
   'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'Drift', 'GMX', 'gTrade',
+  'Extended', 'edgeX', 'Variational',
 ]);
 
 // CEX exchanges (centralized)
@@ -110,6 +117,9 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Coinbase':   return `https://www.coinbase.com/advanced-trade/spot/${s}-USDT`;
     case 'CoinEx':     return `https://www.coinex.com/en/futures/${s}USDT`;
     case 'gTrade':     return `https://gains.trade/trading#${s}/USD`;
+    case 'Extended':   return `https://app.extended.exchange/trade/${s}-USD`;
+    case 'edgeX':      return `https://pro.edgex.exchange/trade/${s}USD`;
+    case 'Variational': return `https://app.variational.io/trade/${s}`;
     default:           return null;
   }
 }

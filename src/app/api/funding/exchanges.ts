@@ -948,6 +948,161 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
     },
   },
+  // Extended (Starknet DEX) — funding settles HOURLY; return native 1h rate
+  // Single /markets call returns funding + OI + prices for all 105 markets
+  {
+    name: 'Extended',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.starknet.extended.exchange/api/v1/info/markets', {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((m: any) => m.active && m.status === 'ACTIVE' && m.marketStats?.fundingRate != null)
+        .map((m: any) => {
+          const stats = m.marketStats;
+          let symbol = m.assetName || m.name?.split('-')[0] || '';
+          // Handle 1000-prefix symbols (e.g., 1000PEPE → PEPE)
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+
+          const norm = normalizeSymbol(symbol, 'Extended');
+          const fundingRate = parseFloat(stats.fundingRate) * 100; // decimal → %
+
+          return {
+            symbol: norm.symbol,
+            exchange: 'Extended',
+            fundingRate,
+            fundingInterval: '1h' as const,
+            markPrice: parseFloat(stats.markPrice) || 0,
+            indexPrice: parseFloat(stats.indexPrice) || 0,
+            nextFundingTime: parseInt(stats.nextFundingRate) || Date.now() + 3600000,
+            type: 'dex' as const,
+            assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+    },
+  },
+
+  // edgeX (StarkEx DEX) — funding settles every 4 hours
+  // Per-contract ticker calls required; fetch metadata for contract list, then batch top symbols
+  {
+    name: 'edgeX',
+    fetcher: async (fetchFn) => {
+      // Step 1: Get metadata for active contract list
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000);
+      if (!metaRes.ok) return [];
+      const meta = await metaRes.json();
+      if (meta.code !== 'SUCCESS') return [];
+      const contracts = (meta.data?.contractList || []).filter(
+        (c: any) => c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP')
+      );
+      if (contracts.length === 0) return [];
+
+      // Step 2: Fetch tickers in parallel batches of 20
+      const BATCH_SIZE = 20;
+      const results: FundingData[] = [];
+      for (let i = 0; i < contracts.length; i += BATCH_SIZE) {
+        const batch = contracts.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (c: any) => {
+            try {
+              const tickerRes = await fetchFn(
+                `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
+                {},
+                8000
+              );
+              if (!tickerRes.ok) return null;
+              const tickerJson = await tickerRes.json();
+              if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
+              const t = tickerJson.data[0];
+
+              let symbol = c.contractName.replace(/USD$/, '');
+              // Strip "2" suffix duplicates (e.g., BNB2 → BNB)
+              if (symbol.endsWith('2') && symbol.length > 2) {
+                const base = symbol.slice(0, -1);
+                if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
+                  return null; // Skip duplicate, keep the original
+                }
+                symbol = base;
+              }
+              // Handle 1000/1000000 prefixes
+              if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+              else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+
+              const isStock = c.isStock === true;
+              const norm = normalizeSymbol(symbol, 'edgeX');
+
+              return {
+                symbol: norm.symbol,
+                exchange: 'edgeX',
+                fundingRate: parseFloat(t.fundingRate) * 100, // decimal → %
+                fundingInterval: '4h' as const,
+                markPrice: parseFloat(t.markPrice) || 0,
+                indexPrice: parseFloat(t.indexPrice) || 0,
+                nextFundingTime: parseInt(t.nextFundingTime) || Date.now() + 14400000,
+                type: 'dex' as const,
+                assetClass: isStock ? ('stocks' as AssetClass) : (norm.assetClass !== 'crypto' ? norm.assetClass : undefined),
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+        results.push(...batchResults.filter(Boolean) as FundingData[]);
+      }
+      return results.filter(item => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Variational (Arbitrum DEX) — single /metadata/stats endpoint has everything
+  // Funding intervals vary per market (1h, 2h, 4h, 8h)
+  {
+    name: 'Variational',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn(
+        'https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats',
+        {},
+        12000
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const listings = data?.listings;
+      if (!Array.isArray(listings)) return [];
+      return listings
+        .filter((m: any) => m.ticker && m.funding_rate != null && m.mark_price)
+        .map((m: any) => {
+          let symbol = m.ticker;
+          // Handle 1000-prefix symbols
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+
+          const intervalS = m.funding_interval_s || 28800;
+          // Map seconds to interval label
+          const intervalMap: Record<number, '1h' | '4h' | '8h'> = { 3600: '1h', 7200: '1h', 14400: '4h', 28800: '8h' };
+          const fundingInterval = intervalMap[intervalS] || '8h';
+
+          // funding_rate is already a percentage string; normalize to 8h-equivalent
+          const rawRate = parseFloat(m.funding_rate);
+          // Store as native rate (the interval field tells consumers the period)
+          const fundingRate = rawRate;
+
+          const norm = normalizeSymbol(symbol, 'Variational');
+
+          return {
+            symbol: norm.symbol,
+            exchange: 'Variational',
+            fundingRate,
+            fundingInterval,
+            markPrice: parseFloat(m.mark_price) || 0,
+            indexPrice: 0, // Not provided
+            nextFundingTime: Date.now() + intervalS * 1000,
+            type: 'dex' as const,
+            assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0 && item.markPrice > 0);
+    },
+  },
 ];
 
 // Paused exchanges (kept for reference):

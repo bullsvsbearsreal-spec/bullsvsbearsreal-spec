@@ -543,4 +543,150 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
 
   // GMX V2 -- markets/info does not include price/volume data, only OI and funding rates
 
+  // Extended (Starknet DEX) — /markets has full 24h OHLCV + prices
+  {
+    name: 'Extended',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.starknet.extended.exchange/api/v1/info/markets', {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((m: any) => m.active && m.status === 'ACTIVE' && m.marketStats?.lastPrice)
+        .map((m: any) => {
+          let symbol = m.assetName || m.name?.split('-')[0] || '';
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          // Filter non-crypto
+          const category = (m.category || '').toLowerCase();
+          if (['forex', 'equities', 'commodities'].some(c => category.includes(c))) return null;
+          if (!isCryptoSymbol(symbol)) return null;
+
+          const stats = m.marketStats;
+          const lastPrice = parseFloat(stats.lastPrice) || 0;
+          // dailyPriceChangePercentage is decimal (e.g., -0.0222 = -2.22%)
+          const changePercent = parseFloat(stats.dailyPriceChangePercentage) * 100 || 0;
+          return {
+            symbol,
+            exchange: 'Extended',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: changePercent,
+            changePercent24h: changePercent,
+            high24h: parseFloat(stats.dailyHigh) || 0,
+            low24h: parseFloat(stats.dailyLow) || 0,
+            volume24h: parseFloat(stats.dailyVolumeBase) || 0,
+            quoteVolume24h: parseFloat(stats.dailyVolume) || 0,
+          };
+        })
+        .filter((item: any) => item && item.lastPrice > 0);
+    },
+  },
+
+  // edgeX — per-contract tickers (batched). Includes 24h OHLCV + prices.
+  {
+    name: 'edgeX',
+    fetcher: async (fetchFn) => {
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000);
+      if (!metaRes.ok) return [];
+      const meta = await metaRes.json();
+      if (meta.code !== 'SUCCESS') return [];
+      const contracts = (meta.data?.contractList || []).filter(
+        (c: any) => c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP') && !c.isStock
+      );
+      if (contracts.length === 0) return [];
+
+      const BATCH_SIZE = 20;
+      const results: TickerData[] = [];
+      for (let i = 0; i < contracts.length; i += BATCH_SIZE) {
+        const batch = contracts.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (c: any) => {
+            try {
+              const tickerRes = await fetchFn(
+                `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
+                {},
+                8000
+              );
+              if (!tickerRes.ok) return null;
+              const tickerJson = await tickerRes.json();
+              if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
+              const t = tickerJson.data[0];
+
+              let symbol = c.contractName.replace(/USD$/, '');
+              if (symbol.endsWith('2') && symbol.length > 2) {
+                const base = symbol.slice(0, -1);
+                if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
+                  return null;
+                }
+                symbol = base;
+              }
+              if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+              else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+              if (!isCryptoSymbol(symbol)) return null;
+
+              const lastPrice = parseFloat(t.lastPrice) || 0;
+              const changePercent = parseFloat(t.priceChangePercent) * 100 || 0;
+              return {
+                symbol,
+                exchange: 'edgeX',
+                lastPrice,
+                price: lastPrice,
+                priceChangePercent24h: changePercent,
+                changePercent24h: changePercent,
+                high24h: parseFloat(t.high) || 0,
+                low24h: parseFloat(t.low) || 0,
+                volume24h: parseFloat(t.size) || 0,
+                quoteVolume24h: parseFloat(t.value) || 0,
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+        results.push(...batchResults.filter(Boolean) as TickerData[]);
+      }
+      return results.filter(item => item.lastPrice > 0);
+    },
+  },
+
+  // Variational (Arbitrum DEX) — /metadata/stats has mark_price + 24h volume
+  {
+    name: 'Variational',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn(
+        'https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats',
+        {},
+        12000
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const listings = data?.listings;
+      if (!Array.isArray(listings)) return [];
+      return listings
+        .filter((m: any) => m.ticker && m.mark_price)
+        .map((m: any) => {
+          let symbol = m.ticker;
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          if (!isCryptoSymbol(symbol)) return null;
+
+          const lastPrice = parseFloat(m.mark_price) || 0;
+          const volume = parseFloat(m.volume_24h) || 0;
+          // No OHLC data, no price change data — just price + volume
+          return {
+            symbol,
+            exchange: 'Variational',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: 0,
+            changePercent24h: 0,
+            high24h: 0,
+            low24h: 0,
+            volume24h: lastPrice > 0 ? volume / lastPrice : 0, // Convert USD volume to base
+            quoteVolume24h: volume,
+          };
+        })
+        .filter((item: any) => item && item.lastPrice > 0);
+    },
+  },
+
 ];

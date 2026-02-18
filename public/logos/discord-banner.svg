@@ -64,7 +64,7 @@
   <text x="550" y="369" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#FFA500" text-anchor="middle">Liquidations</text>
 
   <rect x="640" y="345" width="160" height="36" rx="18" fill="rgba(255,165,0,0.08)" stroke="rgba(255,165,0,0.2)" stroke-width="1"/>
-  <text x="720" y="369" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#FFA500" text-anchor="middle">24 Exchanges</text>
+  <text x="720" y="369" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#FFA500" text-anchor="middle">27 Exchanges</text>
 
   <!-- Accent bar -->
   <rect x="330" y="420" width="300" height="3" rx="1.5" fill="url(#dc-badge)" opacity="0.4"/>

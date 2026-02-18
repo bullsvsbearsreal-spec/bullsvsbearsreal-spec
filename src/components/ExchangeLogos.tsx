@@ -90,6 +90,9 @@ export const exchangeColors: Record<string, string> = {
   coinbase: '#0052FF',
   coinex: '#3CC8C8',
   'crypto.com': '#002D74',
+  extended: '#F59E0B',
+  edgex: '#38BDF8',
+  variational: '#E879F9',
 };
 
 // Backwards compatibility: keep the old named exports as well

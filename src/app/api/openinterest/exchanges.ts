@@ -644,4 +644,135 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // Extended (Starknet DEX) — /markets returns OI in USD and base asset for all markets
+  {
+    name: 'Extended',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.starknet.extended.exchange/api/v1/info/markets', {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((m: any) => m.active && m.status === 'ACTIVE' && m.marketStats?.openInterest)
+        .map((m: any) => {
+          let symbol = m.assetName || m.name?.split('-')[0] || '';
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          // Filter non-crypto (forex, commodities, equities)
+          const category = (m.category || '').toLowerCase();
+          if (['forex', 'equities', 'commodities'].some(c => category.includes(c))) return null;
+          if (!isCryptoSymbol(symbol)) return null;
+
+          const oiValue = parseFloat(m.marketStats.openInterest) || 0;
+          const oiBase = parseFloat(m.marketStats.openInterestBase) || 0;
+          return {
+            symbol,
+            exchange: 'Extended',
+            openInterest: oiBase,
+            openInterestValue: oiValue, // Already in USD
+          };
+        })
+        .filter((item: any) => item && item.openInterestValue > 0);
+    },
+  },
+
+  // edgeX (StarkEx DEX) — per-contract ticker calls, OI in base asset units
+  {
+    name: 'edgeX',
+    fetcher: async (fetchFn) => {
+      // Step 1: Get metadata for active contract list
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000);
+      if (!metaRes.ok) return [];
+      const meta = await metaRes.json();
+      if (meta.code !== 'SUCCESS') return [];
+      const contracts = (meta.data?.contractList || []).filter(
+        (c: any) => c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP') && !c.isStock
+      );
+      if (contracts.length === 0) return [];
+
+      // Step 2: Fetch tickers in parallel batches of 20
+      const BATCH_SIZE = 20;
+      const results: OIData[] = [];
+      for (let i = 0; i < contracts.length; i += BATCH_SIZE) {
+        const batch = contracts.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (c: any) => {
+            try {
+              const tickerRes = await fetchFn(
+                `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
+                {},
+                8000
+              );
+              if (!tickerRes.ok) return null;
+              const tickerJson = await tickerRes.json();
+              if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
+              const t = tickerJson.data[0];
+
+              let symbol = c.contractName.replace(/USD$/, '');
+              // Skip duplicate "2" suffix contracts
+              if (symbol.endsWith('2') && symbol.length > 2) {
+                const base = symbol.slice(0, -1);
+                if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
+                  return null;
+                }
+                symbol = base;
+              }
+              if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+              else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+
+              if (!isCryptoSymbol(symbol)) return null;
+
+              const oiBase = parseFloat(t.openInterest) || 0;
+              const price = parseFloat(t.lastPrice) || 0;
+              return {
+                symbol,
+                exchange: 'edgeX',
+                openInterest: oiBase,
+                openInterestValue: oiBase * price,
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+        results.push(...batchResults.filter(Boolean) as OIData[]);
+      }
+      return results.filter(item => item.openInterestValue > 0);
+    },
+  },
+
+  // Variational (Arbitrum DEX) — /metadata/stats has long+short OI in USD
+  {
+    name: 'Variational',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn(
+        'https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats',
+        {},
+        12000
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const listings = data?.listings;
+      if (!Array.isArray(listings)) return [];
+      return listings
+        .filter((m: any) => m.ticker && m.open_interest && m.mark_price)
+        .map((m: any) => {
+          let symbol = m.ticker;
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          if (!isCryptoSymbol(symbol)) return null;
+
+          const longOi = parseFloat(m.open_interest?.long_open_interest) || 0;
+          const shortOi = parseFloat(m.open_interest?.short_open_interest) || 0;
+          const totalOi = longOi + shortOi;
+          const price = parseFloat(m.mark_price) || 0;
+          return {
+            symbol,
+            exchange: 'Variational',
+            openInterest: price > 0 ? totalOi / price : 0, // Convert USD → base units
+            openInterestValue: totalOi, // Already in USD
+          };
+        })
+        .filter((item: any) => item && item.openInterestValue > 1000); // Filter tiny markets
+    },
+  },
+
 ];
