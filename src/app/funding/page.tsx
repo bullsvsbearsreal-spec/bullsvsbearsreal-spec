@@ -104,7 +104,7 @@ export default function FundingPage() {
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
     // Build OI lookup: "SYMBOL|EXCHANGE" → openInterestValue (USD)
     const oiMap = new Map<string, number>();
-    oiData.forEach((oi: any) => {
+    (Array.isArray(oiData) ? oiData : []).forEach((oi: any) => {
       if (oi.openInterestValue > 0) {
         oiMap.set(`${oi.symbol}|${oi.exchange}`, oi.openInterestValue);
       }
@@ -117,8 +117,8 @@ export default function FundingPage() {
     refreshInterval: 30000,
   });
 
-  const fundingRates = data?.fundingRates ?? [];
-  const arbitrageData = data?.arbitrageData ?? [];
+  const fundingRates = Array.isArray(data?.fundingRates) ? data.fundingRates : [];
+  const arbitrageData = Array.isArray(data?.arbitrageData) ? data.arbitrageData : [];
   const oiMap = data?.oiMap ?? new Map<string, number>();
 
   // Build mark prices map: first seen price per symbol (for arb view)

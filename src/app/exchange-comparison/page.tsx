@@ -85,9 +85,9 @@ export default function ExchangeComparisonPage() {
       const fundingJson = fundingRes.ok ? await fundingRes.json() : { data: [] };
       const tickerJson = tickerRes.ok ? await tickerRes.json() : [];
       return {
-        oi: oiJson.data || [],
-        funding: fundingJson.data || [],
-        tickers: Array.isArray(tickerJson) ? tickerJson : [],
+        oi: Array.isArray(oiJson.data) ? oiJson.data : [],
+        funding: Array.isArray(fundingJson.data) ? fundingJson.data : [],
+        tickers: Array.isArray(tickerJson) ? tickerJson : Array.isArray(tickerJson?.data) ? tickerJson.data : [],
       };
     }, []),
     refreshInterval: 60000,
@@ -96,7 +96,9 @@ export default function ExchangeComparisonPage() {
   // Aggregate stats per exchange
   const exchangeStats = useMemo((): ExchangeStats[] => {
     if (!data) return [];
-    const { oi, funding, tickers } = data;
+    const oi = Array.isArray(data.oi) ? data.oi : [];
+    const funding = Array.isArray(data.funding) ? data.funding : [];
+    const tickers = Array.isArray(data.tickers) ? data.tickers : [];
     const statsMap = new Map<string, ExchangeStats>();
 
     // OI per exchange
@@ -196,7 +198,7 @@ export default function ExchangeComparisonPage() {
   const availableSymbols = useMemo(() => {
     if (!data) return ['BTC', 'ETH'];
     const symSet = new Set<string>();
-    data.funding.forEach((fr: any) => symSet.add(fr.symbol));
+    (Array.isArray(data.funding) ? data.funding : []).forEach((fr: any) => symSet.add(fr.symbol));
     return Array.from(symSet).sort();
   }, [data]);
 

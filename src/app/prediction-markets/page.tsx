@@ -33,7 +33,7 @@ export default function PredictionMarketsPage() {
     refreshInterval: 60000,
   });
 
-  const arbitrage = data?.arbitrage ?? [];
+  const arbitrage = Array.isArray(data?.arbitrage) ? data.arbitrage : [];
   const markets = data?.markets ?? { polymarket: [], kalshi: [], manifold: [], metaculus: [] };
   const meta = data?.meta;
 
@@ -52,6 +52,7 @@ export default function PredictionMarketsPage() {
     const cats = new Set<string>();
     arbitrage.forEach(a => cats.add(a.category));
     for (const list of Object.values(markets)) {
+      if (!Array.isArray(list)) continue;
       for (const m of list) {
         if (m.category) cats.add(m.category);
       }

@@ -47,9 +47,9 @@ export default function ComparePage() {
         fetch('/api/funding?assetClass=crypto').then(r => r.json()),
         fetch('/api/openinterest').then(r => r.json()),
       ]);
-      setTickers(Array.isArray(tickerRes) ? tickerRes : tickerRes?.data || []);
-      setFunding(fundingRes?.data || []);
-      setOI(oiRes?.data || []);
+      setTickers(Array.isArray(tickerRes) ? tickerRes : Array.isArray(tickerRes?.data) ? tickerRes.data : []);
+      setFunding(Array.isArray(fundingRes?.data) ? fundingRes.data : []);
+      setOI(Array.isArray(oiRes?.data) ? oiRes.data : []);
       setLastUpdate(new Date());
     } catch (err) {
       console.error('Compare fetch error:', err);

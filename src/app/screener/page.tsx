@@ -73,9 +73,9 @@ export default function ScreenerPage() {
         fetch('/api/openinterest').then((r) => r.json()),
       ]);
 
-      const tickers: any[] = tickerRes?.data || [];
-      const funding: any[] = fundingRes?.data || [];
-      const oi: any[] = oiRes?.data || [];
+      const tickers: any[] = Array.isArray(tickerRes?.data) ? tickerRes.data : Array.isArray(tickerRes) ? tickerRes : [];
+      const funding: any[] = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
+      const oi: any[] = Array.isArray(oiRes?.data) ? oiRes.data : [];
 
       // Build ticker map (aggregate by symbol)
       const tickerMap = new Map<string, { price: number; change: number; vol: number; count: number }>();
