@@ -1,24 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="icBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#1a1a1a"/>
-      <stop offset="1" stop-color="#0a0a0a"/>
-    </linearGradient>
-    <linearGradient id="icAccent" x1="10" y1="14" x2="54" y2="50" gradientUnits="userSpaceOnUse">
+    <linearGradient id="icGold" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFE066"/>
-      <stop offset=".35" stop-color="#FFA500"/>
-      <stop offset=".7" stop-color="#FF8C00"/>
+      <stop offset=".25" stop-color="#FFD700"/>
+      <stop offset=".5" stop-color="#FFA500"/>
+      <stop offset=".75" stop-color="#FF8C00"/>
       <stop offset="1" stop-color="#E67300"/>
     </linearGradient>
+    <linearGradient id="icGoldHi" x1="256" y1="32" x2="256" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0AA" stop-opacity=".5"/>
+      <stop offset=".3" stop-color="#FFD700" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="icLetterFill" x1="120" y1="140" x2="400" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A1000"/>
+      <stop offset=".5" stop-color="#0D0800"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+    <filter id="icLetterShadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".25"/>
+    </filter>
+    <filter id="icInnerGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur"/>
+      <feOffset dx="0" dy="-3" result="offset"/>
+      <feComposite in="SourceGraphic" in2="offset" operator="over"/>
+    </filter>
   </defs>
-  <rect x="2" y="2" width="60" height="60" rx="12" fill="url(#icBg)"/>
-  <rect x="3" y="3" width="58" height="58" rx="11" fill="none" stroke="#FFA500" stroke-opacity=".12" stroke-width=".5"/>
-  <!-- Serif I -->
-  <path d="M12,17 L19,17 L19,17.8 L17,18.3 L17,43.7 L19,44.2 L19,45 L12,45 L12,44.2 L14,43.7 L14,18.3 L12,17.8 Z" fill="url(#icAccent)"/>
-  <!-- Serif H -->
-  <path d="M24,17 L31,17 L31,17.8 L29,18.3 L29,29 L42,29 L42,18.3 L40,17.8 L40,17 L47,17 L47,17.8 L45,18.3 L45,43.7 L47,44.2 L47,45 L40,45 L40,44.2 L42,43.7 L42,32.5 L29,32.5 L29,43.7 L31,44.2 L31,45 L24,45 L24,44.2 L26,43.7 L26,18.3 L24,17.8 Z" fill="url(#icAccent)"/>
-  <!-- Underline -->
-  <rect x="12" y="48" width="35" height=".7" rx=".35" fill="url(#icAccent)" opacity=".5"/>
-  <!-- Data dot -->
-  <circle cx="53" cy="17" r="1.2" fill="#FFA500" opacity=".5"/>
+
+  <!-- Squircle background with gold gradient -->
+  <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#icGold)"/>
+
+  <!-- Highlight overlay (top-left shine) -->
+  <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#icGoldHi)"/>
+
+  <!-- Subtle border -->
+  <rect x="26" y="26" width="460" height="460" rx="98" fill="none" stroke="#FFE680" stroke-opacity=".4" stroke-width="1.5"/>
+
+  <!-- Inner edge shadow -->
+  <rect x="24" y="24" width="464" height="464" rx="100" fill="none" stroke="#CC6600" stroke-opacity=".15" stroke-width="3"/>
+
+  <!-- I letter — bold geometric with slight refinement -->
+  <g filter="url(#icLetterShadow)">
+    <rect x="128" y="142" width="56" height="228" rx="5" fill="url(#icLetterFill)" opacity=".92"/>
+    <!-- Top serif -->
+    <rect x="112" y="142" width="88" height="14" rx="4" fill="url(#icLetterFill)" opacity=".92"/>
+    <!-- Bottom serif -->
+    <rect x="112" y="356" width="88" height="14" rx="4" fill="url(#icLetterFill)" opacity=".92"/>
+  </g>
+
+  <!-- H letter — bold geometric with serifs -->
+  <g filter="url(#icLetterShadow)">
+    <!-- Left vertical -->
+    <rect x="232" y="142" width="52" height="228" rx="5" fill="url(#icLetterFill)" opacity=".92"/>
+    <!-- Right vertical -->
+    <rect x="340" y="142" width="52" height="228" rx="5" fill="url(#icLetterFill)" opacity=".92"/>
+    <!-- Crossbar -->
+    <rect x="232" y="230" width="160" height="52" rx="5" fill="url(#icLetterFill)" opacity=".92"/>
+  </g>
+
+  <!-- Accent underline -->
+  <rect x="112" y="396" width="288" height="8" rx="4" fill="url(#icLetterFill)" opacity=".35"/>
 </svg>
