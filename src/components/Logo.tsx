@@ -23,45 +23,49 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
     <svg
       width={dimensions.icon}
       height={dimensions.icon}
-      viewBox="0 0 40 40"
+      viewBox="0 0 512 512"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`flex-shrink-0 ${animated ? 'hover:scale-105 transition-transform duration-200' : ''}`}
     >
       <defs>
-        <linearGradient id={`${uid}-gold`} x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFE066" />
-          <stop offset="0.25" stopColor="#FFD700" />
-          <stop offset="0.5" stopColor="var(--hub-accent)" />
-          <stop offset="0.75" stopColor="var(--hub-accent-dark)" />
-          <stop offset="1" stopColor="#E67300" />
+        <linearGradient id={`${uid}-g`} x1="40" y1="80" x2="480" y2="440" gradientUnits="userSpaceOnUse">
+          <stop stopColor="var(--hub-accent-light, #FFD700)" />
+          <stop offset="0.45" stopColor="var(--hub-accent, #FFA500)" />
+          <stop offset="1" stopColor="var(--hub-accent-dark, #E67300)" />
         </linearGradient>
-        <linearGradient id={`${uid}-hi`} x1="20" y1="2" x2="20" y2="38" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFF0AA" stopOpacity="0.5" />
-          <stop offset="0.3" stopColor="#FFD700" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id={`${uid}-letter`} x1="8" y1="10" x2="32" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#1A1000" />
-          <stop offset="0.5" stopColor="#0D0800" />
-          <stop offset="1" stopColor="#000000" />
+        <linearGradient id={`${uid}-bg`} x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#101820" />
+          <stop offset="0.6" stopColor="#0C1219" />
+          <stop offset="1" stopColor="#080E14" />
         </linearGradient>
       </defs>
-      {/* Gold squircle bg */}
-      <rect x="2" y="2" width="36" height="36" rx="8" fill={`url(#${uid}-gold)`} />
-      {/* Top highlight */}
-      <rect x="2" y="2" width="36" height="36" rx="8" fill={`url(#${uid}-hi)`} />
-      {/* Border */}
-      <rect x="2.5" y="2.5" width="35" height="35" rx="7.5" stroke="#FFE680" strokeWidth="0.15" strokeOpacity={0.4} fill="none" />
-      {/* I with serifs */}
-      <rect x="9.5" y="11" width="4.3" height="18" rx="0.5" fill={`url(#${uid}-letter)`} opacity={0.92} />
-      <rect x="8.2" y="11" width="6.8" height="1.1" rx="0.3" fill={`url(#${uid}-letter)`} opacity={0.92} />
-      <rect x="8.2" y="27.8" width="6.8" height="1.1" rx="0.3" fill={`url(#${uid}-letter)`} opacity={0.92} />
-      {/* H */}
-      <rect x="18" y="11" width="4" height="18" rx="0.5" fill={`url(#${uid}-letter)`} opacity={0.92} />
-      <rect x="26.5" y="11" width="4" height="18" rx="0.5" fill={`url(#${uid}-letter)`} opacity={0.92} />
-      <rect x="18" y="18" width="12.5" height="4" rx="0.5" fill={`url(#${uid}-letter)`} opacity={0.92} />
-      {/* Underline */}
-      <rect x="8.2" y="31" width="22.3" height="0.6" rx="0.3" fill={`url(#${uid}-letter)`} opacity={0.35} />
+      {/* Dark navy bg */}
+      <rect x="16" y="16" width="480" height="480" rx="92" fill={`url(#${uid}-bg)`} />
+      <rect x="18" y="18" width="476" height="476" rx="90" fill="none" stroke="var(--hub-accent-dark, #D4922A)" strokeWidth="1.2" strokeOpacity={0.1} />
+      {/* I traces */}
+      <line x1="106" y1="142" x2="206" y2="142" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      <line x1="155" y1="142" x2="155" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      <line x1="106" y1="382" x2="206" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      {/* I nodes */}
+      <circle cx="106" cy="142" r="12" fill={`url(#${uid}-g)`} />
+      <circle cx="206" cy="142" r="11" fill={`url(#${uid}-g)`} />
+      <circle cx="106" cy="382" r="11" fill={`url(#${uid}-g)`} />
+      <circle cx="206" cy="382" r="12" fill={`url(#${uid}-g)`} />
+      {/* I dot */}
+      <circle cx="155" cy="90" r="18" fill={`url(#${uid}-g)`} />
+      <circle cx="155" cy="90" r="10" fill={`url(#${uid}-bg)`} />
+      {/* H traces */}
+      <line x1="282" y1="142" x2="282" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      <line x1="408" y1="142" x2="408" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      <line x1="282" y1="262" x2="408" y2="262" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      {/* H nodes */}
+      <circle cx="282" cy="142" r="11" fill={`url(#${uid}-g)`} />
+      <circle cx="282" cy="262" r="12" fill={`url(#${uid}-g)`} />
+      <circle cx="282" cy="382" r="11" fill={`url(#${uid}-g)`} />
+      <circle cx="408" cy="142" r="12" fill={`url(#${uid}-g)`} />
+      <circle cx="408" cy="262" r="11" fill={`url(#${uid}-g)`} />
+      <circle cx="408" cy="382" r="12" fill={`url(#${uid}-g)`} />
     </svg>
   );
 
