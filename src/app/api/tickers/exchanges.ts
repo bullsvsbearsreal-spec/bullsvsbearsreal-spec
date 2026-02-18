@@ -305,8 +305,9 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/tickers');
       if (!res.ok) return [];
       const json = await res.json();
-      if (json.code !== 0 || !Array.isArray(json.data)) return [];
-      return json.data
+      const items = Array.isArray(json.data) ? json.data : [];
+      if (items.length === 0) return [];
+      return items
         .filter((t: any) => t.symbol?.endsWith('USDT'))
         .map((t: any) => {
           const lastPrice = parseFloat(t.lastPrice || t.last) || 0;

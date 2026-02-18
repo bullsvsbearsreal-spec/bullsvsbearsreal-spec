@@ -475,9 +475,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/funding_rate/batch');
       if (!res.ok) return [];
       const json = await res.json();
-      if (json.code !== 0 || !Array.isArray(json.data)) return [];
-      return json.data
-        .filter((item: any) => item.symbol?.endsWith('USDT'))
+      const items = Array.isArray(json.data) ? json.data : [];
+      if (items.length === 0) return [];
+      return items
+        .filter((item: any) => item.symbol?.endsWith('USDT') && item.fundingRate != null)
         .map((item: any) => ({
           symbol: item.symbol.replace('USDT', ''),
           exchange: 'Bitunix',
