@@ -8,15 +8,31 @@ import { Zap, RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Volume2, Volum
 import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import Footer from '@/components/Footer';
 import { formatLiqValue } from '@/lib/utils/format';
+import { DEX_EXCHANGES } from '@/lib/constants/exchanges';
 
 type ViewMode = 'feed' | 'heatmap' | 'timebucket' | 'pricelevel';
 
-const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX'] as const;
+const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX', 'HTX', 'gTrade'] as const;
+
+// Smart threshold symbol tiers
+const MAJOR_SYMBOLS = new Set(['BTC', 'ETH']);
+const MIDCAP_SYMBOLS = new Set(['SOL', 'XRP', 'DOGE', 'BNB', 'ADA', 'AVAX', 'LINK', 'DOT', 'LTC', 'UNI', 'APT', 'ARB', 'OP']);
+
+function passesSmartThreshold(liq: Liquidation): boolean {
+  const isDex = DEX_EXCHANGES.has(liq.exchange);
+  if (isDex) return liq.value >= 10000; // $10K+ for DEX
+  // CEX thresholds
+  if (MAJOR_SYMBOLS.has(liq.symbol)) return liq.value >= 500000; // $500K+ for majors
+  if (MIDCAP_SYMBOLS.has(liq.symbol)) return liq.value >= 100000; // $100K+ for midcaps
+  return liq.value >= 50000; // $50K+ for everything else
+}
 
 export default function LiquidationsPage() {
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>([...AVAILABLE_EXCHANGES]);
   const [filter, setFilter] = useState<'all' | 'long' | 'short'>('all');
   const [minValue, setMinValue] = useState(10000);
+  const [thresholdMode, setThresholdMode] = useState<'smart' | 'custom'>('smart');
+  const [exchangeFilter, setExchangeFilter] = useState<'all' | 'cex' | 'dex'>('all');
   const [timeframe, setTimeframe] = useState<'1h' | '4h' | '12h' | '24h'>('1h');
   const [viewMode, setViewMode] = useState<ViewMode>('feed');
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -32,9 +48,12 @@ export default function LiquidationsPage() {
 
   const timeframeMs = { '1h': 3600000, '4h': 14400000, '12h': 43200000, '24h': 86400000 }[timeframe];
 
+  // Use a low minValue for the hook so we capture everything; smart filtering happens in filteredLiquidations
+  const hookMinValue = thresholdMode === 'smart' ? 1000 : minValue;
+
   const { liquidations, connections, stats, aggregated, clearAll } = useMultiExchangeLiquidations({
     exchanges: stableExchanges,
-    minValue,
+    minValue: hookMinValue,
     maxItems: 200,
     persistKey: `ih-liq-${timeframe}`,
     persistTtlMs: timeframeMs,
@@ -85,10 +104,23 @@ export default function LiquidationsPage() {
   const connectedCount = connections.filter(c => c.connected).length;
   const isLoading = connectedCount === 0 && connections.length > 0;
 
-  const filteredLiquidations = liquidations.filter(liq => {
-    if (filter === 'long') return liq.side === 'long';
-    if (filter === 'short') return liq.side === 'short';
+  // Filter exchanges visible in toggles based on CEX/DEX filter
+  const visibleExchanges = AVAILABLE_EXCHANGES.filter(ex => {
+    if (exchangeFilter === 'cex') return !DEX_EXCHANGES.has(ex);
+    if (exchangeFilter === 'dex') return DEX_EXCHANGES.has(ex);
     return true;
+  });
+
+  const filteredLiquidations = liquidations.filter(liq => {
+    // Exchange type filter
+    if (exchangeFilter === 'cex' && DEX_EXCHANGES.has(liq.exchange)) return false;
+    if (exchangeFilter === 'dex' && !DEX_EXCHANGES.has(liq.exchange)) return false;
+    // Side filter
+    if (filter === 'long' && liq.side !== 'long') return false;
+    if (filter === 'short' && liq.side !== 'short') return false;
+    // Threshold filter
+    if (thresholdMode === 'smart') return passesSmartThreshold(liq);
+    return liq.value >= minValue;
   });
 
   const sortedAggregated = Array.from(aggregated.values())
@@ -168,29 +200,55 @@ export default function LiquidationsPage() {
           </div>
         </div>
 
-        {/* Exchange Toggles */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {AVAILABLE_EXCHANGES.map(exchange => {
-            const isSelected = selectedExchanges.includes(exchange);
-            const conn = connections.find(c => c.exchange === exchange);
-            return (
+        {/* CEX/DEX Filter + Exchange Toggles */}
+        <div className="mb-6">
+          {/* CEX / DEX tab filter */}
+          <div className="flex items-center gap-2 mb-3">
+            {(['all', 'cex', 'dex'] as const).map(mode => (
               <button
-                key={exchange}
-                onClick={() => toggleExchange(exchange)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                  isSelected
-                    ? 'bg-white/[0.06] border-white/[0.12] text-white'
+                key={mode}
+                onClick={() => setExchangeFilter(mode)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide transition-colors border ${
+                  exchangeFilter === mode
+                    ? mode === 'dex'
+                      ? 'bg-purple-500/20 border-purple-500/30 text-purple-400'
+                      : 'bg-hub-yellow/20 border-hub-yellow/30 text-hub-yellow'
                     : 'bg-transparent border-white/[0.04] text-neutral-600 hover:text-neutral-400'
                 }`}
               >
-                <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
-                {exchange}
-                {isSelected && conn && (
-                  <span className={`w-1.5 h-1.5 rounded-full ${conn.connected ? 'bg-green-400' : 'bg-red-500'}`} />
-                )}
+                {mode === 'all' ? 'All' : mode.toUpperCase()}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Exchange toggle buttons */}
+          <div className="flex flex-wrap gap-2">
+            {visibleExchanges.map(exchange => {
+              const isSelected = selectedExchanges.includes(exchange);
+              const conn = connections.find(c => c.exchange === exchange);
+              const isDex = DEX_EXCHANGES.has(exchange);
+              return (
+                <button
+                  key={exchange}
+                  onClick={() => toggleExchange(exchange)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                    isSelected
+                      ? 'bg-white/[0.06] border-white/[0.12] text-white'
+                      : 'bg-transparent border-white/[0.04] text-neutral-600 hover:text-neutral-400'
+                  }`}
+                >
+                  <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
+                  {exchange}
+                  <span className={`text-[9px] font-bold uppercase ${isDex ? 'text-purple-400' : 'text-neutral-600'}`}>
+                    {isDex ? 'DEX' : 'CEX'}
+                  </span>
+                  {isSelected && conn && (
+                    <span className={`w-1.5 h-1.5 rounded-full ${conn.connected ? 'bg-green-400' : 'bg-red-500'}`} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Top Liquidations Ticker */}
@@ -302,15 +360,37 @@ export default function LiquidationsPage() {
             <button onClick={() => setFilter('short')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'short' ? 'bg-danger text-white' : 'text-neutral-600 hover:text-white'}`}>Shorts</button>
           </div>
 
+          {/* Threshold mode toggle + custom dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-neutral-600 text-sm">Min:</span>
-            <select value={minValue} onChange={(e) => setMinValue(Number(e.target.value))} className="px-3 py-2 bg-hub-gray/20 border border-white/[0.06] rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50">
-              <option value={1000}>$1K+</option>
-              <option value={10000}>$10K+</option>
-              <option value={50000}>$50K+</option>
-              <option value={100000}>$100K+</option>
-              <option value={500000}>$500K+</option>
-            </select>
+            <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
+              <button
+                onClick={() => setThresholdMode('smart')}
+                className={`px-3 py-2 text-sm font-medium transition-colors ${thresholdMode === 'smart' ? 'bg-purple-500/30 text-purple-300' : 'text-neutral-600 hover:text-white'}`}
+                title="Smart thresholds: $500K+ majors, $100K+ midcaps, $50K+ alts (CEX) / $10K+ (DEX)"
+              >
+                Smart
+              </button>
+              <button
+                onClick={() => setThresholdMode('custom')}
+                className={`px-3 py-2 text-sm font-medium transition-colors ${thresholdMode === 'custom' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}
+              >
+                Custom
+              </button>
+            </div>
+            {thresholdMode === 'custom' && (
+              <select value={minValue} onChange={(e) => setMinValue(Number(e.target.value))} className="px-3 py-2 bg-hub-gray/20 border border-white/[0.06] rounded-xl text-white text-sm focus:outline-none focus:border-hub-yellow/50">
+                <option value={10000}>$10K+</option>
+                <option value={50000}>$50K+</option>
+                <option value={100000}>$100K+</option>
+                <option value={500000}>$500K+</option>
+                <option value={1000000}>$1M+</option>
+              </select>
+            )}
+            {thresholdMode === 'smart' && (
+              <span className="text-[10px] text-neutral-600 max-w-[180px] leading-tight">
+                CEX: $500K majors, $100K mid, $50K alts. DEX: $10K+ all.
+              </span>
+            )}
           </div>
         </div>
 
@@ -374,7 +454,7 @@ export default function LiquidationsPage() {
                                         className="h-full opacity-80"
                                         style={{
                                           width: `${(val / bdTotal) * 100}%`,
-                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : '#888',
+                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : ex === 'HTX' ? '#3B82F6' : ex === 'gTrade' ? '#14B8A6' : '#888',
                                         }}
                                       />
                                     ))}
@@ -412,7 +492,7 @@ export default function LiquidationsPage() {
                                         className="h-full opacity-80"
                                         style={{
                                           width: `${(val / bdTotal) * 100}%`,
-                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : '#888',
+                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : ex === 'HTX' ? '#3B82F6' : ex === 'gTrade' ? '#14B8A6' : '#888',
                                         }}
                                       />
                                     ))}
@@ -632,6 +712,12 @@ export default function LiquidationsPage() {
                                     <ExchangeLogo exchange={liq.exchange.toLowerCase()} size={12} />
                                     {liq.exchange}
                                   </span>
+                                  {/* DEX arbitrage opportunity badge */}
+                                  {DEX_EXCHANGES.has(liq.exchange) && liq.value >= 50000 && (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-400">
+                                      ARB opportunity
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-sm text-neutral-600 mt-0.5">
                                   {liq.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })} @ ${liq.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -663,11 +749,18 @@ export default function LiquidationsPage() {
                 <strong className="text-success">Long liquidation</strong> = Price dropped, long positions forcefully closed.
                 <br />
                 <strong className="text-danger">Short liquidation</strong> = Price rose, short positions forcefully closed.
-                <br />
-                <span className="text-neutral-700 text-xs mt-1 block">
-                  Data from {selectedExchanges.join(', ')}. Bybit subscribes to top 25 symbols. OKX and Bitget receive all SWAP liquidations. Deribit covers BTC + ETH perpetuals. BingX covers top 5 symbols.
-                </span>
               </p>
+              <div className="mt-3 space-y-1.5">
+                <p className="text-neutral-500 text-xs">
+                  <strong className="text-white">CEX liquidations</strong> (Binance, Bybit, OKX, Bitget, Deribit, MEXC, BingX, HTX) — Smart thresholds: $500K+ for BTC/ETH, $100K+ for midcaps, $50K+ for alts. Shows major position unwinds on centralized exchanges.
+                </p>
+                <p className="text-neutral-500 text-xs">
+                  <strong className="text-purple-400">DEX liquidations</strong> (gTrade) — $10K+ threshold. Actionable signals: price gaps from skew imbalance on decentralized protocols create arbitrage opportunities between CEX and DEX venues.
+                </p>
+                <p className="text-neutral-700 text-xs mt-1">
+                  Connected: {selectedExchanges.join(', ')}. Bybit subscribes to top 25 symbols. OKX and Bitget receive all SWAP liquidations. Deribit covers BTC + ETH perpetuals. BingX covers top 5 symbols. HTX covers top 20 symbols. gTrade streams all trade closures.
+                </p>
+              </div>
             </div>
           </div>
         </div>

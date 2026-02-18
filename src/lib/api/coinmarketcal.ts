@@ -114,32 +114,90 @@ export async function fetchCryptoNews(limit: number = 20): Promise<NewsArticle[]
   return [];
 }
 
-// Fetch news for a specific coin category
+// Check if a news article is actually relevant to the searched coin symbol
+function isArticleRelevant(article: NewsArticle, symbol: string): boolean {
+  const sym = symbol.toUpperCase();
+
+  // Check title (most important signal)
+  const title = (article.title || '').toUpperCase();
+  if (title.includes(sym) || title.includes(`$${sym}`)) return true;
+
+  // Check tags (pipe-separated)
+  const tags = (article.tags || '').toUpperCase();
+  const tagList = tags.split('|').map(t => t.trim());
+  if (tagList.includes(sym)) return true;
+
+  // Check categories (pipe-separated)
+  const cats = (article.categories || '').toUpperCase();
+  const catList = cats.split('|').map(c => c.trim());
+  if (catList.includes(sym)) return true;
+
+  // Check body (first 500 chars to avoid false positives in long articles)
+  // Use word boundary check to avoid partial matches (e.g., "ARENA" matching "ENA")
+  const body = (article.body || '').substring(0, 500);
+  const wordBoundaryRegex = new RegExp(`\\b${sym}\\b`, 'i');
+  if (wordBoundaryRegex.test(body)) return true;
+
+  return false;
+}
+
+// Fetch news for a specific coin, with client-side relevance filtering
 export async function fetchCoinNews(coinSymbol: string, limit: number = 10): Promise<NewsArticle[]> {
   const cacheKey = `news:${coinSymbol}:${limit}`;
   const cached = getCached<NewsArticle[]>(cacheKey);
   if (cached) return cached;
 
+  const symbol = coinSymbol.toUpperCase();
+
   try {
-    // CryptoCompare uses categories for filtering
-    const categories = coinSymbol.toUpperCase();
+    // Try coin-specific category first
     const response = await fetch(
-      `${CRYPTOCOMPARE_NEWS_API}/?categories=${categories}&lang=EN&sortOrder=latest`,
+      `${CRYPTOCOMPARE_NEWS_API}/?categories=${symbol}&lang=EN&sortOrder=latest&extraParams=InfoHub`,
       { next: { revalidate: 300 } }
     );
 
     if (response.ok) {
       const data = await response.json();
-      const articles = (data.Data || []).slice(0, limit);
-      setCache(cacheKey, articles);
-      return articles;
+      const articles: NewsArticle[] = data.Data || [];
+
+      // Filter for actual relevance — article must mention the symbol
+      const relevant = articles.filter(a => isArticleRelevant(a, symbol));
+
+      if (relevant.length >= 3) {
+        const result = relevant.slice(0, limit);
+        setCache(cacheKey, result);
+        return result;
+      }
     }
   } catch (error) {
     console.error('CryptoCompare News API error:', error);
   }
 
-  // Fallback to general news if coin-specific fails
-  return fetchCryptoNews(limit);
+  // Fallback: fetch general news and filter by relevance
+  try {
+    const response = await fetch(
+      `${CRYPTOCOMPARE_NEWS_API}/?lang=EN&sortOrder=latest&extraParams=InfoHub`,
+      { next: { revalidate: 300 } }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const articles: NewsArticle[] = data.Data || [];
+      const relevant = articles.filter(a => isArticleRelevant(a, symbol));
+
+      if (relevant.length > 0) {
+        const result = relevant.slice(0, limit);
+        setCache(cacheKey, result);
+        return result;
+      }
+    }
+  } catch (error) {
+    console.error('CryptoCompare general news filter error:', error);
+  }
+
+  // If no relevant articles found, return empty instead of fake results
+  setCache(cacheKey, []);
+  return [];
 }
 
 // Fetch events for a specific coin
@@ -174,8 +232,13 @@ export async function fetchCoinEvents(coinId: string): Promise<CryptoEvent[]> {
     }
   }
 
-  // Generate events from news as fallback
+  // Generate events from relevant news only — don't fake events from unrelated articles
   const news = await fetchCoinNews(coinId, 5);
+  if (news.length === 0) {
+    // No relevant news found — return empty, don't fake it
+    setCache(cacheKey, []);
+    return [];
+  }
   const events = convertNewsToEvents(news, coinId);
   setCache(cacheKey, events);
   return events;

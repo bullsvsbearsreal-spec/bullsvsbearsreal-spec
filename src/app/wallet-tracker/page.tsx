@@ -176,7 +176,7 @@ export default function WalletTrackerPage() {
 
   const priceMap = useMemo(() => {
     const map: Record<string, number> = {};
-    (tickers ?? []).forEach((t) => {
+    (Array.isArray(tickers) ? tickers : []).forEach((t) => {
       const sym = t.symbol.toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '');
       if (!map[sym] || t.lastPrice > map[sym]) {
         map[sym] = t.lastPrice;

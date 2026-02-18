@@ -50,7 +50,7 @@ export default function OpenInterestPage() {
       ]);
       setOpenInterest(data);
       // Build delta lookup map
-      if (deltaRes?.data) {
+      if (Array.isArray(deltaRes?.data)) {
         const map = new Map<string, OIDelta>();
         deltaRes.data.forEach((d: OIDelta) => map.set(d.symbol, d));
         setOiDeltas(map);

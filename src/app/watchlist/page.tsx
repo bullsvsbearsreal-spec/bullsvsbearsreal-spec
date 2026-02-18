@@ -156,7 +156,7 @@ export default function WatchlistPage() {
 
     // -- tickers: group by normalized symbol, pick highest-volume entry for price
     const tickerMap = new Map<string, { price: number; change: number; vol: number }>();
-    (tickers ?? []).forEach((t) => {
+    (Array.isArray(tickers) ? tickers : []).forEach((t) => {
       const sym = normalizeSymbol(t.symbol);
       if (!wlSet.has(sym)) return;
       const prev = tickerMap.get(sym);
@@ -176,7 +176,7 @@ export default function WatchlistPage() {
 
     // -- funding: average across exchanges
     const fundingMap = new Map<string, { sum: number; count: number }>();
-    (fundingData ?? []).forEach((f) => {
+    (Array.isArray(fundingData) ? fundingData : []).forEach((f) => {
       const sym = normalizeSymbol(f.symbol);
       if (!wlSet.has(sym)) return;
       const prev = fundingMap.get(sym) ?? { sum: 0, count: 0 };
@@ -185,7 +185,7 @@ export default function WatchlistPage() {
 
     // -- OI: sum across exchanges
     const oiMap = new Map<string, number>();
-    (oiData ?? []).forEach((o) => {
+    (Array.isArray(oiData) ? oiData : []).forEach((o) => {
       const sym = normalizeSymbol(o.symbol);
       if (!wlSet.has(sym)) return;
       oiMap.set(sym, (oiMap.get(sym) ?? 0) + o.openInterestValue);

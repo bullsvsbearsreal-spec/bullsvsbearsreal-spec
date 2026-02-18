@@ -55,6 +55,37 @@ const BYBIT_SYMBOLS = [
   'SUIUSDT', 'PEPEUSDT', 'WIFUSDT', 'SEIUSDT', 'TIAUSDT',
 ];
 
+// Top symbols for BingX (per-symbol subscription required)
+const BINGX_SYMBOLS = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT'];
+
+// Top symbols for HTX linear swap liquidation feed
+const HTX_LIQ_SYMBOLS = [
+  'BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT',
+  'BNB-USDT', 'ADA-USDT', 'AVAX-USDT', 'LINK-USDT', 'DOT-USDT',
+  'LTC-USDT', 'UNI-USDT', 'APT-USDT', 'ARB-USDT', 'OP-USDT',
+  'SUI-USDT', 'PEPE-USDT', 'WIF-USDT', 'INJ-USDT', 'NEAR-USDT',
+];
+
+// --- Browser-native gzip decompression for HTX ---
+async function decompressGzip(data: ArrayBuffer): Promise<string> {
+  const ds = new DecompressionStream('gzip');
+  const writer = ds.writable.getWriter();
+  writer.write(new Uint8Array(data));
+  writer.close();
+  const reader = ds.readable.getReader();
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const total = chunks.reduce((s, c) => s + c.length, 0);
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) { merged.set(c, offset); offset += c.length; }
+  return new TextDecoder().decode(merged);
+}
+
 function parseBinanceLiq(data: any): Liquidation | null {
   if (data.e !== 'forceOrder') return null;
   const o = data.o;
@@ -134,15 +165,12 @@ function parseBitgetLiq(data: any): Liquidation | null {
   };
 }
 
-// Top symbols for BingX (per-symbol subscription required)
-const BINGX_SYMBOLS = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT'];
-
 function parseDeribitLiq(data: any): Liquidation | null {
   // JSON-RPC subscription notification
   if (data.method !== 'subscription' || !data.params?.data) return null;
   const d = data.params.data;
   const instrument = d.instrument_name || '';
-  // Extract symbol: BTC-PERPETUAL → BTC, ETH-PERPETUAL → ETH
+  // Extract symbol: BTC-PERPETUAL -> BTC, ETH-PERPETUAL -> ETH
   const symbol = instrument.split('-')[0];
   if (!symbol) return null;
   const price = parseFloat(d.price || '0');
@@ -197,6 +225,90 @@ function parseBingxLiq(data: any): Liquidation | null {
   };
 }
 
+function parseHTXLiq(data: any): Liquidation | null {
+  // HTX sends data array inside a channel message
+  // { "ch": "public.BTC-USDT.liquidation_orders", "ts": ..., "data": [...] }
+  if (!data.ch || !data.data || !Array.isArray(data.data) || data.data.length === 0) return null;
+  const d = data.data[0];
+  const contractCode = d.contract_code || '';
+  const symbol = contractCode.replace('-USDT', '').replace('-USDC', '');
+  if (!symbol) return null;
+  const price = parseFloat(d.price || '0');
+  const amount = parseFloat(d.amount || '0'); // amount is in tokens
+  const direction = d.direction; // 'sell' or 'buy'
+  const offset = d.offset; // 'close' means liquidation
+  // direction === 'sell' + offset === 'close' -> long liquidation (forced sell of long)
+  // direction === 'buy' + offset === 'close' -> short liquidation (forced buy of short)
+  let side: 'long' | 'short';
+  if (direction === 'sell' && offset === 'close') {
+    side = 'long';
+  } else if (direction === 'buy' && offset === 'close') {
+    side = 'short';
+  } else {
+    return null; // not a liquidation close
+  }
+  return {
+    id: `htx-${contractCode}-${d.created_at || data.ts || Date.now()}`,
+    symbol,
+    side,
+    price,
+    quantity: amount,
+    value: price * amount,
+    exchange: 'HTX',
+    timestamp: d.created_at || data.ts || Date.now(),
+  };
+}
+
+function parseGTradeLiq(data: any): Liquidation | null {
+  // gTrade sends Socket.IO-style messages. We look for unregisterTrade with liq closeType.
+  // The data may come as: { name: 'unregisterTrade', value: { ... } }
+  // or already parsed from a Socket.IO frame.
+  if (!data) return null;
+
+  // Try to extract the trade data
+  let trade: any = null;
+  if (data.name === 'unregisterTrade' && data.value) {
+    trade = data.value;
+  } else if (data.closeType) {
+    // Direct trade object
+    trade = data;
+  } else {
+    return null;
+  }
+
+  // Only process liquidations
+  const closeType = (trade.closeType || '').toLowerCase();
+  if (closeType !== 'liq' && closeType !== 'liquidation' && closeType !== 'liquidated') return null;
+
+  // Extract symbol from pair field: "BTC/USD" -> "BTC"
+  const pair = trade.pair || trade.pairName || '';
+  const symbol = pair.split('/')[0] || '';
+  if (!symbol) return null;
+
+  // Determine side: if the liquidated trade was long, it's a long liquidation
+  const isLong = trade.buy === true || trade.long === true || trade.side === 'long';
+  const side: 'long' | 'short' = isLong ? 'long' : 'short';
+
+  // Calculate value
+  const positionSize = parseFloat(trade.positionSizeStable || trade.positionSizeDai || '0');
+  const collateral = parseFloat(trade.collateralAmount || trade.initialPosToken || '0');
+  const leverage = parseFloat(trade.leverage || '1');
+  const value = positionSize > 0 ? positionSize : collateral * leverage;
+  const price = parseFloat(trade.closePrice || trade.currentPrice || trade.openPrice || '0');
+  const quantity = price > 0 ? value / price : 0;
+
+  return {
+    id: `gt-${symbol}-${trade.tradeId || trade.orderId || Date.now()}-${Date.now()}`,
+    symbol,
+    side,
+    price,
+    quantity,
+    value,
+    exchange: 'gTrade',
+    timestamp: trade.closeTimestamp ? parseInt(trade.closeTimestamp, 10) : Date.now(),
+  };
+}
+
 function createExchangeWS(
   exchange: string,
   onMessage: (liq: Liquidation) => void,
@@ -232,6 +344,12 @@ function createExchangeWS(
           break;
         case 'BingX':
           ws = new WebSocket('wss://open-api-ws.bingx.com/market');
+          break;
+        case 'HTX':
+          ws = new WebSocket('wss://api.hbdm.com/linear-swap-ws');
+          break;
+        case 'gTrade':
+          ws = new WebSocket('wss://backend-arbitrum.gains.trade');
           break;
         default:
           return;
@@ -285,7 +403,16 @@ function createExchangeWS(
             dataType: `${sym}@forceOrder`,
           }));
         });
+      } else if (exchange === 'HTX') {
+        // HTX needs per-symbol subscriptions for liquidation orders
+        HTX_LIQ_SYMBOLS.forEach((sym, i) => {
+          ws?.send(JSON.stringify({
+            sub: `public.${sym}.liquidation_orders`,
+            id: `htx-${i}`,
+          }));
+        });
       }
+      // gTrade: no subscription needed, server pushes on connect
 
       // Ping for exchanges that need it
       if (exchange === 'Bybit') {
@@ -324,11 +451,89 @@ function createExchangeWS(
             ws.send('Ping');
           }
         }, 20000);
+      } else if (exchange === 'gTrade') {
+        // gTrade needs periodic text 'ping' every 25 seconds
+        pingTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send('ping');
+          }
+        }, 25000);
       }
+      // HTX ping is handled via pong response to server-sent pings (in onmessage)
     };
+
+    // HTX sends gzip-compressed binary data — need special binaryType
+    if (exchange === 'HTX') {
+      ws.binaryType = 'arraybuffer';
+    }
 
     ws.onmessage = (event) => {
       try {
+        // --- HTX: binary gzip decompression ---
+        if (exchange === 'HTX') {
+          const rawData = event.data;
+          if (rawData instanceof ArrayBuffer) {
+            decompressGzip(rawData).then((text) => {
+              try {
+                const data = JSON.parse(text);
+                // Handle heartbeat ping -> respond with pong
+                if (data.ping) {
+                  ws?.send(JSON.stringify({ pong: data.ping }));
+                  return;
+                }
+                // Skip subscription confirmations
+                if (data.subbed || data.status === 'ok') return;
+                const liq = parseHTXLiq(data);
+                if (liq && liq.value > 0) {
+                  onMessage(liq);
+                }
+              } catch { /* ignore parse errors */ }
+            }).catch(() => { /* ignore decompression errors */ });
+            return;
+          }
+          // Fallback: if somehow text data
+          const data = JSON.parse(typeof rawData === 'string' ? rawData : new TextDecoder().decode(rawData));
+          if (data.ping) {
+            ws?.send(JSON.stringify({ pong: data.ping }));
+            return;
+          }
+          const liq = parseHTXLiq(data);
+          if (liq && liq.value > 0) onMessage(liq);
+          return;
+        }
+
+        // --- gTrade: Socket.IO-style framing ---
+        if (exchange === 'gTrade') {
+          const rawStr = typeof event.data === 'string' ? event.data : '';
+          // Socket.IO sends numeric prefixes (0, 2, 3, 40, 42, etc.)
+          // Skip open/ping/pong frames
+          if (rawStr === '2' || rawStr === '3' || rawStr.startsWith('0{')) return;
+          // Event frame starts with '42' followed by JSON array: 42["eventName", {...}]
+          if (rawStr.startsWith('42')) {
+            const jsonStr = rawStr.slice(2);
+            const arr = JSON.parse(jsonStr);
+            if (Array.isArray(arr) && arr.length >= 2) {
+              const eventName = arr[0];
+              const payload = arr[1];
+              if (eventName === 'unregisterTrade') {
+                const liq = parseGTradeLiq({ name: 'unregisterTrade', value: payload });
+                if (liq && liq.value > 0) {
+                  onMessage(liq);
+                }
+              }
+            }
+            return;
+          }
+          // Try parsing as plain JSON as fallback
+          try {
+            const data = JSON.parse(rawStr);
+            const liq = parseGTradeLiq(data);
+            if (liq && liq.value > 0) onMessage(liq);
+          } catch { /* not JSON, skip */ }
+          return;
+        }
+
+        // --- All other exchanges: plain JSON ---
         // Handle pong responses (text-based)
         if (event.data === 'pong' || event.data === '{"event":"pong"}' || event.data === 'Pong') return;
         const data = JSON.parse(event.data);
