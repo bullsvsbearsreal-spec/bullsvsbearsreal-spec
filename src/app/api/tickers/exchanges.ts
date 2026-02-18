@@ -298,6 +298,37 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
   },
 
 
+  // Bitunix
+  {
+    name: 'Bitunix',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/tickers');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.code !== 0 || !Array.isArray(json.data)) return [];
+      return json.data
+        .filter((t: any) => t.symbol?.endsWith('USDT'))
+        .map((t: any) => {
+          const lastPrice = parseFloat(t.lastPrice || t.last) || 0;
+          const openPrice = parseFloat(t.open) || 0;
+          const change24h = openPrice > 0 ? ((lastPrice - openPrice) / openPrice) * 100 : 0;
+          return {
+            symbol: t.symbol.replace('USDT', ''),
+            exchange: 'Bitunix',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: change24h,
+            changePercent24h: change24h,
+            high24h: parseFloat(t.high) || 0,
+            low24h: parseFloat(t.low) || 0,
+            volume24h: parseFloat(t.baseVol) || 0,
+            quoteVolume24h: parseFloat(t.quoteVol) || 0,
+          };
+        })
+        .filter((t: any) => t.lastPrice > 0);
+    },
+  },
+
   // KuCoin
   {
     name: 'KuCoin',
@@ -508,5 +539,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .filter((item: any) => item.lastPrice > 0);
     },
   },
+
+  // GMX V2 -- markets/info does not include price/volume data, only OI and funding rates
 
 ];

@@ -144,19 +144,6 @@ export default function HomeOrange() {
           <StatsOverview />
         </section>
 
-        {/* ═══ Market Pulse — Fear & Greed + Liquidation ═══ */}
-        <section className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Radio className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Market Pulse</span>
-            <div className="flex-1 h-px bg-white/[0.04]" />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 stagger">
-            <FearGreedIndex />
-            <LiquidationHeatmap />
-          </div>
-        </section>
-
         {/* ═══ Trading Signals Row ═══ */}
         <section className="mb-6">
           <div className="flex items-center gap-2 mb-3">
@@ -278,6 +265,19 @@ export default function HomeOrange() {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        {/* ═══ Market Pulse — Fear & Greed + Liquidation ═══ */}
+        <section className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Radio className="w-3.5 h-3.5 text-hub-yellow" />
+            <span className="section-label">Market Pulse</span>
+            <div className="flex-1 h-px bg-white/[0.04]" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 stagger">
+            <FearGreedIndex />
+            <LiquidationHeatmap />
           </div>
         </section>
 

@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchAllTickers, fetchAllOpenInterest, fetchAllFundingRates } from '@/lib/api/aggregator';
+import { fetchAllTickers, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { formatNumber } from '@/lib/utils/format';
-import { DollarSign, BarChart3, Percent, TrendingUp, TrendingDown, Layers } from 'lucide-react';
+import { DollarSign, BarChart3, TrendingUp, TrendingDown, Layers } from 'lucide-react';
 
 export default function StatsOverview() {
   const [stats, setStats] = useState({
     totalVolume: 0,
     totalOI: 0,
-    avgFunding: 0,
     topGainer: { symbol: '-', change: 0 },
     topLoser: { symbol: '-', change: 0 },
     activeMarkets: 0,
@@ -19,19 +18,14 @@ export default function StatsOverview() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [tickers, oiData, fundingRates, moversRes] = await Promise.all([
+        const [tickers, oiData, moversRes] = await Promise.all([
           fetchAllTickers(),
           fetchAllOpenInterest(),
-          fetchAllFundingRates(),
           fetch('/api/top-movers').then(r => r.json()).catch(() => ({ gainers: [], losers: [] })),
         ]);
 
         const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
         const totalOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
-
-        const avgFunding = fundingRates.length > 0
-          ? fundingRates.reduce((sum, f) => sum + (f.fundingRate || 0), 0) / fundingRates.length
-          : 0;
 
         const topGainerCoin = moversRes.gainers?.[0];
         const topLoserCoin = moversRes.losers?.[0];
@@ -39,7 +33,6 @@ export default function StatsOverview() {
         setStats({
           totalVolume,
           totalOI,
-          avgFunding,
           topGainer: {
             symbol: topGainerCoin?.symbol || '-',
             change: topGainerCoin?.change24h || 0,
@@ -64,8 +57,8 @@ export default function StatsOverview() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-        {[...Array(6)].map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+        {[...Array(5)].map((_, i) => (
           <div key={i} className="card-premium px-3 py-3 animate-pulse">
             <div className="h-3 w-16 bg-white/[0.06] rounded mb-2" />
             <div className="h-5 w-20 bg-white/[0.06] rounded" />
@@ -89,14 +82,6 @@ export default function StatsOverview() {
       icon: BarChart3,
       iconColor: 'text-blue-400',
       iconBg: 'bg-blue-400/10',
-    },
-    {
-      label: 'Avg Funding',
-      value: `${stats.avgFunding >= 0 ? '+' : ''}${stats.avgFunding.toFixed(4)}%`,
-      color: stats.avgFunding >= 0 ? 'text-green-400' : 'text-red-400',
-      icon: Percent,
-      iconColor: stats.avgFunding >= 0 ? 'text-green-400' : 'text-red-400',
-      iconBg: stats.avgFunding >= 0 ? 'bg-green-500/10' : 'bg-red-500/10',
     },
     {
       label: 'Top Gainer',
@@ -126,7 +111,7 @@ export default function StatsOverview() {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
       {statItems.map((item) => (
         <div key={item.label} className="card-premium px-3 py-3 group">
           <div className="flex items-center gap-2 mb-1.5">
@@ -136,7 +121,7 @@ export default function StatsOverview() {
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-medium">{item.label}</span>
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-sm font-bold font-mono tabular-nums ${item.color || 'text-white'}`}>
+            <span className="text-sm font-bold font-mono tabular-nums text-white">
               {item.value}
             </span>
             {item.sub && (

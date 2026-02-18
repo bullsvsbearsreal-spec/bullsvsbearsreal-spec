@@ -560,6 +560,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // Bitunix — no public OI endpoint available (tickers don't include open interest)
+
   // Drift Protocol (Solana DEX) — uses Data API with pre-parsed values
   {
     name: 'Drift',
@@ -599,6 +601,46 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         }
       }
       return results;
+    },
+  },
+
+  // GMX V2 (Arbitrum DEX) — OI values are BigInt strings at 1e30 precision, directly in USD
+  {
+    name: 'GMX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://arbitrum-api.gmxinfra.io/markets/info', {}, 12000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const markets = json.markets || [];
+
+      const perpMarkets = markets.filter((m: any) =>
+        m.name &&
+        !m.name.includes('SWAP') &&
+        !m.name.includes('(deprecated)') &&
+        m.isListed
+      );
+
+      // Deduplicate by symbol, keep highest OI
+      const bestBySymbol = new Map<string, { symbol: string; oiLong: number; oiShort: number; totalOi: number }>();
+      for (const m of perpMarkets) {
+        const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
+        const oiLong = Number(BigInt(m.openInterestLong || '0')) / 1e30;
+        const oiShort = Number(BigInt(m.openInterestShort || '0')) / 1e30;
+        const totalOi = oiLong + oiShort;
+        const existing = bestBySymbol.get(symbol);
+        if (!existing || totalOi > existing.totalOi) {
+          bestBySymbol.set(symbol, { symbol, oiLong, oiShort, totalOi });
+        }
+      }
+
+      return Array.from(bestBySymbol.values())
+        .filter(({ totalOi }) => totalOi > 1000) // Filter tiny markets
+        .map(({ symbol, totalOi }) => ({
+          symbol,
+          exchange: 'GMX',
+          openInterest: totalOi, // Already in USD
+          openInterestValue: totalOi,
+        }));
     },
   },
 

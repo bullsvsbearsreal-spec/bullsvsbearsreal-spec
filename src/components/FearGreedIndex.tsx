@@ -41,10 +41,10 @@ export default function FearGreedIndex() {
   const rotation = (displayValue / 100) * 180 - 90;
 
   return (
-    <div className="card-premium p-4 h-full">
-      <div className="flex items-center justify-between mb-4">
+    <div className="card-premium p-3 h-full">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
+          <div className="w-5 h-5 rounded-md bg-hub-yellow/10 flex items-center justify-center">
             <Gauge className="w-3 h-3 text-hub-yellow" />
           </div>
           <h3 className="text-white font-semibold text-sm">Fear & Greed</h3>
@@ -55,7 +55,7 @@ export default function FearGreedIndex() {
       </div>
 
       <div className="flex flex-col items-center">
-        <div className="relative w-52 h-28">
+        <div className="relative w-40 h-[85px]">
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 110">
             <defs>
               <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -116,33 +116,33 @@ export default function FearGreedIndex() {
 
           {/* Needle */}
           <div
-            className="absolute bottom-[10px] left-1/2 origin-bottom transition-transform duration-700 ease-out"
+            className="absolute bottom-[8px] left-1/2 origin-bottom transition-transform duration-700 ease-out"
             style={{ transform: `translateX(-50%) rotate(${rotation}deg)` }}
           >
-            <div className="w-0.5 h-[60px] bg-gradient-to-t from-white to-white/30 rounded-full" />
+            <div className="w-0.5 h-[46px] bg-gradient-to-t from-white to-white/30 rounded-full" />
           </div>
 
           {/* Center dot */}
-          <div className="absolute bottom-[6px] left-1/2 transform -translate-x-1/2">
-            <div className="w-3 h-3 bg-white rounded-full border-2 border-neutral-800 shadow-[0_0_8px_rgba(255,255,255,0.2)]" />
+          <div className="absolute bottom-[5px] left-1/2 transform -translate-x-1/2">
+            <div className="w-2.5 h-2.5 bg-white rounded-full border-2 border-neutral-800 shadow-[0_0_8px_rgba(255,255,255,0.2)]" />
           </div>
         </div>
 
         {/* Value display */}
-        <div className="text-center mt-3">
+        <div className="text-center mt-2">
           <div className="flex items-baseline justify-center gap-1">
             {loading ? (
-              <div className="h-8 w-12 bg-white/[0.06] rounded animate-pulse" />
+              <div className="h-7 w-10 bg-white/[0.06] rounded animate-pulse" />
             ) : (
-              <span className="text-4xl font-bold text-white font-mono tabular-nums">{displayValue}</span>
+              <span className="text-3xl font-bold text-white font-mono tabular-nums">{displayValue}</span>
             )}
-            <span className="text-neutral-600 text-sm font-mono">/100</span>
+            <span className="text-neutral-600 text-xs font-mono">/100</span>
           </div>
-          <div className={`text-xs font-semibold ${label.color} mt-0.5`}>{label.text}</div>
+          <div className={`text-[11px] font-semibold ${label.color} mt-0.5`}>{label.text}</div>
         </div>
 
         {/* Color legend */}
-        <div className="flex items-center gap-4 mt-4 text-[10px]">
+        <div className="flex items-center gap-3 mt-2.5 text-[10px]">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-1.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500" />
             <span className="text-neutral-500">Fear</span>

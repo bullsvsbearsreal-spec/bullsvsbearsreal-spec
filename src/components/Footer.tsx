@@ -52,8 +52,14 @@ export default function Footer() {
               <Link href="/team" className="text-neutral-500 hover:text-white text-xs transition-colors py-0.5">
                 Team
               </Link>
+              <Link href="/faq" className="text-neutral-500 hover:text-white text-xs transition-colors py-0.5">
+                FAQ
+              </Link>
               <Link href="/api-docs" className="text-neutral-500 hover:text-white text-xs transition-colors py-0.5">
                 API Docs
+              </Link>
+              <Link href="/terms" className="text-neutral-500 hover:text-white text-xs transition-colors py-0.5">
+                Terms & Conditions
               </Link>
               <a href="https://github.com/GroovyGecko88/infohub" target="_blank" rel="noopener noreferrer" className="text-neutral-500 hover:text-white text-xs transition-colors py-0.5">
                 GitHub

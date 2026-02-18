@@ -468,6 +468,29 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
 
+  // Bitunix
+  {
+    name: 'Bitunix',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/funding_rate/batch');
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (json.code !== 0 || !Array.isArray(json.data)) return [];
+      return json.data
+        .filter((item: any) => item.symbol?.endsWith('USDT'))
+        .map((item: any) => ({
+          symbol: item.symbol.replace('USDT', ''),
+          exchange: 'Bitunix',
+          fundingRate: parseFloat(item.fundingRate) * 100,
+          markPrice: parseFloat(item.markPrice) || 0,
+          indexPrice: parseFloat(item.lastPrice) || 0,
+          nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
+          type: 'cex' as const,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
   // KuCoin
   {
     name: 'KuCoin',
@@ -874,9 +897,57 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return results;
     },
   },
+
+  // GMX V2 (Arbitrum DEX) — continuous funding; report as 1h interval
+  // All numeric values are BigInt strings at 1e30 precision
+  {
+    name: 'GMX',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://arbitrum-api.gmxinfra.io/markets/info', {}, 12000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const markets = json.markets || [];
+
+      // Filter valid perp markets
+      const perpMarkets = markets.filter((m: any) =>
+        m.name &&
+        !m.name.includes('SWAP') &&
+        !m.name.includes('(deprecated)') &&
+        m.isListed &&
+        m.fundingRateLong
+      );
+
+      // Deduplicate: keep highest OI per symbol
+      const bestBySymbol = new Map<string, { market: any; totalOi: number }>();
+      for (const m of perpMarkets) {
+        const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
+        const totalOi = Number(BigInt(m.openInterestLong || '0')) + Number(BigInt(m.openInterestShort || '0'));
+        const existing = bestBySymbol.get(symbol);
+        if (!existing || totalOi > existing.totalOi) {
+          bestBySymbol.set(symbol, { market: m, totalOi });
+        }
+      }
+
+      return Array.from(bestBySymbol.values())
+        .map(({ market: m }) => {
+          const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
+          // Annual rate at 1e30 precision -> hourly percentage
+          const fundingRate = Number(BigInt(m.fundingRateLong)) / 1e30 / 8760 * 100;
+          return {
+            symbol,
+            exchange: 'GMX',
+            fundingRate,
+            markPrice: 0, // GMX markets/info doesn't provide mark price
+            indexPrice: 0,
+            nextFundingTime: Date.now() + 3600000, // continuous, next "hour"
+            type: 'dex' as const,
+            fundingInterval: '1h' as const,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+    },
+  },
 ];
 
 // Paused exchanges (kept for reference):
-// GMX v2 (Arbitrum) - No REST funding rate endpoint; requires on-chain contract queries (BigInt precision issues)
-// Bitunix - No public funding rate endpoint found
 // LBank - Futures domain (fapi.lbank.com) unreachable
