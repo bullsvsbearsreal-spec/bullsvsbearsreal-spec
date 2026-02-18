@@ -299,6 +299,86 @@ body {
     height: 1px;
     background: linear-gradient(90deg, transparent, rgb(var(--hub-accent-rgb) / 0.25), transparent);
   }
+
+  /* --- Page section card --- */
+  .section-card {
+    @apply rounded-xl overflow-hidden;
+    background: var(--hub-darker);
+    border: 1px solid var(--hub-border);
+  }
+  .section-card-header {
+    @apply p-4 flex items-center justify-between;
+    border-bottom: 1px solid var(--hub-border);
+  }
+  .section-card-body { @apply p-4; }
+
+  /* --- Button groups (segmented control / tab bar) --- */
+  .btn-group {
+    @apply flex rounded-xl overflow-hidden;
+    background: rgba(26, 26, 26, 0.2);
+    border: 1px solid var(--hub-border);
+  }
+  .btn-group-item {
+    @apply px-4 py-2 text-sm font-medium transition-colors;
+    color: #737373;
+  }
+  .btn-group-item:hover { color: white; }
+  .btn-group-item-active {
+    background: var(--hub-accent);
+    color: black;
+  }
+
+  /* --- Stat grid card --- */
+  .stat-grid-card {
+    @apply rounded-xl p-4;
+    background: var(--hub-darker);
+    border: 1px solid var(--hub-border);
+  }
+
+  /* --- Exchange toggle chip --- */
+  .exchange-chip {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border;
+  }
+  .exchange-chip-active {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: white;
+  }
+  .exchange-chip-inactive {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.04);
+    color: #737373;
+  }
+  .exchange-chip-inactive:hover { color: #a3a3a3; }
+
+  /* --- Connection dot --- */
+  .conn-dot { @apply w-1.5 h-1.5 rounded-full; }
+  .conn-dot-ok { @apply bg-green-400; }
+  .conn-dot-err { @apply bg-red-500; }
+
+  /* --- Liq feed row --- */
+  .liq-row { @apply p-4 transition-colors; }
+  .liq-row:hover { background: rgba(255, 255, 255, 0.04); }
+
+  /* --- Empty state --- */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12;
+    color: #737373;
+  }
+
+  /* --- Info callout box --- */
+  .callout {
+    @apply rounded-2xl p-4;
+  }
+  .callout-warn {
+    background: rgb(var(--hub-accent-rgb) / 0.1);
+    border: 1px solid rgb(var(--hub-accent-rgb) / 0.2);
+  }
+
+  /* --- Legend item --- */
+  .legend { @apply flex items-center justify-center gap-6 text-xs p-4; color: #737373; }
+  .legend-item { @apply flex items-center gap-2; }
+  .legend-swatch { @apply w-4 h-4 rounded; }
 }
 
 /* ═══ Green Theme — Visual Overrides ═══ */
@@ -398,6 +478,21 @@ body {
 /* Mobile nav */
 [data-theme="green"] #mobile-nav {
   background: #060d08;
+}
+
+/* Green theme — new utility class overrides */
+[data-theme="green"] .section-card { background: #0a0f0c; }
+[data-theme="green"] .stat-grid-card { background: #0a0f0c; }
+[data-theme="green"] .btn-group { background: rgba(15, 26, 18, 0.2); }
+[data-theme="green"] .exchange-chip-active {
+  background: rgba(0, 220, 130, 0.06);
+  border-color: rgba(0, 220, 130, 0.12);
+}
+[data-theme="green"] .exchange-chip-inactive { border-color: rgba(0, 220, 130, 0.04); }
+[data-theme="green"] .liq-row:hover { background: rgba(0, 220, 130, 0.04); }
+[data-theme="green"] .callout-warn {
+  background: rgba(0, 220, 130, 0.1);
+  border-color: rgba(0, 220, 130, 0.2);
 }
 
 /* ═══ Green Theme — Terminal Design System ═══ */

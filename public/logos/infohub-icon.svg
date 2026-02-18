@@ -1,23 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="iconYellowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FFD700"/>
-      <stop offset="40%" style="stop-color:#FFA500"/>
-      <stop offset="100%" style="stop-color:#FF7700"/>
+    <linearGradient id="icBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a1a1a"/>
+      <stop offset="1" stop-color="#0a0a0a"/>
+    </linearGradient>
+    <linearGradient id="icAccent" x1="10" y1="14" x2="54" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE066"/>
+      <stop offset=".35" stop-color="#FFA500"/>
+      <stop offset=".7" stop-color="#FF8C00"/>
+      <stop offset="1" stop-color="#E67300"/>
     </linearGradient>
   </defs>
-
-  <!-- Black outer -->
-  <rect x="2" y="2" width="60" height="60" rx="12" fill="#000000"/>
-
-  <!-- Gold inner badge -->
-  <rect x="6" y="6" width="52" height="52" rx="10" fill="url(#iconYellowGrad)"/>
-
-  <!-- I letter -->
-  <rect x="14" y="16" width="7" height="32" rx="1.5" fill="#000000" opacity="0.9"/>
-
-  <!-- H letter -->
-  <rect x="26" y="16" width="7" height="32" rx="1.5" fill="#000000" opacity="0.9"/>
-  <rect x="40" y="16" width="7" height="32" rx="1.5" fill="#000000" opacity="0.9"/>
-  <rect x="26" y="27" width="21" height="7" rx="1.5" fill="#000000" opacity="0.9"/>
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="url(#icBg)"/>
+  <rect x="3" y="3" width="58" height="58" rx="11" fill="none" stroke="#FFA500" stroke-opacity=".12" stroke-width=".5"/>
+  <!-- Serif I -->
+  <path d="M12,17 L19,17 L19,17.8 L17,18.3 L17,43.7 L19,44.2 L19,45 L12,45 L12,44.2 L14,43.7 L14,18.3 L12,17.8 Z" fill="url(#icAccent)"/>
+  <!-- Serif H -->
+  <path d="M24,17 L31,17 L31,17.8 L29,18.3 L29,29 L42,29 L42,18.3 L40,17.8 L40,17 L47,17 L47,17.8 L45,18.3 L45,43.7 L47,44.2 L47,45 L40,45 L40,44.2 L42,43.7 L42,32.5 L29,32.5 L29,43.7 L31,44.2 L31,45 L24,45 L24,44.2 L26,43.7 L26,18.3 L24,17.8 Z" fill="url(#icAccent)"/>
+  <!-- Underline -->
+  <rect x="12" y="48" width="35" height=".7" rx=".35" fill="url(#icAccent)" opacity=".5"/>
+  <!-- Data dot -->
+  <circle cx="53" cy="17" r="1.2" fill="#FFA500" opacity=".5"/>
 </svg>

@@ -1,14 +1,37 @@
 <svg width="32" height="32" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="favGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset="40%" stop-color="#FFA500"/>
-      <stop offset="100%" stop-color="#FF7700"/>
+    <linearGradient id="fBg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a1a1a"/>
+      <stop offset="1" stop-color="#0a0a0a"/>
     </linearGradient>
+    <linearGradient id="fAccent" x1="80" y1="120" x2="440" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE066"/>
+      <stop offset=".35" stop-color="#FFA500"/>
+      <stop offset=".7" stop-color="#FF8C00"/>
+      <stop offset="1" stop-color="#E67300"/>
+    </linearGradient>
+    <linearGradient id="fBar" x1="256" y1="80" x2="256" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD700" stop-opacity=".15"/>
+      <stop offset="1" stop-color="#FF8C00" stop-opacity=".04"/>
+    </linearGradient>
+    <filter id="fGlow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+    </filter>
   </defs>
-  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#favGrad)"/>
-  <rect x="132" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
-  <rect x="224" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
-  <rect x="328" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
-  <rect x="224" y="230" width="156" height="52" rx="6" fill="#000" opacity="0.9"/>
+  <!-- Background -->
+  <rect width="512" height="512" rx="108" fill="url(#fBg)"/>
+  <!-- Subtle border -->
+  <rect x="2" y="2" width="508" height="508" rx="106" fill="none" stroke="#FFA500" stroke-opacity=".12" stroke-width="2"/>
+  <!-- Ambient glow -->
+  <ellipse cx="256" cy="280" rx="160" ry="120" fill="#FFA500" opacity=".04"/>
+  <!-- Serif I — vertical stroke with subtle serifs -->
+  <path d="M110,148 L168,148 L168,157 L152,161 L152,343 L168,347 L168,356 L110,356 L110,347 L126,343 L126,161 L110,157 Z" fill="url(#fAccent)"/>
+  <!-- Serif H — two verticals + crossbar, with serifs -->
+  <path d="M206,148 L260,148 L260,157 L246,161 L246,238 L346,238 L346,161 L332,157 L332,148 L386,148 L386,157 L372,161 L372,343 L386,347 L386,356 L332,356 L332,347 L346,343 L346,268 L246,268 L246,343 L260,347 L260,356 L206,356 L206,347 L220,343 L220,161 L206,157 Z" fill="url(#fAccent)"/>
+  <!-- Accent underline -->
+  <rect x="110" y="380" width="276" height="5" rx="2.5" fill="url(#fAccent)" opacity=".5"/>
+  <!-- Data pulse dots — fintech touch -->
+  <circle cx="424" cy="148" r="8" fill="#FFA500" opacity=".6"/>
+  <circle cx="424" cy="180" r="5" fill="#FFD700" opacity=".35"/>
+  <circle cx="424" cy="204" r="3.5" fill="#FFA500" opacity=".2"/>
 </svg>

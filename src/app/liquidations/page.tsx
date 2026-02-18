@@ -9,6 +9,7 @@ import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMulti
 import Footer from '@/components/Footer';
 import { formatLiqValue } from '@/lib/utils/format';
 import { DEX_EXCHANGES } from '@/lib/constants/exchanges';
+import { LIQ_THRESHOLD, TIMEFRAME_MS, TIMELINE_BUCKET_MS, DISPLAY, EXCHANGE_BRAND_HEX } from '@/lib/constants/thresholds';
 
 type ViewMode = 'feed' | 'heatmap' | 'timebucket' | 'pricelevel';
 
@@ -20,11 +21,10 @@ const MIDCAP_SYMBOLS = new Set(['SOL', 'XRP', 'DOGE', 'BNB', 'ADA', 'AVAX', 'LIN
 
 function passesSmartThreshold(liq: Liquidation): boolean {
   const isDex = DEX_EXCHANGES.has(liq.exchange);
-  if (isDex) return liq.value >= 10000; // $10K+ for DEX
-  // CEX thresholds
-  if (MAJOR_SYMBOLS.has(liq.symbol)) return liq.value >= 500000; // $500K+ for majors
-  if (MIDCAP_SYMBOLS.has(liq.symbol)) return liq.value >= 100000; // $100K+ for midcaps
-  return liq.value >= 50000; // $50K+ for everything else
+  if (isDex) return liq.value >= LIQ_THRESHOLD.DEX_MIN;
+  if (MAJOR_SYMBOLS.has(liq.symbol)) return liq.value >= LIQ_THRESHOLD.MAJOR_CEX;
+  if (MIDCAP_SYMBOLS.has(liq.symbol)) return liq.value >= LIQ_THRESHOLD.MIDCAP_CEX;
+  return liq.value >= LIQ_THRESHOLD.ALT_CEX;
 }
 
 export default function LiquidationsPage() {
@@ -46,7 +46,7 @@ export default function LiquidationsPage() {
   // Track exchange breakdown per symbol
   const exchangeBreakdownRef = useRef<Map<string, Record<string, number>>>(new Map());
 
-  const timeframeMs = { '1h': 3600000, '4h': 14400000, '12h': 43200000, '24h': 86400000 }[timeframe];
+  const timeframeMs = TIMEFRAME_MS[timeframe];
 
   // Use a low minValue for the hook so we capture everything; smart filtering happens in filteredLiquidations
   const hookMinValue = thresholdMode === 'smart' ? 1000 : minValue;
@@ -54,11 +54,11 @@ export default function LiquidationsPage() {
   const { liquidations, connections, stats, aggregated, clearAll } = useMultiExchangeLiquidations({
     exchanges: stableExchanges,
     minValue: hookMinValue,
-    maxItems: 200,
+    maxItems: DISPLAY.MAX_LIQUIDATIONS,
     persistKey: `ih-liq-${timeframe}`,
     persistTtlMs: timeframeMs,
     onLiquidation: (liq) => {
-      if (soundEnabled && liq.value >= 100000 && audioRef.current) {
+      if (soundEnabled && liq.value >= LIQ_THRESHOLD.SOUND_ALERT && audioRef.current) {
         audioRef.current.play().catch(() => {});
       }
       // Track exchange breakdown
@@ -82,7 +82,7 @@ export default function LiquidationsPage() {
 
   // Periodic timeframe reset
   useEffect(() => {
-    const timeframeMs = { '1h': 3600000, '4h': 14400000, '12h': 43200000, '24h': 86400000 }[timeframe];
+    const timeframeMs = TIMEFRAME_MS[timeframe];
     const interval = setInterval(() => {
       if (Date.now() - startTimeRef.current > timeframeMs) {
         clearAll();
@@ -131,15 +131,15 @@ export default function LiquidationsPage() {
       return item;
     })
     .filter(item => item.totalValue > 0)
-    .sort((a, b) => b.totalValue - a.totalValue).slice(0, 20);
+    .sort((a, b) => b.totalValue - a.totalValue).slice(0, DISPLAY.HEATMAP_MAX_SYMBOLS);
   const maxValue = Math.max(...sortedAggregated.map(l => l.totalValue), 1);
 
   const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString();
 
   const getValueColor = (value: number) => {
-    if (value >= 1000000) return 'text-purple-400';
-    if (value >= 500000) return 'text-error';
-    if (value >= 100000) return 'text-orange-400';
+    if (value >= LIQ_THRESHOLD.HIGHLIGHT_PURPLE) return 'text-purple-400';
+    if (value >= LIQ_THRESHOLD.HIGHLIGHT_RED) return 'text-error';
+    if (value >= LIQ_THRESHOLD.HIGHLIGHT_ORANGE) return 'text-orange-400';
     return 'text-neutral-600';
   };
 
@@ -185,7 +185,7 @@ export default function LiquidationsPage() {
                   className="flex items-center gap-1"
                 >
                   <ExchangeLogo exchange={conn.exchange.toLowerCase()} size={14} />
-                  <span className={`w-1.5 h-1.5 rounded-full ${conn.connected ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`} />
+                  <span className={`conn-dot ${conn.connected ? 'conn-dot-ok animate-pulse' : 'conn-dot-err'}`} />
                 </div>
               ))}
               <span className="text-xs text-neutral-500 ml-1">{connectedCount}/{connections.length}</span>
@@ -231,11 +231,7 @@ export default function LiquidationsPage() {
                 <button
                   key={exchange}
                   onClick={() => toggleExchange(exchange)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                    isSelected
-                      ? 'bg-white/[0.06] border-white/[0.12] text-white'
-                      : 'bg-transparent border-white/[0.04] text-neutral-600 hover:text-neutral-400'
-                  }`}
+                  className={`exchange-chip ${isSelected ? 'exchange-chip-active' : 'exchange-chip-inactive'}`}
                 >
                   <ExchangeLogo exchange={exchange.toLowerCase()} size={16} />
                   {exchange}
@@ -243,7 +239,7 @@ export default function LiquidationsPage() {
                     {isDex ? 'DEX' : 'CEX'}
                   </span>
                   {isSelected && conn && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${conn.connected ? 'bg-green-400' : 'bg-red-500'}`} />
+                    <span className={`conn-dot ${conn.connected ? 'conn-dot-ok' : 'conn-dot-err'}`} />
                   )}
                 </button>
               );
@@ -255,13 +251,13 @@ export default function LiquidationsPage() {
         {liquidations.length > 0 && (
           <div className="mb-4 overflow-hidden rounded-xl bg-hub-darker border border-white/[0.06]">
             <div className="flex animate-scroll-x">
-              {[...liquidations].sort((a, b) => b.value - a.value).slice(0, 15).map((liq, i) => (
+              {[...liquidations].sort((a, b) => b.value - a.value).slice(0, DISPLAY.TICKER_MAX_ITEMS).map((liq, i) => (
                 <div key={liq.id} className="flex items-center gap-2 px-4 py-2 whitespace-nowrap flex-shrink-0">
                   <span className={`w-1.5 h-1.5 rounded-full ${liq.side === 'long' ? 'bg-red-500' : 'bg-green-500'}`} />
                   <span className="text-white text-xs font-medium">{liq.symbol}</span>
                   <span className={`text-xs font-mono ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>{formatLiqValue(liq.value)}</span>
                   <span className="text-neutral-600 text-[10px]">{liq.exchange}</span>
-                  {i < 14 && <span className="text-neutral-700 mx-1">|</span>}
+                  {i < DISPLAY.TICKER_MAX_ITEMS - 1 && <span className="text-neutral-700 mx-1">|</span>}
                 </div>
               ))}
             </div>
@@ -270,7 +266,7 @@ export default function LiquidationsPage() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
+          <div className="stat-grid-card">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-3.5 h-3.5 text-hub-yellow" />
               <span className="text-neutral-500 text-xs">{timeframe} Total</span>
@@ -278,7 +274,7 @@ export default function LiquidationsPage() {
             <div className="text-lg font-bold font-mono text-white">{formatLiqValue(stats.longValue + stats.shortValue)}</div>
             <div className="text-xs text-neutral-600 font-mono">{stats.totalLongs + stats.totalShorts} liquidations</div>
           </div>
-          <div className="bg-hub-darker border border-red-500/20 rounded-xl p-4">
+          <div className="stat-grid-card border-red-500/20">
             <div className="flex items-center gap-2 mb-1">
               <TrendingDown className="w-3.5 h-3.5 text-red-400" />
               <span className="text-neutral-500 text-xs">Longs Rekt</span>
@@ -286,7 +282,7 @@ export default function LiquidationsPage() {
             <div className="text-lg font-bold font-mono text-red-400">{formatLiqValue(stats.longValue)}</div>
             <div className="text-xs text-red-400/50 font-mono">{stats.totalLongs} positions</div>
           </div>
-          <div className="bg-hub-darker border border-green-500/20 rounded-xl p-4">
+          <div className="stat-grid-card border-green-500/20">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="w-3.5 h-3.5 text-green-400" />
               <span className="text-neutral-500 text-xs">Shorts Rekt</span>
@@ -294,7 +290,7 @@ export default function LiquidationsPage() {
             <div className="text-lg font-bold font-mono text-green-400">{formatLiqValue(stats.shortValue)}</div>
             <div className="text-xs text-green-400/50 font-mono">{stats.totalShorts} positions</div>
           </div>
-          <div className="bg-hub-darker border border-purple-500/20 rounded-xl p-4">
+          <div className="stat-grid-card border-purple-500/20">
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="w-3.5 h-3.5 text-purple-400" />
               <span className="text-neutral-500 text-xs">Largest</span>
@@ -331,48 +327,48 @@ export default function LiquidationsPage() {
 
         {/* Controls */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
-            <button onClick={() => setViewMode('feed')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'feed' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
+          <div className="btn-group">
+            <button onClick={() => setViewMode('feed')} className={`btn-group-item flex items-center gap-2 ${viewMode === 'feed' ? 'btn-group-item-active' : ''}`}>
               <List className="w-4 h-4" /> Live Feed
             </button>
-            <button onClick={() => setViewMode('heatmap')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'heatmap' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
+            <button onClick={() => setViewMode('heatmap')} className={`btn-group-item flex items-center gap-2 ${viewMode === 'heatmap' ? 'btn-group-item-active' : ''}`}>
               <Grid3X3 className="w-4 h-4" /> Heatmap
             </button>
-            <button onClick={() => setViewMode('timebucket')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'timebucket' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
+            <button onClick={() => setViewMode('timebucket')} className={`btn-group-item flex items-center gap-2 ${viewMode === 'timebucket' ? 'btn-group-item-active' : ''}`}>
               <Clock className="w-4 h-4" /> Timeline
             </button>
-            <button onClick={() => setViewMode('pricelevel')} className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'pricelevel' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
+            <button onClick={() => setViewMode('pricelevel')} className={`btn-group-item flex items-center gap-2 ${viewMode === 'pricelevel' ? 'btn-group-item-active' : ''}`}>
               <BarChart3 className="w-4 h-4" /> By Price
             </button>
           </div>
 
-          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
+          <div className="btn-group">
             {(['1h', '4h', '12h', '24h'] as const).map((tf) => (
-              <button key={tf} onClick={() => setTimeframe(tf)} className={`px-3 py-2 text-sm font-medium transition-colors ${timeframe === tf ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>
+              <button key={tf} onClick={() => setTimeframe(tf)} className={`btn-group-item ${timeframe === tf ? 'btn-group-item-active' : ''}`}>
                 {tf}
               </button>
             ))}
           </div>
 
-          <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
-            <button onClick={() => setFilter('all')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'all' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}>All</button>
-            <button onClick={() => setFilter('long')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'long' ? 'bg-success text-black' : 'text-neutral-600 hover:text-white'}`}>Longs</button>
-            <button onClick={() => setFilter('short')} className={`px-4 py-2 text-sm font-medium transition-colors ${filter === 'short' ? 'bg-danger text-white' : 'text-neutral-600 hover:text-white'}`}>Shorts</button>
+          <div className="btn-group">
+            <button onClick={() => setFilter('all')} className={`btn-group-item ${filter === 'all' ? 'btn-group-item-active' : ''}`}>All</button>
+            <button onClick={() => setFilter('long')} className={`btn-group-item ${filter === 'long' ? 'bg-success text-black' : ''}`}>Longs</button>
+            <button onClick={() => setFilter('short')} className={`btn-group-item ${filter === 'short' ? 'bg-danger text-white' : ''}`}>Shorts</button>
           </div>
 
           {/* Threshold mode toggle + custom dropdown */}
           <div className="flex items-center gap-2">
-            <div className="flex rounded-xl overflow-hidden bg-hub-gray/20 border border-white/[0.06]">
+            <div className="btn-group">
               <button
                 onClick={() => setThresholdMode('smart')}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${thresholdMode === 'smart' ? 'bg-purple-500/30 text-purple-300' : 'text-neutral-600 hover:text-white'}`}
+                className={`btn-group-item ${thresholdMode === 'smart' ? 'bg-purple-500/30 text-purple-300' : ''}`}
                 title="Smart thresholds: $500K+ majors, $100K+ midcaps, $50K+ alts (CEX) / $10K+ (DEX)"
               >
                 Smart
               </button>
               <button
                 onClick={() => setThresholdMode('custom')}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${thresholdMode === 'custom' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'}`}
+                className={`btn-group-item ${thresholdMode === 'custom' ? 'btn-group-item-active' : ''}`}
               >
                 Custom
               </button>
@@ -405,13 +401,15 @@ export default function LiquidationsPage() {
           <>
             {/* Heatmap View */}
             {viewMode === 'heatmap' && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
-                <div className="p-4 border-b border-white/[0.06]">
-                  <h3 className="text-white font-semibold">Liquidation Heatmap</h3>
-                  <p className="text-neutral-600 text-sm">Aggregated liquidations by symbol ({timeframe})</p>
+              <div className="section-card mb-6">
+                <div className="section-card-header">
+                  <div>
+                    <h3 className="text-white font-semibold">Liquidation Heatmap</h3>
+                    <p className="text-neutral-600 text-sm">Aggregated liquidations by symbol ({timeframe})</p>
+                  </div>
                 </div>
                 {sortedAggregated.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-neutral-600">
+                  <div className="empty-state">
                     <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
                     <p className="text-sm">Collecting liquidation data...</p>
                   </div>
@@ -454,7 +452,7 @@ export default function LiquidationsPage() {
                                         className="h-full opacity-80"
                                         style={{
                                           width: `${(val / bdTotal) * 100}%`,
-                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : ex === 'HTX' ? '#3B82F6' : ex === 'gTrade' ? '#14B8A6' : '#888',
+                                          backgroundColor: EXCHANGE_BRAND_HEX[ex] || '#888',
                                         }}
                                       />
                                     ))}
@@ -492,7 +490,7 @@ export default function LiquidationsPage() {
                                         className="h-full opacity-80"
                                         style={{
                                           width: `${(val / bdTotal) * 100}%`,
-                                          backgroundColor: ex === 'Binance' ? '#F0B90B' : ex === 'Bybit' ? '#F7A600' : ex === 'OKX' ? '#fff' : ex === 'Bitget' ? '#00D2AA' : ex === 'Deribit' ? '#5FC694' : ex === 'HTX' ? '#3B82F6' : ex === 'gTrade' ? '#14B8A6' : '#888',
+                                          backgroundColor: EXCHANGE_BRAND_HEX[ex] || '#888',
                                         }}
                                       />
                                     ))}
@@ -506,9 +504,9 @@ export default function LiquidationsPage() {
                     )}
                   </div>
                 )}
-                <div className="p-4 border-t border-white/[0.06] flex items-center justify-center gap-6 text-xs text-neutral-600">
-                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-500" /><span>Long Liquidations</span></div>
-                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500" /><span>Short Liquidations</span></div>
+                <div className="legend border-t border-white/[0.06]">
+                  <div className="legend-item"><div className="legend-swatch bg-red-500" /><span>Long Liquidations</span></div>
+                  <div className="legend-item"><div className="legend-swatch bg-green-500" /><span>Short Liquidations</span></div>
                 </div>
               </div>
             )}
@@ -516,7 +514,7 @@ export default function LiquidationsPage() {
             {/* Timeline (Time Bucket) View */}
             {viewMode === 'timebucket' && (() => {
               // Bucket liquidations into 5-min intervals
-              const bucketMs = 5 * 60 * 1000;
+              const bucketMs = TIMELINE_BUCKET_MS;
               const buckets = new Map<number, { long: number; short: number; count: number }>();
               filteredLiquidations.forEach((liq) => {
                 const bucketKey = Math.floor(liq.timestamp / bucketMs) * bucketMs;
@@ -532,13 +530,15 @@ export default function LiquidationsPage() {
               const maxBucket = Math.max(...bucketArr.map((b) => b.long + b.short), 1);
 
               return (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
-                  <div className="p-4 border-b border-white/[0.06]">
-                    <h3 className="text-white font-semibold">Liquidation Timeline</h3>
-                    <p className="text-neutral-600 text-sm">5-minute buckets showing liquidation intensity</p>
+                <div className="section-card mb-6">
+                  <div className="section-card-header">
+                    <div>
+                      <h3 className="text-white font-semibold">Liquidation Timeline</h3>
+                      <p className="text-neutral-600 text-sm">5-minute buckets showing liquidation intensity</p>
+                    </div>
                   </div>
                   {bucketArr.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-neutral-600">
+                    <div className="empty-state">
                       <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
                       <p className="text-sm">Collecting liquidation data...</p>
                     </div>
@@ -569,9 +569,9 @@ export default function LiquidationsPage() {
                       </div>
                     </div>
                   )}
-                  <div className="p-4 border-t border-white/[0.06] flex items-center justify-center gap-6 text-xs text-neutral-600">
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-500" /><span>Long Liquidations</span></div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500" /><span>Short Liquidations</span></div>
+                  <div className="legend border-t border-white/[0.06]">
+                    <div className="legend-item"><div className="legend-swatch bg-red-500" /><span>Long Liquidations</span></div>
+                    <div className="legend-item"><div className="legend-swatch bg-green-500" /><span>Short Liquidations</span></div>
                   </div>
                 </div>
               );
@@ -593,16 +593,18 @@ export default function LiquidationsPage() {
                 symbolTotals.push({ symbol, total, entries });
               });
               symbolTotals.sort((a, b) => b.total - a.total);
-              const top = symbolTotals.slice(0, 8);
+              const top = symbolTotals.slice(0, DISPLAY.PRICE_LEVEL_MAX_SYMBOLS);
 
               return (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
-                  <div className="p-4 border-b border-white/[0.06]">
-                    <h3 className="text-white font-semibold">Liquidations by Price Level</h3>
-                    <p className="text-neutral-600 text-sm">Clustered liquidation levels for top symbols</p>
+                <div className="section-card mb-6">
+                  <div className="section-card-header">
+                    <div>
+                      <h3 className="text-white font-semibold">Liquidations by Price Level</h3>
+                      <p className="text-neutral-600 text-sm">Clustered liquidation levels for top symbols</p>
+                    </div>
                   </div>
                   {top.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-neutral-600">
+                    <div className="empty-state">
                       <RefreshCw className="w-8 h-8 animate-spin mb-3 opacity-50" />
                       <p className="text-sm">Collecting liquidation data...</p>
                     </div>
@@ -614,7 +616,7 @@ export default function LiquidationsPage() {
                         const minP = prices[0];
                         const maxP = prices[prices.length - 1];
                         const range = maxP - minP || 1;
-                        const binCount = Math.min(8, entries.length);
+                        const binCount = Math.min(DISPLAY.PRICE_LEVEL_MAX_BINS, entries.length);
                         const binSize = range / binCount;
                         const bins: Array<{ minPrice: number; maxPrice: number; longVal: number; shortVal: number }> = [];
                         for (let i = 0; i < binCount; i++) {
@@ -671,9 +673,9 @@ export default function LiquidationsPage() {
                       })}
                     </div>
                   )}
-                  <div className="p-4 border-t border-white/[0.06] flex items-center justify-center gap-6 text-xs text-neutral-600">
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-red-500" /><span>Long Liquidations</span></div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500" /><span>Short Liquidations</span></div>
+                  <div className="legend border-t border-white/[0.06]">
+                    <div className="legend-item"><div className="legend-swatch bg-red-500" /><span>Long Liquidations</span></div>
+                    <div className="legend-item"><div className="legend-swatch bg-green-500" /><span>Short Liquidations</span></div>
                   </div>
                 </div>
               );
@@ -681,8 +683,8 @@ export default function LiquidationsPage() {
 
             {/* Live Feed View */}
             {viewMode === 'feed' && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
+              <div className="section-card">
+                <div className="section-card-header">
                   <h3 className="text-white font-semibold">Live Feed</h3>
                   <span className="text-neutral-600 text-sm">{filteredLiquidations.length} liquidations</span>
                 </div>
@@ -695,7 +697,7 @@ export default function LiquidationsPage() {
                   ) : (
                     <div className="divide-y divide-hub-gray/20">
                       {filteredLiquidations.map((liq) => (
-                        <div key={liq.id} className={`p-4 hover:bg-white/[0.04] transition-colors ${liq.value >= 100000 ? 'animate-pulse-once' : ''}`}>
+                        <div key={liq.id} className={`liq-row ${liq.value >= LIQ_THRESHOLD.HIGHLIGHT_ORANGE ? 'animate-pulse-once' : ''}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${liq.side === 'long' ? 'bg-success/20' : 'bg-error/20'}`}>
@@ -713,7 +715,7 @@ export default function LiquidationsPage() {
                                     {liq.exchange}
                                   </span>
                                   {/* DEX arbitrage opportunity badge */}
-                                  {DEX_EXCHANGES.has(liq.exchange) && liq.value >= 50000 && (
+                                  {DEX_EXCHANGES.has(liq.exchange) && liq.value >= LIQ_THRESHOLD.ARB_BADGE && (
                                     <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-400">
                                       ARB opportunity
                                     </span>
@@ -740,7 +742,7 @@ export default function LiquidationsPage() {
         )}
 
         {/* Info */}
-        <div className="mt-6 bg-hub-yellow/10 border border-hub-yellow/20 rounded-2xl p-4">
+        <div className="mt-6 callout callout-warn">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-hub-yellow flex-shrink-0 mt-0.5" />
             <div>
