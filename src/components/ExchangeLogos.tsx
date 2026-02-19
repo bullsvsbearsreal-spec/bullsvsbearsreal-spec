@@ -1,7 +1,6 @@
 'use client';
 
 // Exchange logos using real PNG images from /exchanges/ directory
-// Lighter uses SVG fallback (no public logo source available)
 
 interface ExchangeLogoProps {
   className?: string;
@@ -13,19 +12,10 @@ const PNG_EXCHANGES = new Set([
   'binance', 'bybit', 'okx', 'bitget', 'deribit', 'htx', 'kucoin',
   'mexc', 'kraken', 'bingx', 'phemex', 'hyperliquid', 'gmx', 'dydx',
   'aevo', 'vertex', 'drift', 'gtrade', 'bitfinex', 'whitebit',
-  'coinbase', 'coinex', 'aster',
+  'coinbase', 'coinex', 'aster', 'bitunix', 'lighter',
 ]);
 
 // SVG fallbacks for exchanges without downloadable logos
-function LighterLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
-  return (
-    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#34D399"/>
-      <path fill="#FFFFFF" d="M50 35h26v56H50V35zm-10 20h10v16H40V55zm36 0h10v16H86V55z"/>
-    </svg>
-  );
-}
-
 function BitMEXLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
@@ -53,12 +43,46 @@ function CryptoComLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
+// edgeX: triangle logo on sky-blue circle
+function EdgeXLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#0F172A"/>
+      <path d="M63 28L98 93H28L63 28Z" fill="#38BDF8" opacity="0.9"/>
+      <path d="M63 45L85 83H41L63 45Z" fill="#0F172A"/>
+      <path d="M55 68H71V83H55V68Z" fill="#38BDF8"/>
+    </svg>
+  );
+}
+
+// Variational: stylized "V" on purple circle
+function VariationalLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#1A0B2E"/>
+      <path d="M38 38L63 93L88 38H76L63 72L50 38H38Z" fill="#E879F9"/>
+    </svg>
+  );
+}
+
+// Extended: stylized "Ex" on amber circle
+function ExtendedLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <circle cx="63" cy="63" r="63" fill="#1C1104"/>
+      <text x="63" y="76" textAnchor="middle" fill="#F59E0B" fontWeight="bold" fontSize="38" fontFamily="sans-serif">Ex</text>
+    </svg>
+  );
+}
+
 const svgFallbacks: Record<string, React.ComponentType<ExchangeLogoProps>> = {
-  lighter: LighterLogoSVG,
   bitmex: BitMEXLogoSVG,
   gate: GateLogoSVG,
   'gate.io': GateLogoSVG,
   'crypto.com': CryptoComLogoSVG,
+  edgex: EdgeXLogoSVG,
+  variational: VariationalLogoSVG,
+  extended: ExtendedLogoSVG,
 };
 
 // Exchange brand colors for styling
@@ -83,13 +107,14 @@ export const exchangeColors: Record<string, string> = {
   drift: '#8B5CF6',
   gtrade: '#14B8A6',
   aster: '#EC4899',
-  lighter: '#34D399',
+  lighter: '#1A1A2E',
   bitmex: '#E4002B',
   bitfinex: '#16B157',
   whitebit: '#1A1E2E',
   coinbase: '#0052FF',
   coinex: '#3CC8C8',
   'crypto.com': '#002D74',
+  bitunix: '#B9F641',
   extended: '#F59E0B',
   edgex: '#38BDF8',
   variational: '#E879F9',
