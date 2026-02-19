@@ -33,7 +33,7 @@ const assets = [
   { name: 'Logo Icon HD', file: '/api/logo-png?variant=icon&size=1024', preview: '/logo-icon.svg', desc: 'High-res gradient logo', size: '1024x1024', format: 'PNG' },
   { name: 'Logo White', file: '/api/logo-png?variant=white&size=512', preview: '/logo-icon.svg', desc: 'White/light version', size: '512x512', format: 'PNG' },
   { name: 'Logo SVG', file: '/logo-icon.svg', preview: '/logo-icon.svg', desc: 'Vector source file', size: 'Vector', format: 'SVG' },
-  { name: 'Favicon', file: '/favicon.svg', preview: '/favicon.svg', desc: 'Browser tab icon', size: '32x32', format: 'SVG' },
+  { name: 'Favicon', file: '/favicon.png', preview: '/favicon.png', desc: 'Browser tab icon', size: '32x32', format: 'PNG' },
   { name: 'OG Image', file: '/og-image.svg', preview: '/og-image.svg', desc: 'Social media preview', size: '1200x630', format: 'SVG' },
   { name: 'Twitter Banner', file: '/twitter-header.svg', preview: '/twitter-header.svg', desc: 'Twitter/X header', size: '1500x500', format: 'SVG' },
   { name: 'Discord Banner', file: '/discord-banner.svg', preview: '/discord-banner.svg', desc: 'Discord server', size: '960x540', format: 'SVG' },
