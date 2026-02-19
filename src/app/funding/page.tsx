@@ -3,25 +3,21 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, type AssetClassFilter } from '@/lib/api/aggregator';
-import { FundingRateData } from '@/lib/api/types';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { ALL_EXCHANGES, EXCHANGE_COLORS, CATEGORIES, CATEGORY_ICONS, PRIORITY_SYMBOLS, DEX_EXCHANGES, isExchangeDex, getCategoriesForAssetClass } from '@/lib/constants';
-import type { Category, AssetClass } from '@/lib/constants';
+import { ALL_EXCHANGES, DEX_EXCHANGES, isExchangeDex, getCategoriesForAssetClass } from '@/lib/constants';
+import type { AssetClass } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { useApiData } from '@/hooks/useApiData';
 import FundingStats from './components/FundingStats';
-import FundingTableView from './components/FundingTableView';
 import FundingHeatmapView from './components/FundingHeatmapView';
 import FundingArbitrageView from './components/FundingArbitrageView';
 import ShareButton from '@/components/ShareButton';
 import Footer from '@/components/Footer';
-import { saveFundingSnapshot, getFundingHistory, getAccumulatedFundingBatch, type HistoryPoint, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
+import { saveFundingSnapshot } from '@/lib/storage/fundingHistory';
 
-type SortField = 'symbol' | 'fundingRate' | 'exchange';
-type SortOrder = 'asc' | 'desc';
-type ViewMode = 'heatmap' | 'table' | 'arbitrage';
+type ViewMode = 'heatmap' | 'arbitrage';
 type VenueFilter = 'all' | 'cex' | 'dex';
 
 const ASSET_CLASS_TABS: { key: AssetClass; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -39,10 +35,7 @@ const ASSET_CLASS_SUBTITLES: Record<AssetClass, string> = {
 };
 
 export default function FundingPage() {
-  const [sortField, setSortField] = useState<SortField>('fundingRate');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set(ALL_EXCHANGES);
@@ -139,42 +132,9 @@ export default function FundingPage() {
     }
   }, [fundingRates]);
 
-  // Build history map for sparklines (only for visible rows)
-  const historyMap = useMemo(() => {
-    if (typeof window === 'undefined' || fundingRates.length === 0) return new Map<string, HistoryPoint[]>();
-    const map = new Map<string, HistoryPoint[]>();
-    // Only load history for top-100 visible rows to avoid scanning localStorage excessively
-    const seen = new Set<string>();
-    fundingRates.slice(0, 100).forEach(fr => {
-      const key = `${fr.symbol}|${fr.exchange}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      const history = getFundingHistory(fr.symbol, fr.exchange, 7);
-      if (history.length >= 2) {
-        map.set(key, history);
-      }
-    });
-    return map;
-  }, [fundingRates]);
-
-  // Build accumulated funding map (1D/7D/30D cumulative rates)
-  const accumulatedMap = useMemo(() => {
-    if (typeof window === 'undefined' || fundingRates.length === 0) return new Map<string, AccumulatedFunding>();
-    const pairs: { symbol: string; exchange: string }[] = [];
-    const seen = new Set<string>();
-    fundingRates.slice(0, 100).forEach(fr => {
-      const key = `${fr.symbol}|${fr.exchange}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      pairs.push({ symbol: fr.symbol, exchange: fr.exchange });
-    });
-    return getAccumulatedFundingBatch(pairs);
-  }, [fundingRates]);
-
   const handleAssetClassChange = (newAssetClass: AssetClass) => {
     setAssetClass(newAssetClass);
     setCategoryFilter('all'); // Reset category on asset class change
-    setSearchTerm('');
   };
 
   const toggleExchange = (exchange: string) => {
@@ -261,29 +221,6 @@ export default function FundingPage() {
     return true;
   });
 
-  const filteredAndSorted = fundingRates
-    .filter(fr => {
-      if (!selectedExchanges.has(fr.exchange)) return false;
-      if (venueFilter === 'dex' && !isExchangeDex(fr.exchange)) return false;
-      if (venueFilter === 'cex' && isExchangeDex(fr.exchange)) return false;
-      if (searchTerm && !fr.symbol.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (categoryFilter !== 'all') {
-        if (categoryFilter === 'highest') return highestRateSymbols.includes(fr.symbol);
-        if (categoryFilter === 'lowest') return lowestRateSymbols.includes(fr.symbol);
-        return (activeCategories[categoryFilter]?.symbols || []).includes(fr.symbol);
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      switch (sortField) {
-        case 'symbol': comparison = a.symbol.localeCompare(b.symbol); break;
-        case 'fundingRate': comparison = Math.abs(a.fundingRate) - Math.abs(b.fundingRate); break;
-        case 'exchange': comparison = a.exchange.localeCompare(b.exchange); break;
-      }
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-
   const validRates = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
   const avgRate = validRates.length > 0
     ? validRates.reduce((sum, fr) => {
@@ -295,13 +232,7 @@ export default function FundingPage() {
   const lowestRate = validRates.length > 0
     ? validRates.reduce((min, fr) => fr.fundingRate < min.fundingRate ? fr : min, validRates[0]) : null;
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortOrder('desc'); }
-  };
-
   const viewTabs: { key: ViewMode; label: string }[] = [
-    { key: 'table', label: 'Table' },
     { key: 'heatmap', label: 'Heatmap' },
     ...(assetClass === 'crypto' ? [{ key: 'arbitrage' as ViewMode, label: 'Arbitrage' }] : []),
   ];
@@ -422,17 +353,6 @@ export default function FundingPage() {
               ))}
             </div>
 
-            {viewMode === 'table' && (
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                aria-label="Search symbols"
-                className="w-full sm:w-36 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
-              />
-            )}
-
             <div className="relative" ref={exchangeSelectorRef}>
               <button
                 onClick={() => setShowExchangeSelector(!showExchangeSelector)}
@@ -447,7 +367,7 @@ export default function FundingPage() {
               </button>
 
               {showExchangeSelector && (
-                <div className="absolute right-0 top-full mt-1.5 z-50 bg-[#0e0e0e] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/80 min-w-[280px] overflow-hidden">
+                <div className="absolute right-0 top-full mt-1.5 z-50 bg-[#0e0e0e] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/80 min-w-[420px] overflow-hidden">
                   {/* Header */}
                   <div className="flex items-center justify-between px-3.5 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
                     <div className="flex items-center gap-2">
@@ -460,11 +380,11 @@ export default function FundingPage() {
                     </button>
                   </div>
 
-                  <div className="p-2 max-h-[400px] overflow-y-auto">
+                  <div className="p-2 max-h-[70vh] overflow-y-auto">
                     {/* CEX Section */}
                     <div className="mb-1">
                       <div className="px-2 py-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Centralized ({ALL_EXCHANGES.filter(e => !isExchangeDex(e)).length})</div>
-                      <div className="grid grid-cols-2 gap-0.5">
+                      <div className="grid grid-cols-3 gap-0.5">
                         {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (
@@ -496,7 +416,7 @@ export default function FundingPage() {
                       <div className="px-2 py-1.5 flex items-center gap-1.5">
                         <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Decentralized ({ALL_EXCHANGES.filter(e => isExchangeDex(e)).length})</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-0.5">
+                      <div className="grid grid-cols-3 gap-0.5">
                         {ALL_EXCHANGES.filter(e => isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (
@@ -549,9 +469,6 @@ export default function FundingPage() {
           </div>
         ) : (
           <>
-            {viewMode === 'table' && (
-              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} />
-            )}
             {viewMode === 'heatmap' && (
               <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} />
             )}

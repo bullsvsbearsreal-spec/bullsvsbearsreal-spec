@@ -9,7 +9,7 @@ import Pagination from './Pagination';
 import { ChevronUp, ChevronDown, ExternalLink, Grid3X3, LayoutGrid } from 'lucide-react';
 import { getExchangeTradeUrl } from '@/lib/constants';
 
-const ROWS_PER_PAGE = 50;
+const ROWS_PER_PAGE = 80;
 const TREEMAP_MAX = 100;
 
 interface ExchangeSort {
@@ -224,19 +224,23 @@ export default function FundingHeatmapView({
     const { exchange, direction } = exchangeSort;
     if (exchange === '__avg__') {
       return [...symbols].sort((a, b) => {
-        const rateA = avgRates.get(a) ?? (direction === 'desc' ? -Infinity : Infinity);
-        const rateB = avgRates.get(b) ?? (direction === 'desc' ? -Infinity : Infinity);
+        const rateA = avgRates.get(a);
+        const rateB = avgRates.get(b);
+        if (rateA === undefined && rateB === undefined) return 0;
+        if (rateA === undefined) return 1;
+        if (rateB === undefined) return -1;
         return direction === 'desc' ? rateB - rateA : rateA - rateB;
       });
     }
-    return [...symbols].sort((a, b) => {
-      const rateA = heatmapData.get(a)?.get(exchange);
-      const rateB = heatmapData.get(b)?.get(exchange);
-      if (rateA === undefined && rateB === undefined) return 0;
-      if (rateA === undefined) return 1;
-      if (rateB === undefined) return -1;
+    // When sorting by a specific exchange, show only symbols listed on that exchange first
+    const withData = symbols.filter(s => heatmapData.get(s)?.get(exchange) !== undefined);
+    const withoutData = symbols.filter(s => heatmapData.get(s)?.get(exchange) === undefined);
+    withData.sort((a, b) => {
+      const rateA = heatmapData.get(a)!.get(exchange)!;
+      const rateB = heatmapData.get(b)!.get(exchange)!;
       return direction === 'desc' ? rateB - rateA : rateA - rateB;
     });
+    return [...withData, ...withoutData];
   }, [symbols, exchangeSort, heatmapData, avgRates]);
 
   const totalPages = Math.max(1, Math.ceil(sortedSymbols.length / ROWS_PER_PAGE));
