@@ -233,15 +233,24 @@ export default function FundingHeatmapView({
       });
     }
     // When sorting by a specific exchange, symbols with data first, sorted by rate value
+    // For L/S exchanges (gTrade, GMX): desc sort uses short-side rate, asc sort uses long-side rate
+    // This way extreme-funding coins (e.g. INJ) appear at the top in BOTH sort directions
     const withData = symbols.filter(s => heatmapData.get(s)?.get(exchange) !== undefined);
     const withoutData = symbols.filter(s => heatmapData.get(s)?.get(exchange) === undefined);
     withData.sort((a, b) => {
-      const rateA = heatmapData.get(a)!.get(exchange)!;
-      const rateB = heatmapData.get(b)!.get(exchange)!;
+      let rateA = heatmapData.get(a)!.get(exchange)!;
+      let rateB = heatmapData.get(b)!.get(exchange)!;
+      // For asc sort on L/S exchanges, use the long-side rate (which is more negative for high-demand coins)
+      if (direction === 'asc' && longShortMap) {
+        const lsA = longShortMap.get(`${a}|${exchange}`);
+        const lsB = longShortMap.get(`${b}|${exchange}`);
+        if (lsA) rateA = lsA.long;
+        if (lsB) rateB = lsB.long;
+      }
       return direction === 'desc' ? rateB - rateA : rateA - rateB;
     });
     return [...withData, ...withoutData];
-  }, [symbols, exchangeSort, heatmapData, avgRates]);
+  }, [symbols, exchangeSort, heatmapData, avgRates, longShortMap]);
 
   const totalPages = Math.max(1, Math.ceil(sortedSymbols.length / ROWS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
