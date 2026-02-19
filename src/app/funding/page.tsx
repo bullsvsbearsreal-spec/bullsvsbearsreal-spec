@@ -205,7 +205,10 @@ export default function FundingPage() {
   const longShortMap = new Map<string, { long: number; short: number }>(); // L/S rates for skew-based DEXes
   fundingRates.forEach(fr => {
     if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
-    heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
+    // For skew-based DEXes (gTrade, GMX), use the short-side rate as the primary display
+    // This matches how these exchanges show funding — their UI emphasizes the short holding cost
+    const displayRate = fr.fundingRateShort !== undefined ? fr.fundingRateShort : fr.fundingRate;
+    heatmapData.get(fr.symbol)!.set(fr.exchange, displayRate);
     if (fr.fundingInterval && fr.fundingInterval !== '8h') {
       intervalMap.set(`${fr.symbol}|${fr.exchange}`, fr.fundingInterval);
     }

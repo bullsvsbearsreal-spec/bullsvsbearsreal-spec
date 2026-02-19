@@ -412,8 +412,8 @@ export default function SymbolFundingPage() {
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               <div className="flex flex-col items-end">
-                                <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
-                                  {formatRate(fr.fundingRate)}
+                                <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRateShort !== undefined ? fr.fundingRateShort : fr.fundingRate)}`}>
+                                  {formatRate(fr.fundingRateShort !== undefined ? fr.fundingRateShort : fr.fundingRate)}
                                 </span>
                                 {fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined && (
                                   <span className="text-[10px] font-mono leading-tight mt-0.5">
