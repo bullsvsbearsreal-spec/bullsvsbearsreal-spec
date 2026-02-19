@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
   // Compute implied predicted rates from mark-index price spread
   // Formula: clamp((markPrice - indexPrice) / indexPrice × 100, ±0.75%)
   // Exchanges with continuous/hourly funding don't have a meaningful "next 8h" prediction
-  const CONTINUOUS_EXCHANGES = new Set(['Hyperliquid', 'dYdX', 'gTrade', 'Coinbase']);
+  const CONTINUOUS_EXCHANGES = new Set(['Hyperliquid', 'dYdX', 'gTrade', 'Coinbase', 'Aevo', 'Drift', 'GMX', 'Extended', 'Lighter']);
   const PREDICTED_CLAMP = 0.75;
 
   dataWithPrices.forEach(entry => {
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       anomalies: anomalies.length > 0 ? anomalies : undefined,
       normalization: {
         basis: 'native',
-        note: 'Rates in native interval percentage. Most exchanges are 8h. Hyperliquid is 1h (fundingInterval field). dYdX, Aevo, Coinbase are hourly but normalized to 8h. Kraken is 4h normalized to 8h. gTrade is per-second normalized to 8h. OKX and CoinEx include native predictedRate. For other exchanges with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
+        note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h). 8h: Binance, Bybit, OKX, Bitget, MEXC, BingX, Phemex, Bitunix, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade. 4h: Kraken, edgeX. 1h: Hyperliquid, dYdX, Aevo, Coinbase, Drift, GMX, Extended, Lighter. Variational varies per market. OKX/CoinEx include native predictedRate. For others with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
       },
     },
   };
