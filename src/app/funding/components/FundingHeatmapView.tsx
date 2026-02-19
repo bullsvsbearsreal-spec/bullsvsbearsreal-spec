@@ -232,17 +232,13 @@ export default function FundingHeatmapView({
         return direction === 'desc' ? rateB - rateA : rateA - rateB;
       });
     }
-    // When sorting by a specific exchange, show only symbols listed on that exchange first
-    // Sort by absolute value so extreme rates (positive OR negative) appear at top
-    // This matches how DEXes like gTrade show both L/S sides as "high funding"
+    // When sorting by a specific exchange, symbols with data first, sorted by rate value
     const withData = symbols.filter(s => heatmapData.get(s)?.get(exchange) !== undefined);
     const withoutData = symbols.filter(s => heatmapData.get(s)?.get(exchange) === undefined);
     withData.sort((a, b) => {
       const rateA = heatmapData.get(a)!.get(exchange)!;
       const rateB = heatmapData.get(b)!.get(exchange)!;
-      return direction === 'desc'
-        ? Math.abs(rateB) - Math.abs(rateA)
-        : Math.abs(rateA) - Math.abs(rateB);
+      return direction === 'desc' ? rateB - rateA : rateA - rateB;
     });
     return [...withData, ...withoutData];
   }, [symbols, exchangeSort, heatmapData, avgRates]);
