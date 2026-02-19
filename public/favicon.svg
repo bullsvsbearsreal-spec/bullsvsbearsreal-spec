@@ -7,24 +7,43 @@
     </linearGradient>
   </defs>
   <rect x="16" y="16" width="480" height="480" rx="80" fill="url(#bg)"/>
-  <!-- I -->
-  <line x1="100" y1="155" x2="200" y2="155" stroke="#1A1A2E" stroke-width="20" stroke-linecap="round"/>
-  <line x1="150" y1="155" x2="150" y2="385" stroke="#1A1A2E" stroke-width="20" stroke-linecap="round"/>
-  <line x1="100" y1="385" x2="200" y2="385" stroke="#1A1A2E" stroke-width="20" stroke-linecap="round"/>
-  <circle cx="150" cy="85" r="24" fill="#1A1A2E"/>
-  <!-- H -->
-  <line x1="280" y1="155" x2="280" y2="385" stroke="#1A1A2E" stroke-width="20" stroke-linecap="round"/>
-  <line x1="400" y1="155" x2="400" y2="385" stroke="#1A1A2E" stroke-width="20" stroke-linecap="round"/>
-  <line x1="280" y1="270" x2="400" y2="270" stroke="#1A1A2E" stroke-width="20" stroke-linecap="round"/>
-  <!-- Key nodes -->
-  <circle cx="100" cy="155" r="14" fill="#1A1A2E"/>
-  <circle cx="200" cy="155" r="14" fill="#1A1A2E"/>
-  <circle cx="100" cy="385" r="14" fill="#1A1A2E"/>
-  <circle cx="200" cy="385" r="14" fill="#1A1A2E"/>
-  <circle cx="280" cy="155" r="14" fill="#1A1A2E"/>
-  <circle cx="280" cy="270" r="14" fill="#1A1A2E"/>
-  <circle cx="280" cy="385" r="14" fill="#1A1A2E"/>
-  <circle cx="400" cy="155" r="14" fill="#1A1A2E"/>
-  <circle cx="400" cy="270" r="14" fill="#1A1A2E"/>
-  <circle cx="400" cy="385" r="14" fill="#1A1A2E"/>
+
+  <!-- Simplified circuit traces for small size -->
+  <g stroke="#1A1A2E" stroke-linecap="round" fill="none" opacity="0.5">
+    <polyline points="100,155 60,155 60,80" stroke-width="5"/>
+    <polyline points="200,155 240,155 240,100" stroke-width="5"/>
+    <polyline points="100,385 60,385 60,440" stroke-width="5"/>
+    <polyline points="200,385 240,385 240,445" stroke-width="5"/>
+    <polyline points="400,155 445,155 445,95" stroke-width="5"/>
+    <polyline points="280,155 280,105 310,105" stroke-width="5"/>
+    <polyline points="400,385 445,385 445,445" stroke-width="5"/>
+    <polyline points="280,385 280,440 310,440" stroke-width="5"/>
+  </g>
+  <g fill="#1A1A2E" opacity="0.45">
+    <circle cx="60" cy="80" r="6"/><circle cx="240" cy="100" r="6"/>
+    <circle cx="60" cy="440" r="6"/><circle cx="240" cy="445" r="6"/>
+    <circle cx="445" cy="95" r="6"/><circle cx="310" cy="105" r="6"/>
+    <circle cx="445" cy="445" r="6"/><circle cx="310" cy="440" r="6"/>
+  </g>
+
+  <!-- I letter -->
+  <line x1="100" y1="155" x2="200" y2="155" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"/>
+  <line x1="150" y1="155" x2="150" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"/>
+  <line x1="100" y1="385" x2="200" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"/>
+  <rect x="128" y="63" width="44" height="44" rx="7" fill="#1A1A2E"/>
+  <circle cx="100" cy="155" r="15" fill="#1A1A2E"/>
+  <circle cx="200" cy="155" r="15" fill="#1A1A2E"/>
+  <circle cx="100" cy="385" r="15" fill="#1A1A2E"/>
+  <circle cx="200" cy="385" r="15" fill="#1A1A2E"/>
+
+  <!-- H letter -->
+  <line x1="280" y1="155" x2="280" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"/>
+  <line x1="400" y1="155" x2="400" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"/>
+  <line x1="280" y1="270" x2="400" y2="270" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"/>
+  <circle cx="280" cy="155" r="15" fill="#1A1A2E"/>
+  <circle cx="280" cy="270" r="15" fill="#1A1A2E"/>
+  <circle cx="280" cy="385" r="15" fill="#1A1A2E"/>
+  <circle cx="400" cy="155" r="15" fill="#1A1A2E"/>
+  <circle cx="400" cy="270" r="15" fill="#1A1A2E"/>
+  <circle cx="400" cy="385" r="15" fill="#1A1A2E"/>
 </svg>
