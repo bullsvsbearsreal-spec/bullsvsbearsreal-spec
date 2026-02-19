@@ -545,13 +545,16 @@ export default function FundingHeatmapView({
                         const tradeUrl = rate !== undefined ? getExchangeTradeUrl(ex, symbol) : null;
                         const colors = rateToColors(rate);
                         const isCross = isRowHovered && hoveredCol === ex;
+                        const ls = longShortMap?.get(`${symbol}|${ex}`);
+                        const hasLS = ls !== undefined && rate !== undefined;
 
                         const cellStyle: React.CSSProperties = {
                           background: colors.bg,
                           borderWidth: 1,
                           borderStyle: 'solid',
                           borderColor: isCross ? 'rgba(255,255,255,0.2)' : colors.glow,
-                          height: 28,
+                          minHeight: hasLS ? 32 : 28,
+                          height: hasLS ? 32 : 28,
                           transition: 'border-color 60ms',
                         };
 
@@ -561,13 +564,26 @@ export default function FundingHeatmapView({
                           <span className="absolute top-[2px] right-[2px] w-[3px] h-[3px] rounded-full bg-sky-400/80" />
                         ) : null;
 
-                        const ls = longShortMap?.get(`${symbol}|${ex}`);
                         const lsLine = ls ? `\nL: ${formatRate(ls.long)} / S: ${formatRate(ls.short)}` : '';
                         const title = rate !== undefined
                           ? `${symbol} · ${ex} · ${formatRate(rate)} (${interval || '8h'})${lsLine}\nClick to trade`
                           : `Not on ${ex}`;
-
-                        const inner = (
+                        const inner = hasLS ? (
+                          <>
+                            <span className="flex flex-col items-center gap-[1px] leading-none">
+                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.long).text }}>
+                                <span className="text-white/30">L</span> {formatRate(ls.long)}
+                              </span>
+                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.short).text }}>
+                                <span className="text-white/30">S</span> {formatRate(ls.short)}
+                              </span>
+                            </span>
+                            {intervalDot}
+                            {isCross && tradeUrl && (
+                              <ExternalLink className="absolute bottom-[1px] right-[1px] w-[7px] h-[7px] text-white/25" />
+                            )}
+                          </>
+                        ) : (
                           <>
                             <span className="text-[10px] font-mono tabular-nums leading-none font-medium" style={{ color: colors.text }}>
                               {rate !== undefined ? formatRate(rate) : '—'}

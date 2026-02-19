@@ -1028,58 +1028,55 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       );
       if (contracts.length === 0) return [];
 
-      // Step 2: Fetch tickers in parallel batches of 20
-      const BATCH_SIZE = 20;
+      // Step 2: Fire ALL ticker requests in parallel (no batching — much faster on edge)
+      // Each request has a 4s timeout; we collect whatever completes in time
       const results: FundingData[] = [];
-      for (let i = 0; i < contracts.length; i += BATCH_SIZE) {
-        const batch = contracts.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (c: any) => {
-            try {
-              const tickerRes = await fetchFn(
-                `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
-                {},
-                8000
-              );
-              if (!tickerRes.ok) return null;
-              const tickerJson = await tickerRes.json();
-              if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
-              const t = tickerJson.data[0];
+      const allResults = await Promise.all(
+        contracts.map(async (c: any) => {
+          try {
+            const tickerRes = await fetchFn(
+              `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
+              {},
+              4000
+            );
+            if (!tickerRes.ok) return null;
+            const tickerJson = await tickerRes.json();
+            if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
+            const t = tickerJson.data[0];
 
-              let symbol = c.contractName.replace(/USD$/, '');
-              // Strip "2" suffix duplicates (e.g., BNB2 → BNB)
-              if (symbol.endsWith('2') && symbol.length > 2) {
-                const base = symbol.slice(0, -1);
-                if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
-                  return null; // Skip duplicate, keep the original
-                }
-                symbol = base;
+            let symbol = c.contractName.replace(/USD$/, '');
+            // Strip "2" suffix duplicates (e.g., BNB2 → BNB)
+            if (symbol.endsWith('2') && symbol.length > 2) {
+              const base = symbol.slice(0, -1);
+              if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
+                return null; // Skip duplicate, keep the original
               }
-              // Handle 1000/1000000 prefixes
-              if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
-              else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+              symbol = base;
+            }
+            // Handle 1000/1000000 prefixes
+            if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+            else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
 
-              const isStock = c.isStock === true;
-              const norm = normalizeSymbol(symbol, 'edgeX');
+            const isStock = c.isStock === true;
+            const norm = normalizeSymbol(symbol, 'edgeX');
 
-              return {
-                symbol: norm.symbol,
-                exchange: 'edgeX',
-                fundingRate: parseFloat(t.fundingRate) * 100, // decimal → %
-                fundingInterval: '4h' as const,
-                markPrice: parseFloat(t.markPrice) || 0,
-                indexPrice: parseFloat(t.indexPrice) || 0,
-                nextFundingTime: parseInt(t.nextFundingTime) || Date.now() + 14400000,
-                type: 'dex' as const,
-                assetClass: isStock ? ('stocks' as AssetClass) : (norm.assetClass !== 'crypto' ? norm.assetClass : undefined),
-              };
-            } catch {
-              return null;
+            return {
+              symbol: norm.symbol,
+              exchange: 'edgeX',
+              fundingRate: parseFloat(t.fundingRate) * 100, // decimal → %
+              fundingInterval: '4h' as const,
+              markPrice: parseFloat(t.markPrice) || 0,
+              indexPrice: parseFloat(t.indexPrice) || 0,
+              nextFundingTime: parseInt(t.nextFundingTime) || Date.now() + 14400000,
+              type: 'dex' as const,
+              assetClass: isStock ? ('stocks' as AssetClass) : (norm.assetClass !== 'crypto' ? norm.assetClass : undefined),
+            };
+          } catch {
+            return null;
             }
           })
         );
-        results.push(...batchResults.filter(Boolean) as FundingData[]);
-      }
+        results.push(...allResults.filter(Boolean) as FundingData[]);
       return results.filter(item => !isNaN(item.fundingRate));
     },
   },
