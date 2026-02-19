@@ -472,7 +472,7 @@ export default function FundingHeatmapView({
                   {visibleExchanges.map(ex => {
                     const isActive = exchangeSort?.exchange === ex;
                     return (
-                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 56 }}>
+                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 60 }}>
                         <button
                           onClick={() => handleExchangeClick(ex)}
                           className={`w-full flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all cursor-pointer ${
@@ -481,10 +481,10 @@ export default function FundingHeatmapView({
                         >
                           <ExchangeLogo exchange={ex.toLowerCase()} size={14} />
                           <div className="flex items-center gap-0.5">
-                            <span className={`text-[8px] font-medium leading-none transition-colors ${
+                            <span className={`${ex.length > 8 ? 'text-[7px]' : 'text-[8px]'} font-medium leading-none transition-colors ${
                               isActive ? 'text-hub-yellow' : 'text-neutral-600'
                             }`}>
-                              {ex.length > 7 ? ex.slice(0, 6) : ex}
+                              {ex}
                             </span>
                             {isActive && (
                               exchangeSort?.direction === 'desc'

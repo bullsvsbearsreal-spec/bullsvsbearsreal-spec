@@ -1,26 +1,25 @@
 <svg width="400" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="wGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset=".45" stop-color="#FFA500"/>
-      <stop offset="1" stop-color="#E67300"/>
+      <stop offset="0%" stop-color="#FFB800"/>
+      <stop offset="0.5" stop-color="#FF8C00"/>
+      <stop offset="1" stop-color="#E06600"/>
     </linearGradient>
   </defs>
 
   <!-- Dark pill background -->
   <rect x="2" y="8" width="396" height="84" rx="14" fill="#0D1219"/>
-  <rect x="3" y="9" width="394" height="82" rx="13" fill="none" stroke="#D4922A" stroke-opacity=".08" stroke-width=".5"/>
 
   <!-- "Info" text — white bold -->
   <text x="28" y="64" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" letter-spacing="-1">Info</text>
 
-  <!-- Gold badge behind "Hub" -->
+  <!-- Orange gradient badge behind "Hub" -->
   <rect x="153" y="16" width="122" height="68" rx="11" fill="url(#wGrad)"/>
 
-  <!-- "Hub" text — black on gold -->
+  <!-- "Hub" text — black on orange -->
   <text x="167" y="64" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="44" font-weight="900" fill="#000000" letter-spacing="-1">Hub</text>
 
-  <!-- Circuit-style data visualization (traces + nodes instead of bars) -->
+  <!-- Circuit-style data visualization -->
   <g stroke="url(#wGrad)" stroke-linecap="round" fill="none" opacity=".5">
     <polyline points="296,58 306,42 320,50 334,30 348,46 360,34" stroke-width="2.5"/>
   </g>
@@ -33,6 +32,5 @@
     <circle cx="360" cy="34" r="2.5"/>
   </g>
 
-  <!-- Subtle accent line -->
   <rect x="296" y="72" width="64" height="1.5" rx=".75" fill="url(#wGrad)" opacity=".18"/>
 </svg>

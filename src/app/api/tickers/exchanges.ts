@@ -549,7 +549,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     fetcher: async (fetchFn) => {
       const res = await fetchFn('https://api.starknet.extended.exchange/api/v1/info/markets', {}, 12000);
       if (!res.ok) return [];
-      const data = await res.json();
+      const json = await res.json();
+      const data = json?.data || json;
       if (!Array.isArray(data)) return [];
       return data
         .filter((m: any) => m.active && m.status === 'ACTIVE' && m.marketStats?.lastPrice)

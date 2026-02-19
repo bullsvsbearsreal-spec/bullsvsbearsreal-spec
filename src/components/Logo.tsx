@@ -29,43 +29,36 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
       className={`flex-shrink-0 ${animated ? 'hover:scale-105 transition-transform duration-200' : ''}`}
     >
       <defs>
-        <linearGradient id={`${uid}-g`} x1="40" y1="80" x2="480" y2="440" gradientUnits="userSpaceOnUse">
-          <stop stopColor="var(--hub-accent-light, #FFD700)" />
-          <stop offset="0.45" stopColor="var(--hub-accent, #FFA500)" />
-          <stop offset="1" stopColor="var(--hub-accent-dark, #E67300)" />
-        </linearGradient>
         <linearGradient id={`${uid}-bg`} x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#101820" />
-          <stop offset="0.6" stopColor="#0C1219" />
-          <stop offset="1" stopColor="#080E14" />
+          <stop stopColor="#FFB800" />
+          <stop offset="0.5" stopColor="#FF8C00" />
+          <stop offset="1" stopColor="#E06600" />
         </linearGradient>
       </defs>
-      {/* Dark navy bg */}
-      <rect x="16" y="16" width="480" height="480" rx="92" fill={`url(#${uid}-bg)`} />
-      <rect x="18" y="18" width="476" height="476" rx="90" fill="none" stroke="var(--hub-accent-dark, #D4922A)" strokeWidth="1.2" strokeOpacity={0.1} />
+      {/* Orange gradient bg */}
+      <rect x="16" y="16" width="480" height="480" rx="80" fill={`url(#${uid}-bg)`} />
       {/* I traces */}
-      <line x1="106" y1="142" x2="206" y2="142" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
-      <line x1="155" y1="142" x2="155" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
-      <line x1="106" y1="382" x2="206" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      <line x1="100" y1="155" x2="200" y2="155" stroke="#1A1A2E" strokeWidth="18" strokeLinecap="round" />
+      <line x1="150" y1="155" x2="150" y2="385" stroke="#1A1A2E" strokeWidth="18" strokeLinecap="round" />
+      <line x1="100" y1="385" x2="200" y2="385" stroke="#1A1A2E" strokeWidth="18" strokeLinecap="round" />
+      {/* I-dot */}
+      <circle cx="150" cy="85" r="22" fill="#1A1A2E" />
       {/* I nodes */}
-      <circle cx="106" cy="142" r="12" fill={`url(#${uid}-g)`} />
-      <circle cx="206" cy="142" r="11" fill={`url(#${uid}-g)`} />
-      <circle cx="106" cy="382" r="11" fill={`url(#${uid}-g)`} />
-      <circle cx="206" cy="382" r="12" fill={`url(#${uid}-g)`} />
-      {/* I dot */}
-      <circle cx="155" cy="90" r="18" fill={`url(#${uid}-g)`} />
-      <circle cx="155" cy="90" r="10" fill={`url(#${uid}-bg)`} />
+      <circle cx="100" cy="155" r="12" fill="#1A1A2E" />
+      <circle cx="200" cy="155" r="12" fill="#1A1A2E" />
+      <circle cx="100" cy="385" r="12" fill="#1A1A2E" />
+      <circle cx="200" cy="385" r="12" fill="#1A1A2E" />
       {/* H traces */}
-      <line x1="282" y1="142" x2="282" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
-      <line x1="408" y1="142" x2="408" y2="382" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
-      <line x1="282" y1="262" x2="408" y2="262" stroke={`url(#${uid}-g)`} strokeWidth="15" strokeLinecap="round" />
+      <line x1="280" y1="155" x2="280" y2="385" stroke="#1A1A2E" strokeWidth="18" strokeLinecap="round" />
+      <line x1="400" y1="155" x2="400" y2="385" stroke="#1A1A2E" strokeWidth="18" strokeLinecap="round" />
+      <line x1="280" y1="270" x2="400" y2="270" stroke="#1A1A2E" strokeWidth="18" strokeLinecap="round" />
       {/* H nodes */}
-      <circle cx="282" cy="142" r="11" fill={`url(#${uid}-g)`} />
-      <circle cx="282" cy="262" r="12" fill={`url(#${uid}-g)`} />
-      <circle cx="282" cy="382" r="11" fill={`url(#${uid}-g)`} />
-      <circle cx="408" cy="142" r="12" fill={`url(#${uid}-g)`} />
-      <circle cx="408" cy="262" r="11" fill={`url(#${uid}-g)`} />
-      <circle cx="408" cy="382" r="12" fill={`url(#${uid}-g)`} />
+      <circle cx="280" cy="155" r="12" fill="#1A1A2E" />
+      <circle cx="280" cy="270" r="12" fill="#1A1A2E" />
+      <circle cx="280" cy="385" r="12" fill="#1A1A2E" />
+      <circle cx="400" cy="155" r="12" fill="#1A1A2E" />
+      <circle cx="400" cy="270" r="12" fill="#1A1A2E" />
+      <circle cx="400" cy="385" r="12" fill="#1A1A2E" />
     </svg>
   );
 
@@ -73,7 +66,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
     return <div className={className}><IconSVG /></div>;
   }
 
-  // Split wordmark: "Info" white + "Hub" black on accent badge
+  // Split wordmark: "Info" white + "Hub" orange
   return (
     <div className={`flex items-center ${className} ${animated ? 'hover:scale-[1.02] transition-transform duration-200' : ''}`}>
       <span
@@ -87,7 +80,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
         style={{
           fontSize: dimensions.text,
           lineHeight: 1,
-          background: 'linear-gradient(135deg, var(--hub-accent-light), var(--hub-accent), var(--hub-accent-dark))',
+          background: 'linear-gradient(135deg, #FFB800, #FF8C00, #E06600)',
           padding: `${dimensions.badge.py}px ${dimensions.badge.px}px`,
           borderRadius: dimensions.badge.rx,
         }}

@@ -1,60 +1,50 @@
 <svg width="192" height="192" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="i2G" x1="40" y1="80" x2="480" y2="440" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFD700"/>
-      <stop offset=".45" stop-color="#FFA500"/>
-      <stop offset="1" stop-color="#E67300"/>
-    </linearGradient>
-    <linearGradient id="i2B" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#101820"/>
-      <stop offset=".6" stop-color="#0C1219"/>
-      <stop offset="1" stop-color="#080E14"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB800"/>
+      <stop offset="0.5" stop-color="#FF8C00"/>
+      <stop offset="1" stop-color="#E06600"/>
     </linearGradient>
   </defs>
-  <rect x="16" y="16" width="480" height="480" rx="92" fill="url(#i2B)"/>
-  <rect x="18" y="18" width="476" height="476" rx="90" fill="none" stroke="#D4922A" stroke-opacity=".1" stroke-width="1.2"/>
-  <g stroke="#C88520" stroke-opacity=".035" stroke-width=".8">
-    <line x1="92" y1="16" x2="92" y2="496"/>
-    <line x1="256" y1="40" x2="256" y2="480"/>
-    <line x1="420" y1="16" x2="420" y2="496"/>
-    <line x1="16" y1="100" x2="496" y2="100"/>
-    <line x1="40" y1="256" x2="480" y2="256"/>
-    <line x1="16" y1="410" x2="496" y2="410"/>
+  <rect x="16" y="16" width="480" height="480" rx="80" fill="url(#bg)"/>
+  <!-- Decorative circuit traces -->
+  <g stroke="#1A1A2E" stroke-linecap="round" fill="none" opacity="0.6">
+    <polyline points="100,155 60,155 60,80 95,80" stroke-width="4"/>
+    <polyline points="200,155 240,155 240,100 210,100" stroke-width="3.5"/>
+    <line x1="210" y1="100" x2="210" y2="65" stroke-width="3"/>
+    <polyline points="100,385 60,385 60,430 85,430" stroke-width="4"/>
+    <polyline points="150,385 150,430 120,430" stroke-width="3.5"/>
+    <polyline points="400,155 440,155 440,95 465,95" stroke-width="4"/>
+    <polyline points="280,155 280,105 310,105 310,65" stroke-width="3.5"/>
+    <polyline points="400,385 440,385 440,440" stroke-width="4"/>
+    <polyline points="280,385 280,435 310,435" stroke-width="3.5"/>
+    <polyline points="400,270 450,270 450,240" stroke-width="3.5"/>
+    <line x1="100" y1="270" x2="55" y2="270" stroke-width="3.5"/>
+  </g>
+  <g fill="#1A1A2E" opacity="0.5">
+    <circle cx="95" cy="80" r="4"/><circle cx="210" cy="65" r="3.5"/>
+    <circle cx="85" cy="430" r="4"/><circle cx="120" cy="430" r="3.5"/>
+    <circle cx="465" cy="95" r="4"/><circle cx="310" cy="65" r="4"/>
+    <circle cx="440" cy="440" r="4"/><circle cx="310" cy="435" r="3.5"/>
+    <circle cx="450" cy="240" r="3.5"/><circle cx="55" cy="270" r="3.5"/>
   </g>
   <!-- I -->
-  <line x1="106" y1="142" x2="206" y2="142" stroke="url(#i2G)" stroke-width="13" stroke-linecap="round"/>
-  <line x1="155" y1="142" x2="155" y2="382" stroke="url(#i2G)" stroke-width="13" stroke-linecap="round"/>
-  <line x1="106" y1="382" x2="206" y2="382" stroke="url(#i2G)" stroke-width="13" stroke-linecap="round"/>
-  <circle cx="106" cy="142" r="11" fill="url(#i2G)"/>
-  <circle cx="155" cy="142" r="9" fill="url(#i2G)"/>
-  <circle cx="206" cy="142" r="10" fill="url(#i2G)"/>
-  <circle cx="155" cy="256" r="6" fill="url(#i2G)" opacity=".4"/>
-  <circle cx="106" cy="382" r="10" fill="url(#i2G)"/>
-  <circle cx="155" cy="382" r="11" fill="url(#i2G)"/>
-  <circle cx="206" cy="382" r="9" fill="url(#i2G)"/>
-  <circle cx="155" cy="90" r="17" fill="url(#i2G)"/>
-  <circle cx="155" cy="90" r="9" fill="url(#i2B)"/>
+  <line x1="100" y1="155" x2="200" y2="155" stroke="#1A1A2E" stroke-width="18" stroke-linecap="round"/>
+  <line x1="150" y1="155" x2="150" y2="385" stroke="#1A1A2E" stroke-width="18" stroke-linecap="round"/>
+  <line x1="100" y1="385" x2="200" y2="385" stroke="#1A1A2E" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="150" cy="85" r="22" fill="#1A1A2E"/>
+  <circle cx="100" cy="155" r="12" fill="#1A1A2E"/>
+  <circle cx="200" cy="155" r="12" fill="#1A1A2E"/>
+  <circle cx="100" cy="385" r="12" fill="#1A1A2E"/>
+  <circle cx="200" cy="385" r="12" fill="#1A1A2E"/>
   <!-- H -->
-  <line x1="282" y1="142" x2="282" y2="382" stroke="url(#i2G)" stroke-width="13" stroke-linecap="round"/>
-  <line x1="408" y1="142" x2="408" y2="382" stroke="url(#i2G)" stroke-width="13" stroke-linecap="round"/>
-  <line x1="282" y1="262" x2="408" y2="262" stroke="url(#i2G)" stroke-width="13" stroke-linecap="round"/>
-  <circle cx="282" cy="142" r="10" fill="url(#i2G)"/>
-  <circle cx="282" cy="262" r="11" fill="url(#i2G)"/>
-  <circle cx="282" cy="382" r="9" fill="url(#i2G)"/>
-  <circle cx="408" cy="142" r="9" fill="url(#i2G)"/>
-  <circle cx="408" cy="262" r="10" fill="url(#i2G)"/>
-  <circle cx="408" cy="382" r="11" fill="url(#i2G)"/>
-  <!-- Offshoots -->
-  <g stroke="url(#i2G)" stroke-linecap="round" fill="none" opacity=".2">
-    <polyline points="106,142 62,142 62,100" stroke-width="3.5"/>
-    <line x1="155" y1="382" x2="155" y2="424" stroke-width="3"/>
-    <polyline points="408,142 448,142 448,100" stroke-width="4"/>
-    <line x1="282" y1="382" x2="282" y2="418" stroke-width="3.5"/>
-  </g>
-  <g fill="url(#i2G)" opacity=".22">
-    <circle cx="62" cy="100" r="4.5"/>
-    <circle cx="155" cy="424" r="3.5"/>
-    <circle cx="448" cy="100" r="4"/>
-    <circle cx="282" cy="418" r="4"/>
-  </g>
+  <line x1="280" y1="155" x2="280" y2="385" stroke="#1A1A2E" stroke-width="18" stroke-linecap="round"/>
+  <line x1="400" y1="155" x2="400" y2="385" stroke="#1A1A2E" stroke-width="18" stroke-linecap="round"/>
+  <line x1="280" y1="270" x2="400" y2="270" stroke="#1A1A2E" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="280" cy="155" r="12" fill="#1A1A2E"/>
+  <circle cx="280" cy="270" r="12" fill="#1A1A2E"/>
+  <circle cx="280" cy="385" r="12" fill="#1A1A2E"/>
+  <circle cx="400" cy="155" r="12" fill="#1A1A2E"/>
+  <circle cx="400" cy="270" r="12" fill="#1A1A2E"/>
+  <circle cx="400" cy="385" r="12" fill="#1A1A2E"/>
 </svg>

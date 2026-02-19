@@ -804,20 +804,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // so we only multiply by seconds (no extra *100)
           let fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
-          // Normalize by OI skew to match gTrade UI display
-          // gTrade's raw fundingRatePerSecondP is the total funding pool rate.
-          // The UI normalizes by OI ratio: when one side dominates, the raw rate
-          // gets divided by (dominantOI / smallerOI) so the displayed rate
-          // reflects what each unit of the dominant side actually pays.
-          // When OI is balanced, ratio ≈ 1 and this is a no-op.
-          if (params.aprMultiplierEnabled && oiLongToken > 0 && oiShortToken > 0) {
-            const oiRatio = oiLongToken > oiShortToken
-              ? oiLongToken / oiShortToken
-              : oiShortToken / oiLongToken;
-            if (oiRatio > 1 && oiRatio < 100) {
-              fundingRate8h = fundingRate8h / oiRatio;
-            }
-          }
+          // Note: gTrade's APR multiplier applies differently to long vs short sides
+          // (the earning side gets amplified, the paying side rate = base rate).
+          // For single-rate display (CEX convention), the paying side's rate IS the base rate.
+          // No OI ratio normalization needed.
 
           // Skip pairs with essentially zero rate
           if (Math.abs(fundingRate8h) < 0.00001) continue;
@@ -955,7 +945,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     fetcher: async (fetchFn) => {
       const res = await fetchFn('https://api.starknet.extended.exchange/api/v1/info/markets', {}, 12000);
       if (!res.ok) return [];
-      const data = await res.json();
+      const json = await res.json();
+      const data = json?.data || json; // Response is {status, data: [...]}
       if (!Array.isArray(data)) return [];
       return data
         .filter((m: any) => m.active && m.status === 'ACTIVE' && m.marketStats?.fundingRate != null)
