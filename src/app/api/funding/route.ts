@@ -143,7 +143,15 @@ export async function GET(request: NextRequest) {
         action: 'capped',
       });
       // Cap to threshold rather than exclude — preserves directional signal
-      return { ...r, fundingRate: Math.sign(r.fundingRate) * threshold };
+      const capped: any = { ...r, fundingRate: Math.sign(r.fundingRate) * threshold };
+      // Also cap long/short rates if present (skew-based DEXes)
+      if (r.fundingRateLong !== undefined && Math.abs(r.fundingRateLong) > threshold) {
+        capped.fundingRateLong = Math.sign(r.fundingRateLong) * threshold;
+      }
+      if (r.fundingRateShort !== undefined && Math.abs(r.fundingRateShort) > threshold) {
+        capped.fundingRateShort = Math.sign(r.fundingRateShort) * threshold;
+      }
+      return capped;
     }
     return r;
   });

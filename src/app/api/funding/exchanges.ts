@@ -6,6 +6,8 @@ type FundingData = {
   symbol: string;
   exchange: string;
   fundingRate: number;
+  fundingRateLong?: number;  // Separate long-side rate (skew-based DEXes: gTrade, GMX)
+  fundingRateShort?: number; // Separate short-side rate (skew-based DEXes: gTrade, GMX)
   predictedRate?: number; // Predicted/next funding rate (where available)
   markPrice: number;
   indexPrice: number;
@@ -822,10 +824,20 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // so we only multiply by seconds (no extra *100)
           let fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
-          // Note: gTrade's APR multiplier applies differently to long vs short sides
-          // (the earning side gets amplified, the paying side rate = base rate).
-          // For single-rate display (CEX convention), the paying side's rate IS the base rate.
-          // No OI ratio normalization needed.
+          // gTrade's skew model: the earning side gets amplified by OI ratio.
+          // Paying side rate = base rate. Earning side rate = base × (payingOI / earningOI).
+          // Convention: negative rate = longs earn (shorts pay), positive = longs pay (shorts earn).
+          let fundingRateLong = fundingRate8h;
+          let fundingRateShort = -fundingRate8h; // short side is opposite sign
+          if (fundingRate8h < 0 && oiLongToken > 0 && oiShortToken > 0) {
+            // Longs earn: amplified by short/long OI ratio
+            fundingRateLong = fundingRate8h * (oiShortToken / oiLongToken);
+            fundingRateShort = -fundingRate8h; // shorts pay base rate (positive = cost)
+          } else if (fundingRate8h > 0 && oiLongToken > 0 && oiShortToken > 0) {
+            // Shorts earn: amplified by long/short OI ratio
+            fundingRateLong = fundingRate8h; // longs pay base rate (positive = cost)
+            fundingRateShort = -fundingRate8h * (oiLongToken / oiShortToken);
+          }
 
           // Skip pairs with essentially zero rate
           if (Math.abs(fundingRate8h) < 0.00001) continue;
@@ -841,6 +853,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol,
             exchange: 'gTrade',
             fundingRate: fundingRate8h,
+            fundingRateLong,   // What longs pay/earn (negative = earn)
+            fundingRateShort,  // What shorts pay/earn (positive = cost)
             fundingInterval: '8h' as const, // continuous model, normalized to 8h for display
             markPrice: tokenPrice,
             indexPrice: 0,
@@ -942,11 +956,16 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map(({ market: m }) => {
           const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
           // Annual rate at 1e30 precision -> hourly percentage
-          const fundingRate = Number(BigInt(m.fundingRateLong)) / 1e30 / 8760 * 100;
+          const rateLong = Number(BigInt(m.fundingRateLong)) / 1e30 / 8760 * 100;
+          const rateShort = Number(BigInt(m.fundingRateShort || '0')) / 1e30 / 8760 * 100;
+          // fundingRate = long side rate (standard convention: positive = longs pay)
+          const fundingRate = rateLong;
           return {
             symbol,
             exchange: 'GMX',
             fundingRate,
+            fundingRateLong: rateLong,   // What longs pay/earn per hour
+            fundingRateShort: rateShort,  // What shorts pay/earn per hour
             markPrice: 0, // GMX markets/info doesn't provide mark price
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000, // continuous, next "hour"
@@ -1088,12 +1107,14 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
           const intervalS = m.funding_interval_s || 28800;
           // Map seconds to interval label
+          // 2h interval → bucket as '1h' for display (closest standard interval)
           const intervalMap: Record<number, '1h' | '4h' | '8h'> = { 3600: '1h', 7200: '1h', 14400: '4h', 28800: '8h' };
           const fundingInterval = intervalMap[intervalS] || '8h';
 
-          // funding_rate from API is percentage × 100 (e.g., -47.24 means -0.4724%)
-          // Verified: Variational UI shows INJ at -0.4743%, API returns -47.24
-          const fundingRate = parseFloat(m.funding_rate) / 100;
+          // funding_rate from API is already a percentage (e.g., -0.012 means -0.012%)
+          // Docs say "decimal (multiply by 100 for %)" but actual values are already %
+          // Verified: BTC ≈ -0.01% per 8h matches CEX range; ×100 would be absurd
+          const fundingRate = parseFloat(m.funding_rate);
 
           const norm = normalizeSymbol(symbol, 'Variational');
 
