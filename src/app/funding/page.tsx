@@ -19,7 +19,7 @@ import ShareButton from '@/components/ShareButton';
 import Footer from '@/components/Footer';
 import { saveFundingSnapshot, getFundingHistory, getAccumulatedFundingBatch, type HistoryPoint, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
 
-type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
+type SortField = 'symbol' | 'fundingRate' | 'exchange';
 type SortOrder = 'asc' | 'desc';
 type ViewMode = 'heatmap' | 'table' | 'arbitrage';
 type VenueFilter = 'all' | 'cex' | 'dex';
@@ -242,11 +242,15 @@ export default function FundingPage() {
 
   const heatmapData = new Map<string, Map<string, number>>();
   const intervalMap = new Map<string, string>(); // "SYMBOL|EXCHANGE" → interval
+  const longShortMap = new Map<string, { long: number; short: number }>(); // L/S rates for skew-based DEXes
   fundingRates.forEach(fr => {
     if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
     heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
     if (fr.fundingInterval && fr.fundingInterval !== '8h') {
       intervalMap.set(`${fr.symbol}|${fr.exchange}`, fr.fundingInterval);
+    }
+    if (fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined) {
+      longShortMap.set(`${fr.symbol}|${fr.exchange}`, { long: fr.fundingRateLong, short: fr.fundingRateShort });
     }
   });
 
@@ -546,10 +550,10 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'table' && (
-              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} historyMap={historyMap} accumulatedMap={accumulatedMap} />
+              <FundingTableView data={filteredAndSorted} sortField={sortField} sortOrder={sortOrder} onSort={handleSort} oiMap={oiMap} />
             )}
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} />
             )}
             {viewMode === 'arbitrage' && assetClass === 'crypto' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} />

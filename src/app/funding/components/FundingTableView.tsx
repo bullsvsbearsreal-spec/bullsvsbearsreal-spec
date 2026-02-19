@@ -9,20 +9,12 @@ import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatRate, getRateColor, getExchangeColor } from '../utils';
 import { isValidNumber, formatUSD } from '@/lib/utils/format';
 import { isExchangeDex, getExchangeTradeUrl } from '@/lib/constants';
-import FundingSparkline from './FundingSparkline';
 import Pagination from './Pagination';
-import type { HistoryPoint } from '@/lib/storage/fundingHistory';
 
-type SortField = 'symbol' | 'fundingRate' | 'exchange' | 'predictedRate';
+type SortField = 'symbol' | 'fundingRate' | 'exchange';
 type SortOrder = 'asc' | 'desc';
 
 const ROWS_PER_PAGE = 100;
-
-interface AccumulatedData {
-  d1: number;
-  d7: number;
-  d30: number;
-}
 
 interface FundingTableViewProps {
   data: FundingRateData[];
@@ -30,23 +22,17 @@ interface FundingTableViewProps {
   sortOrder: SortOrder;
   onSort: (field: SortField) => void;
   oiMap?: Map<string, number>;
-  historyMap?: Map<string, HistoryPoint[]>;
-  accumulatedMap?: Map<string, AccumulatedData>;
 }
 
-export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap, historyMap, accumulatedMap }: FundingTableViewProps) {
+export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap }: FundingTableViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
   const hasOI = oiMap && oiMap.size > 0;
-  const hasHistory = historyMap && historyMap.size > 0;
-  const hasAccumulated = accumulatedMap && accumulatedMap.size > 0;
 
   const totalPages = Math.max(1, Math.ceil(data.length / ROWS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIdx = (safeCurrentPage - 1) * ROWS_PER_PAGE;
   const visibleData = data.slice(startIdx, startIdx + ROWS_PER_PAGE);
-
-  const hasPredicted = visibleData.some(fr => fr.predictedRate !== undefined && fr.predictedRate !== null);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
@@ -61,12 +47,6 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
     { field: 'exchange', label: 'Exchange', align: 'left' },
     { field: null, label: 'Interval', align: 'center' },
     { field: 'fundingRate', label: 'Funding Rate', align: 'right' },
-    ...(hasPredicted ? [{ field: 'predictedRate' as SortField, label: 'Predicted', align: 'right' }] : []),
-    ...(hasHistory ? [{ field: null as SortField | null, label: '7d Trend', align: 'center' }] : []),
-    ...(hasAccumulated ? [
-      { field: null as SortField | null, label: 'Cumul. 1D', align: 'right' },
-      { field: null as SortField | null, label: 'Cumul. 7D', align: 'right' },
-    ] : []),
     { field: null, label: 'Annualized', align: 'right' },
     ...(hasOI ? [{ field: null as SortField | null, label: 'Open Interest', align: 'right' }] : []),
     { field: null, label: 'Mark Price', align: 'right' },
@@ -105,7 +85,6 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
               const annualized = fr.fundingRate * periodsPerDay * 365;
               const hasMarkPrice = isValidNumber(fr.markPrice) && fr.markPrice > 0;
               const pairKey = `${fr.symbol}|${fr.exchange}`;
-              const accumulated = hasAccumulated ? accumulatedMap.get(pairKey) : undefined;
               return (
                 <tr
                   key={`${fr.symbol}-${fr.exchange}-${index}`}
@@ -150,52 +129,21 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
-                      {formatRate(fr.fundingRate)}
-                    </span>
-                  </td>
-                  {hasPredicted && (
-                    <td className="px-4 py-2 text-right">
-                      {fr.predictedRate !== undefined && fr.predictedRate !== null ? (
-                        <span className={`font-mono text-xs ${getRateColor(fr.predictedRate)}`}>
-                          {formatRate(fr.predictedRate)}
+                    <div className="flex flex-col items-end">
+                      <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
+                        {formatRate(fr.fundingRate)}
+                      </span>
+                      {fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined && (
+                        <span className="text-[10px] font-mono leading-tight mt-0.5">
+                          <span className="text-neutral-600">L</span>
+                          <span className={getRateColor(fr.fundingRateLong)}> {formatRate(fr.fundingRateLong)}</span>
+                          <span className="text-neutral-700"> / </span>
+                          <span className="text-neutral-600">S</span>
+                          <span className={getRateColor(fr.fundingRateShort)}> {formatRate(fr.fundingRateShort)}</span>
                         </span>
-                      ) : (
-                        <span className="text-neutral-700 text-xs">&mdash;</span>
                       )}
-                    </td>
-                  )}
-                  {hasHistory && (
-                    <td className="px-4 py-2 text-center">
-                      <FundingSparkline
-                        history={historyMap.get(pairKey) || []}
-                        width={72}
-                        height={22}
-                      />
-                    </td>
-                  )}
-                  {hasAccumulated && (
-                    <>
-                      <td className="px-4 py-2 text-right">
-                        {accumulated && accumulated.d1 !== 0 ? (
-                          <span className={`font-mono text-xs ${getRateColor(accumulated.d1)}`}>
-                            {accumulated.d1 >= 0 ? '+' : ''}{accumulated.d1.toFixed(4)}%
-                          </span>
-                        ) : (
-                          <span className="text-neutral-700 text-xs">&mdash;</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {accumulated && accumulated.d7 !== 0 ? (
-                          <span className={`font-mono text-xs ${getRateColor(accumulated.d7)}`}>
-                            {accumulated.d7 >= 0 ? '+' : ''}{accumulated.d7.toFixed(4)}%
-                          </span>
-                        ) : (
-                          <span className="text-neutral-700 text-xs">&mdash;</span>
-                        )}
-                      </td>
-                    </>
-                  )}
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <span className={`font-mono text-xs ${getRateColor(annualized)}`}>
                       {annualized >= 0 ? '+' : ''}{annualized.toFixed(2)}%

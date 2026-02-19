@@ -25,6 +25,7 @@ interface FundingHeatmapViewProps {
   heatmapData: Map<string, Map<string, number>>;
   intervalMap?: Map<string, string>;
   oiMap?: Map<string, number>;
+  longShortMap?: Map<string, { long: number; short: number }>;
 }
 
 /* ═══════════════════════════════════════
@@ -139,7 +140,7 @@ function squarify(
    ═══════════════════════════════════════ */
 
 export default function FundingHeatmapView({
-  symbols, visibleExchanges, heatmapData, intervalMap, oiMap,
+  symbols, visibleExchanges, heatmapData, intervalMap, oiMap, longShortMap,
 }: FundingHeatmapViewProps) {
   const [mode, setMode] = useState<HeatmapMode>('grid');
   const [currentPage, setCurrentPage] = useState(1);
@@ -560,8 +561,10 @@ export default function FundingHeatmapView({
                           <span className="absolute top-[2px] right-[2px] w-[3px] h-[3px] rounded-full bg-sky-400/80" />
                         ) : null;
 
+                        const ls = longShortMap?.get(`${symbol}|${ex}`);
+                        const lsLine = ls ? `\nL: ${formatRate(ls.long)} / S: ${formatRate(ls.short)}` : '';
                         const title = rate !== undefined
-                          ? `${symbol} · ${ex} · ${formatRate(rate)} (${interval || '8h'})\nClick to trade`
+                          ? `${symbol} · ${ex} · ${formatRate(rate)} (${interval || '8h'})${lsLine}\nClick to trade`
                           : `Not on ${ex}`;
 
                         const inner = (

@@ -368,10 +368,6 @@ export default function SymbolFundingPage() {
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-left">Exchange</th>
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-center">Interval</th>
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-right">Current Rate</th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-right">Predicted</th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-center">7d</th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-right">Acc 1D</th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-right">Acc 7D</th>
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-right">Annualized</th>
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-right">Open Interest</th>
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-right">Mark Price</th>
@@ -415,39 +411,20 @@ export default function SymbolFundingPage() {
                               </span>
                             </td>
                             <td className="px-4 py-2.5 text-right">
-                              <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
-                                {formatRate(fr.fundingRate)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              {fr.predictedRate !== undefined && fr.predictedRate !== null ? (
-                                <span className={`font-mono text-xs ${getRateColor(fr.predictedRate)}`}>
-                                  {formatRate(fr.predictedRate)}
+                              <div className="flex flex-col items-end">
+                                <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
+                                  {formatRate(fr.fundingRate)}
                                 </span>
-                              ) : (
-                                <span className="text-neutral-700 text-xs">&mdash;</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              <FundingSparkline history={history} width={72} height={22} />
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              {accumulated && accumulated.d1 !== 0 ? (
-                                <span className={`font-mono text-xs ${getRateColor(accumulated.d1)}`}>
-                                  {accumulated.d1 >= 0 ? '+' : ''}{accumulated.d1.toFixed(4)}%
-                                </span>
-                              ) : (
-                                <span className="text-neutral-700 text-xs">&mdash;</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              {accumulated && accumulated.d7 !== 0 ? (
-                                <span className={`font-mono text-xs ${getRateColor(accumulated.d7)}`}>
-                                  {accumulated.d7 >= 0 ? '+' : ''}{accumulated.d7.toFixed(4)}%
-                                </span>
-                              ) : (
-                                <span className="text-neutral-700 text-xs">&mdash;</span>
-                              )}
+                                {fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined && (
+                                  <span className="text-[10px] font-mono leading-tight mt-0.5">
+                                    <span className="text-neutral-600">L</span>
+                                    <span className={getRateColor(fr.fundingRateLong)}> {formatRate(fr.fundingRateLong)}</span>
+                                    <span className="text-neutral-700"> / </span>
+                                    <span className="text-neutral-600">S</span>
+                                    <span className={getRateColor(fr.fundingRateShort)}> {formatRate(fr.fundingRateShort)}</span>
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               <span className={`font-mono text-xs ${getRateColor(annualized)}`}>
