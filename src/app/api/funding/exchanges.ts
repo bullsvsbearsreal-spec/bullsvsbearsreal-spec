@@ -583,21 +583,29 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (items.length === 0) return [];
       return items
         .filter((item: any) => item.symbol?.endsWith('USDT') && item.fundingRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Bitunix',
-          fundingRate: parseFloat(item.fundingRate) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.markPrice) || 0,
-          indexPrice: parseFloat(item.lastPrice) || 0,
-          nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          // Bitunix fundingRate is already a percentage (e.g. 0.0023 = 0.0023%, NOT 0.23%)
+          const rate = parseFloat(item.fundingRate);
+          // fundingInterval is a number (1, 4, 8) representing hours
+          const intervalNum = parseInt(item.fundingInterval) || 8;
+          const interval = intervalNum === 1 ? '1h' : intervalNum === 4 ? '4h' : '8h';
+          return {
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Bitunix',
+            fundingRate: rate,
+            fundingInterval: interval as '1h' | '4h' | '8h',
+            markPrice: parseFloat(item.markPrice) || 0,
+            indexPrice: parseFloat(item.lastPrice) || 0,
+            nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
 
-  // KuCoin
+  // KuCoin — /contracts/active returns fundingFeeRate which can equal the cap/floor for some coins.
+  // For those coins, fetch the actual settled rate from /contract/funding-rates history.
   {
     name: 'KuCoin',
     fetcher: async (fetchFn) => {
@@ -606,15 +614,48 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const json = await res.json();
       if (json.code !== '200000' && json.code !== 200000) return [];
       const items = json.data || [];
+
+      // Identify contracts where fundingFeeRate is stuck at cap/floor (unreliable)
+      const atCapOrFloor = items.filter((item: any) =>
+        item.symbol.endsWith('USDTM') && item.fundingFeeRate != null &&
+        (item.fundingFeeRate === item.fundingRateCap || item.fundingFeeRate === item.fundingRateFloor)
+      );
+
+      // Fetch actual settled rates for those contracts from history
+      const overrides = new Map<string, number>();
+      if (atCapOrFloor.length > 0 && atCapOrFloor.length <= 10) {
+        const now = Date.now();
+        await Promise.all(atCapOrFloor.map(async (item: any) => {
+          try {
+            const histRes = await fetchFn(
+              `https://api-futures.kucoin.com/api/v1/contract/funding-rates?symbol=${item.symbol}&from=${now - 100000000}&to=${now}`,
+              {}, 5000
+            );
+            if (histRes.ok) {
+              const histJson = await histRes.json();
+              const rates = histJson.data || [];
+              if (rates.length > 0) {
+                // Sort by timepoint descending and take the most recent settled rate
+                rates.sort((a: any, b: any) => (b.timepoint || 0) - (a.timepoint || 0));
+                overrides.set(item.symbol, parseFloat(rates[0].fundingRate));
+              }
+            }
+          } catch {}
+        }));
+      }
+
       return items
         .filter((item: any) => item.symbol.endsWith('USDTM') && item.fundingFeeRate != null)
         .map((item: any) => {
           let sym = item.symbol.replace('USDTM', '');
           if (sym === 'XBT') sym = 'BTC';
+          const actualRate = overrides.has(item.symbol)
+            ? overrides.get(item.symbol)! * 100
+            : parseFloat(item.fundingFeeRate) * 100;
           return {
             symbol: sym,
             exchange: 'KuCoin',
-            fundingRate: parseFloat(item.fundingFeeRate) * 100,
+            fundingRate: actualRate,
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
