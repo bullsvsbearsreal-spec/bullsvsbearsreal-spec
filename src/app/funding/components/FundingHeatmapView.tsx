@@ -556,10 +556,14 @@ export default function FundingHeatmapView({
                         const rate = rates?.get(ex);
                         const interval = intervalMap?.get(`${symbol}|${ex}`);
                         const tradeUrl = rate !== undefined ? getExchangeTradeUrl(ex, symbol) : null;
-                        const colors = rateToColors(rate);
                         const isCross = isRowHovered && hoveredCol === ex;
                         const ls = longShortMap?.get(`${symbol}|${ex}`);
                         const hasLS = ls !== undefined && rate !== undefined;
+                        // For L/S exchanges: cell color reflects the side matching sort direction
+                        // desc/neutral → short-side rate (what shorts pay), asc → long-side rate (what longs pay)
+                        const colorRate = hasLS && exchangeSort?.exchange === ex && exchangeSort?.direction === 'asc'
+                          ? ls.long : rate;
+                        const colors = rateToColors(colorRate);
 
                         const cellStyle: React.CSSProperties = {
                           background: colors.bg,
