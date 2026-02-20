@@ -1108,10 +1108,13 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const intervalMap: Record<number, '1h' | '4h' | '8h'> = { 3600: '1h', 7200: '1h', 14400: '4h', 28800: '8h' };
           const fundingInterval = intervalMap[intervalS] || '8h';
 
-          // funding_rate from API is already a percentage (e.g., -0.012 means -0.012%)
-          // Docs say "decimal (multiply by 100 for %)" but actual values are already %
-          // Verified: BTC ≈ -0.01% per 8h matches CEX range; ×100 would be absurd
-          const fundingRate = parseFloat(m.funding_rate);
+          // funding_rate is an ANNUALIZED decimal rate
+          // Convert: per_interval_pct = raw_decimal * 100 / periods_per_year
+          // Verified: DUSK raw=-4.67 → -0.4262%/8h matches Variational UI (-0.4275%)
+          //           ADA raw=0.1095 → 0.0100%/8h, LINK 0.0100%/8h — match CEX benchmarks
+          const rawDecimal = parseFloat(m.funding_rate);
+          const periodsPerYear = (365 * 24 * 3600) / intervalS;
+          const fundingRate = (rawDecimal * 100) / periodsPerYear;
 
           const norm = normalizeSymbol(symbol, 'Variational');
 
