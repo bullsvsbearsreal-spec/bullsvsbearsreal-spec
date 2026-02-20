@@ -554,14 +554,32 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
 
-  // Bitunix
+  // Bitunix — fapi.bitunix.com blocks Vercel Edge IPs (returns empty data).
+  // Falls back to internal Node.js proxy (/api/proxy/bitunix) which uses AWS Lambda IPs.
   {
     name: 'Bitunix',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/funding_rate/batch');
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json.data) ? json.data : [];
+      // Try direct first
+      let items: any[] = [];
+      try {
+        const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/funding_rate/batch');
+        if (res.ok) {
+          const json = await res.json();
+          items = Array.isArray(json.data) ? json.data : [];
+        }
+      } catch {}
+
+      // If direct returns empty, try Node.js proxy (different IP pool)
+      if (items.length === 0) {
+        try {
+          const proxyRes = await fetchFn('https://info-hub.io/api/proxy/bitunix?endpoint=funding', {}, 10000);
+          if (proxyRes.ok) {
+            const proxyJson = await proxyRes.json();
+            items = Array.isArray(proxyJson.data) ? proxyJson.data : [];
+          }
+        } catch {}
+      }
+
       if (items.length === 0) return [];
       return items
         .filter((item: any) => item.symbol?.endsWith('USDT') && item.fundingRate != null)

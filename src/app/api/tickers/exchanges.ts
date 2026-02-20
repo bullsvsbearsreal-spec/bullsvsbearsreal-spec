@@ -298,14 +298,29 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
   },
 
 
-  // Bitunix
+  // Bitunix — fapi.bitunix.com blocks Vercel Edge IPs; falls back to Node.js proxy
   {
     name: 'Bitunix',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/tickers');
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json.data) ? json.data : [];
+      let items: any[] = [];
+      try {
+        const res = await fetchFn('https://fapi.bitunix.com/api/v1/futures/market/tickers');
+        if (res.ok) {
+          const json = await res.json();
+          items = Array.isArray(json.data) ? json.data : [];
+        }
+      } catch {}
+
+      if (items.length === 0) {
+        try {
+          const proxyRes = await fetchFn('https://info-hub.io/api/proxy/bitunix?endpoint=tickers', {}, 10000);
+          if (proxyRes.ok) {
+            const proxyJson = await proxyRes.json();
+            items = Array.isArray(proxyJson.data) ? proxyJson.data : [];
+          }
+        } catch {}
+      }
+
       if (items.length === 0) return [];
       return items
         .filter((t: any) => t.symbol?.endsWith('USDT'))
