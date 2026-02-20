@@ -451,16 +451,42 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
   // Phemex — includes stock perps (TSLA, AAPL, NVDA, etc.) and commodities (XAU, XAG)
+  // Cross-references with /public/products to exclude delisted pairs (ticker API returns stale data for delisted pairs)
   {
     name: 'Phemex',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.phemex.com/md/v2/ticker/24hr/all');
-      if (!res.ok) return [];
-      const json = await res.json();
+      const [tickerRes, productsRes] = await Promise.all([
+        fetchFn('https://api.phemex.com/md/v2/ticker/24hr/all'),
+        fetchFn('https://api.phemex.com/public/products', {}, 8000).catch(() => null),
+      ]);
+      if (!tickerRes.ok) return [];
+      const json = await tickerRes.json();
       const phemexResult = Array.isArray(json.result) ? json.result : [];
       if (phemexResult.length === 0) return [];
+
+      // Build set of active perp symbols from perpProductsV2 (filters out 219+ delisted ghost pairs)
+      let activeSymbols: Set<string> | null = null;
+      if (productsRes?.ok) {
+        try {
+          const productsJson = await productsRes.json();
+          const perpProducts = productsJson?.data?.perpProductsV2;
+          if (Array.isArray(perpProducts)) {
+            activeSymbols = new Set(
+              perpProducts
+                .filter((p: any) => p.status === 'Listed')
+                .map((p: any) => p.symbol as string)
+            );
+          }
+        } catch {}
+      }
+
       return phemexResult
-        .filter((item: any) => item.symbol && item.symbol.endsWith('USDT') && item.fundingRateRr != null)
+        .filter((item: any) => {
+          if (!item.symbol || !item.symbol.endsWith('USDT') || item.fundingRateRr == null) return false;
+          // If we have the active products list, filter out delisted pairs
+          if (activeSymbols && activeSymbols.size > 0 && !activeSymbols.has(item.symbol)) return false;
+          return true;
+        })
         .map((item: any) => {
           const normalized = normalizeSymbol(item.symbol, 'phemex');
           return {
