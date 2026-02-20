@@ -364,15 +364,39 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
 
   // MEXC
+  // MEXC — cross-references with /contract/detail to exclude non-active pairs (state !== 0)
   {
     name: 'MEXC',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://contract.mexc.com/api/v1/contract/ticker');
-      if (!res.ok) return [];
-      const json = await res.json();
+      const [tickerRes, detailRes] = await Promise.all([
+        fetchFn('https://contract.mexc.com/api/v1/contract/ticker'),
+        fetchFn('https://contract.mexc.com/api/v1/contract/detail', {}, 8000).catch(() => null),
+      ]);
+      if (!tickerRes.ok) return [];
+      const json = await tickerRes.json();
       if (!json.success || !Array.isArray(json.data)) return [];
+
+      // Build set of active contract symbols (state=0) to filter out delisted/suspended pairs
+      let activeSymbols: Set<string> | null = null;
+      if (detailRes?.ok) {
+        try {
+          const detailJson = await detailRes.json();
+          if (Array.isArray(detailJson.data)) {
+            activeSymbols = new Set(
+              detailJson.data
+                .filter((c: any) => c.state === 0)
+                .map((c: any) => c.symbol as string)
+            );
+          }
+        } catch {}
+      }
+
       return json.data
-        .filter((item: any) => item.symbol.endsWith('_USDT') && item.fundingRate != null)
+        .filter((item: any) => {
+          if (!item.symbol.endsWith('_USDT') || item.fundingRate == null) return false;
+          if (activeSymbols && activeSymbols.size > 0 && !activeSymbols.has(item.symbol)) return false;
+          return true;
+        })
         .map((item: any) => ({
           symbol: item.symbol.replace('_USDT', ''),
           exchange: 'MEXC',
@@ -422,15 +446,39 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
   // BingX — includes tokenized stocks (NCSK*)
+  // BingX — cross-references with /contracts to exclude suspended/delisted pairs (status !== 1)
   {
     name: 'BingX',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://open-api.bingx.com/openApi/swap/v2/quote/premiumIndex');
-      if (!res.ok) return [];
-      const json = await res.json();
+      const [premiumRes, contractsRes] = await Promise.all([
+        fetchFn('https://open-api.bingx.com/openApi/swap/v2/quote/premiumIndex'),
+        fetchFn('https://open-api.bingx.com/openApi/swap/v2/quote/contracts', {}, 8000).catch(() => null),
+      ]);
+      if (!premiumRes.ok) return [];
+      const json = await premiumRes.json();
       if (json.code !== 0 || !Array.isArray(json.data)) return [];
+
+      // Build set of active contract symbols (status=1) to filter out suspended (status=25) pairs
+      let activeSymbols: Set<string> | null = null;
+      if (contractsRes?.ok) {
+        try {
+          const contractsJson = await contractsRes.json();
+          if (Array.isArray(contractsJson.data)) {
+            activeSymbols = new Set(
+              contractsJson.data
+                .filter((c: any) => c.status === 1)
+                .map((c: any) => c.symbol as string)
+            );
+          }
+        } catch {}
+      }
+
       return json.data
-        .filter((item: any) => item.symbol.endsWith('-USDT') && item.lastFundingRate != null)
+        .filter((item: any) => {
+          if (!item.symbol.endsWith('-USDT') || item.lastFundingRate == null) return false;
+          if (activeSymbols && activeSymbols.size > 0 && !activeSymbols.has(item.symbol)) return false;
+          return true;
+        })
         .map((item: any) => {
           const rawSymbol = item.symbol.replace('-USDT', '');
           const normalized = normalizeSymbol(rawSymbol, 'bingx');
@@ -589,18 +637,41 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
   // HTX (Huobi)
+  // HTX — cross-references with /swap_contract_info to exclude delisted pairs (contract_status !== 1)
   {
     name: 'HTX',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.hbdm.com/linear-swap-api/v1/swap_batch_funding_rate');
-      if (!res.ok) return [];
-      const json = await res.json();
+      const [fundingRes, contractsRes] = await Promise.all([
+        fetchFn('https://api.hbdm.com/linear-swap-api/v1/swap_batch_funding_rate'),
+        fetchFn('https://api.hbdm.com/linear-swap-api/v1/swap_contract_info', {}, 8000).catch(() => null),
+      ]);
+      if (!fundingRes.ok) return [];
+      const json = await fundingRes.json();
       if (json.status !== 'ok' || !Array.isArray(json.data)) return [];
+
+      // Build set of active contract codes (contract_status=1) to filter out delisted (status=3) pairs
+      let activeContracts: Set<string> | null = null;
+      if (contractsRes?.ok) {
+        try {
+          const contractsJson = await contractsRes.json();
+          if (Array.isArray(contractsJson.data)) {
+            activeContracts = new Set(
+              contractsJson.data
+                .filter((c: any) => c.contract_status === 1)
+                .map((c: any) => c.contract_code as string)
+            );
+          }
+        } catch {}
+      }
+
       return json.data
         .filter((item: any) => {
           const code = item.contract_code || '';
           // Only perpetual swaps (e.g. BTC-USDT), exclude dated futures (e.g. ETH-USDT-260220)
-          return code.endsWith('-USDT') && !/-\d{6}$/.test(code) && item.funding_rate != null;
+          if (!code.endsWith('-USDT') || /-\d{6}$/.test(code) || item.funding_rate == null) return false;
+          // If we have the active contracts list, filter out delisted pairs
+          if (activeContracts && activeContracts.size > 0 && !activeContracts.has(code)) return false;
+          return true;
         })
         .map((item: any) => ({
           symbol: item.contract_code.replace('-USDT', ''),
