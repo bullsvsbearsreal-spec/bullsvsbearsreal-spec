@@ -31,10 +31,7 @@ export async function GET() {
   }
 
   if (!isDBConfigured()) {
-    return NextResponse.json(
-      { error: 'Database not configured', data: [] },
-      { status: 503 },
-    );
+    return NextResponse.json({ data: [], timestamp: Date.now() });
   }
 
   try {

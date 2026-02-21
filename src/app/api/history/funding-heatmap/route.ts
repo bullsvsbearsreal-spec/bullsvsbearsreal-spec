@@ -21,7 +21,9 @@ const TOP_N = 40;
 
 export async function GET(request: NextRequest) {
   if (!isDBConfigured()) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    return NextResponse.json({ symbols: [], days: 7, data: {} }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    });
   }
 
   const { searchParams } = request.nextUrl;

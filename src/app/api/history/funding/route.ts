@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
 
   // --- DB source (default) ---
   if (!isDBConfigured()) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    return NextResponse.json({ symbol, exchange: exchange || 'all', days, points: [] });
   }
 
   const points = await getFundingHistory(symbol, exchange, days);
