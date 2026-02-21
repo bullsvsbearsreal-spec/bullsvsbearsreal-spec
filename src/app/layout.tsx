@@ -16,8 +16,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://info-hub.io'),
-  title: 'InfoHub | Real-Time Derivatives Data',
-  description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 21 exchanges (15 CEX + 6 DEX). Multi-asset: crypto, stocks, forex, commodities.',
+  title: {
+    default: 'InfoHub | Real-Time Derivatives Data',
+    template: '%s | InfoHub',
+  },
+  description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 24+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.',
   keywords: [
     'funding rates', 'funding rate arbitrage', 'open interest', 'liquidations',
     'derivatives data', 'perpetual futures', 'DEX funding rates', 'crypto API',
@@ -46,13 +49,13 @@ export const metadata: Metadata = {
     url: 'https://info-hub.io',
     siteName: 'InfoHub',
     title: 'InfoHub | Real-Time Derivatives Data',
-    description: 'Real-time funding rates, open interest, liquidations & arbitrage across 21 exchanges (15 CEX + 6 DEX). Multi-asset: crypto, stocks, forex, commodities.',
+    description: 'Real-time funding rates, open interest, liquidations & arbitrage across 24+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.',
     images: [
       {
-        url: '/og-image.svg',
+        url: '/api/og',
         width: 1200,
         height: 630,
-        alt: 'InfoHub - Real-Time Derivatives Data Across 21 Exchanges',
+        alt: 'InfoHub - Real-Time Derivatives Data Across 24+ Exchanges',
       },
     ],
   },
@@ -61,8 +64,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'InfoHub | Real-Time Derivatives Data',
-    description: 'Real-time funding rates, arbitrage tools, OI & liquidations across 21 exchanges (15 CEX + 6 DEX).',
-    images: ['/og-image.svg'],
+    description: 'Real-time funding rates, arbitrage tools, OI & liquidations across 24+ exchanges (CEX + DEX).',
+    images: ['/api/og'],
     creator: '@infohub',
   },
 
