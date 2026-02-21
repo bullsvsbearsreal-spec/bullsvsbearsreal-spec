@@ -14,7 +14,7 @@ export const brandColors = {
   },
   // Gradient Definitions
   gradients: {
-    primary: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
+    primary: 'linear-gradient(135deg, #FFB800 0%, #FF8C00 50%, #E06600 100%)',
     secondary: 'linear-gradient(135deg, #FFA500 0%, #FF6B00 100%)',
     dark: 'linear-gradient(180deg, #1A1A1A 0%, #0D0D0D 100%)',
     glow: 'radial-gradient(circle, rgba(255,165,0,0.3) 0%, transparent 70%)',
@@ -43,72 +43,15 @@ export const brandColors = {
 };
 
 // ============================================
-// STATIC SVG EXPORTS FOR FAVICON/ASSETS
+// STATIC ASSET PATHS (PNG-based)
 // ============================================
-
-// Standard favicon SVG (32x32) — bold geometric IH
-export const faviconSVG = `<svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="favicon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset="40%" stop-color="#FFA500"/>
-      <stop offset="100%" stop-color="#FF7700"/>
-    </linearGradient>
-  </defs>
-  <rect x="4" y="4" width="92" height="92" rx="20" fill="url(#favicon-grad)"/>
-  <rect x="25" y="28" width="10.5" height="44" rx="1.5" fill="#000" opacity="0.9"/>
-  <rect x="43" y="28" width="10.5" height="44" rx="1.5" fill="#000" opacity="0.9"/>
-  <rect x="64.5" y="28" width="10.5" height="44" rx="1.5" fill="#000" opacity="0.9"/>
-  <rect x="43" y="44.5" width="32" height="10.5" rx="1.5" fill="#000" opacity="0.9"/>
-</svg>`;
-
-// Apple Touch Icon (180x180)
-export const appleTouchIconSVG = `<svg width="180" height="180" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="apple-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset="40%" stop-color="#FFA500"/>
-      <stop offset="100%" stop-color="#FF7700"/>
-    </linearGradient>
-  </defs>
-  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#apple-grad)"/>
-  <rect x="132" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
-  <rect x="224" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
-  <rect x="328" y="148" width="52" height="216" rx="6" fill="#000" opacity="0.9"/>
-  <rect x="224" y="230" width="156" height="52" rx="6" fill="#000" opacity="0.9"/>
-</svg>`;
-
-// OG Image Header Logo — PH-style split wordmark
-export const ogLogoSVG = `<svg width="400" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="og-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFD700"/>
-      <stop offset="40%" stop-color="#FFA500"/>
-      <stop offset="100%" stop-color="#FF7700"/>
-    </linearGradient>
-  </defs>
-  <rect x="2" y="8" width="396" height="84" rx="14" fill="#0D0D0D"/>
-  <text x="28" y="64" font-family="system-ui, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" letter-spacing="-1">Info</text>
-  <rect x="155" y="16" width="120" height="68" rx="10" fill="url(#og-grad)"/>
-  <text x="168" y="64" font-family="system-ui, sans-serif" font-size="44" font-weight="900" fill="#000000" letter-spacing="-1">Hub</text>
-</svg>`;
-
-// Monochrome versions — bold geometric IH
-export const monoWhiteSVG = `<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="4" y="4" width="92" height="92" rx="20" fill="#FFFFFF"/>
-  <rect x="25" y="28" width="10.5" height="44" rx="1.5" fill="#000" opacity="0.9"/>
-  <rect x="43" y="28" width="10.5" height="44" rx="1.5" fill="#000" opacity="0.9"/>
-  <rect x="64.5" y="28" width="10.5" height="44" rx="1.5" fill="#000" opacity="0.9"/>
-  <rect x="43" y="44.5" width="32" height="10.5" rx="1.5" fill="#000" opacity="0.9"/>
-</svg>`;
-
-export const monoBlackSVG = `<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="4" y="4" width="92" height="92" rx="20" fill="#000000"/>
-  <rect x="25" y="28" width="10.5" height="44" rx="1.5" fill="#FFA500" opacity="0.9"/>
-  <rect x="43" y="28" width="10.5" height="44" rx="1.5" fill="#FFA500" opacity="0.9"/>
-  <rect x="64.5" y="28" width="10.5" height="44" rx="1.5" fill="#FFA500" opacity="0.9"/>
-  <rect x="43" y="44.5" width="32" height="10.5" rx="1.5" fill="#FFA500" opacity="0.9"/>
-</svg>`;
+export const logoAssets = {
+  favicon: '/favicon.png',
+  icon192: '/icon-192.png',
+  icon512: '/icon-512.png',
+  appleTouchIcon: '/apple-touch-icon.png',
+  logoFull: '/infohub-logo.png',
+};
 
 // ============================================
 // BRAND TYPOGRAPHY
@@ -187,20 +130,21 @@ export const socialDimensions = {
 // COMPONENT: Logo Preview Grid
 // ============================================
 interface LogoPreviewProps {
-  svg: string;
+  src: string;
   title: string;
   size?: number;
   bgColor?: string;
 }
 
-export function LogoPreview({ svg, title, size = 100, bgColor = '#1A1A1A' }: LogoPreviewProps) {
+export function LogoPreview({ src, title, size = 100, bgColor = '#1A1A1A' }: LogoPreviewProps) {
   return (
     <div className="flex flex-col items-center gap-2">
       <div
         className="rounded-xl flex items-center justify-center p-4"
         style={{ backgroundColor: bgColor, width: size + 32, height: size + 32 }}
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
+      >
+        <img src={src} alt={title} style={{ width: size, height: size, objectFit: 'contain' }} />
+      </div>
       <span className="text-xs text-hub-gray-text">{title}</span>
     </div>
   );

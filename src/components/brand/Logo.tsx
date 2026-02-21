@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 interface LogoProps {
   variant?: 'full' | 'icon' | 'wordmark';
@@ -22,119 +23,37 @@ const sizeMap = {
 export default function Logo({
   variant = 'full',
   size = 'md',
-  theme = 'gradient',
   className = '',
   animated = false,
 }: LogoProps) {
   const dimensions = sizeMap[size];
-  const gradientId = `logo-gradient-${Math.random().toString(36).substr(2, 9)}`;
 
-  const getColors = () => {
-    switch (theme) {
-      case 'gradient':
-        return {
-          primary: `url(#${gradientId})`,
-          secondary: '#000000',
-          text: 'white',
-          badge: 'linear-gradient(135deg, #FFD700, #FFA500, #FF7700)',
-          badgeText: '#000000',
-        };
-      case 'light':
-        return {
-          primary: '#FFA500',
-          secondary: '#000000',
-          text: '#FFA500',
-          badge: '#FFA500',
-          badgeText: '#000000',
-        };
-      case 'dark':
-        return {
-          primary: '#1A1A1A',
-          secondary: '#FFA500',
-          text: 'white',
-          badge: '#FFA500',
-          badgeText: '#000000',
-        };
-      case 'mono':
-        return {
-          primary: '#FFFFFF',
-          secondary: '#000000',
-          text: 'white',
-          badge: '#FFFFFF',
-          badgeText: '#000000',
-        };
-      default:
-        return {
-          primary: `url(#${gradientId})`,
-          secondary: '#000000',
-          text: 'white',
-          badge: 'linear-gradient(135deg, #FFD700, #FFA500, #FF7700)',
-          badgeText: '#000000',
-        };
-    }
-  };
-
-  const colors = getColors();
-
-  // Icon only — bold IH on gradient squircle
+  // Icon only — uses the exact PNG logo
   const IconLogo = () => (
-    <svg
+    <Image
+      src="/icon-512.png"
+      alt="InfoHub"
       width={dimensions.icon}
       height={dimensions.icon}
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={animated ? 'hover:scale-105 transition-transform duration-300' : ''}
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFD700" />
-          <stop offset="40%" stopColor="#FFA500" />
-          <stop offset="100%" stopColor="#FF7700" />
-        </linearGradient>
-        <filter id="logo-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#FFA500" floodOpacity="0.3" />
-        </filter>
-      </defs>
-
-      {/* Squircle background */}
-      <rect
-        x="4"
-        y="4"
-        width="92"
-        height="92"
-        rx="20"
-        fill={colors.primary}
-        filter={animated ? 'url(#logo-shadow)' : undefined}
-      />
-
-      {/* Bold geometric IH */}
-      {/* I letter */}
-      <rect x="25" y="28" width="10.5" height="44" rx="1.5" fill={colors.secondary} opacity={0.9} />
-
-      {/* H letter */}
-      <rect x="43" y="28" width="10.5" height="44" rx="1.5" fill={colors.secondary} opacity={0.9} />
-      <rect x="64.5" y="28" width="10.5" height="44" rx="1.5" fill={colors.secondary} opacity={0.9} />
-      <rect x="43" y="44.5" width="32" height="10.5" rx="1.5" fill={colors.secondary} opacity={0.9} />
-    </svg>
+      className={`flex-shrink-0 ${animated ? 'hover:scale-105 transition-transform duration-300' : ''}`}
+    />
   );
 
-  // PH-style split wordmark: "Info" in white + "Hub" in black on gold badge
+  // Wordmark: "Info" in white + "Hub" in black on gold badge
   const WordmarkLogo = () => (
     <div className={`flex items-center ${animated ? 'group' : ''}`}>
       <span
-        className={`font-black tracking-tight ${animated ? 'group-hover:opacity-80 transition-opacity' : ''}`}
-        style={{ fontSize: dimensions.text, color: colors.text, lineHeight: 1 }}
+        className={`font-black tracking-tight text-white ${animated ? 'group-hover:opacity-80 transition-opacity' : ''}`}
+        style={{ fontSize: dimensions.text, lineHeight: 1 }}
       >
         Info
       </span>
       <span
-        className="font-black tracking-tight ml-[2px]"
+        className="font-black tracking-tight text-black ml-[2px]"
         style={{
           fontSize: dimensions.text,
           lineHeight: 1,
-          color: colors.badgeText,
-          background: colors.badge,
+          background: 'linear-gradient(135deg, #FFB800, #FF8C00, #E06600)',
           padding: `${dimensions.badgePy}px ${dimensions.badgePx}px`,
           borderRadius: dimensions.badgeRx,
         }}
@@ -144,7 +63,7 @@ export default function Logo({
     </div>
   );
 
-  // Full logo (icon + split wordmark)
+  // Full logo (icon + wordmark)
   const FullLogo = () => (
     <div className={`flex items-center gap-3 ${animated ? 'group' : ''}`}>
       <IconLogo />
