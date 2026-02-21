@@ -664,18 +664,24 @@ export function useMultiExchangeLiquidations({
   persistKey = 'ih-liq-data',
   persistTtlMs = 3600000, // default 1h
 }: UseMultiExchangeLiquidationsOptions) {
-  // Restore from localStorage on mount
-  const restored = useRef(false);
-  const initData = useRef<ReturnType<typeof loadFromStorage>>(null);
-  if (!restored.current) {
-    initData.current = loadFromStorage(persistKey, persistTtlMs);
-    restored.current = true;
-  }
-
-  const [liquidations, setLiquidations] = useState<Liquidation[]>(initData.current?.liquidations ?? []);
+  // Start with empty state for SSR, restore from localStorage after mount
+  const [liquidations, setLiquidations] = useState<Liquidation[]>([]);
   const [connections, setConnections] = useState<ConnectionStatus[]>([]);
-  const [stats, setStats] = useState<LiquidationStats>(initData.current?.stats ?? { ...EMPTY_STATS });
-  const [aggregated, setAggregated] = useState<Map<string, AggregatedLiq>>(initData.current?.aggregated ?? new Map());
+  const [stats, setStats] = useState<LiquidationStats>({ ...EMPTY_STATS });
+  const [aggregated, setAggregated] = useState<Map<string, AggregatedLiq>>(new Map());
+  const restoredRef = useRef(false);
+
+  // Restore persisted data after hydration
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const saved = loadFromStorage(persistKey, persistTtlMs);
+    if (saved) {
+      setLiquidations(saved.liquidations);
+      setStats(saved.stats);
+      setAggregated(saved.aggregated);
+    }
+  }, [persistKey, persistTtlMs]);
 
   const minValueRef = useRef(minValue);
   const onLiquidationRef = useRef(onLiquidation);
