@@ -1302,15 +1302,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'BitMEX',
     fetcher: async (fetchFn) => {
-      if (!process.env.PROXY_URL) return [];
-      const res = await fetchFn('/api/proxy/cf-bypass?endpoint=bitmex-funding', {}, 12000);
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,fundingRate,fundingInterval,lastPrice,volume24h&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
+      const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
         .filter((i: any) => i.fundingRate != null && i.symbol)
         .map((i: any) => {
-          const sym = i.symbol.replace(/USD$/, '').replace(/USDT$/, '').replace(/_.*/, '');
+          let sym = i.symbol.replace(/USD$/, '').replace(/USDT$/, '').replace(/_.*/, '');
+          if (sym === 'XBT') sym = 'BTC';
           return {
             symbol: sym,
             exchange: 'BitMEX',
@@ -1330,8 +1333,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'Gate.io',
     fetcher: async (fetchFn) => {
-      if (!process.env.PROXY_URL) return [];
-      const res = await fetchFn('/api/proxy/cf-bypass?endpoint=gateio-funding', {}, 12000);
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const targetUrl = 'https://api.gateio.ws/api/v4/futures/usdt/contracts';
+      const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
