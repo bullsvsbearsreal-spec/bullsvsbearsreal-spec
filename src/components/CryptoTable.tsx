@@ -214,8 +214,8 @@ export default function CryptoTable() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Table (desktop) */}
+      <div className="overflow-x-auto hidden md:block">
         <table className="w-full">
           <thead>
             <tr className="bg-hub-gray/20">
@@ -286,6 +286,50 @@ export default function CryptoTable() {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden p-3 space-y-2">
+        {assets.slice(0, expanded ? assets.length : 10).map((asset) => (
+          <div key={`m-${asset.symbol}`} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <TokenIconSimple symbol={asset.symbol} size={28} />
+                <div>
+                  <span className="text-white font-semibold text-sm">{asset.symbol}</span>
+                  <span className="text-hub-gray-text text-xs ml-1.5">{asset.name}</span>
+                </div>
+              </div>
+              <WatchlistStar symbol={asset.symbol} />
+            </div>
+            <div className="grid grid-cols-3 gap-x-3 gap-y-1.5">
+              <div>
+                <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Price</span>
+                <div className="text-sm font-mono text-white">{formatPrice(asset.price)}</div>
+              </div>
+              <div>
+                <span className="text-neutral-600 text-[10px] uppercase tracking-wider">24h</span>
+                <div className={`text-sm font-mono font-semibold ${(asset.change24h ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {(asset.change24h ?? 0) >= 0 ? '+' : ''}{(asset.change24h ?? 0).toFixed(2)}%
+                </div>
+              </div>
+              <div>
+                <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Funding</span>
+                <div className={`text-sm font-mono ${(asset.fundingRate ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {(asset.fundingRate ?? 0) >= 0 ? '+' : ''}{(asset.fundingRate ?? 0).toFixed(4)}%
+                </div>
+              </div>
+              <div>
+                <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Volume</span>
+                <div className="text-sm font-mono text-hub-gray-text-light">{formatNumber(asset.volume24h)}</div>
+              </div>
+              <div>
+                <span className="text-neutral-600 text-[10px] uppercase tracking-wider">OI</span>
+                <div className="text-sm font-mono text-hub-gray-text-light">{formatNumber(asset.openInterest)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
       <ShowMoreToggle
         expanded={expanded}

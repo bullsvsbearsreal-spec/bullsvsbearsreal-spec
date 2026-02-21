@@ -131,74 +131,113 @@ export default function FundingRatesTable() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table (desktop) */}
       {!isLoading && !error && fundingRates.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-hub-gray/20">
-                <th className="text-left text-xs text-hub-gray-text font-medium px-5 py-3">Asset</th>
-                <th className="text-left text-xs text-hub-gray-text font-medium px-5 py-3">Exchange</th>
-                <th className="text-right text-xs text-hub-gray-text font-medium px-5 py-3">Current Rate</th>
-                <th className="text-right text-xs text-hub-gray-text font-medium px-5 py-3">Annualized</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRates.slice(0, 15).map((rate, index) => {
-                const annualized = parseFloat(calculateAnnualized(rate.fundingRate, rate.fundingInterval));
-                return (
-                  <tr
-                    key={`${rate.symbol}-${rate.exchange}-${index}`}
-                    className="border-t border-hub-gray/20 hover:bg-hub-gray/10 transition-colors data-row"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <TokenIconSimple symbol={rate.symbol} size={28} />
-                        <span className="font-semibold text-white">{rate.symbol}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <ExchangeLogo exchange={rate.exchange.toLowerCase()} size={20} />
-                        <span className="text-hub-gray-text-light text-sm">{rate.exchange}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {safeRate(rate.fundingRate) >= 0 ? (
-                          <ArrowUpRight className="w-3.5 h-3.5 text-success" />
-                        ) : (
-                          <ArrowDownRight className="w-3.5 h-3.5 text-danger" />
-                        )}
-                        <span className={`font-mono text-sm ${safeRate(rate.fundingRate) >= 0 ? 'text-success' : 'text-danger'}`}>
-                          {safeRate(rate.fundingRate) >= 0 ? '+' : ''}{safeRate(rate.fundingRate).toFixed(4)}%
+        <>
+          <div className="overflow-x-auto hidden md:block">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-hub-gray/20">
+                  <th className="text-left text-xs text-hub-gray-text font-medium px-5 py-3">Asset</th>
+                  <th className="text-left text-xs text-hub-gray-text font-medium px-5 py-3">Exchange</th>
+                  <th className="text-right text-xs text-hub-gray-text font-medium px-5 py-3">Current Rate</th>
+                  <th className="text-right text-xs text-hub-gray-text font-medium px-5 py-3">Annualized</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRates.slice(0, 15).map((rate, index) => {
+                  const annualized = parseFloat(calculateAnnualized(rate.fundingRate, rate.fundingInterval));
+                  return (
+                    <tr
+                      key={`${rate.symbol}-${rate.exchange}-${index}`}
+                      className="border-t border-hub-gray/20 hover:bg-hub-gray/10 transition-colors data-row"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <TokenIconSimple symbol={rate.symbol} size={28} />
+                          <span className="font-semibold text-white">{rate.symbol}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <ExchangeLogo exchange={rate.exchange.toLowerCase()} size={20} />
+                          <span className="text-hub-gray-text-light text-sm">{rate.exchange}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {safeRate(rate.fundingRate) >= 0 ? (
+                            <ArrowUpRight className="w-3.5 h-3.5 text-success" />
+                          ) : (
+                            <ArrowDownRight className="w-3.5 h-3.5 text-danger" />
+                          )}
+                          <span className={`font-mono text-sm ${safeRate(rate.fundingRate) >= 0 ? 'text-success' : 'text-danger'}`}>
+                            {safeRate(rate.fundingRate) >= 0 ? '+' : ''}{safeRate(rate.fundingRate).toFixed(4)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <span className={`px-2 py-1 rounded-md text-sm font-semibold ${
+                          annualized >= 10
+                            ? 'bg-hub-yellow/10 text-hub-yellow'
+                            : annualized >= 5
+                            ? 'bg-success/10 text-success'
+                            : annualized < 0
+                            ? 'bg-danger/10 text-danger'
+                            : 'bg-hub-gray/30 text-hub-gray-text-light'
+                        }`}>
+                          {annualized.toFixed(2)}%
                         </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden p-3 space-y-2">
+            {filteredRates.slice(0, 15).map((rate, index) => {
+              const annualized = parseFloat(calculateAnnualized(rate.fundingRate, rate.fundingInterval));
+              return (
+                <div key={`m-${rate.symbol}-${rate.exchange}-${index}`} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <TokenIconSimple symbol={rate.symbol} size={24} />
+                      <span className="text-white font-semibold text-sm">{rate.symbol}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <ExchangeLogo exchange={rate.exchange.toLowerCase()} size={16} />
+                      <span className="text-hub-gray-text text-xs">{rate.exchange}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div>
+                      <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Rate</span>
+                      <div className={`text-sm font-mono ${safeRate(rate.fundingRate) >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {safeRate(rate.fundingRate) >= 0 ? '+' : ''}{safeRate(rate.fundingRate).toFixed(4)}%
                       </div>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <span className={`px-2 py-1 rounded-md text-sm font-semibold ${
-                        annualized >= 10
-                          ? 'bg-hub-yellow/10 text-hub-yellow'
-                          : annualized >= 5
-                          ? 'bg-success/10 text-success'
-                          : annualized < 0
-                          ? 'bg-danger/10 text-danger'
-                          : 'bg-hub-gray/30 text-hub-gray-text-light'
+                    </div>
+                    <div>
+                      <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Annualized</span>
+                      <div className={`text-sm font-mono font-semibold ${
+                        annualized >= 10 ? 'text-hub-yellow' : annualized >= 5 ? 'text-success' : annualized < 0 ? 'text-danger' : 'text-hub-gray-text-light'
                       }`}>
                         {annualized.toFixed(2)}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Footer */}
       <div className="p-4 border-t border-hub-gray/20 bg-hub-gray/10">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
           <p className="text-xs text-hub-gray-text">
             Positive rates: Longs pay shorts | Negative rates: Shorts pay longs
           </p>

@@ -457,8 +457,8 @@ export default function ScreenerPage() {
           </span>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+        {/* Table (desktop) */}
+        <div className="overflow-x-auto rounded-xl border border-white/[0.06] hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-white/[0.02] border-b border-white/[0.06]">
@@ -541,6 +541,60 @@ export default function ScreenerPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-2">
+          {paged.map((row, idx) => {
+            const rank = page * PAGE_SIZE + idx + 1;
+            const inWl = isInWatchlist(row.symbol);
+            return (
+              <div key={`m-${row.symbol}`} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-neutral-600 text-[11px] w-5">{rank}</span>
+                    <span className="text-white font-semibold text-sm">{row.symbol}</span>
+                    <span className={`font-mono text-xs font-semibold ${row.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatPercent(row.change24h)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => toggleWatchlist(row.symbol)}
+                    className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+                      inWl ? 'text-hub-yellow' : 'text-neutral-700 hover:text-neutral-400'
+                    }`}
+                  >
+                    <Star className="w-3.5 h-3.5" fill={inWl ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+                  <div>
+                    <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Price</span>
+                    <div className="text-xs font-mono text-neutral-300">{formatPrice(row.price)}</div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Funding</span>
+                    <div className={`text-xs font-mono ${
+                      row.avgFunding > 0.01 ? 'text-green-400' : row.avgFunding < -0.01 ? 'text-red-400' : 'text-neutral-400'
+                    }`}>
+                      {row.avgFunding !== 0 ? formatFundingRate(row.avgFunding) : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-600 text-[10px] uppercase tracking-wider">OI</span>
+                    <div className="text-xs font-mono text-neutral-400">
+                      {row.totalOI > 0 ? formatNumber(row.totalOI) : '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {paged.length === 0 && !loading && (
+            <div className="text-center py-12 text-neutral-500 text-sm">
+              {conditions.length > 0 ? 'No symbols match your filter conditions.' : 'No data available.'}
+            </div>
+          )}
         </div>
 
         {/* Pagination */}
