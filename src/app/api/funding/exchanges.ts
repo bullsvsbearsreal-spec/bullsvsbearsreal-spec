@@ -1296,6 +1296,86 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .filter((item: any) => item && !isNaN(item.fundingRate) && item.fundingRate !== 0 && item.markPrice > 0);
     },
   },
+  // ─── CloudFlare-blocked exchanges (require PROXY_URL env var) ───
+
+  // BitMEX (~$158M OI)
+  {
+    name: 'BitMEX',
+    fetcher: async (fetchFn) => {
+      if (!process.env.PROXY_URL) return [];
+      const res = await fetchFn('/api/proxy/cf-bypass?endpoint=bitmex-funding', {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((i: any) => i.fundingRate != null && i.symbol)
+        .map((i: any) => {
+          const sym = i.symbol.replace(/USD$/, '').replace(/USDT$/, '').replace(/_.*/, '');
+          return {
+            symbol: sym,
+            exchange: 'BitMEX',
+            fundingRate: parseFloat(i.fundingRate) * 100,
+            fundingInterval: '8h' as const,
+            markPrice: parseFloat(i.lastPrice) || 0,
+            indexPrice: 0,
+            nextFundingTime: 0,
+            type: 'cex' as const,
+          };
+        })
+        .filter((i: any) => !isNaN(i.fundingRate) && i.symbol.length > 0);
+    },
+  },
+
+  // Gate.io (~$1.5B OI)
+  {
+    name: 'Gate.io',
+    fetcher: async (fetchFn) => {
+      if (!process.env.PROXY_URL) return [];
+      const res = await fetchFn('/api/proxy/cf-bypass?endpoint=gateio-funding', {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((c: any) => c.funding_rate != null && c.name?.endsWith('_USDT'))
+        .map((c: any) => ({
+          symbol: c.name.replace('_USDT', ''),
+          exchange: 'Gate.io',
+          fundingRate: parseFloat(c.funding_rate) * 100,
+          fundingInterval: '8h' as const,
+          markPrice: parseFloat(c.mark_price) || 0,
+          indexPrice: parseFloat(c.index_price) || 0,
+          nextFundingTime: (c.funding_next_apply || 0) * 1000,
+          type: 'cex' as const,
+        }))
+        .filter((i: any) => !isNaN(i.fundingRate));
+    },
+  },
+
+  // Crypto.com (~$500M OI)
+  {
+    name: 'Crypto.com',
+    fetcher: async (fetchFn) => {
+      if (!process.env.PROXY_URL) return [];
+      const res = await fetchFn('/api/proxy/cf-bypass?endpoint=cryptocom-tickers', {}, 12000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const data = json?.result?.data;
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.i?.endsWith('USD-PERP') && t.fr != null)
+        .map((t: any) => ({
+          symbol: t.i.replace('-USD-PERP', '').replace('_', ''),
+          exchange: 'Crypto.com',
+          fundingRate: parseFloat(t.fr) * 100,
+          fundingInterval: '8h' as const,
+          markPrice: parseFloat(t.a) || 0,
+          indexPrice: 0,
+          nextFundingTime: 0,
+          type: 'cex' as const,
+        }))
+        .filter((i: any) => !isNaN(i.fundingRate) && i.symbol.length > 0);
+    },
+  },
 ];
 
 // Paused exchanges (kept for reference):

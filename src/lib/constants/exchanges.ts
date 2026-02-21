@@ -4,6 +4,7 @@ export const ALL_EXCHANGES = [
   'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
   'Aevo', 'Drift', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
   'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'edgeX', 'Variational',
+  'BitMEX', 'Gate.io', 'Crypto.com',
 ] as const;
 
 export type ExchangeName = (typeof ALL_EXCHANGES)[number];
@@ -37,6 +38,9 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'Extended': 'bg-amber-400',
   'edgeX': 'bg-sky-400',
   'Variational': 'bg-fuchsia-400',
+  'BitMEX': 'bg-red-500',
+  'Gate.io': 'bg-blue-400',
+  'Crypto.com': 'bg-blue-700',
 };
 
 // Exchange badge colors for table cells
@@ -68,6 +72,9 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'Extended': 'bg-amber-400/20 text-amber-300',
   'edgeX': 'bg-sky-400/20 text-sky-300',
   'Variational': 'bg-fuchsia-400/20 text-fuchsia-300',
+  'BitMEX': 'bg-red-500/20 text-red-400',
+  'Gate.io': 'bg-blue-400/20 text-blue-300',
+  'Crypto.com': 'bg-blue-700/20 text-blue-300',
 };
 
 // DEX exchanges (on-chain / decentralized perpetual protocols)
@@ -120,6 +127,9 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Extended':   return `https://app.extended.exchange/trade/${s}-USD`;
     case 'edgeX':      return `https://pro.edgex.exchange/trade/${s}USD`;
     case 'Variational': return `https://app.variational.io/trade/${s}`;
+    case 'BitMEX':     return `https://www.bitmex.com/app/trade/${s}USD`;
+    case 'Gate.io':    return `https://www.gate.io/futures_trade/USDT/${s}_USDT`;
+    case 'Crypto.com': return `https://crypto.com/exchange/trade/${s}_USD-PERP`;
     default:           return null;
   }
 }
