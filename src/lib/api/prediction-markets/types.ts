@@ -1,5 +1,5 @@
 // Supported prediction market platforms
-export type PredictionPlatform = 'polymarket' | 'kalshi' | 'manifold' | 'metaculus';
+export type PredictionPlatform = 'polymarket' | 'kalshi';
 
 // Normalized prediction market from any platform
 export interface PredictionMarket {
@@ -9,7 +9,7 @@ export interface PredictionMarket {
   slug: string;
   yesPrice: number;    // 0–1 probability
   noPrice: number;     // 0–1 probability
-  volume24h: number;   // USD (0 for non-trading platforms like Metaculus)
+  volume24h: number;   // USD
   totalVolume: number; // USD lifetime
   liquidity: number;
   openInterest: number;
@@ -17,7 +17,6 @@ export interface PredictionMarket {
   category: string;
   active: boolean;
   url: string;         // direct link to market
-  forecasters?: number; // Metaculus/Manifold forecaster count
 }
 
 // A matched pair of markets across any two platforms

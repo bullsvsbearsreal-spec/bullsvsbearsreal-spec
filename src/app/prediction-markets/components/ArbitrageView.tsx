@@ -18,15 +18,11 @@ const ROWS_PER_PAGE = 30;
 const PLATFORM_LABELS: Record<PredictionPlatform, string> = {
   polymarket: 'Polymarket',
   kalshi: 'Kalshi',
-  manifold: 'Manifold',
-  metaculus: 'Metaculus',
 };
 
 const PLATFORM_COLORS: Record<PredictionPlatform, string> = {
   polymarket: 'text-purple-400',
   kalshi: 'text-blue-400',
-  manifold: 'text-green-400',
-  metaculus: 'text-orange-400',
 };
 
 function pct(v: number): string {
@@ -303,12 +299,6 @@ function PlatformDetail({ market, url }: { market: PredictionArbitrage['platform
           <div className="flex justify-between">
             <span className="text-neutral-500">Open Interest</span>
             <span className="text-neutral-300 font-mono">{vol(market.openInterest)}</span>
-          </div>
-        )}
-        {market.forecasters != null && market.forecasters > 0 && (
-          <div className="flex justify-between">
-            <span className="text-neutral-500">Forecasters</span>
-            <span className="text-neutral-300 font-mono">{market.forecasters.toLocaleString()}</span>
           </div>
         )}
         {market.endDate && (

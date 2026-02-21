@@ -17,8 +17,6 @@ type ViewMode = 'arbitrage' | 'browse';
 const PLATFORM_LABELS: Record<PredictionPlatform, string> = {
   polymarket: 'Polymarket',
   kalshi: 'Kalshi',
-  manifold: 'Manifold',
-  metaculus: 'Metaculus',
 };
 
 export default function PredictionMarketsPage() {
@@ -34,7 +32,7 @@ export default function PredictionMarketsPage() {
   });
 
   const arbitrage = Array.isArray(data?.arbitrage) ? data.arbitrage : [];
-  const markets = data?.markets ?? { polymarket: [], kalshi: [], manifold: [], metaculus: [] };
+  const markets = data?.markets ?? { polymarket: [], kalshi: [] };
   const meta = data?.meta;
 
   const totalMarkets = meta
@@ -198,7 +196,7 @@ export default function PredictionMarketsPage() {
           <Info className="w-4 h-4 text-hub-yellow flex-shrink-0 mt-0.5" />
           <p className="text-neutral-500 text-xs leading-relaxed">
             Prices represent implied probabilities (0-100%). A spread indicates the same event is priced differently across platforms.
-            Polymarket and Manifold use play money / crypto. Kalshi uses real USD. Metaculus uses crowd forecasting (no trading).
+            Polymarket uses crypto. Kalshi uses real USD.
             Not financial advice.
           </p>
         </div>

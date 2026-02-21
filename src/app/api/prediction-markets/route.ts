@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
-import { CURATED_MAPPINGS, extractKeywords, keywordSimilarity } from '@/lib/api/prediction-markets/mappings';
+import { CURATED_MAPPINGS, extractKeywords, keywordSimilarity, extractNumbers, hasConflictingPolarity } from '@/lib/api/prediction-markets/mappings';
 import type { PredictionMarket, PredictionArbitrage, PredictionMarketsResponse, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
 export const runtime = 'edge';
@@ -145,108 +145,6 @@ async function fetchKalshi(): Promise<PredictionMarket[]> {
   return allMarkets;
 }
 
-// ─── Manifold Markets ────────────────────────────────────────
-async function fetchManifold(): Promise<PredictionMarket[]> {
-  const res = await fetchWithTimeout(
-    'https://api.manifold.markets/v0/search-markets?term=&sort=24-hour-vol&limit=200&filter=open&contractType=BINARY',
-    {},
-    15000
-  );
-  if (!res.ok) throw new Error(`Manifold HTTP ${res.status}`);
-  const markets: any[] = await res.json();
-
-  return markets
-    .filter((m: any) => {
-      if (m.isResolved) return false;
-      if (m.probability == null) return false;
-      const p = m.probability;
-      if (p < 0.02 || p > 0.98) return false;
-      return true;
-    })
-    .map((m: any) => {
-      const p = m.probability ?? 0.5;
-      return {
-        id: String(m.id || ''),
-        platform: 'manifold' as const,
-        question: m.question || '',
-        slug: m.slug || '',
-        yesPrice: p,
-        noPrice: +(1 - p).toFixed(4),
-        volume24h: m.volume24Hours || 0,
-        totalVolume: m.volume || 0,
-        liquidity: m.totalLiquidity || 0,
-        openInterest: 0,
-        endDate: m.closeTime ? new Date(m.closeTime).toISOString() : '',
-        category: inferCategory(m.question || ''),
-        active: true,
-        url: m.url || `https://manifold.markets/${m.creatorUsername}/${m.slug}`,
-        forecasters: m.uniqueBettorCount || 0,
-      };
-    });
-}
-
-// ─── Metaculus ────────────────────────────────────────────────
-async function fetchMetaculus(): Promise<PredictionMarket[]> {
-  const res = await fetchWithTimeout(
-    'https://www.metaculus.com/api2/questions/?limit=100&status=open&order_by=-forecasts_count&type=forecast',
-    { headers: { 'Accept': 'application/json' } },
-    15000
-  );
-  if (!res.ok) throw new Error(`Metaculus HTTP ${res.status}`);
-  const data: any = await res.json();
-  const questions: any[] = data.results || [];
-
-  return questions
-    .filter((q: any) => {
-      if (q.resolved || q.status !== 'open') return false;
-      // Only binary questions
-      const type = q.question?.type || q.possibilities?.type;
-      if (type && type !== 'binary') return false;
-      // Need a probability
-      const prob = getMetaculusProbability(q);
-      if (prob == null || prob < 0.02 || prob > 0.98) return false;
-      return true;
-    })
-    .map((q: any) => {
-      const prob = getMetaculusProbability(q) ?? 0.5;
-      const categories = q.projects?.category || [];
-      const catName = Array.isArray(categories) && categories.length > 0
-        ? categories[0].name || 'Other'
-        : 'Other';
-
-      return {
-        id: String(q.id || ''),
-        platform: 'metaculus' as const,
-        question: q.title || q.short_title || '',
-        slug: q.url_title || String(q.id),
-        yesPrice: prob,
-        noPrice: +(1 - prob).toFixed(4),
-        volume24h: 0,
-        totalVolume: 0,
-        liquidity: 0,
-        openInterest: 0,
-        endDate: q.scheduled_close_time || q.question?.scheduled_close_time || '',
-        category: inferCategory(q.title || '', undefined, catName),
-        active: true,
-        url: `https://www.metaculus.com/questions/${q.id}`,
-        forecasters: q.nr_forecasters || q.forecasts_count || 0,
-      };
-    });
-}
-
-function getMetaculusProbability(q: any): number | null {
-  // Try nested aggregation first (newer format)
-  const agg = q.question?.aggregations?.recency_weighted?.latest;
-  if (agg?.centers && agg.centers.length > 0) {
-    return agg.centers[0];
-  }
-  // Try community prediction (older format)
-  if (q.community_prediction?.full?.q2 != null) {
-    return q.community_prediction.full.q2;
-  }
-  return null;
-}
-
 // ─── Shared helpers ──────────────────────────────────────────
 function inferCategory(question: string, tags?: any, fallback?: string): string {
   if (tags && Array.isArray(tags) && tags.length > 0) return tags[0];
@@ -254,7 +152,7 @@ function inferCategory(question: string, tags?: any, fallback?: string): string 
   if (/bitcoin|btc|ethereum|eth|crypto|solana|xrp|defi/i.test(q)) return 'Crypto';
   if (/fed |interest rate|inflation|gdp|cpi|recession|tariff|economy/i.test(q)) return 'Economics';
   if (/trump|biden|election|president|congress|senate|government|shutdown|republican|democrat/i.test(q)) return 'Politics';
-  if (/win on|match|game|championship|nba|nfl|fifa|uefa|league|super bowl/i.test(q)) return 'Sports';
+  if (/\bvs\.?\b|win\b.*\b(?:match|game|tournament|championship|cup|open|masters|grand prix)|championship|nba|nfl|nhl|mlb|fifa|uefa|league|super bowl|premier league|ligue|serie a|la liga|wimbledon|playoffs/i.test(q)) return 'Sports';
   if (/openai|ai |deepseek|google|apple|tesla|spacex|agi|artificial/i.test(q)) return 'Tech';
   if (/war|iran|russia|ukraine|china|military|strike|nuclear/i.test(q)) return 'Geopolitics';
   if (fallback && fallback !== 'Other') return fallback;
@@ -324,8 +222,8 @@ function matchPair(
     }
   }
 
-  // Pass 2: Keyword fuzzy matching
-  const SIMILARITY_THRESHOLD = 0.3;
+  // Pass 2: Keyword fuzzy matching (strict)
+  const SIMILARITY_THRESHOLD = 0.5;
   for (const mA of marketsA) {
     if (usedA.has(mA.id)) continue;
     const kwA = extractKeywords(mA.question);
@@ -340,7 +238,22 @@ function matchPair(
       if (kwB.length < 2) continue;
 
       const score = keywordSimilarity(kwA, kwB);
-      if (score > bestScore && score >= SIMILARITY_THRESHOLD) {
+      if (score < SIMILARITY_THRESHOLD) continue;
+
+      // Reject conflicting polarity (e.g. "above $100K" vs "below $100K")
+      if (hasConflictingPolarity(mA.question, mB.question)) continue;
+
+      // Reject mismatched numerical thresholds (e.g. "$15K" vs "$60K")
+      const numsA = extractNumbers(mA.question);
+      const numsB = extractNumbers(mB.question);
+      if (numsA.length > 0 && numsB.length > 0) {
+        const hasNumMatch = numsA.some(a => numsB.some(b =>
+          Math.min(a, b) / Math.max(a, b) > 0.8
+        ));
+        if (!hasNumMatch) continue;
+      }
+
+      if (score > bestScore) {
         bestScore = score;
         bestMatch = mB;
       }
@@ -385,24 +298,18 @@ function buildArbitrage(
 export async function GET(_request: NextRequest) {
   const errors: string[] = [];
 
-  const [polyResult, kalshiResult, manifoldResult, metaculusResult] = await Promise.allSettled([
+  const [polyResult, kalshiResult] = await Promise.allSettled([
     fetchPolymarket(),
     fetchKalshi(),
-    fetchManifold(),
-    fetchMetaculus(),
   ]);
 
   const poly = polyResult.status === 'fulfilled' ? polyResult.value : [];
   const kalshi = kalshiResult.status === 'fulfilled' ? kalshiResult.value : [];
-  const manifold = manifoldResult.status === 'fulfilled' ? manifoldResult.value : [];
-  const metaculus = metaculusResult.status === 'fulfilled' ? metaculusResult.value : [];
 
   if (polyResult.status === 'rejected') errors.push(`Polymarket: ${polyResult.reason}`);
   if (kalshiResult.status === 'rejected') errors.push(`Kalshi: ${kalshiResult.reason}`);
-  if (manifoldResult.status === 'rejected') errors.push(`Manifold: ${manifoldResult.reason}`);
-  if (metaculusResult.status === 'rejected') errors.push(`Metaculus: ${metaculusResult.reason}`);
 
-  const platformData = { polymarket: poly, kalshi, manifold, metaculus };
+  const platformData = { polymarket: poly, kalshi };
   const arbitrage = matchAllPlatforms(platformData);
 
   const response: PredictionMarketsResponse = {
@@ -412,8 +319,6 @@ export async function GET(_request: NextRequest) {
       counts: {
         polymarket: poly.length,
         kalshi: kalshi.length,
-        manifold: manifold.length,
-        metaculus: metaculus.length,
       },
       matchedCount: arbitrage.length,
       timestamp: Date.now(),

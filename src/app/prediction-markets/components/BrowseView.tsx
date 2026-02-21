@@ -16,8 +16,6 @@ const ROWS_PER_PAGE = 20;
 const PLATFORM_CONFIG: { key: PredictionPlatform; label: string; color: string; dotColor: string }[] = [
   { key: 'polymarket', label: 'Polymarket', color: 'text-purple-400', dotColor: 'bg-purple-400' },
   { key: 'kalshi', label: 'Kalshi', color: 'text-blue-400', dotColor: 'bg-blue-400' },
-  { key: 'manifold', label: 'Manifold', color: 'text-green-400', dotColor: 'bg-green-400' },
-  { key: 'metaculus', label: 'Metaculus', color: 'text-orange-400', dotColor: 'bg-orange-400' },
 ];
 
 function pct(v: number): string {
@@ -108,9 +106,6 @@ function MarketColumn({ title, markets, color, dotColor }: { title: string; mark
               <div className="flex items-center gap-2 text-[10px] text-neutral-600">
                 {m.volume24h > 0 && (
                   <span>Vol: <span className="text-neutral-400 font-mono">{vol(m.volume24h)}</span></span>
-                )}
-                {m.forecasters != null && m.forecasters > 0 && (
-                  <span><span className="text-neutral-400 font-mono">{m.forecasters.toLocaleString()}</span> forecasters</span>
                 )}
                 {m.endDate && (
                   <span>{new Date(m.endDate).toLocaleDateString()}</span>
