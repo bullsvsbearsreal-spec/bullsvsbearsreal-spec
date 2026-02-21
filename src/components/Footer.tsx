@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from './Logo';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 export default function Footer() {
   return (
@@ -13,7 +14,7 @@ export default function Footer() {
               <span className="text-white font-bold text-sm">InfoHub</span>
             </div>
             <p className="text-neutral-600 text-xs leading-relaxed max-w-xs">
-              Real-time derivatives intelligence across 22 exchanges. Funding rates, open interest, liquidations & more.
+              Real-time derivatives intelligence across {ALL_EXCHANGES.length} exchanges. Funding rates, open interest, liquidations & more.
             </p>
           </div>
 

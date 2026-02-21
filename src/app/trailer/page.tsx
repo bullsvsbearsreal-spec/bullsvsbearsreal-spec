@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Play, Pause, RotateCcw } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 /* ── scene config ─────────────────────────────────────────────── */
 const SCENES = [
@@ -140,7 +141,7 @@ export default function TrailerPage() {
         <Centered>
           <div className="text-center animate-[fadeIn_1s_ease]">
             <p className="text-3xl md:text-5xl font-bold text-white">
-              Real-time data from <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">27 exchanges</span>
+              Real-time data from <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">{ALL_EXCHANGES.length} exchanges</span>
             </p>
             <p className="text-xl md:text-2xl text-neutral-500 mt-4">
               Aggregated. Analyzed. Actionable.
@@ -152,7 +153,7 @@ export default function TrailerPage() {
       {sceneId === 'montage-1' && (
         <MontageSlide
           title="Liquidation Heatmap"
-          desc="See every forced closure across 27 exchanges in real-time"
+          desc={`See every forced closure across ${ALL_EXCHANGES.length} exchanges in real-time`}
           color="#EF4444"
           icon="🔥"
           features={['CEX & DEX filtering', 'Timeline chart', 'Exchange heatmap', 'Sound alerts']}
