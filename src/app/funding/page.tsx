@@ -16,6 +16,7 @@ import FundingArbitrageView from './components/FundingArbitrageView';
 import ShareButton from '@/components/ShareButton';
 import Footer from '@/components/Footer';
 import { saveFundingSnapshot } from '@/lib/storage/fundingHistory';
+import { type FundingPeriod, periodMultiplier, PERIOD_HOURS, formatRateAdaptive } from './utils';
 
 type ViewMode = 'heatmap' | 'arbitrage';
 type VenueFilter = 'all' | 'cex' | 'dex';
@@ -55,7 +56,17 @@ export default function FundingPage() {
     return (localStorage.getItem('infohub:funding:venue') as VenueFilter) || 'all';
   });
   const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
+  const [fundingPeriod, setFundingPeriod] = useState<FundingPeriod>('8h');
   const exchangeSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Restore funding period from localStorage after hydration
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('infohub:funding:period') as FundingPeriod | null;
+      if (saved && saved !== fundingPeriod) setFundingPeriod(saved);
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist exchange selection & venue filter to localStorage
   useEffect(() => {
@@ -69,6 +80,10 @@ export default function FundingPage() {
       localStorage.setItem('infohub:funding:venue', venueFilter);
     } catch {}
   }, [venueFilter]);
+
+  useEffect(() => {
+    try { localStorage.setItem('infohub:funding:period', fundingPeriod); } catch {}
+  }, [fundingPeriod]);
 
   // Close exchange selector on Escape or click outside
   useEffect(() => {
@@ -157,12 +172,10 @@ export default function FundingPage() {
   const getSymbolAvgRate = (symbol: string) => {
     const rates = fundingRates.filter(fr => fr.symbol === symbol);
     if (rates.length === 0) return 0;
-    // Normalize to 8h basis for cross-exchange comparison
-    const sum8h = rates.reduce((sum, fr) => {
-      const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
-      return sum + fr.fundingRate * mult;
+    const sumNormalized = rates.reduce((sum, fr) => {
+      return sum + fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
     }, 0);
-    return sum8h / rates.length;
+    return sumNormalized / rates.length;
   };
 
   const allSymbolsWithRates = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
@@ -193,7 +206,7 @@ export default function FundingPage() {
       if (bPriority !== -1) return 1;
       const aRates = fundingRates.filter(fr => fr.symbol === a);
       const bRates = fundingRates.filter(fr => fr.symbol === b);
-      const norm = (fr: typeof aRates[0]) => { const m = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1; return Math.abs(fr.fundingRate) * m; };
+      const norm = (fr: typeof aRates[0]) => Math.abs(fr.fundingRate) * periodMultiplier(fr.fundingInterval, fundingPeriod);
       const aAvg = aRates.reduce((sum, fr) => sum + norm(fr), 0) / aRates.length;
       const bAvg = bRates.reduce((sum, fr) => sum + norm(fr), 0) / bRates.length;
       return bAvg - aAvg;
@@ -227,13 +240,13 @@ export default function FundingPage() {
   const validRates = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
   const avgRate = validRates.length > 0
     ? validRates.reduce((sum, fr) => {
-        const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
-        return sum + fr.fundingRate * mult;
+        return sum + fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
       }, 0) / validRates.length : 0;
+  const normRate = (fr: typeof validRates[0]) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
   const highestRate = validRates.length > 0
-    ? validRates.reduce((max, fr) => fr.fundingRate > max.fundingRate ? fr : max, validRates[0]) : null;
+    ? validRates.reduce((max, fr) => normRate(fr) > normRate(max) ? fr : max, validRates[0]) : null;
   const lowestRate = validRates.length > 0
-    ? validRates.reduce((min, fr) => fr.fundingRate < min.fundingRate ? fr : min, validRates[0]) : null;
+    ? validRates.reduce((min, fr) => normRate(fr) < normRate(min) ? fr : min, validRates[0]) : null;
 
   const viewTabs: { key: ViewMode; label: string }[] = [
     { key: 'heatmap', label: 'Heatmap' },
@@ -300,6 +313,7 @@ export default function FundingPage() {
           avgRate={avgRate}
           highestRate={highestRate}
           lowestRate={lowestRate}
+          fundingPeriod={fundingPeriod}
         />
 
         {/* Controls */}
@@ -338,6 +352,21 @@ export default function FundingPage() {
                   }`}
                 >
                   {v === 'all' ? 'All' : v.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* Period normalization toggle */}
+            <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+              {(['1h', '4h', '8h', '24h', '1Y'] as FundingPeriod[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFundingPeriod(p)}
+                  className={`px-2 py-1.5 text-xs font-medium transition-colors ${
+                    fundingPeriod === p ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+                  }`}
+                >
+                  {p}
                 </button>
               ))}
             </div>
@@ -473,10 +502,10 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} fundingPeriod={fundingPeriod} />
             )}
             {viewMode === 'arbitrage' && assetClass === 'crypto' && (
-              <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} />
+              <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} />
             )}
           </>
         )}

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { formatRate } from '../utils';
+import { formatRateAdaptive, type FundingPeriod, periodMultiplier, PERIOD_HOURS } from '../utils';
 import Pagination from './Pagination';
 import { ChevronUp, ChevronDown, ExternalLink, Grid3X3, LayoutGrid } from 'lucide-react';
 import { getExchangeTradeUrl } from '@/lib/constants';
@@ -26,18 +26,19 @@ interface FundingHeatmapViewProps {
   intervalMap?: Map<string, string>;
   oiMap?: Map<string, number>;
   longShortMap?: Map<string, { long: number; short: number }>;
+  fundingPeriod: FundingPeriod;
 }
 
 /* ═══════════════════════════════════════
    COLOR ENGINE
    ═══════════════════════════════════════ */
 
-function rateToColors(rate: number | undefined): { bg: string; text: string; glow: string } {
+function rateToColors(rate: number | undefined, clamp = 0.3): { bg: string; text: string; glow: string } {
   if (rate === undefined) return { bg: 'rgba(255,255,255,0.02)', text: 'rgba(255,255,255,0.12)', glow: 'transparent' };
   if (rate === 0) return { bg: 'rgba(255,255,255,0.035)', text: 'rgba(255,255,255,0.35)', glow: 'transparent' };
 
-  const abs = Math.min(Math.abs(rate), 0.3);
-  const t = Math.pow(abs / 0.3, 0.55); // gamma for perceptual linearity
+  const abs = Math.min(Math.abs(rate), clamp);
+  const t = Math.pow(abs / clamp, 0.55); // gamma for perceptual linearity
 
   if (rate > 0) {
     return {
@@ -55,9 +56,9 @@ function rateToColors(rate: number | undefined): { bg: string; text: string; glo
 }
 
 // Treemap: brighter, more saturated for large blocks
-function rateToTreemapColor(rate: number): string {
-  const abs = Math.min(Math.abs(rate), 0.25);
-  const t = Math.pow(abs / 0.25, 0.5);
+function rateToTreemapColor(rate: number, clamp = 0.25): string {
+  const abs = Math.min(Math.abs(rate), clamp);
+  const t = Math.pow(abs / clamp, 0.5);
   if (rate >= 0) {
     const r = Math.round(13 + (16 - 13) * t);
     const g = Math.round(30 + (185 - 30) * t);
@@ -140,8 +141,12 @@ function squarify(
    ═══════════════════════════════════════ */
 
 export default function FundingHeatmapView({
-  symbols, visibleExchanges, heatmapData, intervalMap, oiMap, longShortMap,
+  symbols, visibleExchanges, heatmapData, intervalMap, oiMap, longShortMap, fundingPeriod,
 }: FundingHeatmapViewProps) {
+  // Period-scaled color clamps
+  const periodScale = PERIOD_HOURS[fundingPeriod] / 8;
+  const gridClamp = 0.3 * periodScale;
+  const treemapClamp = 0.25 * periodScale;
   const [mode, setMode] = useState<HeatmapMode>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [exchangeSort, setExchangeSort] = useState<ExchangeSort | null>(null);
@@ -183,15 +188,14 @@ export default function FundingHeatmapView({
         const r = rates.get(ex);
         if (r !== undefined) {
           const interval = intervalMap?.get(`${sym}|${ex}`);
-          const mult = interval === '1h' ? 8 : interval === '4h' ? 2 : 1;
-          sum += r * mult;
+          sum += r * periodMultiplier(interval, fundingPeriod);
           count++;
         }
       });
       if (count > 0) map.set(sym, sum / count);
     });
     return map;
-  }, [symbols, visibleExchanges, heatmapData, intervalMap]);
+  }, [symbols, visibleExchanges, heatmapData, intervalMap, fundingPeriod]);
 
   const symbolOI = useMemo(() => {
     const map = new Map<string, number>();
@@ -247,7 +251,10 @@ export default function FundingHeatmapView({
         if (lsA) rateA = lsA.long;
         if (lsB) rateB = lsB.long;
       }
-      return direction === 'desc' ? rateB - rateA : rateA - rateB;
+      // Apply period normalization for sorting
+      const multA = periodMultiplier(intervalMap?.get(`${a}|${exchange}`), fundingPeriod);
+      const multB = periodMultiplier(intervalMap?.get(`${b}|${exchange}`), fundingPeriod);
+      return direction === 'desc' ? rateB * multB - rateA * multA : rateA * multA - rateB * multB;
     });
     return [...withData, ...withoutData];
   }, [symbols, exchangeSort, heatmapData, avgRates, longShortMap]);
@@ -384,7 +391,7 @@ export default function FundingHeatmapView({
           >
             {treemapRects.map(rect => {
               const isHovered = hoveredTreemapSym === rect.symbol;
-              const color = rateToTreemapColor(rect.rate);
+              const color = rateToTreemapColor(rect.rate, treemapClamp);
               const showLabel = rect.w > 36 && rect.h > 28;
               const showRate = rect.w > 50 && rect.h > 38;
               const showOI = rect.w > 65 && rect.h > 50;
@@ -411,7 +418,7 @@ export default function FundingHeatmapView({
                   }}
                   onMouseEnter={() => setHoveredTreemapSym(rect.symbol)}
                   onMouseLeave={() => setHoveredTreemapSym(null)}
-                  title={`${rect.symbol}\nAvg: ${formatRate(rect.rate)}\nOI: ${formatOI(rect.oi)}`}
+                  title={`${rect.symbol}\nAvg: ${formatRateAdaptive(rect.rate)}\nOI: ${formatOI(rect.oi)}`}
                 >
                   {showIcon && <TokenIconSimple symbol={rect.symbol} size={fontSize > 11 ? 20 : 14} />}
                   {showLabel && (
@@ -431,7 +438,7 @@ export default function FundingHeatmapView({
                         textShadow: '0 1px 2px rgba(0,0,0,0.5)',
                       }}
                     >
-                      {formatRate(rect.rate)}
+                      {formatRateAdaptive(rect.rate)}
                     </span>
                   )}
                   {showOI && (
@@ -519,7 +526,7 @@ export default function FundingHeatmapView({
                   const avg = avgRates.get(symbol);
                   const listings = listingCounts.get(symbol) ?? 0;
                   const isRowHovered = hoveredRow === symbol;
-                  const avgColors = rateToColors(avg);
+                  const avgColors = rateToColors(avg, gridClamp);
 
                   return (
                     <tr
@@ -544,7 +551,7 @@ export default function FundingHeatmapView({
                             </span>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-mono tabular-nums leading-tight font-medium" style={{ color: avgColors.text }}>
-                                {avg !== undefined ? formatRate(avg) : '—'}
+                                {avg !== undefined ? formatRateAdaptive(avg) : '—'}
                               </span>
                               <span className="text-[8px] text-neutral-700 tabular-nums">{listings}/{visibleExchanges.length}</span>
                             </div>
@@ -553,17 +560,20 @@ export default function FundingHeatmapView({
                       </td>
 
                       {visibleExchanges.map(ex => {
-                        const rate = rates?.get(ex);
+                        const rawRate = rates?.get(ex);
                         const interval = intervalMap?.get(`${symbol}|${ex}`);
-                        const tradeUrl = rate !== undefined ? getExchangeTradeUrl(ex, symbol) : null;
+                        const pMult = periodMultiplier(interval, fundingPeriod);
+                        const rate = rawRate !== undefined ? rawRate * pMult : undefined;
+                        const tradeUrl = rawRate !== undefined ? getExchangeTradeUrl(ex, symbol) : null;
                         const isCross = isRowHovered && hoveredCol === ex;
-                        const ls = longShortMap?.get(`${symbol}|${ex}`);
+                        const rawLs = longShortMap?.get(`${symbol}|${ex}`);
+                        const ls = rawLs ? { long: rawLs.long * pMult, short: rawLs.short * pMult } : undefined;
                         const hasLS = ls !== undefined && rate !== undefined;
                         // For L/S exchanges: cell color reflects the side matching sort direction
                         // desc/neutral → short-side rate (what shorts pay), asc → long-side rate (what longs pay)
                         const colorRate = hasLS && exchangeSort?.exchange === ex && exchangeSort?.direction === 'asc'
                           ? ls.long : rate;
-                        const colors = rateToColors(colorRate);
+                        const colors = rateToColors(colorRate, gridClamp);
 
                         const cellStyle: React.CSSProperties = {
                           background: colors.bg,
@@ -581,18 +591,18 @@ export default function FundingHeatmapView({
                           <span className="absolute top-[2px] right-[2px] w-[3px] h-[3px] rounded-full bg-sky-400/80" />
                         ) : null;
 
-                        const lsLine = ls ? `\nL: ${formatRate(ls.long)} / S: ${formatRate(ls.short)}` : '';
+                        const lsLine = ls ? `\nL: ${formatRateAdaptive(ls.long)} / S: ${formatRateAdaptive(ls.short)}` : '';
                         const title = rate !== undefined
-                          ? `${symbol} · ${ex} · ${formatRate(rate)} (${interval || '8h'})${lsLine}\nClick to trade`
+                          ? `${symbol} · ${ex} · ${formatRateAdaptive(rate)} (${interval || '8h'})${lsLine}\nClick to trade`
                           : `Not on ${ex}`;
                         const inner = hasLS ? (
                           <>
                             <span className="flex flex-col items-center gap-[1px] leading-none">
-                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.long).text }}>
-                                <span className="text-white/30">L</span> {formatRate(ls.long)}
+                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.long, gridClamp).text }}>
+                                <span className="text-white/30">L</span> {formatRateAdaptive(ls.long)}
                               </span>
-                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.short).text }}>
-                                <span className="text-white/30">S</span> {formatRate(ls.short)}
+                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.short, gridClamp).text }}>
+                                <span className="text-white/30">S</span> {formatRateAdaptive(ls.short)}
                               </span>
                             </span>
                             {intervalDot}
@@ -603,7 +613,7 @@ export default function FundingHeatmapView({
                         ) : (
                           <>
                             <span className="text-[10px] font-mono tabular-nums leading-none font-medium" style={{ color: colors.text }}>
-                              {rate !== undefined ? formatRate(rate) : '—'}
+                              {rate !== undefined ? formatRateAdaptive(rate) : '—'}
                             </span>
                             {intervalDot}
                             {isCross && rate !== undefined && tradeUrl && (

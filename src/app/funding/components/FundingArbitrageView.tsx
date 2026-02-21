@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { formatRate, getExchangeColor } from '../utils';
+import { formatRateAdaptive, getExchangeColor, type FundingPeriod, PERIOD_HOURS, PERIOD_LABELS } from '../utils';
 import { isExchangeDex } from '@/lib/constants';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from 'lucide-react';
 import Pagination from './Pagination';
@@ -19,6 +19,7 @@ interface FundingArbitrageViewProps {
   oiMap?: Map<string, number>;
   markPrices?: Map<string, number>;
   intervalMap?: Map<string, string>; // "SYMBOL|EXCHANGE" → "1h" | "4h"
+  fundingPeriod: FundingPeriod;
 }
 
 type SortKey = 'spread' | 'annualized' | 'dailyPnl' | 'symbol' | 'oi';
@@ -47,7 +48,10 @@ function IntervalMark({ symbol, exchange, intervalMap }: { symbol: string; excha
   return null;
 }
 
-export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices, intervalMap }: FundingArbitrageViewProps) {
+export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices, intervalMap, fundingPeriod }: FundingArbitrageViewProps) {
+  // Arb data arrives pre-normalized to 8h from aggregator. Scale to display period.
+  const periodScale = PERIOD_HOURS[fundingPeriod] / 8;
+  const periodLabel = PERIOD_LABELS[fundingPeriod];
   const [portfolio, setPortfolio] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ih_arb_portfolio');
@@ -72,12 +76,15 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
       const sorted = [...item.exchanges].sort((a, b) => b.rate - a.rate);
       const high = sorted[0];
       const low = sorted[sorted.length - 1];
-      const grossSpread = item.spread;
-      const netSpread = Math.max(0, grossSpread - TAKER_FEE);
-      const annualized = grossSpread * 3 * 365;
-      const netAnnualized = netSpread * 3 * 365;
-      // Daily PnL: net spread per 8h settlement, 3 settlements/day
-      const dailyPnl = (netSpread / 100) * portfolio * 3;
+      const grossSpread8h = item.spread;
+      const netSpread8h = Math.max(0, grossSpread8h - TAKER_FEE);
+      // Display spreads scaled to selected period
+      const grossSpread = grossSpread8h * periodScale;
+      const netSpread = netSpread8h * periodScale;
+      // Annualized and PnL are always based on real 8h settlement math (period-independent)
+      const annualized = grossSpread8h * 3 * 365;
+      const netAnnualized = netSpread8h * 3 * 365;
+      const dailyPnl = (netSpread8h / 100) * portfolio * 3;
       const monthlyPnl = dailyPnl * 30;
 
       // OI: sum across all exchanges for this symbol
@@ -185,7 +192,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
               </th>
               <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Price</th>
               <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('spread')}>
-                <div className="flex items-center gap-1 justify-end">Spread <SortIcon k="spread" /></div>
+                <div className="flex items-center gap-1 justify-end">Spread /{periodLabel} <SortIcon k="spread" /></div>
               </th>
               <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('annualized')}>
                 <div className="flex items-center gap-1 justify-end">Net Ann.% <SortIcon k="annualized" /></div>
@@ -246,7 +253,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                       <ExchangeLogo exchange={item.high.exchange.toLowerCase()} size={14} />
                       <span className="text-xs text-neutral-300">{item.high.exchange}</span>
                       {isExchangeDex(item.high.exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
-                      <span className="text-red-400 font-mono text-[11px] ml-auto">{formatRate(item.high.rate)}<IntervalMark symbol={item.symbol} exchange={item.high.exchange} intervalMap={intervalMap} /></span>
+                      <span className="text-red-400 font-mono text-[11px] ml-auto">{formatRateAdaptive(item.high.rate * periodScale)}<IntervalMark symbol={item.symbol} exchange={item.high.exchange} intervalMap={intervalMap} /></span>
                     </div>
                   </td>
                   <td className="px-3 py-2">
@@ -254,7 +261,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                       <ExchangeLogo exchange={item.low.exchange.toLowerCase()} size={14} />
                       <span className="text-xs text-neutral-300">{item.low.exchange}</span>
                       {isExchangeDex(item.low.exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
-                      <span className="text-green-400 font-mono text-[11px] ml-auto">{formatRate(item.low.rate)}<IntervalMark symbol={item.symbol} exchange={item.low.exchange} intervalMap={intervalMap} /></span>
+                      <span className="text-green-400 font-mono text-[11px] ml-auto">{formatRateAdaptive(item.low.rate * periodScale)}<IntervalMark symbol={item.symbol} exchange={item.low.exchange} intervalMap={intervalMap} /></span>
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -286,7 +293,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                             <span className="text-neutral-400 text-[11px]">{ex.exchange}</span>
                             {isExchangeDex(ex.exchange) && <span className="px-0.5 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
                             <span className={`font-mono text-[11px] font-semibold ${ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {formatRate(ex.rate)}<IntervalMark symbol={item.symbol} exchange={ex.exchange} intervalMap={intervalMap} />
+                              {formatRateAdaptive(ex.rate * periodScale)}<IntervalMark symbol={item.symbol} exchange={ex.exchange} intervalMap={intervalMap} />
                             </span>
                           </div>
                         ))}

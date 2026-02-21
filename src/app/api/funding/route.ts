@@ -127,35 +127,6 @@ export async function GET(request: NextRequest) {
     filtered = dataWithPrices.filter(r => r.assetClass === assetClass);
   }
 
-  // Anomaly detection: flag rates > 1,825% annualized
-  // Threshold per interval: 5% per 8h, 0.625% per 1h, 2.5% per 4h
-  const ANOMALY_THRESHOLD_8H = 5;
-  const anomalies: { symbol: string; exchange: string; rate: number; action: string }[] = [];
-  filtered = filtered.map(r => {
-    const threshold = r.fundingInterval === '1h' ? ANOMALY_THRESHOLD_8H / 8
-      : r.fundingInterval === '4h' ? ANOMALY_THRESHOLD_8H / 2
-      : ANOMALY_THRESHOLD_8H;
-    if (Math.abs(r.fundingRate) > threshold) {
-      anomalies.push({
-        symbol: r.symbol,
-        exchange: r.exchange,
-        rate: r.fundingRate,
-        action: 'capped',
-      });
-      // Cap to threshold rather than exclude — preserves directional signal
-      const capped: any = { ...r, fundingRate: Math.sign(r.fundingRate) * threshold };
-      // Also cap long/short rates if present (skew-based DEXes)
-      if (r.fundingRateLong !== undefined && Math.abs(r.fundingRateLong) > threshold) {
-        capped.fundingRateLong = Math.sign(r.fundingRateLong) * threshold;
-      }
-      if (r.fundingRateShort !== undefined && Math.abs(r.fundingRateShort) > threshold) {
-        capped.fundingRateShort = Math.sign(r.fundingRateShort) * threshold;
-      }
-      return capped;
-    }
-    return r;
-  });
-
   const responseBody = {
     data: filtered,
     health,
@@ -165,7 +136,6 @@ export async function GET(request: NextRequest) {
       totalEntries: filtered.length,
       assetClass,
       timestamp: Date.now(),
-      anomalies: anomalies.length > 0 ? anomalies : undefined,
       normalization: {
         basis: 'native',
         note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h). 8h: Binance, Bybit, OKX, Bitget, MEXC, BingX, Phemex, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade. 4h: Kraken, edgeX. 1h: Hyperliquid, dYdX, Aevo, Coinbase, Drift, GMX, Extended, Lighter. Bitunix/Variational vary per market. OKX/CoinEx include native predictedRate. For others with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
