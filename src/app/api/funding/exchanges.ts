@@ -1005,12 +1005,15 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol = pair.from + (pair.to || 'USD');
           }
 
+          // gTrade native convention: positive rate = shorts pay longs
+          // Standard convention: positive rate = longs pay shorts
+          // Negate all three to convert to standard convention
           results.push({
             symbol,
             exchange: 'gTrade',
-            fundingRate: fundingRate8h,
-            fundingRateLong,   // What longs pay/earn (negative = earn)
-            fundingRateShort,  // What shorts pay/earn (positive = cost)
+            fundingRate: -fundingRate8h,
+            fundingRateLong: -fundingRateLong,
+            fundingRateShort: -fundingRateShort,
             fundingInterval: '8h' as const, // continuous model, normalized to 8h for display
             markPrice: tokenPrice,
             indexPrice: 0,
