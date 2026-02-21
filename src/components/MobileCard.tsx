@@ -17,7 +17,7 @@ interface MobileCardProps {
  */
 export default function MobileCard({ symbol, rows, actions, href }: MobileCardProps) {
   return (
-    <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 space-y-2">
+    <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 space-y-2 transition-all duration-200 hover:border-white/[0.1] active:scale-[0.98]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TokenIconSimple symbol={symbol} size={28} />

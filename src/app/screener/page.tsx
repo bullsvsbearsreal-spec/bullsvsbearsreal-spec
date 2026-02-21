@@ -287,7 +287,7 @@ export default function ScreenerPage() {
         {/* Title Row */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
-            <h1 className="text-xl font-bold text-white">Screener</h1>
+            <h1 className="heading-page">Screener</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
               Filter {rows.length} symbols by funding, OI, volume, and price action
             </p>

@@ -3,7 +3,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, Search, ChevronDown } from 'lucide-react';
+import {
+  Menu, X, Search, ChevronDown,
+  Activity, BarChart3, Heart, Briefcase, MoreHorizontal,
+  SlidersHorizontal, Percent, Grid3X3, PieChart, Zap, ArrowLeftRight,
+  LineChart, Shield, Gauge as GaugeIcon, BarChart2,
+  Rocket, Map, Crown, Building2, Landmark, Coins, GitCompareArrows, Unlock,
+  Thermometer, Fish, Eye, Newspaper,
+  Star, GitCompare, Bell, Wallet, Search as SearchIcon,
+  Calendar, Code2, Palette, Users,
+  type LucideIcon,
+} from 'lucide-react';
 import Logo from './Logo';
 import CoinSearch from './CoinSearch';
 import ThemeToggle from './ThemeToggle';
@@ -16,69 +26,76 @@ import { CoinSearchResult } from '@/lib/api/coingecko';
 interface NavLink {
   name: string;
   href: string;
+  icon: LucideIcon;
 }
 
 interface NavCategory {
   label: string;
+  icon: LucideIcon;
   items: NavLink[];
 }
 
 const navCategories: NavCategory[] = [
   {
     label: 'Trading',
+    icon: Activity,
     items: [
-      { name: 'Screener', href: '/screener' },
-      { name: 'Funding', href: '/funding' },
-      { name: 'Funding Heatmap', href: '/funding-heatmap' },
-      { name: 'Open Interest', href: '/open-interest' },
-      { name: 'Liquidations', href: '/liquidations' },
-      { name: 'Long/Short', href: '/longshort' },
-      { name: 'CVD', href: '/cvd' },
-      { name: 'Options', href: '/options' },
-      { name: 'RSI Heatmap', href: '/rsi-heatmap' },
-      { name: 'Basis', href: '/basis' },
-      { name: 'Predictions', href: '/prediction-markets' },
+      { name: 'Screener', href: '/screener', icon: SlidersHorizontal },
+      { name: 'Funding', href: '/funding', icon: Percent },
+      { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
+      { name: 'Open Interest', href: '/open-interest', icon: PieChart },
+      { name: 'Liquidations', href: '/liquidations', icon: Zap },
+      { name: 'Long/Short', href: '/longshort', icon: ArrowLeftRight },
+      { name: 'CVD', href: '/cvd', icon: LineChart },
+      { name: 'Options', href: '/options', icon: Shield },
+      { name: 'RSI Heatmap', href: '/rsi-heatmap', icon: GaugeIcon },
+      { name: 'Basis', href: '/basis', icon: BarChart2 },
+      { name: 'Predictions', href: '/prediction-markets', icon: Eye },
     ],
   },
   {
     label: 'Markets',
+    icon: BarChart3,
     items: [
-      { name: 'Top Movers', href: '/top-movers' },
-      { name: 'Heatmap', href: '/market-heatmap' },
-      { name: 'Dominance', href: '/dominance' },
-      { name: 'Exchanges', href: '/exchange-comparison' },
-      { name: 'Exchange Reserves', href: '/exchange-reserves' },
-      { name: 'Stablecoin Flows', href: '/stablecoin-flows' },
-      { name: 'Correlation', href: '/correlation' },
-      { name: 'Token Unlocks', href: '/token-unlocks' },
+      { name: 'Top Movers', href: '/top-movers', icon: Rocket },
+      { name: 'Heatmap', href: '/market-heatmap', icon: Map },
+      { name: 'Dominance', href: '/dominance', icon: Crown },
+      { name: 'Exchanges', href: '/exchange-comparison', icon: Building2 },
+      { name: 'Exchange Reserves', href: '/exchange-reserves', icon: Landmark },
+      { name: 'Stablecoin Flows', href: '/stablecoin-flows', icon: Coins },
+      { name: 'Correlation', href: '/correlation', icon: GitCompareArrows },
+      { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock },
     ],
   },
   {
     label: 'Sentiment',
+    icon: Heart,
     items: [
-      { name: 'Fear & Greed', href: '/fear-greed' },
-      { name: 'Whale Alert', href: '/whale-alert' },
-      { name: 'HL Whales', href: '/hl-whales' },
-      { name: 'News', href: '/news' },
+      { name: 'Fear & Greed', href: '/fear-greed', icon: Thermometer },
+      { name: 'Whale Alert', href: '/whale-alert', icon: Fish },
+      { name: 'HL Whales', href: '/hl-whales', icon: Eye },
+      { name: 'News', href: '/news', icon: Newspaper },
     ],
   },
   {
     label: 'Portfolio',
+    icon: Briefcase,
     items: [
-      { name: 'Watchlist', href: '/watchlist' },
-      { name: 'Compare', href: '/compare' },
-      { name: 'Alerts', href: '/alerts' },
-      { name: 'Portfolio', href: '/portfolio' },
-      { name: 'Wallet Tracker', href: '/wallet-tracker' },
+      { name: 'Watchlist', href: '/watchlist', icon: Star },
+      { name: 'Compare', href: '/compare', icon: GitCompare },
+      { name: 'Alerts', href: '/alerts', icon: Bell },
+      { name: 'Portfolio', href: '/portfolio', icon: Wallet },
+      { name: 'Wallet Tracker', href: '/wallet-tracker', icon: SearchIcon },
     ],
   },
   {
     label: 'More',
+    icon: MoreHorizontal,
     items: [
-      { name: 'Economic Calendar', href: '/economic-calendar' },
-      { name: 'API', href: '/api-docs' },
-      { name: 'Brand Kit', href: '/brand' },
-      { name: 'Team', href: '/team' },
+      { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar },
+      { name: 'API', href: '/api-docs', icon: Code2 },
+      { name: 'Brand Kit', href: '/brand', icon: Palette },
+      { name: 'Team', href: '/team', icon: Users },
     ],
   },
 ];
@@ -221,7 +238,7 @@ export default function Header() {
                     {/* Category trigger */}
                     <button
                       type="button"
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
                         hasActive
                           ? 'text-hub-yellow'
                           : 'text-neutral-400 hover:text-white'
@@ -229,6 +246,7 @@ export default function Header() {
                       aria-expanded={isOpen}
                       aria-haspopup="true"
                     >
+                      <cat.icon className="w-3.5 h-3.5" />
                       {cat.label}
                       <ChevronDown
                         className={`w-3 h-3 transition-transform duration-150 ${
@@ -246,12 +264,13 @@ export default function Header() {
                               key={link.href}
                               href={link.href}
                               onClick={() => setOpenDropdown(null)}
-                              className={`block px-4 py-2 text-[13px] font-medium transition-colors ${
+                              className={`flex items-center gap-2.5 px-4 py-2 text-[13px] font-medium transition-colors ${
                                 pathname === link.href
                                   ? 'bg-hub-yellow text-black'
                                   : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
                               }`}
                             >
+                              <link.icon className="w-3.5 h-3.5 flex-shrink-0" />
                               {link.name}
                             </Link>
                           ))}
@@ -338,7 +357,10 @@ export default function Header() {
                       }`}
                       aria-expanded={isExpanded}
                     >
-                      {cat.label}
+                      <span className="flex items-center gap-2.5">
+                        <cat.icon className="w-4 h-4" />
+                        {cat.label}
+                      </span>
                       <ChevronDown
                         className={`w-4 h-4 transition-transform duration-200 ${
                           isExpanded ? 'rotate-180' : ''
@@ -354,12 +376,13 @@ export default function Header() {
                             key={link.href}
                             href={link.href}
                             onClick={() => setMobileOpen(false)}
-                            className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center ${
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
                               pathname === link.href
                                 ? 'bg-hub-yellow/10 text-hub-yellow'
                                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
                             }`}
                           >
+                            <link.icon className="w-3.5 h-3.5 flex-shrink-0" />
                             {link.name}
                           </Link>
                         ))}

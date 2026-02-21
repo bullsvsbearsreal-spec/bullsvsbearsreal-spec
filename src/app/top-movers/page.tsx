@@ -176,7 +176,7 @@ export default function TopMoversPage() {
         {/* Title Row */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
-            <h1 className="text-xl font-bold text-white">Top Movers</h1>
+            <h1 className="heading-page">Top Movers</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
               24h price performance across {coins.length} coins
             </p>

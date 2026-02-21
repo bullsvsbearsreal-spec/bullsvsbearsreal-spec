@@ -120,9 +120,9 @@ body {
   .glass-card {
     background: #111111;
     border: 1px solid var(--hub-border);
-    transition: border-color 0.15s;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   }
-  .glass-card:hover { border-color: var(--hub-border-hover); }
+  .glass-card:hover { border-color: var(--hub-border-hover); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
 
   .glass-dark { background: #0a0a0a; border: 1px solid var(--hub-border); }
   .glass { background: #111; border: 1px solid var(--hub-border); }
@@ -228,6 +228,12 @@ body {
     opacity: 0.02; pointer-events: none; z-index: 0;
   }
 
+  /* ═══ Typography utilities ═══ */
+  .heading-page { @apply text-2xl sm:text-3xl font-bold tracking-tight text-white; text-wrap: balance; }
+  .heading-section { @apply text-lg sm:text-xl font-semibold text-white; }
+  .tabular-nums { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .page-desc { @apply text-neutral-400 text-sm mt-1; }
+
   /* ═══ Premium card system ═══ */
   .card-premium {
     background: #0d0d0d;
@@ -235,7 +241,7 @@ body {
     border-radius: 12px;
     position: relative;
     overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   }
   .card-premium::before {
     content: '';
@@ -248,6 +254,7 @@ body {
   .card-premium:hover {
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 12px 32px rgba(0,0,0,0.4);
+    transform: translateY(-1px);
   }
 
   /* Hero gradient mesh background */
@@ -273,7 +280,7 @@ body {
 
   /* Data row with hover */
   .data-row-premium {
-    @apply transition-colors duration-100 rounded-lg;
+    @apply transition-colors duration-150 rounded-lg;
     padding: 6px 10px;
   }
   .data-row-premium:hover {

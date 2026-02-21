@@ -130,7 +130,7 @@ export default function OpenInterestPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-white">Open Interest</h1>
+            <h1 className="heading-page">Open Interest</h1>
             <p className="text-neutral-600 text-xs mt-0.5">
               Aggregate OI across {exchanges.length} exchanges
             </p>

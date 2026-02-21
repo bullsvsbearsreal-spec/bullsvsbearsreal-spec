@@ -263,7 +263,7 @@ export default function FundingPage() {
         {/* Page header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-xl font-bold text-white">Funding Rates</h1>
+            <h1 className="heading-page">Funding Rates</h1>
             <p className="text-neutral-500 text-sm">{ASSET_CLASS_SUBTITLES[assetClass]} across {ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</p>
           </div>
           <div className="flex items-center gap-3">

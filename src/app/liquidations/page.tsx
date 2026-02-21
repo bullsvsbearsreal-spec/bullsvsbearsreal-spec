@@ -170,7 +170,7 @@ export default function LiquidationsPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-xl font-bold text-white">Liquidations</h1>
+            <h1 className="heading-page">Liquidations</h1>
             <p className="text-neutral-600 text-xs mt-0.5">
               Real-time liquidation feed across {selectedExchanges.length} exchanges
             </p>
