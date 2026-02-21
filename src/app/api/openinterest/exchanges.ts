@@ -431,8 +431,10 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         .map((item: any) => {
           const oi = parseFloat(item[18]) || 0;
           const price = parseFloat(item[15]) || parseFloat(item[3]) || 0;
+          let sym = item[0].replace('t', '').replace('F0:USTF0', '');
+          if (sym === 'XBT') sym = 'BTC';
           return {
-            symbol: item[0].replace('t', '').replace('F0:USTF0', ''),
+            symbol: sym,
             exchange: 'Bitfinex',
             openInterest: oi,
             openInterestValue: oi * price,

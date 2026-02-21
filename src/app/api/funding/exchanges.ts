@@ -761,8 +761,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!Array.isArray(data)) return [];
       return data
         .filter((item: any) => Array.isArray(item) && typeof item[0] === 'string' && item[0].endsWith('F0:USTF0'))
-        .map((item: any) => ({
-          symbol: item[0].replace('t', '').replace('F0:USTF0', ''),
+        .map((item: any) => {
+          let sym = item[0].replace('t', '').replace('F0:USTF0', '');
+          if (sym === 'XBT') sym = 'BTC';
+          return {
+          symbol: sym,
           exchange: 'Bitfinex',
           fundingRate: (parseFloat(item[12]) || 0) * 100, // [12] = CURRENT_FUNDING (8h rate)
           fundingInterval: '8h' as const,
@@ -770,7 +773,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           indexPrice: parseFloat(item[4]) || 0,
           nextFundingTime: item[8] || Date.now() + 28800000,
           type: 'cex' as const,
-        }))
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate) && item.symbol.length > 0);
     },
   },

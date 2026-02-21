@@ -355,8 +355,11 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       if (json.code !== '200000' && json.code !== 200000) return [];
       return (json.data || [])
         .filter((t: any) => t.symbol.endsWith('USDTM') && t.lastTradePrice)
-        .map((ticker: any) => ({
-          symbol: ticker.symbol.replace('USDTM', ''),
+        .map((ticker: any) => {
+          let sym = ticker.symbol.replace('USDTM', '');
+          if (sym === 'XBT') sym = 'BTC';
+          return {
+          symbol: sym,
           exchange: 'KuCoin',
           lastPrice: parseFloat(ticker.lastTradePrice),
           price: parseFloat(ticker.lastTradePrice),
@@ -366,7 +369,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           low24h: parseFloat(ticker.lowPrice) || 0,
           volume24h: parseFloat(ticker.volumeOf24h) || 0,
           quoteVolume24h: parseFloat(ticker.turnoverOf24h) || 0,
-        }))
+          };
+        })
         .filter((item: any) => item.lastPrice > 0);
     },
   },
@@ -449,8 +453,10 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => {
           // [symbol, bid, bidSize, ask, askSize, dailyChange, dailyChangePercent, lastPrice, volume, high, low]
           const lastPrice = parseFloat(ticker[7]) || 0;
+          let sym = ticker[0].replace('t', '').replace('F0:USTF0', '');
+          if (sym === 'XBT') sym = 'BTC';
           return {
-            symbol: ticker[0].replace('t', '').replace('F0:USTF0', ''),
+            symbol: sym,
             exchange: 'Bitfinex',
             lastPrice,
             price: lastPrice,
