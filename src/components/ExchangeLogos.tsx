@@ -34,15 +34,6 @@ function GateLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
-function CryptoComLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
-  return (
-    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#002D74"/>
-      <path fill="#FFFFFF" d="M63 30c-18.2 0-33 14.8-33 33s14.8 33 33 33 33-14.8 33-33-14.8-33-33-33zm0 55c-12.1 0-22-9.9-22-22s9.9-22 22-22 22 9.9 22 22-9.9 22-22 22z"/>
-    </svg>
-  );
-}
-
 // edgeX: triangle logo on sky-blue circle
 function EdgeXLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
@@ -79,7 +70,6 @@ const svgFallbacks: Record<string, React.ComponentType<ExchangeLogoProps>> = {
   bitmex: BitMEXLogoSVG,
   gate: GateLogoSVG,
   'gate.io': GateLogoSVG,
-  'crypto.com': CryptoComLogoSVG,
   edgex: EdgeXLogoSVG,
   variational: VariationalLogoSVG,
   extended: ExtendedLogoSVG,
@@ -113,7 +103,6 @@ export const exchangeColors: Record<string, string> = {
   whitebit: '#1A1E2E',
   coinbase: '#0052FF',
   coinex: '#3CC8C8',
-  'crypto.com': '#002D74',
   bitunix: '#B9F641',
   extended: '#F59E0B',
   edgex: '#38BDF8',

@@ -13,9 +13,6 @@ const ALLOWED_URLS: Record<string, string> = {
   // Gate.io
   'gateio-tickers': 'https://api.gateio.ws/api/v4/futures/usdt/tickers',
   'gateio-funding': 'https://api.gateio.ws/api/v4/futures/usdt/contracts',
-  // Crypto.com
-  'cryptocom-tickers': 'https://api.crypto.com/exchange/v1/public/get-tickers',
-  'cryptocom-instruments': 'https://api.crypto.com/exchange/v1/public/get-instruments',
 };
 
 export async function GET(request: NextRequest) {

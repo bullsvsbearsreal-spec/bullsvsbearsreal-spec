@@ -1351,31 +1351,6 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Crypto.com (~$500M OI)
-  {
-    name: 'Crypto.com',
-    fetcher: async (fetchFn) => {
-      if (!process.env.PROXY_URL) return [];
-      const res = await fetchFn('/api/proxy/cf-bypass?endpoint=cryptocom-tickers', {}, 12000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const data = json?.result?.data;
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((t: any) => t.i?.endsWith('USD-PERP') && t.fr != null)
-        .map((t: any) => ({
-          symbol: t.i.replace('-USD-PERP', '').replace('_', ''),
-          exchange: 'Crypto.com',
-          fundingRate: parseFloat(t.fr) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(t.a) || 0,
-          indexPrice: 0,
-          nextFundingTime: 0,
-          type: 'cex' as const,
-        }))
-        .filter((i: any) => !isNaN(i.fundingRate) && i.symbol.length > 0);
-    },
-  },
 ];
 
 // Paused exchanges (kept for reference):
