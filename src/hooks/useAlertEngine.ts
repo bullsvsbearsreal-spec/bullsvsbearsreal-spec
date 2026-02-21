@@ -132,7 +132,7 @@ export function useAlertEngine(intervalMs: number = 60_000) {
           const opLabel = alert.operator === 'gt' ? 'above' : 'below';
           new Notification(`InfoHub Alert: ${alert.symbol}`, {
             body: `${alert.metric} is ${opLabel} ${alert.value} (current: ${actualValue.toFixed(4)})`,
-            icon: '/favicon.svg',
+            icon: '/favicon.png',
           });
         }
       }
