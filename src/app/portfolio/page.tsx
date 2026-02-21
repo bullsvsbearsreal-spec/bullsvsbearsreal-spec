@@ -209,7 +209,7 @@ export default function PortfolioPage() {
         {/* Page header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Portfolio Tracker</h1>
+            <h1 className="heading-page">Portfolio Tracker</h1>
             <p className="text-neutral-500 text-sm mt-1">
               Track your holdings and unrealised P&amp;L in real time
             </p>

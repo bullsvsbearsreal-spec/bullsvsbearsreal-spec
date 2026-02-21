@@ -200,7 +200,7 @@ export default function ExchangeReservesPage() {
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <h1 className="heading-page flex items-center gap-2">
                 <Building2 className="w-6 h-6 text-hub-yellow" />
                 Exchange Reserves
               </h1>

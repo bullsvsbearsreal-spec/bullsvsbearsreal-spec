@@ -97,7 +97,7 @@ export default function WhaleAlertPage() {
               <AlertTriangle className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Whale Alert</h1>
+              <h1 className="heading-page">Whale Alert</h1>
               <p className="text-sm text-neutral-500">Large liquidations across exchanges in real-time</p>
             </div>
           </div>

@@ -67,7 +67,7 @@ export default function TermsPage() {
             <FileText className="w-4 h-4 text-hub-yellow" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Terms & Conditions</h1>
+            <h1 className="heading-page">Terms & Conditions</h1>
             <p className="text-neutral-500 text-sm mt-0.5">
               Last updated: February 2026
             </p>

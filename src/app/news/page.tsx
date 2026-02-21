@@ -39,7 +39,7 @@ export default function NewsPage() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-white">Market News</h1>
+            <h1 className="heading-page">Market News</h1>
             <p className="text-neutral-500 text-xs mt-0.5">Real-time news from across the market</p>
           </div>
           <button

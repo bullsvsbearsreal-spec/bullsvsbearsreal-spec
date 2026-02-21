@@ -102,7 +102,7 @@ export default function FAQPage() {
             <HelpCircle className="w-4 h-4 text-hub-yellow" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Frequently Asked Questions</h1>
+            <h1 className="heading-page">Frequently Asked Questions</h1>
             <p className="text-neutral-500 text-sm mt-0.5">
               Everything you need to know about InfoHub
             </p>

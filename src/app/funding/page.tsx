@@ -237,6 +237,18 @@ export default function FundingPage() {
     return true;
   });
 
+  // Compute actual exchange counts from live data for the subtitle
+  const activeExchangeNames = useMemo(() => {
+    const names = new Set(fundingRates.map(fr => fr.exchange));
+    return names;
+  }, [fundingRates]);
+  const activeExchangeCount = activeExchangeNames.size;
+  const activeDexCount = useMemo(() => {
+    let count = 0;
+    activeExchangeNames.forEach(name => { if (isExchangeDex(name)) count++; });
+    return count;
+  }, [activeExchangeNames]);
+
   const validRates = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
   const avgRate = validRates.length > 0
     ? validRates.reduce((sum, fr) => {
@@ -264,7 +276,13 @@ export default function FundingPage() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="heading-page">Funding Rates</h1>
-            <p className="text-neutral-500 text-sm">{ASSET_CLASS_SUBTITLES[assetClass]} across {ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</p>
+            <p className="text-neutral-500 text-sm">
+              {ASSET_CLASS_SUBTITLES[assetClass]} across{' '}
+              {activeExchangeCount > 0
+                ? <>{activeExchangeCount} exchanges ({activeDexCount} DEX)</>
+                : <>{ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</>
+              }
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <UpdatedAgo date={lastUpdate} />

@@ -465,6 +465,7 @@ export default function FundingHeatmapView({
       {/* ═══════ GRID VIEW ═══════ */}
       {mode === 'grid' && (
         <>
+          <div className="relative">
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
@@ -656,6 +657,9 @@ export default function FundingHeatmapView({
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Mobile scroll hint gradient */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#111] to-transparent pointer-events-none md:hidden" />
           </div>
 
           {exchangeSort && (

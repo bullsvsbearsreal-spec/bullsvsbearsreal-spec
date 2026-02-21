@@ -245,7 +245,7 @@ export default function CorrelationPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-lg font-bold text-white">Correlation Matrix</h1>
+            <h1 className="heading-page">Correlation Matrix</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
               Cross-exchange 24h price change correlation between top {count} symbols
             </p>

@@ -150,7 +150,7 @@ export default function LongShortPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-lg font-bold text-white">Long/Short Ratio</h1>
+            <h1 className="heading-page">Long/Short Ratio</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
               Binance Global Long/Short Account Ratio
             </p>

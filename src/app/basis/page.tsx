@@ -173,7 +173,7 @@ export default function BasisPage() {
               <ArrowUpDown className="w-4 h-4 text-hub-yellow" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Basis / Premium</h1>
+              <h1 className="heading-page">Basis / Premium</h1>
               <div className="flex items-center gap-1.5">
                 {basisData.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />}
                 <p className="text-neutral-500 text-sm">

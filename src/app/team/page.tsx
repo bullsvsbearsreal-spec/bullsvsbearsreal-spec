@@ -40,7 +40,7 @@ export default function TeamPage() {
       <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-white">Team</h1>
+          <h1 className="heading-page">Team</h1>
           <p className="text-neutral-600 text-xs mt-0.5">
             Building the future of real-time trading data
           </p>

@@ -363,7 +363,7 @@ export default function TokenUnlocksPage() {
               <Calendar className="w-5 h-5 text-hub-yellow" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Token Unlocks Calendar</h1>
+              <h1 className="heading-page">Token Unlocks Calendar</h1>
               <p className="text-neutral-600 text-xs mt-0.5">
                 Upcoming token vesting schedules across {new Set(allUnlocks.map(u => u.coinSymbol)).size} tokens
               </p>

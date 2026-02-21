@@ -159,7 +159,7 @@ export default function FearGreedPage() {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-xl font-bold text-white">Fear & Greed Index</h1>
+            <h1 className="heading-page">Fear & Greed Index</h1>
             <p className="text-neutral-600 text-xs mt-0.5">
               Crypto market sentiment over time
             </p>

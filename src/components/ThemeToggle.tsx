@@ -30,7 +30,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       className="relative w-8 h-4 rounded-full bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.15] transition-colors flex items-center px-0.5"
       aria-label={`Switch to ${theme === 'orange' ? 'green' : 'orange'} theme`}
-      title={`Theme: ${theme}`}
+      title={`Switch theme (current: ${theme})`}
     >
       <div
         className={`w-3 h-3 rounded-full transition-all duration-200 ${

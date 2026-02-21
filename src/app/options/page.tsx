@@ -208,7 +208,7 @@ export default function OptionsPage() {
               <Target className="w-4 h-4 text-hub-yellow" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Options Data</h1>
+              <h1 className="heading-page">Options Data</h1>
               <p className="text-neutral-500 text-sm mt-0.5 flex items-center gap-1.5">
                 Max pain, put/call ratio, OI by strike, and implied volatility across {data?.health?.filter(h => h.status === 'ok' && h.count > 0).length || 1} exchanges
                 {data && !loading && (

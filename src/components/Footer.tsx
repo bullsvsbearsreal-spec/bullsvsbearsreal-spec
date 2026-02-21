@@ -29,7 +29,7 @@ export default function Footer() {
                 href="https://x.com/InfoHub_io"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-white/[0.04] text-neutral-500 hover:text-white hover:bg-white/[0.08] transition-colors"
+                className="p-2 rounded-lg bg-white/[0.04] text-neutral-500 hover:text-amber-400 hover:bg-white/[0.08] transition-colors"
                 aria-label="Follow on X / Twitter"
               >
                 <Twitter className="w-3.5 h-3.5" />
@@ -38,7 +38,7 @@ export default function Footer() {
                 href="https://github.com/GroovyGecko88/infohub"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-white/[0.04] text-neutral-500 hover:text-white hover:bg-white/[0.08] transition-colors"
+                className="p-2 rounded-lg bg-white/[0.04] text-neutral-500 hover:text-amber-400 hover:bg-white/[0.08] transition-colors"
                 aria-label="View on GitHub"
               >
                 <Github className="w-3.5 h-3.5" />
@@ -47,7 +47,7 @@ export default function Footer() {
                 href="https://discord.gg/infohub"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-white/[0.04] text-neutral-500 hover:text-white hover:bg-white/[0.08] transition-colors"
+                className="p-2 rounded-lg bg-white/[0.04] text-neutral-500 hover:text-amber-400 hover:bg-white/[0.08] transition-colors"
                 aria-label="Join Discord"
               >
                 <MessageCircle className="w-3.5 h-3.5" />

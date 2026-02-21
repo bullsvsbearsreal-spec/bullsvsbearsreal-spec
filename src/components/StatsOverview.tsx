@@ -68,25 +68,28 @@ export default function StatsOverview() {
     );
   }
 
+  // Skeleton placeholder for values that are still zero / empty after load
+  const skeleton = <span className="inline-block h-5 w-16 bg-neutral-800 rounded animate-pulse" />;
+
   const statItems = [
     {
       label: '24h Volume',
-      value: formatNumber(stats.totalVolume),
+      value: stats.totalVolume > 0 ? formatNumber(stats.totalVolume) : null,
       icon: DollarSign,
       iconColor: 'text-hub-yellow',
       iconBg: 'bg-hub-yellow/10',
     },
     {
       label: 'Open Interest',
-      value: formatNumber(stats.totalOI),
+      value: stats.totalOI > 0 ? formatNumber(stats.totalOI) : null,
       icon: BarChart3,
       iconColor: 'text-blue-400',
       iconBg: 'bg-blue-400/10',
     },
     {
       label: 'Top Gainer',
-      value: stats.topGainer.symbol,
-      sub: `${stats.topGainer.change >= 0 ? '+' : ''}${stats.topGainer.change.toFixed(1)}%`,
+      value: stats.topGainer.symbol !== '-' ? stats.topGainer.symbol : null,
+      sub: stats.topGainer.symbol !== '-' ? `${stats.topGainer.change >= 0 ? '+' : ''}${stats.topGainer.change.toFixed(1)}%` : null,
       subColor: 'text-green-400',
       icon: TrendingUp,
       iconColor: 'text-green-400',
@@ -94,8 +97,8 @@ export default function StatsOverview() {
     },
     {
       label: 'Top Loser',
-      value: stats.topLoser.symbol,
-      sub: `${stats.topLoser.change.toFixed(1)}%`,
+      value: stats.topLoser.symbol !== '-' ? stats.topLoser.symbol : null,
+      sub: stats.topLoser.symbol !== '-' ? `${stats.topLoser.change.toFixed(1)}%` : null,
       subColor: 'text-red-400',
       icon: TrendingDown,
       iconColor: 'text-red-400',
@@ -103,7 +106,7 @@ export default function StatsOverview() {
     },
     {
       label: 'Markets',
-      value: stats.activeMarkets.toString(),
+      value: stats.activeMarkets > 0 ? stats.activeMarkets.toString() : null,
       icon: Layers,
       iconColor: 'text-purple-400',
       iconBg: 'bg-purple-400/10',
@@ -121,12 +124,16 @@ export default function StatsOverview() {
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-medium">{item.label}</span>
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-sm font-bold font-mono tabular-nums text-white">
-              {item.value}
-            </span>
-            {item.sub && (
-              <span className={`text-[10px] font-mono font-semibold ${item.subColor}`}>{item.sub}</span>
-            )}
+            {item.value !== null ? (
+              <>
+                <span className="text-sm font-bold font-mono tabular-nums text-white">
+                  {item.value}
+                </span>
+                {item.sub && (
+                  <span className={`text-[10px] font-mono font-semibold ${item.subColor}`}>{item.sub}</span>
+                )}
+              </>
+            ) : skeleton}
           </div>
         </div>
       ))}

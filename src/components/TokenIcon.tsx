@@ -143,10 +143,12 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
 }
 
 // Simple version for lists — tries local PNG → local SVG → CMC CDN → GitHub CDN → letter fallback
+// Uses React state for the final fallback instead of raw DOM innerHTML manipulation
 export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: TokenIconProps) {
   const normalizedSymbol = symbol.toUpperCase().replace(/[-_]/g, '');
   const mappedSymbol = symbolMap[normalizedSymbol] || normalizedSymbol.toLowerCase();
   const fallbackText = normalizedSymbol.slice(0, 2);
+  const [showFallback, setShowFallback] = useState(false);
 
   const handleError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
@@ -176,16 +178,22 @@ export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: To
       return;
     }
 
-    // Final fallback: replace with letter div
-    const parent = img.parentElement;
-    if (parent) {
-      parent.innerHTML = `
-        <div class="flex items-center justify-center rounded-full" style="width: ${size}px; height: ${size}px; background: rgba(255, 165, 0, 0.2);">
-          <span class="font-bold" style="font-size: ${size * 0.45}px; color: #FFA500;">${fallbackText}</span>
-        </div>
-      `;
-    }
-  }, [mappedSymbol, size, fallbackText, cmcId]);
+    // Final fallback: show colored circle with letter via React state
+    setShowFallback(true);
+  }, [mappedSymbol, cmcId]);
+
+  if (showFallback) {
+    return (
+      <div
+        className={`flex items-center justify-center rounded-full bg-hub-yellow/20 ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <span className="font-bold text-hub-yellow" style={{ fontSize: size * 0.45 }}>
+          {fallbackText}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>

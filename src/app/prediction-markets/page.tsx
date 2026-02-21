@@ -69,7 +69,7 @@ export default function PredictionMarketsPage() {
               <Crosshair className="w-4 h-4 text-purple-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Prediction Markets</h1>
+              <h1 className="heading-page">Prediction Markets</h1>
               <div className="flex items-center gap-1.5">
                 {data && (
                   <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />

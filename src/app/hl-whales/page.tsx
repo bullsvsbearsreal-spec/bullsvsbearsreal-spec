@@ -487,7 +487,7 @@ export default function HLWhalesPage() {
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="heading-page flex items-center gap-2">
               <img src="/exchanges/hyperliquid.png" alt="" className="w-6 h-6 rounded" />
               Hyperliquid Whale Tracker
             </h1>

@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://info-hub.io'),
   title: {
-    default: 'InfoHub | Real-Time Derivatives Data',
+    default: 'InfoHub | Real-Time Crypto Derivatives Dashboard',
     template: '%s | InfoHub',
   },
   description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 24+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.',

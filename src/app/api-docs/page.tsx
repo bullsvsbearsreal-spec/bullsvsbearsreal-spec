@@ -167,7 +167,7 @@ export default function ApiDocsPage() {
       <main className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8">
         {/* Hero */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">InfoHub Public API</h1>
+          <h1 className="heading-page mb-2">InfoHub Public API</h1>
           <p className="text-neutral-400 text-sm mb-4">
             Real-time crypto derivatives data. No API key required.
           </p>

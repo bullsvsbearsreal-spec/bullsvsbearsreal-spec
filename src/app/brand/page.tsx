@@ -100,7 +100,7 @@ export default function BrandPage() {
       <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-white">Brand Kit</h1>
+          <h1 className="heading-page">Brand Kit</h1>
           <p className="text-neutral-600 text-xs mt-0.5">
             Download official logos, colors, and brand assets
           </p>

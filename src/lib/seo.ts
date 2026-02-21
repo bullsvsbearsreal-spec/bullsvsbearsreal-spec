@@ -111,6 +111,34 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Terms of Service',
     description: 'InfoHub terms of service and legal information.',
   },
+  '/hl-whales': {
+    title: 'Hyperliquid Whale Tracker',
+    description: 'Track Hyperliquid whale positions, large trades, and notable trader activity in real-time.',
+  },
+  '/whale-alert': {
+    title: 'Whale Alert',
+    description: 'Real-time whale liquidation alerts across Binance, Bybit, OKX, and more. Monitor large liquidation events as they happen.',
+  },
+  '/portfolio': {
+    title: 'Portfolio Tracker',
+    description: 'Track your crypto derivatives portfolio with live prices, P&L, and allocation breakdown.',
+  },
+  '/watchlist': {
+    title: 'Watchlist',
+    description: 'Create a custom watchlist of perpetual futures. Track prices, funding rates, and open interest for your favorite pairs.',
+  },
+  '/exchange-comparison': {
+    title: 'Exchange Comparison',
+    description: 'Compare crypto derivatives exchanges side by side. Analyze open interest, funding rates, volume, and symbol coverage.',
+  },
+  '/stablecoin-flows': {
+    title: 'Stablecoin Flows',
+    description: 'Track stablecoin market cap, chain distribution, and flows. Monitor USDT, USDC, and other stablecoin trends.',
+  },
+  '/exchange-reserves': {
+    title: 'Exchange Reserves',
+    description: 'Monitor crypto exchange reserves and balance changes. Track Bitcoin and stablecoin holdings across major exchanges.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

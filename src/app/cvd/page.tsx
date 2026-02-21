@@ -141,7 +141,7 @@ export default function CVDPage() {
               <Activity className="w-4 h-4 text-hub-yellow" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Cumulative Volume Delta</h1>
+              <h1 className="heading-page">Cumulative Volume Delta</h1>
               <p className="text-neutral-500 text-sm mt-0.5 flex items-center gap-1.5">
                 Buy vs sell pressure — are buyers or sellers in control?
                 {data && (
