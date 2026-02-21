@@ -875,7 +875,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'gTrade',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://backend-arbitrum.gains.trade/trading-variables', {}, 8000);
+      const res = await fetchFn('https://backend-arbitrum.gains.trade/trading-variables', {}, 20000);
       if (!res.ok) return [];
       const raw = await res.json();
 
@@ -1011,13 +1011,13 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
           // gTrade native convention: positive rate = shorts pay longs
           // Standard convention: positive rate = longs pay shorts
-          // Negate all three to convert to standard convention
+          // Negate base rate and swap long/short sides to convert convention
           results.push({
             symbol,
             exchange: 'gTrade',
             fundingRate: -fundingRate8h,
-            fundingRateLong: -fundingRateLong,
-            fundingRateShort: -fundingRateShort,
+            fundingRateLong: -fundingRateShort,
+            fundingRateShort: -fundingRateLong,
             fundingInterval: '8h' as const, // continuous model, normalized to 8h for display
             markPrice: tokenPrice,
             indexPrice: 0,
