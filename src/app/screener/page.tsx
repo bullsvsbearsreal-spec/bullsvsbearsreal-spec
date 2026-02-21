@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle } from 'lucide-react';
@@ -510,7 +511,9 @@ export default function ScreenerPage() {
                         <Star className="w-3 h-3" fill={inWl ? 'currentColor' : 'none'} />
                       </button>
                     </td>
-                    <td className="px-3 py-2 font-semibold text-white">{row.symbol}</td>
+                    <td className="px-3 py-2 font-semibold text-white">
+                      <Link href={`/symbol/${row.symbol}`} className="hover:text-hub-yellow transition-colors">{row.symbol}</Link>
+                    </td>
                     <td className="px-3 py-2 text-right text-neutral-300 font-mono text-xs">{formatPrice(row.price)}</td>
                     <td className={`px-3 py-2 text-right font-mono text-xs ${row.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatPercent(row.change24h)}
@@ -553,7 +556,7 @@ export default function ScreenerPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-neutral-600 text-[11px] w-5">{rank}</span>
-                    <span className="text-white font-semibold text-sm">{row.symbol}</span>
+                    <Link href={`/symbol/${row.symbol}`} className="text-white font-semibold text-sm hover:text-hub-yellow transition-colors">{row.symbol}</Link>
                     <span className={`font-mono text-xs font-semibold ${row.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatPercent(row.change24h)}
                     </span>

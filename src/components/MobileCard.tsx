@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { TokenIconSimple } from './TokenIcon';
 
 interface MobileCardProps {
   symbol: string;
   rows: { label: string; value: React.ReactNode }[];
   actions?: React.ReactNode;
+  href?: string;
 }
 
 /**
@@ -13,13 +15,17 @@ interface MobileCardProps {
  * Renders as a vertical card instead of horizontal table row.
  * Only visible below `md` breakpoint.
  */
-export default function MobileCard({ symbol, rows, actions }: MobileCardProps) {
+export default function MobileCard({ symbol, rows, actions, href }: MobileCardProps) {
   return (
     <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TokenIconSimple symbol={symbol} size={28} />
-          <span className="text-white font-semibold text-sm">{symbol}</span>
+          {href ? (
+            <Link href={href} className="text-white font-semibold text-sm hover:text-hub-yellow transition-colors">{symbol}</Link>
+          ) : (
+            <span className="text-white font-semibold text-sm">{symbol}</span>
+          )}
         </div>
         {actions}
       </div>

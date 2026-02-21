@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Pagination from '@/components/Pagination';
@@ -315,6 +316,7 @@ export default function TopMoversPage() {
                 <MobileCard
                   key={`mobile-${coin.symbol}-${idx}`}
                   symbol={coin.symbol}
+                  href={`/symbol/${coin.symbol}`}
                   actions={<WatchlistStar symbol={coin.symbol} />}
                   rows={[
                     { label: 'Price', value: <span className="text-neutral-300">{fmtPrice(coin.price)}</span> },
@@ -378,7 +380,7 @@ export default function TopMoversPage() {
                         <div className="flex items-center gap-2">
                           <WatchlistStar symbol={coin.symbol} />
                           <TokenIconSimple symbol={coin.symbol} size={20} cmcId={coin.cmcId || undefined} />
-                          <span className="font-semibold text-white text-xs">{coin.symbol}</span>
+                          <Link href={`/symbol/${coin.symbol}`} className="font-semibold text-white text-xs hover:text-hub-yellow transition-colors">{coin.symbol}</Link>
                         </div>
                       </td>
                       <td className="px-3 py-2 text-xs text-neutral-400 max-w-[160px] truncate">{coin.name || '—'}</td>

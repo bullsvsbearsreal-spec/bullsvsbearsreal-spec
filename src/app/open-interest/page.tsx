@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { fetchAllOpenInterest, aggregateOpenInterestBySymbol, aggregateOpenInterestByExchange } from '@/lib/api/aggregator';
@@ -291,6 +292,7 @@ export default function OpenInterestPage() {
                   <MobileCard
                     key={symbol}
                     symbol={symbol}
+                    href={`/symbol/${symbol}`}
                     rows={[
                       { label: 'Total OI', value: <span className="text-white">{formatUSD(value)}</span> },
                       { label: '1h Δ', value: fmtMobile(delta?.change1h ?? null) },
@@ -337,7 +339,7 @@ export default function OpenInterestPage() {
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-2">
                             <WatchlistStar symbol={symbol} />
-                            <span className="text-white font-semibold">{symbol}</span>
+                            <Link href={`/symbol/${symbol}`} className="text-white font-semibold hover:text-hub-yellow transition-colors">{symbol}</Link>
                             <span className="text-neutral-600 text-sm">/USDT</span>
                           </div>
                         </td>

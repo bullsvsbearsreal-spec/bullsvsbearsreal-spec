@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { TrendingUp, TrendingDown, Sparkles, ChevronRight, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { TokenIconSimple } from './TokenIcon';
 import UpdatedAgo from './UpdatedAgo';
@@ -243,7 +244,7 @@ export default function CryptoTable() {
                       </div>
                       <WatchlistStar symbol={asset.symbol} />
                       <div>
-                        <p className="font-semibold text-white group-hover:text-hub-yellow transition-colors">{asset.symbol}</p>
+                        <Link href={`/symbol/${asset.symbol}`} className="font-semibold text-white group-hover:text-hub-yellow transition-colors">{asset.symbol}</Link>
                         <p className="text-hub-gray-text text-xs">{asset.name}</p>
                       </div>
                     </div>
@@ -296,7 +297,7 @@ export default function CryptoTable() {
               <div className="flex items-center gap-2">
                 <TokenIconSimple symbol={asset.symbol} size={28} />
                 <div>
-                  <span className="text-white font-semibold text-sm">{asset.symbol}</span>
+                  <Link href={`/symbol/${asset.symbol}`} className="text-white font-semibold text-sm hover:text-hub-yellow transition-colors">{asset.symbol}</Link>
                   <span className="text-hub-gray-text text-xs ml-1.5">{asset.name}</span>
                 </div>
               </div>

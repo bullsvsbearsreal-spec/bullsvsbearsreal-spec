@@ -362,7 +362,10 @@ export default function SymbolPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Funding by exchange */}
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-white mb-3">Funding Rate by Exchange</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-white">Funding Rate by Exchange</h2>
+                <Link href={`/funding/${symbol}`} className="text-[11px] text-hub-yellow hover:underline">History &rarr;</Link>
+              </div>
               {funding.length === 0 ? (
                 <p className="text-xs text-neutral-500 py-4 text-center">No funding data</p>
               ) : (
