@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, Info, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -98,9 +98,9 @@ export default function StablecoinFlowsPage() {
   );
 
   return (
-    <>
+    <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
+      <main className="text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -287,25 +287,14 @@ export default function StablecoinFlowsPage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-neutral-400 space-y-1">
-                <p>
-                  <strong className="text-neutral-300">Stablecoin Flows</strong> tracks the total supply
-                  and chain distribution of USD-pegged stablecoins.
-                </p>
-                <p>
-                  Rising stablecoin market cap = capital entering crypto (bullish signal).
-                  Falling market cap = capital exiting (bearish signal). Watch for large weekly changes.
-                </p>
-                <p>Data sourced from DefiLlama. Updates every 5 minutes.</p>
-              </div>
-            </div>
+          <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+            <p className="text-neutral-500 text-xs leading-relaxed">
+              Stablecoin Flows tracks the total supply and chain distribution of USD-pegged stablecoins. Rising stablecoin market cap = capital entering crypto (bullish signal). Falling market cap = capital exiting (bearish signal). Watch for large weekly changes. Data sourced from DefiLlama. Updates every 5 minutes.
+            </p>
           </div>
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

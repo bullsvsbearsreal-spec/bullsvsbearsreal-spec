@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout, getTop500Symbols, isTop500Symbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { fundingFetchers } from './exchanges';
+import { classifySymbol, KNOWN_STOCKS, KNOWN_COMMODITIES, KNOWN_FOREX, FOREX_BASES } from './normalize';
 
 export const runtime = 'edge';
 export const preferredRegion = 'dxb1';
@@ -55,6 +56,40 @@ export async function GET(request: NextRequest) {
       { status: 502, headers: { 'Cache-Control': 'no-cache' } },
     );
   }
+
+  // Post-processing: classify asset class for entries that don't have one set.
+  // Many CEX fetchers (Binance, Bybit, Bitget, etc.) don't set assetClass.
+  // Apply the centralized classification to ensure stocks, forex, and commodities
+  // show up correctly in their respective tabs.
+  data.forEach(entry => {
+    if (entry.assetClass && entry.assetClass !== 'crypto') return; // Already classified as non-crypto
+
+    const sym = entry.symbol;
+
+    // Handle MEXC *STOCK suffix (MSTRSTOCK → MSTR as stocks)
+    if (sym.endsWith('STOCK')) {
+      const base = sym.slice(0, -5);
+      if (KNOWN_STOCKS.has(base)) {
+        entry.symbol = base;
+        entry.assetClass = 'stocks';
+        return;
+      }
+    }
+
+    // Check bare forex base symbols (EUR, GBP, JPY from CEXes like MEXC, Kraken, Bitfinex)
+    if (FOREX_BASES.has(sym)) {
+      entry.symbol = sym + 'USD';
+      entry.assetClass = 'forex';
+      return;
+    }
+
+    // Generic classification using known sets
+    const classified = classifySymbol(sym);
+    if (classified.assetClass !== 'crypto') {
+      entry.assetClass = classified.assetClass;
+      entry.symbol = classified.symbol;
+    }
+  });
 
   // Fix mark prices: some exchanges return inaccurate or missing mark prices.
   // gTrade derives a synthetic "tokenPrice" from OI ratios (wrong).

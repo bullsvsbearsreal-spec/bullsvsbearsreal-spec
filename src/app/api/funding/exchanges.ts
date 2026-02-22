@@ -924,11 +924,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // Check if funding fees are enabled for this pair
           if (!params.fundingFeesEnabled) continue;
 
-          // Parse OI in tokens — skip pairs with no activity
+          // Parse OI in tokens (may be zero for some pairs — still show funding rate)
           const oi = pairOis[i];
           const oiLongToken = oi?.token ? Number(oi.token.oiLongToken) / PRECISION.OI_TOKEN : 0;
           const oiShortToken = oi?.token ? Number(oi.token.oiShortToken) / PRECISION.OI_TOKEN : 0;
-          if (oiLongToken === 0 && oiShortToken === 0) continue;
 
           // Parse params with contract precision
           const skewCoefficientPerYear = Number(params.skewCoefficientPerYear) / PRECISION.SKEW_COEFF_PER_YEAR;
@@ -945,7 +944,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // Derive token price from collateral OI / token OI ratio
           const oiLongCollateral = oi?.collateral ? Number(oi.collateral.oiLongCollateral) / collateralPrecision : 0;
           const oiShortCollateral = oi?.collateral ? Number(oi.collateral.oiShortCollateral) / collateralPrecision : 0;
-          const tokenPrice = ((oiLongCollateral + oiShortCollateral) * collateralPriceUsd) / (oiLongToken + oiShortToken);
+          const totalTokenOi = oiLongToken + oiShortToken;
+          const tokenPrice = totalTokenOi > 0
+            ? ((oiLongCollateral + oiShortCollateral) * collateralPriceUsd) / totalTokenOi
+            : 0;
           const netExposureUsd = netExposureToken * tokenPrice;
 
           // --- Core velocity-based funding rate calculation (from gTrade v10 SDK) ---
@@ -1150,7 +1152,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '1h' as const,
           };
         })
-        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+        .filter((item: any) => !isNaN(item.fundingRate)); // Keep 0% rates — valid data (balanced market)
     },
   },
   // Extended (Starknet DEX) — funding settles HOURLY; return native 1h rate
@@ -1186,7 +1188,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
           };
         })
-        .filter((item: any) => !isNaN(item.fundingRate) && item.fundingRate !== 0);
+        .filter((item: any) => !isNaN(item.fundingRate)); // Keep 0% rates — valid data
     },
   },
 
@@ -1307,7 +1309,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
           };
         })
-        .filter((item: any) => item && !isNaN(item.fundingRate) && item.fundingRate !== 0 && item.markPrice > 0);
+        .filter((item: any) => item && !isNaN(item.fundingRate) && item.markPrice > 0); // Keep 0% rates — valid data
     },
   },
   // ─── CloudFlare-blocked exchanges (require PROXY_URL env var) ───

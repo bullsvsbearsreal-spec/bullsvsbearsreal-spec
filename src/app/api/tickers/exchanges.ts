@@ -563,6 +563,207 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
   },
 
   // GMX V2 -- markets/info does not include price/volume data, only OI and funding rates
+  // gTrade -- no public ticker API available
+
+  // Aster DEX — Binance-compatible API
+  {
+    name: 'Aster',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://fapi.asterdex.com/fapi/v1/ticker/24hr');
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.symbol?.endsWith('USDT'))
+        .map((ticker: any) => {
+          let symbol = ticker.symbol.replace(/USDT$/, '');
+          // Normalize stock/forex symbols
+          if (symbol.endsWith('USD') && symbol !== 'USD') {
+            // Likely a non-crypto pair like GNSUSD — keep as-is for normalizeSymbol
+          }
+          if (!isCryptoSymbol(symbol)) return null;
+          return {
+            symbol,
+            exchange: 'Aster',
+            lastPrice: parseFloat(ticker.lastPrice),
+            price: parseFloat(ticker.lastPrice),
+            priceChangePercent24h: parseFloat(ticker.priceChangePercent),
+            changePercent24h: parseFloat(ticker.priceChangePercent),
+            high24h: parseFloat(ticker.highPrice) || 0,
+            low24h: parseFloat(ticker.lowPrice) || 0,
+            volume24h: parseFloat(ticker.volume) || 0,
+            quoteVolume24h: parseFloat(ticker.quoteVolume) || 0,
+          };
+        })
+        .filter((item: any) => item && item.lastPrice > 0);
+    },
+  },
+
+  // Lighter (zkLighter DEX) — orderBookDetails has price + volume + 24h stats
+  {
+    name: 'Lighter',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://mainnet.zklighter.elliot.ai/api/v1/orderBookDetails', {}, 12000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const books = json.order_book_details || [];
+      if (!Array.isArray(books)) return [];
+      return books
+        .filter((b: any) => b.market_type === 'perp' && b.status === 'active' && b.last_trade_price)
+        .map((b: any) => {
+          let symbol = b.symbol || '';
+          if (!symbol || !isCryptoSymbol(symbol)) return null;
+          const lastPrice = parseFloat(b.last_trade_price) || 0;
+          return {
+            symbol,
+            exchange: 'Lighter',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: parseFloat(b.daily_price_change) || 0,
+            changePercent24h: parseFloat(b.daily_price_change) || 0,
+            high24h: parseFloat(b.daily_price_high) || 0,
+            low24h: parseFloat(b.daily_price_low) || 0,
+            volume24h: parseFloat(b.daily_base_token_volume) || 0,
+            quoteVolume24h: parseFloat(b.daily_quote_token_volume) || 0,
+          };
+        })
+        .filter((item: any) => item && item.lastPrice > 0);
+    },
+  },
+
+  // Aevo (DEX) — /markets has mark_price + index_price but no volume
+  {
+    name: 'Aevo',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.aevo.xyz/markets', {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((m: any) => m.instrument_type === 'PERPETUAL' && m.is_active && m.mark_price)
+        .map((m: any) => {
+          const symbol = m.underlying_asset || m.instrument_name?.replace('-PERP', '') || '';
+          if (!isCryptoSymbol(symbol)) return null;
+          const lastPrice = parseFloat(m.mark_price) || 0;
+          return {
+            symbol,
+            exchange: 'Aevo',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: 0,
+            changePercent24h: 0,
+            high24h: 0,
+            low24h: 0,
+            volume24h: 0,
+            quoteVolume24h: 0,
+          };
+        })
+        .filter((item: any) => item && item.lastPrice > 0);
+    },
+  },
+
+  // Drift Protocol (Solana DEX) — Data API has full price + volume + 24h stats
+  {
+    name: 'Drift',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://data.api.drift.trade/stats/markets', {}, 12000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const markets: any[] = json?.markets || [];
+      return markets
+        .filter((m: any) => m.marketType === 'perp' && m.oraclePrice)
+        .map((m: any) => {
+          let symbol = (m.symbol || '').replace('-PERP', '');
+          if (!symbol) return null;
+          if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+          const lastPrice = parseFloat(m.oraclePrice) || 0;
+          const priceChange = parseFloat(m.priceChange24hPercent) || parseFloat(m.priceChange24h?.percent) || 0;
+          return {
+            symbol,
+            exchange: 'Drift',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: priceChange,
+            changePercent24h: priceChange,
+            high24h: parseFloat(m.priceHigh?.oracle) || 0,
+            low24h: parseFloat(m.priceLow?.oracle) || 0,
+            volume24h: parseFloat(m.baseVolume) || 0,
+            quoteVolume24h: parseFloat(m.quoteVolume) || 0,
+          };
+        })
+        .filter((item: any) => item && item.lastPrice > 0);
+    },
+  },
+
+  // BitMEX — CloudFlare-blocked, requires PROXY_URL
+  {
+    name: 'BitMEX',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,lastPrice,volume24h,prevPrice24h,highPrice,lowPrice&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
+      const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((i: any) => i.lastPrice && i.symbol)
+        .map((i: any) => {
+          let sym = i.symbol.replace(/USD$/, '').replace(/USDT$/, '').replace(/_.*/, '');
+          if (sym === 'XBT') sym = 'BTC';
+          const lastPrice = parseFloat(i.lastPrice) || 0;
+          const prevPrice = parseFloat(i.prevPrice24h) || lastPrice;
+          const changePercent = prevPrice > 0 ? ((lastPrice - prevPrice) / prevPrice) * 100 : 0;
+          return {
+            symbol: sym,
+            exchange: 'BitMEX',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: changePercent,
+            changePercent24h: changePercent,
+            high24h: parseFloat(i.highPrice) || 0,
+            low24h: parseFloat(i.lowPrice) || 0,
+            volume24h: parseFloat(i.volume24h) || 0,
+            quoteVolume24h: (parseFloat(i.volume24h) || 0) * lastPrice,
+          };
+        })
+        .filter((i: any) => i.lastPrice > 0 && i.symbol.length > 0);
+    },
+  },
+
+  // Gate.io — CloudFlare-blocked, requires PROXY_URL
+  {
+    name: 'Gate.io',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const targetUrl = 'https://api.gateio.ws/api/v4/futures/usdt/contracts';
+      const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((c: any) => c.name?.endsWith('_USDT') && c.last_price)
+        .map((c: any) => {
+          const lastPrice = parseFloat(c.last_price) || 0;
+          const markPrice = parseFloat(c.mark_price) || lastPrice;
+          // Gate provides trade_size (24h contracts) and volume_24h_base/volume_24h_quote
+          return {
+            symbol: c.name.replace('_USDT', ''),
+            exchange: 'Gate.io',
+            lastPrice: markPrice,
+            price: markPrice,
+            priceChangePercent24h: 0,
+            changePercent24h: 0,
+            high24h: 0,
+            low24h: 0,
+            volume24h: parseFloat(c.volume_24h_base) || parseFloat(c.trade_size) || 0,
+            quoteVolume24h: parseFloat(c.volume_24h_quote) || (parseFloat(c.trade_size) || 0) * markPrice,
+          };
+        })
+        .filter((i: any) => i.lastPrice > 0);
+    },
+  },
 
   // Extended (Starknet DEX) — /markets has full 24h OHLCV + prices
   {

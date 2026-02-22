@@ -80,7 +80,7 @@ export default function WatchlistPage() {
 
   /* ---- data fetchers (useCallback-wrapped to prevent infinite loop) */
   const tickerFetcher = useCallback(
-    () => fetch('/api/tickers').then((r) => r.json()) as Promise<TickerEntry[]>,
+    () => fetch('/api/tickers').then((r) => r.json()).then((j: any) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
     [],
   );
 
@@ -483,7 +483,7 @@ export default function WatchlistPage() {
         )}
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            Watchlist data is aggregated from 17+ exchanges. Prices show the highest-volume match. Funding rates are averaged across all exchanges offering the pair. Open Interest is the sum across all exchanges. Data refreshes every 30 seconds. Your watchlist is stored locally in your browser.
+            Watchlist data is aggregated across all active exchanges. Prices show the highest-volume match. Funding rates are averaged across all exchanges offering the pair. Open Interest is the sum across all exchanges. Data refreshes every 60 seconds. Your watchlist is stored locally in your browser.
           </p>
         </div>
       </main>

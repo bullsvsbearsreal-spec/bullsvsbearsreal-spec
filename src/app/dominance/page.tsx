@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, TrendingUp, TrendingDown, Info, PieChart } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, PieChart } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -29,7 +29,7 @@ function DonutChart({ value, label, color, size = 160 }: { value: number; label:
   const center = size / 2;
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="relative flex flex-col items-center">
       <svg width={size} height={size} className="transform -rotate-90">
         <circle
           cx={center}
@@ -121,9 +121,9 @@ export default function DominancePage() {
   }, [breakdown]);
 
   return (
-    <>
+    <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
+      <main className="text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -311,25 +311,14 @@ export default function DominancePage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-neutral-400 space-y-1">
-                <p>
-                  <strong className="text-neutral-300">Market Dominance</strong> tracks the market cap
-                  share of each cryptocurrency relative to the total crypto market.
-                </p>
-                <p>
-                  Rising BTC dominance typically indicates a &quot;flight to safety&quot; within crypto.
-                  Falling BTC dominance often signals an &quot;altseason&quot; where altcoins outperform.
-                </p>
-                <p>Data sourced from CoinGecko. Updates every 5 minutes.</p>
-              </div>
-            </div>
+          <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+            <p className="text-neutral-500 text-xs leading-relaxed">
+              Market Dominance tracks each cryptocurrency&apos;s market cap share relative to the total crypto market. Rising BTC dominance typically indicates a &quot;flight to safety&quot; within crypto. Falling BTC dominance often signals an altseason where altcoins outperform. Data sourced from CoinGecko. Updates every 5 minutes.
+            </p>
           </div>
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

@@ -18,6 +18,7 @@ export const KNOWN_STOCKS = new Set([
   'CSCO', 'ACN', 'ASML', 'RDDT', 'APP', 'IBM', 'GME', 'GE', 'RACE', 'CRCL', 'WDC',
   // ETFs / Indices
   'SPY', 'SPX', 'QQQ', 'IWM', 'DIA', 'ARKK',
+  'NAS100', 'SPX500', 'URNM',
 ]);
 
 // Known forex pairs (canonical form, no separators)
@@ -43,7 +44,7 @@ export const KNOWN_FOREX = new Set([
 ]);
 
 // Known forex BASE symbols (for gTrade "from" field matching)
-const FOREX_BASES = new Set([
+export const FOREX_BASES = new Set([
   'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD',
   'SEK', 'NOK', 'PLN', 'CZK', 'HUF', 'TRY', 'ZAR',
   'SGD', 'HKD', 'KRW', 'MXN', 'BRL', 'TWD', 'INR',
@@ -53,6 +54,8 @@ const FOREX_BASES = new Set([
 export const KNOWN_COMMODITIES = new Set([
   // Precious metals
   'XAU', 'XAG', 'XPT', 'XPD',
+  'XAUT', // Tether Gold (tokenized gold, traded on CEXes)
+  'GOLD', 'SILVER', 'COPPER',
   // Base metals
   'XCU', 'HG',
   // Energy
@@ -169,10 +172,8 @@ function normalizeAster(raw: string): NormalizeResult {
     return { symbol: canonical, assetClass: 'forex' };
   }
 
-  // SHIELD prefix = hedge variant of a non-crypto asset (e.g., SHIELDSTXUSDT = Seagate stock)
-  // If no known classification matched, SHIELD symbols default to stocks
-  if (hadShield) return { symbol, assetClass: 'stocks' };
-
+  // SHIELD prefix = hedge variant. Known stocks/commodities/forex already matched above.
+  // If nothing matched, it's a crypto hedge variant (SHIELDADAUSDT = ADA hedge, not a stock).
   return { symbol, assetClass: 'crypto' };
 }
 
@@ -306,8 +307,9 @@ function normalizeBingx(raw: string): NormalizeResult {
 
 /**
  * Generic symbol classifier — check against known sets.
+ * Exported for use in route.ts post-processing step.
  */
-function classifySymbol(symbol: string): NormalizeResult {
+export function classifySymbol(symbol: string): NormalizeResult {
   if (KNOWN_STOCKS.has(symbol)) return { symbol, assetClass: 'stocks' };
   if (KNOWN_FOREX.has(symbol)) return { symbol, assetClass: 'forex' };
   if (KNOWN_COMMODITIES.has(symbol)) return { symbol, assetClass: 'commodities' };

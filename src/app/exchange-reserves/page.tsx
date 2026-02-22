@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, Info, Building2, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, Building2, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -193,9 +193,9 @@ export default function ExchangeReservesPage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
+      <main className="text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -455,28 +455,14 @@ export default function ExchangeReservesPage() {
           )}
 
           {/* Info footer */}
-          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-neutral-400 space-y-1">
-                <p>
-                  <strong className="text-neutral-300">Exchange Reserves</strong> track total assets held by
-                  centralized exchanges, sourced from DefiLlama proof-of-reserves data.
-                </p>
-                <p>
-                  <strong>Declining reserves</strong> may indicate users withdrawing to self-custody (bullish
-                  for supply squeeze). <strong>Rising reserves</strong> can signal incoming sell pressure.
-                </p>
-                <p>
-                  Chain distribution shows where each exchange holds its assets (e.g., Bitcoin, Ethereum, Tron).
-                </p>
-                <p>Updates every 5 minutes.</p>
-              </div>
-            </div>
+          <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+            <p className="text-neutral-500 text-xs leading-relaxed">
+              Exchange Reserves track total assets held by centralized exchanges, sourced from DefiLlama proof-of-reserves data. Declining reserves may indicate users withdrawing to self-custody (bullish for supply squeeze). Rising reserves can signal incoming sell pressure. Chain distribution shows where each exchange holds its assets. Updates every 5 minutes.
+            </p>
           </div>
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

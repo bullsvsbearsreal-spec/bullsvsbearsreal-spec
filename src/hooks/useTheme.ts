@@ -2,11 +2,11 @@
 
 import { useSyncExternalStore } from 'react';
 
-export type Theme = 'orange' | 'green';
+export type Theme = 'dark' | 'light';
 
 function getTheme(): Theme {
-  if (typeof document === 'undefined') return 'orange';
-  return document.documentElement.dataset.theme === 'green' ? 'green' : 'orange';
+  if (typeof document === 'undefined') return 'dark';
+  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 }
 
 let listeners: (() => void)[] = [];
@@ -29,5 +29,5 @@ function subscribe(cb: () => void) {
 }
 
 export function useTheme(): Theme {
-  return useSyncExternalStore(subscribe, getTheme, () => 'orange' as Theme);
+  return useSyncExternalStore(subscribe, getTheme, () => 'dark' as Theme);
 }

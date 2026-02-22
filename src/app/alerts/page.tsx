@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, Info, CheckCheck } from 'lucide-react';
+import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import {
   type Alert,
@@ -116,9 +116,9 @@ export default function AlertsPage() {
   const undismissedCount = triggered.filter((t) => !t.dismissed).length;
 
   return (
-    <>
+    <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
+      <main className="text-white">
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -336,28 +336,14 @@ export default function AlertsPage() {
           </div>
 
           {/* Info footer */}
-          <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-4 border-l-2 border-l-hub-yellow">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-neutral-400 space-y-1">
-                <p>
-                  <strong className="text-neutral-300">Alert System</strong> checks your conditions
-                  against live market data every 60 seconds while InfoHub is open.
-                </p>
-                <p>
-                  Alerts are stored in your browser&apos;s localStorage. Enable browser notifications
-                  for desktop pop-ups when conditions trigger.
-                </p>
-                <p>
-                  Tip: Set funding rate alerts to catch high-funding opportunities for carry trades,
-                  or price alerts below key support levels.
-                </p>
-              </div>
-            </div>
+          <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+            <p className="text-neutral-500 text-xs leading-relaxed">
+              Alerts check your conditions against live market data every 60 seconds while InfoHub is open. Stored in your browser&apos;s localStorage. Enable browser notifications for desktop pop-ups when conditions trigger. Set funding rate alerts for carry trade opportunities, or price alerts below key support levels.
+            </p>
           </div>
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

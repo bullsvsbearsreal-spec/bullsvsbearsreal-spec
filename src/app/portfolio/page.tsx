@@ -68,7 +68,8 @@ export default function PortfolioPage() {
   const fetcher = useCallback(async () => {
     const res = await fetch('/api/tickers');
     if (!res.ok) throw new Error('Failed to fetch tickers');
-    return (await res.json()) as Ticker[];
+    const json = await res.json();
+    return (Array.isArray(json) ? json : json.data ?? []) as Ticker[];
   }, []);
 
   const { data: tickers, isLoading, isRefreshing, lastUpdate, refresh, error: priceError } = useApiData<Ticker[]>({
@@ -531,7 +532,7 @@ export default function PortfolioPage() {
         )}
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            Portfolio values use real-time prices from the highest-volume exchange. P&amp;L is calculated as unrealized gain/loss based on your average entry price. Allocation percentages are based on current market value. All holdings data is stored locally in your browser and never sent to any server. Prices refresh every 30 seconds.
+            Portfolio values use real-time prices from the highest-volume exchange. P&amp;L is calculated as unrealized gain/loss based on your average entry price. Allocation percentages are based on current market value. All holdings data is stored locally in your browser and never sent to any server. Prices refresh every 60 seconds.
           </p>
         </div>
       </main>

@@ -165,7 +165,7 @@ export default function WalletTrackerPage() {
 
   /* ---- fetch prices for USD conversion ------------------------------ */
   const priceFetcher = useCallback(
-    () => fetch('/api/tickers').then((r) => r.json()) as Promise<TickerEntry[]>,
+    () => fetch('/api/tickers').then((r) => r.json()).then((j: any) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
     [],
   );
 
