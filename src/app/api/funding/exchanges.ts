@@ -879,7 +879,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!res.ok) return [];
       const raw = await res.json();
 
-      // Precision constants from gTrade smart contracts
+      // Precision constants from gTrade smart contracts (@gainsnetwork/sdk v1.8.6)
       const PRECISION = {
         SKEW_COEFF_PER_YEAR: 1e26,
         ABS_VELOCITY_PER_YEAR_CAP: 1e7,
@@ -887,6 +887,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         FUNDING_RATE_PER_SECOND_P: 1e18,
         OI_TOKEN: 1e18,
         COLLATERAL_PRECISION: 1e6, // USDC default
+        BORROWING_RATE_PER_SECOND: 1e10, // borrowingV2 precision
       };
       const ONE_YEAR = 365 * 24 * 60 * 60;
 
@@ -900,6 +901,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const fundingParams = collateral.fundingFees?.pairParams || [];
       const fundingData = collateral.fundingFees?.pairData || [];
       const pairOis = collateral.pairOis || [];
+      const borrowingV2Params = collateral.borrowingFees?.v2?.pairParams || [];
       const collateralPrecision = collateral.collateralConfig?.precision
         ? parseInt(collateral.collateralConfig.precision) : PRECISION.COLLATERAL_PRECISION;
       const collateralPriceUsd = collateral.prices?.collateralPriceUsd || 1;
@@ -984,20 +986,33 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // so we only multiply by seconds (no extra *100)
           let fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
-          // gTrade's skew model: the earning side gets amplified by OI ratio.
-          // Paying side rate = base rate. Earning side rate = base × (payingOI / earningOI).
-          // Convention: negative rate = longs earn (shorts pay), positive = longs pay (shorts earn).
+          // gTrade's skew model (from @gainsnetwork/sdk getLongShortAprMultiplier):
+          // Convention: positive rate = longs pay (standard, same as Binance/Bybit)
+          // When aprMultiplierEnabled: earning side gets amplified by OI ratio, capped at 100x
+          // Paying side always has multiplier = 1
           let fundingRateLong = fundingRate8h;
           let fundingRateShort = -fundingRate8h; // short side is opposite sign
-          if (fundingRate8h < 0 && oiLongToken > 0 && oiShortToken > 0) {
-            // Longs earn: amplified by short/long OI ratio
-            fundingRateLong = fundingRate8h * (oiShortToken / oiLongToken);
-            fundingRateShort = -fundingRate8h; // shorts pay base rate (positive = cost)
-          } else if (fundingRate8h > 0 && oiLongToken > 0 && oiShortToken > 0) {
-            // Shorts earn: amplified by long/short OI ratio
-            fundingRateLong = fundingRate8h; // longs pay base rate (positive = cost)
-            fundingRateShort = -fundingRate8h * (oiLongToken / oiShortToken);
+          if (params.aprMultiplierEnabled && oiLongToken > 0 && oiShortToken > 0) {
+            if (fundingRate8h < 0) {
+              // Longs earn: amplify long earnings by short/long OI ratio
+              fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, 100);
+              fundingRateShort = -fundingRate8h; // shorts pay base rate
+            } else if (fundingRate8h > 0) {
+              // Shorts earn: amplify short earnings by long/short OI ratio
+              fundingRateLong = fundingRate8h; // longs pay base rate
+              fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, 100);
+            }
           }
+
+          // Add borrowing v2 fee — gTrade "Holding Fee" = funding + borrowing
+          // Borrowing is a flat per-second rate applied equally to both sides
+          const borrowParams = borrowingV2Params[i];
+          const borrowRate8h = borrowParams?.borrowingRatePerSecondP
+            ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600
+            : 0;
+          fundingRateLong += borrowRate8h;
+          fundingRateShort += borrowRate8h;
+          fundingRate8h += borrowRate8h;
 
           // Skip pairs with essentially zero rate
           if (Math.abs(fundingRate8h) < 0.00001) continue;
@@ -1009,15 +1024,14 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol = pair.from + (pair.to || 'USD');
           }
 
-          // gTrade native convention: positive rate = shorts pay longs
-          // Standard convention: positive rate = longs pay shorts
-          // Negate base rate and swap long/short sides to convert convention
+          // gTrade convention: positive rate = longs pay shorts (standard)
+          // No convention flip needed — confirmed by @gainsnetwork/sdk source
           results.push({
             symbol,
             exchange: 'gTrade',
-            fundingRate: -fundingRate8h,
-            fundingRateLong: -fundingRateShort,
-            fundingRateShort: -fundingRateLong,
+            fundingRate: fundingRate8h,
+            fundingRateLong: fundingRateLong,
+            fundingRateShort: fundingRateShort,
             fundingInterval: '8h' as const, // continuous model, normalized to 8h for display
             markPrice: tokenPrice,
             indexPrice: 0,
