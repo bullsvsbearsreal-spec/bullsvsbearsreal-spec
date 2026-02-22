@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Logo from './Logo';
 import { ALL_EXCHANGES } from '@/lib/constants';
-import { Github, Twitter, MessageCircle, Percent, PieChart, Zap, SlidersHorizontal, Rocket, Thermometer, Newspaper, Grid3X3 } from 'lucide-react';
+import { Github, Twitter, Send, Percent, PieChart, Zap, SlidersHorizontal, Rocket, Thermometer, Newspaper, Grid3X3 } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -44,13 +44,13 @@ export default function Footer() {
                 <Github className="w-3.5 h-3.5" />
               </a>
               <a
-                href="https://discord.gg/infohub"
+                href="https://t.me/+Z6SQGJ57SlwyY2Rk"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-white/[0.04] text-neutral-500 hover:text-amber-400 hover:bg-white/[0.08] transition-colors"
-                aria-label="Join Discord"
+                aria-label="Join Telegram"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
+                <Send className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { ALL_EXCHANGES } from '@/lib/constants';
 import { HelpCircle, ChevronDown } from 'lucide-react';
 
 /* -- FAQ Data ------------------------------------------------------------ */
@@ -10,51 +11,51 @@ import { HelpCircle, ChevronDown } from 'lucide-react';
 const faqs = [
   {
     q: 'What is InfoHub?',
-    a: 'InfoHub is a real-time cryptocurrency derivatives dashboard that aggregates data from 20+ exchanges into a single, unified interface. It gives traders instant visibility into funding rates, open interest, liquidations, and more \u2014 without needing to open dozens of tabs.',
+    a: `It\u2019s a derivatives dashboard that pulls data from ${ALL_EXCHANGES.length} exchanges into one screen. Funding rates, OI, liquidations, screener \u2014 instead of opening 30 tabs, you open one.`,
   },
   {
     q: 'What data do you provide?',
-    a: 'InfoHub covers funding rates, open interest, liquidations, a screener with RSI and volume data, cumulative volume delta (CVD), options data (max pain, put/call ratio, IV smile), prediction markets, basis/premium tracking, and aggregated crypto news. New features are added regularly.',
+    a: 'Funding rates, open interest, liquidations, a screener (RSI, volume, 24h change), CVD, options data (max pain, put/call, IV smile), prediction markets, basis tracking, long/short ratios, whale alerts, and news. We keep adding stuff.',
   },
   {
     q: 'Which exchanges do you track?',
-    a: 'We aggregate data from Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Hyperliquid, dYdX, Aster DEX, Lighter, Aevo, Drift, GMX, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, Coinbase, CoinEx, gTrade, and Bitunix. More are added over time.',
+    a: `Currently ${ALL_EXCHANGES.length}: ${ALL_EXCHANGES.join(', ')}. We add new ones regularly \u2014 both CEX and DEX.`,
   },
   {
     q: 'Is InfoHub free?',
-    a: 'Yes, InfoHub is completely free to use. There is no login, no account required, and no paywall. All features are available to everyone.',
+    a: 'Yes. No login, no account, no paywall. Just open it and use it.',
   },
   {
     q: 'How often is data updated?',
-    a: 'Data is updated in real-time, with most endpoints polling every 30\u201360 seconds depending on the data type. Aggregate trades (CVD) refresh every 15 seconds. Options data refreshes every 60 seconds.',
+    a: 'Most data refreshes every 30\u201360 seconds. CVD updates every 15 seconds. Options data every 60 seconds. The timestamp on each page shows when data was last fetched.',
   },
   {
     q: 'What is a funding rate?',
-    a: 'Funding rates are periodic payments between long and short traders on perpetual futures contracts. They keep the perpetual price anchored to the spot price. A positive funding rate means longs pay shorts (bullish market), while a negative rate means shorts pay longs (bearish market). Funding is typically settled every 8 hours on most exchanges.',
+    a: 'It\u2019s a periodic payment between longs and shorts on perp contracts that keeps the perp price close to spot. Positive rate = longs pay shorts (market is bullish/overleveraged long). Negative = shorts pay longs. Most exchanges settle every 8 hours, some hourly.',
   },
   {
     q: 'What is open interest?',
-    a: 'Open interest (OI) is the total number of outstanding derivative contracts (futures/perpetuals) that have not been settled. Rising OI with rising price suggests new money entering long positions. Falling OI suggests positions are being closed.',
+    a: 'OI is the total number of open derivative contracts. If OI is rising while price goes up, new money is coming in long. If OI drops, positions are closing. It\u2019s one of the best signals for gauging market conviction.',
   },
   {
     q: 'What are liquidations?',
-    a: 'Liquidations occur when a leveraged trading position is forcibly closed by the exchange because the trader\u2019s margin balance falls below the maintenance requirement. Large cascading liquidations can amplify price moves and are a key signal for traders.',
+    a: 'When a leveraged position loses enough that the exchange force-closes it. Big liquidation cascades can move price fast \u2014 that\u2019s why traders watch them. Our liquidation page shows them in real-time across all exchanges.',
   },
   {
     q: 'How do I compare rates across exchanges?',
-    a: 'Use the Compare page to view funding rates for the same asset side-by-side across every exchange we track. The Arbitrage section on the funding page highlights the best funding rate differentials for cross-exchange strategies.',
+    a: 'The Compare page shows funding for the same coin across every exchange side-by-side. The Arbitrage section on the funding page surfaces the biggest rate differentials automatically.',
   },
   {
     q: 'Is there an API?',
-    a: 'A public API is not currently available, but it is planned for the future. Stay tuned for updates.',
+    a: 'Yes \u2014 check the API Docs page. All endpoints are free, no auth required. Just don\u2019t hammer them.',
   },
   {
     q: 'Do you support mobile?',
-    a: 'Yes. InfoHub is fully responsive and designed to work on phones, tablets, and desktop browsers. All features are accessible on mobile.',
+    a: 'Yep. Fully responsive \u2014 works on phone, tablet, desktop. All the same features.',
   },
   {
-    q: 'Who built InfoHub?',
-    a: 'InfoHub was built by a small team of crypto traders and developers who wanted a single dashboard for all the derivatives data they needed. The project is actively maintained and growing.',
+    q: 'Who built this?',
+    a: 'A couple of traders who got tired of switching between exchange tabs. Check the Team page.',
   },
 ];
 
@@ -118,9 +119,9 @@ export default function FAQPage() {
 
         {/* Contact CTA */}
         <div className="mt-8 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl p-5 text-center">
-          <h2 className="text-sm font-bold text-white mb-1">Still have questions?</h2>
+          <h2 className="text-sm font-bold text-white mb-1">Something missing?</h2>
           <p className="text-xs text-neutral-400 mb-3">
-            Reach out and we will get back to you as soon as possible.
+            Drop us a line. We actually read these.
           </p>
           <a
             href="mailto:contact@info-hub.io"

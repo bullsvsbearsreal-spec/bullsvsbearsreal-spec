@@ -17,7 +17,7 @@ export default function CoinPage() {
   const [coin, setCoin] = useState<CoinData | null>(null);
   const [events, setEvents] = useState<CryptoEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'events' | 'unlocks' | 'news'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'unlocks'>('events');
 
   useEffect(() => {
     async function loadData() {
@@ -192,17 +192,7 @@ export default function CoinPage() {
             <Unlock className="w-4 h-4" />
             Token Unlocks ({unlockEvents.length})
           </button>
-          <button
-            onClick={() => setActiveTab('news')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors whitespace-nowrap ${
-              activeTab === 'news'
-                ? 'bg-hub-yellow text-black'
-                : 'bg-white/[0.04] text-neutral-500 hover:text-white'
-            }`}
-          >
-            <Flame className="w-4 h-4" />
-            Hot News
-          </button>
+          {/* News tab removed — will be added when news API supports per-coin filtering */}
         </div>
 
         {/* Tab Content */}
@@ -241,13 +231,6 @@ export default function CoinPage() {
               </div>
             )}
 
-            {activeTab === 'news' && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
-                <Flame className="w-12 h-12 text-hub-yellow mx-auto mb-4" />
-                <h3 className="text-white font-semibold mb-2">News Coming Soon</h3>
-                <p className="text-neutral-600">Real-time news aggregation will be available in the next update.</p>
-              </div>
-            )}
           </div>
 
           {/* Sidebar */}

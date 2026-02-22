@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Copy, Check, ExternalLink, Database, Globe } from 'lucide-react';
+import { ALL_EXCHANGES, CEX_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants';
 
 interface EndpointProps {
   method: string;
@@ -148,17 +149,9 @@ print(len(data["data"]), "entries")`;
   );
 }
 
-const FUNDING_EXCHANGES = [
-  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'Phemex',
-  'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'KuCoin', 'Deribit',
-  'HTX', 'Bitfinex', 'WhiteBIT', 'Coinbase', 'CoinEx', 'gTrade',
-];
+const FUNDING_EXCHANGES = [...ALL_EXCHANGES];
 
-const OI_EXCHANGES = [
-  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'Phemex',
-  'Hyperliquid', 'dYdX', 'Lighter', 'Aster', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex',
-  'WhiteBIT', 'Coinbase', 'CoinEx', 'CME',
-];
+const OI_EXCHANGES = [...ALL_EXCHANGES];
 
 export default function ApiDocsPage() {
   return (
@@ -174,7 +167,7 @@ export default function ApiDocsPage() {
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/5 border border-blue-500/10 rounded-lg">
               <Database className="w-4 h-4 text-blue-400" />
-              <span className="text-blue-400 text-xs font-medium">21 Exchanges (15 CEX + 6 DEX)</span>
+              <span className="text-blue-400 text-xs font-medium">{ALL_EXCHANGES.length} Exchanges ({CEX_EXCHANGES.size} CEX + {DEX_EXCHANGES.size} DEX)</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/5 border border-purple-500/10 rounded-lg">
               <Globe className="w-4 h-4 text-purple-400" />
@@ -211,7 +204,7 @@ export default function ApiDocsPage() {
           <EndpointSection
             method="GET"
             path="/api/funding?assetClass=crypto"
-            description="Real-time funding rates across 21 exchanges"
+            description={`Real-time funding rates across ${ALL_EXCHANGES.length} exchanges`}
             params={[
               { name: 'assetClass', type: 'string', required: false, description: 'crypto (default) | stocks | forex | commodities | all' },
             ]}
@@ -231,9 +224,9 @@ export default function ApiDocsPage() {
     { "exchange": "Binance", "status": "ok", "count": 257, "latencyMs": 412 }
   ],
   "meta": {
-    "totalExchanges": 21,
-    "activeExchanges": 21,
-    "totalEntries": 3209,
+    "totalExchanges": 29,
+    "activeExchanges": 29,
+    "totalEntries": 8200,
     "assetClass": "crypto",
     "timestamp": 1770901234567,
     "normalization": {
@@ -246,9 +239,9 @@ export default function ApiDocsPage() {
   "data": [
     { "symbol": "BTC", "exchange": "Binance", "fundingRate": 0.000089, "markPrice": 67865.77, ... },
     { "symbol": "ETH", "exchange": "Binance", "fundingRate": -0.000017, "markPrice": 1981.50, ... },
-    ...3207 more entries
+    ...6200+ more entries
   ],
-  "meta": { "totalEntries": 3209, "activeExchanges": 21 }
+  "meta": { "totalEntries": 6285, "activeExchanges": 24 }
 }`}
             exchanges={FUNDING_EXCHANGES}
           />
@@ -256,7 +249,7 @@ export default function ApiDocsPage() {
           <EndpointSection
             method="GET"
             path="/api/openinterest"
-            description="Open interest data across 20 exchanges"
+            description="Open interest data across 29 exchanges"
             response={`{
   "data": [
     {
@@ -278,9 +271,9 @@ export default function ApiDocsPage() {
             example={`{
   "data": [
     { "symbol": "BTC", "exchange": "Binance", "openInterest": 123456.78, "openInterestValue": 8234567890, ... },
-    ...2800 more entries
+    ...2800+ more entries
   ],
-  "meta": { "totalEntries": 2801, "activeExchanges": 19 }
+  "meta": { "totalEntries": 2800, "activeExchanges": 29 }
 }`}
             exchanges={OI_EXCHANGES}
           />

@@ -1,6 +1,7 @@
 'use client';
 
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 interface TeamMember {
   name: string;
@@ -16,14 +17,14 @@ const teamMembers: TeamMember[] = [
     name: '0x.0celot',
     role: 'Founder',
     image: '/team/ocelot.jpg',
-    bio: 'Founder of InfoHub, building the future of real-time trading data. Passionate about creating tools that empower traders with accurate, timely information.',
+    bio: 'Got tired of having 30 exchange tabs open just to check funding rates. Built InfoHub to fix that. Writes most of the code, breaks things on weekends, and occasionally sleeps.',
     stats: [],
   },
   {
     name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
-    bio: 'Strategic advisor with deep expertise in market analysis and trading infrastructure development. Over 15 years of trading experience with $1B+ annual volume across major DEXs. Trusted advisor to leading exchanges for market insights and product development.',
+    bio: 'Full-time degen turned advisor. 15+ years in markets, trades $1B+/year across DEXs, and somehow still checks funding rates at 3am. Helps shape what InfoHub builds next.',
     stats: [
       { label: 'Trading Volume', value: '$1B+/year' },
       { label: 'Experience', value: '15+ Years' },
@@ -42,7 +43,7 @@ export default function TeamPage() {
         <div className="mb-6">
           <h1 className="heading-page">Team</h1>
           <p className="text-neutral-600 text-xs mt-0.5">
-            Building the future of real-time trading data
+            The people behind the dashboard
           </p>
         </div>
 
@@ -111,9 +112,9 @@ export default function TeamPage() {
         {/* Join Us Section */}
         <div className="mt-8">
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 text-center">
-            <h3 className="text-sm font-bold text-white mb-2">Want to Join Us?</h3>
+            <h3 className="text-sm font-bold text-white mb-2">Want to contribute?</h3>
             <p className="text-neutral-600 text-xs mb-4 max-w-lg mx-auto">
-              We're always looking for talented individuals passionate about trading and data.
+              We ship fast and break things. If that sounds fun, reach out.
             </p>
             <a
               href="mailto:contact@info-hub.io"
@@ -124,10 +125,8 @@ export default function TeamPage() {
           </div>
         </div>
 
-        <div className="mt-6 text-xs text-neutral-600 text-center">
-          © 2026 infohub. All rights reserved.
-        </div>
       </main>
+      <Footer />
     </div>
   );
 }

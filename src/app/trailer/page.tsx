@@ -94,9 +94,9 @@ export default function TrailerPage() {
       {sceneId === 'glitch-text' && (
         <Centered>
           <div className="space-y-4 text-center">
-            <Line t={sceneT} delay={0}>The crypto market moves at light speed.</Line>
-            <Line t={sceneT} delay={0.25}>Billions liquidated in minutes.</Line>
-            <Line t={sceneT} delay={0.5}>Funding rates flip in seconds.</Line>
+            <Line t={sceneT} delay={0}>You check Binance funding. Then Bybit. Then OKX.</Line>
+            <Line t={sceneT} delay={0.25}>30 tabs open. Half of them stale.</Line>
+            <Line t={sceneT} delay={0.5}>There has to be a better way.</Line>
           </div>
           <ScanLines />
         </Centered>
@@ -106,16 +106,16 @@ export default function TrailerPage() {
         <Centered>
           <div className="text-center">
             <p className="text-4xl md:text-6xl lg:text-7xl font-black animate-[scaleIn_0.6s_ease]">
-              <span className="text-red-500">Scattered data.</span>
+              <span className="text-red-500">Wrong tab.</span>
             </p>
             <p className="text-4xl md:text-6xl lg:text-7xl font-black mt-3 animate-[scaleIn_0.6s_0.4s_ease_both]">
-              <span className="text-red-400/80">Delayed signals.</span>
+              <span className="text-red-400/80">Stale data.</span>
             </p>
             <p className="text-4xl md:text-6xl lg:text-7xl font-black mt-3 animate-[scaleIn_0.6s_0.8s_ease_both]">
-              <span className="text-red-300/60">Missed trades.</span>
+              <span className="text-red-300/60">Missed entry.</span>
             </p>
             <p className="text-2xl md:text-3xl font-bold text-neutral-500 mt-8 animate-[fadeIn_1s_1.5s_ease_both]">
-              Until now.
+              We fixed that.
             </p>
           </div>
           <ScanLines />
@@ -144,7 +144,7 @@ export default function TrailerPage() {
               Real-time data from <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">{ALL_EXCHANGES.length} exchanges</span>
             </p>
             <p className="text-xl md:text-2xl text-neutral-500 mt-4">
-              Aggregated. Analyzed. Actionable.
+              One dashboard. Every perp market.
             </p>
           </div>
         </Centered>
@@ -153,7 +153,7 @@ export default function TrailerPage() {
       {sceneId === 'montage-1' && (
         <MontageSlide
           title="Liquidation Heatmap"
-          desc={`See every forced closure across ${ALL_EXCHANGES.length} exchanges in real-time`}
+          desc={`Every rekt across ${ALL_EXCHANGES.length} exchanges, the second it happens`}
           color="#EF4444"
           icon="🔥"
           features={['CEX & DEX filtering', 'Timeline chart', 'Exchange heatmap', 'Sound alerts']}
@@ -163,7 +163,7 @@ export default function TrailerPage() {
       {sceneId === 'montage-2' && (
         <MontageSlide
           title="Funding Rates"
-          desc="Track funding across every perpetual market — spot arbitrage instantly"
+          desc="Every perp market side-by-side. Spot the arb before everyone else."
           color="#FFA500"
           icon="💰"
           features={['Multi-exchange comparison', 'Funding heatmap', 'Arbitrage scanner', 'Historical charts']}
@@ -173,7 +173,7 @@ export default function TrailerPage() {
       {sceneId === 'montage-3' && (
         <MontageSlide
           title="Open Interest"
-          desc="$60B+ in open interest tracked — know where the money is"
+          desc="$59B+ in positions across every exchange. See where leverage is building."
           color="#3B82F6"
           icon="📊"
           features={['Total OI tracking', 'Per-exchange breakdown', 'OI change alerts', 'Historical data']}
@@ -183,7 +183,7 @@ export default function TrailerPage() {
       {sceneId === 'montage-4' && (
         <MontageSlide
           title="And So Much More"
-          desc="35+ tools for every dimension of the crypto market"
+          desc="Long/short ratios, whale alerts, options flow, CVD, heatmaps — all free"
           color="#8B5CF6"
           icon="⚡"
           features={['Long/Short Ratios', 'Whale Alerts', 'Options Flow', 'News Feed', 'Fear & Greed', 'CVD Tracker', 'Market Heatmap', 'RSI Heatmap']}
@@ -193,10 +193,10 @@ export default function TrailerPage() {
       {sceneId === 'stats' && (
         <Centered>
           <div className="flex flex-wrap justify-center gap-10 md:gap-20">
-            <StatCounter value="27" label="Exchanges" t={sceneT} delay={0} />
-            <StatCounter value="35+" label="Tools" t={sceneT} delay={0.15} />
+            <StatCounter value={`${ALL_EXCHANGES.length}`} label="Exchanges" t={sceneT} delay={0} />
+            <StatCounter value="6K+" label="Pairs" t={sceneT} delay={0.15} />
             <StatCounter value="24/7" label="Real-Time" t={sceneT} delay={0.3} />
-            <StatCounter value="$60B+" label="OI Tracked" t={sceneT} delay={0.45} />
+            <StatCounter value="$59B+" label="OI Tracked" t={sceneT} delay={0.45} />
           </div>
         </Centered>
       )}
@@ -205,10 +205,10 @@ export default function TrailerPage() {
         <Centered>
           <div className="text-center max-w-3xl animate-[fadeIn_1s_ease]">
             <p className="text-3xl md:text-5xl font-black text-white leading-tight">
-              Don&apos;t trade <span className="text-neutral-500">blind</span>.
+              Stop alt-tabbing.
             </p>
             <p className="text-3xl md:text-5xl font-black mt-2 bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent leading-tight">
-              Trade informed.
+              Start trading.
             </p>
           </div>
         </Centered>
