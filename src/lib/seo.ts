@@ -159,6 +159,22 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Liquidation Map',
     description: 'Estimated liquidation clusters for BTC, ETH, and SOL based on common leverage tiers and real open interest data. Visualize where leveraged positions would get liquidated.',
   },
+  '/market-cycle': {
+    title: 'Market Cycle Indicators',
+    description: 'Bitcoin on-chain models and technical cycle indicators. Pi Cycle Top, Rainbow Chart, 200-Week MA Heatmap, and Stock-to-Flow model.',
+  },
+  '/onchain': {
+    title: 'On-Chain Metrics',
+    description: 'Bitcoin on-chain analytics — hash rate, mining difficulty, miner revenue, Puell Multiple, MVRV Z-Score, mempool fees, and transaction volume.',
+  },
+  '/liquidation-heatmap': {
+    title: 'Liquidation Heatmap',
+    description: 'Real-time forced liquidation density heatmap from Binance and OKX. Visualize liquidation clusters by price and time for BTC, ETH, and SOL.',
+  },
+  '/chart': {
+    title: 'Chart',
+    description: 'Professional cryptocurrency charting with technical indicators powered by TradingView lightweight-charts.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

@@ -40,6 +40,7 @@ const navCategories: NavCategory[] = [
     label: 'Trading',
     icon: Activity,
     items: [
+      { name: 'Chart', href: '/chart', icon: LineChart },
       { name: 'Screener', href: '/screener', icon: SlidersHorizontal },
       { name: 'Funding', href: '/funding', icon: Percent },
       { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
@@ -47,6 +48,7 @@ const navCategories: NavCategory[] = [
       { name: 'OI Heatmap', href: '/oi-heatmap', icon: Grid3X3 },
       { name: 'Liquidations', href: '/liquidations', icon: Zap },
       { name: 'Liq Map', href: '/liquidation-map', icon: Crosshair },
+      { name: 'Liq Heatmap', href: '/liquidation-heatmap', icon: Grid3X3 },
       { name: 'Long/Short', href: '/longshort', icon: ArrowLeftRight },
       { name: 'CVD', href: '/cvd', icon: LineChart },
       { name: 'Order Flow', href: '/orderflow', icon: Activity },
@@ -70,6 +72,8 @@ const navCategories: NavCategory[] = [
       { name: 'Stablecoin Flows', href: '/stablecoin-flows', icon: Coins },
       { name: 'Correlation', href: '/correlation', icon: GitCompareArrows },
       { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock },
+      { name: 'Market Cycle', href: '/market-cycle', icon: Activity },
+      { name: 'On-Chain', href: '/onchain', icon: BarChart3 },
     ],
   },
   {
