@@ -37,6 +37,7 @@ interface OrderbookData {
   sellVolume: number;
   buySellRatio: number;
   timestamp: number;
+  source?: string;
 }
 
 const SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB', 'ADA', 'AVAX', 'LINK', 'SUI'];
@@ -290,7 +291,7 @@ export default function OrderflowPage() {
               <div className="lg:col-span-2 bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="p-4 border-b border-white/[0.06]">
                   <h2 className="text-sm font-semibold text-white">Order Book Depth</h2>
-                  <p className="text-xs text-neutral-600 mt-0.5">Top 25 levels from Binance Futures</p>
+                  <p className="text-xs text-neutral-600 mt-0.5">Top 25 levels{data?.source ? ` from ${data.source}` : ''}</p>
                 </div>
 
                 {/* Column headers */}
@@ -396,7 +397,7 @@ export default function OrderflowPage() {
                 <div className="text-xs text-neutral-400 space-y-1">
                   <p>
                     <strong className="text-neutral-300">Order Flow</strong> shows real-time order book
-                    depth and trade flow from Binance Futures. Data refreshes every 5 seconds.
+                    depth and trade flow{data?.source ? ` from ${data.source}` : ''}. Data refreshes every 5 seconds.
                   </p>
                   <p>
                     <strong>Bid Depth</strong> is the total USD value of buy orders.{' '}

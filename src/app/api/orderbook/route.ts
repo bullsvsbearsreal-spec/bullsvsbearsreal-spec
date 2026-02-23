@@ -1,7 +1,7 @@
 /**
  * GET /api/orderbook?symbol=BTC&limit=25
  *
- * Aggregated order book depth from Binance Futures.
+ * Aggregated order book depth with multi-source fallback (Binance → Bybit → OKX).
  * Returns bids, asks, and recent trades for depth visualization.
  */
 
@@ -20,6 +20,93 @@ interface CachedOB {
 const l1Cache = new Map<string, CachedOB>();
 const L1_TTL = 5 * 1000;
 
+/* ─── Source fetchers ─────────────────────────────────────────────── */
+
+interface RawOrderbook {
+  bids: { price: number; quantity: number }[];
+  asks: { price: number; quantity: number }[];
+  trades: { price: number; quantity: number; quoteQty: number; isBuyerMaker: boolean; time: number }[];
+  source: string;
+}
+
+async function fetchBinance(pair: string, limit: number): Promise<RawOrderbook> {
+  const [depthRes, tradesRes] = await Promise.all([
+    fetchWithTimeout(`https://fapi.binance.com/fapi/v1/depth?symbol=${pair}&limit=${limit}`, {}, 6000),
+    fetchWithTimeout(`https://fapi.binance.com/fapi/v1/trades?symbol=${pair}&limit=50`, {}, 6000),
+  ]);
+  if (!depthRes.ok) throw new Error(`Binance ${depthRes.status}`);
+  const depth = await depthRes.json();
+  const trades = tradesRes.ok ? await tradesRes.json() : [];
+
+  return {
+    bids: (depth.bids || []).map(([p, q]: [string, string]) => ({ price: +p, quantity: +q })),
+    asks: (depth.asks || []).map(([p, q]: [string, string]) => ({ price: +p, quantity: +q })),
+    trades: (trades as any[]).slice(-30).map((t: any) => ({
+      price: +t.price,
+      quantity: +t.qty,
+      quoteQty: +t.quoteQty,
+      isBuyerMaker: t.isBuyerMaker,
+      time: t.time,
+    })),
+    source: 'Binance',
+  };
+}
+
+async function fetchBybit(pair: string, limit: number): Promise<RawOrderbook> {
+  const [depthRes, tradesRes] = await Promise.all([
+    fetchWithTimeout(`https://api.bybit.com/v5/market/orderbook?category=linear&symbol=${pair}&limit=${limit}`, {}, 6000),
+    fetchWithTimeout(`https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${pair}&limit=50`, {}, 6000),
+  ]);
+  if (!depthRes.ok) throw new Error(`Bybit ${depthRes.status}`);
+  const depthJson = await depthRes.json();
+  if (depthJson.retCode !== 0) throw new Error(`Bybit retCode ${depthJson.retCode}`);
+  const depthData = depthJson.result || {};
+  const tradesJson = tradesRes.ok ? await tradesRes.json() : { result: { list: [] } };
+  const tradeList = tradesJson?.result?.list || [];
+
+  return {
+    bids: (depthData.b || []).map(([p, q]: [string, string]) => ({ price: +p, quantity: +q })),
+    asks: (depthData.a || []).map(([p, q]: [string, string]) => ({ price: +p, quantity: +q })),
+    trades: tradeList.slice(-30).map((t: any) => ({
+      price: +t.price,
+      quantity: +t.size,
+      quoteQty: +t.price * +t.size,
+      isBuyerMaker: t.side === 'Sell', // Bybit: side=Sell means taker sold (buyer is maker)
+      time: +t.time,
+    })),
+    source: 'Bybit',
+  };
+}
+
+async function fetchOKX(symbol: string, limit: number): Promise<RawOrderbook> {
+  const instId = `${symbol}-USDT-SWAP`;
+  const [depthRes, tradesRes] = await Promise.all([
+    fetchWithTimeout(`https://www.okx.com/api/v5/market/books?instId=${instId}&sz=${limit}`, {}, 6000),
+    fetchWithTimeout(`https://www.okx.com/api/v5/market/trades?instId=${instId}&limit=50`, {}, 6000),
+  ]);
+  if (!depthRes.ok) throw new Error(`OKX ${depthRes.status}`);
+  const depthJson = await depthRes.json();
+  const bookData = depthJson?.data?.[0] || {};
+  const tradesJson = tradesRes.ok ? await tradesRes.json() : { data: [] };
+  const tradeList = tradesJson?.data || [];
+
+  return {
+    // OKX format: [price, qty, deprecatedField, numOrders]
+    bids: (bookData.bids || []).map((b: string[]) => ({ price: +b[0], quantity: +b[1] })),
+    asks: (bookData.asks || []).map((a: string[]) => ({ price: +a[0], quantity: +a[1] })),
+    trades: tradeList.slice(-30).map((t: any) => ({
+      price: +t.px,
+      quantity: +t.sz,
+      quoteQty: +t.px * +t.sz,
+      isBuyerMaker: t.side === 'sell',
+      time: +t.ts,
+    })),
+    source: 'OKX',
+  };
+}
+
+/* ─── Main handler ────────────────────────────────────────────────── */
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const symbol = (searchParams.get('symbol') || 'BTC').toUpperCase();
@@ -33,90 +120,74 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(cached.body, { headers: { 'X-Cache': 'HIT' } });
   }
 
-  try {
-    // Fetch depth + recent trades in parallel
-    const [depthRes, tradesRes] = await Promise.all([
-      fetchWithTimeout(
-        `https://fapi.binance.com/fapi/v1/depth?symbol=${pair}&limit=${limit}`,
-        {},
-        8000,
-      ),
-      fetchWithTimeout(
-        `https://fapi.binance.com/fapi/v1/trades?symbol=${pair}&limit=50`,
-        {},
-        8000,
-      ),
-    ]);
+  // Try sources in order: Binance → Bybit → OKX
+  let raw: RawOrderbook | null = null;
+  const errors: string[] = [];
 
-    if (!depthRes.ok) {
-      return NextResponse.json({ error: `Binance depth API returned ${depthRes.status}` }, { status: 502 });
+  for (const fetcher of [
+    () => fetchBinance(pair, limit),
+    () => fetchBybit(pair, limit),
+    () => fetchOKX(symbol, limit),
+  ]) {
+    try {
+      raw = await fetcher();
+      if (raw.bids.length > 0 || raw.asks.length > 0) break;
+      errors.push(`${raw.source}: empty orderbook`);
+      raw = null;
+    } catch (err: any) {
+      errors.push(err.message || 'Unknown error');
     }
-
-    const depth = await depthRes.json();
-    const trades = tradesRes.ok ? await tradesRes.json() : [];
-
-    // Process bids/asks
-    const bids = (depth.bids || []).map(([price, qty]: [string, string]) => ({
-      price: parseFloat(price),
-      quantity: parseFloat(qty),
-      total: parseFloat(price) * parseFloat(qty),
-    }));
-
-    const asks = (depth.asks || []).map(([price, qty]: [string, string]) => ({
-      price: parseFloat(price),
-      quantity: parseFloat(qty),
-      total: parseFloat(price) * parseFloat(qty),
-    }));
-
-    // Cumulative depth
-    let cumBid = 0;
-    const cumulativeBids = bids.map((b: any) => {
-      cumBid += b.total;
-      return { ...b, cumulative: cumBid };
-    });
-
-    let cumAsk = 0;
-    const cumulativeAsks = asks.map((a: any) => {
-      cumAsk += a.total;
-      return { ...a, cumulative: cumAsk };
-    });
-
-    // Process trades
-    const recentTrades = (trades as any[]).slice(-30).map((t: any) => ({
-      price: parseFloat(t.price),
-      quantity: parseFloat(t.qty),
-      quoteQty: parseFloat(t.quoteQty),
-      isBuyerMaker: t.isBuyerMaker,
-      time: t.time,
-    }));
-
-    // Buy/sell volume ratio from recent trades
-    const buyVol = recentTrades.filter((t: any) => !t.isBuyerMaker).reduce((s: number, t: any) => s + t.quoteQty, 0);
-    const sellVol = recentTrades.filter((t: any) => t.isBuyerMaker).reduce((s: number, t: any) => s + t.quoteQty, 0);
-    const totalTradeVol = buyVol + sellVol;
-
-    const body = {
-      symbol,
-      pair,
-      bids: cumulativeBids,
-      asks: cumulativeAsks,
-      trades: recentTrades.reverse(), // newest first
-      spread: asks.length > 0 && bids.length > 0 ? asks[0].price - bids[0].price : 0,
-      midPrice: asks.length > 0 && bids.length > 0 ? (asks[0].price + bids[0].price) / 2 : 0,
-      bidDepth: cumBid,
-      askDepth: cumAsk,
-      buyVolume: buyVol,
-      sellVolume: sellVol,
-      buySellRatio: totalTradeVol > 0 ? buyVol / totalTradeVol : 0.5,
-      timestamp: Date.now(),
-    };
-
-    l1Cache.set(cacheKey, { body, timestamp: Date.now() });
-
-    return NextResponse.json(body, {
-      headers: { 'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5' },
-    });
-  } catch (err) {
-    return NextResponse.json({ error: 'Failed to fetch order book data' }, { status: 502 });
   }
+
+  if (!raw) {
+    return NextResponse.json(
+      { error: 'All orderbook sources failed', details: errors },
+      { status: 502 },
+    );
+  }
+
+  // Add total (price*qty) to each level
+  const bids = raw.bids.map((b) => ({ ...b, total: b.price * b.quantity }));
+  const asks = raw.asks.map((a) => ({ ...a, total: a.price * a.quantity }));
+
+  // Cumulative depth
+  let cumBid = 0;
+  const cumulativeBids = bids.map((b) => {
+    cumBid += b.total;
+    return { ...b, cumulative: cumBid };
+  });
+
+  let cumAsk = 0;
+  const cumulativeAsks = asks.map((a) => {
+    cumAsk += a.total;
+    return { ...a, cumulative: cumAsk };
+  });
+
+  // Buy/sell volume ratio from recent trades
+  const buyVol = raw.trades.filter((t) => !t.isBuyerMaker).reduce((s, t) => s + t.quoteQty, 0);
+  const sellVol = raw.trades.filter((t) => t.isBuyerMaker).reduce((s, t) => s + t.quoteQty, 0);
+  const totalTradeVol = buyVol + sellVol;
+
+  const body = {
+    symbol,
+    pair,
+    bids: cumulativeBids,
+    asks: cumulativeAsks,
+    trades: [...raw.trades].reverse(), // newest first
+    spread: asks.length > 0 && bids.length > 0 ? asks[0].price - bids[0].price : 0,
+    midPrice: asks.length > 0 && bids.length > 0 ? (asks[0].price + bids[0].price) / 2 : 0,
+    bidDepth: cumBid,
+    askDepth: cumAsk,
+    buyVolume: buyVol,
+    sellVolume: sellVol,
+    buySellRatio: totalTradeVol > 0 ? buyVol / totalTradeVol : 0.5,
+    timestamp: Date.now(),
+    source: raw.source,
+  };
+
+  l1Cache.set(cacheKey, { body, timestamp: Date.now() });
+
+  return NextResponse.json(body, {
+    headers: { 'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5' },
+  });
 }
