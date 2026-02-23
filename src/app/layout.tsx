@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import ChatWidget from '@/components/chat/ChatWidget'
 import AlertEngine from '@/components/AlertEngine'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const viewport: Viewport = {
@@ -89,7 +89,7 @@ export default function RootLayout({
         {/* Prevent FOUC: apply saved theme before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('infohub-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}` }} />
       </head>
-      <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
+      <body className={`${jakarta.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         {children}
         <ChatWidget />

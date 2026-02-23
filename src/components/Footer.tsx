@@ -21,7 +21,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-neutral-600 text-xs leading-relaxed max-w-xs mb-4">
-              Real-time derivatives intelligence. Funding rates, open interest, liquidations & more.
+              Built by traders, for traders. Free derivatives data across {ALL_EXCHANGES.length} exchanges.
             </p>
             {/* Social links */}
             <div className="flex items-center gap-2">
@@ -105,6 +105,7 @@ export default function Footer() {
             <h4 className="section-label mb-3">Resources</h4>
             <div className="flex flex-col gap-1">
               {[
+                { name: 'Guides', href: '/guides' },
                 { name: 'Brand Kit', href: '/brand' },
                 { name: 'Team', href: '/team' },
                 { name: 'FAQ', href: '/faq' },
@@ -126,7 +127,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-white/[0.04] pt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span className="text-neutral-700 text-[10px]">
-            &copy; {new Date().getFullYear()} InfoHub. Data aggregated from public exchange APIs.
+            &copy; {new Date().getFullYear()} InfoHub &middot; Free &amp; open data from public exchange APIs
           </span>
           <div className="flex items-center gap-3">
             <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />

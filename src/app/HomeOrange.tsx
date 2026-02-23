@@ -17,7 +17,7 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe } from 'lucide-react';
+import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe, Sun, Moon, Sunset } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
@@ -68,13 +68,18 @@ export default function HomeOrange() {
   const activeCex = cexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length;
   const activeDex = dexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length;
 
+  // Time-based greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const GreetingIcon = hour < 12 ? Sun : hour < 18 ? Sunset : Moon;
+
   const quickLinks = [
     { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates' },
     { name: 'Open Interest', href: '/open-interest', icon: BarChart3, desc: 'Position sizing' },
     { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time rekt' },
     { name: 'Screener', href: '/screener', icon: TrendingUp, desc: 'Market scanner' },
     { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange' },
-    { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news' },
+    { name: 'News', href: '/news', icon: Newspaper, desc: 'Latest news' },
   ];
 
   return (
@@ -90,9 +95,13 @@ export default function HomeOrange() {
           <div className="absolute inset-0 hero-mesh pointer-events-none" aria-hidden="true" />
 
           <div className="relative">
-            {/* Title area */}
+            {/* Greeting + Title area */}
             <div className="flex items-start justify-between mb-6">
               <div>
+                <div className="flex items-center gap-2 mb-3 text-neutral-600 text-xs">
+                  <GreetingIcon className="w-3.5 h-3.5 text-hub-yellow/60" />
+                  <span>{greeting}, trader</span>
+                </div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                     <span className="text-white">info</span><span className="bg-gradient-to-r from-hub-yellow to-hub-orange bg-clip-text text-transparent">hub</span>
@@ -103,7 +112,7 @@ export default function HomeOrange() {
                   </div>
                 </div>
                 <p className="text-neutral-500 text-sm max-w-md">
-                  Real-time derivatives intelligence across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span>. Funding, OI, liquidations & more.
+                  Derivatives data across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span> — funding, OI, liquidations, and everything you need to trade smarter.
                 </p>
               </div>
             </div>
@@ -148,7 +157,7 @@ export default function HomeOrange() {
         <section className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Trading Signals</span>
+            <span className="section-label">What&apos;s moving</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
@@ -162,7 +171,7 @@ export default function HomeOrange() {
         <section className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Activity className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Data Feeds</span>
+            <span className="section-label">Live data</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 stagger">
@@ -272,7 +281,7 @@ export default function HomeOrange() {
         <section className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Radio className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Market Pulse</span>
+            <span className="section-label">Market mood</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 stagger">
