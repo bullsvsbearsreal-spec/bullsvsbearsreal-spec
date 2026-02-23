@@ -175,6 +175,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Chart',
     description: 'Professional cryptocurrency charting with technical indicators powered by TradingView lightweight-charts.',
   },
+  '/guides': {
+    title: 'Trading Guides',
+    description: 'In-depth crypto trading guides covering funding rates, open interest, liquidations, order flow, and derivatives strategies. Coming soon.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {
