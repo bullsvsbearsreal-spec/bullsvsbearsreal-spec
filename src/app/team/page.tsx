@@ -17,17 +17,17 @@ const teamMembers: TeamMember[] = [
     name: '0x.0celot',
     role: 'Founder',
     image: '/team/ocelot.jpg',
-    bio: 'Got tired of having 30 exchange tabs open just to check funding rates. Built InfoHub to fix that. Writes most of the code, breaks things on weekends, and occasionally sleeps.',
+    bio: 'Started InfoHub because every funding rate dashboard was either paywalled or missing half the exchanges. Now maintains 24 exchange integrations, the API layer, and the frontend. Ships daily, usually at weird hours.',
     stats: [],
   },
   {
     name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
-    bio: 'Full-time degen turned advisor. 15+ years in markets, trades $1B+/year across DEXs, and somehow still checks funding rates at 3am. Helps shape what InfoHub builds next.',
+    bio: 'Derivatives trader since TradFi, now full-time on-chain. Runs size across Hyperliquid, dYdX, and Drift. Pressure-tests every feature against real trading workflows before it ships.',
     stats: [
-      { label: 'Trading Volume', value: '$1B+/year' },
-      { label: 'Experience', value: '15+ Years' },
+      { label: 'Annual Volume', value: '$1B+' },
+      { label: 'In Markets', value: '15+ yrs' },
     ],
     socials: { twitter: 'https://x.com/snakether' },
   },
@@ -43,7 +43,7 @@ export default function TeamPage() {
         <div className="mb-6">
           <h1 className="heading-page">Team</h1>
           <p className="text-neutral-600 text-xs mt-0.5">
-            The people behind the dashboard
+            Two traders who wanted better tools, so they built them.
           </p>
         </div>
 
@@ -112,9 +112,9 @@ export default function TeamPage() {
         {/* Join Us Section */}
         <div className="mt-8">
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 text-center">
-            <h3 className="text-sm font-bold text-white mb-2">Want to contribute?</h3>
+            <h3 className="text-sm font-bold text-white mb-2">Want to help build this?</h3>
             <p className="text-neutral-600 text-xs mb-4 max-w-lg mx-auto">
-              We ship fast and break things. If that sounds fun, reach out.
+              We're always looking for exchange integrations, bug reports, and feature ideas. If you trade derivatives and want better tools, let's talk.
             </p>
             <a
               href="mailto:contact@info-hub.io"

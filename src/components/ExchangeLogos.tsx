@@ -16,52 +16,58 @@ const PNG_EXCHANGES = new Set([
 ]);
 
 // SVG fallbacks for exchanges without downloadable logos
+// BitMEX: red shield-shaped mark with angular "B"
 function BitMEXLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#E4002B"/>
-      <text x="63" y="74" textAnchor="middle" fill="#FFFFFF" fontWeight="bold" fontSize="28">BMX</text>
+      <rect rx="16" width="126" height="126" fill="#E4002B"/>
+      <path d="M40 32h30l16 24-16 24h8l16-24 16 24H80L63 56l17-24H40z" fill="#fff" opacity="0.95"/>
+      <rect x="40" y="32" width="6" height="63" rx="3" fill="#fff" opacity="0.95"/>
     </svg>
   );
 }
 
+// Gate.io: green with split-gate geometric mark
 function GateLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#17E6A1"/>
-      <text x="63" y="75" textAnchor="middle" fill="#000000" fontWeight="bold" fontSize="40">G</text>
+      <rect rx="16" width="126" height="126" fill="#17E6A1"/>
+      <rect x="35" y="35" width="56" height="56" rx="8" fill="none" stroke="#000" strokeWidth="8"/>
+      <rect x="63" y="55" width="28" height="8" fill="#000"/>
+      <rect x="63" y="55" width="8" height="28" fill="#000"/>
     </svg>
   );
 }
 
-// edgeX: triangle logo on sky-blue circle
+// edgeX: dark background with geometric edge/arrow mark
 function EdgeXLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#0F172A"/>
-      <path d="M63 28L98 93H28L63 28Z" fill="#38BDF8" opacity="0.9"/>
-      <path d="M63 45L85 83H41L63 45Z" fill="#0F172A"/>
-      <path d="M55 68H71V83H55V68Z" fill="#38BDF8"/>
+      <rect rx="16" width="126" height="126" fill="#0F172A"/>
+      <path d="M32 63L63 32L94 63L63 94Z" fill="none" stroke="#38BDF8" strokeWidth="6"/>
+      <path d="M50 63L63 50L76 63L63 76Z" fill="#38BDF8"/>
     </svg>
   );
 }
 
-// Variational: stylized "V" on purple circle
+// Variational: purple with sigma/integral-like curve
 function VariationalLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#1A0B2E"/>
-      <path d="M38 38L63 93L88 38H76L63 72L50 38H38Z" fill="#E879F9"/>
+      <rect rx="16" width="126" height="126" fill="#1A0B2E"/>
+      <path d="M45 35L75 35L58 63L75 91L45 91L62 63Z" fill="#E879F9" strokeLinejoin="round"/>
+      <circle cx="80" cy="40" r="5" fill="#E879F9" opacity="0.5"/>
     </svg>
   );
 }
 
-// Extended: stylized "Ex" on amber circle
+// Extended: amber accent with "×" geometric cross
 function ExtendedLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
     <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <circle cx="63" cy="63" r="63" fill="#1C1104"/>
-      <text x="63" y="76" textAnchor="middle" fill="#F59E0B" fontWeight="bold" fontSize="38" fontFamily="sans-serif">Ex</text>
+      <rect rx="16" width="126" height="126" fill="#1C1104"/>
+      <path d="M38 38L88 88M88 38L38 88" stroke="#F59E0B" strokeWidth="10" strokeLinecap="round"/>
+      <circle cx="63" cy="63" r="10" fill="#F59E0B"/>
     </svg>
   );
 }
@@ -138,11 +144,19 @@ export function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange
     return <SVGComponent size={size} className={className} />;
   }
 
-  // Generic letter fallback
+  // Generic letter fallback — rounded square with brand-colored letter
+  const color = exchangeColors[key] || '#6B7280';
   return (
     <div
-      className={`flex items-center justify-center rounded-full bg-hub-gray-light text-white font-bold ${className}`}
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
+      className={`flex items-center justify-center rounded-md font-bold ${className}`}
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.45,
+        backgroundColor: `${color}18`,
+        color: color,
+        border: `1px solid ${color}30`,
+      }}
     >
       {exchange.charAt(0).toUpperCase()}
     </div>

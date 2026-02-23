@@ -39,22 +39,22 @@ type SortField = 'symbol' | 'price' | 'change24h' | 'volume24h' | 'avgFunding' |
 /* ─── Sentiment Engine ──────────────────────────────────────────── */
 
 function deriveSentiment(change24h: number, oiChange: number, funding: number): { label: string; color: string } {
-  // Price up + OI up = new longs entering (bullish)
-  if (change24h > 1 && oiChange > 3) return { label: 'LONGS ENTERING', color: 'text-green-400 bg-green-500/10' };
-  // Price down + OI up = new shorts entering (bearish)
-  if (change24h < -1 && oiChange > 3) return { label: 'SHORTS ENTERING', color: 'text-red-400 bg-red-500/10' };
-  // Price up + OI down = shorts closing (bullish squeeze)
-  if (change24h > 1 && oiChange < -3) return { label: 'SHORTS CLOSING', color: 'text-emerald-400 bg-emerald-500/10' };
-  // Price down + OI down = longs closing (bearish unwind)
-  if (change24h < -1 && oiChange < -3) return { label: 'LONGS CLOSING', color: 'text-orange-400 bg-orange-500/10' };
-  // Strong funding + high OI = overheated
-  if (funding > 0.03 && oiChange > 5) return { label: 'OVERHEATED', color: 'text-yellow-400 bg-yellow-500/10' };
-  // Strong negative funding = capitulation
-  if (funding < -0.03) return { label: 'CAPITULATION', color: 'text-purple-400 bg-purple-500/10' };
-  // Mild moves
-  if (change24h > 2) return { label: 'BULLISH', color: 'text-green-400/70 bg-green-500/5' };
-  if (change24h < -2) return { label: 'BEARISH', color: 'text-red-400/70 bg-red-500/5' };
-  return { label: 'NEUTRAL', color: 'text-neutral-500 bg-white/[0.02]' };
+  // Price up + OI up = fresh longs piling in
+  if (change24h > 1 && oiChange > 3) return { label: 'FRESH LONGS', color: 'text-green-400 bg-green-500/10' };
+  // Price down + OI up = new shorts stacking
+  if (change24h < -1 && oiChange > 3) return { label: 'FRESH SHORTS', color: 'text-red-400 bg-red-500/10' };
+  // Price up + OI down = short squeeze unwind
+  if (change24h > 1 && oiChange < -3) return { label: 'SQUEEZE', color: 'text-emerald-400 bg-emerald-500/10' };
+  // Price down + OI down = longs getting flushed
+  if (change24h < -1 && oiChange < -3) return { label: 'FLUSHING', color: 'text-orange-400 bg-orange-500/10' };
+  // Strong funding + rising OI = crowded trade
+  if (funding > 0.03 && oiChange > 5) return { label: 'CROWDED', color: 'text-yellow-400 bg-yellow-500/10' };
+  // Strong negative funding = panic selling
+  if (funding < -0.03) return { label: 'PANIC', color: 'text-purple-400 bg-purple-500/10' };
+  // Mild directional
+  if (change24h > 2) return { label: 'BID', color: 'text-green-400/70 bg-green-500/5' };
+  if (change24h < -2) return { label: 'OFFERED', color: 'text-red-400/70 bg-red-500/5' };
+  return { label: 'FLAT', color: 'text-neutral-500 bg-white/[0.02]' };
 }
 
 /* ─── Component ──────────────────────────────────────────────────── */

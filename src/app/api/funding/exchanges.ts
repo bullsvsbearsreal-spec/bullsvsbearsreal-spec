@@ -90,43 +90,51 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       }
 
       const usdtSwaps = instrumentsJson.data
-        .filter((inst: any) => inst.instId.endsWith('-USDT-SWAP'))
-        .slice(0, 50);
+        .filter((inst: any) => inst.instId.endsWith('-USDT-SWAP'));
 
-      const fundingPromises = usdtSwaps.map(async (inst: any) => {
-        try {
-          const frRes = await fetchFn(
-            `https://www.okx.com/api/v5/public/funding-rate?instId=${encodeURIComponent(inst.instId)}`,
-            {},
-            5000
-          );
-          if (frRes.ok) {
-            const frJson = await frRes.json();
-            if (frJson.code === '0' && frJson.data.length > 0) {
-              const fr = frJson.data[0];
-              const markPrice = markPriceMap.get(inst.instId) || 0;
-              const predictedRate = fr.nextFundingRate
-                ? parseFloat(fr.nextFundingRate) * 100
-                : undefined;
-              return {
-                symbol: inst.instId.replace('-USDT-SWAP', ''),
-                exchange: 'OKX',
-                fundingRate: parseFloat(fr.fundingRate) * 100,
-                fundingInterval: '8h' as const,
-                predictedRate,
-                markPrice,
-                indexPrice: markPrice, // OKX mark ≈ index for USDT-margined swaps
-                nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
-                type: 'cex' as const,
-              };
+      // Batch requests in groups of 20 to avoid overwhelming OKX API
+      const BATCH_SIZE = 20;
+      const results: any[] = [];
+      for (let i = 0; i < usdtSwaps.length; i += BATCH_SIZE) {
+        const batch = usdtSwaps.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (inst: any) => {
+            try {
+              const frRes = await fetchFn(
+                `https://www.okx.com/api/v5/public/funding-rate?instId=${encodeURIComponent(inst.instId)}`,
+                {},
+                5000
+              );
+              if (frRes.ok) {
+                const frJson = await frRes.json();
+                if (frJson.code === '0' && frJson.data.length > 0) {
+                  const fr = frJson.data[0];
+                  const markPrice = markPriceMap.get(inst.instId) || 0;
+                  const predictedRate = fr.nextFundingRate
+                    ? parseFloat(fr.nextFundingRate) * 100
+                    : undefined;
+                  return {
+                    symbol: inst.instId.replace('-USDT-SWAP', ''),
+                    exchange: 'OKX',
+                    fundingRate: parseFloat(fr.fundingRate) * 100,
+                    fundingInterval: '8h' as const,
+                    predictedRate,
+                    markPrice,
+                    indexPrice: markPrice,
+                    nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
+                    type: 'cex' as const,
+                  };
+                }
+              }
+            } catch {
+              return null;
             }
-          }
-        } catch {
-          return null;
-        }
-        return null;
-      });
-      return (await Promise.all(fundingPromises)).filter(
+            return null;
+          })
+        );
+        results.push(...batchResults);
+      }
+      return results.filter(
         (item: any) => item && !isNaN(item.fundingRate)
       );
     },
@@ -247,6 +255,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
+      const seen = new Set<string>();
       return data
         .filter((item: any) => item.symbol && item.lastFundingRate != null)
         .map((item: any) => {
@@ -263,7 +272,12 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             assetClass: normalized.assetClass,
           };
         })
-        .filter((item: any) => !isNaN(item.fundingRate));
+        .filter((item: any) => {
+          if (isNaN(item.fundingRate)) return false;
+          if (seen.has(item.symbol)) return false;
+          seen.add(item.symbol);
+          return true;
+        });
     },
   },
 
@@ -659,7 +673,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
-            nextFundingTime: item.nextFundingRateTime || Date.now() + 28800000,
+            nextFundingTime: Date.now() + (parseInt(item.nextFundingRateTime) || 28800000),
             type: 'cex' as const,
           };
         })

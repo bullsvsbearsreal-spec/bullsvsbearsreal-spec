@@ -114,10 +114,15 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
 
     return (
       <div
-        className={`flex items-center justify-center rounded-full bg-hub-yellow/20 ${className}`}
-        style={{ width: size, height: size }}
+        className={`flex items-center justify-center rounded-full ${className}`}
+        style={{
+          width: size,
+          height: size,
+          background: 'linear-gradient(135deg, rgba(234,179,8,0.25) 0%, rgba(234,179,8,0.08) 100%)',
+          border: '1px solid rgba(234,179,8,0.15)',
+        }}
       >
-        <span className="font-bold text-hub-yellow" style={{ fontSize: size * 0.45 }}>
+        <span className="font-bold text-hub-yellow/90" style={{ fontSize: size * 0.4 }}>
           {fallbackText}
         </span>
       </div>
@@ -126,7 +131,7 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
 
   return (
     <div
-      className={`relative rounded-full overflow-hidden bg-hub-gray/30 ${className}`}
+      className={`relative rounded-full overflow-hidden bg-white/[0.04] ${className}`}
       style={{ width: size, height: size }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -185,10 +190,15 @@ export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: To
   if (showFallback) {
     return (
       <div
-        className={`flex items-center justify-center rounded-full bg-hub-yellow/20 ${className}`}
-        style={{ width: size, height: size }}
+        className={`flex items-center justify-center rounded-full ${className}`}
+        style={{
+          width: size,
+          height: size,
+          background: 'linear-gradient(135deg, rgba(234,179,8,0.25) 0%, rgba(234,179,8,0.08) 100%)',
+          border: '1px solid rgba(234,179,8,0.15)',
+        }}
       >
-        <span className="font-bold text-hub-yellow" style={{ fontSize: size * 0.45 }}>
+        <span className="font-bold text-hub-yellow/90" style={{ fontSize: size * 0.4 }}>
           {fallbackText}
         </span>
       </div>

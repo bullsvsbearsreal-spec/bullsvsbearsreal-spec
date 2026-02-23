@@ -55,7 +55,7 @@ const faqs = [
   },
   {
     q: 'Who built this?',
-    a: 'A couple of traders who got tired of switching between exchange tabs. Check the Team page.',
+    a: 'A small team of derivatives traders. We built InfoHub because the tools we wanted didn\u2019t exist \u2014 or cost $200/month. More on the Team page.',
   },
 ];
 
@@ -105,7 +105,7 @@ export default function FAQPage() {
           <div>
             <h1 className="heading-page">Frequently Asked Questions</h1>
             <p className="text-neutral-500 text-sm mt-0.5">
-              Everything you need to know about InfoHub
+              Common questions from traders
             </p>
           </div>
         </div>
