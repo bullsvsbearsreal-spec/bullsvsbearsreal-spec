@@ -62,7 +62,10 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
       const vol = ticker.quoteVolume24h || 0;
       if (vol > MAX_SANE_VOLUME) return; // Skip exchanges with inflated volume data
       const existing = symbolMap.get(ticker.symbol);
-      if (!existing || vol > (existing.quoteVolume24h || 0)) {
+      const hasChange = ticker.priceChangePercent24h != null && ticker.priceChangePercent24h !== 0;
+      const existingHasChange = existing?.priceChangePercent24h != null && existing.priceChangePercent24h !== 0;
+      // Prefer tickers with real price change data; if both have it (or neither), use highest volume
+      if (!existing || (hasChange && !existingHasChange) || (hasChange === existingHasChange && vol > (existing.quoteVolume24h || 0))) {
         symbolMap.set(ticker.symbol, ticker);
       }
     });
