@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         .reduce((s: number, e: any) => s + (e.openInterest || 0), 0);
     }
   } catch {
-    // Non-critical — Guard works fine without ambient context
+    // Non-critical — MK.II works fine without ambient context
   }
 
   const systemPrompt = buildSystemPrompt({

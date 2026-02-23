@@ -34,12 +34,12 @@ export default function ChatMessages({
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
-        <div className="w-14 h-14 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mb-4">
-          <GuardIcon className="w-7 h-7 text-hub-yellow" />
+        <div className="w-16 h-16 rounded-full overflow-hidden bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mb-4">
+          <GuardIcon className="w-16 h-16" />
         </div>
-        <h3 className="text-base font-semibold text-white mb-1">Guard</h3>
+        <h3 className="text-base font-semibold text-white mb-1">MK.II</h3>
         <p className="text-xs text-neutral-500 text-center mb-6 max-w-[280px]">
-          Your AI trading assistant. 15+ years of market experience, powered by real-time data from 17+ exchanges.
+          AI trading assistant. Real-time data from 24+ exchanges. Ask me anything about funding, OI, or the market.
         </p>
         <ChatSuggestions onSelect={onSuggestionSelect} />
       </div>

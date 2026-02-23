@@ -223,9 +223,9 @@ export default function ChatWidget() {
             hover:bg-hub-yellow-light hover:scale-105 hover:shadow-hub-yellow/30
             active:scale-95 transition-all duration-200
             flex items-center justify-center group"
-          aria-label="Open Guard AI chat"
+          aria-label="Open MK.II AI chat"
         >
-          <GuardIcon className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+          <GuardIcon className="w-12 h-12 group-hover:scale-110 transition-transform" />
         </button>
       )}
 
@@ -246,12 +246,12 @@ export default function ChatWidget() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-hub-yellow/15 flex items-center justify-center">
-                <GuardIcon className="w-5 h-5 text-hub-yellow" />
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-hub-yellow/15 flex items-center justify-center">
+                <GuardIcon className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white leading-none">Guard</h3>
-                <p className="text-[10px] text-neutral-500 mt-0.5">AI Trading Assistant</p>
+                <h3 className="text-sm font-semibold text-white leading-none">MK.II</h3>
+                <p className="text-[10px] text-neutral-500 mt-0.5">AI Assistant</p>
               </div>
             </div>
             <div className="flex items-center gap-1">

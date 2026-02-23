@@ -57,7 +57,7 @@ export default function ChatInput({ onSend, isLoading, remaining }: ChatInputPro
           value={input}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Guard anything..."
+          placeholder="Ask MK.II anything..."
           rows={1}
           maxLength={500}
           className="flex-1 resize-none bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2

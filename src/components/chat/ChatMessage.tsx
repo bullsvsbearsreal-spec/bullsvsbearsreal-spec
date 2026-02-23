@@ -28,13 +28,13 @@ export default function ChatMessage({ role, content, isStreaming, toolName }: Ch
     <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}>
       {/* Avatar */}
       <div
-        className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${
+        className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5 overflow-hidden ${
           isUser
             ? 'bg-hub-yellow/20 text-hub-yellow'
             : 'bg-white/[0.06] text-neutral-400'
         }`}
       >
-        {isUser ? <User className="w-3.5 h-3.5" /> : <GuardIcon className="w-4 h-4" />}
+        {isUser ? <User className="w-3.5 h-3.5" /> : <GuardIcon className="w-7 h-7" />}
       </div>
 
       {/* Bubble */}
