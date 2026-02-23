@@ -8,7 +8,7 @@ import UpdatedAgo from '@/components/UpdatedAgo';
 import { formatUSD, formatPercent, formatCompact } from '@/lib/utils/format';
 import {
   RefreshCw, Info, Landmark, TrendingUp, TrendingDown,
-  ChevronUp, ChevronDown, BarChart3, DollarSign, Percent, Activity,
+  ChevronUp, ChevronDown, BarChart3, DollarSign, Percent, Activity, GitCompareArrows,
 } from 'lucide-react';
 
 const LightweightChart = dynamic(
@@ -89,6 +89,22 @@ function SortHeader({
 
 /* ─── Component ──────────────────────────────────────────────────── */
 
+interface ComparisonETF {
+  ticker: string;
+  name: string;
+  price: number | null;
+  change24h: number | null;
+  volume: number | null;
+}
+
+const COMPARISON_TICKERS = [
+  { ticker: 'SPY', name: 'SPDR S&P 500' },
+  { ticker: 'QQQ', name: 'Invesco Nasdaq-100' },
+  { ticker: 'GLD', name: 'SPDR Gold Trust' },
+  { ticker: 'TLT', name: 'iShares 20+ Year Treasury' },
+  { ticker: 'VTI', name: 'Vanguard Total Stock Market' },
+];
+
 export default function ETFPage() {
   const [type, setType] = useState<'btc' | 'eth'>('btc');
   const [data, setData] = useState<ETFResponse | null>(null);
@@ -96,6 +112,7 @@ export default function ETFPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('volume');
   const [sortAsc, setSortAsc] = useState(false);
+  const [comparisonETFs, setComparisonETFs] = useState<ComparisonETF[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -117,6 +134,37 @@ export default function ETFPage() {
     const interval = setInterval(fetchData, 5 * 60_000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  /* Fetch comparison ETFs (SPY, QQQ, GLD, etc.) */
+  useEffect(() => {
+    async function fetchComps() {
+      try {
+        const results = await Promise.all(
+          COMPARISON_TICKERS.map(async ({ ticker, name }) => {
+            try {
+              const res = await fetch(
+                `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`,
+                { headers: { 'User-Agent': 'Mozilla/5.0' } }
+              );
+              if (!res.ok) return { ticker, name, price: null, change24h: null, volume: null };
+              const json = await res.json();
+              const meta = json.chart?.result?.[0]?.meta;
+              if (!meta) return { ticker, name, price: null, change24h: null, volume: null };
+              const price = meta.regularMarketPrice;
+              const prevClose = meta.chartPreviousClose || meta.previousClose;
+              const change24h = prevClose ? ((price - prevClose) / prevClose) * 100 : null;
+              const vol = meta.regularMarketVolume || null;
+              return { ticker, name, price, change24h, volume: vol ? vol * price : null };
+            } catch {
+              return { ticker, name, price: null, change24h: null, volume: null };
+            }
+          })
+        );
+        setComparisonETFs(results);
+      } catch {}
+    }
+    fetchComps();
+  }, []);
 
   /* Sort handler */
   const handleSort = useCallback(
@@ -539,6 +587,80 @@ export default function ETFPage() {
                 </div>
               </div>
             </div>
+
+            {/* vs Traditional ETFs */}
+            {comparisonETFs.length > 0 && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                    <GitCompareArrows className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-white">Crypto ETFs vs Traditional</h2>
+                    <p className="text-xs text-neutral-600 mt-0.5">
+                      Today&apos;s performance: {data.funds[0]?.ticker || 'IBIT'} vs major benchmarks
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {/* Lead crypto ETF */}
+                  {stats.leadFund.price && stats.leadFund.change24h !== null && (
+                    <div className="flex items-center gap-3 bg-hub-yellow/5 border border-hub-yellow/10 rounded-lg px-3 py-2">
+                      <span className="text-xs font-bold text-hub-yellow w-12 text-right font-mono">
+                        {stats.leadFund.ticker}
+                      </span>
+                      <div className="flex-1 h-5 bg-white/[0.03] rounded overflow-hidden relative">
+                        <div
+                          className={`h-full rounded transition-all ${
+                            stats.leadFund.change24h >= 0 ? 'bg-green-500/40' : 'bg-red-500/40'
+                          }`}
+                          style={{ width: `${Math.min(Math.abs(stats.leadFund.change24h) * 10, 100)}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs font-mono font-bold w-16 text-right ${
+                        stats.leadFund.change24h >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {stats.leadFund.change24h >= 0 ? '+' : ''}{stats.leadFund.change24h.toFixed(2)}%
+                      </span>
+                      <span className="text-xs font-mono text-neutral-500 w-20 text-right">
+                        ${stats.leadFund.price.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {/* Comparison ETFs */}
+                  {comparisonETFs.map((etf) => (
+                    <div key={etf.ticker} className="flex items-center gap-3 bg-white/[0.02] rounded-lg px-3 py-2">
+                      <span className="text-xs font-bold text-neutral-300 w-12 text-right font-mono">
+                        {etf.ticker}
+                      </span>
+                      <div className="flex-1 h-5 bg-white/[0.03] rounded overflow-hidden relative">
+                        {etf.change24h !== null && (
+                          <div
+                            className={`h-full rounded transition-all ${
+                              etf.change24h >= 0 ? 'bg-green-500/30' : 'bg-red-500/30'
+                            }`}
+                            style={{ width: `${Math.min(Math.abs(etf.change24h) * 10, 100)}%` }}
+                          />
+                        )}
+                      </div>
+                      <span className={`text-xs font-mono font-bold w-16 text-right ${
+                        etf.change24h !== null
+                          ? etf.change24h >= 0 ? 'text-green-400' : 'text-red-400'
+                          : 'text-neutral-600'
+                      }`}>
+                        {etf.change24h !== null ? `${etf.change24h >= 0 ? '+' : ''}${etf.change24h.toFixed(2)}%` : '—'}
+                      </span>
+                      <span className="text-xs font-mono text-neutral-500 w-20 text-right">
+                        {etf.price ? `$${etf.price.toFixed(2)}` : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-neutral-600 mt-2 text-center">
+                  Performance comparison uses today&apos;s % change. SPY = S&amp;P 500, QQQ = Nasdaq-100, GLD = Gold, TLT = Bonds
+                </p>
+              </div>
+            )}
 
             {/* Info footer */}
             <div className="bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl p-4">

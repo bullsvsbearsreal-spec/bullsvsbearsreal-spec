@@ -29,9 +29,33 @@ interface ScreenerRow {
   fundingExchanges: number;
   totalOI: number;
   oiExchanges: number;
+  oiChange24h: number;
+  sentiment: string;
+  sentimentColor: string;
 }
 
-type SortField = 'symbol' | 'price' | 'change24h' | 'volume24h' | 'avgFunding' | 'totalOI';
+type SortField = 'symbol' | 'price' | 'change24h' | 'volume24h' | 'avgFunding' | 'totalOI' | 'oiChange24h';
+
+/* ─── Sentiment Engine ──────────────────────────────────────────── */
+
+function deriveSentiment(change24h: number, oiChange: number, funding: number): { label: string; color: string } {
+  // Price up + OI up = new longs entering (bullish)
+  if (change24h > 1 && oiChange > 3) return { label: 'LONGS ENTERING', color: 'text-green-400 bg-green-500/10' };
+  // Price down + OI up = new shorts entering (bearish)
+  if (change24h < -1 && oiChange > 3) return { label: 'SHORTS ENTERING', color: 'text-red-400 bg-red-500/10' };
+  // Price up + OI down = shorts closing (bullish squeeze)
+  if (change24h > 1 && oiChange < -3) return { label: 'SHORTS CLOSING', color: 'text-emerald-400 bg-emerald-500/10' };
+  // Price down + OI down = longs closing (bearish unwind)
+  if (change24h < -1 && oiChange < -3) return { label: 'LONGS CLOSING', color: 'text-orange-400 bg-orange-500/10' };
+  // Strong funding + high OI = overheated
+  if (funding > 0.03 && oiChange > 5) return { label: 'OVERHEATED', color: 'text-yellow-400 bg-yellow-500/10' };
+  // Strong negative funding = capitulation
+  if (funding < -0.03) return { label: 'CAPITULATION', color: 'text-purple-400 bg-purple-500/10' };
+  // Mild moves
+  if (change24h > 2) return { label: 'BULLISH', color: 'text-green-400/70 bg-green-500/5' };
+  if (change24h < -2) return { label: 'BEARISH', color: 'text-red-400/70 bg-red-500/5' };
+  return { label: 'NEUTRAL', color: 'text-neutral-500 bg-white/[0.02]' };
+}
 
 /* ─── Component ──────────────────────────────────────────────────── */
 
@@ -68,10 +92,11 @@ export default function ScreenerPage() {
       setLoading(true);
       setError(null);
 
-      const [tickerRes, fundingRes, oiRes] = await Promise.all([
+      const [tickerRes, fundingRes, oiRes, deltaRes] = await Promise.all([
         fetch('/api/tickers').then((r) => r.json()),
         fetch('/api/funding?assetClass=crypto').then((r) => r.json()),
         fetch('/api/openinterest').then((r) => r.json()),
+        fetch('/api/oi-delta').then((r) => r.ok ? r.json() : null).catch(() => null),
       ]);
 
       const tickers: any[] = Array.isArray(tickerRes?.data) ? tickerRes.data : Array.isArray(tickerRes) ? tickerRes : [];
@@ -110,6 +135,14 @@ export default function ScreenerPage() {
         oiMap.set(o.symbol, cur);
       });
 
+      // Build OI delta map
+      const deltaMap = new Map<string, number>();
+      if (deltaRes?.deltas) {
+        (deltaRes.deltas as any[]).forEach((d: any) => {
+          if (d.symbol && d.change24h != null) deltaMap.set(d.symbol, d.change24h);
+        });
+      }
+
       // Merge all symbols
       const allSymbols = new Set<string>();
       tickerMap.forEach((_, k) => allSymbols.add(k));
@@ -125,15 +158,23 @@ export default function ScreenerPage() {
         // Skip if no price data
         if (!t || t.count === 0) return;
 
+        const change24h = t.change || 0;
+        const avgFunding = f ? f.total / f.count : 0;
+        const oiChange24h = deltaMap.get(symbol) || 0;
+        const { label: sentiment, color: sentimentColor } = deriveSentiment(change24h, oiChange24h, avgFunding);
+
         merged.push({
           symbol,
           price: t.price / t.count,
-          change24h: t.change || 0,
+          change24h,
           volume24h: t.vol,
-          avgFunding: f ? f.total / f.count : 0,
+          avgFunding,
           fundingExchanges: f?.count || 0,
           totalOI: o?.total || 0,
           oiExchanges: o?.count || 0,
+          oiChange24h,
+          sentiment,
+          sentimentColor,
         });
       });
 
@@ -472,6 +513,7 @@ export default function ScreenerPage() {
                   ['volume24h', 'Volume 24h'],
                   ['avgFunding', 'Avg Funding'],
                   ['totalOI', 'Open Interest'],
+                  ['oiChange24h', 'OI Chg 24h'],
                 ] as [SortField, string][]).map(([field, label]) => (
                   <th
                     key={field}
@@ -486,6 +528,7 @@ export default function ScreenerPage() {
                   </th>
                 ))}
                 <th className="text-right px-3 py-2.5 text-[11px] font-medium text-neutral-500">Exchanges</th>
+                <th className="text-center px-3 py-2.5 text-[11px] font-medium text-neutral-500">Sentiment</th>
               </tr>
             </thead>
             <tbody>
@@ -527,17 +570,27 @@ export default function ScreenerPage() {
                     <td className="px-3 py-2 text-right text-neutral-400 font-mono text-xs">
                       {row.totalOI > 0 ? formatNumber(row.totalOI) : '—'}
                     </td>
+                    <td className={`px-3 py-2 text-right font-mono text-xs ${
+                      row.oiChange24h > 0 ? 'text-green-400' : row.oiChange24h < 0 ? 'text-red-400' : 'text-neutral-600'
+                    }`}>
+                      {row.oiChange24h !== 0 ? `${row.oiChange24h > 0 ? '+' : ''}${row.oiChange24h.toFixed(1)}%` : '—'}
+                    </td>
                     <td className="px-3 py-2 text-right text-neutral-600 text-[11px]">
                       {row.fundingExchanges > 0 ? `${row.fundingExchanges}F` : ''}
                       {row.fundingExchanges > 0 && row.oiExchanges > 0 ? ' · ' : ''}
                       {row.oiExchanges > 0 ? `${row.oiExchanges}OI` : ''}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide whitespace-nowrap ${row.sentimentColor}`}>
+                        {row.sentiment}
+                      </span>
                     </td>
                   </tr>
                 );
               })}
               {paged.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-neutral-500 text-sm">
+                  <td colSpan={11} className="text-center py-12 text-neutral-500 text-sm">
                     {conditions.length > 0 ? 'No symbols match your filter conditions.' : 'No data available.'}
                   </td>
                 </tr>
@@ -589,6 +642,16 @@ export default function ScreenerPage() {
                       {row.totalOI > 0 ? formatNumber(row.totalOI) : '—'}
                     </div>
                   </div>
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${row.sentimentColor}`}>
+                    {row.sentiment}
+                  </span>
+                  {row.oiChange24h !== 0 && (
+                    <span className={`text-[10px] font-mono ${row.oiChange24h > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      OI {row.oiChange24h > 0 ? '+' : ''}{row.oiChange24h.toFixed(1)}%
+                    </span>
+                  )}
                 </div>
               </div>
             );

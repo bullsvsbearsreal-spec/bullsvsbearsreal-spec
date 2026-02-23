@@ -147,6 +147,18 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Exchange Reserves',
     description: 'Monitor crypto exchange reserves and balance changes. Track Bitcoin and stablecoin holdings across major exchanges.',
   },
+  '/oi-heatmap': {
+    title: 'OI Change Heatmap',
+    description: 'Open interest change heatmap across crypto perpetual futures. Visualize which assets are gaining or losing OI in real-time.',
+  },
+  '/bitcoin-treasuries': {
+    title: 'Bitcoin Treasuries',
+    description: 'Track the largest corporate, ETF, and government Bitcoin holdings. MicroStrategy, BlackRock IBIT, Fidelity FBTC, and more.',
+  },
+  '/liquidation-map': {
+    title: 'Liquidation Map',
+    description: 'Estimated liquidation clusters for BTC, ETH, and SOL based on common leverage tiers and real open interest data. Visualize where leveraged positions would get liquidated.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

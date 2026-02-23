@@ -207,6 +207,83 @@ export default function OrderflowPage() {
               </div>
             </div>
 
+            {/* Depth Delta Visualization */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <ArrowDownUp className="w-4 h-4 text-cyan-400" />
+                  <div>
+                    <h2 className="text-sm font-semibold text-white">Depth Delta</h2>
+                    <p className="text-xs text-neutral-600 mt-0.5">Bid vs ask liquidity at each price level</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-neutral-500">
+                  <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-green-500/50" /> Bid depth</div>
+                  <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-red-500/50" /> Ask depth</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 900 180" className="w-full" preserveAspectRatio="xMidYMid meet">
+                {/* Grid lines */}
+                {[0.25, 0.5, 0.75].map((pct) => (
+                  <line key={pct} x1={0} y1={180 * (1 - pct)} x2={900} y2={180 * (1 - pct)}
+                    stroke="rgba(255,255,255,0.03)" strokeWidth={0.5} />
+                ))}
+                {/* Mid price line */}
+                <line x1={450} y1={0} x2={450} y2={180} stroke="#eab308" strokeWidth={1} strokeDasharray="4,4" opacity={0.4} />
+                <text x={450} y={10} textAnchor="middle" fontSize="8" fill="#eab308" fontWeight="bold">MID</text>
+                {/* Bid bars (left side, going outward from center) */}
+                {data.bids.slice(0, 25).map((bid, i) => {
+                  const barH = maxCumulative > 0 ? (bid.quantity * data.midPrice / maxCumulative) * 180 * 5 : 0;
+                  const clamped = Math.min(barH, 170);
+                  const barW = 16;
+                  const x = 440 - (i + 1) * barW;
+                  return (
+                    <rect key={`b${i}`} x={x} y={180 - clamped} width={barW - 1} height={clamped}
+                      fill="rgba(34,197,94,0.35)" rx={1} />
+                  );
+                })}
+                {/* Ask bars (right side, going outward from center) */}
+                {data.asks.slice(0, 25).map((ask, i) => {
+                  const barH = maxCumulative > 0 ? (ask.quantity * data.midPrice / maxCumulative) * 180 * 5 : 0;
+                  const clamped = Math.min(barH, 170);
+                  const barW = 16;
+                  const x = 460 + i * barW;
+                  return (
+                    <rect key={`a${i}`} x={x} y={180 - clamped} width={barW - 1} height={clamped}
+                      fill="rgba(239,68,68,0.35)" rx={1} />
+                  );
+                })}
+              </svg>
+              {/* Imbalance indicator */}
+              {(() => {
+                const totalBid = data.bidDepth;
+                const totalAsk = data.askDepth;
+                const delta = totalBid - totalAsk;
+                const imbalance = totalBid + totalAsk > 0 ? (delta / (totalBid + totalAsk)) * 100 : 0;
+                return (
+                  <div className="flex items-center justify-between mt-2 px-2">
+                    <span className="text-[10px] text-neutral-500">
+                      Bid-Ask Delta: <span className={`font-bold ${delta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {delta >= 0 ? '+' : ''}{formatUsd(delta)}
+                      </span>
+                    </span>
+                    <span className="text-[10px] text-neutral-500">
+                      Imbalance: <span className={`font-bold ${imbalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {imbalance >= 0 ? '+' : ''}{imbalance.toFixed(1)}%
+                      </span>
+                      {Math.abs(imbalance) > 20 && (
+                        <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                          imbalance > 20 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          {imbalance > 20 ? 'BID HEAVY' : 'ASK HEAVY'}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+
             {/* Order book depth + Trade tape */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
               {/* Order book */}

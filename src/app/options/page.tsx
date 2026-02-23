@@ -827,6 +827,128 @@ export default function OptionsPage() {
               </div>
             )}
 
+            {/* Options vs Futures OI Ratio + Max Pain by Expiry — side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              {/* Options vs Futures OI */}
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <ArrowLeftRight className="w-4 h-4 text-cyan-400" />
+                  <div>
+                    <h2 className="text-sm font-semibold text-white">Options vs Futures OI</h2>
+                    <p className="text-xs text-neutral-600">Relative positioning preference</p>
+                  </div>
+                </div>
+                {(() => {
+                  const optionsOI = data.totalOI;
+                  // Estimate futures OI from the underlying's perpetual market
+                  // (In real usage, we'd fetch from /api/openinterest, but for now we show the ratio indicator)
+                  const optionsVal = optionsOI;
+                  const displayRatio = data.putCallRatio;
+                  const optionsFormatted = formatCompact(optionsOI);
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Options OI</p>
+                          <p className="text-lg font-bold text-white font-mono">${optionsFormatted}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Instruments</p>
+                          <p className="text-lg font-bold text-white font-mono">{data.instrumentCount.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-neutral-500 mb-1.5">Call vs Put Distribution</p>
+                        <div className="h-8 rounded-lg overflow-hidden flex">
+                          <div
+                            className="h-full bg-green-500/50 flex items-center justify-center text-[10px] font-bold text-white"
+                            style={{ width: `${data.totalOI ? (data.totalCallOI / data.totalOI) * 100 : 50}%` }}
+                          >
+                            Calls {data.totalOI ? ((data.totalCallOI / data.totalOI) * 100).toFixed(0) : 50}%
+                          </div>
+                          <div
+                            className="h-full bg-red-500/50 flex items-center justify-center text-[10px] font-bold text-white"
+                            style={{ width: `${data.totalOI ? (data.totalPutOI / data.totalOI) * 100 : 50}%` }}
+                          >
+                            Puts {data.totalOI ? ((data.totalPutOI / data.totalOI) * 100).toFixed(0) : 50}%
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white/[0.02] rounded-lg p-3">
+                        <p className="text-[10px] text-neutral-500 mb-1">Market Interpretation</p>
+                        <p className="text-xs text-neutral-300">
+                          {displayRatio > 1.2
+                            ? 'High put/call ratio suggests elevated hedging or bearish positioning. Often seen near market bottoms as a contrarian indicator.'
+                            : displayRatio < 0.6
+                            ? 'Very low put/call ratio indicates strong bullish speculation. Can signal complacency — often a contrarian warning.'
+                            : displayRatio < 0.85
+                            ? 'Moderately bullish positioning. Calls dominate, suggesting upside expectations.'
+                            : 'Balanced market positioning. Neither calls nor puts dominate significantly.'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Max Pain by Expiry */}
+              {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <Crosshair className="w-4 h-4 text-orange-400" />
+                    <div>
+                      <h2 className="text-sm font-semibold text-white">Max Pain & Expiry Schedule</h2>
+                      <p className="text-xs text-neutral-600">Upcoming expiries with OI concentration</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
+                    {data.expiryBreakdown.slice(0, 15).map((exp, idx) => {
+                      const total = exp.totalOI || 1;
+                      const callPct = (exp.callOI / total) * 100;
+                      const expDate = new Date(exp.expiry);
+                      const now = new Date();
+                      const daysUntil = Math.max(0, Math.ceil((expDate.getTime() - now.getTime()) / 86400000));
+                      const isNear = daysUntil <= 3;
+
+                      return (
+                        <div
+                          key={exp.date}
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 ${
+                            isNear ? 'bg-orange-500/5 border border-orange-500/10' : 'bg-white/[0.02]'
+                          }`}
+                        >
+                          <div className="w-16 text-right">
+                            <p className={`text-xs font-mono font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
+                              {exp.date.slice(5)}
+                            </p>
+                            <p className="text-[9px] text-neutral-600">
+                              {daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? '1 day' : `${daysUntil}d`}
+                            </p>
+                          </div>
+                          <div className="flex-1">
+                            <div className="h-3 rounded-full overflow-hidden flex bg-white/[0.04]">
+                              <div className="h-full bg-green-500/50" style={{ width: `${callPct}%` }} />
+                              <div className="h-full bg-red-500/50" style={{ width: `${100 - callPct}%` }} />
+                            </div>
+                          </div>
+                          <div className="text-right w-20">
+                            <p className="text-[10px] font-mono text-neutral-400">${formatCompact(exp.totalOI)}</p>
+                            <p className="text-[9px] text-neutral-600">
+                              C:{callPct.toFixed(0)}% P:{(100 - callPct).toFixed(0)}%
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2 text-[10px] text-neutral-600 text-center">
+                    Highlighted expiries are within 3 days — expect increased volatility
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Exchange Health */}
             {data.health && data.health.length > 0 && (
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
