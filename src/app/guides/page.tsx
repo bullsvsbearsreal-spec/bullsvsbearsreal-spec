@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import {
-  HardHat, Construction, BookOpen, TrendingUp, BarChart3,
+  Construction, BookOpen, TrendingUp, BarChart3,
   Zap, ArrowLeftRight, Shield, PieChart, Bell,
-  ChevronRight, Lock,
+  ChevronRight, Clock, Coffee, Pencil, Sparkles,
+  MessageCircle,
 } from 'lucide-react';
 
 /* ─── Upcoming guide topics ─────────────────────────────────────── */
@@ -12,45 +13,51 @@ import {
 const upcomingGuides = [
   {
     title: 'Funding Rate Arbitrage',
-    desc: 'How to exploit funding rate differentials across exchanges for market-neutral profits.',
+    desc: 'The strategy that lets you profit no matter which way the market moves. We\'ll break down exactly how to spot and execute funding rate arb across exchanges.',
     icon: ArrowLeftRight,
     tag: 'Strategy',
     difficulty: 'Intermediate',
+    eta: 'First up',
   },
   {
-    title: 'Reading Open Interest',
-    desc: 'Understanding what OI changes tell you about market positioning and potential squeezes.',
+    title: 'Reading Open Interest Like a Pro',
+    desc: 'OI is the one metric most traders ignore — and it\'s the one that tells you the most. Learn to spot squeezes before they happen.',
     icon: BarChart3,
     tag: 'Analysis',
     difficulty: 'Beginner',
+    eta: 'Coming soon',
   },
   {
-    title: 'Liquidation Cascades',
-    desc: 'How leveraged liquidations create cascading price movements and how to trade them.',
+    title: 'Surviving Liquidation Cascades',
+    desc: 'When leveraged positions unwind, prices move fast. Here\'s how to stay on the right side of the waterfall — or profit from it.',
     icon: Zap,
     tag: 'Trading',
     difficulty: 'Advanced',
+    eta: 'Coming soon',
   },
   {
-    title: 'Order Flow Basics',
-    desc: 'Reading the tape, understanding bid/ask imbalances, and spotting large players.',
+    title: 'Order Flow for Humans',
+    desc: 'Forget complicated footprint charts. We\'ll teach you to read the tape in plain English — who\'s buying, who\'s selling, and what it means.',
     icon: TrendingUp,
     tag: 'Analysis',
     difficulty: 'Intermediate',
+    eta: 'In the works',
   },
   {
-    title: 'Options Max Pain Theory',
-    desc: 'How options expiry and max pain levels influence spot and futures prices.',
+    title: 'Options Max Pain, Explained',
+    desc: 'Every options expiry, there\'s a price level where the most traders lose the most money. Understanding max pain gives you an edge.',
     icon: Shield,
     tag: 'Options',
     difficulty: 'Advanced',
+    eta: 'In the works',
   },
   {
-    title: 'Portfolio Risk Management',
-    desc: 'Position sizing, correlation-aware hedging, and managing drawdowns in crypto.',
+    title: 'Don\'t Blow Up: Risk Management',
+    desc: 'The most important guide we\'ll write. Position sizing, hedging, and the mental frameworks that keep you in the game long-term.',
     icon: PieChart,
     tag: 'Risk',
     difficulty: 'Beginner',
+    eta: 'In the works',
   },
 ];
 
@@ -76,144 +83,122 @@ export default function GuidesPage() {
 
   return (
     <div className="min-h-screen bg-hub-dark relative overflow-hidden">
-      {/* ─── Construction tape borders ─── */}
-      <div className="absolute top-0 left-0 right-0 h-2 construction-tape z-10" />
-      <div className="absolute bottom-0 left-0 right-0 h-2 construction-tape z-10" />
+      {/* ─── Construction tape top ─── */}
+      <div className="h-1.5 construction-tape" />
 
-      {/* ─── Subtle grid background ─── */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(234,179,8,0.3) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(234,179,8,0.3) 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-        }}
-      />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-16 relative z-10">
 
-      {/* ─── Floating construction particles ─── */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-hub-yellow/20 rounded-full construction-particle"
-            style={{
-              left: `${15 + i * 15}%`,
-              animationDelay: `${i * 1.2}s`,
-              animationDuration: `${6 + i * 0.8}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20 relative z-10">
         {/* ─── Hero section ─── */}
-        <div className="text-center mb-16">
-          {/* Warning beacon */}
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-2xl bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center construction-beacon">
-                <Construction className="w-10 h-10 text-hub-yellow" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-hub-yellow rounded-full construction-pulse" />
+        <div className="mb-14">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center">
+              <Construction className="w-5 h-5 text-hub-yellow" />
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-hub-yellow/[0.08] border border-hub-yellow/15">
+              <span className="w-1.5 h-1.5 rounded-full bg-hub-yellow animate-pulse" />
+              <span className="text-hub-yellow text-[11px] font-semibold">Work in progress</span>
             </div>
           </div>
 
-          {/* Stencil headline */}
-          <div className="relative inline-block mb-4">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-white uppercase">
-              Trading <span className="text-hub-yellow">Guides</span>
-            </h1>
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-32 h-0.5 bg-hub-yellow/40" />
-          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight">
+            Trading guides,<br />
+            <span className="text-hub-yellow">written by actual traders.</span>
+          </h1>
 
-          <div className="flex items-center justify-center gap-3 mt-6 mb-4">
-            <div className="h-px flex-1 max-w-[80px] bg-gradient-to-r from-transparent to-hub-yellow/30" />
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 text-hub-yellow text-xs font-bold tracking-widest uppercase">
-              <HardHat className="w-3.5 h-3.5" />
-              Under Construction
-            </span>
-            <div className="h-px flex-1 max-w-[80px] bg-gradient-to-l from-transparent to-hub-yellow/30" />
-          </div>
-
-          <p className="text-neutral-500 text-sm sm:text-base max-w-lg mx-auto leading-relaxed mt-4">
-            We&apos;re building in-depth guides on derivatives trading, market analysis, and strategy.
-            The first guides will be published soon.
+          <p className="text-neutral-400 text-sm sm:text-base max-w-xl leading-relaxed mb-3">
+            We&apos;re putting together a collection of no-BS guides on derivatives trading.
+            Real strategies, real examples, using real data from InfoHub.
+          </p>
+          <p className="text-neutral-600 text-xs sm:text-sm max-w-xl leading-relaxed">
+            No filler, no &quot;what is Bitcoin&quot; intros. Just the stuff you actually need to trade better.
           </p>
         </div>
 
-        {/* ─── Upcoming guides grid ─── */}
-        <div className="mb-16">
+        {/* ─── What to expect ─── */}
+        <div className="grid sm:grid-cols-3 gap-3 mb-14">
+          {[
+            { icon: Coffee, label: 'Plain English', desc: 'No jargon walls. We explain things like we\'re talking to a friend.' },
+            { icon: BarChart3, label: 'Live examples', desc: 'Every concept backed by real charts and data from InfoHub.' },
+            { icon: Pencil, label: 'Actionable', desc: 'Step-by-step playbooks you can actually use tomorrow.' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+              <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <item.icon className="w-4 h-4 text-neutral-500" />
+              </div>
+              <div>
+                <span className="text-white text-sm font-semibold block mb-0.5">{item.label}</span>
+                <span className="text-neutral-600 text-xs leading-relaxed">{item.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ─── Upcoming guides ─── */}
+        <div className="mb-14">
           <div className="flex items-center gap-3 mb-6">
             <BookOpen className="w-4 h-4 text-hub-yellow" />
-            <h2 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">Coming Soon</h2>
-            <div className="h-px flex-1 bg-white/[0.06]" />
+            <h2 className="text-sm font-bold text-neutral-300">What we&apos;re working on</h2>
+            <div className="h-px flex-1 bg-white/[0.04]" />
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="space-y-3">
             {upcomingGuides.map((guide, i) => (
               <div
                 key={guide.title}
-                className="group relative bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 transition-all duration-300 hover:border-hub-yellow/20 hover:bg-white/[0.04] cursor-default guide-card-enter"
-                style={{ animationDelay: `${i * 80}ms` }}
+                className="group relative bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.03] guide-card-enter"
+                style={{ animationDelay: `${i * 60}ms` }}
               >
-                {/* Lock overlay */}
-                <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-50 transition-opacity">
-                  <Lock className="w-3.5 h-3.5 text-neutral-600" />
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div className="w-10 h-10 rounded-lg bg-hub-yellow/[0.06] border border-hub-yellow/10 flex items-center justify-center flex-shrink-0 group-hover:border-hub-yellow/25 transition-colors">
+                    <guide.icon className="w-5 h-5 text-hub-yellow/60 group-hover:text-hub-yellow transition-colors" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-neutral-200 group-hover:text-white transition-colors">
+                        {guide.title}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-neutral-500 leading-relaxed mb-2.5">
+                      {guide.desc}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/[0.04] text-neutral-500 border border-white/[0.06]">
+                        {guide.tag}
+                      </span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${difficultyColor[guide.difficulty]}`}>
+                        {guide.difficulty}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ETA badge */}
+                  <div className="flex items-center gap-1.5 text-neutral-600 flex-shrink-0">
+                    <Clock className="w-3 h-3" />
+                    <span className="text-[10px] font-medium whitespace-nowrap">{guide.eta}</span>
+                  </div>
                 </div>
-
-                {/* Icon */}
-                <div className="w-9 h-9 rounded-lg bg-hub-yellow/[0.07] border border-hub-yellow/10 flex items-center justify-center mb-3 group-hover:border-hub-yellow/25 transition-colors">
-                  <guide.icon className="w-4 h-4 text-hub-yellow/70 group-hover:text-hub-yellow transition-colors" />
-                </div>
-
-                {/* Content */}
-                <h3 className="text-sm font-bold text-neutral-200 mb-1.5 group-hover:text-white transition-colors">
-                  {guide.title}
-                </h3>
-                <p className="text-xs text-neutral-600 leading-relaxed mb-3 line-clamp-2">
-                  {guide.desc}
-                </p>
-
-                {/* Tags */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/[0.04] text-neutral-500 border border-white/[0.06]">
-                    {guide.tag}
-                  </span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${difficultyColor[guide.difficulty]}`}>
-                    {guide.difficulty}
-                  </span>
-                </div>
-
-                {/* Bottom accent on hover */}
-                <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-hub-yellow/0 to-transparent group-hover:via-hub-yellow/30 transition-all duration-500" />
               </div>
             ))}
           </div>
         </div>
 
-        {/* ─── Notify section ─── */}
-        <div className="max-w-md mx-auto text-center">
-          <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl p-6 sm:p-8 relative overflow-hidden">
-            {/* Corner tape decoration */}
-            <div className="absolute -top-1 -left-1 w-12 h-12 overflow-hidden">
-              <div className="absolute top-2 -left-4 w-20 h-3 bg-hub-yellow/20 rotate-[-45deg] construction-tape-mini" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-12 h-12 overflow-hidden">
-              <div className="absolute top-2 -right-4 w-20 h-3 bg-hub-yellow/20 rotate-[45deg] construction-tape-mini" />
-            </div>
-
-            <Bell className="w-5 h-5 text-hub-yellow mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-white mb-1">Get Notified</h3>
-            <p className="text-xs text-neutral-600 mb-5">
-              Be the first to know when new guides drop.
+        {/* ─── CTA section ─── */}
+        <div className="grid sm:grid-cols-2 gap-4 mb-10">
+          {/* Notify */}
+          <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl p-6 relative">
+            <Bell className="w-5 h-5 text-hub-yellow mb-3" />
+            <h3 className="text-sm font-bold text-white mb-1">Get notified when we publish</h3>
+            <p className="text-xs text-neutral-600 mb-4 leading-relaxed">
+              Drop your email and we&apos;ll ping you when the first guide goes live. No spam, ever.
             </p>
 
             {subscribed ? (
-              <div className="flex items-center justify-center gap-2 py-2.5 text-green-400 text-sm font-medium">
-                <span className="w-5 h-5 rounded-full bg-green-400/10 flex items-center justify-center text-xs">&#10003;</span>
-                You&apos;ll be notified!
+              <div className="flex items-center gap-2 py-2 text-green-400 text-sm font-medium">
+                <Sparkles className="w-4 h-4" />
+                Nice — you&apos;re on the list!
               </div>
             ) : (
               <form onSubmit={handleNotify} className="flex gap-2">
@@ -229,24 +214,44 @@ export default function GuidesPage() {
                   type="submit"
                   className="px-4 py-2.5 bg-hub-yellow text-black text-sm font-bold rounded-lg hover:bg-hub-yellow/90 transition-colors flex items-center gap-1.5 whitespace-nowrap"
                 >
-                  Notify Me
+                  Notify me
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </form>
             )}
           </div>
+
+          {/* Suggest */}
+          <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl p-6">
+            <MessageCircle className="w-5 h-5 text-neutral-500 mb-3" />
+            <h3 className="text-sm font-bold text-white mb-1">Got a topic in mind?</h3>
+            <p className="text-xs text-neutral-600 mb-4 leading-relaxed">
+              We want to write what you actually want to read. Tell us what you&apos;re struggling with.
+            </p>
+            <a
+              href="https://t.me/+Z6SQGJ57SlwyY2Rk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm font-medium text-neutral-300 hover:text-white hover:border-white/[0.15] transition-all"
+            >
+              Suggest on Telegram
+              <ChevronRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
 
-        {/* ─── Bottom progress indicator ─── */}
-        <div className="mt-16 flex items-center justify-center gap-4 text-neutral-700 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-hub-yellow/40 construction-pulse" />
-            <span className="font-mono">Building guides...</span>
-          </div>
+        {/* ─── Bottom note ─── */}
+        <div className="text-center pt-4 border-t border-white/[0.04]">
+          <p className="text-neutral-700 text-xs">
+            Built with care by the InfoHub team. First guides dropping soon.
+          </p>
         </div>
       </div>
 
-      {/* ─── Inline styles for animations ─── */}
+      {/* ─── Construction tape bottom ─── */}
+      <div className="h-1.5 construction-tape" />
+
+      {/* ─── Inline styles ─── */}
       <style jsx>{`
         .construction-tape {
           background: repeating-linear-gradient(
@@ -256,45 +261,13 @@ export default function GuidesPage() {
             #1a1a1a 10px,
             #1a1a1a 20px
           );
-          opacity: 0.6;
-        }
-        .construction-tape-mini {
-          background: repeating-linear-gradient(
-            -45deg,
-            rgba(234,179,8,0.4),
-            rgba(234,179,8,0.4) 3px,
-            transparent 3px,
-            transparent 6px
-          );
-        }
-        .construction-beacon {
-          animation: beacon-glow 3s ease-in-out infinite;
-        }
-        @keyframes beacon-glow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(234,179,8,0); }
-          50% { box-shadow: 0 0 30px 4px rgba(234,179,8,0.12); }
-        }
-        .construction-pulse {
-          animation: c-pulse 2s ease-in-out infinite;
-        }
-        @keyframes c-pulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.3); }
-        }
-        .construction-particle {
-          animation: particle-float linear infinite;
-        }
-        @keyframes particle-float {
-          0% { top: 110%; opacity: 0; }
-          10% { opacity: 0.4; }
-          90% { opacity: 0.4; }
-          100% { top: -5%; opacity: 0; }
+          opacity: 0.5;
         }
         .guide-card-enter {
-          animation: card-enter 0.5s ease-out both;
+          animation: card-enter 0.4s ease-out both;
         }
         @keyframes card-enter {
-          from { opacity: 0; transform: translateY(12px); }
+          from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
