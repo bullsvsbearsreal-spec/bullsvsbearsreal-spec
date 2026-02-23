@@ -367,8 +367,10 @@ export async function GET() {
   }
 
   try {
+    // CoinGecko free API limits historical data to 365 days.
+    // We fetch 365 days — enough for 350-day SMA but Pi Cycle (111+350) may be partial.
     const res = await fetch(
-      'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1500&interval=daily',
+      'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily',
       {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(15000),
@@ -409,7 +411,7 @@ export async function GET() {
       }
     }
 
-    if (closePrices.length < 350) {
+    if (closePrices.length < 200) {
       if (cachedResponse) {
         return NextResponse.json(cachedResponse);
       }

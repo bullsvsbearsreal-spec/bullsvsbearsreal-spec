@@ -53,7 +53,7 @@ interface MempoolData {
 
 interface OnChainResponse {
   hashRate: MetricData;
-  difficulty: MetricData & { nextAdjustment?: { estimatedChange: number; blocksRemaining: number } };
+  difficulty: MetricData & { nextAdjustment?: { estimatedPercent: number; remainingBlocks: number; estimatedDate: string } };
   minerRevenue: MetricData;
   puellMultiple: MetricData;
   mvrv: MetricData;
@@ -364,9 +364,9 @@ export default function OnChainPage() {
                 badge={
                   data.difficulty.nextAdjustment ? (
                     <span className="text-[10px] font-mono px-2 py-1 rounded-lg bg-orange-500/10 text-orange-400">
-                      Next: {data.difficulty.nextAdjustment.estimatedChange >= 0 ? '+' : ''}
-                      {data.difficulty.nextAdjustment.estimatedChange.toFixed(1)}% in{' '}
-                      {data.difficulty.nextAdjustment.blocksRemaining.toLocaleString()} blocks
+                      Next: {data.difficulty.nextAdjustment.estimatedPercent >= 0 ? '+' : ''}
+                      {data.difficulty.nextAdjustment.estimatedPercent.toFixed(1)}% in{' '}
+                      {data.difficulty.nextAdjustment.remainingBlocks.toLocaleString()} blocks
                     </span>
                   ) : undefined
                 }
