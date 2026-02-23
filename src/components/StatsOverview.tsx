@@ -24,7 +24,9 @@ export default function StatsOverview() {
           fetch('/api/top-movers').then(r => r.json()).catch(() => ({ gainers: [], losers: [] })),
         ]);
 
-        const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
+        // Sanity cap: no single ticker should exceed $50B/day (filters Gate.io/BitMEX bad data)
+        const MAX_TICKER_VOL = 50_000_000_000;
+        const totalVolume = tickers.reduce((sum, t) => sum + Math.min(t.quoteVolume24h || 0, MAX_TICKER_VOL), 0);
         const totalOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
 
         const topGainerCoin = moversRes.gainers?.[0];

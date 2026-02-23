@@ -7,6 +7,14 @@ type PageMeta = {
 };
 
 export const PAGE_META: Record<string, PageMeta> = {
+  '/etf': {
+    title: 'Crypto ETF Tracker',
+    description: 'Track Bitcoin and Ethereum spot ETF funds — IBIT, FBTC, GBTC, ETHA, and more. Compare fees, issuers, and fund performance.',
+  },
+  '/orderflow': {
+    title: 'Order Flow',
+    description: 'Real-time order book depth, trade tape, and buy/sell pressure for Bitcoin and top crypto perpetual futures.',
+  },
   '/funding': {
     title: 'Funding Rates',
     description: 'Live perpetual futures funding rates across 24+ exchanges. Compare rates, find arbitrage opportunities, and track funding trends in real-time.',

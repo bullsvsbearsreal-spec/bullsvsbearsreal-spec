@@ -921,93 +921,91 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const data = fundingData[i];
           if (!params || !data) continue;
 
-          // Check if funding fees are enabled for this pair
-          if (!params.fundingFeesEnabled) continue;
+          const hasFunding = !!params.fundingFeesEnabled;
 
           // Parse OI in tokens (may be zero for some pairs — still show funding rate)
           const oi = pairOis[i];
           const oiLongToken = oi?.token ? Number(oi.token.oiLongToken) / PRECISION.OI_TOKEN : 0;
           const oiShortToken = oi?.token ? Number(oi.token.oiShortToken) / PRECISION.OI_TOKEN : 0;
 
-          // Parse params with contract precision
-          const skewCoefficientPerYear = Number(params.skewCoefficientPerYear) / PRECISION.SKEW_COEFF_PER_YEAR;
-          const absoluteVelocityPerYearCap = Number(params.absoluteVelocityPerYearCap) / PRECISION.ABS_VELOCITY_PER_YEAR_CAP;
-          const absoluteRatePerSecondCap = Number(params.absoluteRatePerSecondCap) / PRECISION.ABS_RATE_PER_SECOND_CAP;
-          const thetaThresholdUsd = Number(params.thetaThresholdUsd);
+          let fundingRate8h = 0;
+          let fundingRateLong = 0;
+          let fundingRateShort = 0;
+          let tokenPrice = 0;
 
-          // Parse pair data
-          const lastFundingRatePerSecondP = Number(data.lastFundingRatePerSecondP) / PRECISION.FUNDING_RATE_PER_SECOND_P;
-          const lastFundingUpdateTs = Number(data.lastFundingUpdateTs);
+          if (hasFunding) {
+            // --- Full velocity-based funding for pairs with funding enabled ---
 
-          // Calculate net exposure
-          const netExposureToken = oiLongToken - oiShortToken;
-          // Derive token price from collateral OI / token OI ratio
-          const oiLongCollateral = oi?.collateral ? Number(oi.collateral.oiLongCollateral) / collateralPrecision : 0;
-          const oiShortCollateral = oi?.collateral ? Number(oi.collateral.oiShortCollateral) / collateralPrecision : 0;
-          const totalTokenOi = oiLongToken + oiShortToken;
-          const tokenPrice = totalTokenOi > 0
-            ? ((oiLongCollateral + oiShortCollateral) * collateralPriceUsd) / totalTokenOi
-            : 0;
-          const netExposureUsd = netExposureToken * tokenPrice;
+            // Parse params with contract precision
+            const skewCoefficientPerYear = Number(params.skewCoefficientPerYear) / PRECISION.SKEW_COEFF_PER_YEAR;
+            const absoluteVelocityPerYearCap = Number(params.absoluteVelocityPerYearCap) / PRECISION.ABS_VELOCITY_PER_YEAR_CAP;
+            const absoluteRatePerSecondCap = Number(params.absoluteRatePerSecondCap) / PRECISION.ABS_RATE_PER_SECOND_CAP;
+            const thetaThresholdUsd = Number(params.thetaThresholdUsd);
 
-          // --- Core velocity-based funding rate calculation (from gTrade v10 SDK) ---
+            // Parse pair data
+            const lastFundingRatePerSecondP = Number(data.lastFundingRatePerSecondP) / PRECISION.FUNDING_RATE_PER_SECOND_P;
+            const lastFundingUpdateTs = Number(data.lastFundingUpdateTs);
 
-          // Step 1: Calculate current funding velocity per year
-          let currentVelocityPerYear = 0;
-          if (netExposureToken !== 0 && skewCoefficientPerYear !== 0 && absoluteVelocityPerYearCap !== 0) {
-            if (Math.abs(netExposureUsd) >= thetaThresholdUsd) {
-              const absVelocity = Math.abs(netExposureToken) * skewCoefficientPerYear;
-              const cappedVelocity = Math.min(absVelocity, absoluteVelocityPerYearCap);
-              currentVelocityPerYear = netExposureToken < 0 ? -cappedVelocity : cappedVelocity;
-            }
-          }
+            // Calculate net exposure
+            const netExposureToken = oiLongToken - oiShortToken;
+            const oiLongCollateral = oi?.collateral ? Number(oi.collateral.oiLongCollateral) / collateralPrecision : 0;
+            const oiShortCollateral = oi?.collateral ? Number(oi.collateral.oiShortCollateral) / collateralPrecision : 0;
+            const totalTokenOi = oiLongToken + oiShortToken;
+            tokenPrice = totalTokenOi > 0
+              ? ((oiLongCollateral + oiShortCollateral) * collateralPriceUsd) / totalTokenOi
+              : 0;
+            const netExposureUsd = netExposureToken * tokenPrice;
 
-          // Step 2: Calculate current funding rate per second
-          const secondsSinceLastUpdate = currentTimestamp - lastFundingUpdateTs;
-          let currentFundingRatePerSecondP = lastFundingRatePerSecondP;
-
-          if (absoluteRatePerSecondCap !== 0 && currentVelocityPerYear !== 0 && secondsSinceLastUpdate > 0) {
-            const ratePerSecondCap = absoluteRatePerSecondCap * (currentVelocityPerYear < 0 ? -1 : 1);
-
-            if (ratePerSecondCap !== lastFundingRatePerSecondP) {
-              const secondsToReachCap = ((ratePerSecondCap - lastFundingRatePerSecondP) * ONE_YEAR) / currentVelocityPerYear;
-
-              if (secondsSinceLastUpdate > secondsToReachCap) {
-                currentFundingRatePerSecondP = ratePerSecondCap;
-              } else {
-                currentFundingRatePerSecondP = lastFundingRatePerSecondP +
-                  (secondsSinceLastUpdate * currentVelocityPerYear) / ONE_YEAR;
+            // Step 1: Calculate current funding velocity per year
+            let currentVelocityPerYear = 0;
+            if (netExposureToken !== 0 && skewCoefficientPerYear !== 0 && absoluteVelocityPerYearCap !== 0) {
+              if (Math.abs(netExposureUsd) >= thetaThresholdUsd) {
+                const absVelocity = Math.abs(netExposureToken) * skewCoefficientPerYear;
+                const cappedVelocity = Math.min(absVelocity, absoluteVelocityPerYearCap);
+                currentVelocityPerYear = netExposureToken < 0 ? -cappedVelocity : cappedVelocity;
               }
-            } else {
-              currentFundingRatePerSecondP = ratePerSecondCap;
             }
-          }
 
-          // Step 3: Convert per-second rate to 8h percentage
-          // The "P" suffix means the rate is already a percentage fraction,
-          // so we only multiply by seconds (no extra *100)
-          let fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
+            // Step 2: Calculate current funding rate per second
+            const secondsSinceLastUpdate = currentTimestamp - lastFundingUpdateTs;
+            let currentFundingRatePerSecondP = lastFundingRatePerSecondP;
 
-          // gTrade's skew model (from @gainsnetwork/sdk getLongShortAprMultiplier):
-          // Convention: positive rate = longs pay (standard, same as Binance/Bybit)
-          // When aprMultiplierEnabled: earning side gets amplified by OI ratio, capped at 100x
-          // Paying side always has multiplier = 1
-          let fundingRateLong = fundingRate8h;
-          let fundingRateShort = -fundingRate8h; // short side is opposite sign
-          if (params.aprMultiplierEnabled && oiLongToken > 0 && oiShortToken > 0) {
-            if (fundingRate8h < 0) {
-              // Longs earn: amplify long earnings by short/long OI ratio
-              fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, 100);
-              fundingRateShort = -fundingRate8h; // shorts pay base rate
-            } else if (fundingRate8h > 0) {
-              // Shorts earn: amplify short earnings by long/short OI ratio
-              fundingRateLong = fundingRate8h; // longs pay base rate
-              fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, 100);
+            if (absoluteRatePerSecondCap !== 0 && currentVelocityPerYear !== 0 && secondsSinceLastUpdate > 0) {
+              const ratePerSecondCap = absoluteRatePerSecondCap * (currentVelocityPerYear < 0 ? -1 : 1);
+
+              if (ratePerSecondCap !== lastFundingRatePerSecondP) {
+                const secondsToReachCap = ((ratePerSecondCap - lastFundingRatePerSecondP) * ONE_YEAR) / currentVelocityPerYear;
+
+                if (secondsSinceLastUpdate > secondsToReachCap) {
+                  currentFundingRatePerSecondP = ratePerSecondCap;
+                } else {
+                  currentFundingRatePerSecondP = lastFundingRatePerSecondP +
+                    (secondsSinceLastUpdate * currentVelocityPerYear) / ONE_YEAR;
+                }
+              } else {
+                currentFundingRatePerSecondP = ratePerSecondCap;
+              }
+            }
+
+            // Step 3: Convert per-second rate to 8h percentage
+            fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
+
+            // gTrade's skew model (from @gainsnetwork/sdk getLongShortAprMultiplier):
+            fundingRateLong = fundingRate8h;
+            fundingRateShort = -fundingRate8h;
+            if (params.aprMultiplierEnabled && oiLongToken > 0 && oiShortToken > 0) {
+              if (fundingRate8h < 0) {
+                fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, 100);
+                fundingRateShort = -fundingRate8h;
+              } else if (fundingRate8h > 0) {
+                fundingRateLong = fundingRate8h;
+                fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, 100);
+              }
             }
           }
 
           // Add borrowing v2 fee — gTrade "Holding Fee" = funding + borrowing
-          // Borrowing is a flat per-second rate applied equally to both sides
+          // For borrow-only pairs (no funding), this IS the entire rate
           const borrowParams = borrowingV2Params[i];
           const borrowRate8h = borrowParams?.borrowingRatePerSecondP
             ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600
@@ -1015,6 +1013,13 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           fundingRateLong += borrowRate8h;
           fundingRateShort += borrowRate8h;
           fundingRate8h += borrowRate8h;
+
+          // gTrade velocity model produces inverted signs vs their actual displayed rates.
+          // Confirmed by comparing gTrade UI: their "Long" shows positive (earning) while our
+          // calculation produces negative for the same side. Negate all rates to match.
+          fundingRate8h = -fundingRate8h;
+          fundingRateLong = -fundingRateLong;
+          fundingRateShort = -fundingRateShort;
 
           // Skip pairs with essentially zero rate
           if (Math.abs(fundingRate8h) < 0.00001) continue;
@@ -1312,6 +1317,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .filter((item: any) => item && !isNaN(item.fundingRate) && item.markPrice > 0); // Keep 0% rates — valid data
     },
   },
+  // Synthetix V3 Perps — DEPRECATED as of July 2025
+  // Base chain deployment was sunset; migrated to Ethereum Mainnet CLOB (private beta Dec 2025)
+  // Contract 0x0A2AF931eFFd34b81ebcc57E3d3c9B1E1dE1C9Ce returns FeatureUnavailable for all calls
+  // Re-enable when mainnet CLOB has a public data API
+
   // ─── CloudFlare-blocked exchanges (require PROXY_URL env var) ───
 
   // BitMEX (~$158M OI)

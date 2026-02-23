@@ -778,4 +778,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // Synthetix V3 Perps — DEPRECATED as of July 2025
+  // Base chain deployment was sunset; migrated to Ethereum Mainnet CLOB
+  // Re-enable when mainnet CLOB has a public data API
+
 ];

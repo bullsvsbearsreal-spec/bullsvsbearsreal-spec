@@ -74,10 +74,21 @@ export async function GET(request: NextRequest) {
     if (!cmcRes.ok) throw new Error(`CMC failed: ${cmcRes.status}`);
     const json = await cmcRes.json();
     const coins = (json.data || [])
-      .filter((c: any) =>
-        c.quote?.USD?.percent_change_24h != null &&
-        (exchangeSymbols.size === 0 || exchangeSymbols.has(c.symbol?.toUpperCase()))
-      )
+      .filter((c: any) => {
+        const change = c.quote?.USD?.percent_change_24h;
+        const vol = c.quote?.USD?.volume_24h || 0;
+        const mcap = c.quote?.USD?.market_cap || 0;
+        const sym = c.symbol || '';
+        // Quality filters: must have change, volume, market cap, ASCII symbol, reasonable change %
+        return (
+          change != null &&
+          vol >= 500_000 &&           // Min $500K volume (skip dead/fake coins)
+          mcap >= 10_000_000 &&       // Min $10M market cap
+          Math.abs(change) <= 500 &&  // Max ±500% change (skip pump/dump & data errors)
+          /^[A-Z0-9]+$/.test(sym) &&  // ASCII-only symbols (skip Chinese/emoji names)
+          (exchangeSymbols.size === 0 || exchangeSymbols.has(sym.toUpperCase()))
+        );
+      })
       .map((c: any) => ({
         symbol: c.symbol,
         name: c.name,

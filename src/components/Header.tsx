@@ -47,6 +47,7 @@ const navCategories: NavCategory[] = [
       { name: 'Liquidations', href: '/liquidations', icon: Zap },
       { name: 'Long/Short', href: '/longshort', icon: ArrowLeftRight },
       { name: 'CVD', href: '/cvd', icon: LineChart },
+      { name: 'Order Flow', href: '/orderflow', icon: Activity },
       { name: 'Options', href: '/options', icon: Shield },
       { name: 'RSI Heatmap', href: '/rsi-heatmap', icon: GaugeIcon },
       { name: 'Basis', href: '/basis', icon: BarChart2 },
@@ -58,6 +59,7 @@ const navCategories: NavCategory[] = [
     icon: BarChart3,
     items: [
       { name: 'Top Movers', href: '/top-movers', icon: Rocket },
+      { name: 'ETF Tracker', href: '/etf', icon: LineChart },
       { name: 'Heatmap', href: '/market-heatmap', icon: Map },
       { name: 'Dominance', href: '/dominance', icon: Crown },
       { name: 'Exchanges', href: '/exchange-comparison', icon: Building2 },

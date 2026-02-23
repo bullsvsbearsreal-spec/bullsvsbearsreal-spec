@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { RefreshCw, Star, ArrowLeft, TrendingUp, TrendingDown, Info } from 'lucide-react';
@@ -9,6 +10,9 @@ import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { formatPrice, formatCompact, formatFundingRate } from '@/lib/utils/format';
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
+import { useTheme } from '@/hooks/useTheme';
+
+const LightweightChart = dynamic(() => import('@/components/charts/LightweightChart'), { ssr: false });
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -41,100 +45,24 @@ interface OIInfo {
 
 type Interval = '1h' | '4h' | '1d' | '1w';
 
-/* ─── Mini Candle Chart (SVG) ────────────────────────────────────── */
+/* ─── Chart data transforms ──────────────────────────────────────── */
 
-function CandleChart({ candles, width = 800, height = 300 }: { candles: Candle[]; width?: number; height?: number }) {
-  if (candles.length === 0) return null;
-
-  const minLow = Math.min(...candles.map((c) => c.low));
-  const maxHigh = Math.max(...candles.map((c) => c.high));
-  const range = maxHigh - minLow || 1;
-  const padding = 4;
-  const candleW = Math.max(1, (width - padding * 2) / candles.length - 1);
-
-  const scaleY = (val: number) => padding + (1 - (val - minLow) / range) * (height - padding * 2);
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
-      {/* Grid lines */}
-      {[0.25, 0.5, 0.75].map((pct) => {
-        const y = padding + pct * (height - padding * 2);
-        const price = maxHigh - pct * range;
-        return (
-          <g key={pct}>
-            <line x1={0} y1={y} x2={width} y2={y} stroke="rgba(255,255,255,0.04)" />
-            <text x={4} y={y - 2} fill="rgba(255,255,255,0.2)" fontSize="9">
-              {formatPrice(price)}
-            </text>
-          </g>
-        );
-      })}
-
-      {candles.map((c, i) => {
-        const x = padding + i * ((width - padding * 2) / candles.length);
-        const isGreen = c.close >= c.open;
-        const bodyTop = scaleY(Math.max(c.open, c.close));
-        const bodyBottom = scaleY(Math.min(c.open, c.close));
-        const bodyH = Math.max(1, bodyBottom - bodyTop);
-        const color = isGreen ? '#22c55e' : '#ef4444';
-
-        return (
-          <g key={i}>
-            {/* Wick */}
-            <line
-              x1={x + candleW / 2}
-              y1={scaleY(c.high)}
-              x2={x + candleW / 2}
-              y2={scaleY(c.low)}
-              stroke={color}
-              strokeWidth={1}
-            />
-            {/* Body */}
-            <rect
-              x={x}
-              y={bodyTop}
-              width={candleW}
-              height={bodyH}
-              fill={color}
-              rx={0.5}
-            />
-          </g>
-        );
-      })}
-    </svg>
-  );
+function toCandleSeries(candles: Candle[]) {
+  return candles.map((c) => ({
+    time: (c.time / 1000) as any,
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+  }));
 }
 
-/* ─── Volume Chart (SVG) ─────────────────────────────────────────── */
-
-function VolumeChart({ candles, width = 800, height = 80 }: { candles: Candle[]; width?: number; height?: number }) {
-  if (candles.length === 0) return null;
-
-  const maxVol = Math.max(...candles.map((c) => c.volume)) || 1;
-  const padding = 4;
-  const barW = Math.max(1, (width - padding * 2) / candles.length - 1);
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
-      {candles.map((c, i) => {
-        const x = padding + i * ((width - padding * 2) / candles.length);
-        const barH = (c.volume / maxVol) * (height - padding);
-        const isGreen = c.close >= c.open;
-
-        return (
-          <rect
-            key={i}
-            x={x}
-            y={height - barH}
-            width={barW}
-            height={barH}
-            fill={isGreen ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'}
-            rx={0.5}
-          />
-        );
-      })}
-    </svg>
-  );
+function toVolumeSeries(candles: Candle[]) {
+  return candles.map((c) => ({
+    time: (c.time / 1000) as any,
+    value: c.volume,
+    color: c.close >= c.open ? 'rgba(234,179,8,0.3)' : 'rgba(239,68,68,0.3)',
+  }));
 }
 
 /* ─── Component ──────────────────────────────────────────────────── */
@@ -142,6 +70,7 @@ function VolumeChart({ candles, width = 800, height = 80 }: { candles: Candle[];
 export default function SymbolPage() {
   const params = useParams();
   const symbol = (params.symbol as string)?.toUpperCase() || 'BTC';
+  const theme = useTheme();
 
   const [interval, setInterval_] = useState<Interval>('1h');
   const [candles, setCandles] = useState<Candle[]>([]);
@@ -343,14 +272,21 @@ export default function SymbolPage() {
                 <RefreshCw className="w-5 h-5 animate-spin text-hub-yellow" />
               </div>
             ) : candles.length > 0 ? (
-              <>
-                <div className="h-[300px]">
-                  <CandleChart candles={candles} />
-                </div>
-                <div className="h-[80px] mt-1">
-                  <VolumeChart candles={candles} />
-                </div>
-              </>
+              <LightweightChart
+                series={[
+                  { type: 'candlestick', data: toCandleSeries(candles) },
+                  {
+                    type: 'histogram',
+                    data: toVolumeSeries(candles),
+                    options: {
+                      priceScaleId: 'volume',
+                      priceFormat: { type: 'volume' },
+                    },
+                  },
+                ]}
+                height={380}
+                darkMode={theme !== 'light'}
+              />
             ) : (
               <div className="flex items-center justify-center h-[300px] text-neutral-500 text-sm">
                 No chart data available for {symbol}

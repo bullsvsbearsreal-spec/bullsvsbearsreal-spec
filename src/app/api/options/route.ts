@@ -1,5 +1,5 @@
 /**
- * GET /api/options?currency=BTC
+ * GET /api/options?currency=BTC|ETH|SOL
  *
  * Multi-exchange options data: Deribit + Binance + OKX + Bybit.
  * Returns max pain, put/call ratio, open interest by strike, IV data, and per-exchange breakdown.
@@ -25,8 +25,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const currency = (searchParams.get('currency') || 'BTC').toUpperCase();
 
-  if (!['BTC', 'ETH'].includes(currency)) {
-    return NextResponse.json({ error: 'Only BTC and ETH options supported' }, { status: 400 });
+  const SUPPORTED_CURRENCIES = ['BTC', 'ETH', 'SOL'];
+  if (!SUPPORTED_CURRENCIES.includes(currency)) {
+    return NextResponse.json({ error: `Options supported for: ${SUPPORTED_CURRENCIES.join(', ')}` }, { status: 400 });
   }
 
   // L1 cache check
@@ -153,6 +154,37 @@ export async function GET(request: NextRequest) {
       exchangeOI[opt.exchange].instruments++;
     });
 
+    // OI grouped by expiry date
+    const expiryMap = new Map<string, { callOI: number; putOI: number; expiry: number }>();
+    allInstruments.forEach((opt) => {
+      if (opt.expiryTimestamp <= 0) return;
+      const dateKey = new Date(opt.expiryTimestamp).toISOString().split('T')[0];
+      const entry = expiryMap.get(dateKey) || { callOI: 0, putOI: 0, expiry: opt.expiryTimestamp };
+      if (opt.optionType === 'call') entry.callOI += opt.openInterestUsd;
+      else entry.putOI += opt.openInterestUsd;
+      expiryMap.set(dateKey, entry);
+    });
+    const expiryBreakdown = Array.from(expiryMap.entries())
+      .map(([date, oi]) => ({ date, ...oi, totalOI: oi.callOI + oi.putOI }))
+      .sort((a, b) => a.expiry - b.expiry)
+      .slice(0, 20); // Top 20 nearest expiries
+
+    // Per-exchange strike data (for exchange tab views)
+    const exchangeStrikes: Record<string, Array<{ strike: number; callOI: number; putOI: number }>> = {};
+    allInstruments.forEach((opt) => {
+      if (opt.strike < lowerBound || opt.strike > upperBound) return;
+      if (!exchangeStrikes[opt.exchange]) exchangeStrikes[opt.exchange] = [];
+      let entry = exchangeStrikes[opt.exchange].find((e) => e.strike === opt.strike);
+      if (!entry) {
+        entry = { strike: opt.strike, callOI: 0, putOI: 0 };
+        exchangeStrikes[opt.exchange].push(entry);
+      }
+      if (opt.optionType === 'call') entry.callOI += opt.openInterestUsd;
+      else entry.putOI += opt.openInterestUsd;
+    });
+    // Sort each exchange's strikes
+    Object.values(exchangeStrikes).forEach((arr) => arr.sort((a, b) => a.strike - b.strike));
+
     const responseBody = {
       currency,
       underlyingPrice,
@@ -174,6 +206,8 @@ export async function GET(request: NextRequest) {
           ? ((oi.callOI + oi.putOI) / (totalCallOI + totalPutOI) * 100)
           : 0,
       })).sort((a, b) => b.totalOI - a.totalOI),
+      expiryBreakdown,
+      exchangeStrikes,
       health,
     };
 
