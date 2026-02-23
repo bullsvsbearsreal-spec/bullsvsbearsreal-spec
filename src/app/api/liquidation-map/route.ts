@@ -65,20 +65,28 @@ const LEVERAGE_WEIGHT: Record<number, number> = {
 // ---------------------------------------------------------------------------
 async function fetchCurrentPrice(symbol: SupportedSymbol): Promise<number> {
   const pair = `${symbol}USDT`;
-  try {
-    const res = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${pair}`, {
-      signal: AbortSignal.timeout(5000),
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) throw new Error(`Binance price API returned ${res.status}`);
-    const data = await res.json();
-    const price = parseFloat(data.price);
-    if (!price || !isFinite(price)) throw new Error('Invalid price from Binance');
-    return price;
-  } catch (err) {
-    console.error(`Failed to fetch ${symbol} price from Binance:`, err);
-    throw err;
+  // Try multiple sources for resilience (Binance fapi blocks some IPs with 451)
+  const sources = [
+    { name: 'Binance', url: `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${pair}`, parse: (d: any) => parseFloat(d.price) },
+    { name: 'Bybit', url: `https://api.bybit.com/v5/market/tickers?category=linear&symbol=${pair}`, parse: (d: any) => parseFloat(d?.result?.list?.[0]?.lastPrice) },
+    { name: 'OKX', url: `https://www.okx.com/api/v5/market/ticker?instId=${symbol}-USDT-SWAP`, parse: (d: any) => parseFloat(d?.data?.[0]?.last) },
+  ];
+
+  for (const src of sources) {
+    try {
+      const res = await fetch(src.url, {
+        signal: AbortSignal.timeout(5000),
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const price = src.parse(data);
+      if (price && isFinite(price) && price > 0) return price;
+    } catch {
+      // Try next source
+    }
   }
+  throw new Error(`All price sources failed for ${symbol}`);
 }
 
 // ---------------------------------------------------------------------------
