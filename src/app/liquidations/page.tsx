@@ -692,7 +692,10 @@ export default function LiquidationsPage() {
                   {filteredLiquidations.length === 0 ? (
                     <div className="p-8 text-center text-neutral-600">
                       <Zap className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                      <p>Waiting for liquidations...</p>
+                      <p className="text-sm font-medium text-neutral-500">Waiting for liquidations...</p>
+                      <p className="text-xs text-neutral-700 mt-2 max-w-sm mx-auto">
+                        Liquidation data accumulates in real-time. Large liquidations on major pairs typically appear within minutes during active markets.
+                      </p>
                     </div>
                   ) : (
                     <div className="divide-y divide-hub-gray/20">

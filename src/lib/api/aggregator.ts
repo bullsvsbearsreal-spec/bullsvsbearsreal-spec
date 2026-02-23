@@ -55,10 +55,14 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
     const allTickers = Array.isArray(json) ? json : (json.data ?? json);
 
     // Aggregate by symbol - use highest volume exchange as primary
+    // Cap per-ticker volume at $100B to filter exchanges with inflated numbers (Gate.io reports trillions)
+    const MAX_SANE_VOLUME = 100_000_000_000;
     const symbolMap = new Map<string, TickerData & { exchange: string }>();
     allTickers.forEach((ticker: any) => {
+      const vol = ticker.quoteVolume24h || 0;
+      if (vol > MAX_SANE_VOLUME) return; // Skip exchanges with inflated volume data
       const existing = symbolMap.get(ticker.symbol);
-      if (!existing || ticker.quoteVolume24h > existing.quoteVolume24h) {
+      if (!existing || vol > (existing.quoteVolume24h || 0)) {
         symbolMap.set(ticker.symbol, ticker);
       }
     });

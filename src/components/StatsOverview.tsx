@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { fetchAllTickers, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { formatNumber } from '@/lib/utils/format';
 import { DollarSign, BarChart3, TrendingUp, TrendingDown, Layers } from 'lucide-react';
@@ -80,6 +81,7 @@ export default function StatsOverview() {
       icon: DollarSign,
       iconColor: 'text-hub-yellow',
       iconBg: 'bg-hub-yellow/10',
+      href: '/screener',
     },
     {
       label: 'Open Interest',
@@ -87,6 +89,7 @@ export default function StatsOverview() {
       icon: BarChart3,
       iconColor: 'text-blue-400',
       iconBg: 'bg-blue-400/10',
+      href: '/open-interest',
     },
     {
       label: 'Top Gainer',
@@ -96,6 +99,7 @@ export default function StatsOverview() {
       icon: TrendingUp,
       iconColor: 'text-green-400',
       iconBg: 'bg-green-500/10',
+      href: '/top-movers',
     },
     {
       label: 'Top Loser',
@@ -105,6 +109,7 @@ export default function StatsOverview() {
       icon: TrendingDown,
       iconColor: 'text-red-400',
       iconBg: 'bg-red-500/10',
+      href: '/top-movers',
     },
     {
       label: 'Markets',
@@ -112,18 +117,19 @@ export default function StatsOverview() {
       icon: Layers,
       iconColor: 'text-purple-400',
       iconBg: 'bg-purple-400/10',
+      href: '/screener',
     },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
       {statItems.map((item) => (
-        <div key={item.label} className="card-premium px-3 py-3 group">
+        <Link key={item.label} href={item.href} className="card-premium px-3 py-3 group cursor-pointer">
           <div className="flex items-center gap-2 mb-1.5">
             <div className={`w-5 h-5 rounded-md ${item.iconBg} flex items-center justify-center`}>
               <item.icon className={`w-3 h-3 ${item.iconColor}`} />
             </div>
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-medium">{item.label}</span>
+            <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-medium group-hover:text-neutral-400 transition-colors">{item.label}</span>
           </div>
           <div className="flex items-baseline gap-1.5">
             {item.value !== null ? (
@@ -137,7 +143,7 @@ export default function StatsOverview() {
               </>
             ) : skeleton}
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );

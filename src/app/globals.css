@@ -154,7 +154,7 @@ body {
 
   /* --- Data rows --- */
   .data-row { @apply transition-colors duration-100; }
-  .data-row:hover { background: rgba(255, 255, 255, 0.03); }
+  .data-row:hover { background: rgba(255, 255, 255, 0.05); }
 
   /* --- Badges --- */
   .badge { @apply px-2 py-0.5 text-xs font-semibold rounded tracking-wide; }
@@ -280,7 +280,7 @@ body {
     padding: 6px 10px;
   }
   .data-row-premium:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   /* Stagger children entrance */
@@ -361,7 +361,7 @@ body {
 
   /* --- Liq feed row --- */
   .liq-row { @apply p-4 transition-colors; }
-  .liq-row:hover { background: rgba(255, 255, 255, 0.04); }
+  .liq-row:hover { background: rgba(255, 255, 255, 0.06); }
 
   /* --- Empty state --- */
   .empty-state {
