@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { IBM_Plex_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import Providers from '@/components/Providers'
 import ChatWidget from '@/components/chat/ChatWidget'
 import AlertEngine from '@/components/AlertEngine'
 
-const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans' })
+const ibmPlex = IBM_Plex_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const viewport: Viewport = {
@@ -89,11 +90,13 @@ export default function RootLayout({
         {/* Prevent FOUC: apply saved theme before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('infohub-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}` }} />
       </head>
-      <body className={`${jakarta.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
+      <body className={`${ibmPlex.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
         <a href="#main-content" className="skip-to-content">Skip to content</a>
-        {children}
-        <ChatWidget />
-        <AlertEngine />
+        <Providers>
+          {children}
+          <ChatWidget />
+          <AlertEngine />
+        </Providers>
       </body>
     </html>
   )

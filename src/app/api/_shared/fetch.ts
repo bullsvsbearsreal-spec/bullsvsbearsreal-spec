@@ -1,4 +1,4 @@
-// Shared fetch utilities for Edge Runtime API routes
+// Shared fetch utilities for API routes
 import { getCache, setCache, isDBConfigured } from '@/lib/db';
 
 // Filter out tokenized stocks, indices, and known non-crypto symbols

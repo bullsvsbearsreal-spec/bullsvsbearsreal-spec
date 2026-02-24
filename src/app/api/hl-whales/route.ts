@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCache, setCache, isDBConfigured } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';

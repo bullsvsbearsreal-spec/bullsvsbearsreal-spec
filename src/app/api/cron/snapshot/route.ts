@@ -14,7 +14,7 @@ import {
   pruneOldData,
 } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;

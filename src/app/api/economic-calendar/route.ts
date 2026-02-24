@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { type EconomicEvent } from '@/lib/data/economic-events';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 

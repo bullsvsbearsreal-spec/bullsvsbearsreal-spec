@@ -3,7 +3,7 @@ import { fetchWithTimeout } from '../_shared/fetch';
 import { CURATED_MAPPINGS, extractKeywords, keywordSimilarity, extractNumbers, hasConflictingPolarity } from '@/lib/api/prediction-markets/mappings';
 import type { PredictionMarket, PredictionArbitrage, PredictionMarketsResponse, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 

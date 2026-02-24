@@ -1,19 +1,29 @@
 /**
- * Database client for Vercel Postgres (Neon).
- * Uses @neondatabase/serverless which is Edge-compatible.
+ * Database client for DigitalOcean Managed PostgreSQL.
+ * Uses 'postgres' (Postgres.js) — lightweight, modern, Edge-compatible driver.
  *
- * Connection string from env: POSTGRES_URL (Vercel) or DATABASE_URL (Neon).
+ * Connection string from env: DATABASE_URL
  */
 
-import { neon } from '@neondatabase/serverless';
+import postgres from 'postgres';
 
-const DATABASE_URL = process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
+const DATABASE_URL = process.env.DATABASE_URL || '';
+
+let sql: ReturnType<typeof postgres> | null = null;
 
 function getSQL() {
   if (!DATABASE_URL) {
-    throw new Error('No database URL configured. Set POSTGRES_URL or DATABASE_URL env var.');
+    throw new Error('No database URL configured. Set DATABASE_URL env var.');
   }
-  return neon(DATABASE_URL);
+  if (!sql) {
+    sql = postgres(DATABASE_URL, {
+      max: 10,               // connection pool size
+      idle_timeout: 20,      // close idle connections after 20s
+      connect_timeout: 10,   // 10s connection timeout
+      ssl: 'require',
+    });
+  }
+  return sql;
 }
 
 // ─── Schema initialization ──────────────────────────────────────────────────
@@ -99,13 +109,12 @@ export async function setCache(key: string, data: any, ttlSeconds: number): Prom
   try {
     const sql = getSQL();
     const jsonData = JSON.stringify(data);
-    const intervalStr = `${ttlSeconds} seconds`;
     await sql`
       INSERT INTO api_cache (key, data, expires_at, updated_at)
-      VALUES (${key}, ${jsonData}::jsonb, NOW() + ${intervalStr}::interval, NOW())
+      VALUES (${key}, ${jsonData}::jsonb, NOW() + ${`${ttlSeconds} seconds`}::interval, NOW())
       ON CONFLICT (key) DO UPDATE
       SET data = ${jsonData}::jsonb,
-          expires_at = NOW() + ${intervalStr}::interval,
+          expires_at = NOW() + ${`${ttlSeconds} seconds`}::interval,
           updated_at = NOW()
     `;
   } catch (e) {
@@ -126,8 +135,6 @@ export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Prom
   if (entries.length === 0) return 0;
   const sql = getSQL();
 
-  // Insert one row at a time using tagged templates (Edge-safe, no raw SQL)
-  // Batch in groups to limit concurrent queries
   let inserted = 0;
   for (let i = 0; i < entries.length; i += 50) {
     const chunk = entries.slice(i, i + 50);
@@ -244,7 +251,7 @@ export async function getBulkFundingHistory(
       const sym = r.symbol as string;
       if (!result.has(sym)) result.set(sym, []);
       result.get(sym)!.push({
-        day: String(r.day).slice(0, 10), // YYYY-MM-DD
+        day: String(r.day).slice(0, 10),
         rate: Number(r.rate),
       });
     });
@@ -294,7 +301,6 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
   try {
     const sql = getSQL();
 
-    // Get the latest snapshot timestamp and OI per symbol (summed across exchanges)
     const rows = await sql`
       WITH latest AS (
         SELECT MAX(ts) AS max_ts FROM oi_snapshots WHERE ts > NOW() - INTERVAL '30 minutes'
@@ -367,12 +373,52 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
 
     return {
-      funding: (fr as any).count ?? 0,
-      oi: (oi as any).count ?? 0,
+      funding: fr.count ?? 0,
+      oi: oi.count ?? 0,
     };
   } catch (e) {
     console.error('DB pruneOldData error:', e);
     return { funding: 0, oi: 0 };
+  }
+}
+
+// ─── User Data (synced localStorage data) ──────────────────────────────────
+
+export interface UserData {
+  watchlist?: string[];
+  portfolio?: any[];
+  alerts?: any[];
+  screenerPresets?: any[];
+  wallets?: any[];
+}
+
+export async function getUserData(userId: string): Promise<UserData | null> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT prefs FROM user_prefs WHERE user_id = ${userId}
+    `;
+    if (rows.length === 0) return null;
+    return rows[0].prefs as UserData;
+  } catch (e) {
+    console.error('DB getUserData error:', e);
+    return null;
+  }
+}
+
+export async function setUserData(userId: string, data: UserData): Promise<void> {
+  try {
+    const sql = getSQL();
+    const jsonData = JSON.stringify(data);
+    await sql`
+      INSERT INTO user_prefs (user_id, prefs, updated_at)
+      VALUES (${userId}, ${jsonData}::jsonb, NOW())
+      ON CONFLICT (user_id) DO UPDATE
+      SET prefs = ${jsonData}::jsonb,
+          updated_at = NOW()
+    `;
+  } catch (e) {
+    console.error('DB setUserData error:', e);
   }
 }
 

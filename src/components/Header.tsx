@@ -17,6 +17,7 @@ import {
 import Logo from './Logo';
 import CoinSearch from './CoinSearch';
 import ThemeToggle from './ThemeToggle';
+import UserMenu from './UserMenu';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 
 /* ------------------------------------------------------------------ */
@@ -293,9 +294,10 @@ export default function Header() {
             </nav>
           </div>
 
-          {/* Right: Theme + Search + Mobile toggle */}
+          {/* Right: Theme + Search + Auth + Mobile toggle */}
           <div className="flex items-center gap-2" ref={searchRef}>
             <ThemeToggle />
+            <UserMenu />
 
             {searchOpen ? (
               <div className="relative">

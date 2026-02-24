@@ -5,7 +5,7 @@ import { CHAT_TOOLS } from './tools';
 import { executeTool } from './tool-executor';
 import { checkRateLimit } from './rate-limit';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 

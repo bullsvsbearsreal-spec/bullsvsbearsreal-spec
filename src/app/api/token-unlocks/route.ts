@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchAllUnlocks } from '@/lib/api/tokenunlocks';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 

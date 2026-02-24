@@ -4,7 +4,7 @@ import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { fundingFetchers } from './exchanges';
 import { classifySymbol, KNOWN_STOCKS, KNOWN_COMMODITIES, KNOWN_FOREX, FOREX_BASES } from './normalize';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';

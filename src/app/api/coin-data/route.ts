@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
