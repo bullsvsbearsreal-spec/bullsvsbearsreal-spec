@@ -30,86 +30,144 @@ interface NavLink {
   icon: LucideIcon;
 }
 
+interface NavGroup {
+  heading: string;
+  items: NavLink[];
+}
+
 interface NavCategory {
   label: string;
   icon: LucideIcon;
-  items: NavLink[];
+  columns: NavGroup[];
 }
 
 const navCategories: NavCategory[] = [
   {
     label: 'Trading',
     icon: Activity,
-    items: [
-      { name: 'Chart', href: '/chart', icon: LineChart },
-      { name: 'Screener', href: '/screener', icon: SlidersHorizontal },
-      { name: 'Funding', href: '/funding', icon: Percent },
-      { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
-      { name: 'Open Interest', href: '/open-interest', icon: PieChart },
-      { name: 'OI Heatmap', href: '/oi-heatmap', icon: Grid3X3 },
-      { name: 'Liquidations', href: '/liquidations', icon: Zap },
-      { name: 'Liq Map', href: '/liquidation-map', icon: Crosshair },
-      { name: 'Liq Heatmap', href: '/liquidation-heatmap', icon: Grid3X3 },
-      { name: 'Long/Short', href: '/longshort', icon: ArrowLeftRight },
-      { name: 'CVD', href: '/cvd', icon: LineChart },
-      { name: 'Order Flow', href: '/orderflow', icon: Activity },
-      { name: 'Options', href: '/options', icon: Shield },
-      { name: 'RSI Heatmap', href: '/rsi-heatmap', icon: GaugeIcon },
-      { name: 'Basis', href: '/basis', icon: BarChart2 },
-      { name: 'Predictions', href: '/prediction-markets', icon: Eye },
+    columns: [
+      {
+        heading: 'Analysis',
+        items: [
+          { name: 'Chart', href: '/chart', icon: LineChart },
+          { name: 'Screener', href: '/screener', icon: SlidersHorizontal },
+          { name: 'Options', href: '/options', icon: Shield },
+          { name: 'Basis', href: '/basis', icon: BarChart2 },
+          { name: 'Predictions', href: '/prediction-markets', icon: Eye },
+        ],
+      },
+      {
+        heading: 'Funding & OI',
+        items: [
+          { name: 'Funding Rates', href: '/funding', icon: Percent },
+          { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
+          { name: 'Open Interest', href: '/open-interest', icon: PieChart },
+          { name: 'OI Heatmap', href: '/oi-heatmap', icon: Grid3X3 },
+        ],
+      },
+      {
+        heading: 'Liquidations',
+        items: [
+          { name: 'Liquidations', href: '/liquidations', icon: Zap },
+          { name: 'Liq Map', href: '/liquidation-map', icon: Crosshair },
+          { name: 'Liq Heatmap', href: '/liquidation-heatmap', icon: Grid3X3 },
+        ],
+      },
+      {
+        heading: 'Flow',
+        items: [
+          { name: 'Long/Short', href: '/longshort', icon: ArrowLeftRight },
+          { name: 'CVD', href: '/cvd', icon: LineChart },
+          { name: 'Order Flow', href: '/orderflow', icon: Activity },
+          { name: 'RSI Heatmap', href: '/rsi-heatmap', icon: GaugeIcon },
+        ],
+      },
     ],
   },
   {
     label: 'Markets',
     icon: BarChart3,
-    items: [
-      { name: 'Top Movers', href: '/top-movers', icon: Rocket },
-      { name: 'ETF Tracker', href: '/etf', icon: LineChart },
-      { name: 'BTC Treasuries', href: '/bitcoin-treasuries', icon: Bitcoin },
-      { name: 'Heatmap', href: '/market-heatmap', icon: Map },
-      { name: 'Dominance', href: '/dominance', icon: Crown },
-      { name: 'Exchanges', href: '/exchange-comparison', icon: Building2 },
-      { name: 'Exchange Reserves', href: '/exchange-reserves', icon: Landmark },
-      { name: 'Stablecoin Flows', href: '/stablecoin-flows', icon: Coins },
-      { name: 'Correlation', href: '/correlation', icon: GitCompareArrows },
-      { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock },
-      { name: 'Market Cycle', href: '/market-cycle', icon: Activity },
-      { name: 'On-Chain', href: '/onchain', icon: BarChart3 },
+    columns: [
+      {
+        heading: 'Overview',
+        items: [
+          { name: 'Top Movers', href: '/top-movers', icon: Rocket },
+          { name: 'Heatmap', href: '/market-heatmap', icon: Map },
+          { name: 'Dominance', href: '/dominance', icon: Crown },
+          { name: 'Market Cycle', href: '/market-cycle', icon: Activity },
+          { name: 'Correlation', href: '/correlation', icon: GitCompareArrows },
+        ],
+      },
+      {
+        heading: 'Institutional',
+        items: [
+          { name: 'ETF Tracker', href: '/etf', icon: LineChart },
+          { name: 'BTC Treasuries', href: '/bitcoin-treasuries', icon: Bitcoin },
+          { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock },
+        ],
+      },
+      {
+        heading: 'On-Chain',
+        items: [
+          { name: 'Exchange Reserves', href: '/exchange-reserves', icon: Landmark },
+          { name: 'Stablecoin Flows', href: '/stablecoin-flows', icon: Coins },
+          { name: 'On-Chain', href: '/onchain', icon: BarChart3 },
+          { name: 'Exchanges', href: '/exchange-comparison', icon: Building2 },
+        ],
+      },
     ],
   },
   {
     label: 'Sentiment',
     icon: Heart,
-    items: [
-      { name: 'Fear & Greed', href: '/fear-greed', icon: Thermometer },
-      { name: 'Whale Alert', href: '/whale-alert', icon: Fish },
-      { name: 'HL Whales', href: '/hl-whales', icon: Eye },
-      { name: 'News', href: '/news', icon: Newspaper },
+    columns: [
+      {
+        heading: '',
+        items: [
+          { name: 'Fear & Greed', href: '/fear-greed', icon: Thermometer },
+          { name: 'Whale Alert', href: '/whale-alert', icon: Fish },
+          { name: 'HL Whales', href: '/hl-whales', icon: Eye },
+          { name: 'News', href: '/news', icon: Newspaper },
+        ],
+      },
     ],
   },
   {
     label: 'Portfolio',
     icon: Briefcase,
-    items: [
-      { name: 'Watchlist', href: '/watchlist', icon: Star },
-      { name: 'Compare', href: '/compare', icon: GitCompare },
-      { name: 'Alerts', href: '/alerts', icon: Bell },
-      { name: 'Portfolio', href: '/portfolio', icon: Wallet },
-      { name: 'Wallet Tracker', href: '/wallet-tracker', icon: SearchIcon },
+    columns: [
+      {
+        heading: '',
+        items: [
+          { name: 'Watchlist', href: '/watchlist', icon: Star },
+          { name: 'Compare', href: '/compare', icon: GitCompare },
+          { name: 'Alerts', href: '/alerts', icon: Bell },
+          { name: 'Portfolio', href: '/portfolio', icon: Wallet },
+          { name: 'Wallet Tracker', href: '/wallet-tracker', icon: SearchIcon },
+        ],
+      },
     ],
   },
   {
     label: 'More',
     icon: MoreHorizontal,
-    items: [
-      { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar },
-      { name: 'Guides', href: '/guides', icon: BookOpen },
-      { name: 'API', href: '/api-docs', icon: Code2 },
-      { name: 'Brand Kit', href: '/brand', icon: Palette },
-      { name: 'Team', href: '/team', icon: Users },
+    columns: [
+      {
+        heading: '',
+        items: [
+          { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar },
+          { name: 'Guides', href: '/guides', icon: BookOpen },
+          { name: 'API', href: '/api-docs', icon: Code2 },
+          { name: 'Brand Kit', href: '/brand', icon: Palette },
+          { name: 'Team', href: '/team', icon: Users },
+        ],
+      },
     ],
   },
 ];
+
+/* Helper: flatten all items from a category */
+const allItems = (cat: NavCategory) => cat.columns.flatMap((g) => g.items);
 
 /* ------------------------------------------------------------------ */
 /*  Header component                                                   */
@@ -130,9 +188,8 @@ export default function Header() {
 
   /* ---------- helpers ------------------------------------------------ */
 
-  /** Check whether any item in a category matches the current path */
   const isCategoryActive = useCallback(
-    (cat: NavCategory) => cat.items.some((item) => pathname === item.href),
+    (cat: NavCategory) => allItems(cat).some((item) => pathname === item.href),
     [pathname],
   );
 
@@ -216,6 +273,63 @@ export default function Header() {
   };
 
   /* ------------------------------------------------------------------ */
+  /*  Render helpers                                                     */
+  /* ------------------------------------------------------------------ */
+
+  /** Render a single nav link */
+  const renderLink = (link: NavLink, onClick?: () => void) => (
+    <Link
+      key={link.href}
+      href={link.href}
+      onClick={onClick}
+      className={`flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
+        pathname === link.href
+          ? 'bg-hub-yellow text-black'
+          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+      }`}
+    >
+      <link.icon className="w-3.5 h-3.5 flex-shrink-0" />
+      {link.name}
+    </Link>
+  );
+
+  /** Desktop mega-menu dropdown panel */
+  const renderDropdown = (cat: NavCategory) => {
+    const isMega = cat.columns.length > 1;
+
+    if (!isMega) {
+      // Single-column simple dropdown
+      return (
+        <div className="absolute top-full left-0 pt-1 z-50">
+          <div className="bg-hub-darker border border-white/[0.08] rounded-lg shadow-xl py-2 min-w-[180px]">
+            {cat.columns[0].items.map((link) => renderLink(link, () => setOpenDropdown(null)))}
+          </div>
+        </div>
+      );
+    }
+
+    // Multi-column mega menu
+    return (
+      <div className="absolute top-full left-0 pt-1 z-50">
+        <div className="bg-hub-darker border border-white/[0.08] rounded-xl shadow-2xl p-4">
+          <div className="flex gap-6">
+            {cat.columns.map((group) => (
+              <div key={group.heading} className="min-w-[160px]">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 px-3 mb-1.5">
+                  {group.heading}
+                </div>
+                <div className="space-y-0.5">
+                  {group.items.map((link) => renderLink(link, () => setOpenDropdown(null)))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ------------------------------------------------------------------ */
   /*  Render                                                             */
   /* ------------------------------------------------------------------ */
 
@@ -267,27 +381,7 @@ export default function Header() {
                     </button>
 
                     {/* Dropdown panel */}
-                    {isOpen && (
-                      <div className="absolute top-full left-0 pt-1 z-50">
-                        <div className="bg-hub-darker border border-white/[0.08] rounded-lg shadow-xl py-1 min-w-[180px]">
-                          {cat.items.map((link) => (
-                            <Link
-                              key={link.href}
-                              href={link.href}
-                              onClick={() => setOpenDropdown(null)}
-                              className={`flex items-center gap-2.5 px-4 py-2 text-[13px] font-medium transition-colors ${
-                                pathname === link.href
-                                  ? 'bg-hub-yellow text-black'
-                                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
-                              }`}
-                            >
-                              <link.icon className="w-3.5 h-3.5 flex-shrink-0" />
-                              {link.name}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {isOpen && renderDropdown(cat)}
                   </div>
                 );
               })}
@@ -339,7 +433,7 @@ export default function Header() {
       {mobileOpen && (
         <div
           id="mobile-nav"
-          className="md:hidden bg-hub-dark border-t border-white/[0.06]"
+          className="md:hidden bg-hub-dark border-t border-white/[0.06] max-h-[80vh] overflow-y-auto"
           role="dialog"
           aria-modal="true"
           aria-label="Navigation menu"
@@ -372,6 +466,9 @@ export default function Header() {
                       <span className="flex items-center gap-2.5">
                         <cat.icon className="w-4 h-4" />
                         {cat.label}
+                        <span className="text-[10px] text-neutral-600 font-normal">
+                          {allItems(cat).length}
+                        </span>
                       </span>
                       <ChevronDown
                         className={`w-4 h-4 transition-transform duration-200 ${
@@ -380,23 +477,32 @@ export default function Header() {
                       />
                     </button>
 
-                    {/* Accordion content */}
+                    {/* Accordion content with sub-groups */}
                     {isExpanded && (
                       <div className="ml-3 border-l border-white/[0.06] pl-3 pb-1">
-                        {cat.items.map((link) => (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            onClick={() => setMobileOpen(false)}
-                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
-                              pathname === link.href
-                                ? 'bg-hub-yellow/10 text-hub-yellow'
-                                : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
-                            }`}
-                          >
-                            <link.icon className="w-3.5 h-3.5 flex-shrink-0" />
-                            {link.name}
-                          </Link>
+                        {cat.columns.map((group) => (
+                          <div key={group.heading || 'default'}>
+                            {group.heading && (
+                              <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 px-3 pt-2 pb-1">
+                                {group.heading}
+                              </div>
+                            )}
+                            {group.items.map((link) => (
+                              <Link
+                                key={link.href}
+                                href={link.href}
+                                onClick={() => setMobileOpen(false)}
+                                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
+                                  pathname === link.href
+                                    ? 'bg-hub-yellow/10 text-hub-yellow'
+                                    : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
+                                }`}
+                              >
+                                <link.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                                {link.name}
+                              </Link>
+                            ))}
+                          </div>
                         ))}
                       </div>
                     )}

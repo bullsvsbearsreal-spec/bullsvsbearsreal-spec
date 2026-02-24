@@ -28,7 +28,7 @@ export default function MarketTicker() {
         // Filter out tickers with exactly 0% change (exchanges like Variational/Aevo don't provide this data)
         const processedTickers: TickerItem[] = tickers
           .filter((t: TickerData) => t.priceChangePercent24h != null && t.priceChangePercent24h !== 0)
-          .slice(0, 16)
+          .slice(0, 40)
           .map((t: TickerData) => ({
             symbol: (t.symbol || '').replace('USDT', '').replace('USD', ''),
             price: safeNumber(t.lastPrice),

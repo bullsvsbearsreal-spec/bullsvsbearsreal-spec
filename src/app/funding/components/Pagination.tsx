@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 interface PaginationProps {
   currentPage: number;
@@ -12,14 +12,14 @@ interface PaginationProps {
 }
 
 function getPageNumbers(currentPage: number, totalPages: number): (number | '...')[] {
-  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  if (totalPages <= 15) return Array.from({ length: totalPages }, (_, i) => i + 1);
   const pages: (number | '...')[] = [];
   pages.push(1);
-  if (currentPage > 3) pages.push('...');
-  const rangeStart = Math.max(2, currentPage - 1);
-  const rangeEnd = Math.min(totalPages - 1, currentPage + 1);
+  if (currentPage > 6) pages.push('...');
+  const rangeStart = Math.max(2, currentPage - 4);
+  const rangeEnd = Math.min(totalPages - 1, currentPage + 4);
   for (let i = rangeStart; i <= rangeEnd; i++) pages.push(i);
-  if (currentPage < totalPages - 2) pages.push('...');
+  if (currentPage < totalPages - 5) pages.push('...');
   pages.push(totalPages);
   return pages;
 }
@@ -37,6 +37,14 @@ export default function Pagination({ currentPage, totalPages, totalItems, rowsPe
 
       {/* Center: page buttons */}
       <div className="flex items-center justify-center gap-1">
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          aria-label="First page"
+          className="p-1.5 rounded-md text-neutral-500 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-neutral-500 transition-colors"
+        >
+          <ChevronsLeft className="w-3.5 h-3.5" />
+        </button>
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
@@ -69,6 +77,14 @@ export default function Pagination({ currentPage, totalPages, totalItems, rowsPe
           className="p-1.5 rounded-md text-neutral-500 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-neutral-500 transition-colors"
         >
           <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          aria-label="Last page"
+          className="p-1.5 rounded-md text-neutral-500 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-neutral-500 transition-colors"
+        >
+          <ChevronsRight className="w-3.5 h-3.5" />
         </button>
       </div>
 

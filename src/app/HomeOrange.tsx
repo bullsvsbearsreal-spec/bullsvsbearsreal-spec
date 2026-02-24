@@ -65,8 +65,14 @@ export default function HomeOrange() {
 
   const cexExchanges = ALL_EXCHANGES.filter(e => !isExchangeDex(e));
   const dexExchanges = ALL_EXCHANGES.filter(e => isExchangeDex(e));
-  const activeCex = cexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length;
-  const activeDex = dexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length;
+  // Before health data loads, assume all exchanges are active (they usually are)
+  const healthLoaded = exchangeHealth.length > 0;
+  const activeCex = healthLoaded
+    ? cexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length
+    : cexExchanges.length;
+  const activeDex = healthLoaded
+    ? dexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length
+    : dexExchanges.length;
 
   const quickLinks = [
     { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates' },
@@ -329,8 +335,8 @@ export default function HomeOrange() {
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
                   {cexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
-                    const isActive = health?.status === 'ok';
-                    const isEmpty = health?.status === 'empty';
+                    const isActive = health?.status === 'ok' || !healthLoaded;
+                    const isEmpty = healthLoaded && health?.status === 'empty';
                     return (
                       <div
                         key={exchange}
@@ -375,8 +381,8 @@ export default function HomeOrange() {
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
                   {dexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
-                    const isActive = health?.status === 'ok';
-                    const isEmpty = health?.status === 'empty';
+                    const isActive = health?.status === 'ok' || !healthLoaded;
+                    const isEmpty = healthLoaded && health?.status === 'empty';
                     return (
                       <div
                         key={exchange}
