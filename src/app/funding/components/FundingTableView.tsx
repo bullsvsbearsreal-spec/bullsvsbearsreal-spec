@@ -142,6 +142,11 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                           <span className={getRateColor(fr.fundingRateShort)}> {formatRate(fr.fundingRateShort)}</span>
                         </span>
                       )}
+                      {fr.borrowingRate != null && fr.borrowingRate > 0.00001 && (
+                        <span className="text-[10px] font-mono leading-tight mt-0.5 text-amber-500/70" title="Symmetric borrowing fee — both longs and shorts pay this equally">
+                          Borrow: {fr.borrowingRate.toFixed(4)}%
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-2 text-right">

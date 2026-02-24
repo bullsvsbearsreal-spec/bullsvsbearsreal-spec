@@ -26,6 +26,7 @@ interface FundingHeatmapViewProps {
   intervalMap?: Map<string, string>;
   oiMap?: Map<string, number>;
   longShortMap?: Map<string, { long: number; short: number }>;
+  borrowingMap?: Map<string, number>;
   fundingPeriod: FundingPeriod;
 }
 

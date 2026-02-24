@@ -216,6 +216,7 @@ export default function FundingPage() {
   const heatmapData = new Map<string, Map<string, number>>();
   const intervalMap = new Map<string, string>(); // "SYMBOL|EXCHANGE" → interval
   const longShortMap = new Map<string, { long: number; short: number }>(); // L/S rates for skew-based DEXes
+  const borrowingMap = new Map<string, number>(); // Symmetric borrowing fees (gTrade)
   fundingRates.forEach(fr => {
     if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
     // For skew-based DEXes (gTrade, GMX), use the short-side rate as the primary display
@@ -227,6 +228,9 @@ export default function FundingPage() {
     }
     if (fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined) {
       longShortMap.set(`${fr.symbol}|${fr.exchange}`, { long: fr.fundingRateLong, short: fr.fundingRateShort });
+    }
+    if (fr.borrowingRate != null && fr.borrowingRate > 0.00001) {
+      borrowingMap.set(`${fr.symbol}|${fr.exchange}`, fr.borrowingRate);
     }
   });
 

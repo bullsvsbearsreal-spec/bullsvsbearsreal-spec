@@ -32,6 +32,7 @@ export interface FundingRateData {
   fundingRate: number;
   fundingRateLong?: number;  // Separate long-side rate (skew-based DEXes: gTrade, GMX)
   fundingRateShort?: number; // Separate short-side rate (skew-based DEXes: gTrade, GMX)
+  borrowingRate?: number;    // Symmetric borrowing fee (gTrade) — separate from funding
   fundingTime: number;
   nextFundingTime: number;
   fundingInterval?: '1h' | '4h' | '8h';

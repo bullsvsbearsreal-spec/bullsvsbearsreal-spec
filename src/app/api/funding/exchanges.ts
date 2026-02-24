@@ -8,6 +8,7 @@ type FundingData = {
   fundingRate: number;
   fundingRateLong?: number;  // Separate long-side rate (skew-based DEXes: gTrade, GMX)
   fundingRateShort?: number; // Separate short-side rate (skew-based DEXes: gTrade, GMX)
+  borrowingRate?: number;    // Symmetric borrowing fee (gTrade) — both sides pay equally
   predictedRate?: number; // Predicted/next funding rate (where available)
   markPrice: number;
   indexPrice: number;
@@ -1072,8 +1073,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               // Pair-level fee: effectiveOi = clamp(abs(long-short), max*minP, max*maxP)
               const pairFeePerBlock = Number(v1Pair.feePerBlock || 0);
               if (pairFeePerBlock > 0) {
-                const pairTokenOiL = Number(v1Pair.oi?.token?.oiLongToken || 0);
-                const pairTokenOiS = Number(v1Pair.oi?.token?.oiShortToken || 0);
+                // Token OI is in 1e18 precision, beforeV10.max is in 1e10 precision.
+                // Normalize token OI to 1e10 scale to match beforeV10.max.
+                const pairTokenOiL = Number(v1Pair.oi?.token?.oiLongToken || 0) / 1e8;
+                const pairTokenOiS = Number(v1Pair.oi?.token?.oiShortToken || 0) / 1e8;
                 const pairMaxOi = Number(v1Pair.oi?.beforeV10?.max || 0);
                 if (pairMaxOi > 0) {
                   const pairExp = Number(v1Pair.feeExponent || 1);
@@ -1089,10 +1092,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           }
 
           const totalBorrowRate8h = borrowV2Rate8h + borrowV1Rate8h;
-          // Borrowing is symmetric — both longs and shorts pay
-          fundingRateLong += totalBorrowRate8h;
-          fundingRateShort += totalBorrowRate8h;
-          fundingRate8h += totalBorrowRate8h;
+          // Borrowing is NOT added to funding rates — it's shown separately.
+          // gTrade UI separates "Funding" (velocity/skew) from "Borrowing" (symmetric cost).
+          // Keeping them separate ensures InfoHub rates match gTrade's display.
 
           // gTrade velocity model produces inverted signs vs their actual displayed rates.
           // Confirmed by comparing gTrade UI: their "Long" shows positive (earning) while our
@@ -1101,8 +1103,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           fundingRateLong = -fundingRateLong;
           fundingRateShort = -fundingRateShort;
 
-          // Skip pairs with negligible or no rate
-          if (Math.abs(fundingRate8h) < 0.00001) continue;
+          // Skip pairs with negligible funding AND no borrowing
+          if (Math.abs(fundingRate8h) < 0.00001 && totalBorrowRate8h < 0.00001) continue;
 
           // Build symbol — gTrade pairs are like "BTC/USD", we want "BTC"
           // For forex, construct pair symbol: EUR + USD → EURUSD
@@ -1119,6 +1121,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingRate: fundingRate8h,
             fundingRateLong: fundingRateLong,
             fundingRateShort: fundingRateShort,
+            borrowingRate: totalBorrowRate8h > 0.00001 ? totalBorrowRate8h : undefined,
             fundingInterval: '8h' as const, // continuous model, normalized to 8h for display
             markPrice: tokenPrice,
             indexPrice: 0,
