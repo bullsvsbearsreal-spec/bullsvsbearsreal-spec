@@ -95,10 +95,13 @@ const footerSections: { heading: string; links: FooterLink[] }[] = [
 
 interface LiveStats {
   btcPrice: number;
+  btcChange: number;
   totalOI: number;
   volume24h: number;
-  liquidations24h: number;
   activePairs: number;
+  fearGreed: { value: number; classification: string } | null;
+  longShort: { longRatio: number; shortRatio: number } | null;
+  topGainer: { symbol: string; change24h: number } | null;
 }
 
 function formatCompact(n: number): string {
@@ -109,10 +112,18 @@ function formatCompact(n: number): string {
   return `$${n.toFixed(0)}`;
 }
 
-function StatPill({ icon: Icon, label, value, loading }: { icon: LucideIcon; label: string; value: string; loading: boolean }) {
+function getFearGreedColor(value: number): string {
+  if (value <= 20) return '#EF4444';   // Extreme Fear - red
+  if (value <= 40) return '#F97316';   // Fear - orange
+  if (value <= 60) return '#EAB308';   // Neutral - yellow
+  if (value <= 80) return '#84CC16';   // Greed - lime
+  return '#22C55E';                    // Extreme Greed - green
+}
+
+function StatPill({ icon: Icon, label, value, loading, color }: { icon: LucideIcon; label: string; value: string; loading: boolean; color?: string }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
-      <Icon className="w-3 h-3 text-hub-yellow/70 flex-shrink-0" />
+      <Icon className="w-3 h-3 flex-shrink-0" style={{ color: color ?? 'rgba(255,223,0,0.7)' }} />
       <span className="text-neutral-600 text-[10px] whitespace-nowrap">{label}</span>
       {loading ? (
         <span className="h-3 w-12 bg-white/[0.06] rounded animate-pulse" />
@@ -121,6 +132,13 @@ function StatPill({ icon: Icon, label, value, loading }: { icon: LucideIcon; lab
       )}
     </div>
   );
+}
+
+function safeParseJson(data: unknown): unknown {
+  if (typeof data === 'string') {
+    try { return JSON.parse(data); } catch { return data; }
+  }
+  return data;
 }
 
 /* ─── Footer ────────────────────────────────────────────────────── */
@@ -134,32 +152,40 @@ export default function Footer() {
 
     async function fetchStats() {
       try {
-        const [tickersRes, oiRes, liqRes] = await Promise.all([
+        const [tickersRes, oiRes, fgRes, lsRes, moversRes] = await Promise.all([
           fetch('/api/tickers').then(r => r.ok ? r.json() : null).catch(() => null),
           fetch('/api/openinterest').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/liquidations').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/fear-greed').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/longshort').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/top-movers').then(r => r.ok ? r.json() : null).catch(() => null),
         ]);
 
         if (cancelled) return;
 
         const tickers = Array.isArray(tickersRes) ? tickersRes : tickersRes?.data ?? [];
         const oiData = oiRes?.data ?? [];
-        const liqData = Array.isArray(liqRes) ? liqRes : liqRes?.data ?? [];
 
-        // BTC price — highest volume BTC entry
+        // Handle double-encoded JSON responses
+        const fgData = safeParseJson(fgRes) as { value?: number; classification?: string } | null;
+        const moversData = safeParseJson(moversRes) as { gainers?: { symbol: string; change24h: number }[] } | null;
+
+        // BTC price — highest quote-volume BTC entry
         let btcPrice = 0;
+        let btcChange = 0;
         let btcVol = 0;
         let totalVolume = 0;
         const pairSet = new Set<string>();
 
         for (const t of tickers) {
           const sym = (t.symbol || '').toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '');
-          const vol = t.quoteVolume24h ?? t.volume24h ?? 0;
-          totalVolume += vol;
+          // ONLY use quoteVolume24h (USD-denominated) — never volume24h (base units)
+          const qVol = Number(t.quoteVolume24h) || 0;
+          if (qVol > 0) totalVolume += qVol;
           pairSet.add(`${sym}-${t.exchange}`);
-          if (sym === 'BTC' && vol > btcVol) {
+          if (sym === 'BTC' && qVol > btcVol) {
             btcPrice = t.lastPrice ?? t.price ?? 0;
-            btcVol = vol;
+            btcChange = t.priceChangePercent24h ?? t.changePercent24h ?? 0;
+            btcVol = qVol;
           }
         }
 
@@ -169,18 +195,31 @@ export default function Footer() {
           totalOI += o.openInterestValue ?? 0;
         }
 
-        // Liquidations
-        let totalLiq = 0;
-        for (const l of liqData) {
-          totalLiq += l.totalUsd ?? l.total ?? l.value ?? 0;
-        }
+        // Fear & Greed
+        const fearGreed = fgData && typeof fgData.value === 'number'
+          ? { value: fgData.value, classification: fgData.classification || '' }
+          : null;
+
+        // Long/Short
+        const longShort = lsRes && typeof lsRes.longRatio === 'number'
+          ? { longRatio: lsRes.longRatio, shortRatio: lsRes.shortRatio }
+          : null;
+
+        // Top Gainer
+        const gainers = moversData?.gainers ?? [];
+        const topGainer = gainers.length > 0
+          ? { symbol: gainers[0].symbol, change24h: gainers[0].change24h }
+          : null;
 
         setStats({
           btcPrice,
+          btcChange,
           totalOI,
           volume24h: totalVolume,
-          liquidations24h: totalLiq,
           activePairs: pairSet.size,
+          fearGreed,
+          longShort,
+          topGainer,
         });
       } catch {
         // silently fail — stats are supplementary
@@ -201,36 +240,103 @@ export default function Footer() {
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 pb-8">
 
-        {/* ─── Live Stats Banner ─── */}
+        {/* ─── Live Stats Banner (Coinglass-style) ─── */}
         <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-white/[0.04] scrollbar-hide">
           <div className="flex items-center gap-1.5 mr-2 flex-shrink-0">
             <Radio className="w-3 h-3 text-green-500 animate-pulse" />
             <span className="text-neutral-500 text-[10px] font-medium uppercase tracking-wider">Live</span>
           </div>
+
+          {/* BTC Price with 24h change */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+            <Bitcoin className="w-3.5 h-3.5 text-[#F7931A] flex-shrink-0" />
+            <span className="text-neutral-600 text-[10px] whitespace-nowrap">BTC</span>
+            {loading ? (
+              <span className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />
+            ) : (
+              <>
+                <span className="text-white text-[11px] font-semibold font-mono whitespace-nowrap">
+                  {stats?.btcPrice ? `$${stats.btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '--'}
+                </span>
+                {stats?.btcChange !== undefined && stats.btcChange !== 0 && (
+                  <span className={`text-[10px] font-mono font-medium ${stats.btcChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {stats.btcChange >= 0 ? '+' : ''}{stats.btcChange.toFixed(2)}%
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* 24h Volume */}
           <StatPill
-            icon={Bitcoin}
-            label="BTC"
-            value={stats?.btcPrice ? `$${stats.btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '--'}
+            icon={BarChart2}
+            label="24h Vol"
+            value={stats?.volume24h ? formatCompact(stats.volume24h) : '--'}
             loading={loading}
+            color="#3B82F6"
           />
+
+          {/* Open Interest */}
           <StatPill
             icon={Layers}
             label="Open Interest"
             value={stats?.totalOI ? formatCompact(stats.totalOI) : '--'}
             loading={loading}
+            color="#8B5CF6"
           />
-          <StatPill
-            icon={DollarSign}
-            label="24h Volume"
-            value={stats?.volume24h ? formatCompact(stats.volume24h) : '--'}
-            loading={loading}
-          />
-          <StatPill
-            icon={Zap}
-            label="24h Liqs"
-            value={stats?.liquidations24h ? formatCompact(stats.liquidations24h) : '--'}
-            loading={loading}
-          />
+
+          {/* Fear & Greed */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+            <Thermometer className="w-3 h-3 flex-shrink-0" style={{ color: stats?.fearGreed ? getFearGreedColor(stats.fearGreed.value) : '#666' }} />
+            <span className="text-neutral-600 text-[10px] whitespace-nowrap">Fear/Greed</span>
+            {loading ? (
+              <span className="h-3 w-10 bg-white/[0.06] rounded animate-pulse" />
+            ) : stats?.fearGreed ? (
+              <>
+                <span className="text-white text-[11px] font-semibold font-mono">{stats.fearGreed.value}</span>
+                <span className="text-[10px] font-medium" style={{ color: getFearGreedColor(stats.fearGreed.value) }}>
+                  {stats.fearGreed.classification}
+                </span>
+              </>
+            ) : (
+              <span className="text-white text-[11px] font-semibold font-mono">--</span>
+            )}
+          </div>
+
+          {/* Long/Short Ratio */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+            <ArrowLeftRight className="w-3 h-3 text-hub-yellow/70 flex-shrink-0" />
+            <span className="text-neutral-600 text-[10px] whitespace-nowrap">L/S</span>
+            {loading ? (
+              <span className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />
+            ) : stats?.longShort ? (
+              <span className="text-[11px] font-semibold font-mono whitespace-nowrap">
+                <span className="text-green-400">{stats.longShort.longRatio.toFixed(1)}%</span>
+                <span className="text-neutral-600 mx-0.5">/</span>
+                <span className="text-red-400">{stats.longShort.shortRatio.toFixed(1)}%</span>
+              </span>
+            ) : (
+              <span className="text-white text-[11px] font-semibold font-mono">--</span>
+            )}
+          </div>
+
+          {/* Top Gainer */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+            <Rocket className="w-3 h-3 text-green-400 flex-shrink-0" />
+            <span className="text-neutral-600 text-[10px] whitespace-nowrap">Top Gainer</span>
+            {loading ? (
+              <span className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />
+            ) : stats?.topGainer ? (
+              <>
+                <span className="text-white text-[11px] font-semibold font-mono">{stats.topGainer.symbol}</span>
+                <span className="text-green-400 text-[10px] font-mono font-medium">+{stats.topGainer.change24h.toFixed(1)}%</span>
+              </>
+            ) : (
+              <span className="text-white text-[11px] font-semibold font-mono">--</span>
+            )}
+          </div>
+
+          {/* Active Pairs & Exchanges */}
           <StatPill
             icon={TrendingUp}
             label="Pairs"
