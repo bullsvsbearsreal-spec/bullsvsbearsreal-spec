@@ -361,7 +361,17 @@ export async function fetchFundingArbitrage(): Promise<Array<{
   fundingRates.forEach(fr => {
     const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
     const existing = symbolMap.get(fr.symbol) || [];
-    existing.push({ exchange: fr.exchange, rate: fr.fundingRate * mult });
+    // For DEXes with separate long/short rates (gTrade, GMX), use only the
+    // directional (asymmetric) component — strip out symmetric borrowing fees.
+    // When fundingRateLong === fundingRateShort, the entire rate is borrowing
+    // fees paid by both sides equally, so effective funding spread is 0.
+    let effectiveRate: number;
+    if (fr.fundingRateLong != null && fr.fundingRateShort != null) {
+      effectiveRate = (fr.fundingRateLong - fr.fundingRateShort) / 2;
+    } else {
+      effectiveRate = fr.fundingRate;
+    }
+    existing.push({ exchange: fr.exchange, rate: effectiveRate * mult });
     symbolMap.set(fr.symbol, existing);
   });
 
