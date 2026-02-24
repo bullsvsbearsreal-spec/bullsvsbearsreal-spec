@@ -933,6 +933,28 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
       const currentTimestamp = Math.floor(Date.now() / 1000);
 
+      // V1 borrowing fee data — used for non-funding pairs (group-level utilization-based fees)
+      const v1BorrowPairs = collateral.borrowingFees?.v1?.pairs || [];
+      const v1BorrowGroups = collateral.borrowingFees?.v1?.groups || [];
+      const V1_FEE_PRECISION = 1e10;
+      const ARB_BLOCKS_PER_8H = 115200; // Arbitrum ~0.25s blocks
+
+      // Pre-calculate V1 group borrowing rates (utilization-dependent)
+      // Per gTrade docs: effectiveOi = abs(long - short) — net imbalance, not total
+      const v1GroupRates: number[] = v1BorrowGroups.map((group: any) => {
+        const feePerBlock = Number(group?.feePerBlock || 0);
+        if (feePerBlock <= 0) return 0;
+        const oiLong = Number(group?.oi?.long || 0);
+        const oiShort = Number(group?.oi?.short || 0);
+        const maxOi = Number(group?.oi?.max || 0);
+        if (maxOi <= 0) return 0;
+        const exponent = Number(group?.feeExponent || 1);
+        const effectiveOi = Math.abs(oiLong - oiShort);
+        const utilization = Math.min(effectiveOi / maxOi, 1);
+        // Effective fee per block after utilization, then convert to 8h rate
+        return (feePerBlock * Math.pow(utilization, exponent)) / V1_FEE_PRECISION * ARB_BLOCKS_PER_8H;
+      });
+
       for (let i = 0; i < Math.min(pairs.length, fundingParams.length, fundingData.length); i++) {
         try {
           const pair = pairs[i];
@@ -1029,15 +1051,48 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             }
           }
 
-          // Add borrowing v2 fee — gTrade "Holding Fee" = funding + borrowing
-          // For borrow-only pairs (no funding), this IS the entire rate
+          // Add borrowing fees — gTrade "Holding Fee" = funding + borrowing
+          // V2 borrowing: per-second rate (used by funded pairs, 0 for borrow-only)
           const borrowParams = borrowingV2Params[i];
-          const borrowRate8h = borrowParams?.borrowingRatePerSecondP
+          const borrowV2Rate8h = borrowParams?.borrowingRatePerSecondP
             ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600
             : 0;
-          fundingRateLong += borrowRate8h;
-          fundingRateShort += borrowRate8h;
-          fundingRate8h += borrowRate8h;
+
+          // V1 borrowing: block-based, group-level utilization fee (used by borrow-only pairs)
+          let borrowV1Rate8h = 0;
+          if (!hasFunding && borrowV2Rate8h === 0) {
+            const v1Pair = v1BorrowPairs[i];
+            if (v1Pair) {
+              // Group-level fee (main contributor — based on group OI utilization)
+              const pairGroupEntry = v1Pair.groups?.[0];
+              const v1GroupIdx = pairGroupEntry ? Number(pairGroupEntry.groupIndex) : -1;
+              if (v1GroupIdx >= 0 && v1GroupIdx < v1GroupRates.length) {
+                borrowV1Rate8h += v1GroupRates[v1GroupIdx];
+              }
+              // Pair-level fee: effectiveOi = clamp(abs(long-short), max*minP, max*maxP)
+              const pairFeePerBlock = Number(v1Pair.feePerBlock || 0);
+              if (pairFeePerBlock > 0) {
+                const pairTokenOiL = Number(v1Pair.oi?.token?.oiLongToken || 0);
+                const pairTokenOiS = Number(v1Pair.oi?.token?.oiShortToken || 0);
+                const pairMaxOi = Number(v1Pair.oi?.beforeV10?.max || 0);
+                if (pairMaxOi > 0) {
+                  const pairExp = Number(v1Pair.feeExponent || 1);
+                  const minP = Number(v1Pair.feePerBlockCap?.minP || 0) / 1e5;
+                  const maxP = Number(v1Pair.feePerBlockCap?.maxP || 1e5) / 1e5;
+                  const netOi = Math.abs(pairTokenOiL - pairTokenOiS);
+                  const effectiveOi = Math.min(Math.max(netOi, pairMaxOi * minP), pairMaxOi * maxP);
+                  const pairUtil = Math.min(effectiveOi / pairMaxOi, 1);
+                  borrowV1Rate8h += (pairFeePerBlock * Math.pow(pairUtil, pairExp)) / V1_FEE_PRECISION * ARB_BLOCKS_PER_8H;
+                }
+              }
+            }
+          }
+
+          const totalBorrowRate8h = borrowV2Rate8h + borrowV1Rate8h;
+          // Borrowing is symmetric — both longs and shorts pay
+          fundingRateLong += totalBorrowRate8h;
+          fundingRateShort += totalBorrowRate8h;
+          fundingRate8h += totalBorrowRate8h;
 
           // gTrade velocity model produces inverted signs vs their actual displayed rates.
           // Confirmed by comparing gTrade UI: their "Long" shows positive (earning) while our
