@@ -84,6 +84,8 @@ export async function initDB(): Promise<void> {
     )
   `;
 
+  await initTelegramTables();
+
   initialized = true;
 }
 
@@ -419,6 +421,159 @@ export async function setUserData(userId: string, data: UserData): Promise<void>
     `;
   } catch (e) {
     console.error('DB setUserData error:', e);
+  }
+}
+
+// ─── Telegram Bot Tables ────────────────────────────────────────────────────
+
+async function initTelegramTables(): Promise<void> {
+  const sql = getSQL();
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS telegram_users (
+      chat_id BIGINT PRIMARY KEY,
+      active BOOLEAN DEFAULT true,
+      price_threshold REAL DEFAULT 0.5,
+      funding_threshold REAL DEFAULT 0.02,
+      watchlist TEXT DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS arb_cooldowns (
+      key TEXT PRIMARY KEY,
+      alerted_at TIMESTAMPTZ DEFAULT NOW(),
+      spread REAL DEFAULT 0
+    )
+  `;
+}
+
+export interface TelegramUser {
+  chat_id: number;
+  active: boolean;
+  price_threshold: number;
+  funding_threshold: number;
+  watchlist: string;
+}
+
+export async function getTelegramUser(chatId: number): Promise<TelegramUser | null> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT chat_id, active, price_threshold, funding_threshold, watchlist
+      FROM telegram_users WHERE chat_id = ${chatId}
+    `;
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      chat_id: Number(r.chat_id),
+      active: Boolean(r.active),
+      price_threshold: Number(r.price_threshold),
+      funding_threshold: Number(r.funding_threshold),
+      watchlist: r.watchlist ?? '',
+    };
+  } catch (e) {
+    console.error('DB getTelegramUser error:', e);
+    return null;
+  }
+}
+
+export async function upsertTelegramUser(
+  chatId: number,
+  fields?: Partial<Omit<TelegramUser, 'chat_id'>>,
+): Promise<void> {
+  try {
+    const sql = getSQL();
+    const active = fields?.active ?? null;
+    const priceThreshold = fields?.price_threshold ?? null;
+    const fundingThreshold = fields?.funding_threshold ?? null;
+    const watchlist = fields?.watchlist ?? null;
+
+    await sql`
+      INSERT INTO telegram_users (chat_id, active, price_threshold, funding_threshold, watchlist, updated_at)
+      VALUES (
+        ${chatId},
+        COALESCE(${active}, true),
+        COALESCE(${priceThreshold}, 0.5),
+        COALESCE(${fundingThreshold}, 0.02),
+        COALESCE(${watchlist}, ''),
+        NOW()
+      )
+      ON CONFLICT (chat_id) DO UPDATE SET
+        active = COALESCE(${active}, telegram_users.active),
+        price_threshold = COALESCE(${priceThreshold}, telegram_users.price_threshold),
+        funding_threshold = COALESCE(${fundingThreshold}, telegram_users.funding_threshold),
+        watchlist = COALESCE(${watchlist}, telegram_users.watchlist),
+        updated_at = NOW()
+    `;
+  } catch (e) {
+    console.error('DB upsertTelegramUser error:', e);
+  }
+}
+
+export async function getActiveTelegramUsers(): Promise<TelegramUser[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT chat_id, active, price_threshold, funding_threshold, watchlist
+      FROM telegram_users WHERE active = true
+    `;
+    return rows.map((r: any) => ({
+      chat_id: Number(r.chat_id),
+      active: true,
+      price_threshold: Number(r.price_threshold),
+      funding_threshold: Number(r.funding_threshold),
+      watchlist: r.watchlist ?? '',
+    }));
+  } catch (e) {
+    console.error('DB getActiveTelegramUsers error:', e);
+    return [];
+  }
+}
+
+export async function getCooldown(key: string): Promise<{ alertedAt: Date; spread: number } | null> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT alerted_at, spread FROM arb_cooldowns
+      WHERE key = ${key} AND alerted_at > NOW() - INTERVAL '15 minutes'
+    `;
+    if (rows.length === 0) return null;
+    return {
+      alertedAt: new Date(rows[0].alerted_at),
+      spread: Number(rows[0].spread),
+    };
+  } catch (e) {
+    console.error('DB getCooldown error:', e);
+    return null;
+  }
+}
+
+export async function setCooldown(key: string, spread: number): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      INSERT INTO arb_cooldowns (key, alerted_at, spread)
+      VALUES (${key}, NOW(), ${spread})
+      ON CONFLICT (key) DO UPDATE SET
+        alerted_at = NOW(),
+        spread = ${spread}
+    `;
+  } catch (e) {
+    console.error('DB setCooldown error:', e);
+  }
+}
+
+export async function cleanupCooldowns(): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      DELETE FROM arb_cooldowns WHERE alerted_at < NOW() - INTERVAL '1 hour'
+    `;
+  } catch (e) {
+    console.error('DB cleanupCooldowns error:', e);
   }
 }
 
