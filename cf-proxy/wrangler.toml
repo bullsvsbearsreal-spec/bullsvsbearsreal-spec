@@ -1,0 +1,13 @@
+name = "infohub-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[placement]
+mode = "smart"
+
+[durable_objects]
+bindings = [{ name = "PROXY", class_name = "ProxyDO" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ProxyDO"]

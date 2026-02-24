@@ -18,15 +18,21 @@ type FundingData = {
 };
 
 export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
-  // Binance
+  // Binance — geo-blocked from Vercel dxb1 (451). Route through CF Worker proxy with Smart Placement.
   {
     name: 'Binance',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://fapi.binance.com/fapi/v1/premiumIndex');
+      const proxyUrl = process.env.PROXY_URL;
+      const targetUrl = 'https://fapi.binance.com/fapi/v1/premiumIndex';
+      const url = proxyUrl
+        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
+        : targetUrl;
+      const res = await fetchFn(url, {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
+      if (!Array.isArray(data)) return [];
       return data
-        .filter((item: any) => item.symbol.endsWith('USDT') && item.lastFundingRate != null)
+        .filter((item: any) => item.symbol?.endsWith('USDT') && item.lastFundingRate != null)
         .map((item: any) => ({
           symbol: item.symbol.replace('USDT', ''),
           exchange: 'Binance',
@@ -41,16 +47,21 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Bybit
+  // Bybit — geo-blocked from Vercel dxb1 (403). Route through CF Worker proxy with Smart Placement.
   {
     name: 'Bybit',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.bybit.com/v5/market/tickers?category=linear');
+      const proxyUrl = process.env.PROXY_URL;
+      const targetUrl = 'https://api.bybit.com/v5/market/tickers?category=linear';
+      const url = proxyUrl
+        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
+        : targetUrl;
+      const res = await fetchFn(url, {}, 12000);
       if (!res.ok) return [];
       const json = await res.json();
       if (json.retCode !== 0) return [];
       return json.result.list
-        .filter((t: any) => t.symbol.endsWith('USDT') && t.fundingRate != null)
+        .filter((t: any) => t.symbol?.endsWith('USDT') && t.fundingRate != null)
         .map((item: any) => ({
           symbol: item.symbol.replace('USDT', ''),
           exchange: 'Bybit',
@@ -1035,7 +1046,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           fundingRateLong = -fundingRateLong;
           fundingRateShort = -fundingRateShort;
 
-          // Skip pairs with essentially zero rate
+          // Skip pairs with negligible or no rate
           if (Math.abs(fundingRate8h) < 0.00001) continue;
 
           // Build symbol — gTrade pairs are like "BTC/USD", we want "BTC"

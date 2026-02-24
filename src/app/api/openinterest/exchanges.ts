@@ -9,20 +9,26 @@ type OIData = {
 };
 
 export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
-  // Binance - Two-step: ticker for prices, then individual OI (batched to avoid rate limits)
+  // Binance — geo-blocked from Vercel dxb1 (451). Route through CF Worker proxy with Smart Placement.
+  // Two-step: ticker for prices, then individual OI (batched)
   {
     name: 'Binance',
     fetcher: async (fetchFn) => {
-      const tickerRes = await fetchFn('https://fapi.binance.com/fapi/v1/ticker/24hr');
+      const proxyUrl = process.env.PROXY_URL;
+      const tickerTarget = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
+      const tickerUrl = proxyUrl
+        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(tickerTarget)}`
+        : tickerTarget;
+      const tickerRes = await fetchFn(tickerUrl, {}, 12000);
       if (!tickerRes.ok) return [];
       const tickerData = await tickerRes.json();
+      if (!Array.isArray(tickerData)) return [];
       const topSymbols = tickerData
-        .filter((t: any) => t.symbol.endsWith('USDT') && isCryptoSymbol(t.symbol.replace('USDT', '')))
+        .filter((t: any) => t.symbol?.endsWith('USDT') && isCryptoSymbol(t.symbol.replace('USDT', '')))
         .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-        .slice(0, 100);
+        .slice(0, 50);
 
-      // Process in batches of 25 to stay well within Binance rate limits (1,200 req/min)
-      const BATCH_SIZE = 25;
+      const BATCH_SIZE = 10;
       const results: OIData[] = [];
 
       for (let i = 0; i < topSymbols.length; i += BATCH_SIZE) {
@@ -30,11 +36,11 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         const batchResults = await Promise.all(
           batch.map(async (ticker: any) => {
             try {
-              const oiRes = await fetchFn(
-                `https://fapi.binance.com/fapi/v1/openInterest?symbol=${ticker.symbol}`,
-                {},
-                5000
-              );
+              const oiTarget = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${ticker.symbol}`;
+              const oiUrl = proxyUrl
+                ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(oiTarget)}`
+                : oiTarget;
+              const oiRes = await fetchFn(oiUrl, {}, 5000);
               if (oiRes.ok) {
                 const oiData = await oiRes.json();
                 return {
@@ -57,16 +63,21 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // Bybit
+  // Bybit — geo-blocked from Vercel dxb1 (403). Route through CF Worker proxy with Smart Placement.
   {
     name: 'Bybit',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://api.bybit.com/v5/market/tickers?category=linear');
+      const proxyUrl = process.env.PROXY_URL;
+      const targetUrl = 'https://api.bybit.com/v5/market/tickers?category=linear';
+      const url = proxyUrl
+        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
+        : targetUrl;
+      const res = await fetchFn(url, {}, 12000);
       if (!res.ok) return [];
       const json = await res.json();
       if (json.retCode !== 0) return [];
       return json.result.list
-        .filter((t: any) => t.symbol.endsWith('USDT'))
+        .filter((t: any) => t.symbol?.endsWith('USDT'))
         .map((ticker: any) => ({
           symbol: ticker.symbol.replace('USDT', ''),
           exchange: 'Bybit',
