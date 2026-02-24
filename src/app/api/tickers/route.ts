@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchWithTimeout } from '../_shared/fetch';
+import { fetchWithTimeout, normalizeSymbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { tickerFetchers } from './exchanges';
 
@@ -24,6 +24,9 @@ export async function GET() {
 
   try {
     const { data, health } = await fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout);
+
+    // Normalize symbols for token rebrands (RNDR→RENDER, MATIC→POL)
+    data.forEach((entry: any) => { entry.symbol = normalizeSymbol(entry.symbol); });
 
     const activeExchanges = health.filter(h => h.status === 'ok').length;
     const responseBody = {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchWithTimeout, getTop500Symbols, isTop500Symbol } from '../_shared/fetch';
+import { fetchWithTimeout, getTop500Symbols, isTop500Symbol, normalizeSymbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { fundingFetchers } from './exchanges';
 import { classifySymbol, KNOWN_STOCKS, KNOWN_COMMODITIES, KNOWN_FOREX, FOREX_BASES } from './normalize';
@@ -56,6 +56,9 @@ export async function GET(request: NextRequest) {
       { status: 502, headers: { 'Cache-Control': 'no-cache' } },
     );
   }
+
+  // Normalize symbols for token rebrands (RNDR→RENDER, MATIC→POL)
+  data.forEach(entry => { entry.symbol = normalizeSymbol(entry.symbol); });
 
   // Post-processing: classify asset class for entries that don't have one set.
   // Many CEX fetchers (Binance, Bybit, Bitget, etc.) don't set assetClass.

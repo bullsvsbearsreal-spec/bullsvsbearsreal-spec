@@ -15,6 +15,15 @@ export function isCryptoSymbol(symbol: string): boolean {
   return true;
 }
 
+// Symbol normalization for token rebrands — map old ticker to canonical name
+const SYMBOL_ALIASES: Record<string, string> = {
+  'RNDR': 'RENDER',
+  'MATIC': 'POL',
+};
+export function normalizeSymbol(symbol: string): string {
+  return SYMBOL_ALIASES[symbol] || symbol;
+}
+
 // Common headers to help with API requests
 export const commonHeaders = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

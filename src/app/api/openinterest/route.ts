@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchWithTimeout, getTop500Symbols, isTop500Symbol } from '../_shared/fetch';
+import { fetchWithTimeout, getTop500Symbols, isTop500Symbol, normalizeSymbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { oiFetchers } from './exchanges';
 
@@ -27,6 +27,9 @@ export async function GET() {
       fetchAllExchangesWithHealth(oiFetchers, fetchWithTimeout),
       getTop500Symbols(),
     ]);
+
+    // Normalize symbols for token rebrands (RNDR→RENDER, MATIC→POL)
+    data.forEach((r: any) => { r.symbol = normalizeSymbol(r.symbol); });
 
     // Allow symbols listed on 2+ exchanges even if not top 500
     const exchangeCountMap = new Map<string, Set<string>>();
