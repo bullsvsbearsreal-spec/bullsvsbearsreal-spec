@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Copy, Check, ExternalLink, Database, Globe } from 'lucide-react';
+import { Copy, Check, ExternalLink, Database, Globe, Zap, Clock, Shield } from 'lucide-react';
 import { ALL_EXCHANGES, CEX_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants';
 
 interface EndpointProps {
@@ -162,7 +162,7 @@ export default function ApiDocsPage() {
         <div className="mb-8">
           <h1 className="heading-page mb-2">InfoHub Public API</h1>
           <p className="text-neutral-400 text-sm mb-4">
-            Real-time crypto derivatives data. No API key required.
+            Real-time crypto derivatives data. No API key required. 8 endpoints, {ALL_EXCHANGES.length} exchanges.
           </p>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/5 border border-blue-500/10 rounded-lg">
@@ -172,6 +172,14 @@ export default function ApiDocsPage() {
             <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/5 border border-purple-500/10 rounded-lg">
               <Globe className="w-4 h-4 text-purple-400" />
               <span className="text-purple-400 text-xs font-medium">Edge Runtime (Dubai)</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-500/5 border border-green-500/10 rounded-lg">
+              <Zap className="w-4 h-4 text-green-400" />
+              <span className="text-green-400 text-xs font-medium">~10s refresh</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-hub-yellow/5 border border-hub-yellow/10 rounded-lg">
+              <Shield className="w-4 h-4 text-hub-yellow" />
+              <span className="text-hub-yellow text-xs font-medium">No auth required</span>
             </div>
           </div>
         </div>
@@ -318,8 +326,29 @@ export default function ApiDocsPage() {
 
           <EndpointSection
             method="GET"
+            path="/api/liquidations"
+            description="Real-time liquidation data across exchanges"
+            response={`{
+  "data": [
+    {
+      "symbol": "BTC",
+      "exchange": "Binance",
+      "side": "long",
+      "quantity": 1.234,
+      "price": 67800.50,
+      "usdValue": 83671.42,
+      "timestamp": 1770901234567
+    }
+  ],
+  "meta": { "totalEntries": 450 }
+}`}
+            example={`{ "data": [ { "symbol": "BTC", "exchange": "Binance", "side": "long", "usdValue": 83671.42, ... }, ... ] }`}
+          />
+
+          <EndpointSection
+            method="GET"
             path="/api/fear-greed"
-            description="Crypto Fear & Greed Index"
+            description="Crypto Fear & Greed Index (current value)"
             response={`{
   "value": 72,
   "classification": "Greed",
@@ -327,12 +356,84 @@ export default function ApiDocsPage() {
 }`}
             example={`{ "value": 72, "classification": "Greed", "timestamp": 1770901234567 }`}
           />
+
+          <EndpointSection
+            method="GET"
+            path="/api/fear-greed?history=true&limit=30"
+            description="Fear & Greed historical data"
+            params={[
+              { name: 'history', type: 'string', required: true, description: 'Set to "true" to get historical data' },
+              { name: 'limit', type: 'number', required: false, description: '7 | 30 | 90 | 365 (default: 30)' },
+            ]}
+            response={`{
+  "current": { "value": 72, "classification": "Greed", "timestamp": 1770901234567 },
+  "history": [
+    { "value": 72, "classification": "Greed", "timestamp": 1770901234567 },
+    { "value": 68, "classification": "Greed", "timestamp": 1770814834567 },
+    ...
+  ]
+}`}
+            example={`{ "current": { "value": 72, ... }, "history": [ { "value": 72, ... }, ... 30 entries ] }`}
+          />
+
+          <EndpointSection
+            method="GET"
+            path="/api/wallet?address=0x...&chain=eth"
+            description="Wallet balance and transactions"
+            params={[
+              { name: 'address', type: 'string', required: true, description: 'Wallet address (ETH, BTC, or SOL)' },
+              { name: 'chain', type: 'string', required: true, description: 'eth | btc | sol' },
+            ]}
+            response={`{
+  "chain": "eth",
+  "address": "0xd8dA...",
+  "balance": "1234.5678",
+  "balanceRaw": 1234.5678,
+  "transactions": [
+    { "hash": "0x...", "from": "0x...", "to": "0x...", "value": "1.5", "timestamp": 1770901234567, "direction": "in" }
+  ],
+  "tokens": [
+    { "symbol": "USDC", "name": "USD Coin", "balance": 50000, "decimals": 6 }
+  ]
+}`}
+            example={`{ "chain": "eth", "balance": "1234.5678", "transactions": [...], "tokens": [...] }`}
+          />
+        </div>
+
+        {/* Quick Reference */}
+        <div className="mt-8 bg-hub-darker border border-white/[0.06] rounded-xl p-5">
+          <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-hub-yellow" />
+            Quick Reference
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <h4 className="text-neutral-400 font-medium mb-2">Data Refresh Rates</h4>
+              <div className="space-y-1">
+                <div className="flex justify-between"><span className="text-neutral-500">Funding Rates</span><span className="text-white font-mono">~30s</span></div>
+                <div className="flex justify-between"><span className="text-neutral-500">Open Interest</span><span className="text-white font-mono">~30s</span></div>
+                <div className="flex justify-between"><span className="text-neutral-500">Tickers</span><span className="text-white font-mono">~10s</span></div>
+                <div className="flex justify-between"><span className="text-neutral-500">Liquidations</span><span className="text-white font-mono">~30s</span></div>
+                <div className="flex justify-between"><span className="text-neutral-500">Fear & Greed</span><span className="text-white font-mono">~30min</span></div>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-neutral-400 font-medium mb-2">Normalization Notes</h4>
+              <div className="space-y-1 text-neutral-500">
+                <p>Funding rates normalized to 8h basis</p>
+                <p>Rates &gt;5% per 8h are capped</p>
+                <p>OI values in USD</p>
+                <p>Symbols stripped of USDT/USD suffixes</p>
+                <p>1000-prefix tokens (1000PEPE) use base symbol</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-neutral-700 text-xs">
-            Questions? Open an issue on GitHub or reach out on X.
+            Questions? Open an <a href="https://github.com/GroovyGecko88/infohub/issues" target="_blank" rel="noopener noreferrer" className="text-hub-yellow/60 hover:text-hub-yellow transition-colors">issue on GitHub</a> or reach out on <a href="https://x.com/InfoHub_io" target="_blank" rel="noopener noreferrer" className="text-hub-yellow/60 hover:text-hub-yellow transition-colors">X</a>.
           </p>
         </div>
       </main>
