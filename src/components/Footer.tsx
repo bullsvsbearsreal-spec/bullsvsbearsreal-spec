@@ -179,9 +179,11 @@ export default function Footer() {
         for (const t of tickers) {
           const sym = (t.symbol || '').toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '');
           // ONLY use quoteVolume24h (USD-denominated) — never volume24h (base units)
-          // Cap at $100B per ticker — Gate.io/BitMEX report in satoshis, giving 1e16+ values
+          // Skip Gate.io + BitMEX entirely — CloudFlare-blocked, report volumes in satoshis
+          const ex = ((t.exchange as string) || '').toLowerCase();
           const qVol = Number(t.quoteVolume24h) || 0;
-          if (qVol > 0 && qVol < 1e11) totalVolume += qVol;
+          const isBrokenExchange = ex.includes('gate') || ex.includes('bitmex');
+          if (qVol > 0 && !isBrokenExchange) totalVolume += qVol;
           pairSet.add(`${sym}-${t.exchange}`);
           if (sym === 'BTC' && qVol > btcVol) {
             btcPrice = t.lastPrice ?? t.price ?? 0;
