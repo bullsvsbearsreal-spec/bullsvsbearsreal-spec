@@ -203,8 +203,8 @@ export default function Footer() {
           ? { value: fgData.value, classification: fgData.classification || '' }
           : null;
 
-        // Long/Short
-        const longShort = lsRes && typeof lsRes.longRatio === 'number'
+        // Long/Short — ignore fallback 50/50 placeholder data
+        const longShort = lsRes && typeof lsRes.longRatio === 'number' && !lsRes.fallback
           ? { longRatio: lsRes.longRatio, shortRatio: lsRes.shortRatio }
           : null;
 
