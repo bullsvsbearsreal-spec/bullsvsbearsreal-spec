@@ -3,15 +3,5 @@
     "app/api/**/*": {
       "maxDuration": 30
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/arbitrage-alerts",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/snapshot",
-      "schedule": "*/10 * * * *"
-    }
-  ]
+  }
 }
