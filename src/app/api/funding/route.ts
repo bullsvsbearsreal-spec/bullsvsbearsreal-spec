@@ -114,7 +114,9 @@ export async function GET(request: NextRequest) {
     }
   });
   // Remove entries that still have no valid mark price after backfill
-  const dataWithPrices = data.filter(entry => entry.markPrice && entry.markPrice > 0);
+  // DEX entries (gTrade, GMX, etc.) are exempt — they have curated pair lists
+  // and legitimate funding/borrowing rates even without a reliable price.
+  const dataWithPrices = data.filter(entry => entry.type === 'dex' || (entry.markPrice && entry.markPrice > 0));
 
   // Compute implied predicted rates from mark-index price spread
   // Formula: clamp((markPrice - indexPrice) / indexPrice × 100, ±0.75%)
@@ -153,13 +155,16 @@ export async function GET(request: NextRequest) {
   let filtered;
   if (assetClass === 'all') {
     filtered = dataWithPrices.filter(r => {
-      if (!r.assetClass || r.assetClass === 'crypto') return isAllowed(r.symbol);
+      if (!r.assetClass || r.assetClass === 'crypto') {
+        // DEX entries bypass the top500/multi-exchange filter — their pairs are curated
+        return r.type === 'dex' || isAllowed(r.symbol);
+      }
       return true;
     });
   } else if (assetClass === 'crypto') {
     filtered = dataWithPrices.filter(r => {
       const ac = r.assetClass || 'crypto';
-      return ac === 'crypto' && isAllowed(r.symbol);
+      return ac === 'crypto' && (r.type === 'dex' || isAllowed(r.symbol));
     });
   } else {
     filtered = dataWithPrices.filter(r => r.assetClass === assetClass);

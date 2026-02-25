@@ -905,6 +905,31 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!res.ok) return [];
       const raw = await res.json();
 
+      // Delisted pair indices from @gainsnetwork/sdk v1.8.6 (pairs kept in API for technical reasons)
+      // Source: https://github.com/GainsNetwork-org/sdk/blob/main/src/constants.ts
+      const DELISTED_PAIR_IXS = new Set([
+        4, 6, 12, 15, 24, 25, 27, 28, 30, 31, 36, 41, 52, 53, 54, 59, 60, 61, 63, 66,
+        67, 68, 69, 70, 71, 72, 73, 75, 76, 77, 78, 79, 95, 96, 97, 98, 99, 101, 106,
+        111, 113, 114, 116, 118, 120, 122, 123, 125, 127, 130, 147, 152, 160, 163,
+        170, 179, 182, 183, 186, 198, 208, 209, 221, 224, 225, 227, 229, 230, 231,
+        234, 238, 239, 241, 247, 250, 253, 254, 255, 258, 261, 268, 270, 272, 273,
+        275, 276, 278, 279, 280, 281, 284, 285, 290, 291, 292, 294, 296, 303, 305,
+        306, 311, 312, 322, 323, 330, 333, 335, 336, 337, 342, 343, 344, 346, 347,
+        349, 350, 351, 352, 353, 354, 355, 357, 362, 365, 366, 372, 379, 380, 387,
+        395, 396, 400, 401, 408, 423, 427, 428, 430, 435, 436, 437, 438, 441,
+      ]);
+
+      // Pairs hidden in gTrade's production UI (soft-delisted/rebranded tokens)
+      const HIDDEN_PAIR_NAMES = new Set([
+        'MATIC/USD', 'FTM/USD', 'KLAY/USD', 'BNX/USD', 'DAR/USD', 'REEF/USD',
+        'LUMIA/USD', 'ACX/USD', 'BITCOIN/USD', 'DAX/USD', 'REKT/USD', 'CAMP/USD', 'L3/USD',
+      ]);
+
+      // Per-pair max leverage from pairInfos — pairs with pairMaxLev < groupMinLev are disabled
+      // SDK converts raw values: pairMaxLev = rawValue / 1000, group leverages = rawValue / 1000
+      const groups: any[] = raw.groups || [];
+      const rawMaxLeverages: any[] = raw.pairInfos?.maxLeverages || [];
+
       // Precision constants from gTrade smart contracts (@gainsnetwork/sdk v1.8.6)
       const PRECISION = {
         SKEW_COEFF_PER_YEAR: 1e26,
@@ -961,8 +986,28 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const pair = pairs[i];
           if (!pair || !pair.from) continue;
 
-          // Determine asset class from group index
+          // Skip delisted/inactive pairs — gTrade keeps ~200 dead pairs in the API
+          // 1) SDK's known delisted list  2) beforeV10.max = 0 means no OI capacity
+          if (DELISTED_PAIR_IXS.has(i)) continue;
+          const pairOiEntry = pairOis[i];
+          if (!pairOiEntry || Number(pairOiEntry.beforeV10?.max || 0) === 0) continue;
+
+          // 3) Hidden pair names (rebranded/soft-delisted in gTrade UI)
+          const pairName = pair.from.split('_')[0] + '/' + pair.to;
+          if (HIDDEN_PAIR_NAMES.has(pairName)) continue;
+
+          // 4) Disabled markets: pair's effective max leverage < group's min leverage
           const groupIdx = parseInt(pair.groupIndex);
+          const group = groups[groupIdx];
+          if (group) {
+            const groupMaxLev = parseInt(group.maxLeverage) / 1e3;
+            const groupMinLev = parseInt(group.minLeverage) / 1e3;
+            const pairMaxLev = Number(rawMaxLeverages[i] || 0) / 1e3;
+            const effectiveMaxLev = pairMaxLev === 0 ? groupMaxLev : pairMaxLev;
+            if (effectiveMaxLev < groupMinLev) continue;
+          }
+
+          // Determine asset class from group index
           const assetClass: AssetClass = GTRADE_GROUP_ASSET_CLASS[groupIdx] || 'crypto';
 
           const params = fundingParams[i];
@@ -972,7 +1017,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const hasFunding = !!params.fundingFeesEnabled;
 
           // Parse OI in tokens (may be zero for some pairs — still show funding rate)
-          const oi = pairOis[i];
+          const oi = pairOiEntry;
           const oiLongToken = oi?.token ? Number(oi.token.oiLongToken) / PRECISION.OI_TOKEN : 0;
           const oiShortToken = oi?.token ? Number(oi.token.oiShortToken) / PRECISION.OI_TOKEN : 0;
 
@@ -1092,19 +1137,14 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           }
 
           const totalBorrowRate8h = borrowV2Rate8h + borrowV1Rate8h;
-          // Borrowing is NOT added to funding rates — it's shown separately.
-          // gTrade UI separates "Funding" (velocity/skew) from "Borrowing" (symmetric cost).
-          // Keeping them separate ensures InfoHub rates match gTrade's display.
 
-          // gTrade velocity model produces inverted signs vs their actual displayed rates.
-          // Confirmed by comparing gTrade UI: their "Long" shows positive (earning) while our
-          // calculation produces negative for the same side. Negate all rates to match.
-          fundingRate8h = -fundingRate8h;
-          fundingRateLong = -fundingRateLong;
-          fundingRateShort = -fundingRateShort;
-
-          // Skip pairs with negligible funding AND no borrowing
-          if (Math.abs(fundingRate8h) < 0.00001 && totalBorrowRate8h < 0.00001) continue;
+          // gTrade "Holding Fee" = Funding + Borrowing combined per side.
+          // SDK convention: positive = cost (paid by trader), negative = earning.
+          // Funding signs: when currentRate < 0, longs earn (fundingRateLong < 0),
+          // shorts pay (fundingRateShort > 0). When > 0, vice versa.
+          // Borrowing is ALWAYS a cost (positive), applied symmetrically to both sides.
+          fundingRateLong = fundingRateLong + totalBorrowRate8h;
+          fundingRateShort = fundingRateShort + totalBorrowRate8h;
 
           // Build symbol — gTrade pairs are like "BTC/USD", we want "BTC"
           // For forex, construct pair symbol: EUR + USD → EURUSD
@@ -1113,8 +1153,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol = pair.from + (pair.to || 'USD');
           }
 
-          // gTrade convention: positive rate = longs pay shorts (standard)
-          // No convention flip needed — confirmed by @gainsnetwork/sdk source
+          // gTrade "Holding Fee" = combined funding + borrowing per side.
+          // fundingRate8h is the directional funding component (positive = longs pay shorts).
+          // fundingRateLong / fundingRateShort are the TOTAL holding fees per side
+          // (positive = cost for that side, negative = earning).
           results.push({
             symbol,
             exchange: 'gTrade',
@@ -1122,7 +1164,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingRateLong: fundingRateLong,
             fundingRateShort: fundingRateShort,
             borrowingRate: totalBorrowRate8h > 0.00001 ? totalBorrowRate8h : undefined,
-            fundingInterval: '8h' as const, // continuous model, normalized to 8h for display
+            fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: tokenPrice,
             indexPrice: 0,
             nextFundingTime: 0, // gTrade funding is continuous, no discrete funding time
