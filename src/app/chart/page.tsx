@@ -235,7 +235,7 @@ export default function ChartPage() {
         }
 
         const tickers: TickerInfo[] = [];
-        for (const [sym, data] of bySymbol) {
+        bySymbol.forEach((data, sym) => {
           tickers.push({
             symbol: sym,
             price: data.price,
@@ -243,7 +243,7 @@ export default function ChartPage() {
             volume24h: data.volume24h,
             isPinned: PINNED_SYMBOLS.includes(sym),
           });
-        }
+        });
 
         // Sort: pinned first (in original order), then by volume desc
         tickers.sort((a, b) => {
@@ -647,7 +647,7 @@ export default function ChartPage() {
   return (
     <div className="h-screen w-screen bg-black flex flex-col overflow-hidden">
       {/* ─── Header bar ────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
+      <div className="flex-shrink-0 border-b border-white/[0.06] bg-black/80 backdrop-blur-sm relative z-20">
         <div className="flex items-center px-3 py-2 gap-2">
           {/* Logo + back */}
           <Link
