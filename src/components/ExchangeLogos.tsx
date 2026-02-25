@@ -13,6 +13,7 @@ const PNG_EXCHANGES = new Set([
   'mexc', 'kraken', 'bingx', 'phemex', 'hyperliquid', 'gmx', 'dydx',
   'aevo', 'vertex', 'drift', 'gtrade', 'bitfinex', 'whitebit',
   'coinbase', 'coinex', 'aster', 'bitunix', 'lighter',
+  'bitmex', 'gate', 'gate.io', 'edgex', 'variational', 'extended',
 ]);
 
 // SVG fallbacks for exchanges without downloadable logos
@@ -119,16 +120,20 @@ export const exchangeColors: Record<string, string> = {
 // (some files may import { exchangeLogos })
 export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps>> = svgFallbacks;
 
+// Normalize exchange key to file-safe name
+const FILE_KEY_MAP: Record<string, string> = { 'gate.io': 'gate' };
+
 // Generic exchange logo component
 export function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange: string; size?: number; className?: string }) {
   const key = exchange.toLowerCase();
 
   // Use real PNG if available
   if (PNG_EXCHANGES.has(key)) {
+    const fileKey = FILE_KEY_MAP[key] || key;
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={`/exchanges/${key}.png`}
+        src={`/exchanges/${fileKey}.png`}
         alt={exchange}
         width={size}
         height={size}

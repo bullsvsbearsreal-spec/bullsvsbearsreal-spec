@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -14,10 +14,10 @@ import { FundingRateData, OpenInterestData } from '@/lib/api/types';
 import { isExchangeDex } from '@/lib/constants';
 import { formatRate, getRateColor } from '../utils';
 import { isValidNumber, formatUSD } from '@/lib/utils/format';
-import { getFundingHistory, getAccumulatedFundingBatch, type HistoryPoint, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
+import { saveFundingSnapshot, getFundingHistory, getAccumulatedFundingBatch, type HistoryPoint, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
 import FundingSparkline from '../components/FundingSparkline';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
 
@@ -93,6 +93,13 @@ export default function SymbolFundingPage() {
     return getAccumulatedFundingBatch(pairs);
   }, [symbolRates]);
 
+  // Record live rates to localStorage (builds history from detail page visits too)
+  useEffect(() => {
+    if (symbolRates.length > 0) {
+      saveFundingSnapshot(symbolRates);
+    }
+  }, [symbolRates]);
+
   // Stats — normalize all rates to 8h basis for average comparison
   const stats = useMemo(() => {
     if (symbolRates.length === 0) return null;
@@ -111,41 +118,117 @@ export default function SymbolFundingPage() {
     return { avg, highest, lowest, totalOI, count: symbolRates.length };
   }, [symbolRates, oiMap]);
 
-  // History data for chart — per-exchange lines
-  const exchanges = useMemo(() => {
+  // History data for chart — per-exchange lines from DB
+  const liveExchanges = useMemo(() => {
     return Array.from(new Set(symbolRates.map((r: FundingRateData) => r.exchange)));
   }, [symbolRates]);
 
   const days = timeRange === '7d' ? 7 : 30;
 
+  // Fetch funding history from DB
+  const [dbFundingData, setDbFundingData] = useState<Record<string, Array<{ t: number; rate: number }>>>({});
+  const [dbFundingLoading, setDbFundingLoading] = useState(false);
+
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    setDbFundingLoading(true);
+    fetch(`/api/history/funding-multi?symbol=${encodeURIComponent(symbol)}&days=${days}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (!cancelled && json?.exchanges) {
+          setDbFundingData(json.exchanges);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setDbFundingLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol, days]);
+
+  // Fetch OI history from DB
+  const [oiHistoryData, setOiHistoryData] = useState<Array<{ t: number; oi: number }>>([]);
+
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    fetch(`/api/history/oi?symbol=${encodeURIComponent(symbol)}&days=${days}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (!cancelled && json?.points) {
+          setOiHistoryData(json.points);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [symbol, days]);
+
+  // Build chart data — prefer DB data, fall back to localStorage
+  const chartExchanges = useMemo(() => {
+    const dbExchanges = Object.keys(dbFundingData);
+    // Merge DB exchange names with live exchange names (live point is always appended)
+    const all = new Set([...dbExchanges, ...liveExchanges]);
+    return Array.from(all);
+  }, [dbFundingData, liveExchanges]);
+
   const chartData = useMemo(() => {
-    if (typeof window === 'undefined' || exchanges.length === 0) return [];
+    const hasDbData = Object.keys(dbFundingData).length > 0;
+    let points: Record<string, any>[] = [];
 
-    // Get history for each exchange
-    const exchangeHistories: Record<string, HistoryPoint[]> = {};
-    exchanges.forEach(ex => {
-      exchangeHistories[ex] = getFundingHistory(symbol, ex, days);
-    });
-
-    // Collect all unique timestamps
-    const allTimestamps = new Set<number>();
-    Object.values(exchangeHistories).forEach(history => {
-      history.forEach(p => allTimestamps.add(p.t));
-    });
-
-    // Sort and build chart points
-    const sortedTimes = Array.from(allTimestamps).sort((a, b) => a - b);
-    return sortedTimes.map(t => {
-      const point: Record<string, any> = { time: t };
-      exchanges.forEach(ex => {
-        const hp = exchangeHistories[ex].find(p => p.t === t);
-        if (hp) point[ex] = hp.rate;
+    if (hasDbData) {
+      // Use DB data — build unified timeline
+      const allTimestamps = new Set<number>();
+      Object.values(dbFundingData).forEach(pts => {
+        pts.forEach(p => allTimestamps.add(p.t));
       });
-      return point;
-    });
-  }, [exchanges, symbol, days]);
+      const sortedTimes = Array.from(allTimestamps).sort((a, b) => a - b);
+      points = sortedTimes.map(t => {
+        const point: Record<string, any> = { time: t };
+        Object.entries(dbFundingData).forEach(([ex, pts]) => {
+          const hp = pts.find(p => p.t === t);
+          if (hp) point[ex] = hp.rate;
+        });
+        return point;
+      });
+    } else if (typeof window !== 'undefined' && liveExchanges.length > 0) {
+      // Fallback to localStorage
+      const exchangeHistories: Record<string, HistoryPoint[]> = {};
+      liveExchanges.forEach(ex => {
+        exchangeHistories[ex] = getFundingHistory(symbol, ex, days);
+      });
+      const allTimestamps = new Set<number>();
+      Object.values(exchangeHistories).forEach(history => {
+        history.forEach(p => allTimestamps.add(p.t));
+      });
+      const sortedTimes = Array.from(allTimestamps).sort((a, b) => a - b);
+      points = sortedTimes.map(t => {
+        const point: Record<string, any> = { time: t };
+        liveExchanges.forEach(ex => {
+          const hp = exchangeHistories[ex].find(p => p.t === t);
+          if (hp) point[ex] = hp.rate;
+        });
+        return point;
+      });
+    }
 
-  const hasChartData = chartData.length >= 2;
+    // Always append the current live rates as the latest data point
+    if (symbolRates.length > 0) {
+      const now = Date.now();
+      const lastTime = points.length > 0 ? points[points.length - 1].time : 0;
+      // Only add if it's meaningfully newer than the last point (>1 min)
+      if (now - lastTime > 60_000) {
+        const livePoint: Record<string, any> = { time: now };
+        symbolRates.forEach((fr: FundingRateData) => {
+          livePoint[fr.exchange] = fr.fundingRate;
+        });
+        points.push(livePoint);
+      }
+    }
+
+    return points;
+  }, [dbFundingData, liveExchanges, symbol, days, symbolRates]);
+
+  const hasChartData = chartData.length >= 1;
+  const hasOiHistory = oiHistoryData.length >= 2;
 
   if (!symbol) {
     router.push('/funding');
@@ -270,7 +353,9 @@ export default function SymbolFundingPage() {
               <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
                 <div>
                   <h2 className="text-white font-semibold text-sm">Funding Rate History</h2>
-                  <p className="text-neutral-600 text-xs mt-0.5">Per-exchange rates over time (data builds as you visit)</p>
+                  <p className="text-neutral-600 text-xs mt-0.5">
+                    Per-exchange rates over time{Object.keys(dbFundingData).length > 0 ? '' : ' (local data — sign in for full history)'}
+                  </p>
                 </div>
                 <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
                   {(['7d', '30d'] as TimeRange[]).map(range => (
@@ -328,13 +413,13 @@ export default function SymbolFundingPage() {
                         wrapperStyle={{ fontSize: 11 }}
                         iconType="line"
                       />
-                      {exchanges.map(ex => (
+                      {chartExchanges.map(ex => (
                         <Line
                           key={ex}
                           type="monotone"
                           dataKey={ex}
                           stroke={EXCHANGE_HEX[ex] || '#737373'}
-                          dot={false}
+                          dot={chartData.length < 3}
                           strokeWidth={1.5}
                           connectNulls
                         />
@@ -344,14 +429,82 @@ export default function SymbolFundingPage() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16 text-neutral-600">
                     <BarChart3 className="w-10 h-10 mb-3 opacity-30" />
-                    <p className="text-sm">Not enough history data yet</p>
+                    <p className="text-sm">No funding rate data available</p>
                     <p className="text-xs mt-1 text-neutral-700">
-                      History builds automatically as you visit the funding page. Check back later!
+                      Check that the symbol is valid and try again.
                     </p>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* OI History Chart */}
+            {hasOiHistory && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-8">
+                <div className="p-4 border-b border-white/[0.06]">
+                  <h2 className="text-white font-semibold text-sm">Open Interest History</h2>
+                  <p className="text-neutral-600 text-xs mt-0.5">
+                    Aggregated OI across all exchanges over the last {days} days
+                  </p>
+                </div>
+                <div className="p-4">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={oiHistoryData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="oiGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f5a623" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#f5a623" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                      <XAxis
+                        dataKey="t"
+                        tickFormatter={(t: number) =>
+                          new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                        }
+                        stroke="#525252"
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis
+                        tickFormatter={(v: number) => {
+                          if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+                          if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+                          return `$${v.toLocaleString()}`;
+                        }}
+                        stroke="#525252"
+                        tick={{ fontSize: 10 }}
+                        width={60}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: '#1a1a1a',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 8,
+                          fontSize: 11,
+                        }}
+                        labelFormatter={(t: number) =>
+                          new Date(t).toLocaleString(undefined, {
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                          })
+                        }
+                        formatter={(value: number) => {
+                          if (value >= 1e9) return [`$${(value / 1e9).toFixed(2)}B`, 'Open Interest'];
+                          if (value >= 1e6) return [`$${(value / 1e6).toFixed(1)}M`, 'Open Interest'];
+                          return [`$${value.toLocaleString()}`, 'Open Interest'];
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="oi"
+                        stroke="#f5a623"
+                        fill="url(#oiGradient)"
+                        strokeWidth={1.5}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
             {/* Exchange Comparison Table */}
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-8">

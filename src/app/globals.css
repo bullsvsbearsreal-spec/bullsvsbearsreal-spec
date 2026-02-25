@@ -106,6 +106,17 @@ body {
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Heatmap horizontal scrollbar — visible, styled */
+.heatmap-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,165,0,0.3) rgba(255,255,255,0.04); }
+.heatmap-scroll::-webkit-scrollbar { height: 8px; }
+.heatmap-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 8px; margin: 0 130px 0 0; }
+.heatmap-scroll::-webkit-scrollbar-thumb { background: rgba(255,165,0,0.25); border-radius: 8px; border: 1px solid rgba(255,165,0,0.1); }
+.heatmap-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,165,0,0.45); }
+[data-theme="light"] .heatmap-scroll { scrollbar-color: rgba(255,165,0,0.3) rgba(0,0,0,0.04); }
+[data-theme="light"] .heatmap-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.03); }
+[data-theme="light"] .heatmap-scroll::-webkit-scrollbar-thumb { background: rgba(255,165,0,0.3); border: 1px solid rgba(255,165,0,0.15); }
+[data-theme="light"] .heatmap-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,165,0,0.5); }
+
 @layer utilities {
   /* --- Surface system --- */
   .surface-0 { background: #0a0a0a; border: 1px solid var(--hub-border); }

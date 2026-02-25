@@ -14,14 +14,23 @@ import {
   type Time,
   type MouseEventParams,
 } from 'lightweight-charts';
-import { ArrowLeft, ChevronDown, Search, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search, X, TrendingUp, TrendingDown, Star } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { TokenIconSimple } from '@/components/TokenIcon';
 
 /* ═══════════════════════════════════════════════════════════════════════
    Constants
    ═══════════════════════════════════════════════════════════════════════ */
 
-const DEFAULT_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB', 'AVAX', 'LINK', 'ADA', 'DOT'];
+const PINNED_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB', 'AVAX', 'LINK', 'ADA', 'DOT'];
+
+interface TickerInfo {
+  symbol: string;
+  price: number;
+  change24h: number;
+  volume24h: number;
+  isPinned: boolean;
+}
 
 const TIMEFRAMES = [
   { label: '1m', value: '1m', key: '1' },
@@ -174,6 +183,7 @@ export default function ChartPage() {
   const [symbolOpen, setSymbolOpen] = useState(false);
   const [symbolQuery, setSymbolQuery] = useState('');
   const symbolRef = useRef<HTMLDivElement>(null);
+  const [allTickers, setAllTickers] = useState<TickerInfo[]>([]);
 
   // Indicators
   const [indicators, setIndicators] = useState<Record<IndicatorKey, boolean>>({
@@ -199,11 +209,74 @@ export default function ChartPage() {
   const currentPrice = currentCandle?.close ?? 0;
   const change24h = price24hAgo ? ((currentPrice - price24hAgo) / price24hAgo) * 100 : 0;
 
+  // Fetch all tickers for the symbol selector
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/tickers');
+        if (!res.ok) return;
+        const json = await res.json();
+        const raw: any[] = json.data || [];
+
+        // Deduplicate by symbol — keep highest volume entry per symbol
+        const bySymbol = new Map<string, { price: number; change24h: number; volume24h: number }>();
+        for (const t of raw) {
+          const sym = (t.symbol as string).toUpperCase();
+          const vol = t.volume24h || t.quoteVolume24h || 0;
+          const existing = bySymbol.get(sym);
+          if (!existing || vol > existing.volume24h) {
+            bySymbol.set(sym, {
+              price: t.lastPrice || t.price || 0,
+              change24h: t.priceChangePercent24h ?? t.changePercent24h ?? 0,
+              volume24h: vol,
+            });
+          }
+        }
+
+        const tickers: TickerInfo[] = [];
+        for (const [sym, data] of bySymbol) {
+          tickers.push({
+            symbol: sym,
+            price: data.price,
+            change24h: data.change24h,
+            volume24h: data.volume24h,
+            isPinned: PINNED_SYMBOLS.includes(sym),
+          });
+        }
+
+        // Sort: pinned first (in original order), then by volume desc
+        tickers.sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          if (a.isPinned && b.isPinned) {
+            return PINNED_SYMBOLS.indexOf(a.symbol) - PINNED_SYMBOLS.indexOf(b.symbol);
+          }
+          return b.volume24h - a.volume24h;
+        });
+
+        if (!cancelled) setAllTickers(tickers);
+      } catch { /* fail silently — pinned symbols still work */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const filteredSymbols = useMemo(() => {
-    if (!symbolQuery.trim()) return DEFAULT_SYMBOLS;
     const q = symbolQuery.toUpperCase().trim();
-    return DEFAULT_SYMBOLS.filter((s) => s.includes(q));
-  }, [symbolQuery]);
+
+    // If we have tickers loaded
+    if (allTickers.length > 0) {
+      if (!q) return allTickers.slice(0, 50); // Top 50 by volume (pinned first)
+      return allTickers.filter((t) => t.symbol.includes(q)).slice(0, 30);
+    }
+
+    // Fallback to pinned symbols if tickers haven't loaded
+    const pinned = PINNED_SYMBOLS.map((s) => ({
+      symbol: s, price: 0, change24h: 0, volume24h: 0, isPinned: true,
+    }));
+    if (!q) return pinned;
+    return pinned.filter((t) => t.symbol.includes(q));
+  }, [symbolQuery, allTickers]);
 
   /* ─── Fetch klines ─────────────────────────────────────────────────── */
   const fetchCandles = useCallback(
@@ -592,14 +665,15 @@ export default function ChartPage() {
           <div ref={symbolRef} className="relative flex-shrink-0">
             <button
               onClick={() => setSymbolOpen(!symbolOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
             >
+              <TokenIconSimple symbol={symbol} size={18} />
               <span className="text-sm font-bold text-white">{symbol}/USDT</span>
               <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {symbolOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 w-56 bg-[#111] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden animate-scale-in">
+              <div className="absolute top-full left-0 mt-1 z-50 w-80 bg-[#111] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden animate-scale-in">
                 {/* Search input */}
                 <div className="relative px-3 py-2 border-b border-white/[0.06]">
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
@@ -621,27 +695,69 @@ export default function ChartPage() {
                   )}
                 </div>
                 {/* Symbol list */}
-                <div className="max-h-60 overflow-y-auto py-1">
+                <div className="max-h-72 overflow-y-auto py-1 scrollbar-thin">
                   {filteredSymbols.length === 0 && (
                     <div className="px-4 py-3 text-xs text-neutral-500">No symbols found</div>
                   )}
-                  {filteredSymbols.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setSymbol(s);
-                        setSymbolOpen(false);
-                        setSymbolQuery('');
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                        s === symbol
-                          ? 'bg-hub-yellow/10 text-hub-yellow font-semibold'
-                          : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
-                      }`}
-                    >
-                      {s}<span className="text-neutral-600">/USDT</span>
-                    </button>
-                  ))}
+                  {/* Pinned divider */}
+                  {!symbolQuery.trim() && filteredSymbols.some((t) => t.isPinned) && (
+                    <div className="px-3 pt-1.5 pb-1 flex items-center gap-1.5">
+                      <Star className="w-3 h-3 text-hub-yellow/60" />
+                      <span className="text-[10px] font-medium text-neutral-600 uppercase tracking-wider">Popular</span>
+                    </div>
+                  )}
+                  {filteredSymbols.map((t, idx) => {
+                    // Show "All Markets" divider after pinned section
+                    const showAllDivider = !symbolQuery.trim()
+                      && idx > 0
+                      && filteredSymbols[idx - 1].isPinned
+                      && !t.isPinned;
+
+                    return (
+                      <div key={t.symbol}>
+                        {showAllDivider && (
+                          <div className="px-3 pt-2.5 pb-1 border-t border-white/[0.04] mt-1">
+                            <span className="text-[10px] font-medium text-neutral-600 uppercase tracking-wider">All Markets</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => {
+                            setSymbol(t.symbol);
+                            setSymbolOpen(false);
+                            setSymbolQuery('');
+                          }}
+                          className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2.5 ${
+                            t.symbol === symbol
+                              ? 'bg-hub-yellow/10'
+                              : 'hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          {/* Token icon */}
+                          <TokenIconSimple symbol={t.symbol} size={20} />
+                          {/* Symbol name */}
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-sm font-medium ${t.symbol === symbol ? 'text-hub-yellow' : 'text-white'}`}>
+                              {t.symbol}
+                            </span>
+                            <span className="text-neutral-600 text-xs">/USDT</span>
+                          </div>
+                          {/* Price + change */}
+                          {t.price > 0 && (
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-xs text-neutral-300 font-mono tabular-nums">
+                                {formatPrice(t.price)}
+                              </div>
+                              <div className={`text-[10px] font-medium tabular-nums ${
+                                t.change24h >= 0 ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {t.change24h >= 0 ? '+' : ''}{t.change24h.toFixed(2)}%
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

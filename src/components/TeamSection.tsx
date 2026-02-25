@@ -19,11 +19,12 @@ interface TeamMember {
 
 const teamMembers: TeamMember[] = [
   {
-    name: 'Bulls Bears',
+    name: '0x.0celot',
     role: 'Founder',
-    image: '/team/bullsbears.jpg',
+    image: '/team/ocelot.jpg',
     bio: 'Founder of InfoHub, building the future of real-time trading data.',
     stats: [],
+    socials: { twitter: 'https://x.com/ocelotIH' },
   },
   {
     name: 'snakether',

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck } from 'lucide-react';
+import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2 } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import {
   type Alert,
@@ -51,10 +52,23 @@ function timeAgo(ts: number): string {
 
 /* ─── Component ──────────────────────────────────────────────────── */
 
+const COOLDOWN_OPTIONS = [
+  { label: '15 min', value: 15 },
+  { label: '30 min', value: 30 },
+  { label: '1 hour', value: 60 },
+  { label: '4 hours', value: 240 },
+];
+
 export default function AlertsPage() {
+  const { data: session } = useSession();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [triggered, setTriggered] = useState<TriggeredAlert[]>([]);
   const [showForm, setShowForm] = useState(false);
+
+  // Notification preferences
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [cooldownMinutes, setCooldownMinutes] = useState(60);
+  const [prefsSaving, setPrefsSaving] = useState(false);
 
   // Form state
   const [formSymbol, setFormSymbol] = useState('BTC');
@@ -72,6 +86,23 @@ export default function AlertsPage() {
     const interval = setInterval(refresh, 10_000);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  // Load notification prefs from DB when logged in
+  useEffect(() => {
+    if (!session?.user) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/user/data');
+        if (!res.ok) return;
+        const json = await res.json();
+        const prefs = json.notificationPrefs;
+        if (prefs) {
+          setEmailEnabled(prefs.email ?? true);
+          setCooldownMinutes(prefs.cooldownMinutes ?? 60);
+        }
+      } catch {}
+    })();
+  }, [session]);
 
   const handleAdd = () => {
     const val = parseFloat(formValue);
@@ -111,6 +142,20 @@ export default function AlertsPage() {
   const handleClearTriggered = () => {
     clearTriggered();
     refresh();
+  };
+
+  const saveNotificationPrefs = async (email: boolean, cooldown: number) => {
+    setPrefsSaving(true);
+    try {
+      await fetch('/api/user/data', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notificationPrefs: { email, cooldownMinutes: cooldown },
+        }),
+      });
+    } catch {}
+    setPrefsSaving(false);
   };
 
   const undismissedCount = triggered.filter((t) => !t.dismissed).length;
@@ -335,10 +380,89 @@ export default function AlertsPage() {
             )}
           </div>
 
+          {/* Notification Settings (logged-in users only) */}
+          {session?.user && (
+            <div className="mt-6 bg-hub-darker border border-white/[0.06] rounded-xl p-4">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
+                <Settings2 className="w-4 h-4 text-hub-yellow" />
+                Notification Settings
+              </h2>
+              <div className="space-y-4">
+                {/* Email toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-white">Email notifications</p>
+                      <p className="text-xs text-neutral-600">
+                        Get emailed at {session.user.email} when alerts trigger
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const next = !emailEnabled;
+                      setEmailEnabled(next);
+                      saveNotificationPrefs(next, cooldownMinutes);
+                    }}
+                    disabled={prefsSaving}
+                    className="text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {emailEnabled ? (
+                      <ToggleRight className="w-6 h-6 text-hub-yellow" />
+                    ) : (
+                      <ToggleLeft className="w-6 h-6" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Cooldown selector */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-white">Cooldown period</p>
+                      <p className="text-xs text-neutral-600">
+                        Minimum time between repeated notifications for the same alert
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {COOLDOWN_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          setCooldownMinutes(opt.value);
+                          saveNotificationPrefs(emailEnabled, opt.value);
+                        }}
+                        disabled={prefsSaving}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${
+                          cooldownMinutes === opt.value
+                            ? 'bg-hub-yellow text-black'
+                            : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                <p className="text-xs text-neutral-600">
+                  Server-side alerts check every 5 minutes, even when your browser is closed. Your alerts are synced to the cloud automatically.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Info footer */}
           <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
             <p className="text-neutral-500 text-xs leading-relaxed">
-              Alerts check your conditions against live market data every 60 seconds while InfoHub is open. Stored in your browser&apos;s localStorage. Enable browser notifications for desktop pop-ups when conditions trigger. Set funding rate alerts for carry trade opportunities, or price alerts below key support levels.
+              {session?.user
+                ? 'Your alerts are checked server-side every 5 minutes and will trigger even when InfoHub is closed. Email and Telegram notifications are delivered based on your settings above. Alerts also check locally every 60 seconds while the page is open.'
+                : 'Alerts check your conditions against live market data every 60 seconds while InfoHub is open. Sign in to enable server-side alerts that work 24/7 with email and Telegram notifications.'}
             </p>
           </div>
         </div>

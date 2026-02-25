@@ -84,6 +84,48 @@ export async function initDB(): Promise<void> {
     )
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      token TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_prt_email ON password_reset_tokens(email)`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS alert_notifications (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      alert_id TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      metric TEXT NOT NULL,
+      threshold REAL NOT NULL,
+      actual_value REAL NOT NULL,
+      channel TEXT NOT NULL,
+      sent_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_alert_notif_user ON alert_notifications(user_id, alert_id, sent_at DESC)`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      total_value REAL NOT NULL,
+      total_pnl REAL NOT NULL,
+      holdings JSONB,
+      ts TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_portfolio_user_ts ON portfolio_snapshots(user_id, ts DESC)`;
+
+  // Compound indexes for faster history queries
+  await sql`CREATE INDEX IF NOT EXISTS idx_funding_sym_ex_ts ON funding_snapshots(symbol, exchange, ts DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_oi_sym_ex_ts ON oi_snapshots(symbol, exchange, ts DESC)`;
+
   await initTelegramTables();
 
   initialized = true;
@@ -386,12 +428,18 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
 
 // ─── User Data (synced localStorage data) ──────────────────────────────────
 
+export interface NotificationPrefs {
+  email: boolean;
+  cooldownMinutes: number;
+}
+
 export interface UserData {
   watchlist?: string[];
   portfolio?: any[];
   alerts?: any[];
   screenerPresets?: any[];
   wallets?: any[];
+  notificationPrefs?: NotificationPrefs;
 }
 
 export async function getUserData(userId: string): Promise<UserData | null> {
@@ -574,6 +622,261 @@ export async function cleanupCooldowns(): Promise<void> {
     `;
   } catch (e) {
     console.error('DB cleanupCooldowns error:', e);
+  }
+}
+
+// ─── Alert Notification Functions ────────────────────────────────────────────
+
+export interface AlertUserRow {
+  userId: string;
+  email: string;
+  alerts: any[];
+  notificationPrefs?: NotificationPrefs;
+}
+
+/**
+ * Get all users who have enabled alerts in their prefs JSONB.
+ */
+export async function getAllUsersWithAlerts(): Promise<AlertUserRow[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT
+        up.user_id,
+        u.email,
+        up.prefs->'alerts' AS alerts,
+        up.prefs->'notificationPrefs' AS notification_prefs
+      FROM user_prefs up
+      JOIN users u ON up.user_id = u.id
+      WHERE jsonb_array_length(COALESCE(up.prefs->'alerts', '[]'::jsonb)) > 0
+    `;
+    return rows.map((r: any) => ({
+      userId: r.user_id,
+      email: r.email,
+      alerts: (r.alerts ?? []) as any[],
+      notificationPrefs: r.notification_prefs as NotificationPrefs | undefined,
+    }));
+  } catch (e) {
+    console.error('DB getAllUsersWithAlerts error:', e);
+    return [];
+  }
+}
+
+/**
+ * Check if an alert notification was sent within the cooldown window.
+ */
+export async function getAlertCooldown(
+  userId: string,
+  alertId: string,
+  cooldownMinutes: number = 60,
+): Promise<boolean> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${cooldownMinutes} minutes`;
+    const rows = await sql`
+      SELECT 1 FROM alert_notifications
+      WHERE user_id = ${userId}
+        AND alert_id = ${alertId}
+        AND sent_at > NOW() - ${intervalStr}::interval
+      LIMIT 1
+    `;
+    return rows.length > 0;
+  } catch (e) {
+    console.error('DB getAlertCooldown error:', e);
+    return true; // fail closed — assume in cooldown
+  }
+}
+
+/**
+ * Log a sent alert notification.
+ */
+export async function logAlertNotification(
+  userId: string,
+  alertId: string,
+  symbol: string,
+  metric: string,
+  threshold: number,
+  actualValue: number,
+  channel: string,
+): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      INSERT INTO alert_notifications (user_id, alert_id, symbol, metric, threshold, actual_value, channel)
+      VALUES (${userId}, ${alertId}, ${symbol}, ${metric}, ${threshold}, ${actualValue}, ${channel})
+    `;
+  } catch (e) {
+    console.error('DB logAlertNotification error:', e);
+  }
+}
+
+/**
+ * Clean up old alert notifications (keep 30 days).
+ */
+export async function pruneAlertNotifications(): Promise<number> {
+  try {
+    const sql = getSQL();
+    const result = await sql`
+      DELETE FROM alert_notifications WHERE sent_at < NOW() - INTERVAL '30 days'
+    `;
+    return result.count ?? 0;
+  } catch (e) {
+    console.error('DB pruneAlertNotifications error:', e);
+    return 0;
+  }
+}
+
+// ─── Multi-Exchange Funding History ─────────────────────────────────────────
+
+export interface ExchangeHistoryPoint {
+  t: number;
+  rate: number;
+}
+
+/**
+ * Get funding history for all exchanges that traded a symbol.
+ * For >7 days, buckets into hourly averages to reduce data points.
+ */
+export async function getFundingHistoryMulti(
+  symbol: string,
+  days: number = 7,
+): Promise<Record<string, ExchangeHistoryPoint[]>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    let rows;
+
+    if (days > 7) {
+      rows = await sql`
+        SELECT exchange,
+               EXTRACT(EPOCH FROM date_trunc('hour', ts)) * 1000 AS t,
+               AVG(rate) AS rate
+        FROM funding_snapshots
+        WHERE symbol = ${symbol}
+          AND ts > NOW() - ${intervalStr}::interval
+        GROUP BY exchange, date_trunc('hour', ts)
+        ORDER BY exchange, t ASC
+      `;
+    } else {
+      rows = await sql`
+        SELECT exchange,
+               EXTRACT(EPOCH FROM ts) * 1000 AS t,
+               rate
+        FROM funding_snapshots
+        WHERE symbol = ${symbol}
+          AND ts > NOW() - ${intervalStr}::interval
+        ORDER BY exchange, ts ASC
+      `;
+    }
+
+    const result: Record<string, ExchangeHistoryPoint[]> = {};
+    rows.forEach((r: any) => {
+      const ex = r.exchange as string;
+      if (!result[ex]) result[ex] = [];
+      result[ex].push({ t: Number(r.t), rate: Number(r.rate) });
+    });
+    return result;
+  } catch (e) {
+    console.error('DB getFundingHistoryMulti error:', e);
+    return {};
+  }
+}
+
+/**
+ * Get OI history per exchange for a symbol.
+ */
+export async function getOIHistoryMulti(
+  symbol: string,
+  days: number = 7,
+): Promise<Record<string, Array<{ t: number; oi: number }>>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = await sql`
+      SELECT exchange,
+             EXTRACT(EPOCH FROM ts) * 1000 AS t,
+             oi_usd AS oi
+      FROM oi_snapshots
+      WHERE symbol = ${symbol}
+        AND ts > NOW() - ${intervalStr}::interval
+      ORDER BY exchange, ts ASC
+    `;
+    const result: Record<string, Array<{ t: number; oi: number }>> = {};
+    rows.forEach((r: any) => {
+      const ex = r.exchange as string;
+      if (!result[ex]) result[ex] = [];
+      result[ex].push({ t: Number(r.t), oi: Number(r.oi) });
+    });
+    return result;
+  } catch (e) {
+    console.error('DB getOIHistoryMulti error:', e);
+    return {};
+  }
+}
+
+// ─── Portfolio Snapshots ────────────────────────────────────────────────────
+
+export async function savePortfolioSnapshot(
+  userId: string,
+  totalValue: number,
+  totalPnl: number,
+  holdings: any[],
+): Promise<void> {
+  try {
+    const sql = getSQL();
+    const holdingsJson = JSON.stringify(holdings);
+    await sql`
+      INSERT INTO portfolio_snapshots (user_id, total_value, total_pnl, holdings)
+      VALUES (${userId}, ${totalValue}, ${totalPnl}, ${holdingsJson}::jsonb)
+    `;
+  } catch (e) {
+    console.error('DB savePortfolioSnapshot error:', e);
+  }
+}
+
+export async function getPortfolioHistory(
+  userId: string,
+  days: number = 30,
+): Promise<Array<{ t: number; value: number; pnl: number }>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = await sql`
+      SELECT EXTRACT(EPOCH FROM ts) * 1000 AS t, total_value, total_pnl
+      FROM portfolio_snapshots
+      WHERE user_id = ${userId}
+        AND ts > NOW() - ${intervalStr}::interval
+      ORDER BY ts ASC
+    `;
+    return rows.map((r: any) => ({
+      t: Number(r.t),
+      value: Number(r.total_value),
+      pnl: Number(r.total_pnl),
+    }));
+  } catch (e) {
+    console.error('DB getPortfolioHistory error:', e);
+    return [];
+  }
+}
+
+/**
+ * Get all users with portfolio holdings for snapshotting.
+ */
+export async function getUsersWithPortfolios(): Promise<Array<{ userId: string; portfolio: any[] }>> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT user_id, prefs->'portfolio' AS portfolio
+      FROM user_prefs
+      WHERE jsonb_array_length(COALESCE(prefs->'portfolio', '[]'::jsonb)) > 0
+    `;
+    return rows.map((r: any) => ({
+      userId: r.user_id,
+      portfolio: (r.portfolio ?? []) as any[],
+    }));
+  } catch (e) {
+    console.error('DB getUsersWithPortfolios error:', e);
+    return [];
   }
 }
 

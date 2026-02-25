@@ -83,6 +83,16 @@ export default function UserMenu() {
             </p>
           </div>
 
+          {/* Settings */}
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            Settings
+          </Link>
+
           {/* Sign out */}
           <button
             onClick={() => {

@@ -433,7 +433,7 @@ export default function ApiDocsPage() {
         {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-neutral-700 text-xs">
-            Questions? Open an <a href="https://github.com/GroovyGecko88/infohub/issues" target="_blank" rel="noopener noreferrer" className="text-hub-yellow/60 hover:text-hub-yellow transition-colors">issue on GitHub</a> or reach out on <a href="https://x.com/InfoHub_io" target="_blank" rel="noopener noreferrer" className="text-hub-yellow/60 hover:text-hub-yellow transition-colors">X</a>.
+            Questions? Reach out on <a href="https://x.com/info_hub69" target="_blank" rel="noopener noreferrer" className="text-hub-yellow/60 hover:text-hub-yellow transition-colors">X</a> or <a href="mailto:contact@info-hub.io" className="text-hub-yellow/60 hover:text-hub-yellow transition-colors">email us</a>.
           </p>
         </div>
       </main>

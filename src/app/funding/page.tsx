@@ -167,6 +167,29 @@ export default function FundingPage() {
     }
   };
 
+  const cexExchanges = ALL_EXCHANGES.filter(e => !isExchangeDex(e));
+  const dexExchanges = ALL_EXCHANGES.filter(e => isExchangeDex(e));
+
+  const toggleSectionExchanges = (section: 'cex' | 'dex') => {
+    const sectionExchanges = section === 'cex' ? cexExchanges : dexExchanges;
+    const allSelected = sectionExchanges.every(e => selectedExchanges.has(e));
+    setSelectedExchanges(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        sectionExchanges.forEach(e => next.delete(e));
+        if (next.size === 0) next.add(ALL_EXCHANGES[0]);
+      } else {
+        sectionExchanges.forEach(e => next.add(e));
+      }
+      return next;
+    });
+  };
+
+  const selectOnlySection = (section: 'cex' | 'dex') => {
+    const sectionExchanges = section === 'cex' ? cexExchanges : dexExchanges;
+    setSelectedExchanges(new Set(sectionExchanges));
+  };
+
   const getSymbolAvgRate = (symbol: string) => {
     const rates = fundingRates.filter(fr => fr.symbol === symbol);
     if (rates.length === 0) return 0;
@@ -275,25 +298,30 @@ export default function FundingPage() {
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="heading-page">Funding Rates</h1>
-            <p className="text-neutral-500 text-sm">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              Funding <span className="text-gradient">Rates</span>
+            </h1>
+            <p className="text-neutral-600 text-sm mt-1">
               {ASSET_CLASS_SUBTITLES[assetClass]} across{' '}
+              <span className="text-neutral-400 font-medium">
               {activeExchangeCount > 0
-                ? <>{activeExchangeCount} exchanges ({activeDexCount} DEX)</>
-                : <>{ALL_EXCHANGES.length} exchanges ({DEX_EXCHANGES.size} DEX)</>
+                ? <>{activeExchangeCount} exchanges</>
+                : <>{ALL_EXCHANGES.length} exchanges</>
               }
+              </span>
+              {' '}<span className="text-neutral-700">({activeDexCount > 0 ? activeDexCount : DEX_EXCHANGES.size} DEX)</span>
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <UpdatedAgo date={lastUpdate} />
             <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — free, no signup, 21 exchanges`} />
             <button
               onClick={fetchData}
               disabled={loading}
               aria-label="Refresh"
-              className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
+              className="p-2 rounded-lg text-neutral-500 hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -301,25 +329,23 @@ export default function FundingPage() {
         </div>
 
         {/* Asset Class Tabs */}
-        <div className="flex items-center gap-1 mb-4 p-1 bg-white/[0.03] rounded-xl border border-white/[0.06] w-fit" role="tablist" aria-label="Asset class">
+        <div className="flex items-center gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)' }} role="tablist" aria-label="Asset class">
           {ASSET_CLASS_TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               role="tab"
               aria-selected={assetClass === key}
               onClick={() => handleAssetClassChange(key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 assetClass === key
-                  ? 'bg-hub-yellow text-black shadow-sm'
-                  : 'text-neutral-500 hover:text-white hover:bg-white/[0.05]'
+                  ? 'bg-hub-yellow text-black shadow-[0_1px_8px_rgba(255,165,0,0.2)]'
+                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-3.5 h-3.5" />
               {label}
               {assetClass === key && fundingRates.length > 0 && (
-                <span className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  assetClass === key ? 'bg-black/20 text-black' : 'bg-white/10 text-neutral-400'
-                }`}>
+                <span className="ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/20 text-black/80">
                   {fundingRates.length}
                 </span>
               )}
@@ -337,38 +363,59 @@ export default function FundingPage() {
         />
 
         {/* Controls */}
-        <div className="flex flex-col lg:flex-row gap-3 mb-4">
-          <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-col lg:flex-row gap-3 mb-5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {categoryKeys.map((cat) => {
               const IconComponent = activeCategoryIcons[cat];
+              const isActive = categoryFilter === cat;
+              const isDynamic = activeCategories[cat]?.dynamic;
               return (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                    categoryFilter === cat
-                      ? 'bg-hub-yellow text-black'
-                      : 'text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08]'
-                  }`}
-                >
-                  {IconComponent && <IconComponent className="w-3 h-3" />}
-                  {activeCategories[cat].name}
-                </button>
+                <span key={cat} className="contents">
+                  {/* Divider before dynamic filters */}
+                  {isDynamic && cat === categoryKeys.find(k => activeCategories[k]?.dynamic) && (
+                    <span className="w-px h-5 mx-1 bg-white/[0.08] hidden sm:block" />
+                  )}
+                  <button
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`relative px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 flex items-center gap-1.5 border border-transparent ${
+                      isActive
+                        ? isDynamic
+                          ? cat === 'highest'
+                            ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25'
+                            : 'bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25'
+                          : 'bg-hub-yellow text-black shadow-[0_2px_12px_rgba(255,165,0,0.2)]'
+                        : isDynamic
+                          ? 'text-neutral-500 hover:text-neutral-300'
+                          : 'text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.06]'
+                    }`}
+                    style={!isActive && !isDynamic ? { background: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.04)' } : isDynamic && !isActive ? { background: 'transparent' } : undefined}
+                  >
+                    {IconComponent && (
+                      <IconComponent className={`w-3 h-3 ${isActive && !isDynamic ? 'text-black/70' : ''}`} />
+                    )}
+                    {activeCategories[cat].name}
+                    {isActive && !isDynamic && (
+                      <span className="absolute -bottom-px left-3 right-3 h-[2px] rounded-full bg-hub-yellow/60" />
+                    )}
+                  </button>
+                </span>
               );
             })}
           </div>
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* CEX / DEX venue filter */}
-            <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+            <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
               {(['all', 'cex', 'dex'] as VenueFilter[]).map((v) => (
                 <button
                   key={v}
                   onClick={() => setVenueFilter(v)}
-                  className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                    venueFilter === v ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+                  className={`px-3 py-[7px] text-[11px] font-semibold tracking-wide transition-all duration-200 ${
+                    venueFilter === v
+                      ? 'bg-hub-yellow text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
                   }`}
                 >
                   {v === 'all' ? 'All' : v.toUpperCase()}
@@ -376,14 +423,18 @@ export default function FundingPage() {
               ))}
             </div>
 
+            <span className="w-px h-5 bg-white/[0.06]" />
+
             {/* Period normalization toggle */}
-            <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+            <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
               {(['1h', '4h', '8h', '24h', '1Y'] as FundingPeriod[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => setFundingPeriod(p)}
-                  className={`px-2 py-1.5 text-xs font-medium transition-colors ${
-                    fundingPeriod === p ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+                  className={`px-2.5 py-[7px] text-[11px] font-bold font-mono tracking-tight transition-all duration-200 ${
+                    fundingPeriod === p
+                      ? 'bg-hub-yellow text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
                   }`}
                 >
                   {p}
@@ -391,13 +442,18 @@ export default function FundingPage() {
               ))}
             </div>
 
-            <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+            <span className="w-px h-5 bg-white/[0.06]" />
+
+            {/* Heatmap / Arbitrage view toggle */}
+            <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
               {viewTabs.map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => setViewMode(key)}
-                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                    viewMode === key ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+                  className={`px-3.5 py-[7px] text-[11px] font-semibold tracking-wide transition-all duration-200 ${
+                    viewMode === key
+                      ? 'bg-hub-yellow text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
                   }`}
                 >
                   {label}
@@ -405,54 +461,70 @@ export default function FundingPage() {
               ))}
             </div>
 
+            <span className="w-px h-5 bg-white/[0.06]" />
+
+            {/* Exchange selector */}
             <div className="relative" ref={exchangeSelectorRef}>
               <button
                 onClick={() => setShowExchangeSelector(!showExchangeSelector)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                className={`px-3 py-[7px] rounded-lg text-[11px] font-semibold transition-all duration-200 flex items-center gap-1.5 ring-1 ${
                   showExchangeSelector
-                    ? 'bg-hub-yellow text-black'
-                    : 'text-neutral-500 hover:text-white bg-white/[0.04] border border-white/[0.06]'
+                    ? 'bg-hub-yellow text-black ring-hub-yellow/30 shadow-[0_2px_12px_rgba(255,165,0,0.2)]'
+                    : 'text-neutral-500 hover:text-neutral-300 ring-white/[0.06] hover:ring-white/[0.1]'
                 }`}
+                style={!showExchangeSelector ? { background: 'rgba(255,255,255,0.02)' } : undefined}
               >
                 <Settings2 className="w-3 h-3" />
-                {selectedExchanges.size}/{ALL_EXCHANGES.length}
+                <span className="font-mono">{selectedExchanges.size}/{ALL_EXCHANGES.length}</span>
               </button>
 
               {showExchangeSelector && (
-                <div className="absolute right-0 top-full mt-1.5 z-50 bg-[#0e0e0e] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/80 min-w-[420px] overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 z-50 rounded-2xl shadow-2xl shadow-black/90 min-w-[460px] overflow-hidden" style={{ background: 'linear-gradient(180deg, #141414 0%, #0c0c0c 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   {/* Header */}
-                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2">
-                      <Settings2 className="w-3.5 h-3.5 text-hub-yellow" />
-                      <span className="text-white font-semibold text-xs">Exchanges</span>
-                      <span className="text-[10px] text-neutral-500 font-mono">{selectedExchanges.size}/{ALL_EXCHANGES.length}</span>
+                  <div className="flex items-center justify-between px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(255,165,0,0.04) 0%, transparent 60%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
+                        <Settings2 className="w-3.5 h-3.5 text-hub-yellow" />
+                      </div>
+                      <span className="text-white font-semibold text-[13px]">Exchanges</span>
+                      <span className="text-[10px] text-neutral-500 font-mono bg-white/[0.04] px-1.5 py-0.5 rounded">{selectedExchanges.size}/{ALL_EXCHANGES.length}</span>
                     </div>
-                    <button onClick={toggleAllExchanges} className="text-[10px] font-semibold text-hub-yellow hover:text-hub-yellow/80 transition-colors px-2 py-0.5 rounded bg-hub-yellow/10 hover:bg-hub-yellow/15">
+                    <button onClick={toggleAllExchanges} className="text-[10px] font-bold text-hub-yellow hover:text-hub-yellow/80 transition-all duration-200 px-2.5 py-1 rounded-md bg-hub-yellow/10 hover:bg-hub-yellow/15 ring-1 ring-hub-yellow/10">
                       {selectedExchanges.size === ALL_EXCHANGES.length ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
 
-                  <div className="p-2 max-h-[70vh] overflow-y-auto">
+                  <div className="p-3 max-h-[70vh] overflow-y-auto">
                     {/* CEX Section */}
-                    <div className="mb-1">
-                      <div className="px-2 py-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Centralized ({ALL_EXCHANGES.filter(e => !isExchangeDex(e)).length})</div>
-                      <div className="grid grid-cols-3 gap-0.5">
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 px-1 mb-2">
+                        <span className="text-[10px] font-bold text-hub-yellow/60 uppercase tracking-[0.12em]">Centralized</span>
+                        <span className="text-[9px] font-mono text-neutral-600 bg-white/[0.03] px-1.5 py-0.5 rounded">{cexExchanges.length}</span>
+                        <span className="flex-1 h-px bg-white/[0.04]" />
+                        <button onClick={() => selectOnlySection('cex')} className="text-[9px] font-semibold text-neutral-600 hover:text-hub-yellow/70 transition-colors px-1.5 py-0.5 rounded hover:bg-hub-yellow/5">Only</button>
+                        <button onClick={() => toggleSectionExchanges('cex')} className="text-[9px] font-semibold text-neutral-600 hover:text-hub-yellow/70 transition-colors px-1.5 py-0.5 rounded hover:bg-hub-yellow/5">
+                          {cexExchanges.every(e => selectedExchanges.has(e)) ? 'None' : 'All'}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
                         {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (
                             <button
                               key={exchange}
                               onClick={() => toggleExchange(exchange)}
-                              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-xs ${
-                                active ? 'bg-white/[0.06] text-white' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.02]'
+                              className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150 text-xs ${
+                                active
+                                  ? 'bg-white/[0.06] text-white ring-1 ring-white/[0.08]'
+                                  : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.03]'
                               }`}
                             >
-                              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center transition-colors ${
-                                active ? 'bg-hub-yellow' : 'bg-white/[0.04] border border-white/[0.1]'
+                              <div className={`w-4 h-4 rounded-[5px] flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                active ? 'bg-hub-yellow shadow-[0_0_6px_rgba(255,165,0,0.3)]' : 'bg-white/[0.04] ring-1 ring-white/[0.08] group-hover:ring-white/[0.15]'
                               }`}>
-                                {active && <Check className="w-2.5 h-2.5 text-black" />}
+                                {active && <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />}
                               </div>
-                              <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                              <ExchangeLogo exchange={exchange.toLowerCase()} size={15} />
                               <span className="font-medium truncate">{exchange}</span>
                             </button>
                           );
@@ -460,31 +532,36 @@ export default function FundingPage() {
                       </div>
                     </div>
 
-                    {/* Divider */}
-                    <div className="mx-2 my-1.5 border-t border-white/[0.06]" />
-
                     {/* DEX Section */}
-                    <div>
-                      <div className="px-2 py-1.5 flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Decentralized ({ALL_EXCHANGES.filter(e => isExchangeDex(e)).length})</span>
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2 px-1 mb-2">
+                        <span className="text-[10px] font-bold text-purple-400/70 uppercase tracking-[0.12em]">Decentralized</span>
+                        <span className="text-[9px] font-mono text-neutral-600 bg-purple-500/[0.06] px-1.5 py-0.5 rounded text-purple-400/60">{dexExchanges.length}</span>
+                        <span className="flex-1 h-px bg-purple-500/[0.08]" />
+                        <button onClick={() => selectOnlySection('dex')} className="text-[9px] font-semibold text-neutral-600 hover:text-purple-400/70 transition-colors px-1.5 py-0.5 rounded hover:bg-purple-500/5">Only</button>
+                        <button onClick={() => toggleSectionExchanges('dex')} className="text-[9px] font-semibold text-neutral-600 hover:text-purple-400/70 transition-colors px-1.5 py-0.5 rounded hover:bg-purple-500/5">
+                          {dexExchanges.every(e => selectedExchanges.has(e)) ? 'None' : 'All'}
+                        </button>
                       </div>
-                      <div className="grid grid-cols-3 gap-0.5">
+                      <div className="grid grid-cols-3 gap-1">
                         {ALL_EXCHANGES.filter(e => isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (
                             <button
                               key={exchange}
                               onClick={() => toggleExchange(exchange)}
-                              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-xs ${
-                                active ? 'bg-purple-500/10 text-white' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.02]'
+                              className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150 text-xs ${
+                                active
+                                  ? 'bg-purple-500/[0.08] text-white ring-1 ring-purple-500/20'
+                                  : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.03]'
                               }`}
                             >
-                              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center transition-colors ${
-                                active ? 'bg-purple-500' : 'bg-white/[0.04] border border-white/[0.1]'
+                              <div className={`w-4 h-4 rounded-[5px] flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                active ? 'bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.3)]' : 'bg-white/[0.04] ring-1 ring-white/[0.08] group-hover:ring-white/[0.15]'
                               }`}>
-                                {active && <Check className="w-2.5 h-2.5 text-white" />}
+                                {active && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                               </div>
-                              <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
+                              <ExchangeLogo exchange={exchange.toLowerCase()} size={15} />
                               <span className="font-medium truncate">{exchange}</span>
                             </button>
                           );
@@ -530,7 +607,7 @@ export default function FundingPage() {
           </>
         )}
 
-        <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
+        <div className="mt-5 p-3.5 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,165,0,0.04) 0%, rgba(255,165,0,0.01) 100%)', border: '1px solid rgba(255,165,0,0.08)' }}>
           <p className="text-neutral-500 text-xs leading-relaxed">
             {assetClass === 'crypto' && (
               <>

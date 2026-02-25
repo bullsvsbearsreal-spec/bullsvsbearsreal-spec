@@ -155,6 +155,9 @@ export default function FundingHeatmapView({
   const [hoveredCol, setHoveredCol] = useState<string | null>(null);
   const [hoveredTreemapSym, setHoveredTreemapSym] = useState<string | null>(null);
   const treemapRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [scrollWidth, setScrollWidth] = useState(0);
   const [treemapSize, setTreemapSize] = useState({ w: 900, h: 520 });
 
   // Measure treemap container
@@ -167,6 +170,26 @@ export default function FundingHeatmapView({
     ro.observe(treemapRef.current);
     return () => ro.disconnect();
   }, [mode]);
+
+  // Sync top scrollbar ↔ table scroll
+  useEffect(() => {
+    if (mode !== 'grid') return;
+    const topEl = topScrollRef.current;
+    const tableEl = tableScrollRef.current;
+    if (!topEl || !tableEl) return;
+    // Measure table scroll width (deferred to avoid setState-during-render)
+    let rafId: number;
+    const updateWidth = () => { rafId = requestAnimationFrame(() => setScrollWidth(tableEl.scrollWidth)); };
+    updateWidth();
+    const ro = new ResizeObserver(updateWidth);
+    ro.observe(tableEl);
+    let syncing = false;
+    const syncFromTop = () => { if (!syncing) { syncing = true; tableEl.scrollLeft = topEl.scrollLeft; syncing = false; } };
+    const syncFromTable = () => { if (!syncing) { syncing = true; topEl.scrollLeft = tableEl.scrollLeft; syncing = false; } };
+    topEl.addEventListener('scroll', syncFromTop);
+    tableEl.addEventListener('scroll', syncFromTable);
+    return () => { cancelAnimationFrame(rafId); ro.disconnect(); topEl.removeEventListener('scroll', syncFromTop); tableEl.removeEventListener('scroll', syncFromTable); };
+  }, [mode, visibleExchanges.length, symbols.length]);
 
   const handleExchangeClick = useCallback((exchange: string) => {
     setExchangeSort(prev => {
@@ -301,17 +324,17 @@ export default function FundingHeatmapView({
      ═══════════════════════════════════════ */
 
   return (
-    <div className="rounded-xl overflow-hidden border border-white/[0.06]" style={{ background: 'var(--hub-darker)' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--hub-darker)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 2px 16px rgba(0,0,0,0.3)' }}>
 
       {/* ── Toolbar ── */}
-      <div className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-white/[0.06]">
+      <div className="px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%)' }}>
         <div className="flex items-center gap-3">
           {/* Mode toggle */}
-          <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+          <div className="flex rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
             <button
               onClick={() => setMode('grid')}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium transition-all ${
-                mode === 'grid' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 ${
+                mode === 'grid' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-neutral-300'
               }`}
               title="Grid view"
             >
@@ -320,8 +343,8 @@ export default function FundingHeatmapView({
             </button>
             <button
               onClick={() => setMode('treemap')}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium transition-all ${
-                mode === 'treemap' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 ${
+                mode === 'treemap' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-neutral-300'
               }`}
               title="Treemap view"
             >
@@ -330,28 +353,26 @@ export default function FundingHeatmapView({
             </button>
           </div>
 
-          <div className="h-3.5 w-px bg-white/[0.08]" />
-          <span className="text-neutral-600 text-xs font-mono tabular-nums">{symbols.length}</span>
+          <div className="h-3.5 w-px bg-white/[0.06]" />
+          <span className="text-neutral-600 text-[11px] font-mono tabular-nums">{symbols.length} <span className="text-neutral-700">pairs</span></span>
         </div>
 
         <div className="flex items-center gap-4">
           {/* Sentiment bar */}
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-[10px] text-emerald-400/70 font-mono tabular-nums">{bullish}</span>
-            <div className="w-10 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+            <span className="text-[10px] text-emerald-400/80 font-mono tabular-nums font-medium">{bullish}</span>
+            <div className="w-14 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
               <div
-                className="h-full rounded-full bg-emerald-500"
-                style={{ width: `${(bullish / Math.max(bullish + bearish, 1)) * 100}%` }}
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${(bullish / Math.max(bullish + bearish, 1)) * 100}%`, background: 'linear-gradient(90deg, rgba(16,185,129,0.6), rgba(16,185,129,0.9))' }}
               />
             </div>
-            <span className="text-[10px] text-rose-400/70 font-mono tabular-nums">{bearish}</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+            <span className="text-[10px] text-rose-400/80 font-mono tabular-nums font-medium">{bearish}</span>
           </div>
 
           {/* Legend blocks */}
           <div className="hidden sm:flex items-center gap-1">
-            <span className="text-[9px] text-rose-400/50">−</span>
+            <span className="text-[8px] text-rose-400/40 font-semibold">SHORT</span>
             <div className="flex gap-[1px]">
               {[0.35, 0.18, 0.08, 0.03, 0.08, 0.18, 0.35].map((a, i) => {
                 const isGreen = i >= 4;
@@ -359,10 +380,10 @@ export default function FundingHeatmapView({
                 return (
                   <div
                     key={i}
-                    className="w-2.5 h-2 rounded-[1px]"
+                    className="w-3 h-2 rounded-[2px]"
                     style={{
                       background: isNeutral
-                        ? 'rgba(255,255,255,0.03)'
+                        ? 'rgba(255,255,255,0.04)'
                         : isGreen
                         ? `rgba(16,185,129,${a})`
                         : `rgba(244,63,94,${a})`,
@@ -371,13 +392,13 @@ export default function FundingHeatmapView({
                 );
               })}
             </div>
-            <span className="text-[9px] text-emerald-400/50">+</span>
+            <span className="text-[8px] text-emerald-400/40 font-semibold">LONG</span>
           </div>
 
           {/* Interval dots */}
-          <div className="hidden md:flex items-center gap-2 text-[9px] text-neutral-600">
-            <span className="flex items-center gap-0.5"><span className="w-1 h-1 rounded-full bg-amber-400/70 inline-block" /> 1h</span>
-            <span className="flex items-center gap-0.5"><span className="w-1 h-1 rounded-full bg-sky-400/70 inline-block" /> 4h</span>
+          <div className="hidden md:flex items-center gap-2.5 text-[9px] text-neutral-600">
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400/70 inline-block" /> <span className="font-medium">1h</span></span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-400/70 inline-block" /> <span className="font-medium">4h</span></span>
           </div>
         </div>
       </div>
@@ -466,8 +487,12 @@ export default function FundingHeatmapView({
       {/* ═══════ GRID VIEW ═══════ */}
       {mode === 'grid' && (
         <>
+          {/* Top scrollbar — synced with table */}
+          <div ref={topScrollRef} className="overflow-x-auto heatmap-scroll" style={{ marginTop: -1 }}>
+            <div style={{ width: scrollWidth, height: 1 }} />
+          </div>
           <div className="relative">
-          <div className="overflow-x-auto">
+          <div ref={tableScrollRef} className="overflow-x-auto heatmap-scroll">
             <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
@@ -495,7 +520,7 @@ export default function FundingHeatmapView({
                   {visibleExchanges.map(ex => {
                     const isActive = exchangeSort?.exchange === ex;
                     return (
-                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 60 }}>
+                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 68 }}>
                         <button
                           onClick={() => handleExchangeClick(ex)}
                           className={`w-full flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all cursor-pointer ${
@@ -545,14 +570,14 @@ export default function FundingHeatmapView({
                           transition: 'background 60ms',
                         }}
                       >
-                        <Link href={`/funding/${symbol}`} className="flex items-center gap-2 py-1.5 no-underline group/link">
-                          <TokenIconSimple symbol={symbol} size={18} />
+                        <Link href={`/funding/${symbol}`} className="flex items-center gap-2.5 py-2 no-underline group/link">
+                          <TokenIconSimple symbol={symbol} size={20} />
                           <div className="flex flex-col min-w-0">
-                            <span className="text-[11px] font-semibold text-white leading-tight truncate group-hover/link:text-hub-yellow transition-colors">
+                            <span className="text-[12px] font-bold text-white leading-tight truncate group-hover/link:text-hub-yellow transition-colors">
                               {symbol}
                             </span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-mono tabular-nums leading-tight font-medium" style={{ color: avgColors.text }}>
+                              <span className="text-[10px] font-mono tabular-nums leading-tight font-semibold" style={{ color: avgColors.text }}>
                                 {avg !== undefined ? formatRateAdaptive(avg) : '—'}
                               </span>
                               <span className="text-[8px] text-neutral-700 tabular-nums">{listings}/{visibleExchanges.length}</span>
@@ -582,8 +607,8 @@ export default function FundingHeatmapView({
                           borderWidth: 1,
                           borderStyle: 'solid',
                           borderColor: isCross ? 'rgba(255,255,255,0.2)' : colors.glow,
-                          minHeight: hasLS ? 32 : 28,
-                          height: hasLS ? 32 : 28,
+                          minHeight: hasLS ? 38 : 34,
+                          height: hasLS ? 38 : 34,
                           transition: 'border-color 60ms',
                         };
 
@@ -599,12 +624,12 @@ export default function FundingHeatmapView({
                           : `Not on ${ex}`;
                         const inner = hasLS ? (
                           <>
-                            <span className="flex flex-col items-center gap-[1px] leading-none">
-                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.long, gridClamp).text }}>
-                                <span className="text-white/30">L</span> {formatRateAdaptive(ls.long)}
+                            <span className="flex flex-col items-center gap-[2px] leading-none">
+                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.long, gridClamp).text }}>
+                                <span className="text-white/25 text-[8px]">L</span> {formatRateAdaptive(ls.long)}
                               </span>
-                              <span className="text-[8px] font-mono tabular-nums font-medium" style={{ color: rateToColors(ls.short, gridClamp).text }}>
-                                <span className="text-white/30">S</span> {formatRateAdaptive(ls.short)}
+                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.short, gridClamp).text }}>
+                                <span className="text-white/25 text-[8px]">S</span> {formatRateAdaptive(ls.short)}
                               </span>
                             </span>
                             {intervalDot}
@@ -614,7 +639,7 @@ export default function FundingHeatmapView({
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] font-mono tabular-nums leading-none font-medium" style={{ color: colors.text }}>
+                            <span className="text-[11px] font-mono tabular-nums leading-none font-semibold" style={{ color: colors.text }}>
                               {rate !== undefined ? formatRateAdaptive(rate) : '—'}
                             </span>
                             {intervalDot}

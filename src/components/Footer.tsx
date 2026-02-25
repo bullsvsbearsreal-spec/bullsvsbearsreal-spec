@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Logo from './Logo';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import {
-  Github, Twitter, Send,
+  Twitter, Send,
   Percent, PieChart, Zap, SlidersHorizontal, Grid3X3, LineChart, Shield, ArrowLeftRight,
   Crosshair, Activity, BarChart2, Eye,
   Rocket, Map, Crown, Building2, Landmark, Coins, GitCompareArrows, Unlock, Bitcoin,
@@ -370,8 +370,7 @@ export default function Footer() {
           {/* Social links */}
           <div className="flex items-center gap-2">
             {[
-              { href: 'https://x.com/InfoHub_io', icon: Twitter, label: 'Follow on X / Twitter' },
-              { href: 'https://github.com/GroovyGecko88/infohub', icon: Github, label: 'View on GitHub' },
+              { href: 'https://x.com/info_hub69', icon: Twitter, label: 'Follow on X / Twitter' },
               { href: 'https://t.me/+Z6SQGJ57SlwyY2Rk', icon: Send, label: 'Join Telegram' },
             ].map(({ href, icon: SocialIcon, label }) => (
               <a

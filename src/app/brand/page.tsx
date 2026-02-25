@@ -30,12 +30,13 @@ const brandColors = {
 };
 
 const assets = [
+  { name: 'Wordmark PNG', file: '/infohub-wordmark.png', preview: '/infohub-wordmark.png', desc: 'Text logo (Info|Hub)', size: '1600x400', format: 'PNG' },
+  { name: 'Wordmark SVG', file: '/logo-full.svg', preview: '/infohub-wordmark.png', desc: 'Vector text logo', size: 'Vector', format: 'SVG' },
   { name: 'Logo Icon', file: '/icon-512.png', preview: '/icon-512.png', desc: 'Primary logo icon', size: '512x512', format: 'PNG' },
   { name: 'Logo Full', file: '/infohub-logo.png', preview: '/infohub-logo.png', desc: 'Full logo with text', size: '800x800', format: 'PNG' },
   { name: 'Icon 192', file: '/icon-192.png', preview: '/icon-192.png', desc: 'Medium icon', size: '192x192', format: 'PNG' },
   { name: 'Favicon', file: '/favicon.png', preview: '/favicon.png', desc: 'Browser tab icon', size: '32x32', format: 'PNG' },
   { name: 'Apple Touch', file: '/apple-touch-icon.png', preview: '/apple-touch-icon.png', desc: 'Apple touch icon', size: '180x180', format: 'PNG' },
-  { name: 'Full Logo SVG', file: '/logos/infohub-logo.svg', preview: '/icon-512.png', desc: 'Vector logo with wordmark', size: 'Vector', format: 'SVG' },
 ];
 
 function CopyButton({ text }: { text: string }) {
@@ -113,7 +114,7 @@ export default function BrandPage() {
           <div className="flex items-center gap-6 mt-4">
             <div className="flex items-center gap-2 text-neutral-500 text-xs">
               <Image className="w-3.5 h-3.5 text-hub-yellow/60" />
-              <span>6 logo assets</span>
+              <span>8 logo assets</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-500 text-xs">
               <Palette className="w-3.5 h-3.5 text-hub-yellow/60" />
@@ -156,8 +157,30 @@ export default function BrandPage() {
             Logo
           </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Primary Logo */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Wordmark Logo */}
+            <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
+              <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
+                <img src="/infohub-wordmark.png" alt="InfoHub Wordmark" className="h-16 object-contain" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-white font-semibold">Wordmark</h3>
+                  <p className="text-neutral-600 text-sm">Primary text logo</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href="/infohub-wordmark.png" download className="flex items-center gap-2 px-4 py-2 rounded-xl bg-hub-yellow/10 text-hub-yellow text-sm font-medium hover:bg-hub-yellow/20 transition-colors">
+                    <Download className="w-4 h-4" />
+                    PNG
+                  </a>
+                  <a href="/logo-full.svg" download className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] text-neutral-400 text-sm font-medium hover:bg-white/[0.1] transition-colors">
+                    SVG
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Full Logo */}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
               <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
                 <img src="/infohub-logo.png" alt="InfoHub Full Logo" className="h-24 object-contain" />
