@@ -966,19 +966,21 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const ARB_BLOCKS_PER_8H = 115200; // Arbitrum ~0.25s blocks
 
       // Pre-calculate V1 group borrowing rates (utilization-dependent)
-      // Per gTrade docs: effectiveOi = abs(long - short) — net imbalance, not total
+      // SDK converter divides all raw values by 1e10 before calculation.
+      // Formula: activeFeePerBlock = (feePerBlock/1e10) * (netOi/maxOi)^exp
+      // Rate 8h = activeFeePerBlock * ARB_BLOCKS_PER_8H (no extra /1e10 at calc time)
       const v1GroupRates: number[] = v1BorrowGroups.map((group: any) => {
-        const feePerBlock = Number(group?.feePerBlock || 0);
+        const feePerBlock = Number(group?.feePerBlock || 0) / V1_FEE_PRECISION;
         if (feePerBlock <= 0) return 0;
-        const oiLong = Number(group?.oi?.long || 0);
-        const oiShort = Number(group?.oi?.short || 0);
-        const maxOi = Number(group?.oi?.max || 0);
+        const oiLong = Number(group?.oi?.long || 0) / V1_FEE_PRECISION;
+        const oiShort = Number(group?.oi?.short || 0) / V1_FEE_PRECISION;
+        const maxOi = Number(group?.oi?.max || 0) / V1_FEE_PRECISION;
         if (maxOi <= 0) return 0;
         const exponent = Number(group?.feeExponent || 1);
+        // Groups have no fee caps — just use raw net OI
         const effectiveOi = Math.abs(oiLong - oiShort);
         const utilization = Math.min(effectiveOi / maxOi, 1);
-        // Effective fee per block after utilization, then convert to 8h rate
-        return (feePerBlock * Math.pow(utilization, exponent)) / V1_FEE_PRECISION * ARB_BLOCKS_PER_8H;
+        return feePerBlock * Math.pow(utilization, exponent) * ARB_BLOCKS_PER_8H;
       });
 
       for (let i = 0; i < Math.min(pairs.length, fundingParams.length, fundingData.length); i++) {
@@ -1104,35 +1106,41 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600
             : 0;
 
-          // V1 borrowing: block-based, group-level utilization fee (used by borrow-only pairs)
+          // V1 borrowing: block-based, utilization fee (used by borrow-only pairs)
+          // SDK uses Math.max(pairRate, groupRate) via getActiveFeePerBlock
           let borrowV1Rate8h = 0;
           if (!hasFunding && borrowV2Rate8h === 0) {
             const v1Pair = v1BorrowPairs[i];
             if (v1Pair) {
-              // Group-level fee (main contributor — based on group OI utilization)
+              // Group-level fee (based on group OI utilization)
+              let groupRate8h = 0;
               const pairGroupEntry = v1Pair.groups?.[0];
               const v1GroupIdx = pairGroupEntry ? Number(pairGroupEntry.groupIndex) : -1;
               if (v1GroupIdx >= 0 && v1GroupIdx < v1GroupRates.length) {
-                borrowV1Rate8h += v1GroupRates[v1GroupIdx];
+                groupRate8h = v1GroupRates[v1GroupIdx];
               }
-              // Pair-level fee: effectiveOi = clamp(abs(long-short), max*minP, max*maxP)
-              const pairFeePerBlock = Number(v1Pair.feePerBlock || 0);
+              // Pair-level fee — SDK converter pre-divides ALL values by 1e10
+              // beforeV10 OI fields are raw 1e10 scale, feePerBlock is raw 1e10 scale
+              // feePerBlockCap: minP = raw / 1e3 / 100, maxP = raw / 1e3 / 100
+              let pairRate8h = 0;
+              const pairFeePerBlock = Number(v1Pair.feePerBlock || 0) / V1_FEE_PRECISION;
               if (pairFeePerBlock > 0) {
-                // Token OI is in 1e18 precision, beforeV10.max is in 1e10 precision.
-                // Normalize token OI to 1e10 scale to match beforeV10.max.
-                const pairTokenOiL = Number(v1Pair.oi?.token?.oiLongToken || 0) / 1e8;
-                const pairTokenOiS = Number(v1Pair.oi?.token?.oiShortToken || 0) / 1e8;
-                const pairMaxOi = Number(v1Pair.oi?.beforeV10?.max || 0);
+                const pairOiL = Number(v1Pair.oi?.beforeV10?.long || 0) / V1_FEE_PRECISION;
+                const pairOiS = Number(v1Pair.oi?.beforeV10?.short || 0) / V1_FEE_PRECISION;
+                const pairMaxOi = Number(v1Pair.oi?.beforeV10?.max || 0) / V1_FEE_PRECISION;
                 if (pairMaxOi > 0) {
                   const pairExp = Number(v1Pair.feeExponent || 1);
-                  const minP = Number(v1Pair.feePerBlockCap?.minP || 0) / 1e5;
-                  const maxP = Number(v1Pair.feePerBlockCap?.maxP || 1e5) / 1e5;
-                  const netOi = Math.abs(pairTokenOiL - pairTokenOiS);
+                  const rawMinP = Number(v1Pair.feePerBlockCap?.minP || 0);
+                  const rawMaxP = Number(v1Pair.feePerBlockCap?.maxP || 0);
+                  const minP = rawMinP ? rawMinP / 1e3 / 100 : 0;
+                  const maxP = rawMaxP && rawMaxP > 0 ? rawMaxP / 1e3 / 100 : 1;
+                  const netOi = Math.abs(pairOiL - pairOiS);
                   const effectiveOi = Math.min(Math.max(netOi, pairMaxOi * minP), pairMaxOi * maxP);
-                  const pairUtil = Math.min(effectiveOi / pairMaxOi, 1);
-                  borrowV1Rate8h += (pairFeePerBlock * Math.pow(pairUtil, pairExp)) / V1_FEE_PRECISION * ARB_BLOCKS_PER_8H;
+                  pairRate8h = pairFeePerBlock * Math.pow(effectiveOi / pairMaxOi, pairExp) * ARB_BLOCKS_PER_8H;
                 }
               }
+              // SDK: getActiveFeePerBlock returns Math.max(pairRate, groupRate)
+              borrowV1Rate8h = Math.max(groupRate8h, pairRate8h);
             }
           }
 
@@ -1264,17 +1272,26 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return Array.from(bestBySymbol.values())
         .map(({ market: m }) => {
           const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
-          // Annual rate at 1e30 precision -> hourly percentage
-          const rateLong = Number(BigInt(m.fundingRateLong)) / 1e30 / 8760 * 100;
-          const rateShort = Number(BigInt(m.fundingRateShort || '0')) / 1e30 / 8760 * 100;
-          // fundingRate = long side rate (standard convention: positive = longs pay)
-          const fundingRate = rateLong;
+          // GMX V2: annual rate at 1e30 precision -> hourly percentage
+          // GMX convention: negative fundingRateLong = longs pay (cost).
+          // Negate to match our convention: positive = longs pay.
+          const rawFundingL = Number(BigInt(m.fundingRateLong)) / 1e30 / 8760 * 100;
+          // Don't use raw fundingRateShort — it explodes when short OI ≈ 0
+          // (e.g., JTO short OI $0.89 → 75%/hr). Derive symmetric rate from long instead.
+          const fundingL = -rawFundingL; // positive = longs pay
+          const fundingS = rawFundingL;  // symmetric: shorts earn what longs pay
+          // Add borrowing rates (always a cost, positive)
+          const borrowL = Number(BigInt(m.borrowingRateLong || '0')) / 1e30 / 8760 * 100;
+          const borrowS = Number(BigInt(m.borrowingRateShort || '0')) / 1e30 / 8760 * 100;
+          const rateLong = fundingL + borrowL;
+          const rateShort = fundingS + borrowS;
           return {
             symbol,
             exchange: 'GMX',
-            fundingRate,
-            fundingRateLong: rateLong,   // What longs pay/earn per hour
-            fundingRateShort: rateShort,  // What shorts pay/earn per hour
+            fundingRate: fundingL,        // Base funding component (positive = longs pay)
+            fundingRateLong: rateLong,     // Funding + borrowing for long side
+            fundingRateShort: rateShort,   // Funding + borrowing for short side
+            borrowingRate: borrowL + borrowS > 0.00001 ? borrowL : undefined,
             markPrice: 0, // GMX markets/info doesn't provide mark price
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000, // continuous, next "hour"
