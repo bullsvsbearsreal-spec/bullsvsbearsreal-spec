@@ -183,7 +183,7 @@ export default function TrailerPage() {
       {sceneId === 'montage-4' && (
         <MontageSlide
           title="And So Much More"
-          desc="Long/short ratios, whale alerts, options flow, CVD, heatmaps — all free"
+          desc="Long/short ratios, whale alerts, options flow, CVD, heatmaps — all in one place"
           color="#8B5CF6"
           icon="⚡"
           features={['Long/Short Ratios', 'Whale Alerts', 'Options Flow', 'News Feed', 'Fear & Greed', 'CVD Tracker', 'Market Heatmap', 'RSI Heatmap']}
@@ -225,7 +225,7 @@ export default function TrailerPage() {
               </h2>
             </div>
             <p className="text-xl text-neutral-400 mb-10">
-              Free. No signup. Open it and trade.
+              No signup required. Open it and trade.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button

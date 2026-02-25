@@ -11,6 +11,7 @@ import {
   isDBConfigured,
   saveFundingSnapshot,
   saveOISnapshot,
+  saveLiquidationSnapshot,
   pruneOldData,
 } from '@/lib/db';
 
@@ -39,13 +40,15 @@ export async function GET(request: NextRequest) {
     await initDB();
 
     const origin = request.nextUrl.origin;
-    const [fundingRes, oiRes] = await Promise.all([
+    const [fundingRes, oiRes, liqHeatmapRes] = await Promise.all([
       fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) }),
       fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(25000) }),
+      fetch(`${origin}/api/liquidation-heatmap?symbol=BTC&timeframe=24h`, { signal: AbortSignal.timeout(15000) }).catch(() => null),
     ]);
 
     let fundingInserted = 0;
     let oiInserted = 0;
+    let liqInserted = 0;
 
     // Process funding rates
     if (fundingRes.ok) {
@@ -104,8 +107,63 @@ export async function GET(request: NextRequest) {
       oiInserted = await saveOISnapshot(oiEntries);
     }
 
+    // Process liquidations from heatmap API (BTC + ETH + SOL)
+    if (liqHeatmapRes && liqHeatmapRes.ok) {
+      try {
+        const liqJson = await liqHeatmapRes.json();
+        const recentEvents: any[] = liqJson?.summary?.recentEvents || [];
+        const symbol = liqJson?.symbol || 'BTC';
+
+        if (recentEvents.length > 0) {
+          const liqEntries = recentEvents
+            .filter((e: any) => e.volume > 0 && e.price > 0)
+            .map((e: any) => ({
+              symbol,
+              exchange: e.exchange || 'Unknown',
+              side: (e.side || 'long') as 'long' | 'short',
+              price: e.price,
+              quantity: e.volume / e.price,
+              valueUsd: e.volume,
+              timestamp: e.time,
+            }));
+          liqInserted += await saveLiquidationSnapshot(liqEntries);
+        }
+      } catch (liqErr) {
+        console.error('Liquidation snapshot error:', liqErr);
+      }
+    }
+
+    // Also fetch ETH + SOL liquidations
+    for (const sym of ['ETH', 'SOL']) {
+      try {
+        const res = await fetch(`${origin}/api/liquidation-heatmap?symbol=${sym}&timeframe=24h`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const events: any[] = json?.summary?.recentEvents || [];
+          if (events.length > 0) {
+            const entries = events
+              .filter((e: any) => e.volume > 0 && e.price > 0)
+              .map((e: any) => ({
+                symbol: sym,
+                exchange: e.exchange || 'Unknown',
+                side: (e.side || 'long') as 'long' | 'short',
+                price: e.price,
+                quantity: e.volume / e.price,
+                valueUsd: e.volume,
+                timestamp: e.time,
+              }));
+            liqInserted += await saveLiquidationSnapshot(entries);
+          }
+        }
+      } catch {
+        // non-critical, continue
+      }
+    }
+
     // Prune old data (infrequently — ~1 in 6 runs, roughly once an hour)
-    let pruned = { funding: 0, oi: 0 };
+    let pruned = { funding: 0, oi: 0, liquidations: 0 };
     if (Math.random() < 0.17) {
       pruned = await pruneOldData(90);
     }
@@ -114,7 +172,8 @@ export async function GET(request: NextRequest) {
       ok: true,
       fundingInserted,
       oiInserted,
-      pruned: pruned.funding + pruned.oi > 0 ? pruned : undefined,
+      liqInserted,
+      pruned: pruned.funding + pruned.oi + pruned.liquidations > 0 ? pruned : undefined,
       timestamp: Date.now(),
     });
   } catch (error) {

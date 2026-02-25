@@ -101,7 +101,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/api-docs': {
     title: 'API Documentation',
-    description: 'Free crypto derivatives API. Access real-time funding rates, open interest, tickers, and prediction markets data.',
+    description: 'Crypto derivatives API. Access real-time funding rates, open interest, tickers, and prediction markets data.',
   },
   '/faq': {
     title: 'FAQ',

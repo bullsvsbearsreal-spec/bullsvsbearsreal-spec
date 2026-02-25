@@ -44,7 +44,7 @@ const projectStats = [
   { value: '24', label: 'Exchanges', sublabel: 'tracked' },
   { value: '8,000+', label: 'Pairs', sublabel: 'monitored' },
   { value: 'Real-time', label: 'Data', sublabel: 'updates' },
-  { value: 'Free', label: 'Forever', sublabel: 'no paywalls' },
+  { value: '24/7', label: 'Uptime', sublabel: 'always on' },
 ];
 
 export default function TeamPage() {

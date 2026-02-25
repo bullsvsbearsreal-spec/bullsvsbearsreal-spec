@@ -122,6 +122,21 @@ export async function initDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_portfolio_user_ts ON portfolio_snapshots(user_id, ts DESC)`;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS liquidation_snapshots (
+      id SERIAL PRIMARY KEY,
+      symbol TEXT NOT NULL,
+      exchange TEXT NOT NULL,
+      side TEXT NOT NULL,
+      price REAL NOT NULL,
+      quantity REAL NOT NULL,
+      value_usd REAL NOT NULL,
+      ts TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_liq_sym_ts ON liquidation_snapshots(symbol, ts DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_liq_sym_ex_ts ON liquidation_snapshots(symbol, exchange, ts DESC)`;
+
   // Compound indexes for faster history queries
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_sym_ex_ts ON funding_snapshots(symbol, exchange, ts DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_oi_sym_ex_ts ON oi_snapshots(symbol, exchange, ts DESC)`;
@@ -217,6 +232,154 @@ export async function saveOISnapshot(entries: OISnapshotEntry[]): Promise<number
   }
 
   return inserted;
+}
+
+// ─── Liquidation Snapshots ──────────────────────────────────────────────────
+
+interface LiquidationSnapshotEntry {
+  symbol: string;
+  exchange: string;
+  side: 'long' | 'short';
+  price: number;
+  quantity: number;
+  valueUsd: number;
+  timestamp?: number; // unix ms — defaults to NOW()
+}
+
+export async function saveLiquidationSnapshot(entries: LiquidationSnapshotEntry[]): Promise<number> {
+  if (entries.length === 0) return 0;
+  const sql = getSQL();
+
+  let inserted = 0;
+  for (let i = 0; i < entries.length; i += 50) {
+    const chunk = entries.slice(i, i + 50);
+    const promises = chunk.map(e => {
+      const ts = e.timestamp ? new Date(e.timestamp).toISOString() : new Date().toISOString();
+      return sql`INSERT INTO liquidation_snapshots (symbol, exchange, side, price, quantity, value_usd, ts)
+          VALUES (${e.symbol}, ${e.exchange}, ${e.side}, ${e.price}, ${e.quantity}, ${e.valueUsd}, ${ts})`;
+    });
+    await Promise.all(promises);
+    inserted += chunk.length;
+  }
+
+  return inserted;
+}
+
+export interface LiquidationHistoryPoint {
+  t: number;
+  value: number;
+  count: number;
+  longValue: number;
+  shortValue: number;
+}
+
+/**
+ * Get aggregated liquidation history bucketed by hour.
+ * Returns total value, count, long/short breakdown per bucket.
+ */
+export async function getLiquidationHistory(
+  symbol: string,
+  days: number = 7,
+): Promise<LiquidationHistoryPoint[]> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = await sql`
+      SELECT
+        EXTRACT(EPOCH FROM date_trunc('hour', ts)) * 1000 AS t,
+        SUM(value_usd) AS value,
+        COUNT(*) AS count,
+        SUM(CASE WHEN side = 'long' THEN value_usd ELSE 0 END) AS long_value,
+        SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END) AS short_value
+      FROM liquidation_snapshots
+      WHERE symbol = ${symbol}
+        AND ts > NOW() - ${intervalStr}::interval
+      GROUP BY date_trunc('hour', ts)
+      ORDER BY t ASC
+    `;
+    return rows.map((r: any) => ({
+      t: Number(r.t),
+      value: Number(r.value),
+      count: Number(r.count),
+      longValue: Number(r.long_value),
+      shortValue: Number(r.short_value),
+    }));
+  } catch (e) {
+    console.error('DB getLiquidationHistory error:', e);
+    return [];
+  }
+}
+
+/**
+ * Get aggregated liquidation stats per exchange for a symbol.
+ */
+export async function getLiquidationsByExchange(
+  symbol: string,
+  days: number = 7,
+): Promise<Array<{ exchange: string; value: number; count: number; longValue: number; shortValue: number }>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = await sql`
+      SELECT
+        exchange,
+        SUM(value_usd) AS value,
+        COUNT(*) AS count,
+        SUM(CASE WHEN side = 'long' THEN value_usd ELSE 0 END) AS long_value,
+        SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END) AS short_value
+      FROM liquidation_snapshots
+      WHERE symbol = ${symbol}
+        AND ts > NOW() - ${intervalStr}::interval
+      GROUP BY exchange
+      ORDER BY value DESC
+    `;
+    return rows.map((r: any) => ({
+      exchange: r.exchange,
+      value: Number(r.value),
+      count: Number(r.count),
+      longValue: Number(r.long_value),
+      shortValue: Number(r.short_value),
+    }));
+  } catch (e) {
+    console.error('DB getLiquidationsByExchange error:', e);
+    return [];
+  }
+}
+
+/**
+ * Get top liquidated symbols by total value.
+ */
+export async function getTopLiquidatedSymbols(
+  days: number = 1,
+  limit: number = 20,
+): Promise<Array<{ symbol: string; value: number; count: number; longValue: number; shortValue: number }>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = await sql`
+      SELECT
+        symbol,
+        SUM(value_usd) AS value,
+        COUNT(*) AS count,
+        SUM(CASE WHEN side = 'long' THEN value_usd ELSE 0 END) AS long_value,
+        SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END) AS short_value
+      FROM liquidation_snapshots
+      WHERE ts > NOW() - ${intervalStr}::interval
+      GROUP BY symbol
+      ORDER BY value DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      symbol: r.symbol,
+      value: Number(r.value),
+      count: Number(r.count),
+      longValue: Number(r.long_value),
+      shortValue: Number(r.short_value),
+    }));
+  } catch (e) {
+    console.error('DB getTopLiquidatedSymbols error:', e);
+    return [];
+  }
 }
 
 // ─── Historical Data Queries ────────────────────────────────────────────────
@@ -401,7 +564,7 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
 
 // ─── Data Pruning ───────────────────────────────────────────────────────────
 
-export async function pruneOldData(keepDays: number = 90): Promise<{ funding: number; oi: number }> {
+export async function pruneOldData(keepDays: number = 90): Promise<{ funding: number; oi: number; liquidations: number }> {
   try {
     const sql = getSQL();
     const intervalStr = `${keepDays} days`;
@@ -412,6 +575,9 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
     const oi = await sql`
       DELETE FROM oi_snapshots WHERE ts < NOW() - ${intervalStr}::interval
     `;
+    const liq = await sql`
+      DELETE FROM liquidation_snapshots WHERE ts < NOW() - ${intervalStr}::interval
+    `;
 
     // Also clean expired cache entries
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
@@ -419,10 +585,11 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
     return {
       funding: fr.count ?? 0,
       oi: oi.count ?? 0,
+      liquidations: liq.count ?? 0,
     };
   } catch (e) {
     console.error('DB pruneOldData error:', e);
-    return { funding: 0, oi: 0 };
+    return { funding: 0, oi: 0, liquidations: 0 };
   }
 }
 

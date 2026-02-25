@@ -27,8 +27,8 @@ const faqs: FAQEntry[] = [
   },
   {
     category: 'General',
-    q: 'Is InfoHub free?',
-    a: 'Yes. No login, no account, no paywall. Just open it and use it.',
+    q: 'Do I need an account?',
+    a: 'No. Most features work without logging in. Create an account to sync your watchlist, alerts, and preferences across devices.',
   },
   {
     category: 'General',
@@ -124,7 +124,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Technical',
     q: 'Is there an API?',
-    a: 'Yes \u2014 check the API Docs page. All endpoints are free, no auth required. Just don\u2019t hammer them.',
+    a: 'Yes \u2014 check the API Docs page. All endpoints are publicly accessible, no auth required. Just don\u2019t hammer them.',
   },
   {
     category: 'Technical',

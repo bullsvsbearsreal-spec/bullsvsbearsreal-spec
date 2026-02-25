@@ -18,6 +18,9 @@ import {
   Clock,
   Filter,
   AlertTriangle,
+  Search,
+  X,
+  Radio,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -27,9 +30,14 @@ import {
 type ViewMode = 'calendar' | 'list';
 type QuickFilter = 'week' | 'month' | 'next';
 
+interface EnhancedEvent extends EconomicEvent {
+  source?: 'live' | 'scheduled';
+  actual?: string;
+}
+
 interface ApiResponse {
-  events: EconomicEvent[];
-  meta: { total: number };
+  events: EnhancedEvent[];
+  meta: { total: number; live?: boolean; liveCount?: number; scheduledCount?: number; source?: string };
 }
 
 /* ------------------------------------------------------------------ */
@@ -108,16 +116,21 @@ export default function EconomicCalendarPage() {
   const [categoryFilter, setCategoryFilter] = useState<
     EconomicEvent['category'] | 'all'
   >('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [countryFilter, setCountryFilter] = useState<string>('All');
 
   const monthKey = useMemo(() => formatMonthKey(viewMonth), [viewMonth]);
 
   /* ---------- Fetch events for current month ---------------------- */
 
   const fetcher = useCallback(async () => {
-    const res = await fetch(`/api/economic-calendar?month=${monthKey}`);
+    const params = new URLSearchParams({ month: monthKey });
+    if (searchQuery) params.set('search', searchQuery);
+    if (countryFilter !== 'All') params.set('country', countryFilter);
+    const res = await fetch(`/api/economic-calendar?${params}`);
     if (!res.ok) throw new Error('Failed to fetch events');
     return res.json() as Promise<ApiResponse>;
-  }, [monthKey]);
+  }, [monthKey, searchQuery, countryFilter]);
 
   const { data, error, isLoading, isRefreshing, refresh, lastUpdate } =
     useApiData<ApiResponse>({
@@ -349,6 +362,51 @@ export default function EconomicCalendarPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Search + Country row */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
+            <input
+              type="text"
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/[0.08] text-neutral-500">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Country filter pills */}
+          <div className="flex items-center gap-1">
+            {['All', 'US', 'EU', 'GB', 'JP', 'Global'].map((c) => (
+              <button
+                key={c}
+                onClick={() => setCountryFilter(c)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  countryFilter === c
+                    ? 'bg-hub-yellow text-black'
+                    : 'text-neutral-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08]'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {/* Data source badge */}
+          {data?.meta?.live && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <Radio className="w-3 h-3" />
+              {data.meta.liveCount} live &bull; {data.meta.scheduledCount} scheduled
+            </span>
+          )}
         </div>
 
         {/* Controls row */}
@@ -843,7 +901,7 @@ function EventCard({
   event,
   today,
 }: {
-  event: EconomicEvent;
+  event: EnhancedEvent;
   today: Date;
 }) {
   const eventDate = new Date(event.date + 'T00:00:00');
@@ -884,11 +942,22 @@ function EventCard({
             <span className="text-[10px] font-medium text-neutral-500 bg-white/[0.04] px-1.5 py-0.5 rounded">
               {COUNTRY_LABELS[event.country] ?? event.country}
             </span>
+            {/* Source badge */}
+            {event.source === 'live' ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </span>
+            ) : event.source === 'scheduled' ? (
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/[0.04] text-neutral-500">
+                Scheduled
+              </span>
+            ) : null}
           </div>
           <p className="text-xs text-neutral-600 mt-0.5">
             {event.description}
           </p>
-          <div className="flex items-center gap-4 mt-2">
+          <div className="flex items-center gap-4 mt-2 flex-wrap">
             <span className="text-xs text-neutral-500">
               {eventDate.toLocaleDateString('en-US', {
                 weekday: 'short',
@@ -903,16 +972,25 @@ function EventCard({
                 {event.time}
               </span>
             )}
-            {event.previous && (
-              <span className="text-xs text-neutral-500">
-                Prev: <span className="text-neutral-400">{event.previous}</span>
-              </span>
-            )}
-            {event.forecast && (
-              <span className="text-xs text-neutral-500">
-                Forecast:{' '}
-                <span className="text-neutral-400">{event.forecast}</span>
-              </span>
+            {/* Actual / Forecast / Previous data row */}
+            {(event.actual || event.forecast || event.previous) && (
+              <div className="flex items-center gap-3">
+                {event.actual && (
+                  <span className="text-xs text-neutral-500">
+                    Actual: <span className="text-white font-semibold">{event.actual}</span>
+                  </span>
+                )}
+                {event.forecast && (
+                  <span className="text-xs text-neutral-500">
+                    Forecast: <span className="text-neutral-400">{event.forecast}</span>
+                  </span>
+                )}
+                {event.previous && (
+                  <span className="text-xs text-neutral-500">
+                    Prev: <span className="text-neutral-400">{event.previous}</span>
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

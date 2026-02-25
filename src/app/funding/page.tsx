@@ -316,7 +316,7 @@ export default function FundingPage() {
           </div>
           <div className="flex items-center gap-2">
             <UpdatedAgo date={lastUpdate} />
-            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — free, no signup, 21 exchanges`} />
+            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — real-time data from 24 exchanges`} />
             <button
               onClick={fetchData}
               disabled={loading}

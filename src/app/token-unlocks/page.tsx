@@ -3,9 +3,11 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import { useApiData } from '@/hooks/useApiData';
 import { TokenUnlock, UNLOCK_TYPES, formatUnlockAmount, formatUnlockValue, getDaysUntilUnlock, formatUnlockDate } from '@/lib/api/tokenunlocks';
-import { RefreshCw, AlertTriangle, Calendar, List, Filter, Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Calendar, List, Filter, Search, ChevronLeft, ChevronRight, X, ExternalLink, Zap } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -15,7 +17,7 @@ type UnlockType = TokenUnlock['unlockType'];
 
 interface ApiResponse {
   unlocks: TokenUnlock[];
-  meta: { total: number; timestamp: number };
+  meta: { total: number; timestamp: number; priceSource?: 'coingecko' | 'static'; tokens?: number };
 }
 
 /* ------------------------------------------------------------------ */
@@ -29,6 +31,8 @@ const TYPE_COLORS: Record<UnlockType, { bg: string; text: string; dot: string }>
   ecosystem: { bg: 'bg-emerald-500/10',text: 'text-emerald-400',dot: 'bg-emerald-400' },
   treasury:  { bg: 'bg-hub-yellow/10', text: 'text-hub-yellow', dot: 'bg-hub-yellow' },
 };
+
+const BAR_COLORS = ['#facc15', '#f59e0b', '#eab308', '#d97706', '#ca8a04', '#b45309', '#a16207', '#92400e'];
 
 /* ------------------------------------------------------------------ */
 /*  Calendar helpers                                                   */
@@ -45,6 +49,82 @@ function isSameDay(a: Date, b: Date) {
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/* ------------------------------------------------------------------ */
+/*  Weekly chart: aggregate unlock values over next 8 weeks            */
+/* ------------------------------------------------------------------ */
+function WeeklyChart({ unlocks }: { unlocks: TokenUnlock[] }) {
+  const data = useMemo(() => {
+    const now = new Date();
+    const weeks: { label: string; value: number; count: number }[] = [];
+    for (let w = 0; w < 8; w++) {
+      const start = new Date(now);
+      start.setDate(start.getDate() + w * 7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      const weekUnlocks = unlocks.filter(u => {
+        const d = new Date(u.unlockDate);
+        return d >= start && d < end;
+      });
+      const label = w === 0 ? 'This Week' : w === 1 ? 'Next Week' : `Week ${w + 1}`;
+      weeks.push({
+        label,
+        value: weekUnlocks.reduce((s, u) => s + u.unlockValue, 0),
+        count: weekUnlocks.length,
+      });
+    }
+    return weeks;
+  }, [unlocks]);
+
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+
+  return (
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white">Upcoming Unlock Value by Week</h3>
+        <span className="text-[10px] text-neutral-600">Next 8 weeks</span>
+      </div>
+      <div className="h-[140px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} barCategoryGap="20%">
+            <XAxis
+              dataKey="label"
+              tick={{ fill: '#737373', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: '#525252', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v: number) => {
+                if (v >= 1e9) return `$${(v / 1e9).toFixed(0)}B`;
+                if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+                if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+                return `$${v}`;
+              }}
+              width={60}
+            />
+            <Tooltip
+              cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+              contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
+              labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}
+              formatter={(value: number, _name: string, props: any) => [
+                `${formatUnlockValue(value)} (${props.payload.count} unlocks)`,
+                'Value',
+              ]}
+            />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {data.map((entry, i) => (
+                <Cell key={i} fill={entry.value > 0 ? BAR_COLORS[i % BAR_COLORS.length] : '#262626'} fillOpacity={entry.value / maxVal * 0.6 + 0.4} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Stats card component                                               */
@@ -89,13 +169,14 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
       <div className="flex items-start justify-between gap-3">
         {/* Left: token info */}
         <div className="flex items-center gap-3 min-w-0">
-          {/* Symbol circle */}
-          <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-white">{unlock.coinSymbol}</span>
+          {/* Token icon */}
+          <div className="flex-shrink-0">
+            <TokenIconSimple symbol={unlock.coinSymbol} size={36} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-white text-sm">{unlock.coinName}</span>
+              <span className="text-xs text-neutral-600">{unlock.coinSymbol}</span>
               <TypeBadge type={unlock.unlockType} />
               {unlock.isLarge && (
                 <span title="Large unlock (>1% supply)"><AlertTriangle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /></span>
@@ -114,22 +195,35 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
         </div>
       </div>
 
-      {/* Bottom row: metrics */}
-      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/[0.04]">
-        <div>
-          <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Amount</p>
-          <p className="text-sm font-mono font-semibold text-white">{formatUnlockAmount(unlock.unlockAmount)} {unlock.coinSymbol}</p>
+      {/* Bottom row: metrics + source */}
+      <div className="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-white/[0.04]">
+        <div className="flex items-center gap-4">
+          <div>
+            <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Amount</p>
+            <p className="text-sm font-mono font-semibold text-white">{formatUnlockAmount(unlock.unlockAmount)} {unlock.coinSymbol}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Value</p>
+            <p className="text-sm font-mono font-semibold text-white">{formatUnlockValue(unlock.unlockValue)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-neutral-600 uppercase tracking-wider">% Supply</p>
+            <p className={`text-sm font-mono font-semibold ${unlock.percentOfSupply >= 1 ? 'text-yellow-400' : 'text-white'}`}>
+              {unlock.percentOfSupply.toFixed(2)}%
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Value</p>
-          <p className="text-sm font-mono font-semibold text-white">{formatUnlockValue(unlock.unlockValue)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-neutral-600 uppercase tracking-wider">% Supply</p>
-          <p className={`text-sm font-mono font-semibold ${unlock.percentOfSupply >= 1 ? 'text-yellow-400' : 'text-white'}`}>
-            {unlock.percentOfSupply.toFixed(2)}%
-          </p>
-        </div>
+        {unlock.source && (
+          <a
+            href={unlock.source}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[10px] text-neutral-600 hover:text-hub-yellow transition-colors flex-shrink-0"
+            title="View source"
+          >
+            Source <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
       </div>
     </div>
   );
@@ -285,6 +379,7 @@ export default function TokenUnlocksPage() {
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [upcomingOnly, setUpcomingOnly] = useState(true);
+  const [thisWeekOnly, setThisWeekOnly] = useState(false);
   const [calendarDate, setCalendarDate] = useState<Date | null>(null);
 
   const fetcher = useCallback(async () => {
@@ -299,9 +394,14 @@ export default function TokenUnlocksPage() {
   });
 
   const allUnlocks = data?.unlocks ?? [];
+  const priceSource = data?.meta?.priceSource;
 
   // Apply filters
   const filtered = useMemo(() => {
+    const now = new Date();
+    const weekEnd = new Date(now);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
     return allUnlocks.filter(u => {
       if (!selectedTypes.has(u.unlockType)) return false;
       if (u.unlockValue < minValue) return false;
@@ -309,18 +409,22 @@ export default function TokenUnlocksPage() {
         const q = search.toLowerCase();
         if (!u.coinName.toLowerCase().includes(q) && !u.coinSymbol.toLowerCase().includes(q)) return false;
       }
+      if (thisWeekOnly) {
+        const d = new Date(u.unlockDate);
+        if (d < now || d > weekEnd) return false;
+      }
       return true;
     });
-  }, [allUnlocks, selectedTypes, minValue, search]);
+  }, [allUnlocks, selectedTypes, minValue, search, thisWeekOnly]);
 
   // For list view: sort by date, upcoming first
   const listUnlocks = useMemo(() => {
     const now = new Date();
     const upcoming = filtered.filter(u => new Date(u.unlockDate) >= now).sort((a, b) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime());
-    if (upcomingOnly) return upcoming;
+    if (upcomingOnly || thisWeekOnly) return upcoming;
     const past = filtered.filter(u => new Date(u.unlockDate) < now).sort((a, b) => new Date(b.unlockDate).getTime() - new Date(a.unlockDate).getTime());
     return [...upcoming, ...past];
-  }, [filtered, upcomingOnly]);
+  }, [filtered, upcomingOnly, thisWeekOnly]);
 
   // Stats
   const stats = useMemo(() => {
@@ -364,9 +468,21 @@ export default function TokenUnlocksPage() {
             </div>
             <div>
               <h1 className="heading-page">Token Unlocks Calendar</h1>
-              <p className="text-neutral-600 text-xs mt-0.5">
-                Upcoming token vesting schedules across {new Set(allUnlocks.map(u => u.coinSymbol)).size} tokens
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-neutral-600 text-xs">
+                  Upcoming token vesting schedules across {new Set(allUnlocks.map(u => u.coinSymbol)).size} tokens
+                </p>
+                {priceSource && (
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                    priceSource === 'coingecko'
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-neutral-500/10 text-neutral-400'
+                  }`}>
+                    <Zap className="w-2.5 h-2.5" />
+                    {priceSource === 'coingecko' ? 'Live CoinGecko Prices' : 'Static Prices'}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -404,12 +520,14 @@ export default function TokenUnlocksPage() {
                 </div>
               ))}
             </div>
+            {/* Chart skeleton */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse h-[200px]" />
             {/* Unlock cards skeleton */}
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 animate-pulse">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-white/[0.06]" />
+                    <div className="w-9 h-9 rounded-full bg-white/[0.06]" />
                     <div className="h-4 w-24 bg-white/[0.06] rounded" />
                     <div className="ml-auto h-4 w-16 bg-white/[0.06] rounded" />
                   </div>
@@ -435,6 +553,9 @@ export default function TokenUnlocksPage() {
               />
               <StatCard label="Avg % of Supply" value={`${stats.avgPct.toFixed(2)}%`} sub="per unlock event" />
             </div>
+
+            {/* Weekly chart */}
+            <WeeklyChart unlocks={allUnlocks} />
 
             {/* Controls row */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -476,6 +597,18 @@ export default function TokenUnlocksPage() {
                   </button>
                 )}
               </div>
+
+              {/* This Week toggle */}
+              <button
+                onClick={() => { setThisWeekOnly(!thisWeekOnly); if (!thisWeekOnly) setUpcomingOnly(true); }}
+                className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors border ${
+                  thisWeekOnly
+                    ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                    : 'bg-white/[0.04] text-neutral-500 hover:text-white border-white/[0.06]'
+                }`}
+              >
+                This Week
+              </button>
 
               {/* Upcoming only toggle */}
               <button
@@ -597,7 +730,7 @@ export default function TokenUnlocksPage() {
 
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            Token unlocks release previously locked tokens into circulation, increasing supply. Cliff unlocks release a large amount at once (higher price impact), while linear unlocks distribute tokens gradually. The &apos;% of Supply&apos; metric indicates potential dilution &mdash; unlocks above 1% of total supply are highlighted as large events. Investor and team unlocks often create selling pressure. Data is curated from public vesting schedules.
+            Token unlocks release previously locked tokens into circulation, increasing supply. Cliff unlocks release a large amount at once (higher price impact), while linear unlocks distribute tokens gradually. The &apos;% of Supply&apos; metric indicates potential dilution &mdash; unlocks above 1% of total supply are highlighted as large events. Investor and team unlocks often create selling pressure. Data is curated from public vesting schedules with live prices from CoinGecko.
           </p>
         </div>
       </main>
