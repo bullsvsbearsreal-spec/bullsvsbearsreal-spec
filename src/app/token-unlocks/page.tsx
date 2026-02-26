@@ -7,6 +7,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { useApiData } from '@/hooks/useApiData';
 import { TokenUnlock, UNLOCK_TYPES, formatUnlockAmount, formatUnlockValue, getDaysUntilUnlock, formatUnlockDate } from '@/lib/api/tokenunlocks';
 import { RefreshCw, AlertTriangle, Calendar, List, Filter, Search, ChevronLeft, ChevronRight, X, ExternalLink, Zap } from 'lucide-react';
+import Image from 'next/image';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 /* ------------------------------------------------------------------ */
@@ -163,10 +164,23 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
   const isPast = days < 0;
 
   return (
-    <div className={`bg-hub-darker border rounded-xl p-4 transition-all duration-200 hover:border-white/[0.12] ${
+    <div className={`group bg-hub-darker border rounded-xl p-4 transition-all duration-200 hover:border-white/[0.12] relative overflow-hidden ${
       unlock.isLarge ? 'border-yellow-500/30' : 'border-white/[0.06]'
     } ${isPast ? 'opacity-50' : ''}`}>
-      <div className="flex items-start justify-between gap-3">
+      {/* Cliff meme accent */}
+      {unlock.unlockType === 'cliff' && (
+        <div className="absolute right-0 top-0 bottom-0 w-[130px] sm:w-[160px] pointer-events-none opacity-[0.4] group-hover:opacity-60 transition-opacity">
+          <Image
+            src="/vesting-cliff.jpg"
+            alt=""
+            fill
+            className="object-cover object-center"
+            sizes="160px"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#111111] to-transparent" />
+        </div>
+      )}
+      <div className="flex items-start justify-between gap-3 relative z-[1]">
         {/* Left: token info */}
         <div className="flex items-center gap-3 min-w-0">
           {/* Token icon */}
@@ -196,7 +210,7 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
       </div>
 
       {/* Bottom row: metrics + source */}
-      <div className="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-white/[0.04]">
+      <div className="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-white/[0.04] relative z-[1]">
         <div className="flex items-center gap-4">
           <div>
             <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Amount</p>

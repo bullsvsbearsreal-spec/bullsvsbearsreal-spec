@@ -61,6 +61,7 @@ interface WalletResult {
     name: string;
     balance: number;
     decimals: number;
+    contractAddress?: string;
   }>;
 }
 
@@ -161,7 +162,7 @@ async function fetchEtherscanData(address: string) {
   // Fetch token transfers
   try {
     const tokenRes = await fetch(
-      `${base}?module=account&action=tokentx&address=${address}&page=1&offset=20&sort=desc${apiKeyParam}`,
+      `${base}?module=account&action=tokentx&address=${address}&page=1&offset=50&sort=desc${apiKeyParam}`,
       { signal: AbortSignal.timeout(10000) },
     );
     const raw = await tokenRes.json();
@@ -194,7 +195,7 @@ async function fetchBlockscoutData(address: string) {
 
   try {
     const tokenRes = await fetch(
-      `https://eth.blockscout.com/api?module=account&action=tokentx&address=${address}&page=1&offset=20&sort=desc`,
+      `https://eth.blockscout.com/api?module=account&action=tokentx&address=${address}&page=1&offset=50&sort=desc`,
       { signal: AbortSignal.timeout(12000) },
     );
     const raw = await tokenRes.json();
@@ -241,11 +242,13 @@ async function fetchEthWallet(address: string): Promise<WalletResult> {
         timestamp: Number(tx.timeStamp) * 1000,
         isError: tx.isError === '1',
         direction: tx.to?.toLowerCase() === address.toLowerCase() ? 'in' : 'out',
+        gasUsed: tx.gasUsed || undefined,
+        gasPrice: tx.gasPrice || undefined,
       }))
     : [];
 
   // Aggregate ERC-20 tokens by contract address
-  const tokenMap = new Map<string, { symbol: string; name: string; balance: number; decimals: number }>();
+  const tokenMap = new Map<string, { symbol: string; name: string; balance: number; decimals: number; contractAddress: string }>();
   if (Array.isArray(txData.tokenJson.result)) {
     for (const t of txData.tokenJson.result) {
       const key = t.contractAddress.toLowerCase();
@@ -258,6 +261,7 @@ async function fetchEthWallet(address: string): Promise<WalletResult> {
           name: t.tokenName,
           balance: t.to?.toLowerCase() === address.toLowerCase() ? value : -value,
           decimals,
+          contractAddress: key,
         });
       } else {
         existing.balance += t.to?.toLowerCase() === address.toLowerCase() ? value : -value;
@@ -268,7 +272,7 @@ async function fetchEthWallet(address: string): Promise<WalletResult> {
   const tokens = Array.from(tokenMap.values())
     .filter((t) => t.balance > 0)
     .sort((a, b) => b.balance - a.balance)
-    .slice(0, 20);
+    .slice(0, 50);
 
   return {
     chain: 'eth' as const,

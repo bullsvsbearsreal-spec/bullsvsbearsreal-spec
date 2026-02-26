@@ -55,34 +55,38 @@ export async function POST(req: Request) {
 
       const resetUrl = `${BASE_URL}/reset-password?token=${token}`;
 
-      // Send the email
-      await resend.emails.send({
-        from: 'InfoHub <noreply@info-hub.io>',
-        to: email,
-        subject: 'Reset your InfoHub password',
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-            <div style="text-align: center; margin-bottom: 32px;">
-              <h1 style="font-size: 20px; font-weight: 600; color: #fff; margin: 0;">InfoHub</h1>
-            </div>
-            <div style="background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 32px;">
-              <h2 style="font-size: 18px; font-weight: 600; color: #fff; margin: 0 0 12px;">Reset your password</h2>
-              <p style="font-size: 14px; color: #999; line-height: 1.6; margin: 0 0 24px;">
-                We received a request to reset your password. Click the button below to choose a new one. This link expires in 1 hour.
+      // Send the email (non-fatal — don't leak success/failure to client)
+      try {
+        await resend.emails.send({
+          from: 'InfoHub <noreply@info-hub.io>',
+          to: email,
+          subject: 'Reset your InfoHub password',
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+              <div style="text-align: center; margin-bottom: 32px;">
+                <h1 style="font-size: 20px; font-weight: 600; color: #fff; margin: 0;">InfoHub</h1>
+              </div>
+              <div style="background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 32px;">
+                <h2 style="font-size: 18px; font-weight: 600; color: #fff; margin: 0 0 12px;">Reset your password</h2>
+                <p style="font-size: 14px; color: #999; line-height: 1.6; margin: 0 0 24px;">
+                  We received a request to reset your password. Click the button below to choose a new one. This link expires in 1 hour.
+                </p>
+                <a href="${resetUrl}" style="display: inline-block; background: #f5a623; color: #000; font-weight: 600; font-size: 14px; padding: 10px 24px; border-radius: 8px; text-decoration: none;">
+                  Reset Password
+                </a>
+                <p style="font-size: 12px; color: #666; margin: 24px 0 0; line-height: 1.5;">
+                  If you didn't request this, you can safely ignore this email. Your password won't be changed.
+                </p>
+              </div>
+              <p style="font-size: 11px; color: #444; text-align: center; margin-top: 24px;">
+                InfoHub &mdash; Real-time derivatives intelligence
               </p>
-              <a href="${resetUrl}" style="display: inline-block; background: #f5a623; color: #000; font-weight: 600; font-size: 14px; padding: 10px 24px; border-radius: 8px; text-decoration: none;">
-                Reset Password
-              </a>
-              <p style="font-size: 12px; color: #666; margin: 24px 0 0; line-height: 1.5;">
-                If you didn't request this, you can safely ignore this email. Your password won't be changed.
-              </p>
             </div>
-            <p style="font-size: 11px; color: #444; text-align: center; margin-top: 24px;">
-              InfoHub &mdash; Real-time derivatives intelligence
-            </p>
-          </div>
-        `,
-      });
+          `,
+        });
+      } catch (emailErr) {
+        console.error('Resend email error:', emailErr);
+      }
     }
 
     // Always return success to prevent email enumeration

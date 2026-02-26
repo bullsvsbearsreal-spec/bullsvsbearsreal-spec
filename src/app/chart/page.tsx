@@ -32,24 +32,24 @@ const ASSET_TABS: AssetTab[] = [
     label: 'Crypto',
     icon: <TrendingUp className="w-3.5 h-3.5" />,
     pinned: [
-      { label: 'BTC', tvSymbol: 'BINANCE:BTCUSDT', displayPair: '/USDT', icon: 'btc' },
-      { label: 'ETH', tvSymbol: 'BINANCE:ETHUSDT', displayPair: '/USDT', icon: 'eth' },
-      { label: 'SOL', tvSymbol: 'BINANCE:SOLUSDT', displayPair: '/USDT', icon: 'sol' },
-      { label: 'XRP', tvSymbol: 'BINANCE:XRPUSDT', displayPair: '/USDT', icon: 'xrp' },
-      { label: 'DOGE', tvSymbol: 'BINANCE:DOGEUSDT', displayPair: '/USDT', icon: 'doge' },
+      { label: 'BTC', tvSymbol: 'BITSTAMP:BTCUSD', displayPair: '/USD', icon: 'btc' },
+      { label: 'ETH', tvSymbol: 'BITSTAMP:ETHUSD', displayPair: '/USD', icon: 'eth' },
+      { label: 'SOL', tvSymbol: 'COINBASE:SOLUSD', displayPair: '/USD', icon: 'sol' },
+      { label: 'XRP', tvSymbol: 'BITSTAMP:XRPUSD', displayPair: '/USD', icon: 'xrp' },
+      { label: 'DOGE', tvSymbol: 'COINBASE:DOGEUSD', displayPair: '/USD', icon: 'doge' },
       { label: 'BNB', tvSymbol: 'BINANCE:BNBUSDT', displayPair: '/USDT', icon: 'bnb' },
-      { label: 'ADA', tvSymbol: 'BINANCE:ADAUSDT', displayPair: '/USDT', icon: 'ada' },
-      { label: 'AVAX', tvSymbol: 'BINANCE:AVAXUSDT', displayPair: '/USDT', icon: 'avax' },
-      { label: 'LINK', tvSymbol: 'BINANCE:LINKUSDT', displayPair: '/USDT', icon: 'link' },
-      { label: 'DOT', tvSymbol: 'BINANCE:DOTUSDT', displayPair: '/USDT', icon: 'dot' },
-      { label: 'MATIC', tvSymbol: 'BINANCE:MATICUSDT', displayPair: '/USDT', icon: 'matic' },
-      { label: 'SUI', tvSymbol: 'BINANCE:SUIUSDT', displayPair: '/USDT', icon: 'sui' },
-      { label: 'NEAR', tvSymbol: 'BINANCE:NEARUSDT', displayPair: '/USDT', icon: 'near' },
-      { label: 'APT', tvSymbol: 'BINANCE:APTUSDT', displayPair: '/USDT', icon: 'apt' },
-      { label: 'OP', tvSymbol: 'BINANCE:OPUSDT', displayPair: '/USDT', icon: 'op' },
-      { label: 'ARB', tvSymbol: 'BINANCE:ARBUSDT', displayPair: '/USDT', icon: 'arb' },
-      { label: 'PEPE', tvSymbol: 'BINANCE:PEPEUSDT', displayPair: '/USDT', icon: 'pepe' },
-      { label: 'WIF', tvSymbol: 'BINANCE:WIFUSDT', displayPair: '/USDT', icon: 'wif' },
+      { label: 'ADA', tvSymbol: 'COINBASE:ADAUSD', displayPair: '/USD', icon: 'ada' },
+      { label: 'AVAX', tvSymbol: 'COINBASE:AVAXUSD', displayPair: '/USD', icon: 'avax' },
+      { label: 'LINK', tvSymbol: 'COINBASE:LINKUSD', displayPair: '/USD', icon: 'link' },
+      { label: 'DOT', tvSymbol: 'COINBASE:DOTUSD', displayPair: '/USD', icon: 'dot' },
+      { label: 'MATIC', tvSymbol: 'COINBASE:MATICUSD', displayPair: '/USD', icon: 'matic' },
+      { label: 'SUI', tvSymbol: 'COINBASE:SUIUSD', displayPair: '/USD', icon: 'sui' },
+      { label: 'NEAR', tvSymbol: 'COINBASE:NEARUSD', displayPair: '/USD', icon: 'near' },
+      { label: 'APT', tvSymbol: 'COINBASE:APTUSD', displayPair: '/USD', icon: 'apt' },
+      { label: 'OP', tvSymbol: 'COINBASE:OPUSD', displayPair: '/USD', icon: 'op' },
+      { label: 'ARB', tvSymbol: 'COINBASE:ARBUSD', displayPair: '/USD', icon: 'arb' },
+      { label: 'PEPE', tvSymbol: 'COINBASE:PEPEUSD', displayPair: '/USD', icon: 'pepe' },
+      { label: 'WIF', tvSymbol: 'COINBASE:WIFUSD', displayPair: '/USD', icon: 'wif' },
     ],
   },
   {
@@ -242,9 +242,9 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
 
 export default function ChartPage() {
   const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
-  const [tvSymbol, setTvSymbol] = useState('BINANCE:BTCUSDT');
+  const [tvSymbol, setTvSymbol] = useState('BITSTAMP:BTCUSD');
   const [displayLabel, setDisplayLabel] = useState('BTC');
-  const [displayPair, setDisplayPair] = useState('/USDT');
+  const [displayPair, setDisplayPair] = useState('/USD');
   const [interval, setInterval_] = useState('60');
 
   // Symbol dropdown

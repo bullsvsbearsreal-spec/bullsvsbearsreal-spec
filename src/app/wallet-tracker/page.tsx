@@ -3,10 +3,11 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle } from 'lucide-react';
+import { TokenIconSimple } from '@/components/TokenIcon';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins } from 'lucide-react';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApiData } from '@/hooks/useApiData';
-import { formatRelativeTime } from '@/lib/utils/format';
+import { formatRelativeTime, formatUSD, formatPrice } from '@/lib/utils/format';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -21,6 +22,8 @@ interface WalletTransaction {
   direction: 'in' | 'out' | 'unknown';
   isError?: boolean;
   error?: boolean;
+  gasUsed?: string;
+  gasPrice?: string;
 }
 
 interface WalletToken {
@@ -28,6 +31,7 @@ interface WalletToken {
   name: string;
   balance: number;
   decimals: number;
+  contractAddress?: string;
 }
 
 interface WalletData {
@@ -44,6 +48,11 @@ interface TickerEntry {
   symbol: string;
   lastPrice: number;
   exchange: string;
+}
+
+interface EnrichedToken extends WalletToken {
+  price: number | null;
+  usdValue: number | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -114,29 +123,39 @@ function ChainBadge({ chain }: { chain: 'eth' | 'btc' | 'sol' }) {
 /*  Skeleton loaders                                                   */
 /* ------------------------------------------------------------------ */
 
-function SkeletonRow() {
+function PortfolioSkeleton() {
   return (
-    <div className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.04] animate-pulse">
-      <div className="w-16 h-4 bg-white/[0.06] rounded" />
-      <div className="flex-1 h-4 bg-white/[0.06] rounded" />
-      <div className="w-20 h-4 bg-white/[0.06] rounded" />
-      <div className="w-16 h-4 bg-white/[0.06] rounded" />
+    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 relative overflow-hidden animate-pulse">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-5 bg-white/[0.06] rounded-full" />
+        <div className="h-4 w-40 bg-white/[0.06] rounded" />
+      </div>
+      <div className="h-12 w-56 bg-white/[0.06] rounded mb-3" />
+      <div className="h-5 w-36 bg-white/[0.06] rounded" />
     </div>
   );
 }
 
-function BalanceSkeleton() {
+function TokenSkeleton() {
   return (
-    <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 animate-pulse">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-xl bg-white/[0.06]" />
-        <div>
-          <div className="h-3 w-24 bg-white/[0.06] rounded mb-2" />
-          <div className="h-3 w-40 bg-white/[0.06] rounded" />
-        </div>
-      </div>
-      <div className="h-10 w-48 bg-white/[0.06] rounded mb-2" />
-      <div className="h-5 w-32 bg-white/[0.06] rounded" />
+    <div className="flex items-center gap-3 px-4 py-2.5 animate-pulse">
+      <div className="w-7 h-7 rounded-full bg-white/[0.06]" />
+      <div className="flex-1 h-4 bg-white/[0.06] rounded" />
+      <div className="w-16 h-4 bg-white/[0.06] rounded" />
+      <div className="w-20 h-4 bg-white/[0.06] rounded" />
+      <div className="w-20 h-4 bg-white/[0.06] rounded" />
+    </div>
+  );
+}
+
+function TxSkeleton() {
+  return (
+    <div className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.04] animate-pulse">
+      <div className="w-16 h-5 bg-white/[0.06] rounded-full" />
+      <div className="flex-1 h-4 bg-white/[0.06] rounded" />
+      <div className="w-20 h-4 bg-white/[0.06] rounded" />
+      <div className="w-16 h-4 bg-white/[0.06] rounded" />
     </div>
   );
 }
@@ -154,6 +173,7 @@ export default function WalletTrackerPage() {
   const [activeChain, setActiveChain] = useState<'eth' | 'btc' | 'sol' | null>(null);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [inputError, setInputError] = useState('');
+  const [activeTab, setActiveTab] = useState<'tokens' | 'transactions'>('tokens');
 
   // Hydrate saved wallets from localStorage
   useEffect(() => {
@@ -191,7 +211,6 @@ export default function WalletTrackerPage() {
     const res = await fetch(`/api/wallet?address=${encodeURIComponent(activeAddress)}&chain=${activeChain}`);
     const json = await res.json();
     if (json.error) throw new Error(json.error);
-    // Ensure arrays are always present
     return {
       ...json,
       transactions: json.transactions ?? [],
@@ -217,25 +236,76 @@ export default function WalletTrackerPage() {
     const chainSymbol = CHAIN_CONFIG[activeChain].symbol;
     const price = priceMap[chainSymbol];
     if (!price) return null;
-    return walletData.balanceRaw * price;
+    const val = walletData.balanceRaw * price;
+    return isNaN(val) ? null : val;
   }, [walletData, activeChain, priceMap]);
+
+  const enrichedTokens: EnrichedToken[] = useMemo(() => {
+    if (!walletData?.tokens) return [];
+    const nativeSymbol = activeChain ? CHAIN_CONFIG[activeChain].symbol : '';
+
+    // Deduplicate by symbol (keep highest balance) and filter spam
+    const deduped = new Map<string, WalletToken & { contractAddress?: string }>();
+    for (const token of walletData.tokens) {
+      const sym = token.symbol.toUpperCase();
+      // Skip tokens matching native symbol (already counted in native balance)
+      if (sym === nativeSymbol) continue;
+      // Spam filters: absurd balances, suspicious names
+      if (token.balance > 1e12) continue;
+      if (token.balance <= 0) continue;
+
+      const existing = deduped.get(sym);
+      if (!existing || token.balance > existing.balance) {
+        deduped.set(sym, token);
+      }
+    }
+
+    return Array.from(deduped.values())
+      .map((token) => {
+        const sym = token.symbol.toUpperCase();
+        const stripped = sym.replace(/^W/, ''); // WETH → ETH
+        const price = priceMap[sym] || priceMap[stripped] || null;
+        const usdValue = price ? token.balance * price : null;
+        return { ...token, price, usdValue };
+      })
+      .filter((token) => {
+        // Keep all tokens with a known price
+        if (token.usdValue !== null) return true;
+        // Hide unpriced tokens with suspiciously high balances (airdrop spam)
+        if (token.balance > 1_000_000) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.usdValue !== null && b.usdValue !== null) return b.usdValue - a.usdValue;
+        if (a.usdValue !== null) return -1;
+        if (b.usdValue !== null) return 1;
+        return b.balance - a.balance;
+      });
+  }, [walletData, priceMap, activeChain]);
+
+  const totalTokenUSD = useMemo(() => {
+    return enrichedTokens.reduce((sum, t) => sum + (t.usdValue ?? 0), 0);
+  }, [enrichedTokens]);
+
+  const totalPortfolioUSD = useMemo(() => {
+    const base = balanceUSD ?? 0;
+    const tokens = totalTokenUSD ?? 0;
+    const total = base + tokens;
+    return isNaN(total) ? 0 : total;
+  }, [balanceUSD, totalTokenUSD]);
 
   /* ---- handlers ---------------------------------------------------- */
   const handleTrack = () => {
     const addr = addressInput.trim();
     if (!addr) return;
-
     const chain = detectedChain;
     if (!chain) {
       setInputError('Could not detect chain. Enter a valid ETH, BTC, or SOL address.');
       return;
     }
-
     setInputError('');
     setActiveAddress(addr);
     setActiveChain(chain);
-
-    // Auto-save if not already saved
     addWallet(addr, chain, labelInput.trim() || undefined);
     setSavedWallets(getSavedWallets());
     setLabelInput('');
@@ -266,14 +336,12 @@ export default function WalletTrackerPage() {
     }
   };
 
-  const handleCopyHash = async (hash: string) => {
+  const handleCopy = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(hash);
-      setCopiedHash(hash);
+      await navigator.clipboard.writeText(text);
+      setCopiedHash(text);
       setTimeout(() => setCopiedHash(null), 2000);
-    } catch {
-      // fallback
-    }
+    } catch { /* fallback */ }
   };
 
   const getExplorerTxUrl = (chain: 'eth' | 'btc' | 'sol', hash: string) => {
@@ -299,11 +367,11 @@ export default function WalletTrackerPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="heading-page flex items-center gap-2">
-              <Search className="w-5 h-5 text-hub-yellow" />
+              <Wallet className="w-5 h-5 text-hub-yellow" />
               Wallet Tracker
             </h1>
             <p className="text-neutral-500 text-sm mt-1">
-              Track balances and transactions for ETH, BTC, and SOL wallets
+              Track balances, tokens, and transactions for ETH, BTC &amp; SOL wallets
             </p>
           </div>
 
@@ -334,23 +402,14 @@ export default function WalletTrackerPage() {
                   <input
                     type="text"
                     value={addressInput}
-                    onChange={(e) => {
-                      setAddressInput(e.target.value);
-                      setInputError('');
-                    }}
+                    onChange={(e) => { setAddressInput(e.target.value); setInputError(''); }}
                     placeholder="Enter wallet address (0x..., 1..., bc1..., or Solana)"
                     className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 font-mono"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleTrack();
-                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleTrack(); }}
                   />
-                  {detectedChain && (
-                    <ChainBadge chain={detectedChain} />
-                  )}
+                  {detectedChain && <ChainBadge chain={detectedChain} />}
                 </div>
-                {inputError && (
-                  <p className="text-red-400 text-xs mt-1.5">{inputError}</p>
-                )}
+                {inputError && <p className="text-red-400 text-xs mt-1.5">{inputError}</p>}
               </div>
 
               <input
@@ -359,9 +418,7 @@ export default function WalletTrackerPage() {
                 onChange={(e) => setLabelInput(e.target.value)}
                 placeholder="Label (optional)"
                 className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 w-full sm:w-40"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleTrack();
-                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleTrack(); }}
               />
 
               <button
@@ -413,10 +470,7 @@ export default function WalletTrackerPage() {
                   </span>
                   <span
                     role="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveWallet(w.address);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleRemoveWallet(w.address); }}
                     className="p-0.5 rounded hover:bg-white/[0.1] text-neutral-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                   >
                     <X className="w-3 h-3" />
@@ -430,12 +484,12 @@ export default function WalletTrackerPage() {
         {/* ---------- empty state -------------------------------------- */}
         {!activeAddress && (
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
-            <Search className="w-10 h-10 text-neutral-700 mx-auto mb-4" />
+            <Wallet className="w-10 h-10 text-neutral-700 mx-auto mb-4" />
             <h2 className="text-lg font-semibold text-neutral-300 mb-2">
               Enter a wallet address to track
             </h2>
             <p className="text-neutral-600 text-sm mb-6 max-w-md mx-auto">
-              Paste an Ethereum, Bitcoin, or Solana address above to view balances, transactions, and token holdings.
+              Paste an Ethereum, Bitcoin, or Solana address above to view portfolio value, token holdings, and transactions.
             </p>
             <div className="flex items-center justify-center gap-3 flex-wrap">
               {PRESET_WALLETS.map((pw) => (
@@ -451,88 +505,238 @@ export default function WalletTrackerPage() {
           </div>
         )}
 
-        {/* ---------- wallet data -------------------------------------- */}
+        {/* ============================================================ */}
+        {/*  WALLET DATA SECTIONS                                         */}
+        {/* ============================================================ */}
         {activeAddress && activeChain && (
-          <div className="space-y-6">
-            {/* Balance card */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  {walletLoading && !walletData ? (
-                    <BalanceSkeleton />
-                  ) : walletError ? (
-                    <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
-                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                      {walletError}
-                    </div>
-                  ) : walletData ? (
-                    <>
-                      <div className="flex items-center gap-3 mb-1">
-                        <ChainBadge chain={activeChain} />
-                        <span className="text-neutral-500 text-sm font-mono">
-                          {truncateAddress(activeAddress, 8)}
-                        </span>
-                        <a
-                          href={getExplorerAddressUrl(activeChain, activeAddress)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-neutral-600 hover:text-neutral-400 transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                      <div className="text-3xl font-bold text-white mt-2">
-                        {walletData.balance} {CHAIN_CONFIG[activeChain].symbol}
-                      </div>
-                      {balanceUSD !== null && (
-                        <div className="text-neutral-400 text-lg mt-1">
-                          ${balanceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
-                        </div>
-                      )}
-                    </>
-                  ) : null}
-                </div>
+          <div className="space-y-5">
 
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold border border-white/[0.1]"
-                  style={{ backgroundColor: `${CHAIN_CONFIG[activeChain].color}20`, color: CHAIN_CONFIG[activeChain].color, boxShadow: `0 4px 12px ${CHAIN_CONFIG[activeChain].color}20` }}
-                >
-                  {CHAIN_CONFIG[activeChain].symbol.charAt(0)}
+            {/* ========== PORTFOLIO OVERVIEW CARD ======================== */}
+            {walletLoading && !walletData ? (
+              <PortfolioSkeleton />
+            ) : walletError ? (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
+                <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 flex items-center gap-2 text-red-400 text-sm">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  {walletError}
                 </div>
               </div>
+            ) : walletData ? (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 relative overflow-hidden">
+                {/* Accent gradient top line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(to right, transparent, ${CHAIN_CONFIG[activeChain].color}60, transparent)`,
+                  }}
+                />
+
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  {/* Left: value */}
+                  <div className="min-w-0">
+                    {/* Address row */}
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <ChainBadge chain={activeChain} />
+                      <span className="text-neutral-500 text-sm font-mono truncate max-w-[280px]">
+                        {truncateAddress(activeAddress, 8)}
+                      </span>
+                      <button
+                        onClick={() => handleCopy(activeAddress)}
+                        className="p-1 text-neutral-600 hover:text-neutral-400 transition-colors"
+                        title="Copy address"
+                      >
+                        {copiedHash === activeAddress ? (
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <a
+                        href={getExplorerAddressUrl(activeChain, activeAddress)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 text-neutral-600 hover:text-neutral-400 transition-colors"
+                        title="View on explorer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+
+                    {/* Total portfolio value */}
+                    <div className="text-4xl sm:text-5xl font-bold text-white font-mono tabular-nums leading-tight">
+                      {totalPortfolioUSD > 0
+                        ? `$${totalPortfolioUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : balanceUSD !== null
+                          ? `$${balanceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : '--'
+                      }
+                    </div>
+
+                    {/* Native balance */}
+                    <div className="flex items-center gap-3 mt-2 text-neutral-400 text-sm">
+                      <span className="font-mono">
+                        {walletData.balance} {CHAIN_CONFIG[activeChain].symbol}
+                      </span>
+                      {balanceUSD !== null && enrichedTokens.length > 0 && (
+                        <span className="text-neutral-600">
+                          (${balanceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: badges + chain icon */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {enrichedTokens.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] text-neutral-400 text-xs">
+                        <Coins className="w-3.5 h-3.5" />
+                        {enrichedTokens.length} token{enrichedTokens.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                    {walletData.transactions.length > 0 && (
+                      <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] text-neutral-400 text-xs">
+                        {walletData.transactions.length} txs
+                      </div>
+                    )}
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold border border-white/[0.1]"
+                      style={{
+                        backgroundColor: `${CHAIN_CONFIG[activeChain].color}20`,
+                        color: CHAIN_CONFIG[activeChain].color,
+                        boxShadow: `0 4px 12px ${CHAIN_CONFIG[activeChain].color}20`,
+                      }}
+                    >
+                      {CHAIN_CONFIG[activeChain].symbol.charAt(0)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {/* ========== TAB BAR ======================================== */}
+            <div className="flex items-center bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+              {(['tokens', 'transactions'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
+                    activeTab === tab ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                >
+                  {tab === 'tokens' ? <Coins className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                  {tab === 'tokens' ? 'Tokens' : 'Transactions'}
+                  {tab === 'tokens' && enrichedTokens.length > 0 && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{enrichedTokens.length}</span>
+                  )}
+                  {tab === 'transactions' && walletData && walletData.transactions.length > 0 && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{walletData.transactions.length}</span>
+                  )}
+                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hub-yellow" />}
+                </button>
+              ))}
             </div>
 
-            {/* Token balances (ETH only) */}
-            {activeChain === 'eth' && walletData && walletData.tokens && walletData.tokens.length > 0 && (
+            {/* ========== TOKEN HOLDINGS TABLE =========================== */}
+            {activeTab === 'tokens' && (<>
+            {walletLoading && !walletData ? (
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-white/[0.06]">
-                  <h3 className="text-sm font-semibold text-white">ERC-20 Tokens</h3>
+                  <div className="h-4 w-32 bg-white/[0.06] rounded animate-pulse" />
                 </div>
+                {Array.from({ length: 4 }).map((_, i) => <TokenSkeleton key={i} />)}
+              </div>
+            ) : enrichedTokens.length > 0 ? (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-hub-yellow" />
+                    Token Holdings
+                  </h3>
+                  {totalTokenUSD > 0 && (
+                    <span className="text-neutral-500 text-xs font-mono">
+                      ${totalTokenUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+
+                {/* Desktop table header */}
+                <div className="hidden sm:grid grid-cols-[40px_1fr_100px_120px_120px] items-center px-4 py-2 border-b border-white/[0.06] text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                  <div />
+                  <div>Token</div>
+                  <div className="text-right">Price</div>
+                  <div className="text-right">Balance</div>
+                  <div className="text-right">Value</div>
+                </div>
+
+                {/* Token rows */}
                 <div className="divide-y divide-white/[0.04]">
-                  {walletData.tokens.map((token) => (
-                    <div
-                      key={token.symbol}
-                      className="flex items-center justify-between px-4 py-2.5 hover:bg-white/[0.02] transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-white/[0.08] flex items-center justify-center text-[10px] font-bold text-neutral-400">
-                          {token.symbol.charAt(0)}
-                        </div>
+                  {enrichedTokens.map((token, idx) => (
+                    <div key={`${token.symbol}-${token.contractAddress || idx}`}>
+                      {/* Desktop row */}
+                      <div className="hidden sm:grid grid-cols-[40px_1fr_100px_120px_120px] items-center px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
                         <div>
+                          <TokenIconSimple symbol={token.symbol} size={28} />
+                        </div>
+                        <div className="min-w-0 flex items-center gap-2">
                           <span className="text-sm font-medium text-white">{token.symbol}</span>
-                          <span className="text-neutral-600 text-xs ml-2">{token.name}</span>
+                          <span className="text-neutral-600 text-xs truncate">{token.name}</span>
+                        </div>
+                        <div className="text-right text-[13px] font-mono text-neutral-400">
+                          {token.price !== null ? formatPrice(token.price) : <span className="text-neutral-700">--</span>}
+                        </div>
+                        <div className="text-right text-[13px] font-mono text-neutral-300">
+                          {token.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                        </div>
+                        <div className="text-right text-[13px] font-mono text-white font-semibold">
+                          {token.usdValue !== null
+                            ? `$${token.usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : <span className="text-neutral-700">--</span>
+                          }
+                          {token.usdValue !== null && totalPortfolioUSD > 0 && (
+                            <div className="text-[10px] text-neutral-600 font-normal">
+                              {((token.usdValue / totalPortfolioUSD) * 100).toFixed(1)}%
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <span className="text-sm font-mono text-white">
-                        {token.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                      </span>
+
+                      {/* Mobile row */}
+                      <div className="sm:hidden flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <TokenIconSimple symbol={token.symbol} size={32} />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-white">{token.symbol}</div>
+                            <div className="text-xs text-neutral-600 truncate">{token.name}</div>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-3">
+                          <div className="text-sm font-mono text-white font-semibold">
+                            {token.usdValue !== null ? formatUSD(token.usdValue) : '--'}
+                          </div>
+                          <div className="text-xs text-neutral-500 font-mono">
+                            {token.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                            {token.usdValue !== null && totalPortfolioUSD > 0 && (
+                              <span className="text-neutral-600 ml-1">
+                                ({((token.usdValue / totalPortfolioUSD) * 100).toFixed(1)}%)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            ) : walletData ? (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center text-neutral-600 text-sm">
+                No tokens found for this wallet
+              </div>
+            ) : null}
+            </>)}
 
-            {/* Transactions */}
+            {/* ========== TRANSACTION HISTORY ============================ */}
+            {activeTab === 'transactions' && (
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-white/[0.06]">
                 <h3 className="text-sm font-semibold text-white">Recent Transactions</h3>
@@ -540,9 +744,7 @@ export default function WalletTrackerPage() {
 
               {walletLoading && !walletData ? (
                 <div>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <SkeletonRow key={i} />
-                  ))}
+                  {Array.from({ length: 5 }).map((_, i) => <TxSkeleton key={i} />)}
                 </div>
               ) : walletError ? (
                 <div className="p-4">
@@ -557,104 +759,152 @@ export default function WalletTrackerPage() {
                 <>
                   {/* Desktop table header */}
                   <div className="hidden sm:flex items-center px-4 py-2 border-b border-white/[0.06] text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
-                    <div className="w-8" />
+                    <div className="w-20">Type</div>
                     <div className="flex-[2]">Hash</div>
                     <div className="flex-[2]">From / To</div>
                     <div className="flex-1 text-right">Value</div>
                     <div className="flex-1 text-right">Time</div>
-                    <div className="w-16" />
+                    <div className="w-14" />
                   </div>
 
                   <div className="divide-y divide-white/[0.04]">
                     {walletData.transactions.map((tx) => {
                       const isIn = tx.direction === 'in';
                       const isOut = tx.direction === 'out';
+                      const gasCostEth = tx.gasUsed && tx.gasPrice
+                        ? (Number(tx.gasUsed) * Number(tx.gasPrice) / 1e18)
+                        : null;
+
                       return (
-                        <div
-                          key={tx.hash}
-                          className="flex flex-col sm:flex-row sm:items-center px-4 py-3 hover:bg-white/[0.02] transition-colors gap-1 sm:gap-0"
-                        >
-                          {/* Direction icon */}
-                          <div className="hidden sm:flex w-8 items-center">
-                            {isIn ? (
-                              <ArrowDownLeft className="w-4 h-4 text-green-400" />
-                            ) : isOut ? (
-                              <ArrowUpRight className="w-4 h-4 text-red-400" />
-                            ) : (
-                              <div className="w-4 h-4 rounded-full bg-neutral-700" />
-                            )}
-                          </div>
-
-                          {/* Hash */}
-                          <div className="flex-[2] flex items-center gap-1.5">
-                            <span className="sm:hidden">
-                              {isIn ? (
-                                <ArrowDownLeft className="w-3.5 h-3.5 text-green-400 inline mr-1" />
-                              ) : isOut ? (
-                                <ArrowUpRight className="w-3.5 h-3.5 text-red-400 inline mr-1" />
-                              ) : null}
-                            </span>
-                            <span className="text-[13px] font-mono text-neutral-300">
-                              {truncateHash(tx.hash)}
-                            </span>
-                            <button
-                              onClick={() => handleCopyHash(tx.hash)}
-                              className="p-0.5 text-neutral-600 hover:text-neutral-400 transition-colors"
-                            >
-                              {copiedHash === tx.hash ? (
-                                <Check className="w-3 h-3 text-green-400" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </button>
-                          </div>
-
-                          {/* From / To */}
-                          <div className="flex-[2] text-[12px] font-mono text-neutral-500">
-                            {tx.from && tx.to ? (
-                              <span>
-                                <span className={isOut ? 'text-red-400/60' : 'text-neutral-500'}>
-                                  {truncateAddress(tx.from, 4)}
-                                </span>
-                                <span className="text-neutral-700 mx-1">&rarr;</span>
-                                <span className={isIn ? 'text-green-400/60' : 'text-neutral-500'}>
-                                  {truncateAddress(tx.to, 4)}
-                                </span>
+                        <div key={tx.hash}>
+                          {/* Desktop row */}
+                          <div className="hidden sm:flex items-center px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                            {/* Type badge */}
+                            <div className="w-20">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                isIn
+                                  ? 'bg-green-500/10 text-green-400'
+                                  : isOut
+                                    ? 'bg-red-500/10 text-red-400'
+                                    : 'bg-neutral-500/10 text-neutral-400'
+                              }`}>
+                                {isIn ? <ArrowDownLeft className="w-3 h-3" /> : isOut ? <ArrowUpRight className="w-3 h-3" /> : null}
+                                {isIn ? 'In' : isOut ? 'Out' : '?'}
                               </span>
-                            ) : (
-                              <span className="text-neutral-700">--</span>
-                            )}
+                            </div>
+
+                            {/* Hash */}
+                            <div className="flex-[2] flex items-center gap-1.5">
+                              <span className="text-[13px] font-mono text-neutral-300">
+                                {truncateHash(tx.hash)}
+                              </span>
+                              <button
+                                onClick={() => handleCopy(tx.hash)}
+                                className="p-0.5 text-neutral-600 hover:text-neutral-400 transition-colors"
+                              >
+                                {copiedHash === tx.hash ? (
+                                  <Check className="w-3 h-3 text-green-400" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+
+                            {/* From / To */}
+                            <div className="flex-[2] text-[12px] font-mono text-neutral-500">
+                              {tx.from && tx.to ? (
+                                <span>
+                                  <span className={isOut ? 'text-red-400/60' : 'text-neutral-500'}>
+                                    {truncateAddress(tx.from, 4)}
+                                  </span>
+                                  <span className="text-neutral-700 mx-1">&rarr;</span>
+                                  <span className={isIn ? 'text-green-400/60' : 'text-neutral-500'}>
+                                    {truncateAddress(tx.to, 4)}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-neutral-700">--</span>
+                              )}
+                            </div>
+
+                            {/* Value */}
+                            <div className="flex-1 text-right">
+                              <div className={`text-[13px] font-mono ${
+                                isIn ? 'text-green-400' : isOut ? 'text-red-400' : 'text-neutral-400'
+                              }`}>
+                                {tx.value ? (
+                                  <>
+                                    {isIn ? '+' : isOut ? '-' : ''}{tx.value}
+                                    <span className="text-neutral-600 ml-1 text-[11px]">{CHAIN_CONFIG[activeChain].symbol}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-neutral-700">--</span>
+                                )}
+                              </div>
+                              {gasCostEth !== null && gasCostEth > 0 && (
+                                <div className="text-[10px] text-neutral-700 font-mono hidden lg:block">
+                                  Gas: {gasCostEth.toFixed(5)} ETH
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Time */}
+                            <div className="flex-1 text-right text-[12px] text-neutral-500">
+                              {tx.timestamp > 0 ? formatRelativeTime(tx.timestamp) : '--'}
+                            </div>
+
+                            {/* Explorer link */}
+                            <div className="w-14 text-right">
+                              <a
+                                href={getExplorerTxUrl(activeChain, tx.hash)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-neutral-600 hover:text-hub-yellow transition-colors"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
                           </div>
 
-                          {/* Value */}
-                          <div className={`flex-1 text-right text-[13px] font-mono ${
-                            isIn ? 'text-green-400' : isOut ? 'text-red-400' : 'text-neutral-400'
-                          }`}>
-                            {tx.value ? (
-                              <>
-                                {isIn ? '+' : isOut ? '-' : ''}{tx.value} {CHAIN_CONFIG[activeChain].symbol}
-                              </>
-                            ) : (
-                              <span className="text-neutral-700">--</span>
-                            )}
-                          </div>
-
-                          {/* Time */}
-                          <div className="flex-1 text-right text-[12px] text-neutral-500">
-                            {tx.timestamp > 0 ? formatRelativeTime(tx.timestamp) : '--'}
-                          </div>
-
-                          {/* Explorer link */}
-                          <div className="w-16 text-right">
-                            <a
-                              href={getExplorerTxUrl(activeChain, tx.hash)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] text-neutral-600 hover:text-hub-yellow transition-colors"
-                            >
-                              View
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                          {/* Mobile row */}
+                          <div className="sm:hidden px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                  isIn
+                                    ? 'bg-green-500/10 text-green-400'
+                                    : isOut
+                                      ? 'bg-red-500/10 text-red-400'
+                                      : 'bg-neutral-500/10 text-neutral-400'
+                                }`}>
+                                  {isIn ? <ArrowDownLeft className="w-3 h-3" /> : isOut ? <ArrowUpRight className="w-3 h-3" /> : null}
+                                  {isIn ? 'Receive' : isOut ? 'Send' : 'Unknown'}
+                                </span>
+                                <span className="text-[11px] text-neutral-600">
+                                  {tx.timestamp > 0 ? formatRelativeTime(tx.timestamp) : ''}
+                                </span>
+                              </div>
+                              <a
+                                href={getExplorerTxUrl(activeChain, tx.hash)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-neutral-600 hover:text-hub-yellow transition-colors"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[12px] font-mono text-neutral-500 truncate">
+                                {truncateHash(tx.hash, 6)}
+                              </span>
+                              <span className={`text-[13px] font-mono font-medium ${
+                                isIn ? 'text-green-400' : isOut ? 'text-red-400' : 'text-neutral-400'
+                              }`}>
+                                {tx.value ? (
+                                  <>{isIn ? '+' : isOut ? '-' : ''}{tx.value} {CHAIN_CONFIG[activeChain].symbol}</>
+                                ) : '--'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       );
@@ -663,10 +913,11 @@ export default function WalletTrackerPage() {
                 </>
               ) : null}
             </div>
+            )}
           </div>
         )}
 
-        {/* ---------- wallet count ------------------------------------- */}
+        {/* ---------- wallet count + info footer ----------------------- */}
         {savedWallets.length > 0 && (
           <div className="mt-3 text-neutral-600 text-xs text-right">
             {savedWallets.length}/10 wallet{savedWallets.length !== 1 ? 's' : ''} saved
@@ -674,7 +925,7 @@ export default function WalletTrackerPage() {
         )}
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            Wallet Tracker supports Ethereum (0x addresses), Bitcoin (1/3/bc1 addresses), and Solana (base58 addresses). ETH balances are fetched via public RPC nodes, transactions via Etherscan and Blockscout. BTC data comes from Blockchain.info and Mempool.space. SOL data from Solana mainnet RPC. Data caches for 2 minutes. Saved wallets are stored locally in your browser (max 10).
+            Wallet Tracker supports Ethereum (0x addresses), Bitcoin (1/3/bc1 addresses), and Solana (base58 addresses). ETH balances are fetched via public RPC nodes, transactions via Etherscan and Blockscout. Token USD values are matched against live market prices. BTC data comes from Blockchain.info and Mempool.space. SOL data from Solana mainnet RPC. Data caches for 2 minutes. Saved wallets are stored locally in your browser (max 10).
           </p>
         </div>
       </main>

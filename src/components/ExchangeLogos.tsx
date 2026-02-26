@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 // Exchange logos using real PNG images from /exchanges/ directory
 
 interface ExchangeLogoProps {
@@ -126,9 +128,10 @@ const FILE_KEY_MAP: Record<string, string> = { 'gate.io': 'gate' };
 // Generic exchange logo component
 export function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange: string; size?: number; className?: string }) {
   const key = exchange.toLowerCase();
+  const [imgError, setImgError] = useState(false);
 
-  // Use real PNG if available
-  if (PNG_EXCHANGES.has(key)) {
+  // Use real PNG if available (with error fallback to SVG/letter)
+  if (PNG_EXCHANGES.has(key) && !imgError) {
     const fileKey = FILE_KEY_MAP[key] || key;
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -139,6 +142,7 @@ export function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange
         height={size}
         className={`rounded-sm object-contain ${className}`}
         loading="lazy"
+        onError={() => setImgError(true)}
       />
     );
   }
