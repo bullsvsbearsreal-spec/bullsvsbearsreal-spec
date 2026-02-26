@@ -779,6 +779,7 @@ export interface UserData {
   screenerPresets?: any[];
   wallets?: any[];
   notificationPrefs?: NotificationPrefs;
+  theme?: string;
 }
 
 export async function getUserData(userId: string): Promise<UserData | null> {

@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import postgres from 'postgres';
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
@@ -33,15 +34,16 @@ export async function POST(req: Request) {
 
     // Hash password and create user
     const hash = await bcrypt.hash(password, 12);
+    const id = crypto.randomUUID();
     const rows = await db`
-      INSERT INTO users (name, email, password_hash)
-      VALUES (${name || null}, ${email}, ${hash})
+      INSERT INTO users (id, name, email, password_hash)
+      VALUES (${id}, ${name || null}, ${email}, ${hash})
       RETURNING id, name, email
     `;
 
     return NextResponse.json({ user: rows[0] }, { status: 201 });
   } catch (e: any) {
-    console.error('Signup error:', e);
+    console.error('Signup error:', e?.message || e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

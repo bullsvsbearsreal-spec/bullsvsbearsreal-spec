@@ -14,6 +14,7 @@ const SYNC_KEYS: Record<string, string> = {
   ih_screener_presets: 'screenerPresets',
   ih_wallets: 'wallets',
   ih_notification_prefs: 'notificationPrefs',
+  'infohub-theme': 'theme',
 };
 
 /**

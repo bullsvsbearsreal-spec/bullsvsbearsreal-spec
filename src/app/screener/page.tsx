@@ -393,15 +393,31 @@ export default function ScreenerPage() {
           </button>
 
           {/* Quick presets */}
-          {presets.map((p) => (
-            <button
-              key={p.name}
-              onClick={() => applyPreset(p)}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.06] transition-colors"
-            >
-              {p.name}
-            </button>
-          ))}
+          {presets.map((p) => {
+            const isDefault = DEFAULT_PRESETS.some((d) => d.name === p.name);
+            return (
+              <div key={p.name} className="flex items-center group">
+                <button
+                  onClick={() => applyPreset(p)}
+                  className={`py-1.5 rounded-lg text-[11px] font-medium bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.06] transition-colors ${isDefault ? 'px-2.5' : 'pl-2.5 pr-1.5'}`}
+                >
+                  <span className="flex items-center gap-1">
+                    {p.name}
+                    {!isDefault && (
+                      <span
+                        role="button"
+                        onClick={(e) => { e.stopPropagation(); handleDeletePreset(p.name); }}
+                        className="ml-0.5 text-neutral-600 hover:text-red-400 transition-colors"
+                        title="Delete preset"
+                      >
+                        <X className="w-3 h-3" />
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </div>
+            );
+          })}
 
           {conditions.length > 0 && (
             <button

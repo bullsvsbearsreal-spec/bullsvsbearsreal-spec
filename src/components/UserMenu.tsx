@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
-import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard } from 'lucide-react';
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -82,6 +82,16 @@ export default function UserMenu() {
               {session.user?.email}
             </p>
           </div>
+
+          {/* Dashboard */}
+          <Link
+            href="/dashboard"
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Dashboard
+          </Link>
 
           {/* Settings */}
           <Link
