@@ -97,11 +97,11 @@ export async function GET(request: NextRequest) {
       );
 
       const oiEntries = oiData
-        .filter((r: any) => topSymbols.has(r.symbol) && r.openInterest > 0)
+        .filter((r: any) => topSymbols.has(r.symbol) && r.openInterestValue > 0)
         .map((r: any) => ({
           symbol: r.symbol,
           exchange: r.exchange,
-          oiUsd: r.openInterest,
+          oiUsd: r.openInterestValue,
         }));
 
       oiInserted = await saveOISnapshot(oiEntries);

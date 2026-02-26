@@ -40,8 +40,8 @@ const L1_TTL = 5 * 60 * 1000; // 5 minutes
 // ---------------------------------------------------------------------------
 const TOP_SYMBOLS = [
   'BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'LINK', 'DOT',
-  'MATIC', 'UNI', 'ATOM', 'NEAR', 'APT', 'OP', 'ARB', 'SUI', 'SEI', 'TIA',
-  'JUP', 'PEPE', 'WIF', 'BONK', 'FET', 'RNDR', 'INJ', 'STX', 'IMX', 'MKR',
+  'POL', 'UNI', 'ATOM', 'NEAR', 'APT', 'OP', 'ARB', 'SUI', 'SEI', 'TIA',
+  'JUP', 'PEPE', 'WIF', 'BONK', 'FET', 'RENDER', 'INJ', 'STX', 'IMX', 'MKR',
   'AAVE', 'LDO', 'CRV', 'SNX', 'COMP', 'FIL', 'THETA', 'SAND', 'MANA', 'AXS',
   'GALA', 'ENJ', 'ILV', 'GMT', 'APE', 'BLUR', 'PYTH', 'JTO', 'W', 'STRK',
 ];

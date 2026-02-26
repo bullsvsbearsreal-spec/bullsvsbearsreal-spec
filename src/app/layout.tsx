@@ -5,6 +5,7 @@ import Providers from '@/components/Providers'
 import ChatWidget from '@/components/chat/ChatWidget'
 import AlertEngine from '@/components/AlertEngine'
 import { Analytics } from '@vercel/analytics/next'
+import { ALL_EXCHANGES } from '@/lib/constants'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     default: 'InfoHub | Real-Time Crypto Derivatives Dashboard',
     template: '%s | InfoHub',
   },
-  description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 24+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.',
+  description: `Real-time funding rates, open interest, liquidations, and arbitrage tools across ${ALL_EXCHANGES.length}+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.`,
   keywords: [
     'funding rates', 'funding rate arbitrage', 'open interest', 'liquidations',
     'derivatives data', 'perpetual futures', 'DEX funding rates', 'crypto API',
@@ -51,13 +52,13 @@ export const metadata: Metadata = {
     url: 'https://info-hub.io',
     siteName: 'InfoHub',
     title: 'InfoHub | Real-Time Derivatives Data',
-    description: 'Real-time funding rates, open interest, liquidations & arbitrage across 24+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.',
+    description: `Real-time funding rates, open interest, liquidations & arbitrage across ${ALL_EXCHANGES.length}+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.`,
     images: [
       {
         url: '/api/og',
         width: 1200,
         height: 630,
-        alt: 'InfoHub - Real-Time Derivatives Data Across 24+ Exchanges',
+        alt: `InfoHub - Real-Time Derivatives Data Across ${ALL_EXCHANGES.length}+ Exchanges`,
       },
     ],
   },
@@ -66,7 +67,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'InfoHub | Real-Time Derivatives Data',
-    description: 'Real-time funding rates, arbitrage tools, OI & liquidations across 24+ exchanges (CEX + DEX).',
+    description: `Real-time funding rates, arbitrage tools, OI & liquidations across ${ALL_EXCHANGES.length}+ exchanges (CEX + DEX).`,
     images: ['/api/og'],
     creator: '@infohub',
   },

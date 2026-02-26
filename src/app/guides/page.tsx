@@ -9,6 +9,7 @@ import {
   ChevronRight, Clock, Coffee, Pencil, Sparkles,
   MessageCircle, Activity, Layers, Database, Globe,
 } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 /* ─── Upcoming guide topics ─────────────────────────────────────── */
 
@@ -72,7 +73,7 @@ const difficultyColor: Record<string, string> = {
 /* ─── Platform stats ──────────────────────────────────────────── */
 
 const platformStats = [
-  { icon: Globe, label: '24 exchanges', desc: 'CEX and DEX data in one place' },
+  { icon: Globe, label: `${ALL_EXCHANGES.length} exchanges`, desc: 'CEX and DEX data in one place' },
   { icon: Activity, label: 'Real-time funding', desc: 'Live rates updated every 30-60s' },
   { icon: Layers, label: '$60B+ open interest', desc: 'Across 2,800+ trading pairs' },
   { icon: Zap, label: 'Liquidation tracking', desc: 'Cascades spotted as they happen' },

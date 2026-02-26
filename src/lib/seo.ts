@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 type PageMeta = {
   title: string;
@@ -17,11 +18,11 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/funding': {
     title: 'Funding Rates',
-    description: 'Live perpetual futures funding rates across 24+ exchanges. Compare rates, find arbitrage opportunities, and track funding trends in real-time.',
+    description: `Live perpetual futures funding rates across ${ALL_EXCHANGES.length}+ exchanges. Compare rates, find arbitrage opportunities, and track funding trends in real-time.`,
   },
   '/open-interest': {
     title: 'Open Interest',
-    description: 'Aggregate open interest data across 24+ crypto derivatives exchanges. Track OI changes, spot trends, and analyze market positioning.',
+    description: `Aggregate open interest data across ${ALL_EXCHANGES.length}+ crypto derivatives exchanges. Track OI changes, spot trends, and analyze market positioning.`,
   },
   '/liquidations': {
     title: 'Liquidations',

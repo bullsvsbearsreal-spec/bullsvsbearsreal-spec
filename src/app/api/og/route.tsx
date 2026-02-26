@@ -1,12 +1,13 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const title = searchParams.get('title') || 'Real-Time Derivatives Data';
-  const description = searchParams.get('desc') || 'Funding Rates · Open Interest · Liquidations · 24+ Exchanges';
+  const description = searchParams.get('desc') || `Funding Rates · Open Interest · Liquidations · ${ALL_EXCHANGES.length}+ Exchanges`;
 
   return new ImageResponse(
     (

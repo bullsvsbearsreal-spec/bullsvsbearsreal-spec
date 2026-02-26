@@ -2,6 +2,8 @@ import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { fetchWithTimeout, isCryptoSymbol } from '../_shared/fetch';
 import { normalizeSymbol, GTRADE_GROUP_ASSET_CLASS, type AssetClass } from './normalize';
 
+const PROXY_BASE = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://info-hub.io';
+
 type FundingData = {
   symbol: string;
   exchange: string;
@@ -598,7 +600,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       // If direct returns empty, try Node.js proxy (different IP pool)
       if (items.length === 0) {
         try {
-          const proxyRes = await fetchFn('https://info-hub.io/api/proxy/bitunix?endpoint=funding', {}, 10000);
+          const proxyRes = await fetchFn(`${PROXY_BASE}/api/proxy/bitunix?endpoint=funding`, {}, 10000);
           if (proxyRes.ok) {
             const proxyJson = await proxyRes.json();
             items = Array.isArray(proxyJson.data) ? proxyJson.data : [];

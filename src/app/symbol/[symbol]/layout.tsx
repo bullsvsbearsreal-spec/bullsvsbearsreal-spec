@@ -1,9 +1,10 @@
 import { Metadata } from 'next';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 export async function generateMetadata({ params }: { params: { symbol: string } }): Promise<Metadata> {
   const symbol = params.symbol?.toUpperCase() || 'BTC';
   const title = `${symbol} Trading Dashboard`;
-  const description = `Real-time ${symbol}/USDT price charts, funding rates, open interest, and volume across 24+ exchanges.`;
+  const description = `Real-time ${symbol}/USDT price charts, funding rates, open interest, and volume across ${ALL_EXCHANGES.length}+ exchanges.`;
 
   return {
     title,

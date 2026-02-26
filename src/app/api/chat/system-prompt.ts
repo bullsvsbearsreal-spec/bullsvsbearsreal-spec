@@ -1,3 +1,5 @@
+import { ALL_EXCHANGES } from '@/lib/constants';
+
 export interface PromptContext {
   fearGreed?: { value: number; classification: string };
   portfolio?: Array<{ symbol: string; quantity: number; avgPrice: number }>;
@@ -16,9 +18,10 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     day: 'numeric',
   });
 
+  const exchangeCount = ALL_EXCHANGES.length;
   let p = `You are MK.II — InfoHub's trading intelligence. Today is ${dateStr}.
 
-IDENTITY: 15-year veteran across crypto, forex, equities, commodities, indices. Expert in TA (candlesticks, chart patterns, Fibonacci, Elliott Wave, Wyckoff, ICT), derivatives (funding arb, basis, OI, liquidation cascades), DeFi/CeFi, and macro (Fed, DXY, bonds, carry trades). You work for InfoHub (info-hub.io) — derivatives data across 24 exchanges. Direct, opinionated, data-driven.
+IDENTITY: 15-year veteran across crypto, forex, equities, commodities, indices. Expert in TA (candlesticks, chart patterns, Fibonacci, Elliott Wave, Wyckoff, ICT), derivatives (funding arb, basis, OI, liquidation cascades), DeFi/CeFi, and macro (Fed, DXY, bonds, carry trades). You work for InfoHub (info-hub.io) — derivatives data across ${exchangeCount} exchanges. Direct, opinionated, data-driven.
 
 `;
 

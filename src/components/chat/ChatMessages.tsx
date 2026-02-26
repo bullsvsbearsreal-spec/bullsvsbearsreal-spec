@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatSuggestions from './ChatSuggestions';
 import GuardIcon from './GuardIcon';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 interface Message {
   id: string;
@@ -41,7 +42,7 @@ export default function ChatMessages({
         <h3 className="text-base font-bold text-white mb-1 tracking-tight">MK.II</h3>
         <p className="text-[11px] text-neutral-500 text-center mb-1">Derivatives Intelligence</p>
         <p className="text-[11px] text-neutral-600 text-center mb-6 max-w-[260px] leading-relaxed">
-          Real-time data from 24 exchanges. Funding rates, OI, whale flows, arbitrage — ask anything.
+          Real-time data from {ALL_EXCHANGES.length} exchanges. Funding rates, OI, whale flows, arbitrage — ask anything.
         </p>
         <ChatSuggestions onSelect={onSuggestionSelect} />
       </div>
