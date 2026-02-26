@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRateAdaptive, getExchangeColor, type FundingPeriod, PERIOD_HOURS, PERIOD_LABELS } from '../utils';
-import { isExchangeDex } from '@/lib/constants';
+import { isExchangeDex, EXCHANGE_FEES, getArbRoundTripFee } from '@/lib/constants';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from 'lucide-react';
 import Pagination from './Pagination';
 
@@ -39,7 +39,7 @@ function formatPnl(value: number): string {
   return `${prefix}$${value.toFixed(2)}`;
 }
 
-const TAKER_FEE = 0.10; // 0.10% round-trip fee estimate (0.05% each side)
+const FALLBACK_FEE = 0.10; // fallback when exchange fees unknown
 
 function IntervalMark({ symbol, exchange, intervalMap }: { symbol: string; exchange: string; intervalMap?: Map<string, string> }) {
   const interval = intervalMap?.get(`${symbol}|${exchange}`);
@@ -78,7 +78,9 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
       const high = sorted[0];
       const low = sorted[sorted.length - 1];
       const grossSpread8h = item.spread;
-      const netSpread8h = Math.max(0, grossSpread8h - TAKER_FEE);
+      // Per-pair round-trip fee: taker on both exchanges (open+close each side)
+      const roundTripFee = getArbRoundTripFee(high.exchange, low.exchange);
+      const netSpread8h = Math.max(0, grossSpread8h - roundTripFee);
       // Display spreads scaled to selected period
       const grossSpread = grossSpread8h * periodScale;
       const netSpread = netSpread8h * periodScale;
@@ -106,6 +108,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         low,
         grossSpread,
         netSpread,
+        roundTripFee,
         annualized,
         netAnnualized,
         dailyPnl,
@@ -152,7 +155,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         <div>
           <h3 className="text-white font-semibold text-sm">Arbitrage Opportunities</h3>
           <p className="text-neutral-600 text-xs">
-            Cross-exchange funding rate spreads (CEX + DEX) &middot; Net of ~{TAKER_FEE.toFixed(2)}% est. fees
+            Cross-exchange funding rate spreads (CEX + DEX) &middot; Net of real per-exchange taker fees
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -239,7 +242,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                     <div>
                       <span className="text-hub-yellow font-bold font-mono text-sm">{item.grossSpread.toFixed(4)}%</span>
                       {item.netSpread < item.grossSpread && (
-                        <div className="text-neutral-600 text-[10px] font-mono">net {item.netSpread.toFixed(4)}%</div>
+                        <div className="text-neutral-600 text-[10px] font-mono" title={`Round-trip fees: ${item.roundTripFee.toFixed(3)}% (taker on ${item.high.exchange} + ${item.low.exchange})`}>net {item.netSpread.toFixed(4)}%</div>
                       )}
                     </div>
                   </td>
@@ -331,7 +334,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
           <span className="text-blue-400 font-bold">**</span><span className="text-neutral-500 -ml-2">= 4h</span>
         </div>
         <p className="text-neutral-700 text-[10px]">
-          PnL estimates assume equal position size on short &amp; long sides. Fee estimate: {TAKER_FEE}% round-trip (taker). Actual fees vary by exchange &amp; VIP tier. Not financial advice.
+          PnL estimates assume equal position size on short &amp; long sides. Fees use real base-tier taker rates per exchange (open+close on each side). Actual fees vary by VIP tier. Not financial advice.
         </p>
       </div>
     </div>

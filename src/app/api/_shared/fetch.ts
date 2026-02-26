@@ -4,7 +4,7 @@ import { getCache, setCache, isDBConfigured } from '@/lib/db';
 // Filter out tokenized stocks, indices, and known non-crypto symbols
 // BingX lists NCSK* (tokenized equities), *X stock indices (AAPLX, NVDAX, SPYX)
 // Kraken lists *X stock derivatives (SPYXUSD, AAPLXUSD)
-const STOCK_SYMBOL_PATTERNS = /^(NCSK|ACNSTOCK)/;
+const STOCK_SYMBOL_PATTERNS = /^(NCSK|NCCO|NCFX|NCSI|ACNSTOCK)/;
 const STOCK_SUFFIX_SYMBOLS = new Set([
   'AAPLX', 'NVDAX', 'SPYX', 'CRCLX', 'METAX', 'WMTX', 'GOOGX', 'AMZX',
   'MSFTX', 'TSLAX', 'COINX', 'HOODDX', 'ARMX', 'INTCX', 'PLTRX', 'MRVLX',

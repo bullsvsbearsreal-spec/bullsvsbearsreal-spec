@@ -16,6 +16,8 @@ export const KNOWN_STOCKS = new Set([
   'DIS', 'JPM', 'V', 'MA', 'WMT', 'KO', 'PEP', 'JNJ', 'PFE', 'LLY',
   'UNH', 'BRK', 'XOM', 'CVX', 'PG', 'NKE', 'MCD', 'HD', 'COST',
   'CSCO', 'ACN', 'ASML', 'RDDT', 'APP', 'IBM', 'GME', 'GE', 'RACE', 'CRCL', 'WDC',
+  // Korean stocks (Lighter DEX)
+  'SAMSUNG', 'SKHYNIX', 'HYUNDAI', 'HANMI', 'SNDK', 'KRCOMP',
   // ETFs / Indices
   'SPY', 'SPX', 'QQQ', 'IWM', 'DIA', 'ARKK',
   'NAS100', 'SPX500', 'URNM',

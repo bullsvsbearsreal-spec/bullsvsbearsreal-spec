@@ -350,43 +350,89 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
   // Aevo (DEX) — funding settles HOURLY; return native 1h rate
+  // Step 1: fetch /markets for all active perps (symbol discovery + mark/index prices)
+  // Step 2: fire per-instrument /funding calls in batches (Aevo rate-limits concurrent requests)
   {
     name: 'Aevo',
     fetcher: async (fetchFn) => {
-      // Top symbols to query — Aevo requires per-instrument calls
-      const AEVO_SYMBOLS = [
-        'BTC', 'ETH', 'SOL', 'DOGE', 'XRP', 'AVAX', 'LINK', 'ARB',
-        'OP', 'SUI', 'NEAR', 'PEPE', 'WIF', 'TIA', 'SEI', 'JUP',
-        'W', 'ONDO', 'TON', 'ADA', 'DOT', 'MATIC',
-      ];
-      const results = await Promise.all(
-        AEVO_SYMBOLS.map(async (sym) => {
-          try {
-            const res = await fetchFn(
-              `https://api.aevo.xyz/funding?instrument_name=${sym}-PERP`,
-              {},
-              6000
-            );
-            if (!res.ok) return null;
-            const data = await res.json();
-            const rate = parseFloat(data.funding_rate);
-            if (isNaN(rate)) return null;
-            return {
-              symbol: sym,
-              exchange: 'Aevo',
-              fundingRate: rate * 100, // native 1h fraction → %
-              fundingInterval: '1h' as const,
-              markPrice: 0,
-              indexPrice: 0,
-              nextFundingTime: parseInt(data.next_epoch) / 1e6 || Date.now() + 3600000,
-              type: 'dex' as const,
-            };
-          } catch {
-            return null;
-          }
-        })
-      );
-      return results.filter(Boolean) as FundingData[];
+      // Get all active perpetual markets (single call — includes prices)
+      const marketsRes = await fetchFn('https://api.aevo.xyz/markets?instrument_type=PERPETUAL', {}, 8000);
+      if (!marketsRes.ok) return [];
+      const markets: any[] = await marketsRes.json();
+      const activeMarkets = markets.filter((m: any) => m.is_active);
+      if (activeMarkets.length === 0) return [];
+
+      // Build price map from markets response
+      const priceMap = new Map<string, { mark: number; index: number }>();
+      activeMarkets.forEach((m: any) => {
+        priceMap.set(m.underlying_asset, {
+          mark: parseFloat(m.mark_price) || 0,
+          index: parseFloat(m.index_price) || 0,
+        });
+      });
+
+      // Sort markets: priority symbols first, then alphabetically
+      const PRIORITY = new Set(['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'AVAX', 'LINK', 'ARB', 'OP', 'SUI', 'BNB', 'ADA', 'TON', 'NEAR', 'PEPE', 'WIF', 'ONDO', 'TIA', 'SEI', 'HYPE']);
+      const sorted = [...activeMarkets].sort((a, b) => {
+        const ap = PRIORITY.has(a.underlying_asset) ? 0 : 1;
+        const bp = PRIORITY.has(b.underlying_asset) ? 0 : 1;
+        return ap - bp;
+      });
+
+      // Batch funding calls: 20 per batch with 1.2s delay between batches
+      // Aevo rate-limits at ~20 concurrent requests per ~1s window
+      // Cap at 80 markets (4 batches ≈ 6s) to stay within route timeout
+      const BATCH_SIZE = 20;
+      const MAX_MARKETS = 80;
+      const capped = sorted.slice(0, MAX_MARKETS);
+      const allResults: (FundingData | null)[] = [];
+
+      for (let i = 0; i < capped.length; i += BATCH_SIZE) {
+        const batch = capped.slice(i, i + BATCH_SIZE);
+        if (i > 0) await new Promise(r => setTimeout(r, 1200));
+        const batchResults = await Promise.all(
+          batch.map(async (m: any) => {
+            try {
+              const res = await fetchFn(
+                `https://api.aevo.xyz/funding?instrument_name=${m.instrument_name}`,
+                {},
+                5000
+              );
+              if (!res.ok) return null;
+              const data = await res.json();
+              const rate = parseFloat(data.funding_rate);
+              if (isNaN(rate)) return null;
+
+              let symbol = m.underlying_asset;
+              // Handle 1000/10000 prefix tokens
+              if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+              else if (symbol.startsWith('10000')) symbol = symbol.slice(5);
+              else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+
+              const prices = priceMap.get(m.underlying_asset);
+              const isStock = m.market_type === 'stock' || m.market_type === 'rwa';
+              const norm = normalizeSymbol(symbol, 'Aevo');
+
+              return {
+                symbol: norm.symbol,
+                exchange: 'Aevo',
+                fundingRate: rate * 100, // native 1h fraction → %
+                fundingInterval: '1h' as const,
+                markPrice: prices?.mark || 0,
+                indexPrice: prices?.index || 0,
+                nextFundingTime: parseInt(data.next_epoch) / 1e6 || Date.now() + 3600000,
+                type: 'dex' as const,
+                assetClass: isStock ? ('stocks' as AssetClass) : (norm.assetClass !== 'crypto' ? norm.assetClass : undefined),
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+        allResults.push(...batchResults);
+      }
+
+      return allResults.filter(Boolean) as FundingData[];
     },
   },
 
@@ -1342,70 +1388,54 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
   // edgeX (StarkEx DEX) — funding settles every 4 hours
-  // Per-contract ticker calls required; fetch metadata for contract list, then batch top symbols
+  // Direct API is CloudFlare-challenged; use CoinGecko derivatives as data source
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      // Step 1: Get metadata for active contract list
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000);
-      if (!metaRes.ok) return [];
-      const meta = await metaRes.json();
-      if (meta.code !== 'SUCCESS') return [];
-      const contracts = (meta.data?.contractList || []).filter(
-        (c: any) => c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP')
+      const res = await fetchFn(
+        'https://api.coingecko.com/api/v3/derivatives/exchanges/edgex?include_tickers=unexpired',
+        {}, 15000
       );
-      if (contracts.length === 0) return [];
+      if (!res.ok) return [];
+      const data = await res.json();
+      const tickers: any[] = (data.tickers || []).filter(
+        (t: any) => t.contract_type === 'perpetual' && t.base && t.funding_rate != null
+      );
+      if (tickers.length === 0) return [];
 
-      // Step 2: Fire ALL ticker requests in parallel (no batching — much faster on edge)
-      // Each request has a 4s timeout; we collect whatever completes in time
+      // Deduplicate by base symbol — keep highest OI entry
+      const bestByBase = new Map<string, any>();
+      for (const t of tickers) {
+        const existing = bestByBase.get(t.base);
+        if (!existing || (t.open_interest_usd || 0) > (existing.open_interest_usd || 0)) {
+          bestByBase.set(t.base, t);
+        }
+      }
+
       const results: FundingData[] = [];
-      const allResults = await Promise.all(
-        contracts.map(async (c: any) => {
-          try {
-            const tickerRes = await fetchFn(
-              `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
-              {},
-              4000
-            );
-            if (!tickerRes.ok) return null;
-            const tickerJson = await tickerRes.json();
-            if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
-            const t = tickerJson.data[0];
+      for (const t of Array.from(bestByBase.values())) {
+        let symbol = t.base;
+        // Handle 1000/1000000 prefixes
+        if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+        else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
 
-            let symbol = c.contractName.replace(/USD$/, '');
-            // Strip "2" suffix duplicates (e.g., BNB2 → BNB)
-            if (symbol.endsWith('2') && symbol.length > 2) {
-              const base = symbol.slice(0, -1);
-              if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
-                return null; // Skip duplicate, keep the original
-              }
-              symbol = base;
-            }
-            // Handle 1000/1000000 prefixes
-            if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
-            else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+        const norm = normalizeSymbol(symbol, 'edgeX');
+        const rate = parseFloat(t.funding_rate);
+        if (isNaN(rate)) continue;
 
-            const isStock = c.isStock === true;
-            const norm = normalizeSymbol(symbol, 'edgeX');
-
-            return {
-              symbol: norm.symbol,
-              exchange: 'edgeX',
-              fundingRate: parseFloat(t.fundingRate) * 100, // decimal → %
-              fundingInterval: '4h' as const,
-              markPrice: parseFloat(t.markPrice) || 0,
-              indexPrice: parseFloat(t.indexPrice) || 0,
-              nextFundingTime: parseInt(t.nextFundingTime) || Date.now() + 14400000,
-              type: 'dex' as const,
-              assetClass: isStock ? ('stocks' as AssetClass) : (norm.assetClass !== 'crypto' ? norm.assetClass : undefined),
-            };
-          } catch {
-            return null;
-            }
-          })
-        );
-        results.push(...allResults.filter(Boolean) as FundingData[]);
-      return results.filter(item => !isNaN(item.fundingRate));
+        results.push({
+          symbol: norm.symbol,
+          exchange: 'edgeX',
+          fundingRate: rate, // CoinGecko returns % directly
+          fundingInterval: '4h' as const,
+          markPrice: parseFloat(t.last) || 0,
+          indexPrice: t.index || 0,
+          nextFundingTime: Date.now() + 14400000,
+          type: 'dex' as const,
+          assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
+        });
+      }
+      return results;
     },
   },
 

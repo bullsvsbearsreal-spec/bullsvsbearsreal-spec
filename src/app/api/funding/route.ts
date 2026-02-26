@@ -10,31 +10,96 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 // ---------------------------------------------------------------------------
-// L1: In-memory cache (2-minute TTL — funding rates don't change that often)
+// Two-layer cache: raw exchange data (expensive) + per-assetClass responses (cheap)
+// This prevents re-fetching all 29 exchanges when switching between tabs.
 // ---------------------------------------------------------------------------
-interface CachedFunding {
-  body: any;
+
+// Layer 1: Raw processed data (the expensive part — 29 exchange fetches + normalization)
+interface CachedRawData {
+  dataWithPrices: any[];
+  health: any[];
+  top500: Set<string>;
+  multiExchangeSymbols: Set<string>;
   timestamp: number;
 }
 
-const l1Cache = new Map<string, CachedFunding>();
-const L1_TTL = 2 * 60 * 1000; // 2 minutes
+let rawDataCache: CachedRawData | null = null;
+const RAW_TTL = 2 * 60 * 1000; // 2 minutes
+
+// Layer 2: Per-assetClass filtered responses (regenerated from raw data in ~1ms)
+const responseCache = new Map<string, { body: any; timestamp: number }>();
 
 type AssetClassFilter = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'all';
+
+// Filter processed data by asset class (runs in ~1ms on cached data)
+function filterByAssetClass(
+  dataWithPrices: any[],
+  top500: Set<string>,
+  multiExchangeSymbols: Set<string>,
+  assetClass: AssetClassFilter,
+) {
+  const isAllowed = (symbol: string) =>
+    isTop500Symbol(symbol, top500) || multiExchangeSymbols.has(symbol.toUpperCase());
+
+  if (assetClass === 'all') {
+    return dataWithPrices.filter(r => {
+      if (!r.assetClass || r.assetClass === 'crypto') {
+        return r.type === 'dex' || isAllowed(r.symbol);
+      }
+      return true;
+    });
+  } else if (assetClass === 'crypto') {
+    return dataWithPrices.filter(r => {
+      const ac = r.assetClass || 'crypto';
+      return ac === 'crypto' && (r.type === 'dex' || isAllowed(r.symbol));
+    });
+  } else {
+    return dataWithPrices.filter(r => r.assetClass === assetClass);
+  }
+}
+
+function buildResponseBody(filtered: any[], health: any[], assetClass: AssetClassFilter) {
+  return {
+    data: filtered,
+    health,
+    meta: {
+      totalExchanges: fundingFetchers.length,
+      activeExchanges: health.filter((h: any) => h.status === 'ok').length,
+      totalEntries: filtered.length,
+      assetClass,
+      timestamp: Date.now(),
+      normalization: {
+        basis: 'native',
+        note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h). 8h: Binance, Bybit, OKX, Bitget, MEXC, BingX, Phemex, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade. 4h: Kraken, edgeX. 1h: Hyperliquid, dYdX, Aevo, Coinbase, Drift, GMX, Extended, Lighter. Bitunix/Variational vary per market. OKX/CoinEx include native predictedRate. For others with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
+      },
+    },
+  };
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const assetClass = (searchParams.get('assetClass') || 'crypto') as AssetClassFilter;
 
-  // L1: Return cached data if fresh
+  // Layer 2: Return cached filtered response if fresh
   const cacheKey = `funding_${assetClass}`;
-  const cached = l1Cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < L1_TTL) {
-    return NextResponse.json(cached.body, {
+  const cachedResponse = responseCache.get(cacheKey);
+  if (cachedResponse && Date.now() - cachedResponse.timestamp < RAW_TTL) {
+    return NextResponse.json(cachedResponse.body, {
       headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
     });
   }
 
+  // Layer 1: Check if raw data is fresh — if so, just re-filter (instant)
+  if (rawDataCache && Date.now() - rawDataCache.timestamp < RAW_TTL) {
+    const filtered = filterByAssetClass(rawDataCache.dataWithPrices, rawDataCache.top500, rawDataCache.multiExchangeSymbols, assetClass);
+    const responseBody = buildResponseBody(filtered, rawDataCache.health, assetClass);
+    responseCache.set(cacheKey, { body: responseBody, timestamp: Date.now() });
+    return NextResponse.json(responseBody, {
+      headers: { 'X-Cache': 'FILTERED', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    });
+  }
+
+  // Cache miss — fetch all exchanges (the expensive part: ~5-10s)
   let data: any[], health: any[], top500: Set<string>;
   try {
     const [exchangeResult, top500Result] = await Promise.all([
@@ -46,9 +111,17 @@ export async function GET(request: NextRequest) {
     top500 = top500Result;
   } catch (err) {
     // If fetch fails, return stale cache if available
-    if (cached) {
-      return NextResponse.json(cached.body, {
+    if (cachedResponse) {
+      return NextResponse.json(cachedResponse.body, {
         headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+      });
+    }
+    // Try stale raw cache as last resort
+    if (rawDataCache) {
+      const filtered = filterByAssetClass(rawDataCache.dataWithPrices, rawDataCache.top500, rawDataCache.multiExchangeSymbols, assetClass);
+      const responseBody = buildResponseBody(filtered, rawDataCache.health, assetClass);
+      return NextResponse.json(responseBody, {
+        headers: { 'X-Cache': 'STALE-RAW', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
       });
     }
     return NextResponse.json(
@@ -149,45 +222,15 @@ export async function GET(request: NextRequest) {
     if (exchanges.size >= 2) multiExchangeSymbols.add(sym);
   });
 
-  const isAllowed = (symbol: string) =>
-    isTop500Symbol(symbol, top500) || multiExchangeSymbols.has(symbol.toUpperCase());
+  // Update raw data cache (shared across all asset class tabs)
+  rawDataCache = { dataWithPrices, health, top500, multiExchangeSymbols, timestamp: Date.now() };
 
-  let filtered;
-  if (assetClass === 'all') {
-    filtered = dataWithPrices.filter(r => {
-      if (!r.assetClass || r.assetClass === 'crypto') {
-        // DEX entries bypass the top500/multi-exchange filter — their pairs are curated
-        return r.type === 'dex' || isAllowed(r.symbol);
-      }
-      return true;
-    });
-  } else if (assetClass === 'crypto') {
-    filtered = dataWithPrices.filter(r => {
-      const ac = r.assetClass || 'crypto';
-      return ac === 'crypto' && (r.type === 'dex' || isAllowed(r.symbol));
-    });
-  } else {
-    filtered = dataWithPrices.filter(r => r.assetClass === assetClass);
-  }
+  // Filter and build response for requested asset class
+  const filtered = filterByAssetClass(dataWithPrices, top500, multiExchangeSymbols, assetClass);
+  const responseBody = buildResponseBody(filtered, health, assetClass);
 
-  const responseBody = {
-    data: filtered,
-    health,
-    meta: {
-      totalExchanges: fundingFetchers.length,
-      activeExchanges: health.filter(h => h.status === 'ok').length,
-      totalEntries: filtered.length,
-      assetClass,
-      timestamp: Date.now(),
-      normalization: {
-        basis: 'native',
-        note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h). 8h: Binance, Bybit, OKX, Bitget, MEXC, BingX, Phemex, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade. 4h: Kraken, edgeX. 1h: Hyperliquid, dYdX, Aevo, Coinbase, Drift, GMX, Extended, Lighter. Bitunix/Variational vary per market. OKX/CoinEx include native predictedRate. For others with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
-      },
-    },
-  };
-
-  // Update L1 cache
-  l1Cache.set(cacheKey, { body: responseBody, timestamp: Date.now() });
+  // Update response cache
+  responseCache.set(cacheKey, { body: responseBody, timestamp: Date.now() });
 
   return NextResponse.json(responseBody, {
     headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },

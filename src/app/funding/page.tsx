@@ -101,6 +101,10 @@ export default function FundingPage() {
     [assetClass]
   );
 
+  // Per-tab data cache: instantly show previously loaded tab data while fetching fresh data
+  type FundingData = { fundingRates: any[]; arbitrageData: any[]; oiMap: Map<string, number>; _assetClass: string };
+  const tabCacheRef = useRef<Map<string, FundingData>>(new Map());
+
   const fetcher = useCallback(async () => {
     const [data, arbData, oiData] = await Promise.all([
       fetchAllFundingRates(assetClass as AssetClassFilter),
@@ -115,13 +119,21 @@ export default function FundingPage() {
         oiMap.set(`${oi.symbol}|${oi.exchange}`, oi.openInterestValue);
       }
     });
-    return { fundingRates: validData, arbitrageData: arbData, oiMap };
+    const result: FundingData = { fundingRates: validData, arbitrageData: arbData, oiMap, _assetClass: assetClass };
+    // Cache this tab's data for instant switching
+    tabCacheRef.current.set(assetClass, result);
+    return result;
   }, [assetClass]);
 
-  const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
+  const { data: freshData, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
     fetcher,
     refreshInterval: 30000,
   });
+
+  // Use freshData only if it matches the current tab; otherwise fall back to tab cache
+  const data = (freshData && freshData._assetClass === assetClass)
+    ? freshData
+    : tabCacheRef.current.get(assetClass) ?? null;
 
   const fundingRates = Array.isArray(data?.fundingRates) ? data.fundingRates : [];
   const arbitrageData = Array.isArray(data?.arbitrageData) ? data.arbitrageData : [];

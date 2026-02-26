@@ -94,6 +94,56 @@ export function getExchangeBadgeColor(exchange: string): string {
   return EXCHANGE_BADGE_COLORS[exchange] || 'bg-hub-gray/50 text-hub-gray-text';
 }
 
+// Base-tier perpetual futures trading fees (% per trade)
+// Sources: official fee pages as of Feb 2026. Some DEXes have non-standard models (noted).
+// Used in arbitrage PnL calculations for per-pair fee accuracy.
+export interface ExchangeFees {
+  taker: number;  // % per trade (e.g., 0.05 = 0.05%)
+  maker: number;  // % per trade (negative = rebate)
+}
+
+export const EXCHANGE_FEES: Record<string, ExchangeFees> = {
+  'Binance':      { taker: 0.0500, maker: 0.0200 },
+  'Bybit':        { taker: 0.0550, maker: 0.0200 },
+  'OKX':          { taker: 0.0500, maker: 0.0200 },
+  'Bitget':       { taker: 0.0600, maker: 0.0200 },
+  'Hyperliquid':  { taker: 0.0450, maker: 0.0150 },
+  'dYdX':         { taker: 0.0300, maker: 0.0000 }, // maker rebate ignored for simplicity
+  'Aster':        { taker: 0.0350, maker: 0.0100 },
+  'Lighter':      { taker: 0.0000, maker: 0.0000 }, // zero-fee standard tier
+  'Aevo':         { taker: 0.0500, maker: 0.0200 },
+  'MEXC':         { taker: 0.0200, maker: 0.0000 },
+  'Kraken':       { taker: 0.0500, maker: 0.0200 },
+  'BingX':        { taker: 0.0500, maker: 0.0200 },
+  'Phemex':       { taker: 0.0600, maker: 0.0100 },
+  'Bitunix':      { taker: 0.0600, maker: 0.0200 },
+  'KuCoin':       { taker: 0.0600, maker: 0.0200 },
+  'Deribit':      { taker: 0.0500, maker: 0.0000 },
+  'HTX':          { taker: 0.0500, maker: 0.0200 },
+  'Bitfinex':     { taker: 0.0000, maker: 0.0000 }, // zero-fee since Dec 2025
+  'WhiteBIT':     { taker: 0.0550, maker: 0.0100 },
+  'Coinbase':     { taker: 0.0300, maker: 0.0000 }, // promotional rate
+  'CoinEx':       { taker: 0.0500, maker: 0.0300 },
+  'gTrade':       { taker: 0.0500, maker: 0.0500 }, // flat open+close fee (no orderbook)
+  'Drift':        { taker: 0.0350, maker: 0.0000 }, // maker rebate ignored
+  'GMX':          { taker: 0.0700, maker: 0.0500 }, // position open+close fee
+  'Extended':     { taker: 0.0250, maker: 0.0000 },
+  'edgeX':        { taker: 0.0380, maker: 0.0120 },
+  'Variational':  { taker: 0.0000, maker: 0.0000 }, // zero explicit fees
+  'BitMEX':       { taker: 0.0500, maker: 0.0000 }, // maker rebate ignored
+  'Gate.io':      { taker: 0.0500, maker: 0.0150 },
+};
+
+// Get round-trip fee for an arbitrage pair (taker on both sides: open + close on each exchange)
+export function getArbRoundTripFee(exchangeA: string, exchangeB: string): number {
+  const feesA = EXCHANGE_FEES[exchangeA];
+  const feesB = EXCHANGE_FEES[exchangeB];
+  // Round-trip = open + close on each exchange = 2× taker per exchange
+  const costA = feesA ? feesA.taker * 2 : 0.10; // fallback 0.05% each way
+  const costB = feesB ? feesB.taker * 2 : 0.10;
+  return costA + costB;
+}
+
 // Generate a direct trading link to the exchange's perpetual futures page for a given symbol
 export function getExchangeTradeUrl(exchange: string, symbol: string): string | null {
   const s = symbol.toUpperCase();

@@ -3,20 +3,21 @@ import { getGlobalData } from './coingecko';
 import { TickerData, FundingRateData, OpenInterestData, AggregatedLiquidations } from './types';
 import { isValidNumber } from '@/lib/utils/format';
 
-// Simple in-memory cache
-const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 10000; // 10 seconds
+// Simple in-memory cache with per-key TTL
+const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+const DEFAULT_TTL = 10000; // 10 seconds
+const FUNDING_TTL = 120000; // 2 minutes — funding rates change every 1-8h, no need to re-fetch on tab switch
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
     return cached.data as T;
   }
   return null;
 }
 
-function setCache(key: string, data: any): void {
-  cache.set(key, { data, timestamp: Date.now() });
+function setCache(key: string, data: any, ttl: number = DEFAULT_TTL): void {
+  cache.set(key, { data, timestamp: Date.now(), ttl });
 }
 
 // Aggregated market data interface
@@ -104,7 +105,7 @@ export async function fetchAllFundingRates(assetClass: AssetClassFilter = 'crypt
     const json = await response.json();
     // API returns { data, health, meta } — extract data array
     const allRates = Array.isArray(json) ? json : (json.data ?? json);
-    setCache(cacheKey, allRates);
+    setCache(cacheKey, allRates, FUNDING_TTL);
     return allRates;
   } catch (error) {
     console.error('Error fetching funding rates:', error);
@@ -120,7 +121,7 @@ export async function fetchAllFundingRates(assetClass: AssetClassFilter = 'crypt
       }
     });
 
-    setCache(cacheKey, allRates);
+    setCache(cacheKey, allRates, FUNDING_TTL);
     return allRates;
   }
 }
