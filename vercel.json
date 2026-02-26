@@ -7,19 +7,11 @@
   "crons": [
     {
       "path": "/api/cron/snapshot",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/cron/arbitrage-alerts",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/alerts",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/portfolio-snapshot",
-      "schedule": "0 0 * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }
