@@ -9,12 +9,24 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
-const MAX_TOOL_ROUNDS = 5;
-const MAX_TOKENS = 600;
+const MAX_TOOL_ROUNDS = 3;
+const MAX_TOKENS = 800;
+
+// Content can be a plain string or multimodal array (with images)
+type MessageContent = string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
 
 interface ChatRequestBody {
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  messages: Array<{ role: 'user' | 'assistant'; content: MessageContent }>;
   context?: PromptContext;
+}
+
+/** Extract text from a message content (string or array) */
+function extractText(content: MessageContent): string {
+  if (typeof content === 'string') return content;
+  return content
+    .filter((b) => b.type === 'text' && b.text)
+    .map((b) => b.text!)
+    .join(' ');
 }
 
 export async function POST(request: NextRequest) {
@@ -23,9 +35,10 @@ export async function POST(request: NextRequest) {
     request.headers.get('x-real-ip') || 'unknown';
 
   const body: ChatRequestBody = await request.json();
-  const lastMessage = body.messages?.[body.messages.length - 1]?.content || '';
+  const lastContent = body.messages?.[body.messages.length - 1]?.content || '';
+  const lastText = extractText(lastContent);
 
-  const rateCheck = checkRateLimit(ip, lastMessage.length);
+  const rateCheck = checkRateLimit(ip, lastText.length);
   if (!rateCheck.allowed) {
     return new Response(
       JSON.stringify({ error: rateCheck.error }),
@@ -83,10 +96,10 @@ export async function POST(request: NextRequest) {
     btcOI,
   });
 
-  // Only send last 10 messages to stay within token budget
-  const recentMessages = body.messages.slice(-10).map((m) => ({
+  // Only send last 6 messages to stay within token budget
+  const recentMessages: Anthropic.MessageParam[] = body.messages.slice(-6).map((m) => ({
     role: m.role as 'user' | 'assistant',
-    content: m.content,
+    content: m.content as any,
   }));
 
   // Create SSE stream
@@ -109,7 +122,7 @@ export async function POST(request: NextRequest) {
       while (toolRounds <= MAX_TOOL_ROUNDS) {
         // Check if this round should stream (only the final text response)
         const response = await client.messages.create({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-4-6',
           max_tokens: MAX_TOKENS,
           system: systemPrompt,
           tools: CHAT_TOOLS,

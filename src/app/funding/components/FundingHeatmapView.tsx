@@ -596,10 +596,11 @@ export default function FundingHeatmapView({
                         const rawLs = longShortMap?.get(`${symbol}|${ex}`);
                         const ls = rawLs ? { long: rawLs.long * pMult, short: rawLs.short * pMult } : undefined;
                         const hasLS = ls !== undefined && rate !== undefined;
-                        // For L/S exchanges: cell color reflects the side matching sort direction
-                        // desc/neutral → short-side rate (what shorts pay), asc → long-side rate (what longs pay)
-                        const colorRate = hasLS && exchangeSort?.exchange === ex && exchangeSort?.direction === 'asc'
-                          ? ls.long : rate;
+                        // For L/S exchanges: negate because L/S rates are holding costs (positive = paying = red)
+                        // desc/neutral → short-side rate, asc → long-side rate
+                        const colorRate = hasLS
+                          ? -(exchangeSort?.exchange === ex && exchangeSort?.direction === 'asc' ? ls.long : ls.short)
+                          : rate;
                         const colors = rateToColors(colorRate, gridClamp);
 
                         const cellStyle: React.CSSProperties = {
@@ -625,10 +626,10 @@ export default function FundingHeatmapView({
                         const inner = hasLS ? (
                           <>
                             <span className="flex flex-col items-center gap-[2px] leading-none">
-                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.long, gridClamp).text }}>
+                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.long, gridClamp).text }}>
                                 <span className="text-white/25 text-[8px]">L</span> {formatRateAdaptive(ls.long)}
                               </span>
-                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.short, gridClamp).text }}>
+                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.short, gridClamp).text }}>
                                 <span className="text-white/25 text-[8px]">S</span> {formatRateAdaptive(ls.short)}
                               </span>
                             </span>

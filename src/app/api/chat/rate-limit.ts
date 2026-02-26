@@ -10,8 +10,8 @@ interface RateLimitEntry {
 
 const ipLimits = new Map<string, RateLimitEntry>();
 const WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
-const MAX_PER_IP = 30; // 30 messages per IP per day
-const MAX_INPUT_LENGTH = 500;
+const MAX_PER_IP = 50; // 50 messages per IP per day
+const MAX_INPUT_LENGTH = 1000;
 
 // Global hourly limit
 let globalHourlyCount = 0;
@@ -50,7 +50,7 @@ export function checkRateLimit(ip: string, inputLength: number): RateLimitResult
 
   // Check input length
   if (inputLength > MAX_INPUT_LENGTH) {
-    return { allowed: false, remaining: 0, error: 'Message too long (max 500 characters).' };
+    return { allowed: false, remaining: 0, error: 'Message too long (max 1000 characters).' };
   }
 
   // Check global hourly limit
@@ -73,7 +73,7 @@ export function checkRateLimit(ip: string, inputLength: number): RateLimitResult
     return {
       allowed: false,
       remaining: 0,
-      error: `You've reached the daily message limit (${MAX_PER_IP}). Come back tomorrow or explore the data pages directly.`,
+      error: `Daily limit reached (${MAX_PER_IP} messages). Come back tomorrow or explore the data pages directly.`,
     };
   }
 

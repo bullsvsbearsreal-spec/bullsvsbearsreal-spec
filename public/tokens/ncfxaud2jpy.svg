@@ -1,4 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <circle cx="64" cy="64" r="64" fill="#2563eb"/>
-  <text x="64" y="64" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif" font-weight="bold" font-size="48" fill="#ffffff">FX</text>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <clipPath id="lc"><circle cx="46" cy="64" r="36"/></clipPath>
+    <clipPath id="rc"><circle cx="82" cy="64" r="36"/></clipPath>
+  </defs>
+  <rect width="128" height="128" rx="20" fill="#0d0d0d"/>
+  <!-- Quote currency (right, behind) -->
+  <circle cx="82" cy="64" r="37" fill="#1a1a1a" stroke="#333" stroke-width="0.5"/>
+  <image href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PG1hc2sgaWQ9ImEiPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMjU2IiBmaWxsPSIjZmZmIi8+PC9tYXNrPjxnIG1hc2s9InVybCgjYSkiPjxwYXRoIGZpbGw9IiNlZWUiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMTExLjMiIGZpbGw9IiNkODAwMjciLz48L2c+PC9zdmc+" x="46" y="28" width="72" height="72" clip-path="url(#rc)"/>
+  <!-- Base currency (left, in front) -->
+  <circle cx="46" cy="64" r="37" fill="#1a1a1a" stroke="#555" stroke-width="0.5"/>
+  <image href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PG1hc2sgaWQ9ImEiPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMjU2IiBmaWxsPSIjZmZmIi8+PC9tYXNrPjxnIG1hc2s9InVybCgjYSkiPjxwYXRoIGZpbGw9IiMwMDUyYjQiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjxwYXRoIGZpbGw9IiNlZWUiIGQ9Im0xNTQgMzAwIDE0IDMwIDMyLTgtMTQgMzAgMjUgMjAtMzIgNyAxIDMzLTI2LTIxLTI2IDIxIDEtMzMtMzMtNyAyNi0yMC0xNC0zMCAzMiA4em0yMjItMjdoNDdsLTM4IDI3IDE1LTQ0IDE0IDQ0em03LTE2MiA3IDE1IDE2LTQtNyAxNSAxMiAxMC0xNSAzdjE3bC0xMy0xMS0xMyAxMXYtMTdsLTE1LTMgMTItMTAtNy0xNSAxNiA0em01NyA2NyA3IDE1IDE2LTQtNyAxNSAxMiAxMC0xNSAzdjE2bC0xMy0xMC0xMyAxMXYtMTdsLTE1LTMgMTItMTAtNy0xNSAxNiA0em0tMTIyIDIyIDcgMTUgMTYtNC03IDE1IDEyIDEwLTE1IDN2MTZsLTEzLTEwLTEzIDExdi0xN2wtMTUtMyAxMi0xMC03LTE1IDE2IDR6bTY1IDE1NiA3IDE1IDE2LTQtNyAxNSAxMiAxMC0xNSAzdjE3bC0xMy0xMS0xMyAxMXYtMTdsLTE1LTMgMTItMTAtNy0xNSAxNiA0ek0wIDB2MzJsMzIgMzJMMCA5NnYxNjBoMzJsMzItMzIgMzIgMzJoMzJ2LTgzbDgzIDgzaDQ1bC04LTE2IDgtMTV2LTE0bC04My04M2g4M1Y5NmwtMzItMzIgMzItMzJWMEg5Nkw2NCAzMiAzMiAwWiIvPjxwYXRoIGZpbGw9IiNkODAwMjciIGQ9Ik0zMiAwdjMySDB2NjRoMzJ2MTYwaDY0Vjk2aDE2MFYzMkg5NlYwWm05NiAxMjggMTI4IDEyOHYtMzFsLTk3LTk3eiIvPjwvZz48L3N2Zz4=" x="10" y="28" width="72" height="72" clip-path="url(#lc)"/>
 </svg>

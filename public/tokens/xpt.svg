@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"><rect width="128" height="128" rx="16" fill="#1a1a1a"/><circle cx="64" cy="50" r="30" fill="#E5E4E2" opacity="0.9"/><text x="64" y="58" text-anchor="middle" fill="#000" font-family="Arial,sans-serif" font-weight="bold" font-size="24">XPT</text><text x="64" y="108" text-anchor="middle" fill="#777" font-family="Arial,sans-serif" font-weight="bold" font-size="16">PLATINUM</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="20" fill="#12121a"/>
+  <defs><linearGradient id="platGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e5e4e2"/><stop offset="50%" stop-color="#f0f0f0"/><stop offset="100%" stop-color="#b0b0b0"/></linearGradient></defs>
+  <circle cx="64" cy="56" r="32" fill="url(#platGrad)" stroke="#999" stroke-width="1"/>
+  <text x="64" y="64" text-anchor="middle" fill="#333" font-family="system-ui,sans-serif" font-weight="800" font-size="18">Pt</text>
+  <text x="64" y="108" text-anchor="middle" fill="#b0b0b0" font-family="system-ui,sans-serif" font-weight="700" font-size="16">PLATINUM</text>
+</svg>

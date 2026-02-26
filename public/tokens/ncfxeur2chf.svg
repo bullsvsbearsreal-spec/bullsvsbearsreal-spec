@@ -1,4 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <circle cx="64" cy="64" r="64" fill="#2563eb"/>
-  <text x="64" y="64" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif" font-weight="bold" font-size="48" fill="#ffffff">FX</text>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <clipPath id="lc"><circle cx="46" cy="64" r="36"/></clipPath>
+    <clipPath id="rc"><circle cx="82" cy="64" r="36"/></clipPath>
+  </defs>
+  <rect width="128" height="128" rx="20" fill="#0d0d0d"/>
+  <!-- Quote currency (right, behind) -->
+  <circle cx="82" cy="64" r="37" fill="#1a1a1a" stroke="#333" stroke-width="0.5"/>
+  <image href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PG1hc2sgaWQ9ImEiPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMjU2IiBmaWxsPSIjZmZmIi8+PC9tYXNrPjxnIG1hc2s9InVybCgjYSkiPjxwYXRoIGZpbGw9IiNkODAwMjciIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjxwYXRoIGZpbGw9IiNlZWUiIGQ9Ik0zODkuNiAyMTEuNWgtODl2LTg5aC04OS4xdjg5aC04OXY4OWg4OXY4OWg4OXYtODloODl6Ii8+PC9nPjwvc3ZnPg==" x="46" y="28" width="72" height="72" clip-path="url(#rc)"/>
+  <!-- Base currency (left, in front) -->
+  <circle cx="46" cy="64" r="37" fill="#1a1a1a" stroke="#555" stroke-width="0.5"/>
+  <image href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PG1hc2sgaWQ9ImEiPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMjU2IiBmaWxsPSIjZmZmIi8+PC9tYXNrPjxnIG1hc2s9InVybCgjYSkiPjxwYXRoIGZpbGw9IiMwMDUyYjQiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjxwYXRoIGZpbGw9IiNmZmRhNDQiIGQ9Im0yNTYgMTAwLjIgOC4zIDI1LjVIMjkxbC0yMS43IDE1LjcgOC4zIDI1LjYtMjEuNy0xNS44LTIxLjcgMTUuOCA4LjMtMjUuNi0yMS43LTE1LjdoMjYuOHptLTExMC4yIDQ1LjYgMjQgMTIuMiAxOC45LTE5LTQuMiAyNi41IDIzLjkgMTIuMi0yNi41IDQuMi00LjIgMjYuNS0xMi4yLTI0LTI2LjUgNC4zIDE5LTE5ek0xMDAuMiAyNTZsMjUuNS04LjNWMjIxbDE1LjcgMjEuNyAyNS42LTguMy0xNS44IDIxLjcgMTUuOCAyMS43LTI1LjYtOC4zLTE1LjcgMjEuN3YtMjYuOHptNDUuNiAxMTAuMiAxMi4yLTI0LTE5LTE4LjkgMjYuNSA0LjIgMTIuMi0yMy45IDQuMiAyNi41IDI2LjUgNC4yLTI0IDEyLjIgNC4zIDI2LjUtMTktMTl6TTI1NiA0MTEuOGwtOC4zLTI1LjVIMjIxbDIxLjctMTUuNy04LjMtMjUuNiAyMS43IDE1LjggMjEuNy0xNS44LTguMyAyNS42IDIxLjcgMTUuN2gtMjYuOHptMTEwLjItNDUuNi0yNC0xMi4yLTE4LjkgMTkgNC4yLTI2LjUtMjMuOS0xMi4yIDI2LjUtNC4yIDQuMi0yNi41IDEyLjIgMjQgMjYuNS00LjMtMTkgMTl6TTQxMS44IDI1NmwtMjUuNSA4LjNWMjkxbC0xNS43LTIxLjctMjUuNiA4LjMgMTUuOC0yMS43LTE1LjgtMjEuNyAyNS42IDguMyAxNS43LTIxLjd2MjYuOHptLTQ1LjYtMTEwLjItMTIuMiAyNCAxOSAxOC45LTI2LjUtNC4yLTEyLjIgMjMuOS00LjItMjYuNS0yNi41LTQuMiAyNC0xMi4yLTQuMy0yNi41IDE5IDE5eiIvPjwvZz48L3N2Zz4=" x="10" y="28" width="72" height="72" clip-path="url(#lc)"/>
 </svg>

@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <circle cx="64" cy="64" r="64" fill="#7B3F00"/>
-  <text x="64" y="64" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif" font-weight="bold" font-size="38" fill="#ffffff">COC</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="20" fill="#1a100a"/>
+  <ellipse cx="64" cy="56" rx="24" ry="30" fill="#5c3317" stroke="#3a1f0a" stroke-width="1.5"/>
+  <path d="M64,26 Q60,56 64,86" fill="none" stroke="#3a1f0a" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="64" cy="56" rx="12" ry="15" fill="#7a4b2a" opacity="0.5"/>
+  <text x="64" y="110" text-anchor="middle" fill="#8b6342" font-family="system-ui,sans-serif" font-weight="700" font-size="18">COCOA</text>
 </svg>

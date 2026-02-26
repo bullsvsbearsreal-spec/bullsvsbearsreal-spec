@@ -8,6 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
+import {
+  isDBConfigured, initDB,
+  getLiquidationHeatmapData, getLiquidationSummary, getRecentLiquidations,
+} from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -90,10 +94,16 @@ const PRICE_BUCKET_FRACTION: Record<SupportedSymbol, number> = {
   SOL: 0.002,  // 0.2% of price (~$0.30 at $150)
 };
 
+type Timeframe = '4h' | '24h' | '7d';
+const VALID_TIMEFRAMES: Timeframe[] = ['4h', '24h', '7d'];
+const TIMEFRAME_HOURS: Record<Timeframe, number> = { '4h': 4, '24h': 24, '7d': 168 };
+
 const FIVE_MINUTES = 5 * 60 * 1000;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const TWO_HOURS = 2 * 60 * 60 * 1000;
 const FOUR_HOURS = 4 * 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
 const MAX_EVENTS = 10_000;
 const FETCH_TIMEOUT = 8_000;
@@ -324,15 +334,15 @@ function buildHeatmap(
   events: LiquidationEvent[],
   currentPrice: number,
   symbol: SupportedSymbol,
-  timeframe: '4h' | '24h',
+  timeframe: Timeframe,
 ): HeatmapResponse['heatmap'] {
   const now = Date.now();
   const bucketFraction = PRICE_BUCKET_FRACTION[symbol];
-  const bucketSize = currentPrice * bucketFraction;
+  const baseBucketSize = currentPrice * bucketFraction;
+  // Wider price buckets for longer timeframes
+  const bucketSize = timeframe === '7d' ? baseBucketSize * 3 : baseBucketSize;
 
   // --- Time buckets ---
-  // For 4h: 5-minute intervals (48 buckets)
-  // For 24h: 5-min for first 4h (48 buckets) + 15-min for remaining 20h (80 buckets) = 128 total
   const timeBuckets: number[] = [];
   const timeBucketIntervals: number[] = [];
 
@@ -342,14 +352,20 @@ function buildHeatmap(
       timeBuckets.push(Math.floor(t));
       timeBucketIntervals.push(FIVE_MINUTES);
     }
+  } else if (timeframe === '7d') {
+    // 7 days: 2-hour intervals (84 buckets)
+    const start = now - SEVEN_DAYS;
+    for (let t = start; t < now; t += TWO_HOURS) {
+      timeBuckets.push(Math.floor(t));
+      timeBucketIntervals.push(TWO_HOURS);
+    }
   } else {
-    // Last 4 hours: 5-minute intervals
+    // 24h: 5-min for last 4h + 15-min for earlier 20h
     const recentStart = now - FOUR_HOURS;
     for (let t = recentStart; t < now; t += FIVE_MINUTES) {
       timeBuckets.push(Math.floor(t));
       timeBucketIntervals.push(FIVE_MINUTES);
     }
-    // 4-24 hours ago: 15-minute intervals (prepend)
     const olderStart = now - TWENTY_FOUR_HOURS;
     const olderBuckets: number[] = [];
     const olderIntervals: number[] = [];
@@ -362,8 +378,7 @@ function buildHeatmap(
   }
 
   // --- Price buckets ---
-  // Center around current price, extend +/- 5% for 4h, +/- 10% for 24h
-  const range = timeframe === '4h' ? 0.05 : 0.10;
+  const range = timeframe === '4h' ? 0.05 : timeframe === '24h' ? 0.10 : 0.15;
   const minPrice = currentPrice * (1 - range);
   const maxPrice = currentPrice * (1 + range);
   const priceBuckets: number[] = [];
@@ -375,7 +390,7 @@ function buildHeatmap(
   // cellMap keyed by "timeIdx:priceIdx"
   const cellMap = new Map<string, { volume: number; count: number; longVol: number; shortVol: number }>();
 
-  const cutoff = timeframe === '4h' ? now - FOUR_HOURS : now - TWENTY_FOUR_HOURS;
+  const cutoff = now - (TIMEFRAME_HOURS[timeframe] * 60 * 60 * 1000);
 
   for (const evt of events) {
     if (evt.time < cutoff) continue;
@@ -447,10 +462,10 @@ function buildHeatmap(
 // ---------------------------------------------------------------------------
 function buildSummary(
   events: LiquidationEvent[],
-  timeframe: '4h' | '24h',
+  timeframe: Timeframe,
 ): HeatmapResponse['summary'] {
   const now = Date.now();
-  const cutoff = timeframe === '4h' ? now - FOUR_HOURS : now - TWENTY_FOUR_HOURS;
+  const cutoff = now - (TIMEFRAME_HOURS[timeframe] * 60 * 60 * 1000);
   const filtered = events.filter((e) => e.time >= cutoff);
 
   let totalVolume = 0;
@@ -508,7 +523,9 @@ export async function GET(request: NextRequest) {
 
   // Parse timeframe
   const rawTimeframe = searchParams.get('timeframe') || '4h';
-  const timeframe: '4h' | '24h' = rawTimeframe === '24h' ? '24h' : '4h';
+  const timeframe: Timeframe = VALID_TIMEFRAMES.includes(rawTimeframe as Timeframe)
+    ? (rawTimeframe as Timeframe)
+    : '4h';
 
   // L1 cache check
   const cacheKey = `${symbol}:${timeframe}`;
@@ -522,6 +539,81 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // --- DB path for 24h / 7d when database is configured ---
+  const useDB = isDBConfigured() && (timeframe === '24h' || timeframe === '7d');
+
+  if (useDB) {
+    try {
+      await initDB();
+      const hours = TIMEFRAME_HOURS[timeframe];
+
+      const [currentPrice, dbEvents, summary, recentRaw] = await Promise.all([
+        fetchCurrentPrice(symbol),
+        getLiquidationHeatmapData(symbol, hours),
+        getLiquidationSummary(symbol, hours),
+        getRecentLiquidations(symbol, hours, 50),
+      ]);
+
+      // Convert DB events to LiquidationEvent format
+      const events: LiquidationEvent[] = dbEvents.map(e => ({
+        exchange: e.exchange,
+        symbol,
+        side: e.side,
+        price: e.price,
+        quantity: e.quantity,
+        volume: e.valueUsd,
+        time: e.ts,
+      }));
+
+      const heatmap = buildHeatmap(events, currentPrice, symbol, timeframe);
+
+      const recentEvents: RecentEvent[] = recentRaw.map(e => ({
+        exchange: e.exchange,
+        symbol: `${symbol}USDT`,
+        side: e.side,
+        price: e.price,
+        volume: Math.round(e.valueUsd),
+        time: e.ts,
+      }));
+
+      const body: HeatmapResponse = {
+        symbol,
+        currentPrice,
+        timeframe,
+        heatmap,
+        summary: {
+          totalLiquidations: summary?.totalCount ?? 0,
+          totalVolume: Math.round(summary?.totalVolume ?? 0),
+          longLiqVolume: Math.round(summary?.longVolume ?? 0),
+          shortLiqVolume: Math.round(summary?.shortVolume ?? 0),
+          largestSingle: summary && summary.largestVolume > 0 ? {
+            price: summary.largestPrice,
+            volume: Math.round(summary.largestVolume),
+            side: summary.largestSide,
+            exchange: summary.largestExchange,
+            time: summary.largestTime,
+          } : null,
+          recentEvents,
+        },
+        timestamp: Date.now(),
+      };
+
+      responseCache.set(cacheKey, { body, ts: Date.now() });
+
+      return NextResponse.json(body, {
+        headers: {
+          'X-Cache': 'MISS',
+          'X-Source': 'db',
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        },
+      });
+    } catch (dbError) {
+      console.error('DB heatmap path failed, falling back to in-memory:', dbError);
+      // Fall through to in-memory path
+    }
+  }
+
+  // --- In-memory path (4h, or DB fallback) ---
   try {
     // Fetch price + liquidation data in parallel
     const [currentPrice, binanceEvents, okxEvents] = await Promise.all([
@@ -567,6 +659,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(body, {
       headers: {
         'X-Cache': 'MISS',
+        'X-Source': 'live',
         'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
         'X-Events-Stored': String(storedEvents.length),
         'X-Events-Added': String(allNew.length),

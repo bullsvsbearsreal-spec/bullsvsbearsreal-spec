@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <circle cx="64" cy="64" r="64" fill="#FF6B35"/>
-  <text x="64" y="64" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif" font-weight="bold" font-size="38" fill="#ffffff">GAS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="20" fill="#0d0d0d"/>
+  <!-- Flame -->
+  <path d="M64,20 Q50,50 50,65 Q50,80 64,88 Q78,80 78,65 Q78,50 64,20 Z" fill="#ff6b35" opacity="0.9"/>
+  <path d="M64,40 Q56,58 56,68 Q56,78 64,82 Q72,78 72,68 Q72,58 64,40 Z" fill="#ffa500" opacity="0.8"/>
+  <path d="M64,55 Q60,65 60,70 Q60,76 64,78 Q68,76 68,70 Q68,65 64,55 Z" fill="#ffdd57" opacity="0.9"/>
+  <text x="64" y="110" text-anchor="middle" fill="#ff6b35" font-family="system-ui,sans-serif" font-weight="800" font-size="16">NATGAS</text>
 </svg>

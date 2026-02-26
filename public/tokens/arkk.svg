@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"><rect width="128" height="128" rx="16" fill="#222"/><text x="64" y="74" text-anchor="middle" fill="#000" font-family="Arial,sans-serif" font-weight="bold" font-size="28">ARKK</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="24" fill="#0d0d0d"/>
+  <circle cx="64" cy="58" r="42" fill="#1a1a1a" opacity="0.9"/>
+  <text x="64" y="66" text-anchor="middle" fill="#ccc" font-family="system-ui,-apple-system,sans-serif" font-weight="700" font-size="22">ARKK</text>
+</svg>

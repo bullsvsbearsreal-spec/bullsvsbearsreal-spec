@@ -37,7 +37,7 @@ interface LiquidationEvent {
 
 interface LiquidationHeatmapResponse {
   heatmap: {
-    timeBuckets: string[];
+    timeBuckets: number[];
     priceBuckets: number[];
     cells: HeatmapCell[];
   };
@@ -55,7 +55,7 @@ interface LiquidationHeatmapResponse {
 }
 
 type Symbol = 'BTC' | 'ETH' | 'SOL';
-type Timeframe = '4h' | '24h';
+type Timeframe = '4h' | '24h' | '7d';
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 
@@ -63,7 +63,18 @@ const SYMBOLS: Symbol[] = ['BTC', 'ETH', 'SOL'];
 const TIMEFRAMES: { key: Timeframe; label: string }[] = [
   { key: '4h', label: '4H' },
   { key: '24h', label: '24H' },
+  { key: '7d', label: '7D' },
 ];
+
+/* ─── Helpers ────────────────────────────────────────────────────── */
+
+function formatTimeBucketLabel(ts: number, timeframe: string): string {
+  const d = new Date(ts);
+  if (timeframe === '7d') {
+    return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+  }
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
 
 /* ─── Heatmap SVG Component ──────────────────────────────────────── */
 
@@ -173,7 +184,7 @@ function HeatmapVisualization({
               rx={1}
             >
               <title>
-                {`${timeBuckets[cell.timeIdx]} | $${priceBuckets[cell.priceIdx]?.toLocaleString()}\n${cell.dominantSide.toUpperCase()} | $${cell.volume.toLocaleString()} | ${cell.count} liqs`}
+                {`${formatTimeBucketLabel(timeBuckets[cell.timeIdx], data.timeframe)} | $${priceBuckets[cell.priceIdx]?.toLocaleString()}\n${cell.dominantSide.toUpperCase()} | $${cell.volume.toLocaleString()} | ${cell.count} liqs`}
               </title>
             </rect>
           );
@@ -239,7 +250,7 @@ function HeatmapVisualization({
         {Array.from({ length: xLabelCount }).map((_, i) => {
           const idx = i * xLabelStep;
           if (idx >= numCols) return null;
-          const label = timeBuckets[idx];
+          const ts = timeBuckets[idx];
           const x = paddingLeft + idx * cellWidth + cellWidth / 2;
           return (
             <text
@@ -251,7 +262,7 @@ function HeatmapVisualization({
               fill="#737373"
               fontFamily="monospace"
             >
-              {label}
+              {formatTimeBucketLabel(ts, data.timeframe)}
             </text>
           );
         })}
@@ -440,10 +451,12 @@ export default function LiquidationHeatmapPage() {
     return res.json() as Promise<LiquidationHeatmapResponse>;
   }, [symbol, timeframe]);
 
+  const refreshMs = timeframe === '7d' ? 5 * 60_000 : 30_000;
+
   const { data, isLoading, isRefreshing, lastUpdate, refresh, error } =
     useApiData<LiquidationHeatmapResponse>({
       fetcher,
-      refreshInterval: 30_000,
+      refreshInterval: refreshMs,
     });
 
   const recentEvents = useMemo(() => data?.summary?.recentEvents ?? [], [data]);
@@ -460,13 +473,13 @@ export default function LiquidationHeatmapPage() {
               Liquidation Heatmap
             </h1>
             <p className="text-neutral-600 text-xs mt-0.5">
-              Real-time forced liquidation density from Binance &amp; OKX
+              Forced liquidation density across exchanges
             </p>
           </div>
           <div className="flex items-center gap-3">
             <UpdatedAgo date={lastUpdate} />
             <span className="text-[10px] font-mono text-green-400 bg-green-400/10 px-2 py-0.5 rounded">
-              Auto-refresh 30s
+              Auto-refresh {timeframe === '7d' ? '5m' : '30s'}
             </span>
             <button
               onClick={refresh}
@@ -633,7 +646,7 @@ export default function LiquidationHeatmapPage() {
             {/* Info footer */}
             <div className="mt-6 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
               <p className="text-neutral-500 text-xs leading-relaxed">
-                The liquidation heatmap shows the density of forced position closures across price levels and time. Red cells indicate long positions being liquidated (price moving down), green cells indicate short positions being liquidated (price moving up). Brighter cells represent higher liquidation volume. Data is aggregated from Binance and OKX perpetual futures. Refreshes every 30 seconds.
+                The liquidation heatmap shows the density of forced position closures across price levels and time. Red cells indicate long positions being liquidated (price moving down), green cells indicate short positions being liquidated (price moving up). Brighter cells represent higher liquidation volume. 4H uses live exchange data; 24H and 7D use the historical database.
               </p>
             </div>
           </>

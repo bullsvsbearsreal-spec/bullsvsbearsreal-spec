@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <circle cx="64" cy="64" r="64" fill="#7D7D7D"/>
-  <text x="64" y="64" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif" font-weight="bold" font-size="48" fill="#ffffff">Zn</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="20" fill="#1a120a"/>
+  <defs><linearGradient id="cuGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#b87333"/><stop offset="50%" stop-color="#da8a52"/><stop offset="100%" stop-color="#8b5a2b"/></linearGradient></defs>
+  <circle cx="64" cy="56" r="32" fill="url(#cuGrad)" stroke="#8b5a2b" stroke-width="1"/>
+  <text x="64" y="64" text-anchor="middle" fill="#2a1a0a" font-family="system-ui,sans-serif" font-weight="800" font-size="18">Cu</text>
+  <text x="64" y="108" text-anchor="middle" fill="#b87333" font-family="system-ui,sans-serif" font-weight="700" font-size="16">COPPER</text>
 </svg>

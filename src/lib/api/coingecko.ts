@@ -104,8 +104,8 @@ export async function getGlobalData(): Promise<any> {
       setCache(cacheKey, result);
     }
     return result;
-  } catch (error) {
-    console.error('Global data error:', error);
+  } catch {
+    // Non-critical — TopStatsBar uses fallback values
     return null;
   }
 }

@@ -136,6 +136,7 @@ export async function initDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_liq_sym_ts ON liquidation_snapshots(symbol, ts DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_liq_sym_ex_ts ON liquidation_snapshots(symbol, exchange, ts DESC)`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_liq_dedup ON liquidation_snapshots(symbol, exchange, side, price, ts)`;
 
   // Compound indexes for faster history queries
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_sym_ex_ts ON funding_snapshots(symbol, exchange, ts DESC)`;
@@ -256,13 +257,184 @@ export async function saveLiquidationSnapshot(entries: LiquidationSnapshotEntry[
     const promises = chunk.map(e => {
       const ts = e.timestamp ? new Date(e.timestamp).toISOString() : new Date().toISOString();
       return sql`INSERT INTO liquidation_snapshots (symbol, exchange, side, price, quantity, value_usd, ts)
-          VALUES (${e.symbol}, ${e.exchange}, ${e.side}, ${e.price}, ${e.quantity}, ${e.valueUsd}, ${ts})`;
+          VALUES (${e.symbol}, ${e.exchange}, ${e.side}, ${e.price}, ${e.quantity}, ${e.valueUsd}, ${ts})
+          ON CONFLICT (symbol, exchange, side, price, ts) DO NOTHING`;
     });
     await Promise.all(promises);
     inserted += chunk.length;
   }
 
   return inserted;
+}
+
+// ─── Liquidation Heatmap Queries ────────────────────────────────────────────
+
+export interface LiquidationRawEvent {
+  exchange: string;
+  side: 'long' | 'short';
+  price: number;
+  quantity: number;
+  valueUsd: number;
+  ts: number; // unix ms
+}
+
+/**
+ * Get raw liquidation events for heatmap rendering.
+ * <=24h: individual events. >24h: pre-aggregated 30-min buckets.
+ */
+export async function getLiquidationHeatmapData(
+  symbol: string,
+  hours: number,
+): Promise<LiquidationRawEvent[]> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${hours} hours`;
+
+    if (hours <= 24) {
+      const rows = await sql`
+        SELECT exchange, side, price, quantity, value_usd,
+               EXTRACT(EPOCH FROM ts) * 1000 AS ts_ms
+        FROM liquidation_snapshots
+        WHERE symbol = ${symbol}
+          AND ts > NOW() - ${intervalStr}::interval
+        ORDER BY ts ASC
+      `;
+      return rows.map((r: any) => ({
+        exchange: r.exchange,
+        side: r.side as 'long' | 'short',
+        price: Number(r.price),
+        quantity: Number(r.quantity),
+        valueUsd: Number(r.value_usd),
+        ts: Number(r.ts_ms),
+      }));
+    } else {
+      // 7d+: aggregate into 30-min buckets to limit row count
+      const rows = await sql`
+        SELECT
+          exchange, side,
+          AVG(price) AS price,
+          SUM(quantity) AS quantity,
+          SUM(value_usd) AS value_usd,
+          (FLOOR(EXTRACT(EPOCH FROM ts) / 1800) * 1800 * 1000) AS ts_ms
+        FROM liquidation_snapshots
+        WHERE symbol = ${symbol}
+          AND ts > NOW() - ${intervalStr}::interval
+        GROUP BY exchange, side, FLOOR(EXTRACT(EPOCH FROM ts) / 1800)
+        ORDER BY ts_ms ASC
+      `;
+      return rows.map((r: any) => ({
+        exchange: r.exchange,
+        side: r.side as 'long' | 'short',
+        price: Number(r.price),
+        quantity: Number(r.quantity),
+        valueUsd: Number(r.value_usd),
+        ts: Number(r.ts_ms),
+      }));
+    }
+  } catch (e) {
+    console.error('DB getLiquidationHeatmapData error:', e);
+    return [];
+  }
+}
+
+export interface LiquidationSummaryDB {
+  totalCount: number;
+  totalVolume: number;
+  longVolume: number;
+  shortVolume: number;
+  largestPrice: number;
+  largestVolume: number;
+  largestSide: 'long' | 'short';
+  largestExchange: string;
+  largestTime: number;
+}
+
+/**
+ * Get aggregate summary statistics for liquidation events in a time window.
+ */
+export async function getLiquidationSummary(
+  symbol: string,
+  hours: number,
+): Promise<LiquidationSummaryDB | null> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${hours} hours`;
+
+    const [stats, largest] = await Promise.all([
+      sql`
+        SELECT
+          COUNT(*) AS total_count,
+          COALESCE(SUM(value_usd), 0) AS total_volume,
+          COALESCE(SUM(CASE WHEN side = 'long' THEN value_usd ELSE 0 END), 0) AS long_volume,
+          COALESCE(SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END), 0) AS short_volume
+        FROM liquidation_snapshots
+        WHERE symbol = ${symbol}
+          AND ts > NOW() - ${intervalStr}::interval
+      `,
+      sql`
+        SELECT price, value_usd, side, exchange,
+               EXTRACT(EPOCH FROM ts) * 1000 AS ts_ms
+        FROM liquidation_snapshots
+        WHERE symbol = ${symbol}
+          AND ts > NOW() - ${intervalStr}::interval
+        ORDER BY value_usd DESC
+        LIMIT 1
+      `,
+    ]);
+
+    if (stats.length === 0) return null;
+    const r = stats[0];
+    const lg = largest[0];
+
+    return {
+      totalCount: Number(r.total_count),
+      totalVolume: Number(r.total_volume),
+      longVolume: Number(r.long_volume),
+      shortVolume: Number(r.short_volume),
+      largestPrice: lg ? Number(lg.price) : 0,
+      largestVolume: lg ? Number(lg.value_usd) : 0,
+      largestSide: lg ? (lg.side as 'long' | 'short') : 'long',
+      largestExchange: lg ? lg.exchange : '',
+      largestTime: lg ? Number(lg.ts_ms) : 0,
+    };
+  } catch (e) {
+    console.error('DB getLiquidationSummary error:', e);
+    return null;
+  }
+}
+
+/**
+ * Get recent liquidation events for the events table.
+ */
+export async function getRecentLiquidations(
+  symbol: string,
+  hours: number,
+  limit: number = 50,
+): Promise<LiquidationRawEvent[]> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${hours} hours`;
+    const rows = await sql`
+      SELECT exchange, side, price, quantity, value_usd,
+             EXTRACT(EPOCH FROM ts) * 1000 AS ts_ms
+      FROM liquidation_snapshots
+      WHERE symbol = ${symbol}
+        AND ts > NOW() - ${intervalStr}::interval
+      ORDER BY ts DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      exchange: r.exchange,
+      side: r.side as 'long' | 'short',
+      price: Number(r.price),
+      quantity: Number(r.quantity),
+      valueUsd: Number(r.value_usd),
+      ts: Number(r.ts_ms),
+    }));
+  } catch (e) {
+    console.error('DB getRecentLiquidations error:', e);
+    return [];
+  }
 }
 
 export interface LiquidationHistoryPoint {

@@ -11,6 +11,7 @@ interface ToolInput {
   exchange?: string;
   days?: number;
   minSpread?: number;
+  type?: string;
 }
 
 interface ExecuteContext {
@@ -55,6 +56,14 @@ export async function executeTool(
         return await getOiHistory(input, ctx);
       case 'get_correlation':
         return await getCorrelation(input, ctx);
+      case 'get_news':
+        return await getNews(ctx);
+      case 'get_market_dominance':
+        return await getMarketDominance(ctx);
+      case 'get_real_liquidations':
+        return await getRealLiquidations(input, ctx);
+      case 'get_etf_flows':
+        return await getEtfFlows(input, ctx);
       default:
         return `Unknown tool: ${toolName}`;
     }
@@ -503,6 +512,101 @@ async function getCorrelation(input: ToolInput, ctx: ExecuteContext): Promise<st
     (s: any) => `${s.symbol}: ${s.avgChange >= 0 ? '+' : ''}${s.avgChange?.toFixed(2)}% | $${formatNum(s.avgPrice)} | Vol: $${formatNum(s.totalVolume)} | ${s.exchangeCount} exchanges`,
   );
   return `Market overview (24h changes):\n${rows.join('\n')}`;
+}
+
+// ---- New Tools: News, Dominance, Real Liquidations, ETF Flows ----
+
+async function getNews(ctx: ExecuteContext): Promise<string> {
+  const data = await fetchApi(ctx, '/api/news');
+  const articles: any[] = (data.articles || data.data || []).slice(0, 10);
+
+  if (articles.length === 0) return 'No recent crypto news available.';
+
+  const rows = articles.map((a: any) => {
+    const date = new Date(a.publishedAt || a.published_on * 1000 || a.date).toLocaleDateString();
+    return `${date} | ${a.source || 'Unknown'} | ${a.title}`;
+  });
+  return `Latest Crypto News:\n${rows.join('\n')}`;
+}
+
+async function getMarketDominance(ctx: ExecuteContext): Promise<string> {
+  const data = await fetchApi(ctx, '/api/dominance');
+  const d = data.data || data;
+
+  if (!d) return 'Market dominance data unavailable.';
+
+  const lines: string[] = ['Market Overview:'];
+  if (d.btcDominance !== undefined) lines.push(`BTC Dominance: ${d.btcDominance.toFixed(1)}%`);
+  if (d.ethDominance !== undefined) lines.push(`ETH Dominance: ${d.ethDominance.toFixed(1)}%`);
+  if (d.totalMarketCap !== undefined) lines.push(`Total Market Cap: $${formatNum(d.totalMarketCap)}`);
+  if (d.totalVolume !== undefined) lines.push(`24h Volume: $${formatNum(d.totalVolume)}`);
+  if (d.activeCryptocurrencies !== undefined) lines.push(`Active Cryptos: ${d.activeCryptocurrencies.toLocaleString()}`);
+  if (d.marketCapChangePercentage24h !== undefined) {
+    lines.push(`Market Cap 24h Change: ${d.marketCapChangePercentage24h >= 0 ? '+' : ''}${d.marketCapChangePercentage24h.toFixed(2)}%`);
+  }
+
+  return lines.join('\n');
+}
+
+async function getRealLiquidations(input: ToolInput, ctx: ExecuteContext): Promise<string> {
+  const sym = input.symbol?.toUpperCase();
+  if (!sym) return 'Symbol is required for liquidation data.';
+
+  const data = await fetchApi(ctx, `/api/liquidations?symbol=${sym}&limit=50`);
+  const liqs: any[] = data.data || [];
+
+  if (liqs.length === 0) return `No recent liquidation data for ${sym}. Data available from OKX (7-day window).`;
+
+  // Summarize
+  let totalLong = 0;
+  let totalShort = 0;
+  let longCount = 0;
+  let shortCount = 0;
+
+  liqs.forEach((l: any) => {
+    const val = l.value || l.size || l.amount || 0;
+    if (l.side === 'long' || l.posSide === 'long') {
+      totalLong += val;
+      longCount++;
+    } else {
+      totalShort += val;
+      shortCount++;
+    }
+  });
+
+  const recent = liqs.slice(0, 10).map((l: any) => {
+    const time = new Date(l.timestamp || l.ts).toLocaleTimeString();
+    const side = l.side || l.posSide || 'unknown';
+    const val = l.value || l.size || l.amount || 0;
+    return `${time} | ${side.toUpperCase()} $${formatNum(val)} @ $${formatNum(l.price || l.bkPx)}`;
+  });
+
+  return `${sym} Recent Liquidations (OKX):\nLong liquidations: ${longCount} totaling $${formatNum(totalLong)}\nShort liquidations: ${shortCount} totaling $${formatNum(totalShort)}\n\nRecent events:\n${recent.join('\n')}`;
+}
+
+async function getEtfFlows(input: ToolInput, ctx: ExecuteContext): Promise<string> {
+  const etfType = input.type || 'btc';
+  const data = await fetchApi(ctx, `/api/etf?type=${etfType}`);
+  const funds: any[] = data.funds || data.data || [];
+
+  if (funds.length === 0) return `No ${etfType.toUpperCase()} ETF data available.`;
+
+  const rows = funds.slice(0, 10).map((f: any) => {
+    const flow = f.dailyFlow !== undefined ? ` | Flow: ${f.dailyFlow >= 0 ? '+' : ''}$${formatNum(f.dailyFlow)}` : '';
+    const aum = f.aum !== undefined ? ` | AUM: $${formatNum(f.aum)}` : '';
+    const price = f.price !== undefined ? ` | $${f.price.toFixed(2)}` : '';
+    return `${f.ticker || f.symbol}: ${f.name || f.issuer || ''}${price}${aum}${flow}`;
+  });
+
+  const totalAum = funds.reduce((s: number, f: any) => s + (f.aum || 0), 0);
+  const totalFlow = funds.reduce((s: number, f: any) => s + (f.dailyFlow || 0), 0);
+
+  let summary = `${etfType.toUpperCase()} Spot ETFs:\n`;
+  if (totalAum > 0) summary += `Total AUM: $${formatNum(totalAum)}\n`;
+  if (totalFlow !== 0) summary += `Total Daily Flow: ${totalFlow >= 0 ? '+' : ''}$${formatNum(totalFlow)}\n`;
+  summary += `\n${rows.join('\n')}`;
+
+  return summary;
 }
 
 // ---- Helpers ----

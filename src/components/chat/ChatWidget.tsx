@@ -4,13 +4,12 @@ import { useState, useCallback, useRef } from 'react';
 import { X, Trash2, Minus } from 'lucide-react';
 import GuardIcon from './GuardIcon';
 import ChatMessages from './ChatMessages';
-import ChatInput from './ChatInput';
+import ChatInput, { type ImageAttachment } from './ChatInput';
 import ChatSuggestions from './ChatSuggestions';
 import {
   getMessages,
   addMessage,
   clearChat,
-  getSessionId,
   type ChatMessage as StoredMessage,
 } from '@/lib/storage/chat';
 import { getHoldings } from '@/lib/storage/portfolio';
@@ -20,6 +19,7 @@ interface UIMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  imageDataUrl?: string;
   isStreaming?: boolean;
 }
 
@@ -38,14 +38,17 @@ export default function ChatWidget() {
   const [remaining, setRemaining] = useState<number | undefined>();
   const abortRef = useRef<AbortController | null>(null);
 
-  const sendMessage = useCallback(async (text: string) => {
+  const sendMessage = useCallback(async (text: string, image?: ImageAttachment) => {
     if (isLoading) return;
 
-    // Add user message
     const userMsg = addMessage({ role: 'user', content: text });
-    const userUI: UIMessage = { id: userMsg.id, role: 'user', content: text };
+    const userUI: UIMessage = {
+      id: userMsg.id,
+      role: 'user',
+      content: text,
+      imageDataUrl: image?.dataUrl,
+    };
 
-    // Create placeholder for assistant response
     const assistantId = crypto.randomUUID();
     const assistantUI: UIMessage = { id: assistantId, role: 'assistant', content: '', isStreaming: true };
 
@@ -53,7 +56,6 @@ export default function ChatWidget() {
     setIsLoading(true);
     setActiveToolName(undefined);
 
-    // Build context from localStorage
     const portfolio = getHoldings().map((h) => ({
       symbol: h.symbol,
       quantity: h.quantity,
@@ -61,12 +63,35 @@ export default function ChatWidget() {
     }));
     const watchlist = getWatchlist();
 
-    // Build message history for API (last 10)
+    // Build API messages from history (text only) + current message (may include image)
     const allMessages = getMessages();
-    const apiMessages = allMessages.slice(-10).map((m) => ({
+    const historyMessages = allMessages.slice(-10, -1).map((m) => ({
       role: m.role,
       content: m.content,
     }));
+
+    // Current message: if image attached, send as multimodal content array
+    let currentContent: string | Array<{ type: string; source?: { type: string; media_type: string; data: string }; text?: string }>;
+    if (image) {
+      currentContent = [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: image.mediaType,
+            data: image.base64,
+          },
+        },
+        { type: 'text', text },
+      ];
+    } else {
+      currentContent = text;
+    }
+
+    const apiMessages = [
+      ...historyMessages,
+      { role: 'user' as const, content: currentContent },
+    ];
 
     try {
       abortRef.current = new AbortController();
@@ -89,13 +114,11 @@ export default function ChatWidget() {
         throw new Error(err.error || `HTTP ${res.status}`);
       }
 
-      // Read remaining from header
       const remainingHeader = res.headers.get('X-RateLimit-Remaining');
       if (remainingHeader !== null) {
         setRemaining(parseInt(remainingHeader));
       }
 
-      // Parse SSE stream
       const reader = res.body?.getReader();
       if (!reader) throw new Error('No response body');
 
@@ -109,9 +132,8 @@ export default function ChatWidget() {
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Process complete SSE events
         const events = buffer.split('\n\n');
-        buffer = events.pop() || ''; // Keep incomplete event in buffer
+        buffer = events.pop() || '';
 
         for (const eventStr of events) {
           if (!eventStr.trim()) continue;
@@ -158,7 +180,6 @@ export default function ChatWidget() {
                     : m,
                 ),
               );
-              // Save to storage
               if (fullText) {
                 addMessage({ role: 'assistant', content: fullText });
               }
@@ -166,7 +187,7 @@ export default function ChatWidget() {
 
             case 'error': {
               const { message } = JSON.parse(eventData);
-              fullText = `Sorry, an error occurred: ${message}`;
+              fullText = `Error: ${message}`;
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantId
@@ -203,7 +224,6 @@ export default function ChatWidget() {
   };
 
   const handleClose = () => {
-    // Abort any ongoing request
     if (abortRef.current) {
       abortRef.current.abort();
     }
@@ -218,14 +238,15 @@ export default function ChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-5 right-5 z-[60] w-12 h-12 rounded-full
-            bg-hub-yellow text-black shadow-lg shadow-hub-yellow/20
-            hover:bg-hub-yellow-light hover:scale-105 hover:shadow-hub-yellow/30
+          className="fixed bottom-5 right-5 z-[60] w-14 h-14 rounded-full
+            bg-gradient-to-br from-amber-500/20 to-amber-600/10
+            border border-amber-500/30 shadow-lg shadow-amber-500/20
+            hover:shadow-amber-500/30 hover:border-amber-500/40 hover:scale-105
             active:scale-95 transition-all duration-200
-            flex items-center justify-center group"
+            flex items-center justify-center group overflow-hidden"
           aria-label="Open MK.II AI chat"
         >
-          <GuardIcon className="w-12 h-12 group-hover:scale-110 transition-transform" />
+          <GuardIcon className="w-14 h-14 group-hover:scale-110 transition-transform" />
         </button>
       )}
 
@@ -233,56 +254,62 @@ export default function ChatWidget() {
       {isOpen && (
         <div
           className="fixed z-[60] animate-scale-in
-            /* Mobile: full screen */
             inset-0 sm:inset-auto
-            /* Desktop: bottom-right corner */
             sm:bottom-5 sm:right-5
-            sm:w-[400px] sm:h-[600px] sm:max-h-[80vh]
+            sm:w-[420px] sm:h-[620px] sm:max-h-[80vh]
             sm:rounded-2xl
-            bg-hub-dark border border-white/[0.08]
+            bg-[#0c0c0e] border border-white/[0.08]
             flex flex-col overflow-hidden
-            shadow-2xl shadow-black/50"
+            shadow-2xl shadow-black/60"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-hub-yellow/15 flex items-center justify-center">
-                <GuardIcon className="w-8 h-8" />
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+            <div className="flex items-center gap-3">
+              <div className="relative w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/20 flex items-center justify-center">
+                <GuardIcon className="w-9 h-9" />
+                {/* Online indicator */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0c0c0e]" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white leading-none">MK.II</h3>
-                <p className="text-[10px] text-neutral-500 mt-0.5">AI Assistant</p>
+                <h3 className="text-sm font-bold text-white leading-none tracking-tight">MK.II</h3>
+                <p className="text-[10px] text-neutral-500 mt-0.5">
+                  {isLoading ? (
+                    <span className="text-amber-400/70">Analyzing...</span>
+                  ) : (
+                    'Derivatives Intelligence'
+                  )}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               {messages.length > 0 && (
                 <button
                   onClick={handleClear}
                   className="w-8 h-8 rounded-lg flex items-center justify-center
-                    text-neutral-500 hover:text-red-400 hover:bg-red-500/10
+                    text-neutral-600 hover:text-red-400 hover:bg-red-500/10
                     transition-colors"
                   title="Clear chat"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
               <button
                 onClick={handleClose}
                 className="w-8 h-8 rounded-lg flex items-center justify-center
-                  text-neutral-500 hover:text-white hover:bg-white/[0.08]
+                  text-neutral-600 hover:text-white hover:bg-white/[0.06]
                   transition-colors sm:hidden"
                 title="Minimize"
               >
-                <Minus className="w-4 h-4" />
+                <Minus className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleClose}
                 className="w-8 h-8 rounded-lg flex items-center justify-center
-                  text-neutral-500 hover:text-white hover:bg-white/[0.08]
+                  text-neutral-600 hover:text-white hover:bg-white/[0.06]
                   transition-colors"
                 title="Close"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -295,7 +322,7 @@ export default function ChatWidget() {
             onSuggestionSelect={sendMessage}
           />
 
-          {/* Show suggestions after last assistant message if not loading */}
+          {/* Suggestions after last assistant message */}
           {messages.length > 0 && !isLoading && messages[messages.length - 1]?.role === 'assistant' && (
             <ChatSuggestions onSelect={sendMessage} />
           )}
