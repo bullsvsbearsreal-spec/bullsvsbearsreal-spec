@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'No messages provided' }), { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'AI service not configured' }), { status: 500 });
   }
