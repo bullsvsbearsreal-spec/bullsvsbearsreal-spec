@@ -33,10 +33,7 @@ export async function POST(req: Request) {
       const token = randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      // Invalidate any existing tokens for this email
-      await db`UPDATE password_reset_tokens SET used = true WHERE email = ${email} AND used = false`;
-
-      // Ensure table exists
+      // Ensure table exists before any queries against it
       await db`
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
           token TEXT PRIMARY KEY,
@@ -46,6 +43,9 @@ export async function POST(req: Request) {
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `;
+
+      // Invalidate any existing tokens for this email
+      await db`UPDATE password_reset_tokens SET used = true WHERE email = ${email} AND used = false`;
 
       // Store the token
       await db`
