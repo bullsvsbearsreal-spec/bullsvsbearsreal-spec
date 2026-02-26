@@ -4,6 +4,7 @@ import './globals.css'
 import Providers from '@/components/Providers'
 import ChatWidget from '@/components/chat/ChatWidget'
 import AlertEngine from '@/components/AlertEngine'
+import { Analytics } from '@vercel/analytics/next'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
@@ -96,6 +97,7 @@ export default function RootLayout({
           {children}
           <ChatWidget />
           <AlertEngine />
+          <Analytics />
         </Providers>
       </body>
     </html>
