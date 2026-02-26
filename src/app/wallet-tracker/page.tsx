@@ -4,7 +4,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins } from 'lucide-react';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp } from 'lucide-react';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApiData } from '@/hooks/useApiData';
 import { formatRelativeTime, formatUSD, formatPrice } from '@/lib/utils/format';
@@ -53,6 +54,28 @@ interface TickerEntry {
 interface EnrichedToken extends WalletToken {
   price: number | null;
   usdValue: number | null;
+}
+
+interface DexPosition {
+  exchange: string;
+  symbol: string;
+  side: 'long' | 'short';
+  size: number;
+  entryPrice: number;
+  markPrice: number;
+  positionValue: number;
+  unrealizedPnl: number;
+  roe: number;
+  leverage: number;
+  liquidationPrice: number | null;
+  marginUsed: number;
+}
+
+interface PositionsData {
+  exchange: string;
+  accountValue: number;
+  totalMarginUsed: number;
+  positions: DexPosition[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -173,12 +196,19 @@ export default function WalletTrackerPage() {
   const [activeChain, setActiveChain] = useState<'eth' | 'btc' | 'sol' | null>(null);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [inputError, setInputError] = useState('');
-  const [activeTab, setActiveTab] = useState<'tokens' | 'transactions'>('tokens');
+  const [activeTab, setActiveTab] = useState<'tokens' | 'transactions' | 'positions'>('tokens');
 
   // Hydrate saved wallets from localStorage
   useEffect(() => {
     setSavedWallets(getSavedWallets());
   }, []);
+
+  // Reset to tokens tab when switching to a non-ETH wallet while on positions tab
+  useEffect(() => {
+    if (activeTab === 'positions' && activeChain !== 'eth') {
+      setActiveTab('tokens');
+    }
+  }, [activeChain, activeTab]);
 
   // Detect chain as user types
   const detectedChain = useMemo(() => detectChain(addressInput), [addressInput]);
@@ -228,6 +258,24 @@ export default function WalletTrackerPage() {
     fetcher: walletFetcher,
     refreshInterval: 120_000,
     enabled: !!activeAddress && !!activeChain,
+  });
+
+  /* ---- fetch DEX positions (Hyperliquid) ----------------------------- */
+  const positionsFetcher = useCallback(async () => {
+    if (!activeAddress || activeChain !== 'eth') return null;
+    const res = await fetch(`/api/wallet/positions?address=${encodeURIComponent(activeAddress)}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json as PositionsData;
+  }, [activeAddress, activeChain]);
+
+  const {
+    data: positionsData,
+    isLoading: positionsLoading,
+  } = useApiData<PositionsData | null>({
+    fetcher: positionsFetcher,
+    refreshInterval: 60_000,
+    enabled: !!activeAddress && activeChain === 'eth',
   });
 
   /* ---- derived values ---------------------------------------------- */
@@ -583,6 +631,16 @@ export default function WalletTrackerPage() {
                         </span>
                       )}
                     </div>
+
+                    {/* Unrealized PnL from DEX positions */}
+                    {positionsData && positionsData.positions.length > 0 && (() => {
+                      const totalPnl = positionsData.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
+                      return (
+                        <div className={`mt-1.5 text-xs font-mono ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          Unrealized PnL: {totalPnl >= 0 ? '+' : ''}{formatUSD(totalPnl)}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Right: badges + chain icon */}
@@ -615,7 +673,11 @@ export default function WalletTrackerPage() {
 
             {/* ========== TAB BAR ======================================== */}
             <div className="flex items-center bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
-              {(['tokens', 'transactions'] as const).map((tab) => (
+              {([
+                'tokens' as const,
+                'transactions' as const,
+                ...(activeChain === 'eth' ? ['positions' as const] : []),
+              ]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -623,13 +685,18 @@ export default function WalletTrackerPage() {
                     activeTab === tab ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
                   }`}
                 >
-                  {tab === 'tokens' ? <Coins className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
-                  {tab === 'tokens' ? 'Tokens' : 'Transactions'}
+                  {tab === 'tokens' && <Coins className="w-4 h-4" />}
+                  {tab === 'transactions' && <ArrowUpRight className="w-4 h-4" />}
+                  {tab === 'positions' && <TrendingUp className="w-4 h-4" />}
+                  {tab === 'tokens' ? 'Tokens' : tab === 'transactions' ? 'Transactions' : 'Positions'}
                   {tab === 'tokens' && enrichedTokens.length > 0 && (
                     <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{enrichedTokens.length}</span>
                   )}
                   {tab === 'transactions' && walletData && walletData.transactions.length > 0 && (
                     <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{walletData.transactions.length}</span>
+                  )}
+                  {tab === 'positions' && positionsData && positionsData.positions.length > 0 && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{positionsData.positions.length}</span>
                   )}
                   {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hub-yellow" />}
                 </button>
@@ -913,6 +980,179 @@ export default function WalletTrackerPage() {
                 </>
               ) : null}
             </div>
+            )}
+
+            {/* ========== DEX POSITIONS =================================== */}
+            {activeTab === 'positions' && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                {/* Header with account summary */}
+                <div className="px-4 py-3 border-b border-white/[0.06]">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-hub-yellow" />
+                      Open Positions
+                    </h3>
+                    {positionsData && positionsData.positions.length > 0 && (
+                      <div className="flex items-center gap-4 text-xs font-mono">
+                        <span className="text-neutral-500">
+                          Acct: <span className="text-neutral-300">{formatUSD(positionsData.accountValue)}</span>
+                        </span>
+                        <span className="text-neutral-500">
+                          Margin: <span className="text-neutral-300">{formatUSD(positionsData.totalMarginUsed)}</span>
+                        </span>
+                        {(() => {
+                          const totalPnl = positionsData.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
+                          return (
+                            <span className={totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                              PnL: {totalPnl >= 0 ? '+' : ''}{formatUSD(totalPnl)}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {positionsLoading && !positionsData ? (
+                  /* Skeleton */
+                  <div>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse border-b border-white/[0.04]">
+                        <div className="w-7 h-7 rounded-full bg-white/[0.06]" />
+                        <div className="flex-1 h-4 bg-white/[0.06] rounded" />
+                        <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                        <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                        <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                        <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : positionsData && positionsData.positions.length > 0 ? (
+                  <>
+                    {/* Desktop table header */}
+                    <div className="hidden sm:grid grid-cols-[minmax(140px,1.5fr)_100px_100px_100px_120px_100px] items-center px-4 py-2 border-b border-white/[0.06] text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                      <div>Symbol</div>
+                      <div className="text-right">Size</div>
+                      <div className="text-right">Entry</div>
+                      <div className="text-right">Mark</div>
+                      <div className="text-right">PnL</div>
+                      <div className="text-right">Leverage</div>
+                    </div>
+
+                    <div className="divide-y divide-white/[0.04]">
+                      {positionsData.positions.map((pos) => (
+                        <div key={`${pos.exchange}-${pos.symbol}-${pos.side}`}>
+                          {/* Desktop row */}
+                          <div className="hidden sm:grid grid-cols-[minmax(140px,1.5fr)_100px_100px_100px_120px_100px] items-center px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                            {/* Symbol + side + exchange */}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <TokenIconSimple symbol={pos.symbol} size={28} />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm font-medium text-white">{pos.symbol}</span>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                    pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+                                  }`}>
+                                    {pos.side === 'long' ? 'LONG' : 'SHORT'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <ExchangeLogo exchange={pos.exchange} size={14} />
+                                  <span className="text-[10px] text-neutral-600 capitalize">{pos.exchange}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Size */}
+                            <div className="text-right">
+                              <div className="text-[13px] font-mono text-neutral-300">
+                                {pos.size < 1 ? pos.size.toFixed(4) : pos.size < 100 ? pos.size.toFixed(2) : pos.size.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                              </div>
+                              <div className="text-[10px] font-mono text-neutral-600">
+                                {formatUSD(pos.positionValue)}
+                              </div>
+                            </div>
+
+                            {/* Entry price */}
+                            <div className="text-right text-[13px] font-mono text-neutral-400">
+                              {formatPrice(pos.entryPrice)}
+                            </div>
+
+                            {/* Mark price */}
+                            <div className="text-right text-[13px] font-mono text-neutral-300">
+                              {formatPrice(pos.markPrice)}
+                            </div>
+
+                            {/* PnL */}
+                            <div className="text-right">
+                              <div className={`text-[13px] font-mono font-semibold ${
+                                pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {pos.unrealizedPnl >= 0 ? '+' : ''}{formatUSD(pos.unrealizedPnl)}
+                              </div>
+                              <div className={`text-[10px] font-mono ${
+                                pos.roe >= 0 ? 'text-green-400/70' : 'text-red-400/70'
+                              }`}>
+                                {pos.roe >= 0 ? '+' : ''}{pos.roe.toFixed(2)}%
+                              </div>
+                            </div>
+
+                            {/* Leverage + liq */}
+                            <div className="text-right">
+                              <div className="text-[13px] font-mono text-hub-yellow font-semibold">
+                                {pos.leverage}x
+                              </div>
+                              {pos.liquidationPrice && (
+                                <div className="text-[10px] font-mono text-neutral-600">
+                                  Liq {formatPrice(pos.liquidationPrice)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Mobile row */}
+                          <div className="sm:hidden px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <TokenIconSimple symbol={pos.symbol} size={28} />
+                                <span className="text-sm font-medium text-white">{pos.symbol}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                  pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+                                }`}>
+                                  {pos.side === 'long' ? 'LONG' : 'SHORT'}
+                                </span>
+                                <span className="text-[11px] font-mono text-hub-yellow">{pos.leverage}x</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <ExchangeLogo exchange={pos.exchange} size={14} />
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[13px] font-mono font-semibold ${
+                                pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {pos.unrealizedPnl >= 0 ? '+' : ''}{formatUSD(pos.unrealizedPnl)}
+                                <span className={`ml-1.5 text-[11px] ${
+                                  pos.roe >= 0 ? 'text-green-400/70' : 'text-red-400/70'
+                                }`}>
+                                  ({pos.roe >= 0 ? '+' : ''}{pos.roe.toFixed(1)}%)
+                                </span>
+                              </span>
+                              <span className="text-xs font-mono text-neutral-500">
+                                {formatUSD(pos.positionValue)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-8 text-center text-neutral-600 text-sm">
+                    No open positions on Hyperliquid
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
