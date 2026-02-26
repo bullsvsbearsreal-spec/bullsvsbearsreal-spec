@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchMarketStats } from '@/lib/api/aggregator';
+import { formatNumber } from '@/lib/utils/format';
 
 interface MarketStats {
   totalVolume24h: number;
@@ -10,13 +11,6 @@ interface MarketStats {
   btcDominance: number;
 }
 
-function formatLargeNumber(num: number): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0';
-  if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  return `$${num.toLocaleString()}`;
-}
 
 export default function TopStatsBar() {
   const [stats, setStats] = useState<MarketStats | null>(null);
@@ -59,8 +53,8 @@ export default function TopStatsBar() {
   const isLongDominant = stats.btcLongShort.longRatio > 50;
 
   const items = [
-    { label: 'Vol 24H', value: formatLargeNumber(stats.totalVolume24h) },
-    { label: 'OI', value: formatLargeNumber(stats.totalOpenInterest) },
+    { label: 'Vol 24H', value: formatNumber(stats.totalVolume24h) },
+    { label: 'OI', value: formatNumber(stats.totalOpenInterest) },
     { label: 'BTC Dom', value: `${stats.btcDominance?.toFixed(1) || '54.2'}%` },
     {
       label: 'Long/Short',

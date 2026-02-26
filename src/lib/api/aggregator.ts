@@ -1,13 +1,4 @@
-import { binanceAPI } from './binance';
-import { bybitAPI } from './bybit';
-import { okxAPI } from './okx';
-import { bitgetAPI } from './bitget';
-import { hyperliquidAPI } from './hyperliquid';
 import { dydxAPI } from './dydx';
-import { mexcAPI } from './mexc';
-import { krakenAPI } from './kraken';
-import { bingxAPI } from './bingx';
-import { phemexAPI } from './phemex';
 import { getGlobalData } from './coingecko';
 import { TickerData, FundingRateData, OpenInterestData, AggregatedLiquidations } from './types';
 import { isValidNumber } from '@/lib/utils/format';
@@ -446,5 +437,5 @@ export async function fetchPredictionMarkets(): Promise<import('./prediction-mar
   }
 }
 
-// Export individual exchange APIs for direct access
-export { binanceAPI, bybitAPI, okxAPI, bitgetAPI, hyperliquidAPI, dydxAPI, mexcAPI, krakenAPI, bingxAPI, phemexAPI };
+// Export dydx API for direct access (used as fallback)
+export { dydxAPI };

@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { formatPrice } from '@/lib/utils/format';
 
 interface CoinData {
   symbol: string;
@@ -18,13 +19,6 @@ interface CoinData {
 }
 
 type CountFilter = 50 | 100 | 200;
-
-function formatPrice(p: number): string {
-  if (p >= 1000) return `$${p.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (p >= 1) return `$${p.toFixed(2)}`;
-  if (p >= 0.01) return `$${p.toFixed(4)}`;
-  return `$${p.toFixed(6)}`;
-}
 
 function formatMarketCap(mc: number): string {
   if (mc >= 1e12) return `$${(mc / 1e12).toFixed(1)}T`;

@@ -8,27 +8,7 @@ export const dynamic = 'force-dynamic';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-interface HLPosition {
-  coin: string;
-  szi: string;
-  entryPx: string;
-  positionValue: string;
-  unrealizedPnl: string;
-  returnOnEquity: string;
-  liquidationPx: string | null;
-  leverage: { type: string; value: number };
-  marginUsed: string;
-}
-
-interface HLClearingHouseState {
-  marginSummary: {
-    accountValue: string;
-    totalNtlPos: string;
-    totalRawUsd: string;
-    totalMarginUsed: string;
-  };
-  assetPositions: Array<{ type: string; position: HLPosition }>;
-}
+import type { HLClearingHouseState } from '../../_shared/hyperliquid-types';
 
 interface DexPosition {
   exchange: string;

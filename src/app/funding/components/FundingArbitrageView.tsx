@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRateAdaptive, getExchangeColor, type FundingPeriod, PERIOD_HOURS, PERIOD_LABELS } from '../utils';
@@ -74,6 +74,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   const enriched = useMemo(() => {
     return arbitrageData.map(item => {
       const sorted = [...item.exchanges].sort((a, b) => b.rate - a.rate);
+      if (sorted.length === 0) return null;
       const high = sorted[0];
       const low = sorted[sorted.length - 1];
       const grossSpread8h = item.spread;
@@ -112,7 +113,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         totalOI,
         price,
       };
-    });
+    }).filter((item): item is NonNullable<typeof item> => item !== null);
   }, [arbitrageData, oiMap, markPrices, portfolio]);
 
   const sortedData = useMemo(() => {
@@ -212,9 +213,8 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
           </thead>
           <tbody>
             {pageData.map((item, index) => (
-              <>
+              <React.Fragment key={item.symbol}>
                 <tr
-                  key={item.symbol}
                   className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer"
                   onClick={() => setExpandedRow(expandedRow === item.symbol ? null : item.symbol)}
                 >
@@ -301,7 +301,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

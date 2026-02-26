@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Logo from './Logo';
 import { ALL_EXCHANGES } from '@/lib/constants';
+import { formatNumber } from '@/lib/utils/format';
 import {
   Twitter, Send,
   Percent, PieChart, Zap, SlidersHorizontal, Grid3X3, LineChart, Shield, ArrowLeftRight,
@@ -104,13 +105,6 @@ interface LiveStats {
   topGainer: { symbol: string; change24h: number } | null;
 }
 
-function formatCompact(n: number): string {
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
-  return `$${n.toFixed(0)}`;
-}
 
 function getFearGreedColor(value: number): string {
   if (value <= 20) return '#EF4444';   // Extreme Fear - red
@@ -274,7 +268,7 @@ export default function Footer() {
           <StatPill
             icon={BarChart2}
             label="24h Vol"
-            value={stats?.volume24h ? formatCompact(stats.volume24h) : '--'}
+            value={stats?.volume24h ? formatNumber(stats.volume24h) : '--'}
             loading={loading}
             color="#3B82F6"
           />
@@ -283,7 +277,7 @@ export default function Footer() {
           <StatPill
             icon={Layers}
             label="Open Interest"
-            value={stats?.totalOI ? formatCompact(stats.totalOI) : '--'}
+            value={stats?.totalOI ? formatNumber(stats.totalOI) : '--'}
             loading={loading}
             color="#8B5CF6"
           />

@@ -8,9 +8,6 @@ export interface ApiResponse<T> {
   timestamp: number;
 }
 
-// Safe number type that handles undefined/null
-export type SafeNumber = number | null | undefined;
-
 export interface TickerData {
   symbol: string;
   lastPrice: number;

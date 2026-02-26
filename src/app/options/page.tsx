@@ -513,7 +513,7 @@ export default function OptionsPage() {
                   <Crosshair className="w-3.5 h-3.5 text-hub-yellow" />
                   <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Max Pain</p>
                 </div>
-                <p className="text-xl font-bold text-hub-yellow font-mono">${data.maxPain.toLocaleString()}</p>
+                <p className="text-xl font-bold text-hub-yellow font-mono">${(data.maxPain || 0).toLocaleString()}</p>
                 <div
                   className={`flex items-center gap-1 mt-0.5 text-xs ${
                     maxPainDistance >= 0 ? 'text-green-400' : 'text-red-400'
@@ -521,8 +521,8 @@ export default function OptionsPage() {
                 >
                   {maxPainDistance >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                   <span className="font-mono">
-                    {maxPainDistance >= 0 ? '+' : ''}
-                    {maxPainDistance.toFixed(1)}% from spot
+                    {(maxPainDistance || 0) >= 0 ? '+' : ''}
+                    {(maxPainDistance || 0).toFixed(1)}% from spot
                   </span>
                 </div>
               </div>
@@ -540,7 +540,7 @@ export default function OptionsPage() {
                     data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'
                   }`}
                 >
-                  {data.putCallRatio.toFixed(2)}
+                  {(data.putCallRatio || 0).toFixed(2)}
                 </p>
                 <p className="text-xs text-neutral-500">
                   {data.putCallRatio > 1 ? 'Bearish bias' : data.putCallRatio < 0.7 ? 'Bullish bias' : 'Neutral'}
@@ -638,7 +638,7 @@ export default function OptionsPage() {
                         style={{ transform: 'rotate(-90deg)', transformOrigin: '55px 55px' }}
                       />
                       <text x="55" y="51" textAnchor="middle" fontSize="15" fontWeight="bold" fill="white">
-                        {data.putCallRatio.toFixed(2)}
+                        {(data.putCallRatio || 0).toFixed(2)}
                       </text>
                       <text x="55" y="66" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.35)">
                         P/C Ratio

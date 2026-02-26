@@ -338,7 +338,7 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
           {/* Position rows */}
           <div className="px-3 pb-3 space-y-1">
             {whale.positions.map((pos) => (
-              <PositionRow key={`${pos.coin}-${pos.side}`} pos={pos} />
+              <PositionRow key={`${pos.coin}-${pos.side}-${pos.positionValue}`} pos={pos} />
             ))}
             {whale.positions.length === 0 && (
               <div className="text-center text-neutral-600 text-xs py-4">No open positions</div>
