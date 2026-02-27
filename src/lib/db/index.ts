@@ -28,10 +28,15 @@ function getSQL() {
 
 // ─── Schema initialization ──────────────────────────────────────────────────
 
-let initialized = false;
+let initPromise: Promise<void> | null = null;
 
 export async function initDB(): Promise<void> {
-  if (initialized) return;
+  if (initPromise) return initPromise;
+  initPromise = _doInitDB();
+  return initPromise;
+}
+
+async function _doInitDB(): Promise<void> {
   const sql = getSQL();
 
   await sql`
@@ -184,7 +189,6 @@ export async function initDB(): Promise<void> {
   await initTelegramTables();
   await initTelegramAlertTables();
 
-  initialized = true;
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -475,6 +479,48 @@ export async function getRecentLiquidations(
     }));
   } catch (e) {
     console.error('DB getRecentLiquidations error:', e);
+    return [];
+  }
+}
+
+/**
+ * Get all recent liquidation events across ALL symbols for the feed view.
+ * Used by the liquidations page to pre-fill data from DB on load / timeframe change.
+ */
+export async function getAllRecentLiquidations(
+  hours: number,
+  limit: number = 500,
+): Promise<Array<{
+  symbol: string;
+  exchange: string;
+  side: 'long' | 'short';
+  price: number;
+  quantity: number;
+  valueUsd: number;
+  ts: number;
+}>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${hours} hours`;
+    const rows = await sql`
+      SELECT symbol, exchange, side, price, quantity, value_usd,
+             EXTRACT(EPOCH FROM ts) * 1000 AS ts_ms
+      FROM liquidation_snapshots
+      WHERE ts > NOW() - ${intervalStr}::interval
+      ORDER BY ts DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      symbol: r.symbol as string,
+      exchange: r.exchange as string,
+      side: r.side as 'long' | 'short',
+      price: Number(r.price),
+      quantity: Number(r.quantity),
+      valueUsd: Number(r.value_usd),
+      ts: Number(r.ts_ms),
+    }));
+  } catch (e) {
+    console.error('DB getAllRecentLiquidations error:', e);
     return [];
   }
 }
@@ -1275,6 +1321,83 @@ export async function pruneAlertNotifications(): Promise<number> {
   } catch (e) {
     console.error('DB pruneAlertNotifications error:', e);
     return 0;
+  }
+}
+
+// ─── User Account Stats ─────────────────────────────────────────────────────
+
+/**
+ * Get user creation date from the users table.
+ */
+export async function getUserCreatedAt(userId: string): Promise<string | null> {
+  try {
+    const sql = getSQL();
+    // NextAuth users table may not have created_at — use email_verified as fallback
+    const rows = await sql`
+      SELECT COALESCE(
+        TO_CHAR(email_verified, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+      ) AS created_at
+      FROM users WHERE id = ${userId}
+    `;
+    return rows[0]?.created_at || null;
+  } catch (e) {
+    console.error('DB getUserCreatedAt error:', e);
+    return null;
+  }
+}
+
+/**
+ * Get recent alert notification history for a user.
+ */
+export async function getRecentAlertNotifications(
+  userId: string,
+  limit: number = 10,
+): Promise<Array<{
+  symbol: string;
+  metric: string;
+  threshold: number;
+  actualValue: number;
+  channel: string;
+  sentAt: string;
+}>> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT symbol, metric, threshold, actual_value, channel,
+             TO_CHAR(sent_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS sent_at
+      FROM alert_notifications
+      WHERE user_id = ${userId}
+      ORDER BY sent_at DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      symbol: r.symbol,
+      metric: r.metric,
+      threshold: Number(r.threshold),
+      actualValue: Number(r.actual_value),
+      channel: r.channel,
+      sentAt: r.sent_at,
+    }));
+  } catch (e) {
+    console.error('DB getRecentAlertNotifications error:', e);
+    return [];
+  }
+}
+
+/**
+ * Get OAuth providers connected to a user account.
+ */
+export async function getUserConnectedProviders(userId: string): Promise<string[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT DISTINCT provider FROM accounts WHERE user_id = ${userId}
+    `;
+    return rows.map((r: any) => r.provider as string);
+  } catch (e) {
+    console.error('DB getUserConnectedProviders error:', e);
+    return [];
   }
 }
 

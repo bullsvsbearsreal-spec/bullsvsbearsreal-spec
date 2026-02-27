@@ -2,6 +2,7 @@
  * GET /api/history/liquidations?symbol=BTC&days=7
  * GET /api/history/liquidations?mode=top&days=1&limit=20
  * GET /api/history/liquidations?symbol=BTC&mode=exchanges&days=7
+ * GET /api/history/liquidations?mode=feed&hours=12&limit=500
  *
  * Returns historical liquidation data from the database.
  *
@@ -9,6 +10,7 @@
  * - default: Hourly-bucketed liquidation history for a symbol (value, count, long/short breakdown)
  * - top: Top liquidated symbols by total value
  * - exchanges: Per-exchange breakdown for a symbol
+ * - feed: Individual liquidation events across all symbols (for the live feed page)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,6 +19,7 @@ import {
   getLiquidationHistory,
   getLiquidationsByExchange,
   getTopLiquidatedSymbols,
+  getAllRecentLiquidations,
 } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -32,6 +35,21 @@ export async function GET(request: NextRequest) {
 
   if (!isDBConfigured()) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+
+  // Feed mode — individual events across all symbols
+  if (mode === 'feed') {
+    const hours = Math.min(parseInt(searchParams.get('hours') || '1') || 1, 72);
+    const feedLimit = Math.min(parseInt(searchParams.get('limit') || '500') || 500, 1000);
+    const data = await getAllRecentLiquidations(hours, feedLimit);
+    return NextResponse.json({
+      mode: 'feed',
+      hours,
+      data,
+      count: data.length,
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    });
   }
 
   // Top liquidated symbols — no symbol required

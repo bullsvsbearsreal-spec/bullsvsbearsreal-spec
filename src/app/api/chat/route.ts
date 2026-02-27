@@ -10,7 +10,7 @@ export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 const MAX_TOOL_ROUNDS = 3;
-const MAX_TOKENS = 800;
+const MAX_TOKENS = 600;
 
 // Content can be a plain string or multimodal array (with images)
 type MessageContent = string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;

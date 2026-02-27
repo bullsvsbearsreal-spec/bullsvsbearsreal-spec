@@ -54,7 +54,7 @@ export default function LiquidationsPage() {
   // Use a low minValue for the hook so we capture everything; smart filtering happens in filteredLiquidations
   const hookMinValue = thresholdMode === 'smart' ? 1000 : minValue;
 
-  const { liquidations, connections, stats, aggregated, clearAll } = useMultiExchangeLiquidations({
+  const { liquidations, connections, stats, aggregated, loadHistorical } = useMultiExchangeLiquidations({
     exchanges: stableExchanges,
     minValue: hookMinValue,
     maxItems: DISPLAY.MAX_LIQUIDATIONS,
@@ -76,24 +76,43 @@ export default function LiquidationsPage() {
     audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleRQAEMSo7NGYWgkA');
   }, []);
 
-  // Reset aggregation on timeframe change
+  // Load historical liquidations from DB on mount and timeframe change
   useEffect(() => {
-    clearAll();
     exchangeBreakdownRef.current.clear();
     startTimeRef.current = Date.now();
-  }, [timeframe, clearAll]);
 
-  // Periodic timeframe reset
-  useEffect(() => {
-    const timeframeMs = TIMEFRAME_MS[timeframe];
-    const interval = setInterval(() => {
-      if (Date.now() - startTimeRef.current > timeframeMs) {
-        clearAll();
-        startTimeRef.current = Date.now();
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [timeframe, clearAll]);
+    const timeframeHours = Math.round(timeframeMs / 3_600_000);
+    const controller = new AbortController();
+
+    fetch(`/api/history/liquidations?mode=feed&hours=${timeframeHours}&limit=500`, {
+      signal: controller.signal,
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (controller.signal.aborted || !json?.data) return;
+        const liqs: Liquidation[] = json.data.map((d: any) => ({
+          id: `db-${d.symbol}-${d.exchange}-${d.ts}`,
+          symbol: d.symbol.replace('USDT', '').replace('USDC', ''),
+          side: d.side as 'long' | 'short',
+          price: d.price,
+          quantity: d.quantity,
+          value: d.valueUsd,
+          exchange: d.exchange,
+          timestamp: d.ts,
+        }));
+        loadHistorical(liqs);
+        // Rebuild exchange breakdown from loaded data
+        for (const liq of liqs) {
+          const bd = exchangeBreakdownRef.current;
+          if (!bd.has(liq.symbol)) bd.set(liq.symbol, {});
+          const symBd = bd.get(liq.symbol)!;
+          symBd[liq.exchange] = (symBd[liq.exchange] || 0) + liq.value;
+        }
+      })
+      .catch(() => { /* DB fetch failed or aborted, rely on WS data */ });
+
+    return () => { controller.abort(); };
+  }, [timeframe, timeframeMs, loadHistorical]);
 
   const toggleExchange = (exchange: string) => {
     setSelectedExchanges(prev => {

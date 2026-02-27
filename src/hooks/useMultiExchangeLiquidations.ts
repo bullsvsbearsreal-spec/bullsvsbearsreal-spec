@@ -767,5 +767,40 @@ export function useMultiExchangeLiquidations({
     try { localStorage.removeItem(persistKey); } catch {}
   }, [persistKey]);
 
-  return { liquidations, connections, stats, aggregated, clearAll };
+  /**
+   * Load historical liquidations from DB — replaces current state and recomputes
+   * aggregated + stats. Subsequent WS events append on top as normal.
+   */
+  const loadHistorical = useCallback((liqs: Liquidation[]) => {
+    setLiquidations(liqs);
+
+    // Recompute aggregated map
+    const newAgg = new Map<string, AggregatedLiq>();
+    for (const liq of liqs) {
+      const existing = newAgg.get(liq.symbol) || {
+        symbol: liq.symbol, totalValue: 0, longValue: 0, shortValue: 0, count: 0,
+      };
+      existing.totalValue += liq.value;
+      existing.count += 1;
+      if (liq.side === 'long') existing.longValue += liq.value;
+      else existing.shortValue += liq.value;
+      newAgg.set(liq.symbol, existing);
+    }
+    setAggregated(newAgg);
+
+    // Recompute stats
+    let largestLiq: Liquidation | null = null;
+    let totalLongs = 0, totalShorts = 0, longValue = 0, shortValue = 0;
+    for (const liq of liqs) {
+      if (liq.side === 'long') { totalLongs++; longValue += liq.value; }
+      else { totalShorts++; shortValue += liq.value; }
+      if (!largestLiq || liq.value > largestLiq.value) largestLiq = liq;
+    }
+    setStats({ totalLongs, totalShorts, longValue, shortValue, largestLiq });
+
+    // Save to localStorage
+    saveToStorage(persistKey, liqs, newAgg, { totalLongs, totalShorts, longValue, shortValue, largestLiq });
+  }, [persistKey]);
+
+  return { liquidations, connections, stats, aggregated, clearAll, loadHistorical };
 }
