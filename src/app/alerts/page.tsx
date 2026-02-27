@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2, LogIn } from 'lucide-react';
+import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2, LogIn, Smartphone } from 'lucide-react';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import {
@@ -59,6 +60,38 @@ const COOLDOWN_OPTIONS = [
   { label: '1 hour', value: 60 },
   { label: '4 hours', value: 240 },
 ];
+
+function PushToggle() {
+  const { isSupported, isSubscribed, isLoading, permission, subscribe, unsubscribe } = usePushNotifications();
+  if (!isSupported) return null;
+  const denied = permission === 'denied';
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Smartphone className="w-4 h-4 text-neutral-400" />
+        <div>
+          <p className="text-sm text-white">Push notifications</p>
+          <p className="text-xs text-neutral-600">
+            {denied ? 'Blocked — enable in browser settings' : 'Get browser push when alerts trigger'}
+          </p>
+        </div>
+      </div>
+      <button
+        onClick={() => isSubscribed ? unsubscribe() : subscribe()}
+        disabled={isLoading || denied}
+        className="text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+      >
+        {isLoading ? (
+          <div className="w-6 h-6 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
+        ) : isSubscribed ? (
+          <ToggleRight className="w-6 h-6 text-hub-yellow" />
+        ) : (
+          <ToggleLeft className="w-6 h-6" />
+        )}
+      </button>
+    </div>
+  );
+}
 
 export default function AlertsPage() {
   const { data: session } = useSession();
@@ -434,6 +467,9 @@ export default function AlertsPage() {
                     )}
                   </button>
                 </div>
+
+                {/* Push notifications toggle */}
+                <PushToggle />
 
                 {/* Cooldown selector */}
                 <div className="flex items-center justify-between">

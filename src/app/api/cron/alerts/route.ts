@@ -16,6 +16,8 @@ import {
   getAlertCooldown,
   logAlertNotification,
   pruneAlertNotifications,
+  getPushSubscriptionsForUser,
+  deletePushSubscription,
 } from '@/lib/db';
 import {
   fetchMarketDataServer,
@@ -26,6 +28,7 @@ import {
 import {
   sendAlertEmail,
   sendAlertTelegram,
+  sendAlertPush,
   type TriggeredAlertInfo,
 } from '@/lib/notifications';
 
@@ -109,6 +112,18 @@ export async function GET(request: NextRequest) {
           if (sent) {
             for (const t of triggered) {
               await logAlertNotification(user.userId, t.alertId, t.symbol, t.metric, t.threshold, t.actualValue, 'email');
+            }
+            totalNotifications += triggered.length;
+          }
+        }
+
+        // Send web push notification
+        const pushSubs = await getPushSubscriptionsForUser(user.userId);
+        if (pushSubs.length > 0) {
+          const { sent } = await sendAlertPush(pushSubs, triggered);
+          if (sent > 0) {
+            for (const t of triggered) {
+              await logAlertNotification(user.userId, t.alertId, t.symbol, t.metric, t.threshold, t.actualValue, 'push');
             }
             totalNotifications += triggered.length;
           }

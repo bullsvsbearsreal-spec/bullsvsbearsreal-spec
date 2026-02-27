@@ -169,6 +169,18 @@ export async function initDB(): Promise<void> {
     )
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_push_sub_user ON push_subscriptions (user_id)`;
+
   await initTelegramTables();
 
   initialized = true;
@@ -1133,6 +1145,32 @@ export async function pruneAlertNotifications(): Promise<number> {
   } catch (e) {
     console.error('DB pruneAlertNotifications error:', e);
     return 0;
+  }
+}
+
+// ─── Push Subscriptions ──────────────────────────────────────────────────────
+
+export async function getPushSubscriptionsForUser(
+  userId: string,
+): Promise<Array<{ endpoint: string; p256dh: string; auth: string }>> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ${userId}
+    `;
+    return rows as any[];
+  } catch (e) {
+    console.error('DB getPushSubscriptions error:', e);
+    return [];
+  }
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`DELETE FROM push_subscriptions WHERE endpoint = ${endpoint}`;
+  } catch (e) {
+    console.error('DB deletePushSubscription error:', e);
   }
 }
 

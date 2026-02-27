@@ -1,10 +1,11 @@
 /**
  * Notification delivery for user alerts.
- * Supports email (Resend) and Telegram channels.
+ * Supports email (Resend), Telegram, and Web Push channels.
  */
 
 import { Resend } from 'resend';
 import { sendMessage } from './telegram';
+import webpush from 'web-push';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://info-hub.io';
@@ -125,4 +126,67 @@ export async function sendAlertTelegram(
     console.error('[notifications] telegram send error:', e);
     return false;
   }
+}
+
+// ─── Web Push Notifications ──────────────────────────────────────────────────
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:noreply@info-hub.io',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
+}
+
+export interface PushSubscriptionData {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+export async function sendAlertPush(
+  subscriptions: PushSubscriptionData[],
+  alerts: TriggeredAlertInfo[],
+): Promise<{ sent: number; failed: number }> {
+  if (!process.env.VAPID_PUBLIC_KEY || alerts.length === 0 || subscriptions.length === 0) {
+    return { sent: 0, failed: 0 };
+  }
+
+  const symbols = alerts.map((a) => a.symbol).join(', ');
+  const body = alerts.map((a) => {
+    const op = a.operator === 'gt' ? 'above' : 'below';
+    return `${a.symbol} ${formatMetricLabel(a.metric)} ${op} ${formatValue(a.metric, a.threshold)} → ${formatValue(a.metric, a.actualValue)}`;
+  }).join('\n');
+
+  const payload = JSON.stringify({
+    title: `InfoHub: ${symbols}`,
+    body,
+    tag: `alert-${Date.now()}`,
+    url: '/alerts',
+  });
+
+  let sent = 0;
+  let failed = 0;
+
+  await Promise.allSettled(
+    subscriptions.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload,
+        );
+        sent++;
+      } catch (err: any) {
+        failed++;
+        // 410 Gone = subscription expired, caller should clean up
+        if (err?.statusCode === 410 || err?.statusCode === 404) {
+          console.log(`[push] Subscription expired: ${sub.endpoint.slice(0, 60)}...`);
+        } else {
+          console.error('[push] Send error:', err?.statusCode || err);
+        }
+      }
+    }),
+  );
+
+  return { sent, failed };
 }
