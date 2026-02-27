@@ -193,6 +193,18 @@ async function _doInitDB(): Promise<void> {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
   // Seed admin accounts
   await sql`UPDATE users SET role = 'admin' WHERE email = 'ocelotcex1638a@gmail.com' AND role != 'admin'`;
+
+  // Admin monitoring metrics (DB size history, coverage snapshots)
+  await sql`
+    CREATE TABLE IF NOT EXISTS admin_monitoring (
+      id SERIAL PRIMARY KEY,
+      metric TEXT NOT NULL,
+      value REAL NOT NULL,
+      recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_admin_mon_metric_ts ON admin_monitoring(metric, recorded_at DESC)`;
+  await sql`ALTER TABLE admin_monitoring ADD COLUMN IF NOT EXISTS details JSONB DEFAULT NULL`;
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -1581,6 +1593,321 @@ export async function getUsersWithPortfolios(): Promise<Array<{ userId: string; 
     }));
   } catch (e) {
     console.error('DB getUsersWithPortfolios error:', e);
+    return [];
+  }
+}
+
+// ─── Admin Monitoring ────────────────────────────────────────────────────────
+
+export async function getCollectorHealth(): Promise<{
+  lastFunding: string | null;
+  lastOI: string | null;
+  lastLiq: string | null;
+  avgIntervalMin: number | null;
+  last24h: { funding: number; oi: number; liq: number };
+}> {
+  try {
+    const db = getSQL();
+    const [timestamps, funding24, oi24, liq24, intervals] = await Promise.all([
+      db`SELECT
+        (SELECT MAX(ts) FROM funding_snapshots) AS last_funding,
+        (SELECT MAX(ts) FROM oi_snapshots) AS last_oi,
+        (SELECT MAX(ts) FROM liquidation_snapshots) AS last_liq`,
+      db`SELECT COUNT(*) AS c FROM funding_snapshots WHERE ts > NOW() - INTERVAL '24 hours'`,
+      db`SELECT COUNT(*) AS c FROM oi_snapshots WHERE ts > NOW() - INTERVAL '24 hours'`,
+      db`SELECT COUNT(*) AS c FROM liquidation_snapshots WHERE ts > NOW() - INTERVAL '24 hours'`,
+      db`SELECT AVG(gap) AS avg_gap FROM (
+        SELECT EXTRACT(EPOCH FROM ts - LAG(ts) OVER (ORDER BY ts)) AS gap
+        FROM (SELECT DISTINCT ts FROM funding_snapshots ORDER BY ts DESC LIMIT 20) sub
+      ) gaps WHERE gap IS NOT NULL AND gap > 0 AND gap < 7200`,
+    ]);
+    return {
+      lastFunding: timestamps[0].last_funding?.toISOString() ?? null,
+      lastOI: timestamps[0].last_oi?.toISOString() ?? null,
+      lastLiq: timestamps[0].last_liq?.toISOString() ?? null,
+      avgIntervalMin: intervals[0].avg_gap ? Math.round(Number(intervals[0].avg_gap) / 60 * 10) / 10 : null,
+      last24h: {
+        funding: Number(funding24[0].c),
+        oi: Number(oi24[0].c),
+        liq: Number(liq24[0].c),
+      },
+    };
+  } catch (e) {
+    console.error('DB getCollectorHealth error:', e);
+    return { lastFunding: null, lastOI: null, lastLiq: null, avgIntervalMin: null, last24h: { funding: 0, oi: 0, liq: 0 } };
+  }
+}
+
+export async function getAlertHealthMetrics(): Promise<{
+  today: { total: number; email: number; push: number; telegram: number; uniqueUsers: number; uniqueSymbols: number };
+  last7d: Array<{ date: string; fired: number; email: number; push: number; telegram: number }>;
+  topSymbols: Array<{ symbol: string; count: number }>;
+  topUsers: Array<{ userId: string; email: string; count: number }>;
+  config: { usersWithAlerts: number; enabledAlerts: number; telegramAlerts: number; byMetric: Record<string, number> };
+}> {
+  try {
+    const db = getSQL();
+    const [todayByChannel, todayUnique, daily, topSym, topUsr, alertConfig, tgAlertCount] = await Promise.all([
+      db`SELECT channel, COUNT(*) AS c FROM alert_notifications WHERE sent_at > CURRENT_DATE GROUP BY channel`,
+      db`SELECT COUNT(DISTINCT user_id) AS users, COUNT(DISTINCT symbol) AS symbols FROM alert_notifications WHERE sent_at > CURRENT_DATE`,
+      db`SELECT DATE(sent_at) AS day, COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE channel='email') AS email,
+        COUNT(*) FILTER (WHERE channel='push') AS push,
+        COUNT(*) FILTER (WHERE channel='telegram') AS telegram
+        FROM alert_notifications WHERE sent_at > NOW() - INTERVAL '7 days'
+        GROUP BY DATE(sent_at) ORDER BY day`,
+      db`SELECT symbol, COUNT(*) AS c FROM alert_notifications WHERE sent_at > CURRENT_DATE GROUP BY symbol ORDER BY c DESC LIMIT 10`,
+      db`SELECT an.user_id, COALESCE(u.email, an.user_id) AS email, COUNT(*) AS c
+        FROM alert_notifications an LEFT JOIN users u ON an.user_id = u.id
+        WHERE an.sent_at > CURRENT_DATE GROUP BY an.user_id, u.email ORDER BY c DESC LIMIT 10`,
+      db`SELECT
+        COUNT(DISTINCT user_id) AS users_with_alerts,
+        SUM(jsonb_array_length(COALESCE(prefs->'alerts','[]'::jsonb))) AS total_alerts
+        FROM user_prefs WHERE jsonb_array_length(COALESCE(prefs->'alerts','[]'::jsonb)) > 0`,
+      db`SELECT COUNT(*) AS c FROM telegram_alerts WHERE enabled = true`.catch(() => [{ c: 0 }]),
+    ]);
+
+    const channelMap: Record<string, number> = {};
+    for (const r of todayByChannel) channelMap[r.channel] = Number(r.c);
+    const todayTotal = Object.values(channelMap).reduce((a, b) => a + b, 0);
+
+    // Get alert metric breakdown from user_prefs
+    let byMetric: Record<string, number> = {};
+    try {
+      const metricRows = await db`
+        SELECT m->>'metric' AS metric, COUNT(*) AS c
+        FROM user_prefs, jsonb_array_elements(COALESCE(prefs->'alerts','[]'::jsonb)) AS m
+        WHERE (m->>'enabled')::boolean = true
+        GROUP BY m->>'metric'`;
+      for (const r of metricRows) byMetric[r.metric] = Number(r.c);
+    } catch { /* jsonb query may fail if no alerts */ }
+
+    return {
+      today: {
+        total: todayTotal,
+        email: channelMap['email'] || 0,
+        push: channelMap['push'] || 0,
+        telegram: channelMap['telegram'] || 0,
+        uniqueUsers: Number(todayUnique[0].users),
+        uniqueSymbols: Number(todayUnique[0].symbols),
+      },
+      last7d: daily.map((r: any) => ({
+        date: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
+        fired: Number(r.total),
+        email: Number(r.email),
+        push: Number(r.push),
+        telegram: Number(r.telegram),
+      })),
+      topSymbols: topSym.map((r: any) => ({ symbol: r.symbol, count: Number(r.c) })),
+      topUsers: topUsr.map((r: any) => ({ userId: r.user_id, email: r.email, count: Number(r.c) })),
+      config: {
+        usersWithAlerts: Number(alertConfig[0].users_with_alerts),
+        enabledAlerts: Number(alertConfig[0].total_alerts || 0),
+        telegramAlerts: Number(tgAlertCount[0].c),
+        byMetric,
+      },
+    };
+  } catch (e) {
+    console.error('DB getAlertHealthMetrics error:', e);
+    return {
+      today: { total: 0, email: 0, push: 0, telegram: 0, uniqueUsers: 0, uniqueSymbols: 0 },
+      last7d: [], topSymbols: [], topUsers: [],
+      config: { usersWithAlerts: 0, enabledAlerts: 0, telegramAlerts: 0, byMetric: {} },
+    };
+  }
+}
+
+export async function getDatabaseMetrics(): Promise<{
+  currentSize: string;
+  currentSizeBytes: number;
+  tables: Array<{ name: string; rowCount: number; sizeBytes: number; sizePretty: string }>;
+  growthRate: { fundingPerDay: number; oiPerDay: number; liqPerDay: number };
+  sizeHistory: Array<{ date: string; sizeBytes: number }>;
+}> {
+  try {
+    const db = getSQL();
+    const [dbSize, tableSizes, growth, history] = await Promise.all([
+      db`SELECT pg_database_size(current_database()) AS size_bytes,
+        pg_size_pretty(pg_database_size(current_database())) AS size_pretty`,
+      db`SELECT relname AS table_name,
+        n_live_tup AS row_count,
+        pg_total_relation_size(schemaname || '.' || relname) AS size_bytes,
+        pg_size_pretty(pg_total_relation_size(schemaname || '.' || relname)) AS size_pretty
+        FROM pg_stat_user_tables WHERE schemaname = 'public'
+        ORDER BY pg_total_relation_size(schemaname || '.' || relname) DESC`,
+      db`SELECT 'funding' AS type, COUNT(*)::float / GREATEST(1, EXTRACT(EPOCH FROM NOW() - MIN(ts)) / 86400) AS per_day
+        FROM funding_snapshots WHERE ts > NOW() - INTERVAL '7 days'
+        UNION ALL
+        SELECT 'oi', COUNT(*)::float / GREATEST(1, EXTRACT(EPOCH FROM NOW() - MIN(ts)) / 86400)
+        FROM oi_snapshots WHERE ts > NOW() - INTERVAL '7 days'
+        UNION ALL
+        SELECT 'liq', COUNT(*)::float / GREATEST(1, EXTRACT(EPOCH FROM NOW() - MIN(ts)) / 86400)
+        FROM liquidation_snapshots WHERE ts > NOW() - INTERVAL '7 days'`,
+      db`SELECT recorded_at::date AS date, value AS size_bytes
+        FROM admin_monitoring WHERE metric = 'db_size'
+        ORDER BY recorded_at DESC LIMIT 30`.catch(() => []),
+    ]);
+
+    const growthMap: Record<string, number> = {};
+    for (const r of growth) growthMap[r.type] = Math.round(Number(r.per_day));
+
+    return {
+      currentSize: dbSize[0].size_pretty,
+      currentSizeBytes: Number(dbSize[0].size_bytes),
+      tables: tableSizes.map((r: any) => ({
+        name: r.table_name,
+        rowCount: Number(r.row_count),
+        sizeBytes: Number(r.size_bytes),
+        sizePretty: r.size_pretty,
+      })),
+      growthRate: {
+        fundingPerDay: growthMap['funding'] || 0,
+        oiPerDay: growthMap['oi'] || 0,
+        liqPerDay: growthMap['liq'] || 0,
+      },
+      sizeHistory: (history as any[]).map((r: any) => ({
+        date: r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date),
+        sizeBytes: Number(r.size_bytes),
+      })),
+    };
+  } catch (e) {
+    console.error('DB getDatabaseMetrics error:', e);
+    return { currentSize: 'unknown', currentSizeBytes: 0, tables: [], growthRate: { fundingPerDay: 0, oiPerDay: 0, liqPerDay: 0 }, sizeHistory: [] };
+  }
+}
+
+export async function recordAdminMetric(metric: string, value: number): Promise<void> {
+  try {
+    const db = getSQL();
+    await db`INSERT INTO admin_monitoring (metric, value) VALUES (${metric}, ${value})`;
+  } catch (e) {
+    console.error('DB recordAdminMetric error:', e);
+  }
+}
+
+// ─── Audit Log ──────────────────────────────────────────────────────────────
+
+export async function recordAuditEvent(
+  type: string,
+  details: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    const db = getSQL();
+    await db`INSERT INTO admin_monitoring (metric, value, details) VALUES (${`audit_${type}`}, ${0}, ${JSON.stringify(details)})`;
+  } catch (e) {
+    console.error('DB recordAuditEvent error:', e);
+  }
+}
+
+export async function getAuditLog(limit = 50): Promise<Array<{ id: number; type: string; details: Record<string, unknown> | null; timestamp: string }>> {
+  try {
+    const db = getSQL();
+    const rows = await db`
+      SELECT id, metric, details, recorded_at
+      FROM admin_monitoring
+      WHERE metric LIKE 'audit_%'
+      ORDER BY recorded_at DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      id: r.id,
+      type: (r.metric as string).replace('audit_', ''),
+      details: r.details,
+      timestamp: r.recorded_at?.toISOString?.() ?? String(r.recorded_at),
+    }));
+  } catch (e) {
+    console.error('DB getAuditLog error:', e);
+    return [];
+  }
+}
+
+export async function flushApiCache(): Promise<number> {
+  try {
+    const db = getSQL();
+    const result = await db`DELETE FROM api_cache`;
+    return result.count ?? 0;
+  } catch (e) {
+    console.error('DB flushApiCache error:', e);
+    return 0;
+  }
+}
+
+export async function getUserDetailForAdmin(userId: string) {
+  try {
+    const db = getSQL();
+
+    const [user] = await db`SELECT id, name, email, image, email_verified, role FROM users WHERE id = ${userId}`;
+    if (!user) return null;
+
+    const accounts = await db`SELECT provider FROM accounts WHERE user_id = ${userId}`;
+    const providers = accounts.map((a: any) => a.provider);
+
+    let watchlist: string[] = [];
+    let alerts: any[] = [];
+    let portfolio: any[] = [];
+    try {
+      const [prefs] = await db`SELECT prefs FROM user_prefs WHERE user_id = ${userId}`;
+      if (prefs?.prefs) {
+        const p = typeof prefs.prefs === 'string' ? JSON.parse(prefs.prefs) : prefs.prefs;
+        watchlist = p.watchlist || [];
+        alerts = p.alerts || [];
+        portfolio = p.portfolio || [];
+      }
+    } catch { /* user_prefs may not exist */ }
+
+    let recentNotifications: any[] = [];
+    try {
+      recentNotifications = await db`
+        SELECT id, symbol, metric, threshold, actual_value, channel, sent_at
+        FROM alert_notifications
+        WHERE user_id = ${userId}
+        ORDER BY sent_at DESC
+        LIMIT 20
+      `;
+    } catch { /* table may not exist */ }
+
+    let pushCount = 0;
+    try {
+      const [row] = await db`SELECT COUNT(*)::int AS cnt FROM push_subscriptions WHERE user_id = ${userId}`;
+      pushCount = row?.cnt ?? 0;
+    } catch { /* table may not exist */ }
+
+    return {
+      ...user,
+      providers,
+      watchlist,
+      alerts,
+      portfolio,
+      recentNotifications,
+      pushSubscriptions: pushCount,
+    };
+  } catch (e) {
+    console.error('DB getUserDetailForAdmin error:', e);
+    return null;
+  }
+}
+
+export async function getAllPushSubscriptions() {
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT user_id, endpoint, p256dh, auth FROM push_subscriptions`;
+    return rows.map((r: any) => ({
+      userId: r.user_id,
+      subscription: { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
+    }));
+  } catch (e) {
+    console.error('DB getAllPushSubscriptions error:', e);
+    return [];
+  }
+}
+
+export async function getAllActiveTelegramChatIds(): Promise<Array<{ chatId: string }>> {
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT chat_id FROM telegram_users WHERE active = true`;
+    return rows.map((r: any) => ({ chatId: String(r.chat_id) }));
+  } catch (e) {
+    console.error('DB getAllActiveTelegramChatIds error:', e);
     return [];
   }
 }

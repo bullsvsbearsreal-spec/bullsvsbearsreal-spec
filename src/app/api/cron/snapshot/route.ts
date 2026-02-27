@@ -13,7 +13,9 @@ import {
   saveOISnapshot,
   saveLiquidationSnapshot,
   pruneOldData,
+  recordAdminMetric,
 } from '@/lib/db';
+import postgres from 'postgres';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -166,6 +168,19 @@ export async function GET(request: NextRequest) {
     let pruned = { funding: 0, oi: 0, liquidations: 0 };
     if (Math.random() < 0.17) {
       pruned = await pruneOldData(90);
+    }
+
+    // Record DB size for admin monitoring (~1 in 6 runs, roughly hourly)
+    if (Math.random() < 0.17) {
+      try {
+        const dbUrl = process.env.DATABASE_URL || '';
+        if (dbUrl) {
+          const db = postgres(dbUrl, { max: 1, idle_timeout: 5, ssl: 'require' });
+          const [{ size_bytes }] = await db`SELECT pg_database_size(current_database()) AS size_bytes`;
+          await recordAdminMetric('db_size', Number(size_bytes));
+          await db.end();
+        }
+      } catch { /* non-critical */ }
     }
 
     return NextResponse.json({

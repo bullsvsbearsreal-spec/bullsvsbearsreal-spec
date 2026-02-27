@@ -4,6 +4,7 @@ import { buildSystemPrompt, PromptContext } from './system-prompt';
 import { CHAT_TOOLS } from './tools';
 import { executeTool } from './tool-executor';
 import { checkRateLimit } from './rate-limit';
+import { auth } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -11,6 +12,7 @@ export const dynamic = 'force-dynamic';
 
 const MAX_TOOL_ROUNDS = 3;
 const MAX_TOKENS = 600;
+const ADMIN_MAX_TOKENS = 1200; // admins get longer responses
 
 // Content can be a plain string or multimodal array (with images)
 type MessageContent = string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
@@ -38,18 +40,27 @@ export async function POST(request: NextRequest) {
   const lastContent = body.messages?.[body.messages.length - 1]?.content || '';
   const lastText = extractText(lastContent);
 
-  const rateCheck = checkRateLimit(ip, lastText.length);
-  if (!rateCheck.allowed) {
-    return new Response(
-      JSON.stringify({ error: rateCheck.error }),
-      {
-        status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-RateLimit-Remaining': '0',
+  // Check if user is admin (bypasses rate limit, gets higher token budget)
+  let isAdminUser = false;
+  try {
+    const session = await auth();
+    isAdminUser = session?.user?.role === 'admin';
+  } catch { /* not logged in or auth error */ }
+
+  if (!isAdminUser) {
+    const rateCheck = checkRateLimit(ip, lastText.length);
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: rateCheck.error }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': '0',
+          },
         },
-      },
-    );
+      );
+    }
   }
 
   // Validate
@@ -123,7 +134,7 @@ export async function POST(request: NextRequest) {
         // Check if this round should stream (only the final text response)
         const response = await client.messages.create({
           model: 'claude-sonnet-4-6',
-          max_tokens: MAX_TOKENS,
+          max_tokens: isAdminUser ? ADMIN_MAX_TOKENS : MAX_TOKENS,
           system: systemPrompt,
           tools: CHAT_TOOLS,
           messages,
@@ -245,7 +256,7 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
-      'X-RateLimit-Remaining': String(rateCheck.remaining),
+      'X-RateLimit-Remaining': isAdminUser ? '999' : '0',
     },
   });
 }

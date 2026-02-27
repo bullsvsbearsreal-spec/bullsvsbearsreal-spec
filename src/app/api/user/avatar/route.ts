@@ -39,10 +39,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!DO_SPACES_ENDPOINT || !DO_SPACES_KEY || !DO_SPACES_SECRET) {
-    return NextResponse.json({ error: 'Avatar upload not configured' }, { status: 503 });
-  }
-
   try {
     const formData = await request.formData();
     const file = formData.get('avatar') as File | null;
@@ -60,23 +56,32 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/gif' ? 'gif' : 'webp';
-    const key = `avatars/${session.user.id}.${ext}`;
+    let imageUrl: string;
 
-    // Upload to DO Spaces
-    const s3 = getS3();
-    await s3.send(new PutObjectCommand({
-      Bucket: DO_SPACES_BUCKET,
-      Key: key,
-      Body: buffer,
-      ContentType: file.type,
-      ACL: 'public-read',
-    }));
-
-    // Build CDN URL
-    const imageUrl = DO_SPACES_CDN
-      ? `${DO_SPACES_CDN}/${key}`
-      : `${DO_SPACES_ENDPOINT}/${DO_SPACES_BUCKET}/${key}`;
+    if (DO_SPACES_ENDPOINT && DO_SPACES_KEY && DO_SPACES_SECRET) {
+      // Upload to DO Spaces (S3-compatible)
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/gif' ? 'gif' : 'webp';
+      const key = `avatars/${session.user.id}.${ext}`;
+      const s3 = getS3();
+      await s3.send(new PutObjectCommand({
+        Bucket: DO_SPACES_BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: file.type,
+        ACL: 'public-read',
+      }));
+      imageUrl = DO_SPACES_CDN
+        ? `${DO_SPACES_CDN}/${key}`
+        : `${DO_SPACES_ENDPOINT}/${DO_SPACES_BUCKET}/${key}`;
+    } else {
+      // Fallback: store as base64 data URL in DB (client already resizes to 256x256)
+      // Limit to 100KB to avoid bloating JWT cookies
+      if (buffer.length > 100_000) {
+        return NextResponse.json({ error: 'Image too large for fallback storage. Max 100KB.' }, { status: 413 });
+      }
+      const b64 = buffer.toString('base64');
+      imageUrl = `data:${file.type};base64,${b64}`;
+    }
 
     // Update user record
     const db = getSQL();

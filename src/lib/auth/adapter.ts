@@ -1,6 +1,10 @@
 /**
  * Custom NextAuth Postgres adapter using postgres.js driver.
  * Avoids needing a second driver (pg) just for the adapter.
+ *
+ * NOTE: The `role` column is added lazily via initDB(). Adapter queries
+ * intentionally omit it so auth works even before initDB() runs.
+ * Role is fetched separately in the JWT callback with a try/catch.
  */
 
 import type { Adapter, AdapterUser, AdapterAccount, AdapterSession } from 'next-auth/adapters';
@@ -23,16 +27,16 @@ export function PostgresAdapter(): Adapter {
   return {
     async createUser(user) {
       const rows = await sql`
-        INSERT INTO users (name, email, email_verified, image, role)
-        VALUES (${user.name ?? null}, ${user.email}, ${user.emailVerified ?? null}, ${user.image ?? null}, 'user')
-        RETURNING id, name, email, email_verified as "emailVerified", image, role
+        INSERT INTO users (name, email, email_verified, image)
+        VALUES (${user.name ?? null}, ${user.email}, ${user.emailVerified ?? null}, ${user.image ?? null})
+        RETURNING id, name, email, email_verified as "emailVerified", image
       `;
       return rows[0] as AdapterUser;
     },
 
     async getUser(id) {
       const rows = await sql`
-        SELECT id, name, email, email_verified as "emailVerified", image, role
+        SELECT id, name, email, email_verified as "emailVerified", image
         FROM users WHERE id = ${id}
       `;
       return (rows[0] as AdapterUser) ?? null;
@@ -40,7 +44,7 @@ export function PostgresAdapter(): Adapter {
 
     async getUserByEmail(email) {
       const rows = await sql`
-        SELECT id, name, email, email_verified as "emailVerified", image, role
+        SELECT id, name, email, email_verified as "emailVerified", image
         FROM users WHERE email = ${email}
       `;
       return (rows[0] as AdapterUser) ?? null;
@@ -48,7 +52,7 @@ export function PostgresAdapter(): Adapter {
 
     async getUserByAccount({ providerAccountId, provider }) {
       const rows = await sql`
-        SELECT u.id, u.name, u.email, u.email_verified as "emailVerified", u.image, u.role
+        SELECT u.id, u.name, u.email, u.email_verified as "emailVerified", u.image
         FROM users u
         JOIN accounts a ON u.id = a.user_id
         WHERE a.provider = ${provider} AND a.provider_account_id = ${providerAccountId}
@@ -64,7 +68,7 @@ export function PostgresAdapter(): Adapter {
           email_verified = COALESCE(${user.emailVerified ?? null}, email_verified),
           image = COALESCE(${user.image ?? null}, image)
         WHERE id = ${user.id!}
-        RETURNING id, name, email, email_verified as "emailVerified", image, role
+        RETURNING id, name, email, email_verified as "emailVerified", image
       `;
       return rows[0] as AdapterUser;
     },
@@ -112,7 +116,7 @@ export function PostgresAdapter(): Adapter {
     async getSessionAndUser(sessionToken) {
       const rows = await sql`
         SELECT s.session_token as "sessionToken", s.user_id as "userId", s.expires,
-               u.id, u.name, u.email, u.email_verified as "emailVerified", u.image, u.role
+               u.id, u.name, u.email, u.email_verified as "emailVerified", u.image
         FROM sessions s
         JOIN users u ON s.user_id = u.id
         WHERE s.session_token = ${sessionToken} AND s.expires > NOW()
@@ -121,7 +125,7 @@ export function PostgresAdapter(): Adapter {
       const row = rows[0] as any;
       return {
         session: { sessionToken: row.sessionToken, userId: row.userId, expires: row.expires },
-        user: { id: row.id, name: row.name, email: row.email, emailVerified: row.emailVerified, image: row.image, role: row.role },
+        user: { id: row.id, name: row.name, email: row.email, emailVerified: row.emailVerified, image: row.image },
       };
     },
 

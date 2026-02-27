@@ -34,7 +34,7 @@ const providers: any[] = [
 
       const db = getSQL();
       const rows = await db`
-        SELECT id, name, email, image, password_hash, email_verified, role
+        SELECT id, name, email, image, password_hash, email_verified
         FROM users WHERE email = ${credentials.email as string}
       `;
 
@@ -100,6 +100,18 @@ export async function requireAdmin(): Promise<Response | null> {
   return null;
 }
 
+/** Require admin or advisor role — for read-only and safe-action routes */
+export async function requireAdminOrAdvisor(): Promise<Response | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (session.user.role !== 'admin' && session.user.role !== 'advisor') {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PostgresAdapter(),
   session: { strategy: 'jwt' }, // JWT sessions — no DB session lookups
@@ -135,7 +147,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.image = token.image as string;
       }
       if (token?.role) {
-        session.user.role = token.role as 'admin' | 'user';
+        session.user.role = token.role as 'admin' | 'advisor' | 'user';
       }
       return session;
     },

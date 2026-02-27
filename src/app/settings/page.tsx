@@ -475,7 +475,15 @@ export default function SettingsPage() {
                 className="hidden"
               />
               <div className="min-w-0 flex-1">
-                <h1 className="text-xl font-bold text-white truncate">{session.user?.name || 'User'}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-white truncate">{session.user?.name || 'User'}</h1>
+                  {session.user?.role === 'admin' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-hub-yellow/20 text-hub-yellow">
+                      <Shield className="w-3 h-3" />
+                      ADMIN
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-neutral-500 truncate">{session.user?.email}</p>
                 {accountStats?.memberSince && (
                   <p className="text-xs text-neutral-600 mt-1">

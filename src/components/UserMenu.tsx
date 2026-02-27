@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { User, LogOut, Settings, ChevronDown, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Shield } from 'lucide-react';
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -79,9 +79,23 @@ export default function UserMenu() {
         <div className="absolute right-0 top-full mt-1 w-56 bg-hub-darker border border-white/[0.08] rounded-lg shadow-xl py-1 z-50">
           {/* User info */}
           <div className="px-4 py-2.5 border-b border-white/[0.06]">
-            <p className="text-sm font-medium text-white truncate">
-              {session.user?.name || 'User'}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-white truncate">
+                {session.user?.name || 'User'}
+              </p>
+              {session.user?.role === 'admin' && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-hub-yellow/20 text-hub-yellow">
+                  <Shield className="w-2.5 h-2.5" />
+                  ADMIN
+                </span>
+              )}
+              {session.user?.role === 'advisor' && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-400">
+                  <Shield className="w-2.5 h-2.5" />
+                  ADVISOR
+                </span>
+              )}
+            </div>
             <p className="text-xs text-neutral-500 truncate">
               {session.user?.email}
             </p>
@@ -106,6 +120,18 @@ export default function UserMenu() {
             <Settings className="w-3.5 h-3.5" />
             Settings
           </Link>
+
+          {/* Admin Panel — for admins and advisors */}
+          {(session.user?.role === 'admin' || session.user?.role === 'advisor') && (
+            <Link
+              href="/admin-panel"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-hub-yellow hover:text-hub-yellow hover:bg-hub-yellow/[0.06] transition-colors"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Admin Panel
+            </Link>
+          )}
 
           {/* Sign out */}
           <button
