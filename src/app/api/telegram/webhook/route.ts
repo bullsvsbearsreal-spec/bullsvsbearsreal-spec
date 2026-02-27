@@ -326,7 +326,7 @@ async function handleOI(chatId: number, args: string[], origin: string): Promise
     }
 
     const json = await res.json();
-    const allData: Array<{ symbol: string; exchange: string; openInterest: number }> = json.data || [];
+    const allData: Array<{ symbol: string; exchange: string; openInterest: number; openInterestValue: number }> = json.data || [];
 
     // Filter for the requested symbol
     const entries = allData.filter(
@@ -339,9 +339,9 @@ async function handleOI(chatId: number, args: string[], origin: string): Promise
     }
 
     // Sort by OI descending
-    entries.sort((a, b) => b.openInterest - a.openInterest);
+    entries.sort((a, b) => b.openInterestValue - a.openInterestValue);
 
-    const totalOI = entries.reduce((acc, e) => acc + e.openInterest, 0);
+    const totalOI = entries.reduce((acc, e) => acc + e.openInterestValue, 0);
     const top5 = entries.slice(0, 5);
 
     // Calculate max exchange name length for alignment
@@ -357,8 +357,8 @@ async function handleOI(chatId: number, args: string[], origin: string): Promise
       '<code>',
       ...top5.map((e) => {
         const name = e.exchange + ' '.repeat(Math.max(1, maxNameLen - e.exchange.length));
-        const pct = ((e.openInterest / totalOI) * 100).toFixed(1);
-        return `  ${name}  ${fmtUsd(e.openInterest).padStart(12)}  (${pct}%)`;
+        const pct = ((e.openInterestValue / totalOI) * 100).toFixed(1);
+        return `  ${name}  ${fmtUsd(e.openInterestValue).padStart(12)}  (${pct}%)`;
       }),
       '</code>',
     ];

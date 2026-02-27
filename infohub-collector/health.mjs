@@ -32,7 +32,7 @@ export function startHealthServer() {
     }
   });
 
-  server.listen(PORT, () => {
-    console.log(`[infohub-collector] Health server on port ${PORT}`);
+  server.listen(PORT, '127.0.0.1', () => {
+    console.log(`[infohub-collector] Health server on 127.0.0.1:${PORT}`);
   });
 }

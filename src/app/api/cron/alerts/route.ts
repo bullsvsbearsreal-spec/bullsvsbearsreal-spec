@@ -18,12 +18,15 @@ import {
   pruneAlertNotifications,
   getPushSubscriptionsForUser,
   deletePushSubscription,
+  getAllActiveTelegramAlerts,
 } from '@/lib/db';
 import {
   fetchMarketDataServer,
   checkAlert,
   getMetricValue,
   type Alert,
+  type AlertMetric,
+  type AlertOperator,
 } from '@/lib/market-data';
 import {
   sendAlertEmail,
@@ -137,6 +140,82 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ─── Telegram alerts ────────────────────────────────────────────────────
+    let telegramTriggered = 0;
+    let telegramNotifications = 0;
+    try {
+      const tgAlerts = await getAllActiveTelegramAlerts();
+      if (tgAlerts.length > 0) {
+        // Group by chat_id
+        const byChatId = new Map<number, typeof tgAlerts>();
+        for (const ta of tgAlerts) {
+          const arr = byChatId.get(ta.chat_id) || [];
+          arr.push(ta);
+          byChatId.set(ta.chat_id, arr);
+        }
+
+        for (const [chatId, alerts] of Array.from(byChatId.entries())) {
+          const triggered: TriggeredAlertInfo[] = [];
+          for (const ta of alerts) {
+            const data = marketData.get(ta.symbol);
+            if (!data) continue;
+
+            // Map TelegramAlert to Alert shape for checkAlert()
+            const asAlert: Alert = {
+              id: String(ta.id),
+              symbol: ta.symbol,
+              metric: ta.metric as AlertMetric,
+              operator: ta.operator as AlertOperator,
+              value: ta.threshold,
+              enabled: true,
+              createdAt: Date.now(),
+            };
+
+            if (checkAlert(asAlert, data)) {
+              // Use chat_id as the userId key for cooldown
+              const inCooldown = await getAlertCooldown(
+                `tg_${chatId}`,
+                String(ta.id),
+                60,
+              );
+              if (inCooldown) continue;
+
+              const actualValue = getMetricValue(data, ta.metric as AlertMetric);
+              triggered.push({
+                alertId: String(ta.id),
+                symbol: ta.symbol,
+                metric: ta.metric,
+                operator: ta.operator,
+                threshold: ta.threshold,
+                actualValue,
+              });
+              telegramTriggered++;
+            }
+          }
+
+          if (triggered.length > 0) {
+            const sent = await sendAlertTelegram(chatId, triggered);
+            if (sent) {
+              for (const t of triggered) {
+                await logAlertNotification(
+                  `tg_${chatId}`,
+                  t.alertId,
+                  t.symbol,
+                  t.metric,
+                  t.threshold,
+                  t.actualValue,
+                  'telegram',
+                );
+              }
+              telegramNotifications += triggered.length;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[alert-cron] error processing telegram alerts:', err);
+    }
+
     // Prune old notifications ~5% of the time
     if (Math.random() < 0.05) {
       await pruneAlertNotifications();
@@ -145,8 +224,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       users: users.length,
-      triggered: totalTriggered,
-      notifications: totalNotifications,
+      triggered: totalTriggered + telegramTriggered,
+      notifications: totalNotifications + telegramNotifications,
+      telegramTriggered,
+      telegramNotifications,
     });
   } catch (error) {
     console.error('[alert-cron] error:', error);
