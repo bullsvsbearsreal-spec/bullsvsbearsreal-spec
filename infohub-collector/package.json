@@ -1,0 +1,16 @@
+{
+  "name": "infohub-collector",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "15-min cron collector for InfoHub funding rates, OI, and liquidation snapshots",
+  "main": "collector.mjs",
+  "scripts": {
+    "start": "node collector.mjs",
+    "dev": "node --watch collector.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "postgres": "^3.4.8"
+  }
+}
