@@ -158,7 +158,9 @@ export async function getCache<T = any>(key: string): Promise<T | null> {
       LIMIT 1
     `;
     if (rows.length === 0) return null;
-    return rows[0].data as T;
+    // Handle double-encoded JSON (driver may return jsonb as string)
+    const raw = rows[0].data;
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as T;
   } catch (e) {
     console.error('DB getCache error:', e);
     return null;

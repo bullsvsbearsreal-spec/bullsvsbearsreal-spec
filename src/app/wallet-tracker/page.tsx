@@ -33,6 +33,8 @@ interface WalletToken {
   balance: number;
   decimals: number;
   contractAddress?: string;
+  balanceUsd?: number;
+  tokenPrice?: number;
 }
 
 interface WalletData {
@@ -312,8 +314,13 @@ export default function WalletTrackerPage() {
       .map((token) => {
         const sym = token.symbol.toUpperCase();
         const stripped = sym.replace(/^W/, ''); // WETH → ETH
-        const price = priceMap[sym] || priceMap[stripped] || null;
-        const usdValue = price ? token.balance * price : null;
+        // Prefer Blockscout price (contract-specific) over ticker price (symbol match only)
+        // Ticker symbol match can be wrong (e.g. ERC-20 MOODENG != Solana MOODENG)
+        const price = (token.tokenPrice && token.tokenPrice > 0) ? token.tokenPrice
+          : priceMap[sym] || priceMap[stripped] || null;
+        // Prefer Blockscout USD value when available (most accurate)
+        const usdValue = (token.balanceUsd && token.balanceUsd > 0) ? token.balanceUsd
+          : price ? token.balance * price : null;
         return { ...token, price, usdValue };
       })
       .filter((token) => {

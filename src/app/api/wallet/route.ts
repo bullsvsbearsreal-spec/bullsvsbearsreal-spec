@@ -21,18 +21,6 @@ interface EthTransaction {
   gasPrice: string;
 }
 
-interface EthTokenTransfer {
-  hash: string;
-  from: string;
-  to: string;
-  value: string;
-  tokenName: string;
-  tokenSymbol: string;
-  tokenDecimal: string;
-  timeStamp: string;
-  contractAddress: string;
-}
-
 interface BtcTx {
   hash: string;
   time: number;
@@ -62,6 +50,8 @@ interface WalletResult {
     balance: number;
     decimals: number;
     contractAddress?: string;
+    balanceUsd?: number;
+    tokenPrice?: number;
   }>;
 }
 
@@ -133,17 +123,71 @@ async function fetchEthBalanceViaRPC(address: string): Promise<number> {
 }
 
 /* ------------------------------------------------------------------ */
+/*  ETH: Token balances via Blockscout V2 (free, actual balances)      */
+/* ------------------------------------------------------------------ */
+
+interface BlockscoutTokenItem {
+  token: {
+    symbol: string;
+    name: string;
+    decimals: string;
+    exchange_rate: string | null;
+    circulating_market_cap: string | null;
+    address_hash: string;
+  };
+  value: string;
+}
+
+const MIN_MARKET_CAP = 500_000; // Filter out spam tokens below $500K mcap
+
+async function fetchTokenBalancesViaBlockscout(address: string) {
+  try {
+    const res = await fetch(
+      `https://eth.blockscout.com/api/v2/addresses/${address}/tokens?type=ERC-20`,
+      { signal: AbortSignal.timeout(15000) },
+    );
+
+    if (!res.ok) return [];
+    const json = await res.json() as { items?: BlockscoutTokenItem[] };
+    if (!json.items || !Array.isArray(json.items)) return [];
+
+    return json.items
+      .filter((item) => {
+        const mcap = parseFloat(item.token.circulating_market_cap || '0');
+        const rate = parseFloat(item.token.exchange_rate || '0');
+        return mcap > MIN_MARKET_CAP && rate > 0;
+      })
+      .map((item) => {
+        const decimals = parseInt(item.token.decimals) || 18;
+        const balance = Number(BigInt(item.value || '0')) / Math.pow(10, decimals);
+        const price = parseFloat(item.token.exchange_rate || '0');
+        const usd = balance * price;
+        return {
+          symbol: item.token.symbol,
+          name: item.token.name,
+          balance,
+          decimals,
+          contractAddress: item.token.address_hash || '',
+          balanceUsd: usd,
+          tokenPrice: price,
+        };
+      })
+      .filter((t) => t.balance > 0 && t.balanceUsd > 1) // Remove dust
+      .sort((a, b) => (b.balanceUsd || 0) - (a.balanceUsd || 0))
+      .slice(0, 100);
+  } catch {
+    return [];
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  ETH: Transactions via Etherscan (with API key support)             */
 /* ------------------------------------------------------------------ */
 
-async function fetchEtherscanData(address: string) {
+async function fetchEtherscanTxns(address: string): Promise<EthTransaction[]> {
   const base = 'https://api.etherscan.io/api';
   const apiKeyParam = ETHERSCAN_API_KEY ? `&apikey=${ETHERSCAN_API_KEY}` : '';
 
-  let txJson: { status: string; result: EthTransaction[] } = { status: '0', result: [] };
-  let tokenJson: { status: string; result: EthTokenTransfer[] } = { status: '0', result: [] };
-
-  // Fetch transactions
   try {
     const txRes = await fetch(
       `${base}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc${apiKeyParam}`,
@@ -151,37 +195,18 @@ async function fetchEtherscanData(address: string) {
     );
     const raw = await txRes.json();
     if (raw.status === '1' && Array.isArray(raw.result)) {
-      txJson = raw;
+      return raw.result;
     }
   } catch { /* swallow */ }
 
-  // Delay between requests (Etherscan rate limit)
-  const delay = ETHERSCAN_API_KEY ? 250 : 1200;
-  await new Promise(r => setTimeout(r, delay));
-
-  // Fetch token transfers
-  try {
-    const tokenRes = await fetch(
-      `${base}?module=account&action=tokentx&address=${address}&page=1&offset=50&sort=desc${apiKeyParam}`,
-      { signal: AbortSignal.timeout(10000) },
-    );
-    const raw = await tokenRes.json();
-    if (raw.status === '1' && Array.isArray(raw.result)) {
-      tokenJson = raw;
-    }
-  } catch { /* swallow */ }
-
-  return { txJson, tokenJson };
+  return [];
 }
 
 /* ------------------------------------------------------------------ */
 /*  ETH: Transactions via Blockscout (free, no key, datacenter-ok)     */
 /* ------------------------------------------------------------------ */
 
-async function fetchBlockscoutData(address: string) {
-  let txJson: { status: string; result: EthTransaction[] } = { status: '0', result: [] };
-  let tokenJson: { status: string; result: EthTokenTransfer[] } = { status: '0', result: [] };
-
+async function fetchBlockscoutTxns(address: string): Promise<EthTransaction[]> {
   try {
     const txRes = await fetch(
       `https://eth.blockscout.com/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc`,
@@ -189,22 +214,11 @@ async function fetchBlockscoutData(address: string) {
     );
     const raw = await txRes.json();
     if (raw.status === '1' && Array.isArray(raw.result)) {
-      txJson = raw;
+      return raw.result;
     }
   } catch { /* swallow */ }
 
-  try {
-    const tokenRes = await fetch(
-      `https://eth.blockscout.com/api?module=account&action=tokentx&address=${address}&page=1&offset=50&sort=desc`,
-      { signal: AbortSignal.timeout(12000) },
-    );
-    const raw = await tokenRes.json();
-    if (raw.status === '1' && Array.isArray(raw.result)) {
-      tokenJson = raw;
-    }
-  } catch { /* swallow */ }
-
-  return { txJson, tokenJson };
+  return [];
 }
 
 /* ------------------------------------------------------------------ */
@@ -219,60 +233,29 @@ async function fetchEthWallet(address: string): Promise<WalletResult> {
     throw new Error('Unable to fetch ETH balance — all RPC endpoints failed');
   }
 
-  // 2. Get transactions — try Etherscan first, fall back to Blockscout
-  let txData = await fetchEtherscanData(address);
+  // 2. Get transactions + token balances in parallel
+  const [etherscanTxns, tokens] = await Promise.all([
+    fetchEtherscanTxns(address),
+    fetchTokenBalancesViaBlockscout(address),
+  ]);
 
-  // If Etherscan returned nothing, try Blockscout
-  const etherscanWorked = Array.isArray(txData.txJson.result) && txData.txJson.result.length > 0;
-  if (!etherscanWorked) {
-    const blockscoutData = await fetchBlockscoutData(address);
-    // Use Blockscout data if it has more results
-    if (Array.isArray(blockscoutData.txJson.result) && blockscoutData.txJson.result.length > 0) {
-      txData = blockscoutData;
-    }
-  }
+  // Fall back to Blockscout if Etherscan returned nothing
+  const rawTxns = etherscanTxns.length > 0
+    ? etherscanTxns
+    : await fetchBlockscoutTxns(address);
 
   // Parse transactions
-  const transactions = Array.isArray(txData.txJson.result)
-    ? txData.txJson.result.map((tx) => ({
-        hash: tx.hash,
-        from: tx.from,
-        to: tx.to,
-        value: (Number(BigInt(tx.value || '0')) / 1e18).toFixed(6),
-        timestamp: Number(tx.timeStamp) * 1000,
-        isError: tx.isError === '1',
-        direction: tx.to?.toLowerCase() === address.toLowerCase() ? 'in' : 'out',
-        gasUsed: tx.gasUsed || undefined,
-        gasPrice: tx.gasPrice || undefined,
-      }))
-    : [];
-
-  // Aggregate ERC-20 tokens by contract address
-  const tokenMap = new Map<string, { symbol: string; name: string; balance: number; decimals: number; contractAddress: string }>();
-  if (Array.isArray(txData.tokenJson.result)) {
-    for (const t of txData.tokenJson.result) {
-      const key = t.contractAddress.toLowerCase();
-      const decimals = Number(t.tokenDecimal) || 18;
-      const value = Number(BigInt(t.value || '0')) / Math.pow(10, decimals);
-      const existing = tokenMap.get(key);
-      if (!existing) {
-        tokenMap.set(key, {
-          symbol: t.tokenSymbol,
-          name: t.tokenName,
-          balance: t.to?.toLowerCase() === address.toLowerCase() ? value : -value,
-          decimals,
-          contractAddress: key,
-        });
-      } else {
-        existing.balance += t.to?.toLowerCase() === address.toLowerCase() ? value : -value;
-      }
-    }
-  }
-
-  const tokens = Array.from(tokenMap.values())
-    .filter((t) => t.balance > 0)
-    .sort((a, b) => b.balance - a.balance)
-    .slice(0, 50);
+  const transactions = rawTxns.map((tx) => ({
+    hash: tx.hash,
+    from: tx.from,
+    to: tx.to,
+    value: (Number(BigInt(tx.value || '0')) / 1e18).toFixed(6),
+    timestamp: Number(tx.timeStamp) * 1000,
+    isError: tx.isError === '1',
+    direction: tx.to?.toLowerCase() === address.toLowerCase() ? 'in' : 'out',
+    gasUsed: tx.gasUsed || undefined,
+    gasPrice: tx.gasPrice || undefined,
+  }));
 
   return {
     chain: 'eth' as const,
