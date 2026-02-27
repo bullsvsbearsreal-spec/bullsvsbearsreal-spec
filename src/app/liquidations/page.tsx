@@ -9,6 +9,9 @@ import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMulti
 import Footer from '@/components/Footer';
 import { formatLiqValue } from '@/lib/utils/format';
 import { DEX_EXCHANGES } from '@/lib/constants/exchanges';
+import dynamic from 'next/dynamic';
+
+const LiquidationHistoryChart = dynamic(() => import('./components/LiquidationHistoryChart'), { ssr: false });
 import { LIQ_THRESHOLD, TIMEFRAME_MS, TIMELINE_BUCKET_MS, DISPLAY, EXCHANGE_BRAND_HEX } from '@/lib/constants/thresholds';
 
 type ViewMode = 'feed' | 'heatmap' | 'timebucket' | 'pricelevel';
@@ -324,6 +327,9 @@ export default function LiquidationsPage() {
             </div>
           );
         })()}
+
+        {/* Liquidation History Chart */}
+        <LiquidationHistoryChart />
 
         {/* Controls */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">

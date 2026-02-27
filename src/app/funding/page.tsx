@@ -13,6 +13,9 @@ import { useApiData } from '@/hooks/useApiData';
 import FundingStats from './components/FundingStats';
 import FundingHeatmapView from './components/FundingHeatmapView';
 import FundingArbitrageView from './components/FundingArbitrageView';
+import dynamic from 'next/dynamic';
+
+const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
 import Footer from '@/components/Footer';
 import { saveFundingSnapshot } from '@/lib/storage/fundingHistory';
@@ -373,6 +376,9 @@ export default function FundingPage() {
           lowestRate={lowestRate}
           fundingPeriod={fundingPeriod}
         />
+
+        {/* Historical Chart */}
+        <FundingHistoryChart />
 
         {/* Controls */}
         <div className="flex flex-col lg:flex-row gap-3 mb-5">

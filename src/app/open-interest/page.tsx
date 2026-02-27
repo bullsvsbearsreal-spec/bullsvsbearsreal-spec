@@ -14,6 +14,9 @@ import UpdatedAgo from '@/components/UpdatedAgo';
 import WatchlistStar from '@/components/WatchlistStar';
 import ShowMoreToggle from '@/components/ShowMoreToggle';
 import MobileCard from '@/components/MobileCard';
+import dynamic from 'next/dynamic';
+
+const OIHistoryChart = dynamic(() => import('./components/OIHistoryChart'), { ssr: false });
 
 type SortField = 'symbol' | 'openInterestValue' | 'exchange';
 type SortOrder = 'asc' | 'desc';
@@ -218,6 +221,9 @@ export default function OpenInterestPage() {
             </div>
           );
         })()}
+
+        {/* OI History Chart */}
+        <OIHistoryChart symbol="BTC" />
 
         {/* View Toggle & Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
