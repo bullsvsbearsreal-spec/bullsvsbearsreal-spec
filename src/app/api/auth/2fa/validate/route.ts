@@ -11,12 +11,35 @@ function getSQL() {
   return sql;
 }
 
+// In-memory rate limit: max 5 attempts per email per 15 minutes
+const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(email: string): boolean {
+  const now = Date.now();
+  const key = email.toLowerCase();
+  const entry = attempts.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    attempts.set(key, { count: 1, resetAt: now + 15 * 60 * 1000 });
+    return true;
+  }
+
+  if (entry.count >= 5) return false;
+  entry.count++;
+  return true;
+}
+
 // Validate a 2FA code during login (supports TOTP, email code, or backup code)
 export async function POST(req: Request) {
   try {
     const { email, code, method } = await req.json();
     if (!email || !code) {
       return NextResponse.json({ error: 'Email and code are required' }, { status: 400 });
+    }
+
+    // Rate limit check
+    if (!checkRateLimit(email)) {
+      return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
     }
 
     if (!DATABASE_URL) {

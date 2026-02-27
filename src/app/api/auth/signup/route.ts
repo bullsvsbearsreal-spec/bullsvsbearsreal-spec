@@ -16,7 +16,7 @@ function getSQL() {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 function generateCode(): string {
-  return crypto.randomInt(100000, 999999).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 export async function POST(req: Request) {

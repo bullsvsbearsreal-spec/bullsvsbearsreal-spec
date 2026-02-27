@@ -36,6 +36,12 @@ export async function POST() {
     const db = getSQL();
     const userId = session.user.id;
 
+    // Block setup if TOTP is already enabled (must disable first)
+    const existing = await db`SELECT totp_enabled FROM user_2fa WHERE user_id = ${userId}`;
+    if (existing.length > 0 && existing[0].totp_enabled) {
+      return NextResponse.json({ error: 'TOTP is already enabled. Disable it first to reconfigure.' }, { status: 400 });
+    }
+
     // Generate TOTP secret
     const secret = new OTPAuth.Secret({ size: 20 });
     const totp = new OTPAuth.TOTP({

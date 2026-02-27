@@ -28,6 +28,18 @@ export async function POST(req: Request) {
 
     const db = getSQL();
 
+    // Verify user exists and has email 2FA enabled (prevent email abuse)
+    const users = await db`SELECT id FROM users WHERE email = ${email}`;
+    if (users.length === 0) {
+      // Don't reveal whether email exists — return success silently
+      return NextResponse.json({ sent: true });
+    }
+
+    const twofa = await db`SELECT email_2fa_enabled FROM user_2fa WHERE user_id = ${users[0].id}`;
+    if (twofa.length === 0 || !twofa[0].email_2fa_enabled) {
+      return NextResponse.json({ sent: true });
+    }
+
     // Ensure 2fa_login_codes table exists
     await db`
       CREATE TABLE IF NOT EXISTS twofa_login_codes (
@@ -50,7 +62,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Please wait before requesting a new code' }, { status: 429 });
     }
 
-    const code = crypto.randomInt(100000, 999999).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
     await db`

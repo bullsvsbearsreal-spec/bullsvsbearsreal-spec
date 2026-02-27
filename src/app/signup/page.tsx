@@ -2,20 +2,24 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle } from 'lucide-react';
 
 export default function SignupPage() {
+  const searchParams = useSearchParams();
+  const verifyEmail = searchParams.get('verify');
+
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(verifyEmail || '');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Verification step
-  const [step, setStep] = useState<'form' | 'verify'>('form');
+  // Verification step — jump straight to verify if ?verify= param present
+  const [step, setStep] = useState<'form' | 'verify'>(verifyEmail ? 'verify' : 'form');
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [verifying, setVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);

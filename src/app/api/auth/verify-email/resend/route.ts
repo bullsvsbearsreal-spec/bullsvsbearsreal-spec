@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     }
 
     // Generate and store new code
-    const code = crypto.randomInt(100000, 999999).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     await db`

@@ -35,7 +35,55 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // First, try signing in
+      // Step 1: Validate credentials WITHOUT issuing a session
+      const checkRes = await fetch('/api/auth/check-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const checkData = await checkRes.json();
+
+      if (!checkRes.ok) {
+        setError(checkData.error || 'Wrong email or password');
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Check email verification
+      if (!checkData.emailVerified) {
+        setStep('unverified');
+        setLoading(false);
+        return;
+      }
+
+      // Step 3: Check 2FA requirement
+      if (checkData.requires2FA && checkData.methods?.length > 0) {
+        setTwoFaMethods(checkData.methods);
+        const defaultMethod = checkData.methods.includes('totp') ? 'totp' : 'email';
+        setSelectedMethod(defaultMethod);
+        setStep('2fa');
+
+        // If default is email, send challenge code
+        if (defaultMethod === 'email') {
+          await sendEmailChallenge();
+        }
+
+        setLoading(false);
+        setTimeout(() => inputRefs.current[0]?.focus(), 100);
+        return;
+      }
+
+      // Step 4: No 2FA — sign in directly
+      await completeSignIn();
+    } catch {
+      setError('Something went wrong');
+      setLoading(false);
+    }
+  }
+
+  async function completeSignIn() {
+    try {
       const res = await signIn('credentials', {
         email,
         password,
@@ -43,75 +91,10 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        // Check if error is EMAIL_NOT_VERIFIED
-        if (res.error.includes('EMAIL_NOT_VERIFIED') || res.error === 'CredentialsSignin') {
-          // Could be wrong credentials OR unverified email — check
-          // Try to see if the email is unverified by checking the error
-          // NextAuth wraps errors, so we check the 2FA status too
-          const statusRes = await fetch('/api/auth/2fa/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-          });
-
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.requires2FA) {
-              // Password was correct but 2FA needed — but NextAuth threw error
-              // Actually, NextAuth won't reach 2FA check if email not verified
-              // The authorize fn throws EMAIL_NOT_VERIFIED before returning user
-            }
-          }
-
-          // For now, we can't distinguish — show generic error
-          // But check if it's specifically EMAIL_NOT_VERIFIED
-          if (res.error.includes('EMAIL_NOT_VERIFIED')) {
-            setStep('unverified');
-          } else {
-            setError('Wrong email or password');
-          }
-        } else {
-          setError('Wrong email or password');
-        }
-        setLoading(false);
-        return;
+        setError('Sign in failed. Please try again.');
+      } else {
+        window.location.href = '/';
       }
-
-      // Sign-in succeeded — check if 2FA is needed
-      // Actually, if sign-in succeeds, NextAuth gave us a session.
-      // We need to check 2FA BEFORE actually signing in.
-      // The current flow signs in first, then checks 2FA.
-      // Better approach: validate credentials via API, then check 2FA, then sign in.
-
-      // For this flow: sign-in already succeeded. Check 2FA status.
-      const statusRes = await fetch('/api/auth/2fa/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (statusRes.ok) {
-        const statusData = await statusRes.json();
-        if (statusData.requires2FA && statusData.methods?.length > 0) {
-          // Need 2FA — show 2FA step
-          setTwoFaMethods(statusData.methods);
-          const defaultMethod = statusData.methods.includes('totp') ? 'totp' : 'email';
-          setSelectedMethod(defaultMethod);
-          setStep('2fa');
-
-          // If default is email, send challenge code
-          if (defaultMethod === 'email') {
-            sendEmailChallenge();
-          }
-
-          setLoading(false);
-          setTimeout(() => inputRefs.current[0]?.focus(), 100);
-          return;
-        }
-      }
-
-      // No 2FA — redirect to home
-      window.location.href = '/';
     } catch {
       setError('Something went wrong');
     } finally {
@@ -121,13 +104,20 @@ export default function LoginPage() {
 
   async function sendEmailChallenge() {
     try {
-      await fetch('/api/auth/2fa/challenge', {
+      const res = await fetch('/api/auth/2fa/challenge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      setResendCooldown(60);
-    } catch {}
+      if (res.ok) {
+        setResendCooldown(60);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to send code');
+      }
+    } catch {
+      setError('Failed to send verification code');
+    }
   }
 
   function handleCodeChange(index: number, value: string) {
@@ -172,6 +162,7 @@ export default function LoginPage() {
     setError('');
     setVerifying(true);
     try {
+      // Validate the 2FA code
       const res = await fetch('/api/auth/2fa/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -183,11 +174,13 @@ export default function LoginPage() {
         setError(data.error || 'Invalid code');
         setCode(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
+        setVerifying(false);
         return;
       }
 
-      // 2FA valid — redirect
-      window.location.href = '/';
+      // 2FA valid — NOW issue the session via signIn
+      setLoading(true);
+      await completeSignIn();
     } catch {
       setError('Something went wrong');
     } finally {
@@ -195,35 +188,31 @@ export default function LoginPage() {
     }
   }
 
-  function switchMethod(method: 'totp' | 'email') {
+  async function switchMethod(method: 'totp' | 'email') {
     setSelectedMethod(method);
     setCode(['', '', '', '', '', '']);
     setError('');
     if (method === 'email') {
-      sendEmailChallenge();
+      await sendEmailChallenge();
     }
     setTimeout(() => inputRefs.current[0]?.focus(), 100);
   }
 
-  // Handle unverified email — resend verification
+  // Handle unverified email — resend verification and redirect to signup verify step
   async function handleResendVerification() {
     setError('');
+    setLoading(true);
     try {
-      const res = await fetch('/api/auth/verify-email/resend', {
+      await fetch('/api/auth/verify-email/resend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      if (res.ok) {
-        setResendCooldown(60);
-        // Redirect to signup to enter code
-        window.location.href = `/signup?verify=${encodeURIComponent(email)}`;
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to resend');
-      }
+      // Always redirect to signup verify page (don't reveal if email exists)
+      window.location.href = `/signup?verify=${encodeURIComponent(email)}`;
     } catch {
       setError('Failed to resend');
+      setLoading(false);
     }
   }
 
@@ -401,10 +390,10 @@ export default function LoginPage() {
 
               <button
                 onClick={() => handleVerify2FA()}
-                disabled={verifying || code.some(d => !d)}
+                disabled={verifying || loading || code.some(d => !d)}
                 className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20"
               >
-                {verifying ? (
+                {verifying || loading ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                     Verifying...
@@ -459,9 +448,15 @@ export default function LoginPage() {
 
               <button
                 onClick={handleResendVerification}
-                className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20"
+                disabled={loading}
+                className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20"
               >
-                Resend verification email
+                {loading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    Sending...
+                  </span>
+                ) : 'Resend verification email'}
               </button>
 
               <button

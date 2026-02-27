@@ -45,8 +45,8 @@ const providers: any[] = [
       const valid = await bcrypt.compare(credentials.password as string, user.password_hash);
       if (!valid) return null;
 
-      // Block unverified email accounts (only if email_verified column exists and is null)
-      if (user.email_verified === null) {
+      // Block unverified email accounts (!user.email_verified catches both null and undefined)
+      if (!user.email_verified) {
         throw new Error('EMAIL_NOT_VERIFIED');
       }
 

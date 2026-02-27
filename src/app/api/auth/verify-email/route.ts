@@ -10,6 +10,24 @@ function getSQL() {
   return sql;
 }
 
+// In-memory rate limit: max 5 attempts per email per 15 minutes
+const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(email: string): boolean {
+  const now = Date.now();
+  const key = email.toLowerCase();
+  const entry = attempts.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    attempts.set(key, { count: 1, resetAt: now + 15 * 60 * 1000 });
+    return true;
+  }
+
+  if (entry.count >= 5) return false;
+  entry.count++;
+  return true;
+}
+
 export async function POST(req: Request) {
   try {
     const { email, code } = await req.json();
@@ -20,6 +38,11 @@ export async function POST(req: Request) {
 
     if (!DATABASE_URL) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    // Rate limit check
+    if (!checkRateLimit(email)) {
+      return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
     }
 
     const db = getSQL();
@@ -41,12 +64,11 @@ export async function POST(req: Request) {
 
     const { id, user_id } = rows[0];
 
-    // Mark code as used
-    await db`UPDATE email_verification_codes SET used = true WHERE id = ${id}`;
-
-    // Mark user as verified
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`.catch(() => {});
-    await db`UPDATE users SET email_verified = NOW() WHERE id = ${user_id}`;
+    // Atomically mark code as used and verify user in a transaction
+    await db.begin(async (tx: any) => {
+      await tx`UPDATE email_verification_codes SET used = true WHERE id = ${id}`;
+      await tx`UPDATE users SET email_verified = NOW() WHERE id = ${user_id}`;
+    });
 
     return NextResponse.json({ verified: true });
   } catch (e: any) {
