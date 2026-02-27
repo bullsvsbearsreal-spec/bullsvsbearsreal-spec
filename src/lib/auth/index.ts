@@ -81,17 +81,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // signUp handled by custom /signup page
   },
   callbacks: {
-    async jwt({ token, user }) {
-      // On sign-in, add user ID to token
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
+        token.image = user.image;
+      }
+      // Refresh image from DB on session update (after avatar change)
+      if (trigger === 'update' && token.id) {
+        try {
+          const db = getSQL();
+          const rows = await db`SELECT image FROM users WHERE id = ${token.id as string}`;
+          if (rows.length > 0) token.image = rows[0].image;
+        } catch { /* keep existing */ }
       }
       return token;
     },
     async session({ session, token }) {
-      // Expose user ID in session
       if (token?.id) {
         session.user.id = token.id as string;
+      }
+      if (token?.image) {
+        session.user.image = token.image as string;
       }
       return session;
     },

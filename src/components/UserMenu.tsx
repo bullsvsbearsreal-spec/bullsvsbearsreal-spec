@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { User, LogOut, Settings, ChevronDown, LayoutDashboard } from 'lucide-react';
 
 export default function UserMenu() {
@@ -56,10 +57,13 @@ export default function UserMenu() {
         aria-haspopup="true"
       >
         {session.user?.image ? (
-          <img
+          <Image
             src={session.user.image}
             alt=""
-            className="w-7 h-7 rounded-full"
+            width={28}
+            height={28}
+            className="w-7 h-7 rounded-full object-cover"
+            unoptimized
           />
         ) : (
           <div className="w-7 h-7 rounded-full bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[11px] font-semibold">

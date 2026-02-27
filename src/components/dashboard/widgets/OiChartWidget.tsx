@@ -1,0 +1,76 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { TokenIconSimple } from '@/components/TokenIcon';
+
+interface OiEntry {
+  symbol: string;
+  openInterest: number;
+  oiChange24h?: number;
+}
+
+function formatOI(val: number): string {
+  if (val >= 1e9) return `$${(val / 1e9).toFixed(1)}B`;
+  if (val >= 1e6) return `$${(val / 1e6).toFixed(0)}M`;
+  if (val >= 1e3) return `$${(val / 1e3).toFixed(0)}K`;
+  return `$${val.toFixed(0)}`;
+}
+
+export default function OiChartWidget() {
+  const [entries, setEntries] = useState<OiEntry[] | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/open-interest?limit=10');
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : data.data || [];
+        if (mounted) setEntries(items.slice(0, 8));
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  if (entries === null) {
+    return <div className="h-24 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
+  }
+
+  if (entries.length === 0) {
+    return <p className="text-xs text-neutral-600 text-center py-4">No OI data</p>;
+  }
+
+  const maxOi = Math.max(...entries.map((e) => e.openInterest || 0));
+
+  return (
+    <div>
+      <div className="space-y-1.5">
+        {entries.map((e, i) => {
+          const pct = maxOi > 0 ? ((e.openInterest || 0) / maxOi) * 100 : 0;
+          return (
+            <div key={e.symbol + i} className="flex items-center gap-2">
+              <div className="flex items-center gap-1 w-16 flex-shrink-0">
+                <TokenIconSimple symbol={e.symbol?.replace(/USDT$/, '')} size={12} />
+                <span className="text-[10px] text-neutral-400 truncate">{e.symbol?.replace(/USDT$/, '')}</span>
+              </div>
+              <div className="flex-1 h-3 rounded-full bg-white/[0.04] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-blue-500/40"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-neutral-500 font-mono w-14 text-right">
+                {formatOI(e.openInterest || 0)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <Link href="/open-interest" className="text-[10px] text-hub-yellow hover:underline mt-2 inline-block">
+        View all
+      </Link>
+    </div>
+  );
+}

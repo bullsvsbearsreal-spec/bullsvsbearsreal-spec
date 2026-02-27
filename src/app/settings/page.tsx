@@ -5,10 +5,11 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Image from 'next/image';
 import {
   Settings, Mail, Clock, Bell, Shield, Download, FileJson, FileSpreadsheet,
   ToggleLeft, ToggleRight, Check, Loader2, Lock, Trash2, AlertTriangle,
-  Sun, Moon,
+  Sun, Moon, Camera, User,
 } from 'lucide-react';
 
 const COOLDOWN_OPTIONS = [
@@ -24,8 +25,14 @@ interface NotificationPrefs {
 }
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Avatar
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
 
   // Notification prefs
   const [emailEnabled, setEmailEnabled] = useState(true);
@@ -58,9 +65,11 @@ export default function SettingsPage() {
     }
   }, [status, router]);
 
-  // Load prefs + theme
+  // Load prefs + theme + avatar
   useEffect(() => {
     if (!session?.user) return;
+
+    if (session.user.image) setAvatarUrl(session.user.image);
 
     // Theme from localStorage
     const savedTheme = localStorage.getItem('infohub-theme');
@@ -82,6 +91,61 @@ export default function SettingsPage() {
   }, [session]);
 
   /* ─── Handlers ────────────────────────────────────────────── */
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError('');
+
+    // Validate type
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      setAvatarError('Use JPG, PNG, WebP, or GIF');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError('File too large (max 10MB)');
+      return;
+    }
+
+    // Resize to 256x256 via canvas
+    setAvatarUploading(true);
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d')!;
+
+      // Center-crop: fit the shorter side to 256
+      const size = Math.min(bitmap.width, bitmap.height);
+      const sx = (bitmap.width - size) / 2;
+      const sy = (bitmap.height - size) / 2;
+      ctx.drawImage(bitmap, sx, sy, size, size, 0, 0, 256, 256);
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Canvas conversion failed'))), 'image/webp', 0.85);
+      });
+
+      const formData = new FormData();
+      formData.append('avatar', blob, 'avatar.webp');
+
+      const res = await fetch('/api/user/avatar', { method: 'POST', body: formData });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setAvatarError(json.error || 'Upload failed');
+      } else {
+        setAvatarUrl(json.image);
+        // Update NextAuth session so header shows new avatar
+        await updateSession();
+      }
+    } catch {
+      setAvatarError('Upload failed');
+    }
+    setAvatarUploading(false);
+    // Reset file input
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  };
 
   const savePrefs = async (email: boolean, cooldown: number) => {
     setSaving(true);
@@ -255,10 +319,38 @@ export default function SettingsPage() {
               Account
             </h2>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center gap-4">
+                {/* Avatar */}
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="relative flex-shrink-0 w-16 h-16 rounded-full bg-white/[0.06] border-2 border-white/[0.08] hover:border-hub-yellow/50 transition-colors overflow-hidden group"
+                  title="Change profile picture"
+                >
+                  {avatarUrl ? (
+                    <Image src={avatarUrl} alt="Avatar" width={64} height={64} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-6 h-6 text-neutral-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    {avatarUploading ? (
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    ) : (
+                      <Camera className="w-5 h-5 text-white" />
+                    )}
+                  </div>
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+                <div className="min-w-0">
                   <p className="text-sm text-white">{session.user?.name || 'User'}</p>
-                  <p className="text-xs text-neutral-600">{session.user?.email}</p>
+                  <p className="text-xs text-neutral-600 truncate">{session.user?.email}</p>
+                  {avatarError && <p className="text-xs text-red-400 mt-0.5">{avatarError}</p>}
                 </div>
               </div>
 
