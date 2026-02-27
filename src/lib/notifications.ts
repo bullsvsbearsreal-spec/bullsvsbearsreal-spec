@@ -147,9 +147,9 @@ export interface PushSubscriptionData {
 export async function sendAlertPush(
   subscriptions: PushSubscriptionData[],
   alerts: TriggeredAlertInfo[],
-): Promise<{ sent: number; failed: number }> {
+): Promise<{ sent: number; failed: number; expiredEndpoints: string[] }> {
   if (!process.env.VAPID_PUBLIC_KEY || alerts.length === 0 || subscriptions.length === 0) {
-    return { sent: 0, failed: 0 };
+    return { sent: 0, failed: 0, expiredEndpoints: [] };
   }
 
   const symbols = alerts.map((a) => a.symbol).join(', ');
@@ -167,26 +167,32 @@ export async function sendAlertPush(
 
   let sent = 0;
   let failed = 0;
+  const expiredEndpoints: string[] = [];
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     subscriptions.map(async (sub) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
         );
-        sent++;
+        return 'sent' as const;
       } catch (err: any) {
-        failed++;
-        // 410 Gone = subscription expired, caller should clean up
         if (err?.statusCode === 410 || err?.statusCode === 404) {
+          expiredEndpoints.push(sub.endpoint);
           console.log(`[push] Subscription expired: ${sub.endpoint.slice(0, 60)}...`);
         } else {
           console.error('[push] Send error:', err?.statusCode || err);
         }
+        return 'failed' as const;
       }
     }),
   );
 
-  return { sent, failed };
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value === 'sent') sent++;
+    else failed++;
+  }
+
+  return { sent, failed, expiredEndpoints };
 }

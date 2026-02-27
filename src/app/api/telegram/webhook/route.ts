@@ -463,7 +463,15 @@ async function handleLiq(chatId: number, args: string[], origin: string): Promis
 // /alert — custom alert management
 // ---------------------------------------------------------------------------
 
-const VALID_METRICS = new Set(['price', 'fundingrate', 'openinterest', 'change24h']);
+// Map lowercase user input to canonical metric names used by the system
+const METRIC_ALIASES: Record<string, string> = {
+  price: 'price',
+  fundingrate: 'fundingRate',
+  openinterest: 'openInterest',
+  change24h: 'change24h',
+  oi: 'openInterest',
+  funding: 'fundingRate',
+};
 const VALID_OPERATORS = new Set(['gt', 'lt']);
 
 async function handleAlert(chatId: number, args: string[]): Promise<void> {
@@ -519,11 +527,12 @@ async function handleAlert(chatId: number, args: string[]): Promise<void> {
       }
 
       const symbol = args[1].toUpperCase();
-      const metric = args[2].toLowerCase();
+      const metricInput = args[2].toLowerCase();
       const operator = args[3].toLowerCase();
       const threshold = parseFloat(args[4]);
 
-      if (!VALID_METRICS.has(metric)) {
+      const metric = METRIC_ALIASES[metricInput];
+      if (!metric) {
         await sendMessage(chatId, `Invalid metric: ${args[2]}\nValid: price, fundingRate, openInterest, change24h`);
         return;
       }

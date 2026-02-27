@@ -1,6 +1,11 @@
 // Service Worker for InfoHub Push Notifications
 self.addEventListener('push', (event) => {
-  const data = event.data?.json() ?? {};
+  let data = {};
+  try {
+    data = event.data?.json() ?? {};
+  } catch {
+    data = { body: event.data?.text() || 'You have a new alert' };
+  }
   const title = data.title || 'InfoHub Alert';
   const options = {
     body: data.body || 'You have a new alert',

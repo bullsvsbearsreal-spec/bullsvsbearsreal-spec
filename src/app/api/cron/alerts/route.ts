@@ -120,7 +120,11 @@ export async function GET(request: NextRequest) {
         // Send web push notification
         const pushSubs = await getPushSubscriptionsForUser(user.userId);
         if (pushSubs.length > 0) {
-          const { sent } = await sendAlertPush(pushSubs, triggered);
+          const { sent, expiredEndpoints } = await sendAlertPush(pushSubs, triggered);
+          // Clean up expired subscriptions
+          for (const ep of expiredEndpoints) {
+            await deletePushSubscription(ep);
+          }
           if (sent > 0) {
             for (const t of triggered) {
               await logAlertNotification(user.userId, t.alertId, t.symbol, t.metric, t.threshold, t.actualValue, 'push');
