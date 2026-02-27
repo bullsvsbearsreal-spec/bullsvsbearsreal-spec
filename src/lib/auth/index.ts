@@ -34,7 +34,7 @@ const providers: any[] = [
 
       const db = getSQL();
       const rows = await db`
-        SELECT id, name, email, image, password_hash
+        SELECT id, name, email, image, password_hash, email_verified
         FROM users WHERE email = ${credentials.email as string}
       `;
 
@@ -44,6 +44,11 @@ const providers: any[] = [
       if (!user.password_hash) return null; // OAuth-only account
       const valid = await bcrypt.compare(credentials.password as string, user.password_hash);
       if (!valid) return null;
+
+      // Block unverified email accounts (only if email_verified column exists and is null)
+      if (user.email_verified === null) {
+        throw new Error('EMAIL_NOT_VERIFIED');
+      }
 
       return { id: user.id, name: user.name, email: user.email, image: user.image };
     },

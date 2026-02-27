@@ -142,6 +142,33 @@ export async function initDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_sym_ex_ts ON funding_snapshots(symbol, exchange, ts DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_oi_sym_ex_ts ON oi_snapshots(symbol, exchange, ts DESC)`;
 
+  // Email verification codes
+  await sql`
+    CREATE TABLE IF NOT EXISTS email_verification_codes (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_evc_user ON email_verification_codes(user_id, used)`;
+
+  // Two-factor authentication
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_2fa (
+      user_id TEXT PRIMARY KEY,
+      totp_secret TEXT,
+      totp_enabled BOOLEAN DEFAULT false,
+      email_2fa_enabled BOOLEAN DEFAULT false,
+      backup_codes TEXT[],
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
   await initTelegramTables();
 
   initialized = true;

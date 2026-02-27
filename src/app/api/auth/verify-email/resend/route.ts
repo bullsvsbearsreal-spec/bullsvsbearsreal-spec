@@ -1,7 +1,6 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import postgres from 'postgres';
 import { Resend } from 'resend';
@@ -15,21 +14,11 @@ function getSQL() {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-function generateCode(): string {
-  return crypto.randomInt(100000, 999999).toString();
-}
-
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { name, email, password } = body;
-
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+    const { email } = await req.json();
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     if (!DATABASE_URL) {
@@ -38,41 +27,35 @@ export async function POST(req: Request) {
 
     const db = getSQL();
 
-    const existing = await db`SELECT id FROM users WHERE email = ${email}`;
-    if (existing.length > 0) {
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+    // Find user
+    const users = await db`SELECT id FROM users WHERE email = ${email}`;
+    if (users.length === 0) {
+      // Don't reveal whether email exists
+      return NextResponse.json({ sent: true });
     }
 
-    // Ensure email_verified column exists
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`.catch(() => {});
+    const userId = users[0].id;
 
-    // Hash password and create user (unverified)
-    const hash = await bcrypt.hash(password, 12);
-    const id = crypto.randomUUID();
-    const rows = await db`
-      INSERT INTO users (id, name, email, password_hash)
-      VALUES (${id}, ${name || null}, ${email}, ${hash})
-      RETURNING id, name, email
+    // Rate limit: max 1 code per 60 seconds
+    const recent = await db`
+      SELECT id FROM email_verification_codes
+      WHERE user_id = ${userId} AND created_at > NOW() - INTERVAL '60 seconds'
+      LIMIT 1
     `;
+    if (recent.length > 0) {
+      return NextResponse.json({ error: 'Please wait before requesting a new code' }, { status: 429 });
+    }
 
-    // Ensure verification table exists
-    await db`
-      CREATE TABLE IF NOT EXISTS email_verification_codes (
-        id SERIAL PRIMARY KEY, user_id TEXT NOT NULL, email TEXT NOT NULL,
-        code TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL,
-        used BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
+    // Generate and store new code
+    const code = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Generate and store verification code
-    const code = generateCode();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
     await db`
       INSERT INTO email_verification_codes (user_id, email, code, expires_at)
-      VALUES (${id}, ${email}, ${code}, ${expiresAt.toISOString()})
+      VALUES (${userId}, ${email}, ${code}, ${expiresAt.toISOString()})
     `;
 
-    // Send verification email
+    // Send email
     try {
       await resend.emails.send({
         from: 'InfoHub <noreply@info-hub.io>',
@@ -91,18 +74,18 @@ export async function POST(req: Request) {
               <div style="background: #111; border: 2px solid #f5a623; border-radius: 12px; padding: 16px 24px; display: inline-block; margin: 0 0 24px;">
                 <span style="font-size: 32px; font-weight: 700; color: #f5a623; letter-spacing: 8px; font-family: monospace;">${code}</span>
               </div>
-              <p style="font-size: 12px; color: #666; line-height: 1.5;">If you didn't create an account, ignore this email.</p>
+              <p style="font-size: 12px; color: #666; line-height: 1.5;">If you didn't request this, ignore this email.</p>
             </div>
           </div>
         `,
       });
     } catch (emailErr) {
-      console.error('Verification email error:', emailErr);
+      console.error('Resend verification email error:', emailErr);
     }
 
-    return NextResponse.json({ user: rows[0], requiresVerification: true }, { status: 201 });
+    return NextResponse.json({ sent: true });
   } catch (e: any) {
-    console.error('Signup error:', e?.message || e);
+    console.error('Resend verification error:', e?.message || e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
