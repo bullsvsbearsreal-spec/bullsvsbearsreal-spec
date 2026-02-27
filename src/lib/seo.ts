@@ -180,6 +180,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Trading Guides',
     description: 'In-depth crypto trading guides covering funding rates, open interest, liquidations, order flow, and derivatives strategies. Coming soon.',
   },
+  '/wallet-tracker': {
+    title: 'Wallet Tracker',
+    description: 'Track any Hyperliquid wallet in real-time. View open positions, PnL, trade history, and portfolio performance.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

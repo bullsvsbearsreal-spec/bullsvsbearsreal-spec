@@ -501,7 +501,7 @@ export default function FundingHeatmapView({
                     style={{
                       background: 'var(--hub-darker)',
                       boxShadow: '2px 0 8px -2px rgba(0,0,0,0.6)',
-                      minWidth: 130,
+                      minWidth: 145,
                     }}
                   >
                     <button
@@ -520,16 +520,16 @@ export default function FundingHeatmapView({
                   {visibleExchanges.map(ex => {
                     const isActive = exchangeSort?.exchange === ex;
                     return (
-                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 68 }}>
+                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 78 }}>
                         <button
                           onClick={() => handleExchangeClick(ex)}
-                          className={`w-full flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all cursor-pointer ${
+                          className={`w-full flex flex-col items-center gap-1 py-1 px-0.5 rounded-md transition-all cursor-pointer ${
                             isActive ? 'bg-white/[0.06]' : hoveredCol === ex ? 'bg-white/[0.03]' : 'hover:bg-white/[0.03]'
                           }`}
                         >
-                          <ExchangeLogo exchange={ex.toLowerCase()} size={14} />
+                          <ExchangeLogo exchange={ex.toLowerCase()} size={18} />
                           <div className="flex items-center gap-0.5">
-                            <span className={`${ex.length > 8 ? 'text-[7px]' : 'text-[8px]'} font-medium leading-none transition-colors ${
+                            <span className={`${ex.length > 8 ? 'text-[9px]' : 'text-[10px]'} font-medium leading-none transition-colors ${
                               isActive ? 'text-hub-yellow' : 'text-neutral-600'
                             }`}>
                               {ex}
@@ -571,16 +571,16 @@ export default function FundingHeatmapView({
                         }}
                       >
                         <Link href={`/funding/${symbol}`} className="flex items-center gap-2.5 py-2 no-underline group/link">
-                          <TokenIconSimple symbol={symbol} size={20} />
+                          <TokenIconSimple symbol={symbol} size={24} />
                           <div className="flex flex-col min-w-0">
-                            <span className="text-[12px] font-bold text-white leading-tight truncate group-hover/link:text-hub-yellow transition-colors">
+                            <span className="text-[14px] font-bold text-white leading-tight truncate group-hover/link:text-hub-yellow transition-colors">
                               {symbol}
                             </span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-mono tabular-nums leading-tight font-semibold" style={{ color: avgColors.text }}>
+                              <span className="text-[11px] font-mono tabular-nums leading-tight font-semibold" style={{ color: avgColors.text }}>
                                 {avg !== undefined ? formatRateAdaptive(avg) : '—'}
                               </span>
-                              <span className="text-[8px] text-neutral-700 tabular-nums">{listings}/{visibleExchanges.length}</span>
+                              <span className="text-[9px] text-neutral-700 tabular-nums">{listings}/{visibleExchanges.length}</span>
                             </div>
                           </div>
                         </Link>
@@ -608,8 +608,8 @@ export default function FundingHeatmapView({
                           borderWidth: 1,
                           borderStyle: 'solid',
                           borderColor: isCross ? 'rgba(255,255,255,0.2)' : colors.glow,
-                          minHeight: hasLS ? 38 : 34,
-                          height: hasLS ? 38 : 34,
+                          minHeight: hasLS ? 42 : 38,
+                          height: hasLS ? 42 : 38,
                           transition: 'border-color 60ms',
                         };
 
@@ -626,11 +626,11 @@ export default function FundingHeatmapView({
                         const inner = hasLS ? (
                           <>
                             <span className="flex flex-col items-center gap-[2px] leading-none">
-                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.long, gridClamp).text }}>
-                                <span className="text-white/25 text-[8px]">L</span> {formatRateAdaptive(ls.long)}
+                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.long, gridClamp).text }}>
+                                <span className="text-white/25 text-[9px]">L</span> {formatRateAdaptive(ls.long)}
                               </span>
-                              <span className="text-[9px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.short, gridClamp).text }}>
-                                <span className="text-white/25 text-[8px]">S</span> {formatRateAdaptive(ls.short)}
+                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.short, gridClamp).text }}>
+                                <span className="text-white/25 text-[9px]">S</span> {formatRateAdaptive(ls.short)}
                               </span>
                             </span>
                             {intervalDot}
@@ -640,7 +640,7 @@ export default function FundingHeatmapView({
                           </>
                         ) : (
                           <>
-                            <span className="text-[11px] font-mono tabular-nums leading-none font-semibold" style={{ color: colors.text }}>
+                            <span className="text-[13px] font-mono tabular-nums leading-none font-semibold" style={{ color: colors.text }}>
                               {rate !== undefined ? formatRateAdaptive(rate) : '—'}
                             </span>
                             {intervalDot}

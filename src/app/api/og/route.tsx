@@ -9,6 +9,34 @@ export async function GET(request: NextRequest) {
   const title = searchParams.get('title') || 'Real-Time Derivatives Data';
   const description = searchParams.get('desc') || `Funding Rates · Open Interest · Liquidations · ${ALL_EXCHANGES.length}+ Exchanges`;
 
+  // Heatmap cell data — realistic funding rates
+  const rows = [
+    { sym: 'BTC',  vals: [ 0.0043, -0.0045,  0.0079,  0.0012, -0.0031,  0.0058] },
+    { sym: 'ETH',  vals: [ 0.0053,  0.0032,  0.0014, -0.0067,  0.0041, -0.0019] },
+    { sym: 'SOL',  vals: [-0.0089, -0.0038, -0.0085,  0.0023, -0.0056,  0.0011] },
+    { sym: 'XRP',  vals: [ 0.0074,  0.0034, -0.0040,  0.0015,  0.0062, -0.0028] },
+    { sym: 'DOGE', vals: [ 0.0100,  0.0064,  0.0000, -0.0051,  0.0033,  0.0072] },
+    { sym: 'BNB',  vals: [-0.0016,  0.0048,  0.0091, -0.0035,  0.0027,  0.0063] },
+  ];
+
+  const cellColor = (r: number) => {
+    const a = Math.min(Math.abs(r), 0.01);
+    const t = a / 0.01;
+    if (r > 0) return `rgba(16, 185, 129, ${(0.2 + t * 0.6).toFixed(2)})`;
+    if (r < 0) return `rgba(244, 63, 94, ${(0.2 + t * 0.6).toFixed(2)})`;
+    return 'rgba(255,255,255,0.06)';
+  };
+
+  const textColor = (r: number) => {
+    if (r > 0) return '#6ee7b7';
+    if (r < 0) return '#fda4af';
+    return '#a3a3a3';
+  };
+
+  const fmt = (r: number) => `${r >= 0 ? '+' : ''}${(r * 100).toFixed(3)}%`;
+
+  const exNames = ['Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'BingX'];
+
   return new ImageResponse(
     (
       <div
@@ -17,129 +45,103 @@ export async function GET(request: NextRequest) {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%)',
+          background: '#080808',
           fontFamily: 'Inter, system-ui, sans-serif',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        {/* Orange accent bar at top */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '4px',
-            background: 'linear-gradient(90deg, #f59e0b, #f97316, #f59e0b)',
-          }}
-        />
+        {/* Ambient glow effects */}
+        <div style={{ position: 'absolute', top: '-120px', left: '60px', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 65%)', display: 'flex' }} />
+        <div style={{ position: 'absolute', bottom: '-80px', right: '100px', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 65%)', display: 'flex' }} />
+        <div style={{ position: 'absolute', top: '200px', right: '-50px', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(244,63,94,0.06) 0%, transparent 65%)', display: 'flex' }} />
 
-        {/* Logo */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginBottom: '24px',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '64px',
-              fontWeight: 800,
-              color: '#ffffff',
-              letterSpacing: '-2px',
-            }}
-          >
-            Info
-          </span>
-          <span
-            style={{
-              fontSize: '64px',
-              fontWeight: 800,
-              color: '#f59e0b',
-              letterSpacing: '-2px',
-            }}
-          >
-            Hub
-          </span>
+        {/* Top gradient accent */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, transparent, #f59e0b, #f97316, #f59e0b, transparent)', display: 'flex' }} />
+
+        {/* Main layout: left side text, right side heatmap */}
+        <div style={{ display: 'flex', flex: 1, padding: '48px' }}>
+          {/* Left column — branding + text */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '420px', paddingRight: '40px' }}>
+            {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '28px' }}>
+              <span style={{ fontSize: '52px', fontWeight: 900, color: '#ffffff', letterSpacing: '-2px' }}>Info</span>
+              <span style={{ fontSize: '52px', fontWeight: 900, color: '#f59e0b', letterSpacing: '-2px' }}>Hub</span>
+            </div>
+
+            {/* Title */}
+            <div style={{ fontSize: '42px', fontWeight: 800, color: '#ffffff', lineHeight: 1.05, letterSpacing: '-1.5px', marginBottom: '16px' }}>
+              {title}
+            </div>
+
+            {/* Description */}
+            <div style={{ fontSize: '18px', color: '#737373', lineHeight: 1.5, marginBottom: '32px' }}>
+              {description}
+            </div>
+
+            {/* Stats pills */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '100px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#f59e0b' }}>{ALL_EXCHANGES.length}+ Exchanges</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '100px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', display: 'flex' }} />
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#22c55e' }}>LIVE</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right column — heatmap */}
+          <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.025)' }}>
+                <div style={{ width: '72px', padding: '12px 14px', fontSize: '10px', fontWeight: 700, color: '#404040', textTransform: 'uppercase' as const, letterSpacing: '0.8px', display: 'flex' }}>
+                  Pair
+                </div>
+                {exNames.map((n) => (
+                  <div key={n} style={{ flex: 1, padding: '12px 2px', fontSize: '10px', fontWeight: 600, color: '#404040', display: 'flex', justifyContent: 'center' }}>
+                    {n}
+                  </div>
+                ))}
+              </div>
+
+              {/* Rows */}
+              {rows.map((row) => (
+                <div key={row.sym} style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <div style={{ width: '72px', padding: '0 14px', display: 'flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#e5e5e5' }}>{row.sym}</span>
+                  </div>
+                  {row.vals.map((v, i) => (
+                    <div key={i} style={{ flex: 1, padding: '5px 3px', display: 'flex', justifyContent: 'center' }}>
+                      <div style={{
+                        width: '100%',
+                        padding: '10px 2px',
+                        borderRadius: '6px',
+                        background: cellColor(v),
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: textColor(v), fontFamily: 'monospace' }}>
+                          {fmt(v)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Title */}
-        <div
-          style={{
-            fontSize: '40px',
-            fontWeight: 700,
-            color: '#e5e5e5',
-            textAlign: 'center',
-            maxWidth: '900px',
-            lineHeight: 1.2,
-            marginBottom: '16px',
-          }}
-        >
-          {title}
-        </div>
-
-        {/* Description */}
-        <div
-          style={{
-            fontSize: '22px',
-            color: '#a3a3a3',
-            textAlign: 'center',
-            maxWidth: '800px',
-            lineHeight: 1.4,
-          }}
-        >
-          {description}
-        </div>
-
-        {/* Data visualization accent */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '6px',
-            marginTop: '40px',
-            alignItems: 'flex-end',
-          }}
-        >
-          {[40, 65, 50, 80, 55, 90, 70, 45, 75, 60, 85, 50, 70, 55, 80].map(
-            (h, i) => (
-              <div
-                key={i}
-                style={{
-                  width: '12px',
-                  height: `${h}px`,
-                  borderRadius: '3px',
-                  background:
-                    h > 70
-                      ? 'linear-gradient(180deg, #22c55e, #16a34a)'
-                      : h < 50
-                        ? 'linear-gradient(180deg, #ef4444, #dc2626)'
-                        : 'linear-gradient(180deg, #f59e0b, #d97706)',
-                  opacity: 0.8,
-                }}
-              />
-            )
-          )}
-        </div>
-
-        {/* Bottom URL */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            fontSize: '18px',
-            color: '#737373',
-            letterSpacing: '1px',
-          }}
-        >
-          info-hub.io
+        {/* Bottom bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 48px 20px', position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+          <span style={{ fontSize: '15px', color: '#404040', fontWeight: 500, letterSpacing: '0.5px' }}>info-hub.io</span>
+          <span style={{ fontSize: '13px', color: '#2a2a2a' }}>CEX + DEX · Crypto · Stocks · Forex · Commodities</span>
         </div>
       </div>
     ),
-    {
-      width: 1200,
-      height: 630,
-    }
+    { width: 1200, height: 630 },
   );
 }
