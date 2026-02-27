@@ -669,6 +669,47 @@ export async function getBulkFundingHistory(
   return result;
 }
 
+/**
+ * Get hourly-bucketed average funding rates for the top N symbols (by snapshot count).
+ * Returns { symbol, hour (ISO string), avg_rate }[] sorted by symbol then hour.
+ */
+export async function getTopFundingHistoryAggregated(
+  topN: number = 10,
+  days: number = 7,
+): Promise<Array<{ symbol: string; hour: string; avg_rate: number }>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = await sql`
+      WITH top_symbols AS (
+        SELECT symbol
+        FROM funding_snapshots
+        WHERE ts > NOW() - ${intervalStr}::interval
+        GROUP BY symbol
+        ORDER BY COUNT(*) DESC
+        LIMIT ${topN}
+      )
+      SELECT
+        f.symbol,
+        date_trunc('hour', f.ts) AS hour,
+        AVG(f.rate) AS avg_rate
+      FROM funding_snapshots f
+      INNER JOIN top_symbols t ON f.symbol = t.symbol
+      WHERE f.ts > NOW() - ${intervalStr}::interval
+      GROUP BY f.symbol, date_trunc('hour', f.ts)
+      ORDER BY f.symbol, hour ASC
+    `;
+    return rows.map((r: any) => ({
+      symbol: r.symbol as string,
+      hour: new Date(r.hour).toISOString(),
+      avg_rate: Number(r.avg_rate),
+    }));
+  } catch (e) {
+    console.error('DB getTopFundingHistoryAggregated error:', e);
+    return [];
+  }
+}
+
 export async function getOIHistory(
   symbol: string,
   days: number = 7
