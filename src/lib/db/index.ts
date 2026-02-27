@@ -182,6 +182,7 @@ export async function initDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_push_sub_user ON push_subscriptions (user_id)`;
 
   await initTelegramTables();
+  await initTelegramAlertTables();
 
   initialized = true;
 }
@@ -1044,6 +1045,135 @@ export async function cleanupCooldowns(): Promise<void> {
     `;
   } catch (e) {
     console.error('DB cleanupCooldowns error:', e);
+  }
+}
+
+// ─── Telegram Alerts (custom price/funding/OI alerts via bot) ────────────────
+
+async function initTelegramAlertTables(): Promise<void> {
+  const sql = getSQL();
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS telegram_alerts (
+      id SERIAL PRIMARY KEY,
+      chat_id BIGINT NOT NULL,
+      symbol TEXT NOT NULL,
+      metric TEXT NOT NULL,
+      operator TEXT NOT NULL,
+      threshold REAL NOT NULL,
+      enabled BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_tg_alerts_chat ON telegram_alerts (chat_id)`;
+}
+
+export interface TelegramAlert {
+  id: number;
+  chat_id: number;
+  symbol: string;
+  metric: string;
+  operator: string;
+  threshold: number;
+  enabled: boolean;
+  created_at: string;
+}
+
+export async function getTelegramAlerts(chatId: number): Promise<TelegramAlert[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT id, chat_id, symbol, metric, operator, threshold, enabled, created_at
+      FROM telegram_alerts
+      WHERE chat_id = ${chatId}
+      ORDER BY id ASC
+    `;
+    return rows.map((r: any) => ({
+      id: Number(r.id),
+      chat_id: Number(r.chat_id),
+      symbol: r.symbol,
+      metric: r.metric,
+      operator: r.operator,
+      threshold: Number(r.threshold),
+      enabled: Boolean(r.enabled),
+      created_at: String(r.created_at),
+    }));
+  } catch (e) {
+    console.error('DB getTelegramAlerts error:', e);
+    return [];
+  }
+}
+
+export async function addTelegramAlert(
+  chatId: number,
+  symbol: string,
+  metric: string,
+  operator: string,
+  threshold: number,
+): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      INSERT INTO telegram_alerts (chat_id, symbol, metric, operator, threshold)
+      VALUES (${chatId}, ${symbol}, ${metric}, ${operator}, ${threshold})
+    `;
+  } catch (e) {
+    console.error('DB addTelegramAlert error:', e);
+  }
+}
+
+export async function removeTelegramAlert(chatId: number, alertIndex: number): Promise<boolean> {
+  try {
+    const sql = getSQL();
+    // alertIndex is 1-based; fetch all alerts ordered by id and delete the Nth one
+    const rows = await sql`
+      SELECT id FROM telegram_alerts
+      WHERE chat_id = ${chatId}
+      ORDER BY id ASC
+    `;
+    if (alertIndex < 1 || alertIndex > rows.length) return false;
+    const targetId = rows[alertIndex - 1].id;
+    await sql`DELETE FROM telegram_alerts WHERE id = ${targetId}`;
+    return true;
+  } catch (e) {
+    console.error('DB removeTelegramAlert error:', e);
+    return false;
+  }
+}
+
+export async function clearTelegramAlerts(chatId: number): Promise<number> {
+  try {
+    const sql = getSQL();
+    const result = await sql`DELETE FROM telegram_alerts WHERE chat_id = ${chatId}`;
+    return result.count ?? 0;
+  } catch (e) {
+    console.error('DB clearTelegramAlerts error:', e);
+    return 0;
+  }
+}
+
+export async function getAllActiveTelegramAlerts(): Promise<TelegramAlert[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT id, chat_id, symbol, metric, operator, threshold, enabled, created_at
+      FROM telegram_alerts
+      WHERE enabled = true
+      ORDER BY chat_id, id ASC
+    `;
+    return rows.map((r: any) => ({
+      id: Number(r.id),
+      chat_id: Number(r.chat_id),
+      symbol: r.symbol,
+      metric: r.metric,
+      operator: r.operator,
+      threshold: Number(r.threshold),
+      enabled: Boolean(r.enabled),
+      created_at: String(r.created_at),
+    }));
+  } catch (e) {
+    console.error('DB getAllActiveTelegramAlerts error:', e);
+    return [];
   }
 }
 
