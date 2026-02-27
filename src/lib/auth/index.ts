@@ -34,7 +34,7 @@ const providers: any[] = [
 
       const db = getSQL();
       const rows = await db`
-        SELECT id, name, email, image, password_hash, email_verified
+        SELECT id, name, email, image, password_hash, email_verified, role
         FROM users WHERE email = ${credentials.email as string}
       `;
 
@@ -77,6 +77,29 @@ if (process.env.AUTH_TWITTER_ID && process.env.AUTH_TWITTER_SECRET) {
   }));
 }
 
+/** Check if a user has admin role */
+export async function isAdmin(userId: string): Promise<boolean> {
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT role FROM users WHERE id = ${userId}`;
+    return rows.length > 0 && rows[0].role === 'admin';
+  } catch {
+    return false;
+  }
+}
+
+/** Require admin role — returns error Response or null if authorized */
+export async function requireAdmin(): Promise<Response | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (session.user.role !== 'admin') {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PostgresAdapter(),
   session: { strategy: 'jwt' }, // JWT sessions — no DB session lookups
@@ -91,12 +114,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.image = user.image;
       }
-      // Refresh image from DB on session update (after avatar change)
-      if (trigger === 'update' && token.id) {
+      // Fetch role + refresh image from DB on login or session update
+      if ((user || trigger === 'update') && token.id) {
         try {
           const db = getSQL();
-          const rows = await db`SELECT image FROM users WHERE id = ${token.id as string}`;
-          if (rows.length > 0) token.image = rows[0].image;
+          const rows = await db`SELECT image, role FROM users WHERE id = ${token.id as string}`;
+          if (rows.length > 0) {
+            token.image = rows[0].image;
+            token.role = rows[0].role || 'user';
+          }
         } catch { /* keep existing */ }
       }
       return token;
@@ -107,6 +133,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       if (token?.image) {
         session.user.image = token.image as string;
+      }
+      if (token?.role) {
+        session.user.role = token.role as 'admin' | 'user';
       }
       return session;
     },

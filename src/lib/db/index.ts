@@ -189,6 +189,10 @@ async function _doInitDB(): Promise<void> {
   await initTelegramTables();
   await initTelegramAlertTables();
 
+  // User roles (admin, user)
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
+  // Seed admin accounts
+  await sql`UPDATE users SET role = 'admin' WHERE email = 'ocelotcex1638a@gmail.com' AND role != 'admin'`;
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
