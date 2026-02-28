@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApiData } from '@/hooks/useApiData';
 import { fetchExecutionCosts } from '@/lib/api/aggregator';
@@ -34,6 +34,14 @@ function loadPrefs(): { asset: string; size: number; direction: Direction } {
 }
 
 export default function ExecutionCostsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <ExecutionCostsInner />
+    </Suspense>
+  );
+}
+
+function ExecutionCostsInner() {
   const searchParams = useSearchParams();
 
   // Initialize from URL params > localStorage > defaults
