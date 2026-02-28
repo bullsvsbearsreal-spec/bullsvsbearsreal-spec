@@ -21,7 +21,7 @@ export default function FundingHeatmapWidget() {
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.data || data.rates || [];
         if (mounted) setRates(items.slice(0, 20));
-      } catch {}
+      } catch (err) { console.error('[FundingHeatmap] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 60_000);

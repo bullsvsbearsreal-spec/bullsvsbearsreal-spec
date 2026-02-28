@@ -14,38 +14,39 @@ export async function POST() {
   try {
     const baseUrl = process.env.NEXTAUTH_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const apiKey = process.env.ADMIN_API_KEY || '';
+    const cronSecret = process.env.CRON_SECRET || '';
 
-    const res = await fetch(`${baseUrl}/api/health`, {
-      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+    const res = await fetch(`${baseUrl}/api/cron/snapshot`, {
+      headers: cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {},
       signal: AbortSignal.timeout(28000),
     });
 
-    let healthResult;
+    let result;
     try {
-      healthResult = await res.json();
+      result = await res.json();
     } catch {
-      healthResult = { status: 'error', error: `Health API returned ${res.status}`, timestamp: Date.now() };
+      result = { ok: false, error: `Snapshot API returned ${res.status}` };
     }
 
-    await recordAuditEvent('health_check', {
+    await recordAuditEvent('trigger_snapshot', {
       admin: session?.user?.email ?? 'unknown',
-      status: healthResult?.status ?? 'unknown',
-      errorCount: healthResult?.errors?.length ?? 0,
-    }).catch(() => {}); // Don't fail the whole request if audit fails
+      ok: result?.ok ?? false,
+      fundingInserted: result?.fundingInserted ?? 0,
+      oiInserted: result?.oiInserted ?? 0,
+      liqInserted: result?.liqInserted ?? 0,
+    }).catch(() => {});
 
     return NextResponse.json({
-      success: true,
-      healthResult,
+      success: result?.ok ?? false,
+      result,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
-    // Even on timeout/error, return success:false with useful info
     const isTimeout = err.name === 'TimeoutError' || err.message?.includes('timeout');
     return NextResponse.json(
       {
         success: false,
-        error: isTimeout ? 'Health check timed out — cache may be cold, try again in 1 minute' : err.message,
+        error: isTimeout ? 'Snapshot timed out — try again in a minute' : err.message,
       },
       { status: isTimeout ? 504 : 500 },
     );

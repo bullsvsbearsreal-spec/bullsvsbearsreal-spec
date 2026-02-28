@@ -35,16 +35,16 @@ export async function GET(request: NextRequest) {
   }
 
   const origin = request.nextUrl.origin;
-  const timeout = AbortSignal.timeout(25000);
 
   const routes: Record<string, RouteHealth> = {};
   const errors: Array<{ exchange: string; route: string; error: string; latencyMs: number }> = [];
 
-  // Fetch all 3 routes in parallel (will hit L1 cache if fresh)
+  // Fetch all 3 routes in parallel — each gets its own 20s timeout
+  // so one slow route doesn't kill the entire health check
   const [fundingRes, oiRes, tickersRes] = await Promise.all([
-    fetch(`${origin}/api/funding`, { signal: timeout }).catch(() => null),
-    fetch(`${origin}/api/openinterest`, { signal: timeout }).catch(() => null),
-    fetch(`${origin}/api/tickers`, { signal: timeout }).catch(() => null),
+    fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(20000) }).catch(() => null),
+    fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(20000) }).catch(() => null),
+    fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(20000) }).catch(() => null),
   ]);
 
   // Parse each route

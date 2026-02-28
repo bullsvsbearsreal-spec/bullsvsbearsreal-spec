@@ -22,7 +22,7 @@ export default function BtcChartWidget() {
         const pts = data.prices.map((p: [number, number]) => p[1]);
         setPrices(pts);
         setCurrent(pts[pts.length - 1]);
-      } catch {}
+      } catch (err) { console.error('[BtcChart] fetch error:', err); }
     })();
     return () => { mounted = false; };
   }, []);

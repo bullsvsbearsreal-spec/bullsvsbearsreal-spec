@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -20,6 +20,8 @@ export default function PortfolioWidget({ wide }: { wide?: boolean }) {
   const mountedRef = useRef(true);
 
   const holdings = userData?.portfolio ?? [];
+  // Stable reference: only recompute when holdings content actually changes
+  const holdingsKey = useMemo(() => JSON.stringify(holdings), [holdings]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -56,13 +58,13 @@ export default function PortfolioWidget({ wide }: { wide?: boolean }) {
           setRows(mapped);
           setTotalValue(total);
         }
-      } catch {}
+      } catch (err) { console.error('[Portfolio] fetch error:', err); }
     };
 
     load();
     const iv = setInterval(load, 30_000);
     return () => { mountedRef.current = false; clearInterval(iv); };
-  }, [JSON.stringify(holdings)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [holdingsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (userData === null) {
     return <div className="h-12 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;

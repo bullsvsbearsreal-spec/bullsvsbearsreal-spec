@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
+import { getCache, setCache, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -8,6 +9,8 @@ export const dynamic = 'force-dynamic';
 const CMC_API_KEY = process.env.CMC_API_KEY || '';
 
 const CACHE_HEADERS = { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60' };
+const DB_CACHE_KEY = 'global_stats';
+const DB_CACHE_TTL = 600; // 10 min DB cache
 
 // In-memory fallback so we never return 502 after one success
 let lastGood: any = null;
@@ -43,6 +46,7 @@ export async function GET() {
         };
 
         lastGood = result;
+        if (isDBConfigured()) setCache(DB_CACHE_KEY, result, DB_CACHE_TTL).catch(() => {});
         return NextResponse.json(result, { headers: CACHE_HEADERS });
       }
     } catch {
@@ -74,15 +78,22 @@ export async function GET() {
       };
 
       lastGood = result;
+      if (isDBConfigured()) setCache(DB_CACHE_KEY, result, DB_CACHE_TTL).catch(() => {});
       return NextResponse.json(result, { headers: CACHE_HEADERS });
     }
   } catch {
     // Fall through to cached/static fallback
   }
 
-  // Return last known good data if we have it
+  // Return last known good data if we have it (L1: memory)
   if (lastGood) {
     return NextResponse.json(lastGood, { headers: CACHE_HEADERS });
+  }
+
+  // L2: DB cache fallback (survives cold starts)
+  if (isDBConfigured()) {
+    const cached = await getCache(DB_CACHE_KEY);
+    if (cached) return NextResponse.json({ ...cached, cached: true }, { headers: CACHE_HEADERS });
   }
 
   // Static fallback — never return 502

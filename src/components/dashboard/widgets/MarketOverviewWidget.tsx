@@ -29,7 +29,7 @@ export default function MarketOverviewWidget() {
           ethDom: data.market_cap_percentage?.eth || 0,
           change24h: data.market_cap_change_percentage_24h_usd || 0,
         });
-      } catch {}
+      } catch (err) { console.error('[MarketOverview] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 120_000);

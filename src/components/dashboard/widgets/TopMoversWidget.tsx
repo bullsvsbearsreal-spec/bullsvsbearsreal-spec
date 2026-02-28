@@ -35,7 +35,7 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
           gainers: valid.slice(0, limit),
           losers: valid.slice(-limit).reverse(),
         });
-      } catch {}
+      } catch (err) { console.error('[TopMovers] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 30_000);

@@ -39,7 +39,7 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
         const json = await res.json();
         const articles = json?.articles || [];
         if (mounted) setNews(articles.slice(0, wide ? 5 : 3));
-      } catch {}
+      } catch (err) { console.error('[News] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 300_000);

@@ -20,7 +20,7 @@ export default function BtcPriceWidget() {
           setPrice(btc.price || btc.lastPrice);
           setChange(btc.priceChangePercent ?? btc.change24h ?? null);
         }
-      } catch {}
+      } catch (err) { console.error('[BtcPrice] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 30_000);

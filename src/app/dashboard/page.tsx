@@ -99,7 +99,18 @@ export default function DashboardPage() {
     );
   }
 
-  if (!session) return null;
+  // Redirect is handled by useEffect above — show spinner while redirecting
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-hub-black">
+        <Header />
+        <main className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-hub-black">

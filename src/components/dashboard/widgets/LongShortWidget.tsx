@@ -26,7 +26,7 @@ export default function LongShortWidget() {
           exchange: json.exchange || 'binance',
           fallback: json.fallback,
         });
-      } catch {}
+      } catch (err) { console.error('[LongShort] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 60_000);

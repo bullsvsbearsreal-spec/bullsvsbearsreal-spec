@@ -24,7 +24,7 @@ export default function DominanceWidget() {
         if (mounted && items.length > 0) {
           setEntries(items.slice(0, 6));
         }
-      } catch {}
+      } catch (err) { console.error('[Dominance] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 120_000);

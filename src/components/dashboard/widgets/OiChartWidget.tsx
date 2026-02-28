@@ -29,7 +29,7 @@ export default function OiChartWidget() {
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.data || [];
         if (mounted) setEntries(items.slice(0, 8));
-      } catch {}
+      } catch (err) { console.error('[OiChart] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 60_000);

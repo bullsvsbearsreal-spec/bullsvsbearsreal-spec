@@ -22,7 +22,7 @@ export default function TrendingWidget({ wide }: { wide?: boolean }) {
         const json = await res.json();
         const items = json?.meta?.trending || [];
         if (mounted) setTrending(items.slice(0, wide ? 8 : 5));
-      } catch {}
+      } catch (err) { console.error('[Trending] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 300_000);

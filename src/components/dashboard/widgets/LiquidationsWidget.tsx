@@ -35,7 +35,7 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
           time: d.timestamp || 0,
         }));
         if (mounted) setLiqs(items.slice(0, wide ? 8 : 5));
-      } catch {}
+      } catch (err) { console.error('[Liquidations] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 15_000);

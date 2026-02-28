@@ -51,7 +51,7 @@ export default function WatchlistWidget({ wide }: { wide?: boolean }) {
           .filter(Boolean) as TickerRow[];
 
         if (mountedRef.current) setTickers(rows);
-      } catch {}
+      } catch (err) { console.error('[Watchlist] fetch error:', err); }
     };
 
     load();

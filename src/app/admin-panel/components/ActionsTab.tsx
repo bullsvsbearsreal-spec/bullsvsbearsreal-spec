@@ -89,6 +89,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
     if (data?.success) {
       const status = data.healthResult?.status;
       if (status === 'healthy') toast.success('System healthy');
+      else if (status === 'degraded') toast.info(`Health: degraded — ${data.healthResult?.errors?.length ?? 0} exchange errors`);
       else toast.info(`Health: ${status} — ${data.healthResult?.errors?.length ?? 0} errors`);
     }
   };
@@ -98,7 +99,11 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
   };
 
   const handleTriggerSnapshot = async () => {
-    toast.info('Snapshot trigger is not yet connected to collector');
+    const data = await runAction('snapshot', '/api/admin/actions/trigger-snapshot');
+    if (data?.success) {
+      const r = data.result || {};
+      toast.success(`Snapshot done — ${r.fundingInserted ?? 0} funding, ${r.oiInserted ?? 0} OI, ${r.liqInserted ?? 0} liq`);
+    }
   };
 
   const confirmAction = async () => {

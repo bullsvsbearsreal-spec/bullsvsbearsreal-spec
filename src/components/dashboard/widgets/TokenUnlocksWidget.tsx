@@ -43,7 +43,7 @@ export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
           .filter((u) => u.unlockDate >= now)
           .sort((a, b) => a.unlockDate.localeCompare(b.unlockDate));
         if (mounted) setUnlocks(upcoming.slice(0, wide ? 6 : 4));
-      } catch {}
+      } catch (err) { console.error('[TokenUnlocks] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 300_000);

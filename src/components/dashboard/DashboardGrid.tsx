@@ -7,6 +7,7 @@ import { useGridDrag } from './useGridDrag';
 import WidgetWrapper from './WidgetWrapper';
 import WidgetPicker from './WidgetPicker';
 import LayoutPresets from './LayoutPresets';
+import WidgetErrorBoundary from './WidgetErrorBoundary';
 
 const QUICK_ADD_TYPES: WidgetType[] = ['market-overview', 'news', 'long-short', 'trending', 'token-unlocks'];
 
@@ -166,7 +167,9 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
               onToggleSize={() => handleToggleSize(widget.id)}
               canExpand={widget.w < 2}
             >
-              <Component wide={widget.w === 2} />
+              <WidgetErrorBoundary widgetName={meta.name}>
+                <Component wide={widget.w === 2} />
+              </WidgetErrorBoundary>
             </WidgetWrapper>
           );
         })}

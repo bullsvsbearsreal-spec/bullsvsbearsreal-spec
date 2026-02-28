@@ -29,7 +29,7 @@ export default function FearGreedWidget() {
         if (!res.ok) return;
         const data = await res.json();
         if (mounted) setValue(data.value ?? data.fgi?.now?.value ?? null);
-      } catch {}
+      } catch (err) { console.error('[FearGreed] fetch error:', err); }
     };
     load();
     const iv = setInterval(load, 60_000);

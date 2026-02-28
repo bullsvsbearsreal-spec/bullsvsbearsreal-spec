@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -22,6 +22,8 @@ export default function AlertsWidget({ wide }: { wide?: boolean }) {
   const mountedRef = useRef(true);
 
   const alerts = userData?.alerts ?? [];
+  // Stable reference: only recompute when alerts content actually changes
+  const alertsKey = useMemo(() => JSON.stringify(alerts), [alerts]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -71,13 +73,13 @@ export default function AlertsWidget({ wide }: { wide?: boolean }) {
         mapped.sort((a, b) => b.proximity - a.proximity);
 
         if (mountedRef.current) setRows(mapped);
-      } catch {}
+      } catch (err) { console.error('[Alerts] fetch error:', err); }
     };
 
     load();
     const iv = setInterval(load, 30_000);
     return () => { mountedRef.current = false; clearInterval(iv); };
-  }, [JSON.stringify(alerts)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [alertsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (userData === null) {
     return <div className="h-12 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
