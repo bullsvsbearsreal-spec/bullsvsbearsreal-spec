@@ -934,7 +934,20 @@ export async function getUserData(userId: string): Promise<UserData | null> {
       SELECT prefs FROM user_prefs WHERE user_id = ${userId}
     `;
     if (rows.length === 0) return null;
-    return rows[0].prefs as UserData;
+    let prefs = rows[0].prefs;
+    // Guard against JSONB string scalars (double-encoded) or corrupted data
+    if (typeof prefs === 'string') {
+      try { prefs = JSON.parse(prefs); } catch { return null; }
+    }
+    // Guard against character-exploded objects (keys like "0","1","2"...)
+    if (prefs && typeof prefs === 'object' && !Array.isArray(prefs)) {
+      const keys = Object.keys(prefs);
+      if (keys.length > 100 && keys.every(k => /^\d+$/.test(k))) {
+        console.warn('getUserData: detected corrupted char-exploded prefs for', userId);
+        return null;
+      }
+    }
+    return prefs as UserData;
   } catch (e) {
     console.error('DB getUserData error:', e);
     return null;

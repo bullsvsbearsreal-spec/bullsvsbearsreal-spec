@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
-const MAX_SYMBOLS = 300; // Store top 300 symbols for historical coverage
+const MAX_SYMBOLS = 200; // Store top 200 symbols — balances coverage vs DB growth
 
 export async function GET(request: NextRequest) {
   // Verify auth — Vercel cron sends Authorization: Bearer <CRON_SECRET>
@@ -164,11 +164,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Prune old data (infrequently — ~1 in 6 runs, roughly once an hour)
-    let pruned = { funding: 0, oi: 0, liquidations: 0 };
-    if (Math.random() < 0.17) {
-      pruned = await pruneOldData(90);
-    }
+    // Prune old data every run — keep 14 days max to stay within DB limits
+    const pruned = await pruneOldData(14);
 
     // Record DB size for admin monitoring (~1 in 6 runs, roughly hourly)
     if (Math.random() < 0.17) {

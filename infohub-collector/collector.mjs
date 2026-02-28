@@ -7,9 +7,9 @@ import { startHealthServer, updateHealth } from './health.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const BASE_URL = process.env.INFOHUB_BASE_URL || 'https://info-hub.io';
-const MAX_SYMBOLS = 300;
+const MAX_SYMBOLS = 200;
 const BATCH_SIZE = 50;
-const KEEP_DAYS = 90;
+const KEEP_DAYS = 14;
 
 if (!DATABASE_URL) {
   console.error('Missing DATABASE_URL env var');
@@ -146,19 +146,18 @@ async function collectSnapshots() {
     }
   }
 
-  // ── Prune (roughly once per day: 1/96 of 15-min runs) ──
+  // ── Prune every run — 14-day retention keeps DB within 1GB ──
   let pruned = null;
-  if (Math.random() < 1 / 96) {
-    try {
-      const intervalStr = `${KEEP_DAYS} days`;
-      const fr = await sql`DELETE FROM funding_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
-      const oi = await sql`DELETE FROM oi_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
-      const lq = await sql`DELETE FROM liquidation_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
-      await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
-      pruned = { funding: fr.count ?? 0, oi: oi.count ?? 0, liq: lq.count ?? 0 };
-    } catch (err) {
-      result.errors.push(`prune: ${err.message}`);
-    }
+  try {
+    const intervalStr = `${KEEP_DAYS} days`;
+    const fr = await sql`DELETE FROM funding_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
+    const oi = await sql`DELETE FROM oi_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
+    const lq = await sql`DELETE FROM liquidation_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
+    await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
+    const total = (fr.count ?? 0) + (oi.count ?? 0) + (lq.count ?? 0);
+    if (total > 0) pruned = { funding: fr.count ?? 0, oi: oi.count ?? 0, liq: lq.count ?? 0 };
+  } catch (err) {
+    result.errors.push(`prune: ${err.message}`);
   }
 
   const elapsed = Date.now() - startTime;
@@ -168,7 +167,7 @@ async function collectSnapshots() {
 // ─── Cron Schedule ──────────────────────────────────────────────────────────
 
 console.log(`[infohub-collector] Starting — base URL: ${BASE_URL}`);
-console.log(`[infohub-collector] Schedule: every 15 minutes`);
+console.log(`[infohub-collector] Schedule: every 30 minutes`);
 
 // Run immediately on start
 (async () => {
@@ -182,8 +181,8 @@ console.log(`[infohub-collector] Schedule: every 15 minutes`);
   }
 })();
 
-// Schedule every 15 minutes
-cron.schedule('*/15 * * * *', async () => {
+// Schedule every 30 minutes (halves DB growth vs 15-min)
+cron.schedule('*/30 * * * *', async () => {
   try {
     const r = await collectSnapshots();
     const ts = new Date().toISOString();

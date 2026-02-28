@@ -30,10 +30,20 @@ export async function PUT(request: NextRequest) {
   try {
     const incoming: Partial<UserData> = await request.json();
 
+    // Guard: incoming must be a plain object, not a string or array
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+      return NextResponse.json({ error: 'Body must be a JSON object' }, { status: 400 });
+    }
+
     // Merge with existing data (so partial updates work)
     const existing = (await getUserData(session.user.id)) ?? {};
+
+    // Guard: only spread if existing is a proper object (not a string/corrupted)
+    const safeExisting = (existing && typeof existing === 'object' && !Array.isArray(existing))
+      ? existing
+      : {};
     const merged: UserData = {
-      ...existing,
+      ...safeExisting,
       ...incoming,
     };
 
