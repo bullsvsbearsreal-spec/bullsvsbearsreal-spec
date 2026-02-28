@@ -15,19 +15,20 @@ export default function DominanceWidget() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       try {
         const res = await fetch('/api/dominance');
         if (!res.ok) return;
         const data = await res.json();
-        // Expect { dominance: [{ symbol, dominance }] } or array
         const items = Array.isArray(data) ? data : data.dominance || data.data || [];
         if (mounted && items.length > 0) {
           setEntries(items.slice(0, 6));
         }
       } catch {}
-    })();
-    return () => { mounted = false; };
+    };
+    load();
+    const iv = setInterval(load, 120_000);
+    return () => { mounted = false; clearInterval(iv); };
   }, []);
 
   if (entries === null) {

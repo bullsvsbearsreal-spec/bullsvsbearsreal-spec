@@ -14,7 +14,7 @@ export default function FundingHeatmapWidget() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       try {
         const res = await fetch('/api/funding?limit=30');
         if (!res.ok) return;
@@ -22,8 +22,10 @@ export default function FundingHeatmapWidget() {
         const items = Array.isArray(data) ? data : data.data || data.rates || [];
         if (mounted) setRates(items.slice(0, 20));
       } catch {}
-    })();
-    return () => { mounted = false; };
+    };
+    load();
+    const iv = setInterval(load, 60_000);
+    return () => { mounted = false; clearInterval(iv); };
   }, []);
 
   if (rates === null) {

@@ -524,7 +524,7 @@ export default function FundingPage() {
                           {cexExchanges.every(e => selectedExchanges.has(e)) ? 'None' : 'All'}
                         </button>
                       </div>
-                      <div className="grid grid-cols-3 gap-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                         {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (
@@ -561,7 +561,7 @@ export default function FundingPage() {
                           {dexExchanges.every(e => selectedExchanges.has(e)) ? 'None' : 'All'}
                         </button>
                       </div>
-                      <div className="grid grid-cols-3 gap-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                         {ALL_EXCHANGES.filter(e => isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (

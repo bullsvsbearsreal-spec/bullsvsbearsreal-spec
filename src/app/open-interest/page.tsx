@@ -152,7 +152,7 @@ export default function OpenInterestPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Total OI</span>
             <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(totalOI)}</div>

@@ -1202,11 +1202,12 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           fundingRateLong = fundingRateLong + totalBorrowRate8h;
           fundingRateShort = fundingRateShort + totalBorrowRate8h;
 
-          // Build symbol — gTrade pairs are like "BTC/USD", we want "BTC"
-          // For forex, construct pair symbol: EUR + USD → EURUSD
-          let symbol = pair.from;
+          // Build symbol — gTrade pairs may have expiry suffixes like "INTC_24_5"
+          // Strip anything after first underscore to get base symbol (INTC)
+          const baseFrom = pair.from.split('_')[0];
+          let symbol = baseFrom;
           if (assetClass === 'forex') {
-            symbol = pair.from + (pair.to || 'USD');
+            symbol = baseFrom + (pair.to || 'USD');
           }
 
           // gTrade "Holding Fee" = combined funding + borrowing per side.

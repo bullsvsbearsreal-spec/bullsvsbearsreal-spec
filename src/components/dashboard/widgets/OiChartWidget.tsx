@@ -22,7 +22,7 @@ export default function OiChartWidget() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       try {
         const res = await fetch('/api/open-interest?limit=10');
         if (!res.ok) return;
@@ -30,8 +30,10 @@ export default function OiChartWidget() {
         const items = Array.isArray(data) ? data : data.data || [];
         if (mounted) setEntries(items.slice(0, 8));
       } catch {}
-    })();
-    return () => { mounted = false; };
+    };
+    load();
+    const iv = setInterval(load, 60_000);
+    return () => { mounted = false; clearInterval(iv); };
   }, []);
 
   if (entries === null) {

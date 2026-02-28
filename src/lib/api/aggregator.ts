@@ -438,5 +438,18 @@ export async function fetchPredictionMarkets(): Promise<import('./prediction-mar
   }
 }
 
+// Fetch execution costs across DEX venues
+export async function fetchExecutionCosts(asset: string, size: number, direction: 'long' | 'short'): Promise<import('@/lib/execution-costs/types').ExecutionCostResponse> {
+  const cacheKey = `execCost_${asset}_${size}_${direction}`;
+  const cached = getCached<import('@/lib/execution-costs/types').ExecutionCostResponse>(cacheKey);
+  if (cached) return cached;
+
+  const response = await fetch(`/api/execution-costs?asset=${encodeURIComponent(asset)}&size=${size}&direction=${direction}`);
+  if (!response.ok) throw new Error('Failed to fetch execution costs');
+  const data = await response.json();
+  setCache(cacheKey, data, DEFAULT_TTL);
+  return data;
+}
+
 // Export dydx API for direct access (used as fallback)
 export { dydxAPI };

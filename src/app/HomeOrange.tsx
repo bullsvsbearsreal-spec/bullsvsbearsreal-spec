@@ -171,7 +171,7 @@ export default function HomeOrange() {
             <span className="section-label">Data Feeds</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 stagger">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
 
             {/* Top Funding Rates */}
             <div className="card-premium p-4">
@@ -281,7 +281,7 @@ export default function HomeOrange() {
             <span className="section-label">Market Pulse</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 stagger">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger">
             <FearGreedIndex />
             <LiquidationHeatmap />
           </div>
@@ -332,7 +332,7 @@ export default function HomeOrange() {
                     <span className="text-neutral-600">{cexExchanges.length}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
                   {cexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
                     const isActive = health?.status === 'ok' || !healthLoaded;
@@ -378,7 +378,7 @@ export default function HomeOrange() {
                     <span className="text-neutral-600">{dexExchanges.length}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
                   {dexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
                     const isActive = health?.status === 'ok' || !healthLoaded;

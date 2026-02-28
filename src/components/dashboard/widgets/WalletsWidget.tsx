@@ -1,26 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Wallet } from 'lucide-react';
+import { useUserData } from '../useUserData';
 
 export default function WalletsWidget() {
-  const [wallets, setWallets] = useState<any[] | null>(null);
+  const userData = useUserData();
+  const wallets = userData?.wallets ?? [];
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/user/data');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (mounted) setWallets(data.wallets || []);
-      } catch {}
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  if (wallets === null) {
+  if (userData === null) {
     return <div className="h-12 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
   }
 
@@ -38,7 +26,7 @@ export default function WalletsWidget() {
     <div>
       <p className="text-lg font-bold text-white mb-2">{wallets.length} wallet{wallets.length !== 1 ? 's' : ''}</p>
       <div className="space-y-1">
-        {wallets.slice(0, 3).map((w: any, i: number) => (
+        {wallets.slice(0, 3).map((w, i) => (
           <div key={w.address || i} className="text-xs text-neutral-500 truncate font-mono">
             {w.label || `${w.address?.slice(0, 6)}...${w.address?.slice(-4)}`}
           </div>

@@ -23,15 +23,17 @@ export default function FearGreedWidget() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       try {
         const res = await fetch('/api/fear-greed');
         if (!res.ok) return;
         const data = await res.json();
         if (mounted) setValue(data.value ?? data.fgi?.now?.value ?? null);
       } catch {}
-    })();
-    return () => { mounted = false; };
+    };
+    load();
+    const iv = setInterval(load, 60_000);
+    return () => { mounted = false; clearInterval(iv); };
   }, []);
 
   if (value === null) {

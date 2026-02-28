@@ -184,6 +184,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Wallet Tracker',
     description: 'Track any Hyperliquid wallet in real-time. View open positions, PnL, trade history, and portfolio performance.',
   },
+  '/execution-costs': {
+    title: 'Execution Costs',
+    description: 'Compare real-time execution costs across DEX perpetual exchanges. Fees, spread, price impact, and orderbook depth for Hyperliquid, dYdX, Drift, Aster, and more.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {
