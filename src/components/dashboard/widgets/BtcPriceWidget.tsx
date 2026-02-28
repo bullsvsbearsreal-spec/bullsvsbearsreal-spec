@@ -13,7 +13,8 @@ export default function BtcPriceWidget() {
       try {
         const res = await fetch('/api/tickers?symbols=BTC');
         if (!res.ok) return;
-        const data = await res.json();
+        const json = await res.json();
+        const data = Array.isArray(json) ? json : json?.data || [];
         const btc = Array.isArray(data) ? data.find((t: any) => t.symbol === 'BTC' || t.symbol === 'BTCUSDT') : null;
         if (btc && mounted) {
           setPrice(btc.price || btc.lastPrice);

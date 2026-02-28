@@ -44,8 +44,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const instId = `${symbol}-USDT-SWAP`;
+    const uly = `${symbol}-USDT`;
     const res = await fetchWithTimeout(
-      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instId=${instId}&state=filled&limit=${limit}`
+      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instId=${instId}&uly=${uly}&state=filled&limit=${limit}`
     );
 
     if (!res.ok) {

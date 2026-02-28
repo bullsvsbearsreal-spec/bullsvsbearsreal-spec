@@ -5,8 +5,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { LayoutDashboard } from 'lucide-react';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { type WidgetLayout, DEFAULT_LAYOUT } from '@/components/dashboard/types';
 
 const LAYOUT_STORAGE_KEY = 'infohub-dashboard-layout';
@@ -106,16 +106,7 @@ export default function DashboardPage() {
       <Header />
       <main className="text-white">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-          {/* Header */}
-          <div className="mb-4">
-            <h1 className="heading-page flex items-center gap-2">
-              <LayoutDashboard className="w-6 h-6 text-hub-yellow" />
-              Dashboard
-            </h1>
-            <p className="text-sm text-neutral-500 mt-1">
-              Welcome back, {session.user?.name || session.user?.email?.split('@')[0] || 'User'}
-            </p>
-          </div>
+          <DashboardHeader userName={session.user?.name || session.user?.email?.split('@')[0] || 'User'} />
 
           <DashboardGrid layout={layout} onLayoutChange={handleLayoutChange} />
 

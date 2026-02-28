@@ -138,7 +138,8 @@ async function getExchangeSymbols(origin: string): Promise<Set<string>> {
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return exchangeSymbolsCache;
-    const tickers: any[] = await res.json();
+    const json = await res.json();
+    const tickers: any[] = Array.isArray(json) ? json : json?.data || [];
     const symbols = new Set<string>(
       tickers.map((t: any) => (t.symbol || '').toUpperCase()).filter(Boolean)
     );

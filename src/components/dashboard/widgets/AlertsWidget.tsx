@@ -31,7 +31,8 @@ export default function AlertsWidget({ wide }: { wide?: boolean }) {
       try {
         const res = await fetch('/api/tickers');
         if (!res.ok) return;
-        const data = await res.json();
+        const json = await res.json();
+        const data = Array.isArray(json) ? json : json?.data || [];
         if (!Array.isArray(data) || !mountedRef.current) return;
 
         const priceMap = new Map<string, number>();

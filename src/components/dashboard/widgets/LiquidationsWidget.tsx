@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Flame } from 'lucide-react';
 
 interface Liq {
@@ -14,15 +14,26 @@ interface Liq {
 
 export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
   const [liqs, setLiqs] = useState<Liq[] | null>(null);
+  const prevFirstTs = useRef<number>(0);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/liquidations?limit=10');
+        const res = await fetch('/api/liquidations?symbol=BTC&limit=10');
         if (!res.ok) return;
-        const data = await res.json();
-        const items = Array.isArray(data) ? data : data.liquidations || data.data || [];
+        const json = await res.json();
+        // API returns { symbol, exchange, data: [...], meta: {...} }
+        const rawItems = json?.data || [];
+        const symbol = json?.symbol || 'BTC';
+        const items: Liq[] = rawItems.map((d: any) => ({
+          symbol,
+          side: d.side || 'long',
+          quantity: d.size || 0,
+          price: d.price || 0,
+          usdValue: d.value || 0,
+          time: d.timestamp || 0,
+        }));
         if (mounted) setLiqs(items.slice(0, wide ? 8 : 5));
       } catch {}
     };

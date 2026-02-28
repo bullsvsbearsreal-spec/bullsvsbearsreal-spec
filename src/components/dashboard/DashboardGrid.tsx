@@ -2,10 +2,13 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
-import { type WidgetLayout, type WidgetType, WIDGET_CATALOG, DEFAULT_LAYOUT } from './types';
+import { type WidgetLayout, type WidgetType, WIDGET_CATALOG, WIDGET_CATEGORIES, DEFAULT_LAYOUT } from './types';
 import { useGridDrag } from './useGridDrag';
 import WidgetWrapper from './WidgetWrapper';
 import WidgetPicker from './WidgetPicker';
+import LayoutPresets from './LayoutPresets';
+
+const QUICK_ADD_TYPES: WidgetType[] = ['market-overview', 'news', 'long-short', 'trending', 'token-unlocks'];
 
 // Widget components (lazy-ish — just direct imports for now)
 import WatchlistWidget from './widgets/WatchlistWidget';
@@ -20,6 +23,11 @@ import BtcChartWidget from './widgets/BtcChartWidget';
 import FundingHeatmapWidget from './widgets/FundingHeatmapWidget';
 import OiChartWidget from './widgets/OiChartWidget';
 import DominanceWidget from './widgets/DominanceWidget';
+import MarketOverviewWidget from './widgets/MarketOverviewWidget';
+import NewsWidget from './widgets/NewsWidget';
+import LongShortWidget from './widgets/LongShortWidget';
+import TrendingWidget from './widgets/TrendingWidget';
+import TokenUnlocksWidget from './widgets/TokenUnlocksWidget';
 
 const WIDGET_COMPONENTS: Record<WidgetType, React.ComponentType<{ wide?: boolean }>> = {
   watchlist: WatchlistWidget,
@@ -34,6 +42,11 @@ const WIDGET_COMPONENTS: Record<WidgetType, React.ComponentType<{ wide?: boolean
   'funding-heatmap': FundingHeatmapWidget,
   'oi-chart': OiChartWidget,
   dominance: DominanceWidget,
+  'market-overview': MarketOverviewWidget,
+  news: NewsWidget,
+  'long-short': LongShortWidget,
+  trending: TrendingWidget,
+  'token-unlocks': TokenUnlocksWidget,
 };
 
 interface DashboardGridProps {
@@ -84,11 +97,12 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
   }, [onLayoutChange]);
 
   const activeTypes = layout.map((w) => w.type);
+  const quickAddSuggestions = QUICK_ADD_TYPES.filter((t) => !activeTypes.includes(t));
 
   return (
     <>
       {/* Toolbar */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPickerOpen(true)}
@@ -97,6 +111,7 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
             <Plus className="w-3.5 h-3.5" />
             Add Widget
           </button>
+          <LayoutPresets onApply={onLayoutChange} />
           <button
             onClick={handleReset}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors"
@@ -108,12 +123,34 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
         <span className="text-[10px] text-neutral-600">{layout.length} widget{layout.length !== 1 ? 's' : ''}</span>
       </div>
 
+      {/* Quick-add chips */}
+      {quickAddSuggestions.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+          <span className="text-[10px] text-neutral-600 mr-0.5">Quick add:</span>
+          {quickAddSuggestions.map((type) => {
+            const meta = WIDGET_CATALOG.find((m) => m.type === type);
+            if (!meta) return null;
+            return (
+              <button
+                key={type}
+                onClick={() => handleAdd(type)}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.06] text-[10px] text-neutral-500 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.12] transition-colors"
+              >
+                <Plus className="w-2.5 h-2.5" />
+                {meta.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {layout.map((widget, index) => {
           const meta = WIDGET_CATALOG.find((m) => m.type === widget.type);
           const Component = WIDGET_COMPONENTS[widget.type];
           if (!meta || !Component) return null;
+          const accent = WIDGET_CATEGORIES[meta.category]?.color;
 
           return (
             <WidgetWrapper
@@ -121,6 +158,7 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
               title={meta.name}
               index={index}
               colSpan={widget.w}
+              accentColor={accent}
               isDragOver={drag.dragging && drag.overIndex === index && drag.dragIndex !== index}
               isDragging={drag.dragging && drag.dragIndex === index}
               onPointerDown={handleDragStart(index)}

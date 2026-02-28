@@ -6,6 +6,7 @@ interface WidgetWrapperProps {
   title: string;
   index: number;
   colSpan: number;
+  accentColor?: string;
   isDragOver: boolean;
   isDragging: boolean;
   onPointerDown: (e: React.PointerEvent) => void;
@@ -19,6 +20,7 @@ export default function WidgetWrapper({
   title,
   index,
   colSpan,
+  accentColor,
   isDragOver,
   isDragging,
   onPointerDown,
@@ -39,6 +41,10 @@ export default function WidgetWrapper({
       `}
       style={{ touchAction: 'none' }}
     >
+      {/* Accent bar */}
+      {accentColor && (
+        <div className="h-[2px] w-full" style={{ backgroundColor: accentColor, opacity: 0.4 }} />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.04]">
         <div className="flex items-center gap-2 min-w-0">

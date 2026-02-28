@@ -3,6 +3,7 @@ export interface WidgetLayout {
   type: WidgetType; // widget kind
   w: number;        // width in columns (1 or 2)
   h: number;        // height in rows (always 1 for now)
+  settings?: Record<string, any>; // per-widget config
 }
 
 export type WidgetType =
@@ -17,28 +18,55 @@ export type WidgetType =
   | 'btc-chart'
   | 'funding-heatmap'
   | 'oi-chart'
-  | 'dominance';
+  | 'dominance'
+  | 'market-overview'
+  | 'news'
+  | 'long-short'
+  | 'trending'
+  | 'token-unlocks';
+
+export type WidgetCategory = 'market' | 'trading' | 'portfolio' | 'sentiment' | 'events';
 
 export interface WidgetMeta {
   type: WidgetType;
   name: string;
+  description: string;
   defaultW: number;
   icon: string; // lucide icon name
+  category: WidgetCategory;
 }
 
+export const WIDGET_CATEGORIES: Record<WidgetCategory, { label: string; color: string }> = {
+  market:    { label: 'Market',    color: 'rgb(34,197,94)' },    // green-500
+  trading:   { label: 'Trading',   color: 'rgb(59,130,246)' },   // blue-500
+  portfolio: { label: 'Portfolio', color: 'rgb(168,85,247)' },   // purple-500
+  sentiment: { label: 'Sentiment', color: 'rgb(249,115,22)' },   // orange-500
+  events:    { label: 'Events',    color: 'rgb(245,158,11)' },   // amber-500
+};
+
 export const WIDGET_CATALOG: WidgetMeta[] = [
-  { type: 'watchlist', name: 'Watchlist', defaultW: 1, icon: 'Star' },
-  { type: 'portfolio', name: 'Portfolio', defaultW: 1, icon: 'Briefcase' },
-  { type: 'alerts', name: 'Active Alerts', defaultW: 1, icon: 'Bell' },
-  { type: 'wallets', name: 'Tracked Wallets', defaultW: 1, icon: 'Wallet' },
-  { type: 'btc-price', name: 'BTC Price', defaultW: 1, icon: 'Bitcoin' },
-  { type: 'fear-greed', name: 'Fear & Greed', defaultW: 1, icon: 'Gauge' },
-  { type: 'top-movers', name: 'Top Movers', defaultW: 1, icon: 'TrendingUp' },
-  { type: 'liquidations', name: 'Liquidations', defaultW: 1, icon: 'Flame' },
-  { type: 'btc-chart', name: 'BTC Chart', defaultW: 2, icon: 'LineChart' },
-  { type: 'funding-heatmap', name: 'Funding Heatmap', defaultW: 2, icon: 'Grid3X3' },
-  { type: 'oi-chart', name: 'OI Chart', defaultW: 2, icon: 'BarChart3' },
-  { type: 'dominance', name: 'Dominance', defaultW: 2, icon: 'PieChart' },
+  // Market
+  { type: 'btc-price',       name: 'BTC Price',        description: 'Live Bitcoin price & 24h change',        defaultW: 1, icon: 'Bitcoin',       category: 'market' },
+  { type: 'market-overview',  name: 'Market Overview',   description: 'Market cap, volume & dominance',         defaultW: 1, icon: 'Globe',         category: 'market' },
+  { type: 'top-movers',      name: 'Top Movers',       description: 'Biggest gainers & losers',               defaultW: 1, icon: 'TrendingUp',    category: 'market' },
+  { type: 'dominance',       name: 'Dominance',        description: 'Market dominance breakdown',              defaultW: 2, icon: 'PieChart',      category: 'market' },
+  { type: 'trending',        name: 'Trending',         description: 'Most mentioned coins in crypto news',     defaultW: 1, icon: 'Zap',           category: 'market' },
+  // Trading
+  { type: 'funding-heatmap', name: 'Funding Heatmap',  description: 'Exchange funding rates at a glance',     defaultW: 2, icon: 'Grid3X3',       category: 'trading' },
+  { type: 'oi-chart',        name: 'OI Chart',         description: 'Open interest by symbol',                defaultW: 2, icon: 'BarChart3',     category: 'trading' },
+  { type: 'liquidations',    name: 'Liquidations',     description: 'Recent BTC liquidation events',          defaultW: 1, icon: 'Flame',         category: 'trading' },
+  { type: 'long-short',      name: 'Long/Short',       description: 'BTC long vs short ratio',                defaultW: 1, icon: 'ArrowLeftRight', category: 'trading' },
+  // Portfolio
+  { type: 'watchlist',       name: 'Watchlist',        description: 'Your tracked symbols with live prices',  defaultW: 1, icon: 'Star',          category: 'portfolio' },
+  { type: 'portfolio',       name: 'Portfolio',        description: 'Holdings value & P&L',                   defaultW: 1, icon: 'Briefcase',     category: 'portfolio' },
+  { type: 'alerts',          name: 'Active Alerts',    description: 'Price alerts with proximity bars',       defaultW: 1, icon: 'Bell',          category: 'portfolio' },
+  { type: 'wallets',         name: 'Tracked Wallets',  description: 'On-chain wallet tracker',                defaultW: 1, icon: 'Wallet',        category: 'portfolio' },
+  // Sentiment
+  { type: 'fear-greed',      name: 'Fear & Greed',     description: 'Crypto market sentiment index',          defaultW: 1, icon: 'Gauge',         category: 'sentiment' },
+  { type: 'news',            name: 'News',             description: 'Latest crypto headlines',                defaultW: 1, icon: 'Newspaper',     category: 'sentiment' },
+  // Events
+  { type: 'btc-chart',       name: 'BTC Chart',        description: '7-day Bitcoin price chart',              defaultW: 2, icon: 'LineChart',     category: 'events' },
+  { type: 'token-unlocks',   name: 'Token Unlocks',    description: 'Upcoming vesting unlock events',         defaultW: 1, icon: 'Unlock',        category: 'events' },
 ];
 
 export const DEFAULT_LAYOUT: WidgetLayout[] = [
