@@ -38,7 +38,7 @@ function ListSkeleton({ rows = 4 }: { rows?: number }) {
         <div key={i} className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="skeleton w-3.5 h-3.5 rounded-full" />
-            <Bar w={`w-${12 + (i % 3) * 4}`} />
+            <div className="skeleton h-3 rounded" style={{ width: `${48 + (i % 3) * 16}px` }} />
           </div>
           <Bar w="w-12" />
         </div>

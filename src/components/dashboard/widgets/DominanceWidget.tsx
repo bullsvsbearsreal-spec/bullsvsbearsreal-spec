@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 interface DomEntry {
   symbol: string;
@@ -13,6 +15,7 @@ const COLORS = ['#F7931A', '#627EEA', '#26A17B', '#E6007A', '#14F195', '#8B8B8B'
 
 export default function DominanceWidget() {
   const [entries, setEntries] = useState<DomEntry[] | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -24,6 +27,7 @@ export default function DominanceWidget() {
         const items = Array.isArray(data) ? data : data.dominance || data.data || [];
         if (mounted && items.length > 0) {
           setEntries(items.slice(0, 6));
+          setUpdatedAt(Date.now());
         }
       } catch (err) { console.error('[Dominance] fetch error:', err); }
     };
@@ -62,20 +66,23 @@ export default function DominanceWidget() {
         ))}
       </div>
 
-      {/* Legend */}
+      {/* Legend with token icons */}
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {entries.map((e, i) => (
           <div key={e.symbol} className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+            <TokenIconSimple symbol={e.symbol} size={12} />
             <span className="text-[10px] text-neutral-400">{e.symbol}</span>
             <span className="text-[10px] text-neutral-600">{e.dominance.toFixed(1)}%</span>
           </div>
         ))}
       </div>
 
-      <Link href="/dominance" className="text-[10px] text-hub-yellow hover:underline mt-2 inline-block">
-        View full chart
-      </Link>
+      <div className="flex items-center justify-between mt-2">
+        <Link href="/dominance" className="text-[10px] text-hub-yellow hover:underline">
+          View full chart
+        </Link>
+        <UpdatedAgo ts={updatedAt} />
+      </div>
     </div>
   );
 }

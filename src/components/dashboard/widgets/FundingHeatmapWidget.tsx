@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 interface FundingRate {
   symbol: string;
@@ -12,6 +13,7 @@ interface FundingRate {
 
 export default function FundingHeatmapWidget() {
   const [rates, setRates] = useState<FundingRate[] | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -21,7 +23,10 @@ export default function FundingHeatmapWidget() {
         if (!res.ok) return;
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.data || data.rates || [];
-        if (mounted) setRates(items.slice(0, 20));
+        if (mounted) {
+          setRates(items.slice(0, 20));
+          setUpdatedAt(Date.now());
+        }
       } catch (err) { console.error('[FundingHeatmap] fetch error:', err); }
     };
     load();
@@ -68,9 +73,12 @@ export default function FundingHeatmapWidget() {
           );
         })}
       </div>
-      <Link href="/funding-heatmap" className="text-[10px] text-hub-yellow hover:underline">
-        View full heatmap
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/funding-heatmap" className="text-[10px] text-hub-yellow hover:underline">
+          View full heatmap
+        </Link>
+        <UpdatedAgo ts={updatedAt} />
+      </div>
     </div>
   );
 }

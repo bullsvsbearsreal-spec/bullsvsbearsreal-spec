@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 interface Mover {
   symbol: string;
@@ -12,6 +13,7 @@ interface Mover {
 
 export default function TopMoversWidget({ wide }: { wide?: boolean }) {
   const [movers, setMovers] = useState<{ gainers: Mover[]; losers: Mover[] } | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -36,6 +38,7 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
           gainers: valid.slice(0, limit),
           losers: valid.slice(-limit).reverse(),
         });
+        setUpdatedAt(Date.now());
       } catch (err) { console.error('[TopMovers] fetch error:', err); }
     };
     load();
@@ -73,6 +76,7 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
         </div>
         {movers.losers.map((m, i) => <Row key={'l' + i} m={m} idx={i} />)}
       </div>
+      {!wide && <div className="text-right mt-1"><UpdatedAgo ts={updatedAt} /></div>}
     </div>
   );
 }

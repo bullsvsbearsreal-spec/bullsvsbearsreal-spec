@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 interface LSData {
   longRatio: number;
@@ -12,6 +13,7 @@ interface LSData {
 
 export default function LongShortWidget() {
   const [data, setData] = useState<LSData | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -27,6 +29,7 @@ export default function LongShortWidget() {
           exchange: json.exchange || 'binance',
           fallback: json.fallback,
         });
+        setUpdatedAt(Date.now());
       } catch (err) { console.error('[LongShort] fetch error:', err); }
     };
     load();
@@ -45,11 +48,18 @@ export default function LongShortWidget() {
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-neutral-400">BTC Long/Short</span>
-        <span className="text-[10px] text-neutral-600 capitalize">{data.exchange}</span>
+        <div className="flex items-center gap-1.5">
+          {data.fallback && (
+            <span className="text-[9px] px-1 py-px rounded bg-yellow-500/15 text-yellow-500/80" title="Exchange APIs unavailable — showing estimated ratio">
+              est.
+            </span>
+          )}
+          <span className="text-[10px] text-neutral-600 capitalize">{data.exchange}</span>
+        </div>
       </div>
 
       {/* Stacked bar */}
-      <div className="flex rounded-full overflow-hidden h-5 mb-2">
+      <div className={`flex rounded-full overflow-hidden h-5 mb-2 ${data.fallback ? 'opacity-50' : ''}`}>
         <div
           className="flex items-center justify-center bg-green-500/80 transition-all"
           style={{ width: `${(longW / total) * 100}%` }}
@@ -69,6 +79,7 @@ export default function LongShortWidget() {
         <span className="text-green-400">Longs</span>
         <span className="text-red-400">Shorts</span>
       </div>
+      <div className="text-right mt-1"><UpdatedAgo ts={updatedAt} /></div>
     </div>
   );
 }

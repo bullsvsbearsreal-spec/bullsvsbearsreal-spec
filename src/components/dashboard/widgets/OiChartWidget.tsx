@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 interface OiEntry {
   symbol: string;
@@ -20,6 +21,7 @@ function formatOI(val: number): string {
 
 export default function OiChartWidget() {
   const [entries, setEntries] = useState<OiEntry[] | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -29,7 +31,10 @@ export default function OiChartWidget() {
         if (!res.ok) return;
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.data || [];
-        if (mounted) setEntries(items.slice(0, 8));
+        if (mounted) {
+          setEntries(items.slice(0, 8));
+          setUpdatedAt(Date.now());
+        }
       } catch (err) { console.error('[OiChart] fetch error:', err); }
     };
     load();
@@ -74,9 +79,12 @@ export default function OiChartWidget() {
           );
         })}
       </div>
-      <Link href="/open-interest" className="text-[10px] text-hub-yellow hover:underline mt-2 inline-block">
-        View all
-      </Link>
+      <div className="flex items-center justify-between mt-2">
+        <Link href="/open-interest" className="text-[10px] text-hub-yellow hover:underline">
+          View all
+        </Link>
+        <UpdatedAgo ts={updatedAt} />
+      </div>
     </div>
   );
 }

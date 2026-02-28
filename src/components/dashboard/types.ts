@@ -60,12 +60,12 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
   { type: 'watchlist',       name: 'Watchlist',        description: 'Your tracked symbols with live prices',  defaultW: 1, icon: 'Star',          category: 'portfolio' },
   { type: 'portfolio',       name: 'Portfolio',        description: 'Holdings value & P&L',                   defaultW: 1, icon: 'Briefcase',     category: 'portfolio' },
   { type: 'alerts',          name: 'Active Alerts',    description: 'Price alerts with proximity bars',       defaultW: 1, icon: 'Bell',          category: 'portfolio' },
-  { type: 'wallets',         name: 'Tracked Wallets',  description: 'On-chain wallet tracker',                defaultW: 1, icon: 'Wallet',        category: 'portfolio' },
+  { type: 'wallets',         name: 'Saved Wallets',    description: 'Quick-access wallet address book',       defaultW: 1, icon: 'Wallet',        category: 'portfolio' },
   // Sentiment
   { type: 'fear-greed',      name: 'Fear & Greed',     description: 'Crypto market sentiment index',          defaultW: 1, icon: 'Gauge',         category: 'sentiment' },
   { type: 'news',            name: 'News',             description: 'Latest crypto headlines',                defaultW: 1, icon: 'Newspaper',     category: 'sentiment' },
   // Events
-  { type: 'btc-chart',       name: 'BTC Chart',        description: '7-day Bitcoin price chart',              defaultW: 2, icon: 'LineChart',     category: 'events' },
+  { type: 'btc-chart',       name: 'BTC Chart',        description: '7-day Bitcoin price chart',              defaultW: 2, icon: 'LineChart',     category: 'market' },
   { type: 'token-unlocks',   name: 'Token Unlocks',    description: 'Upcoming vesting unlock events',         defaultW: 1, icon: 'Unlock',        category: 'events' },
 ];
 

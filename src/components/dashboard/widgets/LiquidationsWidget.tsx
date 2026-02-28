@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Flame } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 interface Liq {
   symbol: string;
@@ -15,6 +16,7 @@ interface Liq {
 
 export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
   const [liqs, setLiqs] = useState<Liq[] | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const prevFirstTs = useRef<number>(0);
 
   useEffect(() => {
@@ -35,7 +37,10 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
           usdValue: d.value || 0,
           time: d.timestamp || 0,
         }));
-        if (mounted) setLiqs(items.slice(0, wide ? 8 : 5));
+        if (mounted) {
+          setLiqs(items.slice(0, wide ? 8 : 5));
+          setUpdatedAt(Date.now());
+        }
       } catch (err) { console.error('[Liquidations] fetch error:', err); }
     };
     load();
@@ -58,7 +63,8 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
   }
 
   return (
-    <div className="space-y-1.5">
+    <div>
+      <div className="space-y-1.5">
       {liqs.map((l, i) => {
         const val = l.usdValue || (l.quantity * l.price);
         const isLong = l.side?.toLowerCase() === 'buy' || l.side?.toLowerCase() === 'long';
@@ -74,6 +80,8 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
           </div>
         );
       })}
+      </div>
+      <div className="text-right mt-1"><UpdatedAgo ts={updatedAt} /></div>
     </div>
   );
 }

@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import AnimatedValue from '../AnimatedValue';
+import UpdatedAgo from '../UpdatedAgo';
 
 export default function BtcPriceWidget() {
   const [price, setPrice] = useState<number | null>(null);
   const [change, setChange] = useState<number | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -21,6 +23,7 @@ export default function BtcPriceWidget() {
         if (btc && mounted) {
           setPrice(btc.price || btc.lastPrice);
           setChange(btc.priceChangePercent ?? btc.change24h ?? null);
+          setUpdatedAt(Date.now());
         }
       } catch (err) { console.error('[BtcPrice] fetch error:', err); }
     };
@@ -48,7 +51,10 @@ export default function BtcPriceWidget() {
           </span>
         )}
       </div>
-      <p className="text-[10px] text-neutral-600 mt-1">24h change</p>
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-[10px] text-neutral-600">24h change</p>
+        <UpdatedAgo ts={updatedAt} />
+      </div>
     </div>
   );
 }
