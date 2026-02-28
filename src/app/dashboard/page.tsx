@@ -91,15 +91,41 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-hub-black">
         <Header />
-        <main className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
+        <main className="text-white">
+          <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
+            {/* Header skeleton */}
+            <div className="mb-5">
+              <div className="h-6 w-48 rounded bg-white/[0.04] animate-pulse" />
+              <div className="flex gap-4 mt-2">
+                <div className="h-4 w-24 rounded bg-white/[0.04] animate-pulse" />
+                <div className="h-4 w-20 rounded bg-white/[0.04] animate-pulse" />
+                <div className="h-4 w-16 rounded bg-white/[0.04] animate-pulse" />
+              </div>
+            </div>
+            {/* Widget grid skeleton — mimics 2-col layout */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div key={n} className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-white/[0.04] flex items-center gap-2">
+                    <div className="h-3 w-3 rounded bg-white/[0.04] animate-pulse" />
+                    <div className="h-3 rounded bg-white/[0.04] animate-pulse" style={{ width: `${60 + (n % 3) * 20}px` }} />
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <div className="h-4 w-2/3 rounded bg-white/[0.04] animate-pulse" />
+                    <div className="h-3 w-full rounded bg-white/[0.04] animate-pulse" />
+                    <div className="h-3 w-4/5 rounded bg-white/[0.04] animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
     );
   }
 
-  // Redirect is handled by useEffect above — show spinner while redirecting
+  // Redirect is handled by useEffect above — show skeleton while redirecting
   if (!session) {
     return (
       <div className="min-h-screen bg-hub-black">
@@ -120,14 +146,6 @@ export default function DashboardPage() {
           <DashboardHeader userName={session.user?.name || session.user?.email?.split('@')[0] || 'User'} />
 
           <DashboardGrid layout={layout} onLayoutChange={handleLayoutChange} />
-
-          {/* Cloud Sync Info */}
-          <div className="mt-6 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
-            <p className="text-neutral-500 text-xs leading-relaxed">
-              Your dashboard layout is synced to the cloud and available across devices.
-              Drag widgets to rearrange, or use the + button to add new ones.
-            </p>
-          </div>
         </div>
       </main>
       <Footer />

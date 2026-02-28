@@ -96,12 +96,13 @@ export async function GET() {
     if (cached) return NextResponse.json({ ...cached, cached: true }, { headers: CACHE_HEADERS });
   }
 
-  // Static fallback — never return 502
+  // All sources exhausted — signal unavailable instead of fake zeros
   return NextResponse.json({
     total_market_cap: { usd: 0 },
     total_volume: { usd: 0 },
     market_cap_percentage: { btc: 0, eth: 0 },
     market_cap_change_percentage_24h_usd: 0,
     active_cryptocurrencies: 0,
+    unavailable: true,
   }, { headers: CACHE_HEADERS });
 }

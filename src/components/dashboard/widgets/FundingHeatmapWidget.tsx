@@ -39,8 +39,8 @@ export default function FundingHeatmapWidget() {
   if (rates.length === 0) {
     return (
       <div className="text-center py-4">
-        <p className="text-xs text-neutral-500">Funding rates unavailable</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">Rates will populate at next funding interval</p>
+        <p className="text-xs text-neutral-500">No funding rates yet</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Waiting for next funding update</p>
       </div>
     );
   }

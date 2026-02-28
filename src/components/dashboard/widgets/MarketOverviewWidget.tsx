@@ -13,6 +13,7 @@ interface GlobalStats {
   btcDom: number;
   ethDom: number;
   change24h: number;
+  unavailable?: boolean;
 }
 
 export default function MarketOverviewWidget() {
@@ -33,6 +34,7 @@ export default function MarketOverviewWidget() {
           btcDom: data.market_cap_percentage?.btc || 0,
           ethDom: data.market_cap_percentage?.eth || 0,
           change24h: data.market_cap_change_percentage_24h_usd || 0,
+          unavailable: !!data.unavailable,
         });
         setUpdatedAt(Date.now());
       } catch (err) { console.error('[MarketOverview] fetch error:', err); }
@@ -43,6 +45,15 @@ export default function MarketOverviewWidget() {
   }, []);
 
   if (!stats) return <WidgetSkeleton variant="grid" />;
+
+  if (stats.unavailable) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-xs text-neutral-500">Market data unavailable</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Retrying in the background</p>
+      </div>
+    );
+  }
 
   const fmtUsd = (v: number) => {
     if (v >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'T';

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import AnimatedValue from '../AnimatedValue';
+import UpdatedAgo from '../UpdatedAgo';
 
 const COLORS: Record<string, string> = {
   'Extreme Fear': 'text-red-400',
@@ -109,6 +110,7 @@ function GaugeArc({ value }: { value: number }) {
 
 export default function FearGreedWidget() {
   const [value, setValue] = useState<number | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -117,7 +119,10 @@ export default function FearGreedWidget() {
         const res = await fetch('/api/fear-greed');
         if (!res.ok) return;
         const data = await res.json();
-        if (mounted) setValue(data.value ?? data.fgi?.now?.value ?? null);
+        if (mounted) {
+          setValue(data.value ?? data.fgi?.now?.value ?? null);
+          setUpdatedAt(Date.now());
+        }
       } catch (err) { console.error('[FearGreed] fetch error:', err); }
     };
     load();
@@ -137,6 +142,7 @@ export default function FearGreedWidget() {
         <AnimatedValue value={value} format={(v) => String(v)} className="text-2xl font-bold text-white" />
         <span className={`text-[10px] font-medium ${color}`}>{label}</span>
       </div>
+      <div className="mt-1"><UpdatedAgo ts={updatedAt} /></div>
     </div>
   );
 }

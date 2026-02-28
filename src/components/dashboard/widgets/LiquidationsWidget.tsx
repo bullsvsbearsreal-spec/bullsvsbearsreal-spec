@@ -56,8 +56,8 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
         <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-2">
           <Flame className="w-4 h-4 text-green-400/60" />
         </div>
-        <p className="text-xs text-neutral-500">Markets are calm</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">No BTC liquidations in the last few minutes</p>
+        <p className="text-xs text-neutral-500">No recent liquidations</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">BTC liquidations will show here</p>
       </div>
     );
   }

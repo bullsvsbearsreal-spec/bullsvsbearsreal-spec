@@ -90,8 +90,8 @@ export default function AlertsWidget({ wide }: { wide?: boolean }) {
         <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
           <Bell className="w-4 h-4 text-amber-400/60" />
         </div>
-        <p className="text-xs text-neutral-500 mb-0.5">Never miss a move</p>
-        <p className="text-[10px] text-neutral-600 mb-2">Set price alerts and get notified when targets hit</p>
+        <p className="text-xs text-neutral-500 mb-0.5">No alerts set</p>
+        <p className="text-[10px] text-neutral-600 mb-2">Get notified when prices reach your targets</p>
         <Link href="/alerts" className="text-[10px] text-hub-yellow hover:underline font-medium">+ Create alert</Link>
       </div>
     );

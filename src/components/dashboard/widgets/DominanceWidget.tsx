@@ -41,8 +41,8 @@ export default function DominanceWidget() {
   if (entries.length === 0) {
     return (
       <div className="text-center py-4">
-        <p className="text-xs text-neutral-500">Dominance data unavailable</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">Will refresh automatically when API responds</p>
+        <p className="text-xs text-neutral-500">No dominance data</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Retrying in the background</p>
       </div>
     );
   }

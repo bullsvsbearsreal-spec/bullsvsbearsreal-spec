@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 export default function BtcChartWidget() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -10,6 +11,7 @@ export default function BtcChartWidget() {
   const [timestamps, setTimestamps] = useState<number[]>([]);
   const [current, setCurrent] = useState<number | null>(null);
   const [hover, setHover] = useState<{ x: number; price: number; date: string } | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -27,6 +29,7 @@ export default function BtcChartWidget() {
         setPrices(pts);
         setTimestamps(ts);
         setCurrent(pts[pts.length - 1]);
+        setUpdatedAt(Date.now());
       } catch (err) { console.error('[BtcChart] fetch error:', err); }
     })();
     return () => { mounted = false; };
@@ -170,6 +173,7 @@ export default function BtcChartWidget() {
         <span>
           {timestamps[0] ? new Date(timestamps[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
         </span>
+        <UpdatedAgo ts={updatedAt} />
         <span>
           {timestamps[timestamps.length - 1] ? new Date(timestamps[timestamps.length - 1]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
         </span>

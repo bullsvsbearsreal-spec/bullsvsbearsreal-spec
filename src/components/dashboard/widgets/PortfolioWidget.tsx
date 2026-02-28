@@ -75,8 +75,8 @@ export default function PortfolioWidget({ wide }: { wide?: boolean }) {
         <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-2">
           <Briefcase className="w-4 h-4 text-purple-400/60" />
         </div>
-        <p className="text-xs text-neutral-500 mb-0.5">Track your portfolio</p>
-        <p className="text-[10px] text-neutral-600 mb-2">Add your holdings to see total value and P&L</p>
+        <p className="text-xs text-neutral-500 mb-0.5">No holdings added</p>
+        <p className="text-[10px] text-neutral-600 mb-2">Add positions to see value and P&L</p>
         <Link href="/portfolio" className="text-[10px] text-hub-yellow hover:underline font-medium">+ Add holdings</Link>
       </div>
     );

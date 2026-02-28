@@ -50,7 +50,7 @@ export default function LongShortWidget() {
         <span className="text-xs text-neutral-400">BTC Long/Short</span>
         <div className="flex items-center gap-1.5">
           {data.fallback && (
-            <span className="text-[9px] px-1 py-px rounded bg-yellow-500/15 text-yellow-500/80" title="Exchange APIs unavailable — showing estimated ratio">
+            <span className="text-[9px] px-1 py-px rounded bg-yellow-500/15 text-yellow-500/80" title="Estimated ratio — live data unavailable">
               est.
             </span>
           )}

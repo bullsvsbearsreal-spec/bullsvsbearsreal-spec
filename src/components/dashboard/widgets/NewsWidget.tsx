@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Newspaper } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 
 interface NewsItem {
   id: string;
@@ -30,6 +31,7 @@ const sentimentDot: Record<string, string> = {
 
 export default function NewsWidget({ wide }: { wide?: boolean }) {
   const [news, setNews] = useState<NewsItem[] | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -39,7 +41,10 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
         if (!res.ok) return;
         const json = await res.json();
         const articles = json?.articles || [];
-        if (mounted) setNews(articles.slice(0, wide ? 5 : 3));
+        if (mounted) {
+          setNews(articles.slice(0, wide ? 5 : 3));
+          setUpdatedAt(Date.now());
+        }
       } catch (err) { console.error('[News] fetch error:', err); }
     };
     load();
@@ -55,8 +60,8 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
         <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-2">
           <Newspaper className="w-4 h-4 text-orange-400/60" />
         </div>
-        <p className="text-xs text-neutral-500">No headlines right now</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">News feed will refresh automatically</p>
+        <p className="text-xs text-neutral-500">No recent headlines</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Crypto news will show here</p>
       </div>
     );
   }
@@ -88,9 +93,12 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
           </a>
         ))}
       </div>
-      <Link href="/news" className="block text-center mt-2 text-[10px] text-hub-yellow hover:underline">
-        View all news
-      </Link>
+      <div className="flex items-center justify-between mt-2">
+        <Link href="/news" className="text-[10px] text-hub-yellow hover:underline">
+          View all news
+        </Link>
+        <UpdatedAgo ts={updatedAt} />
+      </div>
     </div>
   );
 }

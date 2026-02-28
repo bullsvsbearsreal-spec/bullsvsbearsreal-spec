@@ -68,8 +68,8 @@ export default function WatchlistWidget({ wide }: { wide?: boolean }) {
         <div className="w-8 h-8 rounded-full bg-hub-yellow/10 flex items-center justify-center mx-auto mb-2">
           <Star className="w-4 h-4 text-hub-yellow/60" />
         </div>
-        <p className="text-xs text-neutral-500 mb-0.5">Track your favorite coins</p>
-        <p className="text-[10px] text-neutral-600 mb-2">Get live prices and alerts for the symbols you care about</p>
+        <p className="text-xs text-neutral-500 mb-0.5">No symbols added</p>
+        <p className="text-[10px] text-neutral-600 mb-2">Add coins to see live prices here</p>
         <Link href="/watchlist" className="text-[10px] text-hub-yellow hover:underline font-medium">+ Add symbols</Link>
       </div>
     );

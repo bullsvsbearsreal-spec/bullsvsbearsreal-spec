@@ -30,8 +30,8 @@ export default function WalletsWidget() {
         <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-2">
           <Wallet className="w-4 h-4 text-blue-400/60" />
         </div>
-        <p className="text-xs text-neutral-500 mb-0.5">Save wallet addresses</p>
-        <p className="text-[10px] text-neutral-600 mb-2">Quick access to your wallets on block explorers</p>
+        <p className="text-xs text-neutral-500 mb-0.5">No wallets saved</p>
+        <p className="text-[10px] text-neutral-600 mb-2">Save addresses for quick explorer access</p>
         <Link href="/wallet-tracker" className="text-[10px] text-hub-yellow hover:underline font-medium">+ Add wallet</Link>
       </div>
     );

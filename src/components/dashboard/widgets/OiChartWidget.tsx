@@ -47,8 +47,8 @@ export default function OiChartWidget() {
   if (entries.length === 0) {
     return (
       <div className="text-center py-4">
-        <p className="text-xs text-neutral-500">Open interest data unavailable</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">Aggregated OI will appear when exchanges respond</p>
+        <p className="text-xs text-neutral-500">No open interest data</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Waiting for exchange data</p>
       </div>
     );
   }

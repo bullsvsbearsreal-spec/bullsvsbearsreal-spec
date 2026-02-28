@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Unlock } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
 interface UnlockItem {
@@ -29,6 +30,8 @@ function fmtValue(v: number): string {
 
 export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
   const [unlocks, setUnlocks] = useState<UnlockItem[] | null>(null);
+  const [priceSource, setPriceSource] = useState<string>('coingecko');
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -43,7 +46,11 @@ export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
         const upcoming = items
           .filter((u) => u.unlockDate >= now)
           .sort((a, b) => a.unlockDate.localeCompare(b.unlockDate));
-        if (mounted) setUnlocks(upcoming.slice(0, wide ? 6 : 4));
+        if (mounted) {
+          setUnlocks(upcoming.slice(0, wide ? 6 : 4));
+          setPriceSource(json?.meta?.priceSource || 'coingecko');
+          setUpdatedAt(Date.now());
+        }
       } catch (err) { console.error('[TokenUnlocks] fetch error:', err); }
     };
     load();
@@ -59,8 +66,8 @@ export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
         <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
           <Unlock className="w-4 h-4 text-amber-400/60" />
         </div>
-        <p className="text-xs text-neutral-500">All clear for now</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">No token vesting unlocks scheduled soon</p>
+        <p className="text-xs text-neutral-500">No upcoming unlocks</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">No vesting events in the next 7 days</p>
       </div>
     );
   }
@@ -84,9 +91,19 @@ export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
           </div>
         ))}
       </div>
-      <Link href="/token-unlocks" className="block text-center mt-2 text-[10px] text-hub-yellow hover:underline">
-        View all unlocks
-      </Link>
+      <div className="flex items-center justify-between mt-2">
+        <Link href="/token-unlocks" className="text-[10px] text-hub-yellow hover:underline">
+          View all unlocks
+        </Link>
+        <div className="flex items-center gap-1.5">
+          {priceSource === 'static' && (
+            <span className="text-[9px] px-1 py-px rounded bg-yellow-500/15 text-yellow-500/80" title="Live prices unavailable — values based on cached prices">
+              est.
+            </span>
+          )}
+          <UpdatedAgo ts={updatedAt} />
+        </div>
+      </div>
     </div>
   );
 }

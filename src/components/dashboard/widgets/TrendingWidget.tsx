@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
+import UpdatedAgo from '../UpdatedAgo';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
 interface TrendingCoin {
@@ -13,6 +14,7 @@ interface TrendingCoin {
 
 export default function TrendingWidget({ wide }: { wide?: boolean }) {
   const [trending, setTrending] = useState<TrendingCoin[] | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -22,7 +24,10 @@ export default function TrendingWidget({ wide }: { wide?: boolean }) {
         if (!res.ok) return;
         const json = await res.json();
         const items = json?.meta?.trending || [];
-        if (mounted) setTrending(items.slice(0, wide ? 8 : 5));
+        if (mounted) {
+          setTrending(items.slice(0, wide ? 8 : 5));
+          setUpdatedAt(Date.now());
+        }
       } catch (err) { console.error('[Trending] fetch error:', err); }
     };
     load();
@@ -38,8 +43,8 @@ export default function TrendingWidget({ wide }: { wide?: boolean }) {
         <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-2">
           <Zap className="w-4 h-4 text-yellow-400/60" />
         </div>
-        <p className="text-xs text-neutral-500">Nothing trending yet</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">Trending coins appear when news mentions spike</p>
+        <p className="text-xs text-neutral-500">No trending coins</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Based on recent news mentions</p>
       </div>
     );
   }
@@ -60,9 +65,12 @@ export default function TrendingWidget({ wide }: { wide?: boolean }) {
           </div>
         ))}
       </div>
-      <Link href="/news" className="block text-center mt-2 text-[10px] text-hub-yellow hover:underline">
-        View news
-      </Link>
+      <div className="flex items-center justify-between mt-2">
+        <Link href="/news" className="text-[10px] text-hub-yellow hover:underline">
+          View news
+        </Link>
+        <UpdatedAgo ts={updatedAt} />
+      </div>
     </div>
   );
 }
