@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import WidgetSkeleton from '../WidgetSkeleton';
+import AnimatedValue from '../AnimatedValue';
 
 const COLORS: Record<string, string> = {
   'Extreme Fear': 'text-red-400',
@@ -36,9 +38,7 @@ export default function FearGreedWidget() {
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
-  if (value === null) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (value === null) return <WidgetSkeleton variant="stat" />;
 
   const label = getLabel(value);
   const color = COLORS[label] || 'text-neutral-400';
@@ -46,7 +46,7 @@ export default function FearGreedWidget() {
   return (
     <div>
       <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold text-white">{value}</span>
+        <AnimatedValue value={value} format={(v) => String(v)} className="text-3xl font-bold text-white" />
         <span className={`text-xs font-medium ${color}`}>{label}</span>
       </div>
       {/* Simple bar */}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
+import WidgetSkeleton from '../WidgetSkeleton';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
 interface TrendingCoin {
@@ -29,15 +30,16 @@ export default function TrendingWidget({ wide }: { wide?: boolean }) {
     return () => { mounted = false; clearInterval(iv); };
   }, [wide]);
 
-  if (trending === null) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (trending === null) return <WidgetSkeleton variant="list" rows={5} />;
 
   if (trending.length === 0) {
     return (
       <div className="text-center py-4">
-        <Zap className="w-5 h-5 text-neutral-700 mx-auto mb-1" />
-        <p className="text-xs text-neutral-600">No trending data</p>
+        <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-2">
+          <Zap className="w-4 h-4 text-yellow-400/60" />
+        </div>
+        <p className="text-xs text-neutral-500">Nothing trending yet</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Trending coins appear when news mentions spike</p>
       </div>
     );
   }
@@ -46,7 +48,7 @@ export default function TrendingWidget({ wide }: { wide?: boolean }) {
     <div>
       <div className="space-y-1">
         {trending.map((coin, i) => (
-          <div key={coin.symbol} className="flex items-center justify-between py-0.5">
+          <div key={coin.symbol} className="flex items-center justify-between py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-neutral-600 w-4 text-right tabular-nums">{i + 1}</span>
               <TokenIconSimple symbol={coin.symbol} size={14} />

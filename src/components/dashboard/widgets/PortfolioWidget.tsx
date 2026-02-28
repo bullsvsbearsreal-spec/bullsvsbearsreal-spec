@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { useUserData } from '../useUserData';
+import WidgetSkeleton from '../WidgetSkeleton';
 
 interface HoldingRow {
   symbol: string;
@@ -66,16 +67,17 @@ export default function PortfolioWidget({ wide }: { wide?: boolean }) {
     return () => { mountedRef.current = false; clearInterval(iv); };
   }, [holdingsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (userData === null) {
-    return <div className="h-12 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (userData === null) return <WidgetSkeleton variant="list" rows={4} />;
 
   if (holdings.length === 0) {
     return (
-      <div className="text-center py-2">
-        <Briefcase className="w-5 h-5 text-neutral-700 mx-auto mb-1" />
-        <p className="text-xs text-neutral-600">No holdings yet</p>
-        <Link href="/portfolio" className="text-[10px] text-hub-yellow hover:underline">Add holdings</Link>
+      <div className="text-center py-3">
+        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-2">
+          <Briefcase className="w-4 h-4 text-purple-400/60" />
+        </div>
+        <p className="text-xs text-neutral-500 mb-0.5">Track your portfolio</p>
+        <p className="text-[10px] text-neutral-600 mb-2">Add your holdings to see total value and P&L</p>
+        <Link href="/portfolio" className="text-[10px] text-hub-yellow hover:underline font-medium">+ Add holdings</Link>
       </div>
     );
   }
@@ -102,7 +104,7 @@ export default function PortfolioWidget({ wide }: { wide?: boolean }) {
         {visible.map((h) => {
           const up = h.pnlPercent >= 0;
           return (
-            <div key={h.symbol} className="flex items-center justify-between py-0.5">
+            <div key={h.symbol} className="flex items-center justify-between py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
               <div className="flex items-center gap-1.5 min-w-0">
                 <TokenIconSimple symbol={h.symbol} size={14} />
                 <span className="text-xs text-neutral-300 truncate">{h.symbol}</span>

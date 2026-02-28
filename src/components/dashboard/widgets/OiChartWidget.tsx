@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import WidgetSkeleton from '../WidgetSkeleton';
 
 interface OiEntry {
   symbol: string;
@@ -36,12 +37,15 @@ export default function OiChartWidget() {
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
-  if (entries === null) {
-    return <div className="h-24 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (entries === null) return <WidgetSkeleton variant="list" rows={6} />;
 
   if (entries.length === 0) {
-    return <p className="text-xs text-neutral-600 text-center py-4">No OI data</p>;
+    return (
+      <div className="text-center py-4">
+        <p className="text-xs text-neutral-500">Open interest data unavailable</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Aggregated OI will appear when exchanges respond</p>
+      </div>
+    );
   }
 
   const maxOi = Math.max(...entries.map((e) => e.openInterest || 0));
@@ -52,7 +56,7 @@ export default function OiChartWidget() {
         {entries.map((e, i) => {
           const pct = maxOi > 0 ? ((e.openInterest || 0) / maxOi) * 100 : 0;
           return (
-            <div key={e.symbol + i} className="flex items-center gap-2">
+            <div key={e.symbol + i} className="flex items-center gap-2 py-0.5 px-1 -mx-1 rounded-md hover:bg-white/[0.04] transition-colors">
               <div className="flex items-center gap-1 w-16 flex-shrink-0">
                 <TokenIconSimple symbol={e.symbol?.replace(/USDT$/, '')} size={12} />
                 <span className="text-[10px] text-neutral-400 truncate">{e.symbol?.replace(/USDT$/, '')}</span>

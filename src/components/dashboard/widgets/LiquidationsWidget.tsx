@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Flame } from 'lucide-react';
+import WidgetSkeleton from '../WidgetSkeleton';
 
 interface Liq {
   symbol: string;
@@ -42,15 +43,16 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
     return () => { mounted = false; clearInterval(iv); };
   }, [wide]);
 
-  if (liqs === null) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (liqs === null) return <WidgetSkeleton variant="list" rows={5} />;
 
   if (liqs.length === 0) {
     return (
       <div className="text-center py-4">
-        <Flame className="w-5 h-5 text-neutral-700 mx-auto mb-1" />
-        <p className="text-xs text-neutral-600">No recent liquidations</p>
+        <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-2">
+          <Flame className="w-4 h-4 text-green-400/60" />
+        </div>
+        <p className="text-xs text-neutral-500">Markets are calm</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">No BTC liquidations in the last few minutes</p>
       </div>
     );
   }
@@ -61,7 +63,7 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
         const val = l.usdValue || (l.quantity * l.price);
         const isLong = l.side?.toLowerCase() === 'buy' || l.side?.toLowerCase() === 'long';
         return (
-          <div key={i} className="flex items-center justify-between text-xs">
+          <div key={i} className="flex items-center justify-between text-xs py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
             <div className="flex items-center gap-1.5">
               <span className={`w-1.5 h-1.5 rounded-full ${isLong ? 'bg-green-400' : 'bg-red-400'}`} />
               <span className="text-neutral-300">{l.symbol?.replace(/USDT$/, '')}</span>

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import WidgetSkeleton from '../WidgetSkeleton';
+import AnimatedValue from '../AnimatedValue';
 
 interface GlobalStats {
   marketCap: number;
@@ -36,9 +38,7 @@ export default function MarketOverviewWidget() {
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
-  if (!stats) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (!stats) return <WidgetSkeleton variant="grid" />;
 
   const fmtUsd = (v: number) => {
     if (v >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'T';
@@ -53,7 +53,7 @@ export default function MarketOverviewWidget() {
     <div className="grid grid-cols-2 gap-3">
       <div>
         <p className="text-[10px] text-neutral-500 mb-0.5">Market Cap</p>
-        <p className="text-sm font-bold text-white tabular-nums">{fmtUsd(stats.marketCap)}</p>
+        <AnimatedValue value={stats.marketCap} format={fmtUsd} className="text-sm font-bold text-white tabular-nums" />
         <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${up ? 'text-green-400' : 'text-red-400'}`}>
           {up ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
           {up ? '+' : ''}{stats.change24h.toFixed(1)}%
@@ -61,7 +61,7 @@ export default function MarketOverviewWidget() {
       </div>
       <div>
         <p className="text-[10px] text-neutral-500 mb-0.5">24h Volume</p>
-        <p className="text-sm font-bold text-white tabular-nums">{fmtUsd(stats.volume24h)}</p>
+        <AnimatedValue value={stats.volume24h} format={fmtUsd} className="text-sm font-bold text-white tabular-nums" />
       </div>
       <div>
         <p className="text-[10px] text-neutral-500 mb-0.5">BTC Dom</p>

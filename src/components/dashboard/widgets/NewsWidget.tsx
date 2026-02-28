@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Newspaper } from 'lucide-react';
+import WidgetSkeleton from '../WidgetSkeleton';
 
 interface NewsItem {
   id: string;
@@ -46,15 +47,16 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
     return () => { mounted = false; clearInterval(iv); };
   }, [wide]);
 
-  if (news === null) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (news === null) return <WidgetSkeleton variant="list" rows={3} />;
 
   if (news.length === 0) {
     return (
       <div className="text-center py-4">
-        <Newspaper className="w-5 h-5 text-neutral-700 mx-auto mb-1" />
-        <p className="text-xs text-neutral-600">No news available</p>
+        <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-2">
+          <Newspaper className="w-4 h-4 text-orange-400/60" />
+        </div>
+        <p className="text-xs text-neutral-500">No headlines right now</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">News feed will refresh automatically</p>
       </div>
     );
   }
@@ -68,7 +70,7 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block group"
+            className="block group py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors"
           >
             <div className="flex items-start gap-1.5">
               {item.sentiment && (

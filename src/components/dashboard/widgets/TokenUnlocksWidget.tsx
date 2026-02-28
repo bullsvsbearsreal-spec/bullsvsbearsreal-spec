@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Unlock } from 'lucide-react';
+import WidgetSkeleton from '../WidgetSkeleton';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
 interface UnlockItem {
@@ -50,15 +51,16 @@ export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
     return () => { mounted = false; clearInterval(iv); };
   }, [wide]);
 
-  if (unlocks === null) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (unlocks === null) return <WidgetSkeleton variant="list" rows={4} />;
 
   if (unlocks.length === 0) {
     return (
       <div className="text-center py-4">
-        <Unlock className="w-5 h-5 text-neutral-700 mx-auto mb-1" />
-        <p className="text-xs text-neutral-600">No upcoming unlocks</p>
+        <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
+          <Unlock className="w-4 h-4 text-amber-400/60" />
+        </div>
+        <p className="text-xs text-neutral-500">All clear for now</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">No token vesting unlocks scheduled soon</p>
       </div>
     );
   }
@@ -67,7 +69,7 @@ export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
     <div>
       <div className="space-y-1.5">
         {unlocks.map((u, i) => (
-          <div key={`${u.coinSymbol}-${u.unlockDate}-${i}`} className="flex items-center justify-between py-0.5">
+          <div key={`${u.coinSymbol}-${u.unlockDate}-${i}`} className="flex items-center justify-between py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
             <div className="flex items-center gap-1.5 min-w-0">
               <TokenIconSimple symbol={u.coinSymbol} size={14} />
               <span className="text-xs text-neutral-300">{u.coinSymbol}</span>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import WidgetSkeleton from '../WidgetSkeleton';
 
 interface FundingRate {
   symbol: string;
@@ -28,12 +29,15 @@ export default function FundingHeatmapWidget() {
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
-  if (rates === null) {
-    return <div className="h-24 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (rates === null) return <WidgetSkeleton variant="heatmap" />;
 
   if (rates.length === 0) {
-    return <p className="text-xs text-neutral-600 text-center py-4">No funding data</p>;
+    return (
+      <div className="text-center py-4">
+        <p className="text-xs text-neutral-500">Funding rates unavailable</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">Rates will populate at next funding interval</p>
+      </div>
+    );
   }
 
   // Mini heatmap: show as colored tiles

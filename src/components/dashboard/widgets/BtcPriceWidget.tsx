@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import WidgetSkeleton from '../WidgetSkeleton';
+import AnimatedValue from '../AnimatedValue';
 
 export default function BtcPriceWidget() {
   const [price, setPrice] = useState<number | null>(null);
@@ -27,18 +29,18 @@ export default function BtcPriceWidget() {
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
-  if (price === null) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (price === null) return <WidgetSkeleton variant="stat" />;
 
   const up = (change ?? 0) >= 0;
 
   return (
     <div>
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-white">
-          ${price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-        </span>
+        <AnimatedValue
+          value={price}
+          format={(v) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          className="text-2xl font-bold text-white"
+        />
         {change !== null && (
           <span className={`flex items-center gap-0.5 text-xs font-medium ${up ? 'text-green-400' : 'text-red-400'}`}>
             {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}

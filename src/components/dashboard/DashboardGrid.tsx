@@ -146,7 +146,7 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
       )}
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
         {layout.map((widget, index) => {
           const meta = WIDGET_CATALOG.find((m) => m.type === widget.type);
           const Component = WIDGET_COMPONENTS[widget.type];
@@ -157,6 +157,8 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
             <WidgetWrapper
               key={widget.id}
               title={meta.name}
+              icon={meta.icon}
+              widgetType={widget.type}
               index={index}
               colSpan={widget.w}
               accentColor={accent}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import WidgetSkeleton from '../WidgetSkeleton';
 
 interface Mover {
   symbol: string;
@@ -42,12 +43,10 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
     return () => { mounted = false; clearInterval(iv); };
   }, [wide]);
 
-  if (!movers) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (!movers) return <WidgetSkeleton variant="list" rows={3} />;
 
   const Row = ({ m, idx }: { m: Mover; idx: number }) => (
-    <div key={m.symbol + idx} className="flex items-center justify-between py-1">
+    <div key={m.symbol + idx} className="flex items-center justify-between py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
       <div className="flex items-center gap-1.5">
         <TokenIconSimple symbol={m.symbol} size={14} />
         <span className="text-xs text-neutral-300">{m.symbol}</span>

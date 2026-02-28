@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import WidgetSkeleton from '../WidgetSkeleton';
 
 interface LSData {
   longRatio: number;
@@ -33,9 +34,7 @@ export default function LongShortWidget() {
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
-  if (!data) {
-    return <div className="h-16 flex items-center justify-center"><div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" /></div>;
-  }
+  if (!data) return <WidgetSkeleton variant="bar" />;
 
   const longW = Math.max(data.longRatio, 5);
   const shortW = Math.max(data.shortRatio, 5);
