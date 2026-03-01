@@ -29,17 +29,17 @@ export async function GET(request: NextRequest) {
 
   const pair = `${symbol}USDT`;
 
-  // Try Binance first, then Bybit as fallback
+  // Try Binance Futures first (works from datacenter IPs where spot is blocked)
   try {
     const res = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
+      `https://fapi.binance.com/fapi/v1/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (res.ok) {
       const data = await res.json();
       return formatBinanceResponse(data, pair, interval);
     }
-  } catch { /* fall through to Bybit */ }
+  } catch { /* fall through */ }
 
   // Bybit fallback — interval format differs: 1=1m,5=5m,15=15m,60=1h,240=4h,D=1d,W=1w
   const bybitIntervalMap: Record<string, string> = {
@@ -78,6 +78,18 @@ export async function GET(request: NextRequest) {
       if (json?.code === '0' && Array.isArray(json.data) && json.data.length > 0) {
         return formatOkxResponse(json.data, pair, interval);
       }
+    }
+  } catch { /* fall through to spot */ }
+
+  // Binance Spot — last resort (often blocked from datacenter IPs)
+  try {
+    const res = await fetch(
+      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return formatBinanceResponse(data, pair, interval);
     }
   } catch { /* fall through */ }
 

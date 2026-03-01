@@ -22,18 +22,64 @@ export async function GET(request: NextRequest) {
 
   const pair = `${symbol}USDT`;
 
+  // Try Binance Futures first (works from datacenter IPs), then Bybit, then Spot
+  let trades: any[] | null = null;
+  let tradeSource = 'binance-futures';
+
+  // Source 1: Binance Futures
   try {
     const res = await fetch(
-      `https://api.binance.com/api/v3/aggTrades?symbol=${pair}&limit=${limit}`,
-      { next: { revalidate: 10 } },
+      `https://fapi.binance.com/fapi/v1/aggTrades?symbol=${pair}&limit=${limit}`,
+      { signal: AbortSignal.timeout(8000) },
     );
-
-    if (!res.ok) {
-      return NextResponse.json({ error: `Binance returned ${res.status}` }, { status: 502 });
+    if (res.ok) {
+      trades = await res.json();
     }
+  } catch { /* try next */ }
 
-    const trades: any[] = await res.json();
+  // Source 2: Bybit recent trades (no aggTrades, but recent-trade with isBuyerMaker)
+  if (!trades || !Array.isArray(trades) || trades.length === 0) {
+    try {
+      const res = await fetch(
+        `https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${pair}&limit=${Math.min(limit, 1000)}`,
+        { signal: AbortSignal.timeout(8000) },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const list = json?.result?.list;
+        if (Array.isArray(list) && list.length > 0) {
+          // Bybit format: { execId, symbol, price, size, side, time, isBlockTrade }
+          trades = list.map((t: any) => ({
+            T: parseInt(t.time, 10),      // timestamp
+            p: t.price,                    // price
+            q: t.size,                     // quantity
+            m: t.side === 'Sell',          // m=true means sell (buyer is maker)
+          }));
+          tradeSource = 'bybit';
+        }
+      }
+    } catch { /* try next */ }
+  }
 
+  // Source 3: Binance Spot (often blocked from datacenter IPs)
+  if (!trades || !Array.isArray(trades) || trades.length === 0) {
+    try {
+      const res = await fetch(
+        `https://api.binance.com/api/v3/aggTrades?symbol=${pair}&limit=${limit}`,
+        { signal: AbortSignal.timeout(6000) },
+      );
+      if (res.ok) {
+        trades = await res.json();
+        tradeSource = 'binance-spot';
+      }
+    } catch { /* all failed */ }
+  }
+
+  if (!trades || !Array.isArray(trades) || trades.length === 0) {
+    return NextResponse.json({ error: 'All trade sources failed' }, { status: 502 });
+  }
+
+  try {
     // Process trades: m = true means the buyer is the maker (sell aggressor)
     // m = false means the seller is the maker (buy aggressor)
     const processed = trades.map((t: any) => ({
@@ -100,6 +146,7 @@ export async function GET(request: NextRequest) {
       totalSellVol,
       netDelta: totalBuyVol - totalSellVol,
       buckets,
+      source: tradeSource,
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
     });
