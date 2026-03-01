@@ -49,6 +49,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/brand', priority: 0.3, changeFrequency: 'monthly' as const },
     { path: '/team', priority: 0.3, changeFrequency: 'monthly' as const },
     { path: '/terms', priority: 0.2, changeFrequency: 'monthly' as const },
+    { path: '/privacy', priority: 0.2, changeFrequency: 'monthly' as const },
+    { path: '/execution-costs', priority: 0.6, changeFrequency: 'hourly' as const },
   ];
 
   return pages.map(({ path, priority, changeFrequency }) => ({

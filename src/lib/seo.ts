@@ -201,6 +201,9 @@ export function pageMetadata(path: string): Metadata {
   return {
     title: meta.title,
     description: meta.description,
+    alternates: {
+      canonical: `https://info-hub.io${path}`,
+    },
     openGraph: {
       title: `${meta.title} | InfoHub`,
       description: meta.ogDesc || meta.description,
