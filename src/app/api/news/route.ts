@@ -53,16 +53,26 @@ interface CPPost {
 
 /* ─── RSS feed config ────────────────────────────────────────── */
 
-const RSS_FEEDS: { url: string; name: string; type: SourceType }[] = [
-  // News outlets
+const RSS_FEEDS: { url: string; name: string; type: SourceType; format?: 'atom' }[] = [
+  // Major news outlets
   { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', name: 'CoinDesk', type: 'news' },
   { url: 'https://www.theblock.co/rss.xml', name: 'The Block', type: 'news' },
   { url: 'https://decrypt.co/feed', name: 'Decrypt', type: 'news' },
   { url: 'https://cointelegraph.com/rss', name: 'Cointelegraph', type: 'news' },
   { url: 'https://www.dlnews.com/arc/outboundfeeds/rss/', name: 'DL News', type: 'news' },
-  // Exchange blogs / announcements
+  { url: 'https://blockworks.co/feed', name: 'Blockworks', type: 'news', format: 'atom' },
+  { url: 'https://bitcoinmagazine.com/.rss/full/', name: 'Bitcoin Magazine', type: 'news' },
+  { url: 'https://cryptoslate.com/feed/', name: 'CryptoSlate', type: 'news' },
+  { url: 'https://beincrypto.com/feed/', name: 'BeInCrypto', type: 'news' },
+  { url: 'https://news.bitcoin.com/feed/', name: 'Bitcoin.com', type: 'news' },
+  { url: 'https://u.today/rss', name: 'U.Today', type: 'news' },
+  { url: 'https://bitcoinist.com/feed/', name: 'Bitcoinist', type: 'news' },
+  { url: 'https://cryptopotato.com/feed/', name: 'CryptoPotato', type: 'news' },
+  { url: 'https://ambcrypto.com/feed/', name: 'AMBCrypto', type: 'news' },
+  { url: 'https://www.newsbtc.com/feed/', name: 'NewsBTC', type: 'news' },
+  { url: 'https://cryptobriefing.com/feed/', name: 'Crypto Briefing', type: 'news' },
+  // Exchange blogs
   { url: 'https://blog.kraken.com/feed/', name: 'Kraken', type: 'exchange' },
-  { url: 'https://blog.coinbase.com/feed', name: 'Coinbase Blog', type: 'exchange' },
   // Blogs / analysis
   { url: 'https://blog.chainalysis.com/feed/', name: 'Chainalysis', type: 'blog' },
   { url: 'https://www.thedefiant.io/feed', name: 'The Defiant', type: 'blog' },
@@ -154,10 +164,17 @@ async function fetchCryptoPanic(filter?: string, currency?: string): Promise<Uni
 
 /* ─── Fetch RSS feeds ────────────────────────────────────────── */
 
-/** Lightweight RSS XML parser — no dependencies */
+/** Lightweight RSS/Atom XML parser — no dependencies */
+function parseFeedItems(xml: string, feedName: string, feedType: SourceType): UnifiedNewsArticle[] {
+  // Auto-detect: Atom uses <entry>, RSS uses <item>
+  const isAtom = /<feed[\s>]/i.test(xml) && /<entry[\s>]/i.test(xml);
+  return isAtom
+    ? parseAtomEntries(xml, feedName, feedType)
+    : parseRSSItems(xml, feedName, feedType);
+}
+
 function parseRSSItems(xml: string, feedName: string, feedType: SourceType): UnifiedNewsArticle[] {
   const items: UnifiedNewsArticle[] = [];
-  // Match <item>...</item> blocks
   const itemRegex = /<item[\s>]([\s\S]*?)<\/item>/gi;
   let match: RegExpExecArray | null;
 
@@ -165,8 +182,8 @@ function parseRSSItems(xml: string, feedName: string, feedType: SourceType): Uni
     const block = match[1];
     const title = extractTag(block, 'title');
     const link = extractTag(block, 'link') || extractAttr(block, 'link', 'href');
-    const pubDate = extractTag(block, 'pubDate');
-    const description = extractTag(block, 'description');
+    const pubDate = extractTag(block, 'pubDate') || extractTag(block, 'dc:date');
+    const description = extractTag(block, 'description') || extractTag(block, 'content:encoded');
     const mediaUrl = extractAttr(block, 'media:content', 'url')
       || extractAttr(block, 'media:thumbnail', 'url')
       || extractAttr(block, 'enclosure', 'url');
@@ -174,7 +191,6 @@ function parseRSSItems(xml: string, feedName: string, feedType: SourceType): Uni
     if (!title || !link) continue;
 
     const publishedAt = pubDate ? Math.floor(new Date(pubDate).getTime() / 1000) : Math.floor(Date.now() / 1000);
-    // Skip articles with bad dates (future or >30 days old from parse errors)
     if (isNaN(publishedAt) || publishedAt > Date.now() / 1000 + 3600) continue;
 
     items.push({
@@ -183,6 +199,41 @@ function parseRSSItems(xml: string, feedName: string, feedType: SourceType): Uni
       body: description ? decodeHTMLEntities(stripHTML(description)).substring(0, 300) : undefined,
       url: link,
       imageUrl: mediaUrl || undefined,
+      source: feedName,
+      sourceType: feedType,
+      publishedAt,
+      categories: [],
+      currencies: extractCurrenciesFromTitle(title),
+      origin: 'rss' as const,
+    });
+  }
+
+  return items;
+}
+
+/** Parse Atom <entry> blocks (used by Blockworks, etc.) */
+function parseAtomEntries(xml: string, feedName: string, feedType: SourceType): UnifiedNewsArticle[] {
+  const items: UnifiedNewsArticle[] = [];
+  const entryRegex = /<entry[\s>]([\s\S]*?)<\/entry>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = entryRegex.exec(xml)) !== null) {
+    const block = match[1];
+    const title = extractTag(block, 'title');
+    const link = extractAttr(block, 'link', 'href');
+    const published = extractTag(block, 'published') || extractTag(block, 'updated');
+    const summary = extractTag(block, 'summary') || extractTag(block, 'content');
+
+    if (!title || !link) continue;
+
+    const publishedAt = published ? Math.floor(new Date(published).getTime() / 1000) : Math.floor(Date.now() / 1000);
+    if (isNaN(publishedAt) || publishedAt > Date.now() / 1000 + 3600) continue;
+
+    items.push({
+      id: `rss-${feedName.toLowerCase().replace(/\s/g, '')}-${hashTitle(title)}`,
+      title: decodeHTMLEntities(title),
+      body: summary ? decodeHTMLEntities(stripHTML(summary)).substring(0, 300) : undefined,
+      url: link,
       source: feedName,
       sourceType: feedType,
       publishedAt,
@@ -255,7 +306,7 @@ async function fetchRSSFeeds(): Promise<UnifiedNewsArticle[]> {
         });
         if (!res.ok) return [];
         const xml = await res.text();
-        return parseRSSItems(xml, feed.name, feed.type);
+        return parseFeedItems(xml, feed.name, feed.type);
       } catch (err) {
         console.error(`RSS fetch error (${feed.name}):`, err);
         return [];
