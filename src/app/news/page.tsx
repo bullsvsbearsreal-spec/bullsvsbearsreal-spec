@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp } from 'lucide-react';
+import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp, LayoutGrid, List, Calendar, AlertTriangle } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────── */
+
+type SourceType = 'news' | 'exchange' | 'blog' | 'aggregator';
 
 interface NewsArticle {
   id: string;
@@ -14,12 +16,20 @@ interface NewsArticle {
   url: string;
   imageUrl?: string;
   source: string;
+  sourceType: SourceType;
   publishedAt: number;
   categories: string[];
   currencies: string[];
   sentiment?: 'bullish' | 'bearish' | 'neutral';
   votes?: { positive: number; negative: number };
   origin: 'cryptocompare' | 'cryptopanic' | 'rss';
+}
+
+interface MacroEvent {
+  title: string;
+  date: string;
+  time?: string;
+  impact: 'high' | 'medium' | 'low';
 }
 
 interface TrendingCoin {
@@ -37,11 +47,13 @@ interface ApiResponse {
     trending: TrendingCoin[];
     hasCryptoPanic: boolean;
     sources?: string[];
+    macroEvents?: MacroEvent[];
   };
 }
 
 type FilterType = 'all' | 'hot' | 'rising' | 'bullish' | 'bearish';
 type TimeRange = 'all' | '1h' | '24h' | '7d' | '30d';
+type ViewMode = 'cards' | 'feed';
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 
@@ -78,6 +90,9 @@ export default function NewsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [hasCryptoPanic, setHasCryptoPanic] = useState(false);
   const [sources, setSources] = useState<string[]>([]);
+  const [sourceType, setSourceType] = useState<SourceType | 'all'>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [macroEvents, setMacroEvents] = useState<MacroEvent[]>([]);
   const [newCount, setNewCount] = useState(0);
   const latestIdRef = useRef<string>('');
 
@@ -87,21 +102,22 @@ export default function NewsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const buildParams = useCallback((pg: number, f: FilterType, tr: TimeRange, cur: string, q: string) => {
+  const buildParams = useCallback((pg: number, f: FilterType, tr: TimeRange, cur: string, q: string, st: SourceType | 'all' = 'all') => {
     const params = new URLSearchParams({ page: String(pg) });
     if (f !== 'all') params.set('filter', f);
     if (tr !== 'all') params.set('timeRange', tr);
     if (cur) params.set('currency', cur);
     if (q) params.set('search', q);
+    if (st !== 'all') params.set('sourceType', st);
     return params;
   }, []);
 
-  const fetchNews = useCallback(async (pg: number, f: FilterType, tr: TimeRange, cur: string, q: string, isRefresh = false) => {
+  const fetchNews = useCallback(async (pg: number, f: FilterType, tr: TimeRange, cur: string, q: string, st: SourceType | 'all' = 'all', isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const params = buildParams(pg, f, tr, cur, q);
+      const params = buildParams(pg, f, tr, cur, q, st);
       const res = await fetch(`/api/news?${params}`);
       if (!res.ok) throw new Error('Failed');
       const data: ApiResponse = await res.json();
@@ -111,6 +127,7 @@ export default function NewsPage() {
       setTotal(data.meta.total);
       setHasCryptoPanic(data.meta.hasCryptoPanic);
       if (data.meta.sources) setSources(data.meta.sources);
+      if (data.meta.macroEvents) setMacroEvents(data.meta.macroEvents);
       // Track latest article for auto-refresh
       if (data.articles.length > 0) {
         latestIdRef.current = data.articles[0].id;
@@ -124,21 +141,21 @@ export default function NewsPage() {
     }
   }, [buildParams]);
 
-  // Fetch on filter/page/search/time changes
+  // Fetch on filter/page/search/time/sourceType changes
   useEffect(() => {
-    fetchNews(page, filter, timeRange, currency, debouncedSearch);
-  }, [page, filter, timeRange, currency, debouncedSearch, fetchNews]);
+    fetchNews(page, filter, timeRange, currency, debouncedSearch, sourceType);
+  }, [page, filter, timeRange, currency, debouncedSearch, sourceType, fetchNews]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [filter, timeRange, currency, debouncedSearch]);
+  }, [filter, timeRange, currency, debouncedSearch, sourceType]);
 
   // Background polling for new articles (every 2 min)
   useEffect(() => {
     const poll = async () => {
       try {
-        const params = buildParams(1, filter, timeRange, currency, debouncedSearch);
+        const params = buildParams(1, filter, timeRange, currency, debouncedSearch, sourceType);
         const res = await fetch(`/api/news?${params}`);
         if (!res.ok) return;
         const data: ApiResponse = await res.json();
@@ -150,11 +167,11 @@ export default function NewsPage() {
     };
     const iv = setInterval(poll, 120_000);
     return () => clearInterval(iv);
-  }, [filter, timeRange, currency, debouncedSearch, buildParams]);
+  }, [filter, timeRange, currency, debouncedSearch, sourceType, buildParams]);
 
   const handleRefresh = () => {
     setNewCount(0);
-    fetchNews(page, filter, timeRange, currency, debouncedSearch, true);
+    fetchNews(page, filter, timeRange, currency, debouncedSearch, sourceType, true);
   };
 
   const handleCurrencyClick = (sym: string) => {
@@ -175,14 +192,34 @@ export default function NewsPage() {
               {hasCryptoPanic && <span className="text-emerald-400 ml-2">+ sentiment</span>}
             </p>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-md text-neutral-400 text-xs transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center bg-white/[0.04] rounded-md overflow-hidden border border-white/[0.06]">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-1.5 transition-colors ${viewMode === 'cards' ? 'bg-white/[0.08] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+                title="Card view"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('feed')}
+                className={`p-1.5 transition-colors ${viewMode === 'feed' ? 'bg-white/[0.08] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+                title="Feed view"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-md text-neutral-400 text-xs transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* New articles banner */}
@@ -266,6 +303,31 @@ export default function NewsPage() {
             ))}
           </div>
 
+          {/* Separator */}
+          <div className="w-px h-5 bg-white/[0.08] hidden sm:block" />
+
+          {/* Source type pills */}
+          <div className="flex items-center gap-1">
+            {([
+              { key: 'all', label: 'All sources' },
+              { key: 'news', label: 'News' },
+              { key: 'exchange', label: 'Exchanges' },
+              { key: 'blog', label: 'Blogs' },
+            ] as { key: SourceType | 'all'; label: string }[]).map(s => (
+              <button
+                key={s.key}
+                onClick={() => setSourceType(s.key)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  sourceType === s.key
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-neutral-500 hover:text-neutral-300 bg-white/[0.02] hover:bg-white/[0.06]'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
           {/* Active currency filter */}
           {currency && (
             <button
@@ -329,17 +391,27 @@ export default function NewsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Featured article (first one) */}
-                {articles.length > 0 && (
-                  <FeaturedArticle article={articles[0]} onCurrencyClick={handleCurrencyClick} />
+                {viewMode === 'cards' ? (
+                  <>
+                    {/* Featured article (first one) */}
+                    {articles.length > 0 && (
+                      <FeaturedArticle article={articles[0]} onCurrencyClick={handleCurrencyClick} />
+                    )}
+                    {/* Article grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {articles.slice(1).map(article => (
+                        <NewsCard key={article.id} article={article} onCurrencyClick={handleCurrencyClick} />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  /* Feed view — compact list like Tree of Alpha */
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden divide-y divide-white/[0.04]">
+                    {articles.map(article => (
+                      <FeedItem key={article.id} article={article} onCurrencyClick={handleCurrencyClick} />
+                    ))}
+                  </div>
                 )}
-
-                {/* Article grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {articles.slice(1).map(article => (
-                    <NewsCard key={article.id} article={article} onCurrencyClick={handleCurrencyClick} />
-                  ))}
-                </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
@@ -438,6 +510,39 @@ export default function NewsPage() {
                 </div>
               )}
             </div>
+
+            {/* Macro Events Calendar */}
+            {macroEvents.length > 0 && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                <div className="p-4 border-b border-white/[0.06] flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-400" />
+                  <h3 className="text-white font-semibold text-sm">Macro Calendar</h3>
+                </div>
+                <div className="divide-y divide-white/[0.04]">
+                  {macroEvents.map((event, i) => {
+                    const eventDate = new Date(event.date);
+                    const isToday = new Date().toDateString() === eventDate.toDateString();
+                    const dayLabel = isToday ? 'Today' : eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    return (
+                      <div key={i} className="px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                        <div className="flex items-start gap-2">
+                          {event.impact === 'high' && (
+                            <AlertTriangle className="w-3 h-3 text-red-400 mt-0.5 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs text-white font-medium truncate">{event.title}</p>
+                            <p className="text-[10px] text-neutral-500 mt-0.5">
+                              <span className={isToday ? 'text-hub-yellow' : ''}>{dayLabel}</span>
+                              {event.time && <span className="ml-1.5">{event.time}</span>}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Data sources */}
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
@@ -629,5 +734,52 @@ function SentimentDot({ sentiment }: { sentiment: 'bullish' | 'bearish' | 'neutr
   const c = SENTIMENT_COLORS[sentiment];
   return (
     <span className={`w-2 h-2 rounded-full ${c.dot}`} title={sentiment} />
+  );
+}
+
+/* ─── Feed Item (compact view) ───────────────────────────────── */
+
+const SOURCE_TYPE_COLORS: Record<string, string> = {
+  news: 'text-blue-400',
+  exchange: 'text-orange-400',
+  blog: 'text-purple-400',
+  aggregator: 'text-neutral-400',
+};
+
+function FeedItem({ article, onCurrencyClick }: { article: NewsArticle; onCurrencyClick: (sym: string) => void }) {
+  return (
+    <a
+      href={article.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors"
+    >
+      {/* Source badge */}
+      <span className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 w-24 flex-shrink-0 truncate ${SOURCE_TYPE_COLORS[article.sourceType] || 'text-neutral-500'}`}>
+        {article.source}
+      </span>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <h3 className="text-sm text-white group-hover:text-hub-yellow transition-colors line-clamp-1">
+          {article.title}
+        </h3>
+      </div>
+
+      {/* Right side: coins + time */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {article.currencies.slice(0, 2).map(c => (
+          <button
+            key={c}
+            onClick={(e) => { e.preventDefault(); onCurrencyClick(c); }}
+            className="px-1.5 py-0.5 rounded text-[10px] bg-hub-yellow/10 text-hub-yellow hover:bg-hub-yellow/20 transition-colors"
+          >
+            {c}
+          </button>
+        ))}
+        {article.sentiment && <SentimentDot sentiment={article.sentiment} />}
+        <span className="text-[10px] text-neutral-600 w-12 text-right">{formatTimeAgo(article.publishedAt)}</span>
+      </div>
+    </a>
   );
 }

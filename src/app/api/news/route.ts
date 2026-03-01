@@ -21,6 +21,8 @@ interface CCArticle {
 
 /* ─── Unified News Article ───────────────────────────────────── */
 
+export type SourceType = 'news' | 'exchange' | 'blog' | 'aggregator';
+
 export interface UnifiedNewsArticle {
   id: string;
   title: string;
@@ -28,6 +30,7 @@ export interface UnifiedNewsArticle {
   url: string;
   imageUrl?: string;
   source: string;
+  sourceType: SourceType;
   publishedAt: number;
   categories: string[];
   currencies: string[];
@@ -50,12 +53,19 @@ interface CPPost {
 
 /* ─── RSS feed config ────────────────────────────────────────── */
 
-const RSS_FEEDS: { url: string; name: string }[] = [
-  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', name: 'CoinDesk' },
-  { url: 'https://www.theblock.co/rss.xml', name: 'The Block' },
-  { url: 'https://decrypt.co/feed', name: 'Decrypt' },
-  { url: 'https://cointelegraph.com/rss', name: 'Cointelegraph' },
-  { url: 'https://www.dlnews.com/arc/outboundfeeds/rss/', name: 'DL News' },
+const RSS_FEEDS: { url: string; name: string; type: SourceType }[] = [
+  // News outlets
+  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', name: 'CoinDesk', type: 'news' },
+  { url: 'https://www.theblock.co/rss.xml', name: 'The Block', type: 'news' },
+  { url: 'https://decrypt.co/feed', name: 'Decrypt', type: 'news' },
+  { url: 'https://cointelegraph.com/rss', name: 'Cointelegraph', type: 'news' },
+  { url: 'https://www.dlnews.com/arc/outboundfeeds/rss/', name: 'DL News', type: 'news' },
+  // Exchange blogs / announcements
+  { url: 'https://blog.kraken.com/feed/', name: 'Kraken', type: 'exchange' },
+  { url: 'https://blog.coinbase.com/feed', name: 'Coinbase Blog', type: 'exchange' },
+  // Blogs / analysis
+  { url: 'https://blog.chainalysis.com/feed/', name: 'Chainalysis', type: 'blog' },
+  { url: 'https://www.thedefiant.io/feed', name: 'The Defiant', type: 'blog' },
 ];
 
 /* ─── Cache ──────────────────────────────────────────────────── */
@@ -93,6 +103,7 @@ async function fetchCryptoCompare(currency?: string): Promise<UnifiedNewsArticle
       url: a.url,
       imageUrl: a.imageurl,
       source: a.source_info?.name || a.source,
+      sourceType: 'aggregator' as SourceType,
       publishedAt: a.published_on,
       categories: a.categories ? a.categories.split('|').filter(Boolean) : [],
       currencies: extractCurrencies(a.categories, a.tags, a.title),
@@ -127,6 +138,7 @@ async function fetchCryptoPanic(filter?: string, currency?: string): Promise<Uni
       title: p.title,
       url: p.url,
       source: p.source?.title || p.source?.domain || 'CryptoPanic',
+      sourceType: 'aggregator' as SourceType,
       publishedAt: Math.floor(new Date(p.published_at).getTime() / 1000),
       categories: [],
       currencies: p.currencies?.map(c => c.code) || [],
@@ -143,7 +155,7 @@ async function fetchCryptoPanic(filter?: string, currency?: string): Promise<Uni
 /* ─── Fetch RSS feeds ────────────────────────────────────────── */
 
 /** Lightweight RSS XML parser — no dependencies */
-function parseRSSItems(xml: string, feedName: string): UnifiedNewsArticle[] {
+function parseRSSItems(xml: string, feedName: string, feedType: SourceType): UnifiedNewsArticle[] {
   const items: UnifiedNewsArticle[] = [];
   // Match <item>...</item> blocks
   const itemRegex = /<item[\s>]([\s\S]*?)<\/item>/gi;
@@ -172,6 +184,7 @@ function parseRSSItems(xml: string, feedName: string): UnifiedNewsArticle[] {
       url: link,
       imageUrl: mediaUrl || undefined,
       source: feedName,
+      sourceType: feedType,
       publishedAt,
       categories: [],
       currencies: extractCurrenciesFromTitle(title),
@@ -242,7 +255,7 @@ async function fetchRSSFeeds(): Promise<UnifiedNewsArticle[]> {
         });
         if (!res.ok) return [];
         const xml = await res.text();
-        return parseRSSItems(xml, feed.name);
+        return parseRSSItems(xml, feed.name, feed.type);
       } catch (err) {
         console.error(`RSS fetch error (${feed.name}):`, err);
         return [];
@@ -332,6 +345,45 @@ const TIME_RANGES: Record<string, number> = {
   '30d': 2592000,
 };
 
+/* ─── Macro Events ───────────────────────────────────────────── */
+
+interface MacroEvent {
+  title: string;
+  date: string; // ISO date
+  time?: string; // e.g. "13:30 UTC"
+  impact: 'high' | 'medium' | 'low';
+}
+
+async function fetchMacroEvents(): Promise<MacroEvent[]> {
+  const cached = getCached<MacroEvent[]>('macro-events');
+  if (cached) return cached;
+
+  try {
+    const res = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json', {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    // Filter to high-impact events only
+    const events: MacroEvent[] = (data as any[])
+      .filter((e: any) => e.impact === 'High' || e.impact === 'Medium')
+      .slice(0, 10)
+      .map((e: any) => ({
+        title: e.title || e.event || '',
+        date: e.date || '',
+        time: e.date ? new Date(e.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC' : undefined,
+        impact: (e.impact === 'High' ? 'high' : 'medium') as 'high' | 'medium',
+      }));
+
+    setCache('macro-events', events);
+    return events;
+  } catch (err) {
+    console.error('Macro events fetch error:', err);
+    return [];
+  }
+}
+
 /* ─── Handler ────────────────────────────────────────────────── */
 
 export async function GET(request: NextRequest) {
@@ -341,9 +393,10 @@ export async function GET(request: NextRequest) {
   const currency = searchParams.get('currency') || '';
   const search = searchParams.get('search') || '';
   const timeRange = searchParams.get('timeRange') || 'all';
+  const sourceType = searchParams.get('sourceType') || 'all'; // all | news | exchange | blog | aggregator
   const perPage = 20;
 
-  const cacheKey = `news:${filter}:${currency}:${page}:${search}:${timeRange}`;
+  const cacheKey = `news:${filter}:${currency}:${page}:${search}:${timeRange}:${sourceType}`;
   const cached = getCached<{ articles: UnifiedNewsArticle[]; total: number; trending: { symbol: string; count: number }[]; sources: string[] }>(cacheKey);
   if (cached) {
     return NextResponse.json({
@@ -362,10 +415,11 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch from all sources in parallel
-  const [ccArticles, cpArticles, rssArticles] = await Promise.all([
+  const [ccArticles, cpArticles, rssArticles, macroEvents] = await Promise.all([
     fetchCryptoCompare(currency || undefined),
     fetchCryptoPanic(filter, currency || undefined),
     fetchRSSFeeds(),
+    fetchMacroEvents(),
   ]);
 
   // Merge and deduplicate (CryptoPanic first for sentiment data priority)
@@ -378,6 +432,11 @@ export async function GET(request: NextRequest) {
   if (timeRange !== 'all' && TIME_RANGES[timeRange]) {
     const cutoff = Math.floor(Date.now() / 1000) - TIME_RANGES[timeRange];
     merged = merged.filter(a => a.publishedAt >= cutoff);
+  }
+
+  // Apply source type filter
+  if (sourceType !== 'all') {
+    merged = merged.filter(a => a.sourceType === sourceType);
   }
 
   // Apply search filter
@@ -419,7 +478,7 @@ export async function GET(request: NextRequest) {
   }
   const sources = Array.from(sourceSet);
 
-  const result = { articles, total, trending, sources };
+  const result = { articles, total, trending, sources, macroEvents };
   setCache(cacheKey, result);
 
   return NextResponse.json({
@@ -432,6 +491,7 @@ export async function GET(request: NextRequest) {
       trending,
       hasCryptoPanic: cpArticles.length > 0,
       sources,
+      macroEvents,
     },
   });
 }

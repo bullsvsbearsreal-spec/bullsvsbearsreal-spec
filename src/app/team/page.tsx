@@ -19,7 +19,7 @@ const teamMembers: TeamMember[] = [
     name: '0x.0celot',
     role: 'Founder',
     image: '/team/ocelot.jpg',
-    bio: 'Dev, not a trader. Built InfoHub solo because good perp data shouldn\u2019t cost $200/month.',
+    bio: 'Dev, not a trader. Built InfoHub solo because good perp data shouldn\u2019t cost $200/month. Ships daily, usually at weird hours.',
     stats: [],
     socials: { twitter: 'https://x.com/ocelotIH' },
     ringColor: 'from-hub-yellow via-hub-orange to-hub-yellow-dark',
@@ -29,7 +29,7 @@ const teamMembers: TeamMember[] = [
     name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
-    bio: '15 years trading derivatives, TradFi to on-chain. $1B+ annual volume across Hyperliquid, dYdX, and Drift.',
+    bio: 'Runs size across Hyperliquid, dYdX, and Drift. 15 years in derivatives, TradFi to on-chain. Pressure-tests every feature against real trades.',
     stats: [
       { label: 'Annual Volume', value: '$1B+' },
       { label: 'In Markets', value: '15+ yrs' },
