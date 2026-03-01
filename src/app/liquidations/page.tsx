@@ -273,15 +273,18 @@ export default function LiquidationsPage() {
         {liquidations.length > 0 && (
           <div className="mb-4 overflow-hidden rounded-xl bg-hub-darker border border-white/[0.06]">
             <div className="flex animate-scroll-x">
-              {[...liquidations].sort((a, b) => b.value - a.value).slice(0, DISPLAY.TICKER_MAX_ITEMS).map((liq, i) => (
-                <div key={liq.id} className="flex items-center gap-2 px-4 py-2 whitespace-nowrap flex-shrink-0">
-                  <span className={`w-1.5 h-1.5 rounded-full ${liq.side === 'long' ? 'bg-red-500' : 'bg-green-500'}`} />
-                  <span className="text-white text-xs font-medium">{liq.symbol}</span>
-                  <span className={`text-xs font-mono ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>{formatLiqValue(liq.value)}</span>
-                  <span className="text-neutral-600 text-[10px]">{liq.exchange}</span>
-                  {i < DISPLAY.TICKER_MAX_ITEMS - 1 && <span className="text-neutral-700 mx-1">|</span>}
-                </div>
-              ))}
+              {/* Duplicate content for seamless infinite scroll */}
+              {[0, 1].map((copy) =>
+                [...liquidations].sort((a, b) => b.value - a.value).slice(0, DISPLAY.TICKER_MAX_ITEMS).map((liq, i) => (
+                  <div key={`${copy}-${liq.id}`} className="flex items-center gap-2 px-4 py-2 whitespace-nowrap flex-shrink-0">
+                    <span className={`w-1.5 h-1.5 rounded-full ${liq.side === 'long' ? 'bg-red-500' : 'bg-green-500'}`} />
+                    <span className="text-white text-xs font-medium">{liq.symbol}</span>
+                    <span className={`text-xs font-mono ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>{formatLiqValue(liq.value)}</span>
+                    <span className="text-neutral-600 text-[10px]">{liq.exchange}</span>
+                    {i < DISPLAY.TICKER_MAX_ITEMS - 1 && <span className="text-neutral-700 mx-1">|</span>}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

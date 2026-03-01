@@ -6,8 +6,9 @@ import Footer from '@/components/Footer';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import UpdatedAgo from '@/components/UpdatedAgo';
 import { RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Search, Info, Layers, BarChart3 } from 'lucide-react';
-import { formatPrice } from '@/lib/utils/format';
+import { formatPrice, formatFundingRate } from '@/lib/utils/format';
 import { useApiData } from '@/hooks/useApiData';
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
 
@@ -32,11 +33,7 @@ function formatBasis(basis: number): string {
   return basis > 0 ? '+' + basis.toFixed(4) + '%' : basis.toFixed(4) + '%';
 }
 
-function formatFundingRate(rate: number): string {
-  if (!isFinite(rate)) return '—';
-  const pct = rate * 100;
-  return pct > 0 ? '+' + pct.toFixed(4) + '%' : pct.toFixed(4) + '%';
-}
+// formatFundingRate imported from @/lib/utils/format
 
 export default function BasisPage() {
   const [sortField, setSortField] = useState<SortField>('basis');
@@ -183,11 +180,7 @@ export default function BasisPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-[10px] text-neutral-600 font-mono">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <UpdatedAgo date={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
@@ -290,17 +283,33 @@ export default function BasisPage() {
             ))}
           </div>
 
-          {/* Exchange filter */}
-          <select
-            value={exchangeFilter}
-            onChange={(e) => { setExchangeFilter(e.target.value); setCurrentPage(1); }}
-            className="px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs focus:outline-none focus:border-hub-yellow/40 appearance-none cursor-pointer"
-          >
-            <option value="all" className="bg-hub-darker">All Exchanges</option>
+          {/* Exchange filter pills */}
+          <div className="flex flex-wrap gap-1">
+            <button
+              onClick={() => { setExchangeFilter('all'); setCurrentPage(1); }}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                exchangeFilter === 'all'
+                  ? 'bg-hub-yellow text-black shadow-glow-sm'
+                  : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
+              }`}
+            >
+              All
+            </button>
             {exchanges.map(ex => (
-              <option key={ex} value={ex} className="bg-hub-darker">{ex}</option>
+              <button
+                key={ex}
+                onClick={() => { setExchangeFilter(ex); setCurrentPage(1); }}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  exchangeFilter === ex
+                    ? 'bg-hub-yellow text-black shadow-glow-sm'
+                    : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
+                }`}
+              >
+                <ExchangeLogo exchange={ex.toLowerCase()} size={14} />
+                {ex}
+              </button>
             ))}
-          </select>
+          </div>
 
           {/* Search */}
           <div className="relative flex-1 min-w-[150px] max-w-[220px]">
@@ -318,6 +327,63 @@ export default function BasisPage() {
             {filteredAndSorted.length} entr{filteredAndSorted.length !== 1 ? 'ies' : 'y'}
           </span>
         </div>
+
+        {/* Top Premiums & Discounts */}
+        {basisData.length > 0 && (() => {
+          const topPremiums = [...basisData].sort((a, b) => b.basis - a.basis).slice(0, 5);
+          const topDiscounts = [...basisData].sort((a, b) => a.basis - b.basis).slice(0, 5);
+          const maxAbs = Math.max(
+            ...topPremiums.map(e => Math.abs(e.basis)),
+            ...topDiscounts.map(e => Math.abs(e.basis)),
+            0.01,
+          );
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              {/* Premiums */}
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="w-3 h-3 text-green-400" /> Top Premiums
+                </h3>
+                <div className="space-y-1.5">
+                  {topPremiums.map(e => (
+                    <div key={`${e.symbol}-${e.exchange}`} className="flex items-center gap-2">
+                      <span className="text-[11px] text-neutral-400 w-[90px] truncate font-mono">{e.symbol}</span>
+                      <span className="text-[10px] text-neutral-600 w-[55px] truncate">{e.exchange}</span>
+                      <div className="flex-1 h-4 bg-white/[0.02] rounded-sm overflow-hidden">
+                        <div
+                          className="h-full bg-green-500/40 rounded-sm"
+                          style={{ width: `${Math.min((Math.abs(e.basis) / maxAbs) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-success font-mono font-semibold w-[65px] text-right">{formatBasis(e.basis)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Discounts */}
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <TrendingDown className="w-3 h-3 text-red-400" /> Top Discounts
+                </h3>
+                <div className="space-y-1.5">
+                  {topDiscounts.map(e => (
+                    <div key={`${e.symbol}-${e.exchange}`} className="flex items-center gap-2">
+                      <span className="text-[11px] text-neutral-400 w-[90px] truncate font-mono">{e.symbol}</span>
+                      <span className="text-[10px] text-neutral-600 w-[55px] truncate">{e.exchange}</span>
+                      <div className="flex-1 h-4 bg-white/[0.02] rounded-sm overflow-hidden flex justify-end">
+                        <div
+                          className="h-full bg-red-500/40 rounded-sm"
+                          style={{ width: `${Math.min((Math.abs(e.basis) / maxAbs) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-danger font-mono font-semibold w-[65px] text-right">{formatBasis(e.basis)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Error */}
         {error && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApiData } from '@/hooks/useApiData';
@@ -396,10 +396,9 @@ export default function CorrelationPage() {
 
               {/* Matrix rows */}
               {symbols.map((rowSym, rowIdx) => (
-                <>
+                <React.Fragment key={`row-${rowSym.symbol}`}>
                   {/* Row header */}
                   <div
-                    key={`row-${rowSym.symbol}`}
                     className="flex items-center justify-end pr-2"
                   >
                     <span
@@ -453,7 +452,7 @@ export default function CorrelationPage() {
                       </div>
                     );
                   })}
-                </>
+                </React.Fragment>
               ))}
             </div>
 

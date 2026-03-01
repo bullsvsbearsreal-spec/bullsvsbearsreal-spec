@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, Calendar, Info } from 'lucide-react';
+import UpdatedAgo from '@/components/UpdatedAgo';
+import { RefreshCw, Calendar, Info, Search } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -45,7 +46,13 @@ function formatRate(rate: number | undefined): string {
 }
 
 function formatDay(day: string): string {
-  const d = new Date(day + 'T00:00:00');
+  // API returns "Thu Feb 26" or "2025-02-26" — handle both
+  const d = new Date(day.includes('-') ? day + 'T00:00:00' : day);
+  if (isNaN(d.getTime())) {
+    // Already a short label like "Feb 26" — extract it
+    const parts = day.split(' ');
+    return parts.length >= 2 ? `${parts[parts.length - 2]} ${parts[parts.length - 1]}` : day;
+  }
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -58,7 +65,8 @@ export default function FundingHeatmapPage() {
   const [days, setDays] = useState(7);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('default');
-  const [hoveredCell, setHoveredCell] = useState<{ symbol: string; day: string; rate: number } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [hoveredCell, setHoveredCell] = useState<{ symbol: string; day: string; rate: number; x: number; y: number } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -129,10 +137,15 @@ export default function FundingHeatmapPage() {
     return latest;
   }, [rateLookup, allDays]);
 
-  // Sort symbols
+  // Filter and sort symbols
   const sortedSymbols = useMemo(() => {
     if (!data?.symbols) return [];
-    const syms = [...data.symbols];
+    let syms = [...data.symbols];
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toUpperCase();
+      syms = syms.filter(s => s.toUpperCase().includes(term));
+    }
     switch (sortMode) {
       case 'avg-desc':
         syms.sort((a, b) => (avgRates.get(b) || 0) - (avgRates.get(a) || 0));
@@ -150,7 +163,7 @@ export default function FundingHeatmapPage() {
         break;
     }
     return syms;
-  }, [data, sortMode, avgRates, latestRates]);
+  }, [data, sortMode, searchTerm, avgRates, latestRates]);
 
   // Stats
   const stats = useMemo(() => {
@@ -243,8 +256,18 @@ export default function FundingHeatmapPage() {
             </div>
           )}
 
-          {/* Sort controls */}
+          {/* Search + Sort controls */}
           <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="relative min-w-[140px] max-w-[180px]">
+              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search symbol..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40"
+              />
+            </div>
             <span className="text-xs text-neutral-500">Sort:</span>
             {([
               ['default', 'Default'],
@@ -269,8 +292,12 @@ export default function FundingHeatmapPage() {
 
           {/* Tooltip */}
           {hoveredCell && (
-            <div className="fixed z-50 pointer-events-none bg-hub-gray border border-white/[0.1] rounded-lg px-3 py-2 shadow-xl text-xs"
-              style={{ top: 'var(--tooltip-y, 0px)', left: 'var(--tooltip-x, 0px)' }}
+            <div
+              className="fixed z-50 pointer-events-none bg-hub-darker border border-white/[0.1] rounded-lg px-3 py-2 shadow-xl text-xs"
+              style={{
+                top: Math.min(hoveredCell.y, window.innerHeight - 80),
+                left: Math.min(hoveredCell.x, window.innerWidth - 160),
+              }}
             >
               <p className="font-semibold text-white">{hoveredCell.symbol}</p>
               <p className="text-neutral-400">{formatDay(hoveredCell.day)}</p>
@@ -344,9 +371,7 @@ export default function FundingHeatmapPage() {
                                 onMouseEnter={(e) => {
                                   if (rate !== undefined) {
                                     const rect = (e.target as HTMLElement).getBoundingClientRect();
-                                    document.documentElement.style.setProperty('--tooltip-x', `${rect.left}px`);
-                                    document.documentElement.style.setProperty('--tooltip-y', `${rect.bottom + 4}px`);
-                                    setHoveredCell({ symbol, day, rate });
+                                    setHoveredCell({ symbol, day, rate, x: rect.left, y: rect.bottom + 4 });
                                   }
                                 }}
                                 onMouseLeave={() => setHoveredCell(null)}
@@ -393,11 +418,7 @@ export default function FundingHeatmapPage() {
               </div>
               <span className="text-xs text-neutral-500">Positive</span>
             </div>
-            {lastUpdate && (
-              <p className="text-xs text-neutral-600">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </p>
-            )}
+            <UpdatedAgo date={lastUpdate} />
           </div>
 
           {/* Info footer */}

@@ -490,7 +490,7 @@ export default function OpenInterestPage() {
 
         {/* Legend */}
         <div className="mt-6 text-sm text-neutral-600">
-          Data refreshes automatically every 30 seconds
+          Data refreshes automatically every 60 seconds
         </div>
       </main>
       <Footer />

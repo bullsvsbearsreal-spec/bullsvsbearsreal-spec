@@ -71,6 +71,8 @@ function OIByStrikeChart({
   maxPain: number;
   height?: number;
 }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+
   if (strikes.length === 0)
     return (
       <div className="flex items-center justify-center h-[200px] text-neutral-600 text-sm">
@@ -78,6 +80,7 @@ function OIByStrikeChart({
       </div>
     );
 
+  const totalOI = strikes.reduce((sum, s) => sum + s.callOI + s.putOI, 0) || 1;
   const maxOI = Math.max(...strikes.map((s) => Math.max(s.callOI, s.putOI)), 1);
   const width = 900;
   const pad = { top: 12, bottom: 36, left: 4, right: 4 };
@@ -90,119 +93,156 @@ function OIByStrikeChart({
   const spotIdx = strikes.findIndex((s) => s.strike >= spotPrice);
   const maxPainIdx = strikes.findIndex((s) => s.strike >= maxPain);
 
+  const hoveredStrike = hovered !== null ? strikes[hovered] : null;
+  const tooltipX = hovered !== null ? pad.left + hovered * groupW + groupW / 2 : 0;
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-      {/* Grid lines */}
-      {[0.25, 0.5, 0.75].map((pct) => (
-        <line
-          key={pct}
-          x1={pad.left}
-          y1={pad.top + chartH * (1 - pct)}
-          x2={width - pad.right}
-          y2={pad.top + chartH * (1 - pct)}
-          stroke="rgba(255,255,255,0.03)"
-          strokeWidth={0.5}
-        />
-      ))}
+    <div className="relative" onMouseLeave={() => setHovered(null)}>
+      {/* Tooltip */}
+      {hoveredStrike && hovered !== null && (
+        <div
+          className="absolute z-20 pointer-events-none bg-hub-darker border border-white/10 rounded-lg px-3 py-2 shadow-xl"
+          style={{
+            left: `${(tooltipX / width) * 100}%`,
+            top: 0,
+            transform: `translateX(${hovered > strikes.length * 0.7 ? '-100%' : hovered < strikes.length * 0.3 ? '0%' : '-50%'})`,
+          }}
+        >
+          <p className="text-[11px] font-bold text-white font-mono mb-1">
+            Strike ${hoveredStrike.strike.toLocaleString()}
+          </p>
+          <div className="flex items-center gap-1.5 text-[10px]">
+            <span className="w-2 h-2 rounded-sm bg-green-500/60" />
+            <span className="text-green-400">Call OI:</span>
+            <span className="text-white font-mono">${formatCompact(hoveredStrike.callOI)}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px]">
+            <span className="w-2 h-2 rounded-sm bg-red-500/60" />
+            <span className="text-red-400">Put OI:</span>
+            <span className="text-white font-mono">${formatCompact(hoveredStrike.putOI)}</span>
+          </div>
+          <p className="text-[9px] text-neutral-500 mt-1 font-mono">
+            {(((hoveredStrike.callOI + hoveredStrike.putOI) / totalOI) * 100).toFixed(1)}% of total
+          </p>
+        </div>
+      )}
 
-      {strikes.map((s, i) => {
-        const x = pad.left + i * groupW;
-        const callH = (s.callOI / maxOI) * chartH;
-        const putH = (s.putOI / maxOI) * chartH;
-        const isSpot = i === spotIdx;
-        const isMaxPain = i === maxPainIdx;
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+        {/* Grid lines */}
+        {[0.25, 0.5, 0.75].map((pct) => (
+          <line
+            key={pct}
+            x1={pad.left}
+            y1={pad.top + chartH * (1 - pct)}
+            x2={width - pad.right}
+            y2={pad.top + chartH * (1 - pct)}
+            stroke="rgba(255,255,255,0.03)"
+            strokeWidth={0.5}
+          />
+        ))}
 
-        return (
-          <g key={s.strike}>
-            {/* Call bar */}
-            <rect
-              x={x + gap}
-              y={pad.top + chartH - callH}
-              width={barW}
-              height={Math.max(callH, 0.5)}
-              fill="rgba(34,197,94,0.55)"
-              rx={1.5}
-            />
-            {/* Put bar */}
-            <rect
-              x={x + barW + gap * 2}
-              y={pad.top + chartH - putH}
-              width={barW}
-              height={Math.max(putH, 0.5)}
-              fill="rgba(239,68,68,0.55)"
-              rx={1.5}
-            />
+        {strikes.map((s, i) => {
+          const x = pad.left + i * groupW;
+          const callH = (s.callOI / maxOI) * chartH;
+          const putH = (s.putOI / maxOI) * chartH;
+          const isSpot = i === spotIdx;
+          const isMaxPain = i === maxPainIdx;
+          const isHovered = i === hovered;
 
-            {/* Strike label */}
-            {(i % Math.max(1, Math.floor(strikes.length / 15)) === 0 || isSpot || isMaxPain) && (
-              <text
-                x={x + groupW / 2}
-                y={height - 6}
-                textAnchor="middle"
-                fontSize="8"
-                fill={isSpot ? '#eab308' : isMaxPain ? '#f97316' : 'rgba(255,255,255,0.25)'}
-                fontWeight={isSpot || isMaxPain ? 'bold' : 'normal'}
-                fontFamily="monospace"
-              >
-                {s.strike >= 1000 ? `${(s.strike / 1000).toFixed(0)}K` : s.strike}
-              </text>
-            )}
+          return (
+            <g key={s.strike} onMouseEnter={() => setHovered(i)}>
+              {/* Invisible hover target */}
+              <rect x={x} y={pad.top} width={groupW} height={chartH} fill="transparent" />
+              {/* Call bar */}
+              <rect
+                x={x + gap}
+                y={pad.top + chartH - callH}
+                width={barW}
+                height={Math.max(callH, 0.5)}
+                fill={isHovered ? 'rgba(34,197,94,0.85)' : 'rgba(34,197,94,0.55)'}
+                rx={1.5}
+              />
+              {/* Put bar */}
+              <rect
+                x={x + barW + gap * 2}
+                y={pad.top + chartH - putH}
+                width={barW}
+                height={Math.max(putH, 0.5)}
+                fill={isHovered ? 'rgba(239,68,68,0.85)' : 'rgba(239,68,68,0.55)'}
+                rx={1.5}
+              />
 
-            {/* Spot marker */}
-            {isSpot && (
-              <>
-                <line
-                  x1={x + groupW / 2}
-                  y1={pad.top}
-                  x2={x + groupW / 2}
-                  y2={pad.top + chartH}
-                  stroke="#eab308"
-                  strokeDasharray="3,3"
-                  strokeWidth={1}
-                  opacity={0.6}
-                />
+              {/* Strike label */}
+              {(i % Math.max(1, Math.floor(strikes.length / 15)) === 0 || isSpot || isMaxPain) && (
                 <text
                   x={x + groupW / 2}
-                  y={pad.top - 2}
+                  y={height - 6}
                   textAnchor="middle"
-                  fontSize="7"
-                  fill="#eab308"
-                  fontWeight="bold"
+                  fontSize="8"
+                  fill={isSpot ? '#eab308' : isMaxPain ? '#f97316' : 'rgba(255,255,255,0.25)'}
+                  fontWeight={isSpot || isMaxPain ? 'bold' : 'normal'}
+                  fontFamily="monospace"
                 >
-                  SPOT
+                  {s.strike >= 1000 ? `${(s.strike / 1000).toFixed(0)}K` : s.strike}
                 </text>
-              </>
-            )}
+              )}
 
-            {/* Max Pain marker */}
-            {isMaxPain && !isSpot && (
-              <>
-                <line
-                  x1={x + groupW / 2}
-                  y1={pad.top}
-                  x2={x + groupW / 2}
-                  y2={pad.top + chartH}
-                  stroke="#f97316"
-                  strokeDasharray="2,4"
-                  strokeWidth={1}
-                  opacity={0.5}
-                />
-                <text
-                  x={x + groupW / 2}
-                  y={pad.top - 2}
-                  textAnchor="middle"
-                  fontSize="7"
-                  fill="#f97316"
-                  fontWeight="bold"
-                >
-                  MAX PAIN
-                </text>
-              </>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+              {/* Spot marker */}
+              {isSpot && (
+                <>
+                  <line
+                    x1={x + groupW / 2}
+                    y1={pad.top}
+                    x2={x + groupW / 2}
+                    y2={pad.top + chartH}
+                    stroke="#eab308"
+                    strokeDasharray="3,3"
+                    strokeWidth={1}
+                    opacity={0.6}
+                  />
+                  <text
+                    x={x + groupW / 2}
+                    y={pad.top - 2}
+                    textAnchor="middle"
+                    fontSize="7"
+                    fill="#eab308"
+                    fontWeight="bold"
+                  >
+                    SPOT
+                  </text>
+                </>
+              )}
+
+              {/* Max Pain marker */}
+              {isMaxPain && !isSpot && (
+                <>
+                  <line
+                    x1={x + groupW / 2}
+                    y1={pad.top}
+                    x2={x + groupW / 2}
+                    y2={pad.top + chartH}
+                    stroke="#f97316"
+                    strokeDasharray="2,4"
+                    strokeWidth={1}
+                    opacity={0.5}
+                  />
+                  <text
+                    x={x + groupW / 2}
+                    y={pad.top - 2}
+                    textAnchor="middle"
+                    fontSize="7"
+                    fill="#f97316"
+                    fontWeight="bold"
+                  >
+                    MAX PAIN
+                  </text>
+                </>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -342,6 +382,26 @@ function IVSmileChart({
           </text>
         </g>
       ))}
+      {/* X-axis strike labels */}
+      {(() => {
+        const step = Math.max(1, Math.floor(points.length / 10));
+        return points.map((p, i) => {
+          if (i % step !== 0 && i !== points.length - 1) return null;
+          return (
+            <text
+              key={p.strike}
+              x={scaleX(i)}
+              y={height - 6}
+              textAnchor="middle"
+              fontSize="7"
+              fill="rgba(255,255,255,0.25)"
+              fontFamily="monospace"
+            >
+              {p.strike >= 1000 ? `${(p.strike / 1000).toFixed(0)}K` : p.strike}
+            </text>
+          );
+        });
+      })()}
       {/* Call IV line */}
       {callPoints.length > 1 && (
         <polyline
@@ -834,8 +894,8 @@ export default function OptionsPage() {
                 <div className="flex items-center gap-2.5 mb-3">
                   <ArrowLeftRight className="w-4 h-4 text-cyan-400" />
                   <div>
-                    <h2 className="text-sm font-semibold text-white">Options vs Futures OI</h2>
-                    <p className="text-xs text-neutral-600">Relative positioning preference</p>
+                    <h2 className="text-sm font-semibold text-white">Options OI Overview</h2>
+                    <p className="text-xs text-neutral-600">Call/Put distribution & market sentiment</p>
                   </div>
                 </div>
                 {(() => {

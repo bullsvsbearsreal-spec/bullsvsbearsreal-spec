@@ -42,7 +42,7 @@ const sections = [
   },
   {
     title: 'Privacy',
-    body: 'InfoHub does not require user registration or login. We do not collect personal information such as names, emails, or passwords. We use basic, anonymous analytics to understand usage patterns and improve the Service. No personal data is sold or shared with third parties.',
+    body: 'InfoHub works without registration. An optional account can be created to sync preferences across devices, in which case we store the information you provide. We use basic, anonymous analytics to understand usage patterns and improve the Service. No personal data is sold or shared with third parties.',
   },
   {
     title: 'Changes to Terms',

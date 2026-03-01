@@ -392,7 +392,7 @@ export default function OIHeatmapPage() {
 
         {/* Loading */}
         {isLoading && (
-          <div className="w-full bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden" style={{ paddingBottom: '60%' }}>
+          <div className="relative w-full bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden" style={{ paddingBottom: '60%' }}>
             <div className="absolute inset-0 flex items-center justify-center">
               <RefreshCw className="w-6 h-6 text-neutral-500 animate-spin" />
             </div>

@@ -73,7 +73,7 @@ function ColorSwatch({ name, hex, rgb }: { name: string; hex: string; rgb: strin
 
 function AssetCard({ name, file, preview, desc, size, format }: { name: string; file: string; preview: string; desc: string; size: string; format: string }) {
   return (
-    <div className="group bg-white/[0.04] hover:bg-white/[0.04] border border-white/[0.06] hover:border-hub-yellow/30 rounded-xl p-5 transition-all">
+    <div className="group bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.06] hover:border-hub-yellow/30 rounded-xl p-5 transition-all">
       <div className="flex items-center justify-between mb-4">
         <div className="w-12 h-12 rounded-xl bg-white/[0.06] flex items-center justify-center group-hover:bg-hub-yellow/10 transition-colors">
           <img src={preview} alt={name} className="w-8 h-8 object-contain" />
@@ -114,7 +114,7 @@ export default function BrandPage() {
           <div className="flex items-center gap-6 mt-4">
             <div className="flex items-center gap-2 text-neutral-500 text-xs">
               <Image className="w-3.5 h-3.5 text-hub-yellow/60" />
-              <span>8 logo assets</span>
+              <span>7 logo assets</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-500 text-xs">
               <Palette className="w-3.5 h-3.5 text-hub-yellow/60" />

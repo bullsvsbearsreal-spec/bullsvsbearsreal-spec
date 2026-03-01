@@ -688,7 +688,7 @@ export default function HLWhalesPage() {
             <span className="text-white">AT PnL</span> = all-time realized + unrealized PnL from leaderboard.{' '}
             <span className="text-white">ROE</span> = return on equity (margin).
             Use the &quot;Track Wallet&quot; button to add any Hyperliquid address.
-            Data refreshes every 90 seconds. Leaderboard updates every 5 minutes.
+            Data refreshes every 60 seconds. Leaderboard updates every 5 minutes.
           </p>
         </div>
       </main>

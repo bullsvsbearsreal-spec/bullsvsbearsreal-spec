@@ -8,7 +8,7 @@ import UpdatedAgo from '../UpdatedAgo';
 interface FundingRate {
   symbol: string;
   exchange: string;
-  rate: number;
+  fundingRate: number;
 }
 
 export default function FundingHeatmapWidget() {
@@ -50,8 +50,7 @@ export default function FundingHeatmapWidget() {
     <div>
       <div className="flex flex-wrap gap-1 mb-2">
         {rates.slice(0, 18).map((r, i) => {
-          const pct = r.rate * 100; // convert to percentage if needed
-          const rate = Math.abs(pct) > 1 ? pct / 100 : pct; // normalize
+          const rate = r.fundingRate; // already a percentage from the API
           const color = rate > 0.05
             ? 'bg-green-500/40 text-green-300'
             : rate > 0.01

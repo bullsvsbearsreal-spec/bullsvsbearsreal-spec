@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RefreshCw, TrendingUp, TrendingDown, PieChart } from 'lucide-react';
+import UpdatedAgo from '@/components/UpdatedAgo';
+import { RefreshCw, TrendingUp, TrendingDown, PieChart, DollarSign, BarChart3, Coins, Globe } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -81,6 +82,7 @@ export default function DominancePage() {
   const [data, setData] = useState<DominanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -90,6 +92,7 @@ export default function DominancePage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
+      setLastUpdate(new Date());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -124,7 +127,7 @@ export default function DominancePage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="text-white">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -136,20 +139,32 @@ export default function DominancePage() {
                 BTC dominance, market share breakdown, and global crypto market stats
               </p>
             </div>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              <UpdatedAgo date={lastUpdate} />
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
-          {/* Loading */}
+          {/* Loading skeleton */}
           {loading && !data && (
-            <div className="flex items-center justify-center py-20">
-              <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
-              <span className="ml-3 text-neutral-400">Loading dominance data...</span>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl h-[82px] animate-pulse" />
+                ))}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {[1, 2].map(i => (
+                  <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl h-[260px] animate-pulse" />
+                ))}
+              </div>
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl h-[300px] animate-pulse" />
             </div>
           )}
 
@@ -165,8 +180,11 @@ export default function DominancePage() {
               {/* Global Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Total Market Cap</p>
-                  <p className="text-lg font-bold text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="w-3.5 h-3.5 text-hub-yellow" />
+                    <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Total Market Cap</p>
+                  </div>
+                  <p className="text-lg font-bold text-white font-mono">
                     {data.totalMarketCap != null ? `$${formatCompact(data.totalMarketCap)}` : '-'}
                   </p>
                   {data.marketCapChange24h != null && (
@@ -177,20 +195,29 @@ export default function DominancePage() {
                   )}
                 </div>
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">24h Volume</p>
-                  <p className="text-lg font-bold text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+                    <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">24h Volume</p>
+                  </div>
+                  <p className="text-lg font-bold text-white font-mono">
                     {data.totalVolume24h != null ? `$${formatCompact(data.totalVolume24h)}` : '-'}
                   </p>
                 </div>
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Active Cryptos</p>
-                  <p className="text-lg font-bold text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Coins className="w-3.5 h-3.5 text-green-400" />
+                    <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Active Cryptos</p>
+                  </div>
+                  <p className="text-lg font-bold text-white font-mono">
                     {data.activeCryptos != null ? data.activeCryptos.toLocaleString() : '-'}
                   </p>
                 </div>
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                  <p className="text-xs text-neutral-500">Markets</p>
-                  <p className="text-lg font-bold text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Globe className="w-3.5 h-3.5 text-purple-400" />
+                    <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Markets</p>
+                  </div>
+                  <p className="text-lg font-bold text-white font-mono">
                     {data.markets != null ? data.markets.toLocaleString() : '-'}
                   </p>
                 </div>
@@ -269,44 +296,6 @@ export default function DominancePage() {
                 </div>
               </div>
 
-              {/* Stacked Bar */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 mb-6">
-                <h2 className="text-sm font-semibold text-white mb-3">Visual Breakdown</h2>
-                <div className="h-10 rounded-lg overflow-hidden flex">
-                  {breakdown.map((entry, i) => (
-                    <div
-                      key={entry.symbol}
-                      className="h-full relative group"
-                      style={{
-                        width: `${entry.pct}%`,
-                        backgroundColor: COLORS[i] || COLORS[COLORS.length - 1],
-                      }}
-                      title={`${entry.symbol}: ${entry.pct.toFixed(2)}%`}
-                    >
-                      {entry.pct > 5 && (
-                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white/90">
-                          {entry.symbol}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                  {othersPercent > 2 && (
-                    <div
-                      className="h-full bg-neutral-600"
-                      style={{ width: `${othersPercent}%` }}
-                      title={`Others: ${othersPercent.toFixed(2)}%`}
-                    />
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-3 mt-3">
-                  {breakdown.slice(0, 6).map((entry, i) => (
-                    <div key={entry.symbol} className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS[i] }} />
-                      <span className="text-[10px] text-neutral-400">{entry.symbol} {entry.pct.toFixed(1)}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </>
           )}
 

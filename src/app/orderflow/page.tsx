@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
-import { RefreshCw, Info, Activity, ArrowDownUp } from 'lucide-react';
+import { RefreshCw, Info, Activity, ArrowDownUp, AlertTriangle } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -68,6 +68,7 @@ export default function OrderflowPage() {
   const [symbol, setSymbol] = useState('BTC');
   const [data, setData] = useState<OrderbookData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -77,9 +78,11 @@ export default function OrderflowPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
+      setError(null);
       setLastUpdate(new Date());
-    } catch {
-      // silent
+    } catch (err) {
+      if (!data) setError('Failed to load order book data');
+      console.error('[OrderFlow] fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -147,10 +150,21 @@ export default function OrderflowPage() {
         </div>
 
         {/* Loading */}
-        {loading && !data && (
+        {loading && !data && !error && (
           <div className="flex items-center justify-center py-20">
             <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
             <span className="ml-3 text-neutral-400">Loading order book...</span>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && !data && (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-400" />
+            <p className="text-neutral-400 text-sm">{error}</p>
+            <button onClick={fetchData} className="px-3 py-1.5 rounded-lg bg-white/[0.06] text-neutral-300 text-xs hover:bg-white/[0.1] transition-colors">
+              Retry
+            </button>
           </div>
         )}
 
@@ -234,7 +248,7 @@ export default function OrderflowPage() {
                 <text x={450} y={10} textAnchor="middle" fontSize="8" fill="#eab308" fontWeight="bold">MID</text>
                 {/* Bid bars (left side, going outward from center) */}
                 {data.bids.slice(0, 25).map((bid, i) => {
-                  const barH = maxCumulative > 0 ? (bid.quantity * data.midPrice / maxCumulative) * 180 * 5 : 0;
+                  const barH = maxCumulative > 0 ? (bid.quantity / maxCumulative) * 170 : 0;
                   const clamped = Math.min(barH, 170);
                   const barW = 16;
                   const x = 440 - (i + 1) * barW;
@@ -245,7 +259,7 @@ export default function OrderflowPage() {
                 })}
                 {/* Ask bars (right side, going outward from center) */}
                 {data.asks.slice(0, 25).map((ask, i) => {
-                  const barH = maxCumulative > 0 ? (ask.quantity * data.midPrice / maxCumulative) * 180 * 5 : 0;
+                  const barH = maxCumulative > 0 ? (ask.quantity / maxCumulative) * 170 : 0;
                   const clamped = Math.min(barH, 170);
                   const barW = 16;
                   const x = 460 + i * barW;

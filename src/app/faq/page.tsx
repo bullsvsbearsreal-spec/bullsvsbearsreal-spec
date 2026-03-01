@@ -33,7 +33,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'General',
     q: 'Who built this?',
-    a: 'Two derivatives traders who got tired of paying $200/month for data that should be free. More on the About page.',
+    a: 'A developer and a derivatives trader who got tired of paying $200/month for data that should be free. More on the About page.',
   },
   {
     category: 'General',
@@ -85,7 +85,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'How do I track my portfolio?',
-    a: 'The Portfolio page lets you add positions and track their P&L. Everything is stored locally in your browser \u2014 no account required, no data sent to any server.',
+    a: 'The Portfolio page lets you add positions and track their P&L. Everything is stored locally in your browser by default. If you create an account, your watchlist and preferences can sync across devices.',
   },
 
   /* ── Trading Concepts ── */
@@ -129,7 +129,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Technical',
     q: 'Does InfoHub store my data?',
-    a: 'Watchlist, portfolio, alerts, and preferences are all stored locally in your browser using localStorage. Nothing is sent to our servers. If you clear your browser data, those settings will be reset.',
+    a: 'By default, everything is stored locally in your browser using localStorage. If you create an account, your watchlist and preferences sync to our servers so they persist across devices. If you clear your browser data without an account, those settings will be reset.',
   },
 ];
 

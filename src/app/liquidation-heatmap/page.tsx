@@ -87,6 +87,7 @@ function HeatmapVisualization({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; time: string; price: string; side: string; volume: string; count: number } | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -125,10 +126,15 @@ function HeatmapVisualization({
     return (
       <div
         ref={containerRef}
-        className="bg-white/[0.02] border border-white/[0.06] rounded-xl flex items-center justify-center"
+        className="bg-white/[0.02] border border-white/[0.06] rounded-xl flex flex-col items-center justify-center px-6 text-center"
         style={{ height: 500 }}
       >
-        <span className="text-neutral-600">No liquidation data for this period</span>
+        <Flame className="w-8 h-8 text-neutral-700 mb-3" />
+        <p className="text-neutral-400 text-sm font-medium mb-1">No liquidation data for this period</p>
+        <p className="text-neutral-600 text-xs max-w-md">
+          The heatmap populates as liquidation events are recorded. Short timeframes (4H) fill quickly during volatile markets. Try the 24H or 7D view for more data, or check the{' '}
+          <a href="/liquidations" className="text-hub-yellow hover:underline">regular liquidations page</a> for live events.
+        </p>
       </div>
     );
   }
@@ -161,7 +167,28 @@ function HeatmapVisualization({
   const xLabelStep = Math.max(1, Math.floor(numCols / xLabelCount));
 
   return (
-    <div ref={containerRef} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 overflow-hidden">
+    <div ref={containerRef} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 overflow-hidden relative" onMouseLeave={() => setTooltip(null)}>
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="absolute z-20 pointer-events-none bg-hub-darker border border-white/10 rounded-lg px-3 py-2 shadow-xl"
+          style={{
+            left: Math.min(tooltip.x, containerWidth - 170),
+            top: Math.max(tooltip.y - 80, 4),
+          }}
+        >
+          <p className="text-[11px] font-semibold text-white mb-0.5">{tooltip.time}</p>
+          <p className="text-[10px] text-neutral-400">{tooltip.price}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className={`text-[10px] font-bold ${tooltip.side === 'LONG' ? 'text-red-400' : 'text-green-400'}`}>
+              {tooltip.side}
+            </span>
+            <span className="text-[10px] text-white font-mono">{tooltip.volume}</span>
+            <span className="text-[9px] text-neutral-500">{tooltip.count} liqs</span>
+          </div>
+        </div>
+      )}
+
       <svg width={svgWidth} height={svgHeight} className="block">
         {/* Cells */}
         {cells.map((cell) => {
@@ -182,11 +209,19 @@ function HeatmapVisualization({
               height={Math.max(cellHeight - 1, 1)}
               fill={color}
               rx={1}
-            >
-              <title>
-                {`${formatTimeBucketLabel(timeBuckets[cell.timeIdx], data.timeframe)} | $${priceBuckets[cell.priceIdx]?.toLocaleString()}\n${cell.dominantSide.toUpperCase()} | $${cell.volume.toLocaleString()} | ${cell.count} liqs`}
-              </title>
-            </rect>
+              onMouseEnter={() => {
+                setTooltip({
+                  x: x - paddingLeft + 16,
+                  y,
+                  time: formatTimeBucketLabel(timeBuckets[cell.timeIdx], data.timeframe),
+                  price: `$${priceBuckets[cell.priceIdx]?.toLocaleString()}`,
+                  side: cell.dominantSide.toUpperCase(),
+                  volume: `$${cell.volume.toLocaleString()}`,
+                  count: cell.count,
+                });
+              }}
+              className="cursor-default"
+            />
           );
         })}
 
@@ -411,7 +446,7 @@ function LargestLiquidationCard({ event }: { event: LiquidationEvent }) {
         <Zap className="w-4 h-4 text-hub-yellow" />
         <h3 className="text-sm font-semibold text-white">Largest Liquidation</h3>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div>
           <span className="text-[10px] text-neutral-500 block">Exchange</span>
           <span className="text-sm font-medium text-white">{event.exchange}</span>
@@ -433,6 +468,10 @@ function LargestLiquidationCard({ event }: { event: LiquidationEvent }) {
         <div>
           <span className="text-[10px] text-neutral-500 block">Volume</span>
           <span className="text-sm font-mono font-bold text-hub-yellow">{formatUSD(event.volume)}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-neutral-500 block">Time</span>
+          <span className="text-sm font-mono text-neutral-300">{formatRelativeTime(event.time)}</span>
         </div>
       </div>
     </div>

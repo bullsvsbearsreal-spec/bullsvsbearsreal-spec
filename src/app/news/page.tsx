@@ -723,7 +723,7 @@ function FeaturedArticle({ article, onCurrencyClick, isRead, isBookmarked, onArt
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => onArticleClick(article.id)}
-      className={`group block bg-hub-darker hover:bg-hub-darker border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-5 ${isRead ? 'opacity-70' : ''}`}
+      className={`group block bg-hub-darker hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-5 ${isRead ? 'opacity-70' : ''}`}
     >
       <div className="flex gap-5 flex-col md:flex-row">
         {/* Image */}
@@ -814,7 +814,7 @@ function NewsCard({ article, onCurrencyClick, isRead, isBookmarked, onArticleCli
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => onArticleClick(article.id)}
-      className={`group block bg-hub-darker hover:bg-hub-darker border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-3 ${isRead ? 'opacity-60' : ''}`}
+      className={`group block bg-hub-darker hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-3 ${isRead ? 'opacity-60' : ''}`}
     >
       <div className="flex gap-3">
         {/* Image */}

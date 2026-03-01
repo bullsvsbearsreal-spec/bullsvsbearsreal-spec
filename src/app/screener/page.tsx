@@ -137,11 +137,10 @@ export default function ScreenerPage() {
 
       // Build OI delta map
       const deltaMap = new Map<string, number>();
-      if (deltaRes?.deltas) {
-        (deltaRes.deltas as any[]).forEach((d: any) => {
-          if (d.symbol && d.change24h != null) deltaMap.set(d.symbol, d.change24h);
-        });
-      }
+      const deltaArr = deltaRes?.data || deltaRes?.deltas || [];
+      (deltaArr as any[]).forEach((d: any) => {
+        if (d.symbol && d.change24h != null) deltaMap.set(d.symbol, d.change24h);
+      });
 
       // Merge all symbols
       const allSymbols = new Set<string>();

@@ -380,8 +380,8 @@ export default function ExchangeComparisonPage() {
                     </thead>
                     <tbody>
                       {sorted.map((s, i) => {
-                        const maxOI = sorted[0]?.totalOI || 1;
-                        const share = (s.totalOI / maxOI) * 100;
+                        const totalAllOI = sorted.reduce((sum, x) => sum + x.totalOI, 0) || 1;
+                        const share = (s.totalOI / totalAllOI) * 100;
                         return (
                           <tr key={s.exchange} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
                             <td className="px-4 py-2.5 text-neutral-600">{i + 1}</td>

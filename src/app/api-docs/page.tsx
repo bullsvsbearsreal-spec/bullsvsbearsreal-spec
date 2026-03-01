@@ -36,11 +36,11 @@ function EndpointSection({ method, path, description, params, response, example,
   const curlCmd = `curl "${baseUrl}${path}"`;
   const jsExample = `const res = await fetch("${baseUrl}${path}");
 const data = await res.json();
-console.log(data.data.length, "entries");`;
+console.log(data);`;
   const pyExample = `import requests
 resp = requests.get("${baseUrl}${path}")
 data = resp.json()
-print(len(data["data"]), "entries")`;
+print(data)`;
 
   return (
     <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">

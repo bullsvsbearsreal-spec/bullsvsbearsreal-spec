@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import UpdatedAgo from '@/components/UpdatedAgo';
 import { RefreshCw, Activity, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import {
   createChart,
@@ -404,14 +405,7 @@ export default function MarketCyclePage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdated && (
-              <span className="text-neutral-600 text-xs">
-                Updated {lastUpdated.toLocaleTimeString()}
-              </span>
-            )}
-            <span className="text-[10px] text-neutral-600 px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
-              Auto-refresh 5m
-            </span>
+            <UpdatedAgo date={lastUpdated} />
             <button
               onClick={() => fetchData(true)}
               disabled={refreshing}
@@ -488,6 +482,30 @@ export default function MarketCyclePage() {
                   <span className="text-xs text-neutral-400">350-day MA &times; 2</span>
                 </div>
               </div>
+
+              {/* Pi Cycle distance indicator */}
+              {data.piCycle.ma111.length > 0 && data.piCycle.ma350x2.length > 0 && (() => {
+                const latest111 = data.piCycle.ma111[data.piCycle.ma111.length - 1].value;
+                const latest350x2 = data.piCycle.ma350x2[data.piCycle.ma350x2.length - 1].value;
+                const gap = latest350x2 > 0 ? ((latest350x2 - latest111) / latest350x2) * 100 : 0;
+                return (
+                  <div className="flex items-center gap-3 mb-4 px-3 py-2 bg-white/[0.02] rounded-lg border border-white/[0.04]">
+                    <span className="text-xs text-neutral-500">MA gap:</span>
+                    <span className={`text-sm font-mono font-semibold ${gap > 20 ? 'text-green-400' : gap > 5 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {gap.toFixed(1)}%
+                    </span>
+                    <span className="text-[10px] text-neutral-600">
+                      {gap > 20 ? '— far from crossover' : gap > 5 ? '— narrowing' : '— very close to signal'}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-white/[0.04] rounded-full ml-2 max-w-[120px]">
+                      <div
+                        className={`h-full rounded-full transition-all ${gap > 20 ? 'bg-green-500' : gap > 5 ? 'bg-amber-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(100, Math.max(2, 100 - gap))}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <PiCycleChart prices={data.prices} piCycle={data.piCycle} />
             </section>
@@ -634,7 +652,19 @@ export default function MarketCyclePage() {
                         {data.stockToFlow.deviation >= 0 ? '+' : ''}{data.stockToFlow.deviation.toFixed(1)}%
                       </p>
                     </div>
-                    <p className="text-[10px] text-neutral-600 mt-1">vs model price</p>
+                    <span className={`inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      data.stockToFlow.deviation < -50 ? 'bg-green-500/15 text-green-400'
+                      : data.stockToFlow.deviation < -20 ? 'bg-amber-500/15 text-amber-400'
+                      : data.stockToFlow.deviation < 20 ? 'bg-white/[0.06] text-neutral-400'
+                      : data.stockToFlow.deviation < 100 ? 'bg-amber-500/15 text-amber-400'
+                      : 'bg-red-500/15 text-red-400'
+                    }`}>
+                      {data.stockToFlow.deviation < -50 ? 'Deeply undervalued'
+                      : data.stockToFlow.deviation < -20 ? 'Below model'
+                      : data.stockToFlow.deviation < 20 ? 'Near model'
+                      : data.stockToFlow.deviation < 100 ? 'Above model'
+                      : 'Overextended'}
+                    </span>
                   </div>
                 </div>
 
@@ -653,7 +683,7 @@ export default function MarketCyclePage() {
         {data && (
           <div className="mt-6 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
             <p className="text-neutral-500 text-xs leading-relaxed">
-              Market cycle indicators use daily BTC price data from CoinGecko. Pi Cycle uses the 111-day and 350-day moving averages to identify potential tops and bottoms. The Rainbow Chart fits a logarithmic regression to historical price data. The 200-Week MA Heatmap tracks the rate of change of the long-term moving average. Stock-to-Flow models Bitcoin&apos;s scarcity using supply and issuance rate. These indicators are for educational purposes only &mdash; past patterns do not guarantee future outcomes. Data refreshes every 30 minutes.
+              Market cycle indicators use daily BTC price data from CoinGecko. Pi Cycle uses the 111-day and 350-day moving averages to identify potential tops and bottoms. The Rainbow Chart fits a logarithmic regression to historical price data. The 200-Week MA Heatmap tracks the rate of change of the long-term moving average. Stock-to-Flow models Bitcoin&apos;s scarcity using supply and issuance rate. These indicators are for educational purposes only &mdash; past patterns do not guarantee future outcomes. Data refreshes every 5 minutes.
             </p>
           </div>
         )}

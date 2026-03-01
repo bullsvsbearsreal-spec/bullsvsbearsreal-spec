@@ -310,7 +310,7 @@ export default function PortfolioPage() {
                   <div className="flex items-center gap-2">
                     <TokenIconSimple symbol={totals.best.symbol} size={20} />
                     <span className="font-semibold text-sm">{totals.best.symbol}</span>
-                    <span className="text-green-500 font-mono text-sm font-bold">
+                    <span className={`${totals.best.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'} font-mono text-sm font-bold`}>
                       {formatPercent(totals.best.pnlPct)}
                     </span>
                   </div>
@@ -326,7 +326,7 @@ export default function PortfolioPage() {
                   <div className="flex items-center gap-2">
                     <TokenIconSimple symbol={totals.worst.symbol} size={20} />
                     <span className="font-semibold text-sm">{totals.worst.symbol}</span>
-                    <span className="text-red-500 font-mono text-sm font-bold">
+                    <span className={`${totals.worst.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'} font-mono text-sm font-bold`}>
                       {formatPercent(totals.worst.pnlPct)}
                     </span>
                   </div>

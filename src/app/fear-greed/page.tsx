@@ -454,7 +454,7 @@ export default function FearGreedPage() {
 
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            The Fear & Greed Index measures crypto market sentiment on a scale of 0-100. It combines volatility (25%), market volume (25%), social media sentiment (15%), surveys (15%), Bitcoin dominance (10%), and Google Trends (10%). Values below 25 indicate Extreme Fear (potential buying opportunity), while values above 75 suggest Extreme Greed (potential correction risk). Data updates daily.
+            The Fear & Greed Index measures crypto market sentiment on a scale of 0-100. It combines volatility (25%), market momentum &amp; volume (25%), social media (15%), Bitcoin dominance (10%), and Google Trends (10%). Values below 25 indicate Extreme Fear (potential buying opportunity), while values above 75 suggest Extreme Greed (potential correction risk). Data from Alternative.me, updated daily.
           </p>
         </div>
       </main>

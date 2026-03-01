@@ -33,6 +33,7 @@ export async function fetchAllExchanges<T>(
 }
 
 // Run all exchange fetchers with health tracking
+// Includes one automatic retry on failure/empty to handle intermittent API blocks
 export async function fetchAllExchangesWithHealth<T>(
   configs: ExchangeFetcherConfig<T>[],
   fetchFn: typeof fetchWithTimeout
@@ -41,29 +42,41 @@ export async function fetchAllExchangesWithHealth<T>(
 
   const promises = configs.map(async ({ name, fetcher }) => {
     const start = Date.now();
-    try {
-      const result = await fetcher(fetchFn);
-      const latencyMs = Date.now() - start;
-      health.push({
-        name,
-        status: result.length > 0 ? 'ok' : 'empty',
-        count: result.length,
-        latencyMs,
-      });
-      return result;
-    } catch (error) {
-      const latencyMs = Date.now() - start;
-      const errMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`${name} error:`, errMsg);
-      health.push({
-        name,
-        status: 'error',
-        count: 0,
-        latencyMs,
-        error: errMsg,
-      });
-      return [] as T[];
+    let lastError = '';
+
+    // Try up to 2 attempts (initial + 1 retry)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 500)); // Brief delay before retry
+        const result = await fetcher(fetchFn);
+        if (result.length > 0) {
+          health.push({
+            name,
+            status: 'ok',
+            count: result.length,
+            latencyMs: Date.now() - start,
+          });
+          return result;
+        }
+        // Empty result — retry once in case of transient issue
+        if (attempt === 0) continue;
+        health.push({ name, status: 'empty', count: 0, latencyMs: Date.now() - start });
+        return [] as T[];
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : 'Unknown error';
+        if (attempt === 0) continue; // Retry on first failure
+        console.error(`${name} error (after retry):`, lastError);
+        health.push({
+          name,
+          status: 'error',
+          count: 0,
+          latencyMs: Date.now() - start,
+          error: lastError,
+        });
+        return [] as T[];
+      }
     }
+    return [] as T[];
   });
 
   const results = await Promise.all(promises);

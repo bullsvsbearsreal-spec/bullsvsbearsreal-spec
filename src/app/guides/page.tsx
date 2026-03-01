@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
   BookOpen, TrendingUp, BarChart3,
   Zap, ArrowLeftRight, Shield, PieChart, Bell,
-  ChevronRight, Clock, Coffee, Pencil, Sparkles,
+  ChevronRight, Clock, Coffee, Pencil,
   MessageCircle, Activity, Layers, Database, Globe,
 } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
@@ -84,17 +83,6 @@ const platformStats = [
 /* ─── Page ──────────────────────────────────────────────────────── */
 
 export default function GuidesPage() {
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleNotify = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setEmail('');
-    }
-  };
-
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
@@ -232,30 +220,15 @@ export default function GuidesPage() {
                 Drop your email and we&apos;ll ping you when the first guide goes live. No spam, ever.
               </p>
 
-              {subscribed ? (
-                <div className="flex items-center gap-2 py-2 text-green-400 text-sm font-medium">
-                  <Sparkles className="w-4 h-4" />
-                  Nice — you&apos;re on the list!
-                </div>
-              ) : (
-                <form onSubmit={handleNotify} className="flex gap-2">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@email.com"
-                    required
-                    className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-neutral-700 focus:outline-none focus:border-hub-yellow/30 transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 bg-hub-yellow text-black text-sm font-bold rounded-lg hover:bg-hub-yellow/90 transition-colors flex items-center gap-1.5 whitespace-nowrap"
-                  >
-                    Notify me
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </form>
-              )}
+              <a
+                href="https://t.me/+Z6SQGJ57SlwyY2Rk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-hub-yellow text-black text-sm font-bold rounded-lg hover:bg-hub-yellow/90 transition-colors"
+              >
+                Join Telegram for updates
+                <ChevronRight className="w-3.5 h-3.5" />
+              </a>
             </div>
 
             {/* Suggest */}

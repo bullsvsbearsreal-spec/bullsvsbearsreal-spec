@@ -924,7 +924,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="text-sm text-white">Theme</p>
                   <p className="text-xs text-neutral-600">
-                    {theme === 'dark' ? 'Dark mode' : 'Light mode'} &middot; synced to your account
+                    {theme === 'dark' ? 'Dark mode' : 'Light mode'} &middot; saved locally
                   </p>
                 </div>
               </div>

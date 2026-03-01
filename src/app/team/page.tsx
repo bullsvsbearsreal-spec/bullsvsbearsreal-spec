@@ -2,6 +2,7 @@
 
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 interface TeamMember {
   name: string;
@@ -41,7 +42,7 @@ const teamMembers: TeamMember[] = [
 ];
 
 const projectStats = [
-  { value: '24', label: 'Exchanges' },
+  { value: `${ALL_EXCHANGES.length}`, label: 'Exchanges' },
   { value: '8,000+', label: 'Pairs' },
   { value: 'Live', label: 'Data' },
   { value: '24/7', label: 'Uptime' },
@@ -72,8 +73,8 @@ export default function TeamPage() {
             </h1>
 
             <p className="text-neutral-500 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-              Two derivatives traders who got tired of paying for data that
-              should be free. No VC, no paywall.
+              A developer and a derivatives trader who got tired of paying for
+              data that should be free. No VC, no paywall.
             </p>
           </div>
         </section>

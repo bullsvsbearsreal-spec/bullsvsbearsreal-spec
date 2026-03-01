@@ -39,6 +39,8 @@ const SYMBOLS = [
   { label: 'BNB', value: 'BNBUSDT' },
   { label: 'ADA', value: 'ADAUSDT' },
   { label: 'AVAX', value: 'AVAXUSDT' },
+  { label: 'LINK', value: 'LINKUSDT' },
+  { label: 'DOT', value: 'DOTUSDT' },
 ];
 
 const PERIODS: { label: string; value: Period }[] = [
