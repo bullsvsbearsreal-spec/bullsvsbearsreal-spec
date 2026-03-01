@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -19,7 +19,7 @@ interface NewsArticle {
   currencies: string[];
   sentiment?: 'bullish' | 'bearish' | 'neutral';
   votes?: { positive: number; negative: number };
-  origin: 'cryptocompare' | 'cryptopanic';
+  origin: 'cryptocompare' | 'cryptopanic' | 'rss';
 }
 
 interface TrendingCoin {
@@ -36,10 +36,12 @@ interface ApiResponse {
     totalPages: number;
     trending: TrendingCoin[];
     hasCryptoPanic: boolean;
+    sources?: string[];
   };
 }
 
 type FilterType = 'all' | 'hot' | 'rising' | 'bullish' | 'bearish';
+type TimeRange = 'all' | '1h' | '24h' | '7d' | '30d';
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 
@@ -70,10 +72,14 @@ export default function NewsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [timeRange, setTimeRange] = useState<TimeRange>('all');
   const [currency, setCurrency] = useState('');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [hasCryptoPanic, setHasCryptoPanic] = useState(false);
+  const [sources, setSources] = useState<string[]>([]);
+  const [newCount, setNewCount] = useState(0);
+  const latestIdRef = useRef<string>('');
 
   // Debounce search
   useEffect(() => {
@@ -81,15 +87,21 @@ export default function NewsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const fetchNews = useCallback(async (pg: number, f: FilterType, cur: string, q: string, isRefresh = false) => {
+  const buildParams = useCallback((pg: number, f: FilterType, tr: TimeRange, cur: string, q: string) => {
+    const params = new URLSearchParams({ page: String(pg) });
+    if (f !== 'all') params.set('filter', f);
+    if (tr !== 'all') params.set('timeRange', tr);
+    if (cur) params.set('currency', cur);
+    if (q) params.set('search', q);
+    return params;
+  }, []);
+
+  const fetchNews = useCallback(async (pg: number, f: FilterType, tr: TimeRange, cur: string, q: string, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const params = new URLSearchParams({ page: String(pg) });
-      if (f !== 'all') params.set('filter', f);
-      if (cur) params.set('currency', cur);
-      if (q) params.set('search', q);
+      const params = buildParams(pg, f, tr, cur, q);
       const res = await fetch(`/api/news?${params}`);
       if (!res.ok) throw new Error('Failed');
       const data: ApiResponse = await res.json();
@@ -98,25 +110,52 @@ export default function NewsPage() {
       setTotalPages(data.meta.totalPages);
       setTotal(data.meta.total);
       setHasCryptoPanic(data.meta.hasCryptoPanic);
+      if (data.meta.sources) setSources(data.meta.sources);
+      // Track latest article for auto-refresh
+      if (data.articles.length > 0) {
+        latestIdRef.current = data.articles[0].id;
+      }
+      setNewCount(0);
     } catch {
       setArticles([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [buildParams]);
 
-  // Fetch on filter/page/search changes
+  // Fetch on filter/page/search/time changes
   useEffect(() => {
-    fetchNews(page, filter, currency, debouncedSearch);
-  }, [page, filter, currency, debouncedSearch, fetchNews]);
+    fetchNews(page, filter, timeRange, currency, debouncedSearch);
+  }, [page, filter, timeRange, currency, debouncedSearch, fetchNews]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [filter, currency, debouncedSearch]);
+  }, [filter, timeRange, currency, debouncedSearch]);
 
-  const handleRefresh = () => fetchNews(page, filter, currency, debouncedSearch, true);
+  // Background polling for new articles (every 2 min)
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const params = buildParams(1, filter, timeRange, currency, debouncedSearch);
+        const res = await fetch(`/api/news?${params}`);
+        if (!res.ok) return;
+        const data: ApiResponse = await res.json();
+        if (data.articles.length > 0 && latestIdRef.current && data.articles[0].id !== latestIdRef.current) {
+          const idx = data.articles.findIndex(a => a.id === latestIdRef.current);
+          setNewCount(idx === -1 ? data.articles.length : idx);
+        }
+      } catch { /* silent */ }
+    };
+    const iv = setInterval(poll, 120_000);
+    return () => clearInterval(iv);
+  }, [filter, timeRange, currency, debouncedSearch, buildParams]);
+
+  const handleRefresh = () => {
+    setNewCount(0);
+    fetchNews(page, filter, timeRange, currency, debouncedSearch, true);
+  };
 
   const handleCurrencyClick = (sym: string) => {
     setCurrency(prev => prev === sym ? '' : sym);
@@ -132,8 +171,8 @@ export default function NewsPage() {
           <div>
             <h1 className="heading-page">Market News</h1>
             <p className="text-neutral-500 text-xs mt-0.5">
-              Real-time news from across the market
-              {hasCryptoPanic && <span className="text-emerald-400 ml-2">+ CryptoPanic sentiment</span>}
+              {sources.length > 0 ? `${sources.length} sources` : 'Loading sources...'}
+              {hasCryptoPanic && <span className="text-emerald-400 ml-2">+ sentiment</span>}
             </p>
           </div>
           <button
@@ -145,6 +184,17 @@ export default function NewsPage() {
             Refresh
           </button>
         </div>
+
+        {/* New articles banner */}
+        {newCount > 0 && (
+          <button
+            onClick={handleRefresh}
+            className="w-full mb-4 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-hub-yellow/10 border border-hub-yellow/20 text-hub-yellow text-sm font-medium hover:bg-hub-yellow/15 transition-colors"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+            {newCount} new article{newCount > 1 ? 's' : ''}
+          </button>
+        )}
 
         {/* Search + Filter Row */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -165,7 +215,7 @@ export default function NewsPage() {
             )}
           </div>
 
-          {/* Filter pills */}
+          {/* Sentiment filter pills */}
           <div className="flex items-center gap-1">
             {([
               { key: 'all', label: 'All' },
@@ -186,6 +236,32 @@ export default function NewsPage() {
                 }`}
               >
                 {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Separator */}
+          <div className="w-px h-5 bg-white/[0.08] hidden sm:block" />
+
+          {/* Time range pills */}
+          <div className="flex items-center gap-1">
+            {([
+              { key: 'all', label: 'Any time' },
+              { key: '1h', label: '1h' },
+              { key: '24h', label: '24h' },
+              { key: '7d', label: '7d' },
+              { key: '30d', label: '30d' },
+            ] as { key: TimeRange; label: string }[]).map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTimeRange(t.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  timeRange === t.key
+                    ? 'bg-white/[0.12] text-white'
+                    : 'text-neutral-500 hover:text-neutral-300 bg-white/[0.02] hover:bg-white/[0.06]'
+                }`}
+              >
+                {t.label}
               </button>
             ))}
           </div>
@@ -241,10 +317,10 @@ export default function NewsPage() {
                 <Newspaper className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
                 <h3 className="text-white font-semibold mb-1">No news found</h3>
                 <p className="text-neutral-600 text-sm mb-4">
-                  {search ? `No results for "${search}"` : 'Try adjusting your filters'}
+                  {search ? `No results for "${search}"` : timeRange !== 'all' ? 'Nothing in this time range' : 'Try adjusting your filters'}
                 </p>
                 <button
-                  onClick={() => { setSearch(''); setFilter('all'); setCurrency(''); }}
+                  onClick={() => { setSearch(''); setFilter('all'); setTimeRange('all'); setCurrency(''); }}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-hub-yellow text-black rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -363,30 +439,33 @@ export default function NewsPage() {
               )}
             </div>
 
-            {/* Data sources info */}
+            {/* Data sources */}
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
               <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
-                Data Sources
+                Sources ({sources.length || '...'})
               </h4>
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  <span className="text-xs text-neutral-400">CryptoCompare</span>
-                  <span className="text-[10px] text-neutral-600 ml-auto">Public API</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${hasCryptoPanic ? 'bg-emerald-400' : 'bg-neutral-600'}`} />
-                  <span className="text-xs text-neutral-400">CryptoPanic</span>
-                  <span className="text-[10px] text-neutral-600 ml-auto">
-                    {hasCryptoPanic ? 'Connected' : 'Not configured'}
-                  </span>
-                </div>
+                {sources.length > 0 ? sources.map(s => (
+                  <div key={s} className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-xs text-neutral-400">{s}</span>
+                  </div>
+                )) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      <span className="text-xs text-neutral-400">CryptoCompare</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${hasCryptoPanic ? 'bg-emerald-400' : 'bg-neutral-600'}`} />
+                      <span className="text-xs text-neutral-400">CryptoPanic</span>
+                    </div>
+                  </>
+                )}
               </div>
-              {!hasCryptoPanic && (
-                <p className="text-[10px] text-neutral-600 mt-2">
-                  Set CRYPTOPANIC_API_KEY for sentiment data and additional sources.
-                </p>
-              )}
+              <p className="text-[10px] text-neutral-600 mt-3">
+                Auto-refreshes every 2 min
+              </p>
             </div>
           </div>
         </div>
