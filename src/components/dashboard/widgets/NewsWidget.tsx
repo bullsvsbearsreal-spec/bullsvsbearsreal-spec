@@ -6,11 +6,14 @@ import { Newspaper } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
 
+type SourceType = 'news' | 'exchange' | 'blog' | 'aggregator';
+
 interface NewsItem {
   id: string;
   title: string;
   url: string;
   source: string;
+  sourceType?: SourceType;
   publishedAt: number;
   sentiment?: 'bullish' | 'bearish' | 'neutral';
 }
@@ -27,6 +30,13 @@ const sentimentDot: Record<string, string> = {
   bullish: 'bg-green-400',
   bearish: 'bg-red-400',
   neutral: 'bg-neutral-500',
+};
+
+const sourceTypeColor: Record<string, string> = {
+  news: 'text-blue-400',
+  exchange: 'text-orange-400',
+  blog: 'text-purple-400',
+  aggregator: 'text-neutral-500',
 };
 
 export default function NewsWidget({ wide }: { wide?: boolean }) {
@@ -86,7 +96,7 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
                   {item.title}
                 </p>
                 <p className="text-[10px] text-neutral-600 mt-0.5">
-                  {item.source} · {timeAgo(item.publishedAt)}
+                  <span className={item.sourceType ? sourceTypeColor[item.sourceType] || 'text-neutral-600' : 'text-neutral-600'}>{item.source}</span> · {timeAgo(item.publishedAt)}
                 </p>
               </div>
             </div>

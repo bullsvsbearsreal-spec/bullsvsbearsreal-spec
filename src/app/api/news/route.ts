@@ -73,6 +73,8 @@ const RSS_FEEDS: { url: string; name: string; type: SourceType; format?: 'atom' 
   { url: 'https://cryptobriefing.com/feed/', name: 'Crypto Briefing', type: 'news' },
   // Exchange blogs
   { url: 'https://blog.kraken.com/feed/', name: 'Kraken', type: 'exchange' },
+  { url: 'https://blog.mexc.com/feed/', name: 'MEXC', type: 'exchange' },
+  { url: 'https://blog.deribit.com/feed/', name: 'Deribit', type: 'exchange' },
   // Blogs / analysis
   { url: 'https://blog.chainalysis.com/feed/', name: 'Chainalysis', type: 'blog' },
   { url: 'https://www.thedefiant.io/feed', name: 'The Defiant', type: 'blog' },

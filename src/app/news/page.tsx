@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp, LayoutGrid, List, Calendar, AlertTriangle } from 'lucide-react';
+import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp, LayoutGrid, List, Calendar, AlertTriangle, Bookmark, BookmarkCheck, Eye, EyeOff } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -67,6 +67,65 @@ function formatTimeAgo(unixTs: number): string {
   return new Date(unixTs * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/* ─── Read/Bookmark localStorage helpers ─────────────────────── */
+
+const STORAGE_READ = 'infohub-news-read';
+const STORAGE_BOOKMARKS = 'infohub-news-bookmarks';
+
+function getReadIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_READ);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as string[];
+    // Keep only last 500 IDs to prevent bloat
+    return new Set(arr.slice(-500));
+  } catch { return new Set(); }
+}
+
+function markAsRead(id: string): void {
+  try {
+    const ids = getReadIds();
+    ids.add(id);
+    // Keep only last 500
+    const arr = Array.from(ids).slice(-500);
+    localStorage.setItem(STORAGE_READ, JSON.stringify(arr));
+  } catch { /* quota exceeded, ignore */ }
+}
+
+interface BookmarkedArticle {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: number;
+  savedAt: number;
+}
+
+function getBookmarks(): BookmarkedArticle[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_BOOKMARKS);
+    if (!raw) return [];
+    return JSON.parse(raw) as BookmarkedArticle[];
+  } catch { return []; }
+}
+
+function toggleBookmark(article: { id: string; title: string; url: string; source: string; publishedAt: number }): boolean {
+  try {
+    const bookmarks = getBookmarks();
+    const idx = bookmarks.findIndex(b => b.id === article.id);
+    if (idx >= 0) {
+      bookmarks.splice(idx, 1);
+      localStorage.setItem(STORAGE_BOOKMARKS, JSON.stringify(bookmarks));
+      return false; // removed
+    } else {
+      bookmarks.unshift({ ...article, savedAt: Date.now() });
+      // Keep max 100 bookmarks
+      localStorage.setItem(STORAGE_BOOKMARKS, JSON.stringify(bookmarks.slice(0, 100)));
+      return true; // added
+    }
+  } catch { return false; }
+}
+
 const SENTIMENT_COLORS = {
   bullish: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
   bearish: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400' },
@@ -95,6 +154,18 @@ export default function NewsPage() {
   const [macroEvents, setMacroEvents] = useState<MacroEvent[]>([]);
   const [newCount, setNewCount] = useState(0);
   const latestIdRef = useRef<string>('');
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [bookmarks, setBookmarks] = useState<BookmarkedArticle[]>([]);
+
+  // Load read/bookmark state from localStorage on mount
+  useEffect(() => {
+    setReadIds(getReadIds());
+    const bm = getBookmarks();
+    setBookmarks(bm);
+    setBookmarkedIds(new Set(bm.map(b => b.id)));
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -165,7 +236,7 @@ export default function NewsPage() {
         }
       } catch { /* silent */ }
     };
-    const iv = setInterval(poll, 120_000);
+    const iv = setInterval(poll, 60_000);
     return () => clearInterval(iv);
   }, [filter, timeRange, currency, debouncedSearch, sourceType, buildParams]);
 
@@ -177,6 +248,25 @@ export default function NewsPage() {
   const handleCurrencyClick = (sym: string) => {
     setCurrency(prev => prev === sym ? '' : sym);
   };
+
+  const handleArticleClick = (id: string) => {
+    markAsRead(id);
+    setReadIds(prev => new Set(prev).add(id));
+  };
+
+  const handleBookmark = (article: NewsArticle) => {
+    const added = toggleBookmark(article);
+    const bm = getBookmarks();
+    setBookmarks(bm);
+    setBookmarkedIds(new Set(bm.map(b => b.id)));
+  };
+
+  // Filter articles for bookmarks view
+  const displayArticles = useMemo(() => {
+    if (!showBookmarks) return articles;
+    // Show bookmarked articles from current results
+    return articles.filter(a => bookmarkedIds.has(a.id));
+  }, [articles, showBookmarks, bookmarkedIds]);
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -210,6 +300,19 @@ export default function NewsPage() {
                 <List className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            <button
+              onClick={() => setShowBookmarks(!showBookmarks)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                showBookmarks
+                  ? 'bg-hub-yellow/20 text-hub-yellow'
+                  : 'bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400'
+              }`}
+              title={showBookmarks ? 'Show all' : 'Show bookmarks'}
+            >
+              {showBookmarks ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
+              {bookmarks.length > 0 && <span>{bookmarks.length}</span>}
+            </button>
 
             <button
               onClick={handleRefresh}
@@ -374,12 +477,12 @@ export default function NewsPage() {
                   ))}
                 </div>
               </div>
-            ) : articles.length === 0 ? (
+            ) : displayArticles.length === 0 ? (
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
                 <Newspaper className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
                 <h3 className="text-white font-semibold mb-1">No news found</h3>
                 <p className="text-neutral-600 text-sm mb-4">
-                  {search ? `No results for "${search}"` : timeRange !== 'all' ? 'Nothing in this time range' : 'Try adjusting your filters'}
+                  {showBookmarks ? 'No bookmarked articles yet' : search ? `No results for "${search}"` : timeRange !== 'all' ? 'Nothing in this time range' : 'Try adjusting your filters'}
                 </p>
                 <button
                   onClick={() => { setSearch(''); setFilter('all'); setTimeRange('all'); setCurrency(''); }}
@@ -394,21 +497,44 @@ export default function NewsPage() {
                 {viewMode === 'cards' ? (
                   <>
                     {/* Featured article (first one) */}
-                    {articles.length > 0 && (
-                      <FeaturedArticle article={articles[0]} onCurrencyClick={handleCurrencyClick} />
+                    {displayArticles.length > 0 && (
+                      <FeaturedArticle
+                        article={displayArticles[0]}
+                        onCurrencyClick={handleCurrencyClick}
+                        isRead={readIds.has(displayArticles[0].id)}
+                        isBookmarked={bookmarkedIds.has(displayArticles[0].id)}
+                        onArticleClick={handleArticleClick}
+                        onBookmark={handleBookmark}
+                      />
                     )}
                     {/* Article grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {articles.slice(1).map(article => (
-                        <NewsCard key={article.id} article={article} onCurrencyClick={handleCurrencyClick} />
+                      {displayArticles.slice(1).map(article => (
+                        <NewsCard
+                          key={article.id}
+                          article={article}
+                          onCurrencyClick={handleCurrencyClick}
+                          isRead={readIds.has(article.id)}
+                          isBookmarked={bookmarkedIds.has(article.id)}
+                          onArticleClick={handleArticleClick}
+                          onBookmark={handleBookmark}
+                        />
                       ))}
                     </div>
                   </>
                 ) : (
                   /* Feed view — compact list like Tree of Alpha */
                   <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden divide-y divide-white/[0.04]">
-                    {articles.map(article => (
-                      <FeedItem key={article.id} article={article} onCurrencyClick={handleCurrencyClick} />
+                    {displayArticles.map(article => (
+                      <FeedItem
+                        key={article.id}
+                        article={article}
+                        onCurrencyClick={handleCurrencyClick}
+                        isRead={readIds.has(article.id)}
+                        isBookmarked={bookmarkedIds.has(article.id)}
+                        onArticleClick={handleArticleClick}
+                        onBookmark={handleBookmark}
+                      />
                     ))}
                   </div>
                 )}
@@ -569,7 +695,7 @@ export default function NewsPage() {
                 )}
               </div>
               <p className="text-[10px] text-neutral-600 mt-3">
-                Auto-refreshes every 2 min
+                Auto-refreshes every 60s
               </p>
             </div>
           </div>
@@ -583,13 +709,21 @@ export default function NewsPage() {
 
 /* ─── Featured Article Component ────────────────────────────── */
 
-function FeaturedArticle({ article, onCurrencyClick }: { article: NewsArticle; onCurrencyClick: (sym: string) => void }) {
+function FeaturedArticle({ article, onCurrencyClick, isRead, isBookmarked, onArticleClick, onBookmark }: {
+  article: NewsArticle;
+  onCurrencyClick: (sym: string) => void;
+  isRead: boolean;
+  isBookmarked: boolean;
+  onArticleClick: (id: string) => void;
+  onBookmark: (article: NewsArticle) => void;
+}) {
   return (
     <a
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block bg-hub-darker hover:bg-hub-darker border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-5"
+      onClick={() => onArticleClick(article.id)}
+      className={`group block bg-hub-darker hover:bg-hub-darker border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-5 ${isRead ? 'opacity-70' : ''}`}
     >
       <div className="flex gap-5 flex-col md:flex-row">
         {/* Image */}
@@ -648,6 +782,13 @@ function FeaturedArticle({ article, onCurrencyClick }: { article: NewsArticle; o
                   <span className="flex items-center gap-0.5 text-red-400"><ThumbsDown className="w-3 h-3" />{article.votes.negative}</span>
                 </div>
               )}
+              <button
+                onClick={(e) => { e.preventDefault(); onBookmark(article); }}
+                className="p-1 rounded hover:bg-white/[0.08] transition-colors"
+                title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+              >
+                {isBookmarked ? <BookmarkCheck className="w-4 h-4 text-hub-yellow" /> : <Bookmark className="w-4 h-4 text-neutral-600 hover:text-hub-yellow" />}
+              </button>
               <ExternalLink className="w-4 h-4 text-neutral-600 group-hover:text-hub-yellow transition-colors" />
             </div>
           </div>
@@ -659,13 +800,21 @@ function FeaturedArticle({ article, onCurrencyClick }: { article: NewsArticle; o
 
 /* ─── News Card Component ────────────────────────────────────── */
 
-function NewsCard({ article, onCurrencyClick }: { article: NewsArticle; onCurrencyClick: (sym: string) => void }) {
+function NewsCard({ article, onCurrencyClick, isRead, isBookmarked, onArticleClick, onBookmark }: {
+  article: NewsArticle;
+  onCurrencyClick: (sym: string) => void;
+  isRead: boolean;
+  isBookmarked: boolean;
+  onArticleClick: (id: string) => void;
+  onBookmark: (article: NewsArticle) => void;
+}) {
   return (
     <a
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block bg-hub-darker hover:bg-hub-darker border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-3"
+      onClick={() => onArticleClick(article.id)}
+      className={`group block bg-hub-darker hover:bg-hub-darker border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all p-3 ${isRead ? 'opacity-60' : ''}`}
     >
       <div className="flex gap-3">
         {/* Image */}
@@ -710,7 +859,16 @@ function NewsCard({ article, onCurrencyClick }: { article: NewsArticle; onCurren
           {/* Source */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-neutral-600">{article.source}</span>
-            <ExternalLink className="w-3 h-3 text-neutral-600 group-hover:text-hub-yellow transition-colors" />
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => { e.preventDefault(); onBookmark(article); }}
+                className="p-0.5 rounded hover:bg-white/[0.08] transition-colors"
+                title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+              >
+                {isBookmarked ? <BookmarkCheck className="w-3 h-3 text-hub-yellow" /> : <Bookmark className="w-3 h-3 text-neutral-600 hover:text-hub-yellow" />}
+              </button>
+              <ExternalLink className="w-3 h-3 text-neutral-600 group-hover:text-hub-yellow transition-colors" />
+            </div>
           </div>
         </div>
       </div>
@@ -746,13 +904,21 @@ const SOURCE_TYPE_COLORS: Record<string, string> = {
   aggregator: 'text-neutral-400',
 };
 
-function FeedItem({ article, onCurrencyClick }: { article: NewsArticle; onCurrencyClick: (sym: string) => void }) {
+function FeedItem({ article, onCurrencyClick, isRead, isBookmarked, onArticleClick, onBookmark }: {
+  article: NewsArticle;
+  onCurrencyClick: (sym: string) => void;
+  isRead: boolean;
+  isBookmarked: boolean;
+  onArticleClick: (id: string) => void;
+  onBookmark: (article: NewsArticle) => void;
+}) {
   return (
     <a
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors"
+      onClick={() => onArticleClick(article.id)}
+      className={`group flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors ${isRead ? 'opacity-50' : ''}`}
     >
       {/* Source badge */}
       <span className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 w-24 flex-shrink-0 truncate ${SOURCE_TYPE_COLORS[article.sourceType] || 'text-neutral-500'}`}>
@@ -778,6 +944,13 @@ function FeedItem({ article, onCurrencyClick }: { article: NewsArticle; onCurren
           </button>
         ))}
         {article.sentiment && <SentimentDot sentiment={article.sentiment} />}
+        <button
+          onClick={(e) => { e.preventDefault(); onBookmark(article); }}
+          className="p-0.5 rounded hover:bg-white/[0.08] transition-colors flex-shrink-0"
+          title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+        >
+          {isBookmarked ? <BookmarkCheck className="w-3 h-3 text-hub-yellow" /> : <Bookmark className="w-3 h-3 text-neutral-600 hover:text-hub-yellow" />}
+        </button>
         <span className="text-[10px] text-neutral-600 w-12 text-right">{formatTimeAgo(article.publishedAt)}</span>
       </div>
     </a>

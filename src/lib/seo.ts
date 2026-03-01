@@ -82,7 +82,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/news': {
     title: 'Crypto News',
-    description: 'Latest cryptocurrency and derivatives market news. Stay informed on events moving the market.',
+    description: 'Real-time crypto news from 21+ sources — CoinDesk, The Block, Cointelegraph, Decrypt, CryptoSlate, and more. Filter by time, source type, and sentiment.',
   },
   '/compare': {
     title: 'Compare Exchanges',
