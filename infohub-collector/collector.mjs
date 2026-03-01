@@ -62,47 +62,21 @@ const BINANCE_PAIRS = { BTC: 'BTCUSDT', ETH: 'ETHUSDT', SOL: 'SOLUSDT' };
 const OKX_PAIRS = { BTC: 'BTC-USDT-SWAP', ETH: 'ETH-USDT-SWAP', SOL: 'SOL-USDT-SWAP' };
 const OKX_CONTRACT_MULT = { BTC: 0.01, ETH: 0.1, SOL: 1 };
 
-async function fetchBinanceLiquidations(sym) {
-  const pair = BINANCE_PAIRS[sym];
-  if (!pair) return [];
-  try {
-    const res = await fetch(
-      `https://fapi.binance.com/fapi/v1/allForceOrders?symbol=${pair}&limit=100`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-    // Binance returns 451/403 from some IPs (geo-restriction on datacenter IPs)
-    if (res.status === 451 || res.status === 403 || !res.ok) return [];
-    const data = await res.json();
-    return data
-      .map(o => {
-        const price = parseFloat(o.averagePrice || o.price);
-        const qty = parseFloat(o.origQty);
-        if (!price || !qty || !isFinite(price) || !isFinite(qty)) return null;
-        // side=SELL means a long was liquidated (forced sell)
-        return {
-          symbol: sym,
-          exchange: 'Binance',
-          side: o.side === 'SELL' ? 'long' : 'short',
-          price,
-          quantity: qty,
-          valueUsd: price * qty,
-          ts: new Date(o.time || Date.now()).toISOString(),
-        };
-      })
-      .filter(Boolean);
-  } catch (err) {
-    console.error(`[liq] Binance fetch error (${sym}):`, err.message);
-    return [];
-  }
+// Binance allForceOrders endpoint deprecated as of March 2026 — returns 400
+// Stub returns empty until a replacement source is found
+async function fetchBinanceLiquidations(_sym) {
+  return [];
 }
 
+const OKX_ULY = { BTC: 'BTC-USDT', ETH: 'ETH-USDT', SOL: 'SOL-USDT' };
+
 async function fetchOKXLiquidations(sym) {
-  const instId = OKX_PAIRS[sym];
+  const uly = OKX_ULY[sym];
   const mult = OKX_CONTRACT_MULT[sym] || 1;
-  if (!instId) return [];
+  if (!uly) return [];
   try {
     const res = await fetch(
-      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instId=${instId}&state=filled&limit=100`,
+      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&uly=${uly}&state=filled&limit=100`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) return [];

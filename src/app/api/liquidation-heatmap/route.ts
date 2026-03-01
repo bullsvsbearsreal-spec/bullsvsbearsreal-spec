@@ -81,10 +81,10 @@ interface HeatmapResponse {
 const SUPPORTED_SYMBOLS = ['BTC', 'ETH', 'SOL'] as const;
 type SupportedSymbol = (typeof SUPPORTED_SYMBOLS)[number];
 
-const SYMBOL_PAIR_MAP: Record<SupportedSymbol, { binance: string; okx: string }> = {
-  BTC: { binance: 'BTCUSDT', okx: 'BTC-USDT-SWAP' },
-  ETH: { binance: 'ETHUSDT', okx: 'ETH-USDT-SWAP' },
-  SOL: { binance: 'SOLUSDT', okx: 'SOL-USDT-SWAP' },
+const SYMBOL_PAIR_MAP: Record<SupportedSymbol, { binance: string; okx: string; okxUly: string }> = {
+  BTC: { binance: 'BTCUSDT', okx: 'BTC-USDT-SWAP', okxUly: 'BTC-USDT' },
+  ETH: { binance: 'ETHUSDT', okx: 'ETH-USDT-SWAP', okxUly: 'ETH-USDT' },
+  SOL: { binance: 'SOLUSDT', okx: 'SOL-USDT-SWAP', okxUly: 'SOL-USDT' },
 };
 
 // Price bucket size as a fraction of current price
@@ -214,64 +214,22 @@ async function fetchCurrentPrice(symbol: SupportedSymbol): Promise<number> {
 // ---------------------------------------------------------------------------
 // Fetch Binance liquidations
 // ---------------------------------------------------------------------------
-async function fetchBinanceLiquidations(symbol: SupportedSymbol): Promise<LiquidationEvent[]> {
-  const pair = SYMBOL_PAIR_MAP[symbol].binance;
-  const events: LiquidationEvent[] = [];
-
-  try {
-    const res = await fetchWithTimeout(
-      `https://fapi.binance.com/fapi/v1/allForceOrders?symbol=${pair}&limit=100`,
-      {},
-      FETCH_TIMEOUT,
-    );
-
-    // Binance returns 451 from some IPs (geo-restriction)
-    if (res.status === 451 || res.status === 403) {
-      return events;
-    }
-
-    if (!res.ok) {
-      console.error(`Binance liquidations returned ${res.status}`);
-      return events;
-    }
-
-    const data: any[] = await res.json();
-
-    for (const order of data) {
-      const price = parseFloat(order.averagePrice || order.price);
-      const qty = parseFloat(order.origQty);
-      if (!price || !qty || !isFinite(price) || !isFinite(qty)) continue;
-
-      // side=SELL means a long was liquidated (forced sell), side=BUY means a short was liquidated
-      const side: 'long' | 'short' = order.side === 'SELL' ? 'long' : 'short';
-
-      events.push({
-        exchange: 'Binance',
-        symbol: symbol,
-        side,
-        price,
-        quantity: qty,
-        volume: price * qty,
-        time: order.time || Date.now(),
-      });
-    }
-  } catch (err) {
-    console.error('Binance liquidation fetch error:', err instanceof Error ? err.message : err);
-  }
-
-  return events;
+// Binance allForceOrders endpoint deprecated as of March 2026 — returns 400
+// Keeping stub so callers don't break; returns empty until a replacement is found
+async function fetchBinanceLiquidations(_symbol: SupportedSymbol): Promise<LiquidationEvent[]> {
+  return [];
 }
 
 // ---------------------------------------------------------------------------
 // Fetch OKX liquidations
 // ---------------------------------------------------------------------------
 async function fetchOKXLiquidations(symbol: SupportedSymbol): Promise<LiquidationEvent[]> {
-  const instId = SYMBOL_PAIR_MAP[symbol].okx;
+  const uly = SYMBOL_PAIR_MAP[symbol].okxUly;
   const events: LiquidationEvent[] = [];
 
   try {
     const res = await fetchWithTimeout(
-      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instId=${instId}&state=filled&limit=100`,
+      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&uly=${uly}&state=filled&limit=100`,
       {},
       FETCH_TIMEOUT,
     );
