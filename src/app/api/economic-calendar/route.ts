@@ -192,6 +192,8 @@ export async function GET(request: NextRequest) {
         liveCount: liveEvents.length,
         scheduledCount: staticEnhanced.length,
       },
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
   } catch (err) {
     console.error('Economic calendar error:', err);

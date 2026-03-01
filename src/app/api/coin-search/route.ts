@@ -69,7 +69,9 @@ export async function GET(request: Request) {
         large: cmcImage(c.id, 128),
       }));
 
-    return Response.json({ results: matches });
+    return Response.json({ results: matches }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    });
   } catch (err) {
     console.error('Coin search error:', err);
     return Response.json(

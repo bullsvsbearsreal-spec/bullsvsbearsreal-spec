@@ -95,7 +95,9 @@ function formatBinanceResponse(data: any[], pair: string, interval: string) {
     closeTime: k[6],
   }));
 
-  return NextResponse.json({ pair, interval, candles, count: candles.length, source: 'binance' });
+  return NextResponse.json({ pair, interval, candles, count: candles.length, source: 'binance' }, {
+    headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+  });
 }
 
 function formatBybitResponse(list: any[], pair: string, interval: string) {
@@ -113,7 +115,9 @@ function formatBybitResponse(list: any[], pair: string, interval: string) {
     }))
     .reverse(); // Bybit returns newest first, we want oldest first
 
-  return NextResponse.json({ pair, interval, candles, count: candles.length, source: 'bybit' });
+  return NextResponse.json({ pair, interval, candles, count: candles.length, source: 'bybit' }, {
+    headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+  });
 }
 
 function formatOkxResponse(data: any[], pair: string, interval: string) {
@@ -131,5 +135,7 @@ function formatOkxResponse(data: any[], pair: string, interval: string) {
     }))
     .reverse(); // OKX returns newest first
 
-  return NextResponse.json({ pair, interval, candles, count: candles.length, source: 'okx' });
+  return NextResponse.json({ pair, interval, candles, count: candles.length, source: 'okx' }, {
+    headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+  });
 }

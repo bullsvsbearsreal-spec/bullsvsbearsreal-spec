@@ -88,6 +88,8 @@ export async function GET(request: NextRequest) {
       symbols: topSymbols,
       totalExchanges: new Set(allTickers.map(t => t.exchange)).size,
       timestamp: Date.now(),
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';

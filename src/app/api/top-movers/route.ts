@@ -117,10 +117,11 @@ export async function GET(request: NextRequest) {
       setCache('heatmap-coins', sorted, DB_CACHE_TTL).catch(() => {});
     }
 
+    const cacheHeaders = { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' };
     if (isHeatmap) {
-      return NextResponse.json({ coins: sorted });
+      return NextResponse.json({ coins: sorted }, { headers: cacheHeaders });
     }
-    return NextResponse.json(cachedData);
+    return NextResponse.json(cachedData, { headers: cacheHeaders });
   } catch (error) {
     console.error('Top movers CMC error:', error);
     if (cachedData) return NextResponse.json(cachedData);

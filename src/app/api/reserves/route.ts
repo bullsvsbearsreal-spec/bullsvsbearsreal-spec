@@ -80,6 +80,8 @@ export async function GET() {
       exchangeCount: exchanges.length,
       exchanges,
       updatedAt: Date.now(),
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
   } catch (err) {
     console.error('Reserves API error:', err);

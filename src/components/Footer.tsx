@@ -409,6 +409,14 @@ export default function Footer() {
           ))}
         </div>
 
+        {/* ─── Disclaimer ─── */}
+        <div className="border-t border-white/[0.04] pt-4 mb-4">
+          <p className="text-[10px] text-neutral-700 leading-relaxed text-center">
+            InfoHub provides market data for informational purposes only &mdash; not financial advice.
+            Data sourced from third-party APIs and may be delayed or inaccurate.
+          </p>
+        </div>
+
         {/* ─── Bottom bar ─── */}
         <div className="border-t border-white/[0.04] pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-4">
@@ -423,6 +431,9 @@ export default function Footer() {
           <div className="flex items-center gap-4">
             <Link href="/terms" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
               Terms
+            </Link>
+            <Link href="/privacy" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
+              Privacy
             </Link>
             <Link href="/faq" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
               FAQ

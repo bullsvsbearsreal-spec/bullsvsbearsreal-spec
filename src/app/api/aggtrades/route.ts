@@ -100,6 +100,8 @@ export async function GET(request: NextRequest) {
       totalSellVol,
       netDelta: totalBuyVol - totalSellVol,
       buckets,
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
     });
   } catch (e) {
     return NextResponse.json(

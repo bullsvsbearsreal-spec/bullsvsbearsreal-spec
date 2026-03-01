@@ -120,6 +120,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Terms of Service',
     description: 'InfoHub terms of service and legal information.',
   },
+  '/privacy': {
+    title: 'Privacy Policy',
+    description: 'InfoHub privacy policy — how we handle your data, analytics, cookies, and your rights.',
+  },
   '/hl-whales': {
     title: 'Hyperliquid Whale Tracker',
     description: 'Track Hyperliquid whale positions, large trades, and notable trader activity in real-time.',

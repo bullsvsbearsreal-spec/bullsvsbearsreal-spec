@@ -89,7 +89,9 @@ export async function GET(request: NextRequest) {
     if (historyData) {
       historyCache[limit] = { data: historyData, time: Date.now() };
       if (isDBConfigured()) setCache(cacheKey, historyData, 3600).catch(() => {});
-      return NextResponse.json(historyData);
+      return NextResponse.json(historyData, {
+        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+      });
     }
 
     // Fallback: return stale cache or empty
@@ -132,7 +134,9 @@ export async function GET(request: NextRequest) {
         };
         cacheTime = Date.now();
         if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
-        return NextResponse.json(cachedData);
+        return NextResponse.json(cachedData, {
+          headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+        });
       }
     }
   } catch (error) {
@@ -156,7 +160,9 @@ export async function GET(request: NextRequest) {
         };
         cacheTime = Date.now();
         if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
-        return NextResponse.json(cachedData);
+        return NextResponse.json(cachedData, {
+          headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+        });
       }
     }
   } catch (error) {

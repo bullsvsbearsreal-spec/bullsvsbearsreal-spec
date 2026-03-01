@@ -65,7 +65,9 @@ export async function GET() {
       setCache(CACHE_KEY, result, CACHE_TTL).catch(() => {});
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
+    });
   } catch (e) {
     // Network error — try DB cache fallback
     if (isDBConfigured()) {

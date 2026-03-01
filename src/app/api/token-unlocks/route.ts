@@ -76,5 +76,7 @@ export async function GET() {
       priceSource,
       tokens: getAllCoinIds().length,
     },
+  }, {
+    headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
   });
 }

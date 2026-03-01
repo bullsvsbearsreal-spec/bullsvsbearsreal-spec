@@ -446,7 +446,9 @@ export async function GET() {
     cachedResponse = response;
     cacheTime = Date.now();
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    });
   } catch (e) {
     // Return stale cache on error
     if (cachedResponse) {
