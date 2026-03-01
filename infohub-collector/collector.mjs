@@ -55,6 +55,85 @@ async function batchInsert(entries, insertFn) {
   return inserted;
 }
 
+// ─── Direct Liquidation Fetching (Binance + OKX REST APIs) ──────────────────
+
+const LIQ_SYMBOLS = ['BTC', 'ETH', 'SOL'];
+const BINANCE_PAIRS = { BTC: 'BTCUSDT', ETH: 'ETHUSDT', SOL: 'SOLUSDT' };
+const OKX_PAIRS = { BTC: 'BTC-USDT-SWAP', ETH: 'ETH-USDT-SWAP', SOL: 'SOL-USDT-SWAP' };
+const OKX_CONTRACT_MULT = { BTC: 0.01, ETH: 0.1, SOL: 1 };
+
+async function fetchBinanceLiquidations(sym) {
+  const pair = BINANCE_PAIRS[sym];
+  if (!pair) return [];
+  try {
+    const res = await fetch(
+      `https://fapi.binance.com/fapi/v1/allForceOrders?symbol=${pair}&limit=100`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    // Binance returns 451/403 from some IPs (geo-restriction on datacenter IPs)
+    if (res.status === 451 || res.status === 403 || !res.ok) return [];
+    const data = await res.json();
+    return data
+      .map(o => {
+        const price = parseFloat(o.averagePrice || o.price);
+        const qty = parseFloat(o.origQty);
+        if (!price || !qty || !isFinite(price) || !isFinite(qty)) return null;
+        // side=SELL means a long was liquidated (forced sell)
+        return {
+          symbol: sym,
+          exchange: 'Binance',
+          side: o.side === 'SELL' ? 'long' : 'short',
+          price,
+          quantity: qty,
+          valueUsd: price * qty,
+          ts: new Date(o.time || Date.now()).toISOString(),
+        };
+      })
+      .filter(Boolean);
+  } catch (err) {
+    console.error(`[liq] Binance fetch error (${sym}):`, err.message);
+    return [];
+  }
+}
+
+async function fetchOKXLiquidations(sym) {
+  const instId = OKX_PAIRS[sym];
+  const mult = OKX_CONTRACT_MULT[sym] || 1;
+  if (!instId) return [];
+  try {
+    const res = await fetch(
+      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instId=${instId}&state=filled&limit=100`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    const entries = json?.data || [];
+    const events = [];
+    for (const entry of entries) {
+      for (const d of (entry.details || [])) {
+        const price = parseFloat(d.bkPx || d.price || '0');
+        const sz = parseFloat(d.sz || '0');
+        if (!price || !sz || !isFinite(price) || !isFinite(sz)) continue;
+        const actualQty = sz * mult;
+        // OKX: side "sell" = long was liquidated (forced sell)
+        events.push({
+          symbol: sym,
+          exchange: 'OKX',
+          side: d.side === 'sell' ? 'long' : 'short',
+          price,
+          quantity: actualQty,
+          valueUsd: price * actualQty,
+          ts: new Date(parseInt(d.ts, 10) || Date.now()).toISOString(),
+        });
+      }
+    }
+    return events;
+  } catch (err) {
+    console.error(`[liq] OKX fetch error (${sym}):`, err.message);
+    return [];
+  }
+}
+
 // ─── Snapshot Collection ────────────────────────────────────────────────────
 
 async function collectSnapshots() {
@@ -116,25 +195,16 @@ async function collectSnapshots() {
     result.errors.push(`oi-fetch: ${oiData.reason?.message}`);
   }
 
-  // ── Liquidations (BTC, ETH, SOL) ──
-  for (const sym of ['BTC', 'ETH', 'SOL']) {
+  // ── Liquidations (BTC, ETH, SOL) — direct from exchange REST APIs ──
+  // Fetches directly from Binance + OKX instead of the heatmap API
+  // (the heatmap API reads from this same DB, creating a circular dependency)
+  for (const sym of LIQ_SYMBOLS) {
     try {
-      const json = await fetchJSON(
-        `/api/liquidation-heatmap?symbol=${sym}&timeframe=24h`,
-        15000
-      );
-      const events = json?.summary?.recentEvents || [];
-      const entries = events
-        .filter(e => e.volume > 0 && e.price > 0)
-        .map(e => ({
-          symbol: sym,
-          exchange: e.exchange || 'Unknown',
-          side: e.side || 'long',
-          price: e.price,
-          quantity: e.volume / e.price,
-          valueUsd: e.volume,
-          ts: e.time ? new Date(e.time).toISOString() : new Date().toISOString(),
-        }));
+      const [binanceEvents, okxEvents] = await Promise.all([
+        fetchBinanceLiquidations(sym),
+        fetchOKXLiquidations(sym),
+      ]);
+      const entries = [...binanceEvents, ...okxEvents].filter(e => e.valueUsd > 0 && e.price > 0);
 
       result.liq += await batchInsert(entries, e =>
         sql`INSERT INTO liquidation_snapshots (symbol, exchange, side, price, quantity, value_usd, ts)

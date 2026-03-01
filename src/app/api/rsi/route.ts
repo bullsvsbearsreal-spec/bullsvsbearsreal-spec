@@ -82,7 +82,8 @@ function calculateRSI(closes: number[]): number | null {
 }
 
 // ---------------------------------------------------------------------------
-// Fetch Binance klines for a single symbol + interval
+// Fetch klines — tries Binance Futures first (works from datacenter IPs),
+// falls back to Bybit, then Binance Spot
 // ---------------------------------------------------------------------------
 async function fetchKlines(
   symbol: string,
@@ -90,21 +91,65 @@ async function fetchKlines(
   limit: number,
 ): Promise<number[]> {
   const pair = `${symbol}USDT`;
-  const url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`;
 
+  // Source 1: Binance Futures (fapi) — most reliable from datacenter IPs
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return [];
-    const data: unknown[][] = await res.json();
-    // kline[4] = close price
-    return data.map((k) => parseFloat(k[4] as string)).filter((v) => isFinite(v));
+    const res = await fetch(
+      `https://fapi.binance.com/fapi/v1/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (res.ok) {
+      const data: unknown[][] = await res.json();
+      const closes = data.map((k) => parseFloat(k[4] as string)).filter((v) => isFinite(v));
+      if (closes.length >= 15) return closes;
+    }
   } catch {
-    return [];
+    // try next source
   }
+
+  // Source 2: Bybit
+  const bybitIntervalMap: Record<string, string> = { '1h': '60', '4h': '240', '1d': 'D' };
+  const bybitInterval = bybitIntervalMap[interval];
+  if (bybitInterval) {
+    try {
+      const res = await fetch(
+        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${pair}&interval=${bybitInterval}&limit=${limit}`,
+        { signal: AbortSignal.timeout(6000) },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const list = json?.result?.list || [];
+        // Bybit returns [startTime, open, high, low, close, volume, turnover] in reverse chronological order
+        const closes = list
+          .map((k: string[]) => parseFloat(k[4]))
+          .filter((v: number) => isFinite(v))
+          .reverse(); // Reverse to chronological order
+        if (closes.length >= 15) return closes;
+      }
+    } catch {
+      // try next source
+    }
+  }
+
+  // Source 3: Binance Spot (often blocked from datacenter IPs)
+  try {
+    const res = await fetch(
+      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (res.ok) {
+      const data: unknown[][] = await res.json();
+      return data.map((k) => parseFloat(k[4] as string)).filter((v) => isFinite(v));
+    }
+  } catch {
+    // all sources failed
+  }
+
+  return [];
 }
 
 // ---------------------------------------------------------------------------
-// Fetch 24h ticker for price + change
+// Fetch 24h ticker for price + change (Futures first, Spot fallback)
 // ---------------------------------------------------------------------------
 interface TickerInfo {
   price: number | null;
@@ -113,6 +158,30 @@ interface TickerInfo {
 
 async function fetch24hTickers(): Promise<Map<string, TickerInfo>> {
   const map = new Map<string, TickerInfo>();
+
+  // Try Binance Futures first (works from datacenter IPs)
+  try {
+    const res = await fetch(
+      'https://fapi.binance.com/fapi/v1/ticker/24hr',
+      { signal: AbortSignal.timeout(8000) },
+    );
+    if (res.ok) {
+      const tickers: { symbol: string; lastPrice: string; priceChangePercent: string }[] = await res.json();
+      for (const t of tickers) {
+        if (!t.symbol.endsWith('USDT')) continue;
+        const base = t.symbol.replace('USDT', '');
+        map.set(base, {
+          price: parseFloat(t.lastPrice) || null,
+          change24h: parseFloat(t.priceChangePercent) || null,
+        });
+      }
+      if (map.size > 0) return map;
+    }
+  } catch {
+    // try fallback
+  }
+
+  // Fallback: Binance Spot
   try {
     const res = await fetch(
       'https://api.binance.com/api/v3/ticker/24hr',
