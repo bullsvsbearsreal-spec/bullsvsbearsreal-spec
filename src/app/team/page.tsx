@@ -19,7 +19,7 @@ const teamMembers: TeamMember[] = [
     name: '0x.0celot',
     role: 'Founder',
     image: '/team/ocelot.jpg',
-    bio: 'Started InfoHub because every funding rate dashboard was either paywalled or missing half the exchanges. Now maintains 24 exchange integrations, the API layer, and the frontend. Ships daily, usually at weird hours.',
+    bio: 'Started InfoHub because every funding rate dashboard was either paywalled or missing half the exchanges. Maintains the exchange integrations, API layer, and frontend.',
     stats: [],
     socials: { twitter: 'https://x.com/ocelotIH' },
     ringColor: 'from-hub-yellow via-hub-orange to-hub-yellow-dark',
@@ -29,7 +29,7 @@ const teamMembers: TeamMember[] = [
     name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
-    bio: 'Derivatives trader since TradFi, now full-time on-chain. Runs size across Hyperliquid, dYdX, and Drift. Pressure-tests every feature against real trading workflows before it ships.',
+    bio: 'Derivatives trader since TradFi, now full-time on-chain. Trades on Hyperliquid, dYdX, and Drift. Tests every feature before it ships.',
     stats: [
       { label: 'Annual Volume', value: '$1B+' },
       { label: 'In Markets', value: '15+ yrs' },
@@ -41,10 +41,10 @@ const teamMembers: TeamMember[] = [
 ];
 
 const projectStats = [
-  { value: '24', label: 'Exchanges', sublabel: 'tracked' },
-  { value: '8,000+', label: 'Pairs', sublabel: 'monitored' },
-  { value: 'Real-time', label: 'Data', sublabel: 'updates' },
-  { value: '24/7', label: 'Uptime', sublabel: 'always on' },
+  { value: '24', label: 'Exchanges' },
+  { value: '8,000+', label: 'Pairs' },
+  { value: 'Live', label: 'Data' },
+  { value: '24/7', label: 'Uptime' },
 ];
 
 export default function TeamPage() {
@@ -66,21 +66,14 @@ export default function TeamPage() {
           />
 
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] mb-6">
-              <span className="live-dot" />
-              <span className="text-[11px] text-neutral-400 font-medium tracking-wide">
-                Building in public
-              </span>
-            </div>
-
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
-              Built by traders,{' '}
-              <span className="text-gradient">for traders</span>
+              Who&apos;s behind{' '}
+              <span className="text-gradient">InfoHub</span>
             </h1>
 
             <p className="text-neutral-500 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-              Two derivatives traders who wanted better tools, so they built
-              them. No VC funding, no paywalls -- just a dashboard that works.
+              Two derivatives traders who got tired of paying for data that
+              should be free. No VC, no paywall.
             </p>
           </div>
         </section>
@@ -188,9 +181,8 @@ export default function TeamPage() {
         {/* ── Project Stats ── */}
         <section className="mb-16">
           <div className="text-center mb-8">
-            <p className="section-label mb-2">What we have built</p>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              The numbers behind InfoHub
+              InfoHub today
             </h2>
           </div>
 
@@ -203,11 +195,8 @@ export default function TeamPage() {
                 <div className="text-2xl sm:text-3xl font-bold text-gradient font-mono tracking-tight mb-1">
                   {stat.value}
                 </div>
-                <div className="text-sm font-semibold text-white mb-0.5">
+                <div className="text-sm font-semibold text-white">
                   {stat.label}
-                </div>
-                <div className="text-[11px] text-neutral-600">
-                  {stat.sublabel}
                 </div>
               </div>
             ))}
@@ -223,12 +212,11 @@ export default function TeamPage() {
 
             <div className="relative border border-white/[0.06] rounded-2xl p-8 sm:p-12 text-center">
               <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 tracking-tight">
-                Want to help build this?
+                Missing an exchange or feature?
               </h3>
               <p className="text-neutral-500 text-sm sm:text-base mb-6 max-w-lg mx-auto leading-relaxed">
-                We are always looking for exchange integrations, bug reports, and
-                feature ideas. If you trade derivatives and want better tools,
-                reach out.
+                DM us on X or send an email. Bug reports, exchange requests,
+                feature ideas — all welcome.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -261,7 +249,7 @@ export default function TeamPage() {
                       d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
                     />
                   </svg>
-                  Get in Touch
+                  Email us
                 </a>
 
               </div>

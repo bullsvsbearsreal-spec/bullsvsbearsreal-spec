@@ -280,7 +280,7 @@ export default function GuidesPage() {
           {/* ─── Bottom note ─── */}
           <div className="text-center pt-4 border-t border-white/[0.04]">
             <p className="text-neutral-700 text-xs">
-              Built with care by the InfoHub team. First guides dropping soon.
+              Guides are coming soon — we're writing them now.
             </p>
           </div>
         </div>

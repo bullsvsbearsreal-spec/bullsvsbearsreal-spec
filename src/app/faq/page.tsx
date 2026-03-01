@@ -33,7 +33,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'General',
     q: 'Who built this?',
-    a: 'A small team of derivatives traders. We built InfoHub because the tools we wanted didn\u2019t exist \u2014 or cost $200/month. More on the Team page.',
+    a: 'Two derivatives traders who got tired of paying $200/month for data that should be free. More on the About page.',
   },
   {
     category: 'General',

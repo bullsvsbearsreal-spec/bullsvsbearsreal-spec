@@ -19,7 +19,7 @@ export default function GlobalError({
       <body className="bg-hub-black text-white min-h-screen flex items-center justify-center">
         <div className="text-center px-6">
           <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
-          <p className="text-neutral-400 mb-6 text-sm">An unexpected error occurred. The team has been notified.</p>
+          <p className="text-neutral-400 mb-6 text-sm">An unexpected error occurred. We've been notified.</p>
           <button
             onClick={reset}
             className="px-4 py-2 bg-hub-yellow text-black rounded-lg font-medium hover:bg-hub-yellow/90 transition-colors"
