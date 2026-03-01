@@ -98,11 +98,12 @@ export default function LiquidationHistoryChart({ symbol: initialSymbol }: Liqui
         return;
       }
       const json = await res.json();
-      const raw: BucketRaw[] = Array.isArray(json) ? json : json.data || [];
-      const buckets: ChartBucket[] = raw.map((b) => ({
-        time: b.hour,
-        long: b.long_vol ?? 0,
-        short: b.short_vol ?? 0,
+      // API returns { points: [{ t, longValue, shortValue }] }
+      const raw: any[] = json.points || json.data || (Array.isArray(json) ? json : []);
+      const buckets: ChartBucket[] = raw.map((b: any) => ({
+        time: b.hour || (b.t ? new Date(b.t).toISOString() : ''),
+        long: b.long_vol ?? b.longValue ?? 0,
+        short: b.short_vol ?? b.shortValue ?? 0,
       }));
       setData(buckets);
     } catch {
