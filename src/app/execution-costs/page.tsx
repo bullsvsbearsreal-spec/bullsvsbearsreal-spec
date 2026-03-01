@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { fetchExecutionCosts } from '@/lib/api/aggregator';
 import { Direction, ExecutionCostResponse } from '@/lib/execution-costs/types';
 import Header from '@/components/Header';
@@ -73,10 +73,10 @@ function ExecutionCostsInner() {
   );
 
   const { data, error, isLoading, isRefreshing, lastUpdate, refresh } =
-    useApiData<ExecutionCostResponse>({
+    useApi<ExecutionCostResponse>({
+      key: 'execution-costs',
       fetcher,
       refreshInterval: 15_000,
-      retryCount: 2,
     });
 
   // Detect stale data: response doesn't match current parameters

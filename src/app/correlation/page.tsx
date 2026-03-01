@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, AlertTriangle, Info } from 'lucide-react';
 import { savePriceSnapshot } from '@/lib/storage/priceHistory';
 
@@ -142,7 +142,8 @@ export default function CorrelationPage() {
 
   // Fetch correlation data
   const { data, error, isLoading, lastUpdate, refresh, isRefreshing } =
-    useApiData<CorrelationData>({
+    useApi<CorrelationData>({
+      key: 'correlation',
       fetcher: useCallback(async () => {
         const res = await fetch('/api/correlation?count=25');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

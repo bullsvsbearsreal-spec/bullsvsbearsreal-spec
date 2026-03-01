@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD, formatPercent, formatCompact } from '@/lib/utils/format';
 import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
@@ -161,7 +161,8 @@ export default function OIHeatmapPage() {
     lastUpdate: oiLastUpdate,
     refresh: oiRefresh,
     isRefreshing: oiRefreshing,
-  } = useApiData<{ data: OIEntry[] }>({
+  } = useApi<{ data: OIEntry[] }>({
+    key: 'oi-heatmap-oi',
     fetcher: useCallback(async () => {
       const res = await fetch('/api/openinterest');
       if (!res.ok) throw new Error(`OI API HTTP ${res.status}`);
@@ -174,7 +175,8 @@ export default function OIHeatmapPage() {
     data: deltaData,
     error: deltaError,
     isLoading: deltaLoading,
-  } = useApiData<{ data: OIDelta[] }>({
+  } = useApi<{ data: OIDelta[] }>({
+    key: 'oi-heatmap-funding',
     fetcher: useCallback(async () => {
       const res = await fetch('/api/oi-delta');
       if (!res.ok) throw new Error(`Delta API HTTP ${res.status}`);

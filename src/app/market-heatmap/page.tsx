@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils/format';
 
@@ -121,7 +121,8 @@ export default function MarketHeatmapPage() {
   const [hoveredCoin, setHoveredCoin] = useState<CoinData | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApiData<{ coins: CoinData[] }>({
+  const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApi<{ coins: CoinData[] }>({
+    key: 'market-heatmap',
     fetcher: useCallback(async () => {
       const res = await fetch('/api/top-movers?mode=heatmap');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -116,7 +116,8 @@ export default function FearGreedPage() {
     return res.json() as Promise<HistoryResponse>;
   }, [timeframe]);
 
-  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApiData<HistoryResponse>({
+  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApi<HistoryResponse>({
+    key: 'fear-greed',
     fetcher,
     refreshInterval: 60000,
   });

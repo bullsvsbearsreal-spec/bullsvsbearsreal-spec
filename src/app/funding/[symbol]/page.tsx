@@ -8,7 +8,7 @@ import Footer from '@/components/Footer';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Percent, Activity, DollarSign } from 'lucide-react';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { fetchAllFundingRates, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { FundingRateData, OpenInterestData } from '@/lib/api/types';
 import { isExchangeDex } from '@/lib/constants';
@@ -63,7 +63,8 @@ export default function SymbolFundingPage() {
     return { rates, oi };
   }, []);
 
-  const { data, isLoading, error, lastUpdate } = useApiData({
+  const { data, isLoading, error, lastUpdate } = useApi({
+    key: `funding-symbol-${symbol}`,
     fetcher,
     refreshInterval: 60000, // 60s (server caches for 2 min)
   });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { Search, X } from 'lucide-react';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 
@@ -134,7 +135,7 @@ export default function CoinSearch({
                   onClick={() => handleSelect(coin)}
                   className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors"
                 >
-                  <img src={coin.thumb} alt={coin.name} className="w-6 h-6 rounded-full" />
+                  <Image src={coin.thumb} alt={coin.name} width={24} height={24} className="rounded-full" />
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-1.5">
                       <span className="text-white font-medium text-xs">{coin.name}</span>
@@ -170,7 +171,7 @@ export default function CoinSearch({
                       onClick={() => handleSelect(coin)}
                       className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors"
                     >
-                      <img src={coin.thumb} alt={coin.name} className="w-6 h-6 rounded-full" />
+                      <Image src={coin.thumb} alt={coin.name} width={24} height={24} className="rounded-full" />
                       <span className="text-white font-medium text-xs">{coin.name}</span>
                       <span className="text-neutral-600 text-[10px]">{coin.symbol.toUpperCase()}</span>
                     </button>

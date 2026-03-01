@@ -7,7 +7,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { formatRelativeTime, formatUSD, formatPrice } from '@/lib/utils/format';
 
 /* ------------------------------------------------------------------ */
@@ -221,7 +221,8 @@ export default function WalletTrackerPage() {
     [],
   );
 
-  const { data: tickers } = useApiData({
+  const { data: tickers } = useApi({
+    key: 'wallet-prices',
     fetcher: priceFetcher,
     refreshInterval: 60_000,
   });
@@ -256,10 +257,10 @@ export default function WalletTrackerPage() {
     error: walletError,
     lastUpdate,
     refresh: refreshWallet,
-  } = useApiData<WalletData | null>({
+  } = useApi<WalletData | null>({
+    key: activeAddress && activeChain ? `wallet-funding-${activeAddress}` : null,
     fetcher: walletFetcher,
     refreshInterval: 120_000,
-    enabled: !!activeAddress && !!activeChain,
   });
 
   /* ---- fetch DEX positions (Hyperliquid) ----------------------------- */
@@ -274,10 +275,10 @@ export default function WalletTrackerPage() {
   const {
     data: positionsData,
     isLoading: positionsLoading,
-  } = useApiData<PositionsData | null>({
+  } = useApi<PositionsData | null>({
+    key: activeAddress && activeChain === 'eth' ? `wallet-oi-${activeAddress}` : null,
     fetcher: positionsFetcher,
     refreshInterval: 60_000,
-    enabled: !!activeAddress && activeChain === 'eth',
   });
 
   /* ---- derived values ---------------------------------------------- */

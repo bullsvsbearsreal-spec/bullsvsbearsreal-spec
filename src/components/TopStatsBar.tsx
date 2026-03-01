@@ -1,37 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { fetchMarketStats } from '@/lib/api/aggregator';
+import { useMarketStats } from '@/hooks/useSWRApi';
 import { formatNumber } from '@/lib/utils/format';
 
-interface MarketStats {
-  totalVolume24h: number;
-  totalOpenInterest: number;
-  btcLongShort: { longRatio: number; shortRatio: number };
-  btcDominance: number;
-}
-
-
 export default function TopStatsBar() {
-  const [stats, setStats] = useState<MarketStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await fetchMarketStats();
-        setStats(data);
-      } catch (error) {
-        console.error('Failed to fetch market stats:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-    const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data: stats, isLoading: loading } = useMarketStats();
 
   if (loading || !stats) {
     return (

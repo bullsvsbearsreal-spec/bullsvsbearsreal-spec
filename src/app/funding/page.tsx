@@ -9,11 +9,11 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ALL_EXCHANGES, DEX_EXCHANGES, isExchangeDex, getCategoriesForAssetClass } from '@/lib/constants';
 import type { AssetClass } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import FundingStats from './components/FundingStats';
-import FundingHeatmapView from './components/FundingHeatmapView';
-import FundingArbitrageView from './components/FundingArbitrageView';
 import dynamic from 'next/dynamic';
+const FundingHeatmapView = dynamic(() => import('./components/FundingHeatmapView'), { ssr: false });
+const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrageView'), { ssr: false });
 
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
@@ -128,7 +128,8 @@ export default function FundingPage() {
     return result;
   }, [assetClass]);
 
-  const { data: freshData, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
+  const { data: freshData, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: `funding-page-${assetClass}`,
     fetcher,
     refreshInterval: 30000,
   });
@@ -255,10 +256,9 @@ export default function FundingPage() {
   const borrowingMap = new Map<string, number>(); // Symmetric borrowing fees (gTrade)
   fundingRates.forEach(fr => {
     if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
-    // For skew-based DEXes (gTrade, GMX), use the short-side rate as the primary display
-    // This matches how these exchanges show funding — their UI emphasizes the short holding cost
-    const displayRate = fr.fundingRateShort !== undefined ? fr.fundingRateShort : fr.fundingRate;
-    heatmapData.get(fr.symbol)!.set(fr.exchange, displayRate);
+    // Always use base funding rate for display/sorting/averages — comparable across all exchanges.
+    // L/S details (including borrowing) are shown separately in the heatmap cell text.
+    heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
     if (fr.fundingInterval && fr.fundingInterval !== '8h') {
       intervalMap.set(`${fr.symbol}|${fr.exchange}`, fr.fundingInterval);
     }

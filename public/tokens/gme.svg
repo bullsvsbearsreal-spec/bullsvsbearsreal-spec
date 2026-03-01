@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="20" fill="#0d0d0d"/>
+  <circle cx="64" cy="56" r="36" fill="#e31837" opacity="0.15"/>
+  <circle cx="64" cy="56" r="36" stroke="#e31837" stroke-width="2" fill="none" opacity="0.3"/>
+  <text x="64" y="68" text-anchor="middle" fill="#e31837" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="36">GME</text>
+  <text x="64" y="112" text-anchor="middle" fill="#e31837" font-family="system-ui,-apple-system,sans-serif" font-weight="600" font-size="12" opacity="0.6">GME</text>
+</svg>

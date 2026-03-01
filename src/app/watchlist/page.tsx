@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Plus, X, Star, Copy, Check, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -100,17 +100,20 @@ export default function WatchlistPage() {
     [],
   );
 
-  const { data: tickers, isLoading: loadingTickers, error: tickerError, lastUpdate, refresh: refreshTickers } = useApiData({
+  const { data: tickers, isLoading: loadingTickers, error: tickerError, lastUpdate, refresh: refreshTickers } = useApi({
+    key: 'watchlist-tickers',
     fetcher: tickerFetcher,
     refreshInterval: 60_000, // 60s (was 30s)
   });
 
-  const { data: fundingData, refresh: refreshFunding } = useApiData({
+  const { data: fundingData, refresh: refreshFunding } = useApi({
+    key: 'watchlist-funding',
     fetcher: fundingFetcher,
     refreshInterval: 60_000, // 60s (was 30s)
   });
 
-  const { data: oiData, refresh: refreshOI } = useApiData({
+  const { data: oiData, refresh: refreshOI } = useApi({
+    key: 'watchlist-oi',
     fetcher: oiFetcher,
     refreshInterval: 60_000, // 60s (was 30s)
   });

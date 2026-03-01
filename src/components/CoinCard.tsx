@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { TrendingUp, TrendingDown, ExternalLink, Calendar, Bell, Star, ChevronRight } from 'lucide-react';
 import { CoinData, formatPrice, formatNumber, formatPercent } from '@/lib/api/coingecko';
 import { fetchCoinEvents, CryptoEvent, formatEventDate, getCategoryIcon } from '@/lib/api/coinmarketcal';
@@ -38,7 +39,7 @@ export default function CoinCard({ coin, showEvents = true }: CoinCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <img src={coin.image} alt={coin.name} className="w-12 h-12 rounded-full" />
+            <Image src={coin.image} alt={coin.name} width={48} height={48} className="rounded-full" />
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-white">{coin.name}</h3>

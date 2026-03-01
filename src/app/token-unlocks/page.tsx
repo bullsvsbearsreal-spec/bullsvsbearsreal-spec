@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { TokenUnlock, UNLOCK_TYPES, formatUnlockAmount, formatUnlockValue, getDaysUntilUnlock, formatUnlockDate } from '@/lib/api/tokenunlocks';
 import { RefreshCw, AlertTriangle, Calendar, List, Filter, Search, ChevronLeft, ChevronRight, X, ExternalLink, Zap } from 'lucide-react';
 import Image from 'next/image';
@@ -402,7 +402,8 @@ export default function TokenUnlocksPage() {
     return res.json() as Promise<ApiResponse>;
   }, []);
 
-  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApiData<ApiResponse>({
+  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApi<ApiResponse>({
+    key: 'token-unlocks',
     fetcher,
     refreshInterval: 5 * 60 * 1000,
   });

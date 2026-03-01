@@ -1,37 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { TokenIconSimple } from './TokenIcon';
 import WatchlistStar from './WatchlistStar';
-import { fetchOIChanges } from '@/lib/api/aggregator';
-import { OpenInterestData } from '@/lib/api/types';
+import { useOIChanges } from '@/hooks/useSWRApi';
 import { formatUSD } from '@/lib/utils/format';
 import { BarChart3, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function OIChangeWidget() {
-  const [oiData, setOIData] = useState<OpenInterestData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  const loadData = async () => {
-    try {
-      const data = await fetchOIChanges();
-      setOIData(data);
-      setError(false);
-    } catch (err) {
-      console.error('Failed to fetch OI changes:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data: oiData, isLoading: loading, error: errorMsg, refresh: loadData } = useOIChanges();
+  const error = !!errorMsg;
 
   return (
     <div className="card-premium p-4">
@@ -56,11 +34,11 @@ export default function OIChangeWidget() {
       ) : error ? (
         <div className="text-center py-6">
           <p className="text-neutral-500 text-xs mb-2">Failed to load data</p>
-          <button onClick={() => { setLoading(true); loadData(); }} className="text-hub-yellow text-xs hover:underline">Retry</button>
+          <button onClick={() => loadData()} className="text-hub-yellow text-xs hover:underline">Retry</button>
         </div>
       ) : (
         <div className="space-y-1">
-          {oiData.slice(0, 5).map((item, index) => (
+          {(oiData ?? []).slice(0, 5).map((item, index) => (
             <div
               key={`${item.symbol}-${item.exchange}`}
               className="data-row-premium flex items-center justify-between"

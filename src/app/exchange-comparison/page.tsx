@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { RefreshCw, AlertTriangle, BarChart3, Table } from 'lucide-react';
 import { formatUSD } from '@/lib/utils/format';
@@ -70,11 +70,12 @@ export default function ExchangeComparisonPage() {
   const [sortKey, setSortKey] = useState<SortKey>('oi');
   const [selectedSymbol, setSelectedSymbol] = useState('BTC');
 
-  const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApiData<{
+  const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApi<{
     oi: any[];
     funding: any[];
     tickers: any[];
   }>({
+    key: 'exchange-comparison',
     fetcher: useCallback(async () => {
       const [oiRes, fundingRes, tickerRes] = await Promise.all([
         fetch('/api/openinterest'),

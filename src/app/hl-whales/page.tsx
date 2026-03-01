@@ -22,7 +22,7 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD } from '@/lib/utils/format';
 
 
@@ -375,7 +375,8 @@ export default function HLWhalesPage() {
     isRefreshing,
     lastUpdate,
     refresh,
-  } = useApiData<WhaleData[]>({
+  } = useApi<WhaleData[]>({
+    key: 'hl-whales',
     fetcher: whaleFetcher,
     refreshInterval: 60_000,
   });

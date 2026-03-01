@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { TokenIconSimple } from './TokenIcon';
-import { fetchLongShortRatio } from '@/lib/api/aggregator';
+import { useApi } from '@/hooks/useSWRApi';
 import { ArrowLeftRight } from 'lucide-react';
 
 interface RatioData {
@@ -12,34 +11,20 @@ interface RatioData {
 }
 
 export default function LongShortRatio() {
-  const [ratios, setRatios] = useState<RatioData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT'];
-        const results = await Promise.all(
-          symbols.map(async (symbol) => {
-            const data = await fetchLongShortRatio(symbol);
-            return {
-              ...data,
-              symbol: symbol.replace('USDT', ''),
-            };
-          })
-        );
-        setRatios(results);
-      } catch (error) {
-        console.error('Failed to fetch long/short ratios:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data: ratios, isLoading: loading } = useApi<RatioData[]>({
+    key: 'longShortRatios',
+    fetcher: async () => {
+      const { fetchLongShortRatio } = await import('@/lib/api/aggregator');
+      const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT'];
+      return Promise.all(
+        symbols.map(async (symbol) => {
+          const data = await fetchLongShortRatio(symbol);
+          return { ...data, symbol: symbol.replace('USDT', '') };
+        })
+      );
+    },
+    refreshInterval: 30_000,
+  });
 
   return (
     <div className="card-premium p-4">
@@ -61,7 +46,7 @@ export default function LongShortRatio() {
         </div>
       ) : (
         <div className="space-y-2">
-          {ratios.map((item) => {
+          {(ratios ?? []).map((item) => {
             const isLongDominant = item.longRatio > item.shortRatio;
             return (
               <div key={item.symbol} className="px-2.5 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">

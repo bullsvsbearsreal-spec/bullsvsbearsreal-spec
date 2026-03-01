@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD, formatCompact } from '@/lib/utils/format';
 import {
   RefreshCw,
@@ -185,7 +185,8 @@ export default function OnChainPage() {
     return res.json() as Promise<OnChainResponse>;
   }, []);
 
-  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApiData<OnChainResponse>({
+  const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApi<OnChainResponse>({
+    key: 'onchain',
     fetcher,
     refreshInterval: 10 * 60 * 1000,
   });

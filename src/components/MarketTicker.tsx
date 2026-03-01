@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { TokenIconSimple } from './TokenIcon';
-import { fetchAllTickers, fetchAllOpenInterest } from '@/lib/api/aggregator';
+import { useTickers } from '@/hooks/useSWRApi';
 import { TickerData } from '@/lib/api/types';
 import { formatPrice, safeNumber } from '@/lib/utils/format';
 
@@ -14,39 +14,19 @@ interface TickerItem {
 
 export default function MarketTicker() {
   const [isScrolling, setIsScrolling] = useState(true);
-  const [tickerData, setTickerData] = useState<TickerItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: tickers, isLoading } = useTickers();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [tickers] = await Promise.all([
-          fetchAllTickers(),
-          fetchAllOpenInterest(),
-        ]);
-
-        // Filter out tickers with exactly 0% change (exchanges like Variational/Aevo don't provide this data)
-        const processedTickers: TickerItem[] = tickers
-          .filter((t: TickerData) => t.priceChangePercent24h != null && t.priceChangePercent24h !== 0)
-          .slice(0, 40)
-          .map((t: TickerData) => ({
-            symbol: (t.symbol || '').replace('USDT', '').replace('USD', ''),
-            price: safeNumber(t.lastPrice),
-            change: safeNumber(t.priceChangePercent24h),
-          }));
-
-        setTickerData(processedTickers);
-      } catch (err) {
-        console.error('Failed to fetch ticker data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 30 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const tickerData = useMemo<TickerItem[]>(() => {
+    if (!tickers) return [];
+    return tickers
+      .filter((t: TickerData) => t.priceChangePercent24h != null && t.priceChangePercent24h !== 0)
+      .slice(0, 40)
+      .map((t: TickerData) => ({
+        symbol: (t.symbol || '').replace('USDT', '').replace('USD', ''),
+        price: safeNumber(t.lastPrice),
+        change: safeNumber(t.priceChangePercent24h),
+      }));
+  }, [tickers]);
 
   const duplicatedTickers = [...tickerData, ...tickerData];
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchWithTimeout, normalizeSymbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
+import { dedupedFetch } from '../_shared/inflight';
 import { tickerFetchers } from './exchanges';
 
 export const runtime = 'nodejs';
@@ -14,16 +15,35 @@ export const fetchCache = 'force-no-store';
 let l1Cache: { body: any; timestamp: number } | null = null;
 const L1_TTL = 30 * 1000; // 30 seconds
 
-export async function GET() {
+// Filter response to only include requested symbols (e.g. ?symbols=BTC,ETH)
+function filterBySymbols(body: any, symbols: Set<string>) {
+  return {
+    ...body,
+    data: body.data.filter((entry: any) => symbols.has(entry.symbol?.toUpperCase())),
+    meta: { ...body.meta, filtered: true, requestedSymbols: symbols.size },
+  };
+}
+
+export async function GET(request: Request) {
+  // Parse optional symbol filter: ?symbols=BTC,ETH,SOL
+  const { searchParams } = new URL(request.url);
+  const symbolsParam = searchParams.get('symbols');
+  const symbolFilter = symbolsParam
+    ? new Set(symbolsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean))
+    : null;
+
   // L1: Return cached data if fresh
   if (l1Cache && Date.now() - l1Cache.timestamp < L1_TTL) {
-    return NextResponse.json(l1Cache.body, {
+    const body = symbolFilter ? filterBySymbols(l1Cache.body, symbolFilter) : l1Cache.body;
+    return NextResponse.json(body, {
       headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
     });
   }
 
   try {
-    const { data, health } = await fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout);
+    const { data, health } = await dedupedFetch('tickers', () =>
+      fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout),
+    );
 
     // Normalize symbols for token rebrands (RNDR→RENDER, MATIC→POL)
     data.forEach((entry: any) => { entry.symbol = normalizeSymbol(entry.symbol); });
@@ -43,7 +63,8 @@ export async function GET() {
     // Update L1 cache
     l1Cache = { body: responseBody, timestamp: Date.now() };
 
-    return NextResponse.json(responseBody, {
+    const finalBody = symbolFilter ? filterBySymbols(responseBody, symbolFilter) : responseBody;
+    return NextResponse.json(finalBody, {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
     });
   } catch (error) {
@@ -52,7 +73,8 @@ export async function GET() {
 
     // Return stale cache if available
     if (l1Cache) {
-      return NextResponse.json(l1Cache.body, {
+      const body = symbolFilter ? filterBySymbols(l1Cache.body, symbolFilter) : l1Cache.body;
+      return NextResponse.json(body, {
         headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=10' },
       });
     }

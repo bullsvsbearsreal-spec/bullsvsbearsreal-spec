@@ -7,6 +7,7 @@ import CoinCard from '@/components/CoinCard';
 import EventsCalendar from '@/components/EventsCalendar';
 import { getCoinData, CoinData, formatPrice, formatNumber, formatPercent } from '@/lib/api/coingecko';
 import { fetchCoinEvents, CryptoEvent, formatEventDate, getCategoryIcon } from '@/lib/api/coinmarketcal';
+import Image from 'next/image';
 import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Bell, Share2, ExternalLink, Flame, Lock, Unlock, AlertTriangle } from 'lucide-react';
 
 export default function CoinPage() {
@@ -94,7 +95,7 @@ export default function CoinPage() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Coin Info */}
             <div className="flex items-center gap-4">
-              <img src={coin.image} alt={coin.name} className="w-16 h-16 rounded-full" />
+              <Image src={coin.image} alt={coin.name} width={64} height={64} className="rounded-full" />
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-3xl font-bold text-white">{coin.name}</h1>

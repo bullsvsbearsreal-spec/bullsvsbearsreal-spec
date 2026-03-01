@@ -9,7 +9,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import { RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Search, Info, Layers, BarChart3 } from 'lucide-react';
 import { formatPrice, formatFundingRate } from '@/lib/utils/format';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
 
 type SortField = 'symbol' | 'exchange' | 'markPrice' | 'indexPrice' | 'basis' | 'fundingRate';
@@ -48,7 +48,8 @@ export default function BasisPage() {
     return data;
   }, []);
 
-  const { data: fundingRates, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApiData({
+  const { data: fundingRates, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'basis',
     fetcher,
     refreshInterval: 60000, // 60s (server caches for 2 min)
   });

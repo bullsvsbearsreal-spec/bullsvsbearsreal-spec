@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Plus, X, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { formatUSD, formatPercent, formatQty, formatPrice } from '@/lib/utils/format';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -72,7 +72,8 @@ export default function PortfolioPage() {
     return (Array.isArray(json) ? json : json.data ?? []) as Ticker[];
   }, []);
 
-  const { data: tickers, isLoading, isRefreshing, lastUpdate, refresh, error: priceError } = useApiData<Ticker[]>({
+  const { data: tickers, isLoading, isRefreshing, lastUpdate, refresh, error: priceError } = useApi<Ticker[]>({
+    key: 'portfolio',
     fetcher,
     refreshInterval: 60_000, // 60s (was 30s)
   });

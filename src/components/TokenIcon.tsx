@@ -9,6 +9,49 @@ interface TokenIconProps {
   cmcId?: number;
 }
 
+// Currency → country code for flag SVGs in /public/flags/
+const CURRENCY_FLAG: Record<string, string> = {
+  USD: 'us', EUR: 'eu', GBP: 'gb', JPY: 'jp', CHF: 'ch',
+  AUD: 'au', CAD: 'ca', NZD: 'nz', KRW: 'kr', MXN: 'mx',
+  BRL: 'br', TRY: 'tr', ZAR: 'za', SGD: 'sg', HKD: 'hk',
+  SEK: 'se', NOK: 'no', PLN: 'pl', CZK: 'cz', HUF: 'hu',
+  TWD: 'tw', INR: 'in', DKK: 'dk', ILS: 'il', CNH: 'cn', CNY: 'cn',
+};
+
+function detectForexPair(symbol: string): { base: string; quote: string } | null {
+  const s = symbol.toUpperCase().replace(/[-_/]/g, '');
+  if (s.length !== 6) return null;
+  const base = CURRENCY_FLAG[s.slice(0, 3)];
+  const quote = CURRENCY_FLAG[s.slice(3)];
+  return (base && quote) ? { base, quote } : null;
+}
+
+function ForexIcon({ base, quote, size, className }: { base: string; quote: string; size: number; className?: string }) {
+  const flagSize = Math.round(size * 0.75);
+  return (
+    <div className={`relative ${className || ''}`} style={{ width: size, height: size }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/flags/${quote}.svg`}
+        alt=""
+        width={flagSize}
+        height={flagSize}
+        className="absolute rounded-full"
+        style={{ right: 0, bottom: 0 }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/flags/${base}.svg`}
+        alt=""
+        width={flagSize}
+        height={flagSize}
+        className="absolute rounded-full ring-1 ring-[#0a0a0a]"
+        style={{ left: 0, top: 0, zIndex: 1 }}
+      />
+    </div>
+  );
+}
+
 // Map common symbol variations to their canonical file names
 const symbolMap: Record<string, string> = {
   'BTC': 'btc', 'ETH': 'eth', 'SOL': 'sol', 'XRP': 'xrp', 'DOGE': 'doge',
@@ -59,6 +102,9 @@ const symbolMap: Record<string, string> = {
   'DOGS': 'dogs', 'HMSTR': 'hmstr', 'CATI': 'cati', 'PONKE': 'ponke', 'BANANA': 'banana',
   'ACT': 'act', 'AI16Z': 'ai16z', 'BB': 'bb', 'REZ': 'rez', 'SOLV': 'solv',
   'NFT': 'nft',
+  // Korean stocks (Lighter DEX)
+  'SAMSUNG': 'samsung', 'SKHYNIX': 'skhynix', 'HYUNDAI': 'hyundai',
+  'HANMI': 'hanmi', 'SNDK': 'sndk', 'KRCOMP': 'krcomp',
 };
 
 // Local tokens directory has:
@@ -90,6 +136,12 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
   const normalizedSymbol = symbol.toUpperCase().replace(/[-_]/g, '');
   const mappedSymbol = symbolMap[normalizedSymbol] || normalizedSymbol.toLowerCase();
   const fallbackText = normalizedSymbol.slice(0, 2);
+
+  // Forex pairs: render dual overlapping circular flags
+  const forexMatch = detectForexPair(normalizedSymbol);
+  if (forexMatch) {
+    return <ForexIcon base={forexMatch.base} quote={forexMatch.quote} size={size} className={className} />;
+  }
 
   if (hasError || !imgSrc) {
     if (!imgSrc && !hasError) {
@@ -186,6 +238,12 @@ export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: To
     // Final fallback: show colored circle with letter via React state
     setShowFallback(true);
   }, [mappedSymbol, cmcId]);
+
+  // Forex pairs: render dual overlapping circular flags (after all hooks)
+  const forexMatch = detectForexPair(normalizedSymbol);
+  if (forexMatch) {
+    return <ForexIcon base={forexMatch.base} quote={forexMatch.quote} size={size} className={className} />;
+  }
 
   if (showFallback) {
     return (

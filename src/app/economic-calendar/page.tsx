@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import {
   EVENT_CATEGORIES,
   IMPACT_COLORS,
@@ -133,7 +133,8 @@ export default function EconomicCalendarPage() {
   }, [monthKey, searchQuery, countryFilter]);
 
   const { data, error, isLoading, isRefreshing, refresh, lastUpdate } =
-    useApiData<ApiResponse>({
+    useApi<ApiResponse>({
+      key: 'economic-calendar',
       fetcher,
       refreshInterval: 5 * 60 * 1000,
     });

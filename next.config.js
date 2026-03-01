@@ -4,7 +4,12 @@ const { withSentryConfig } = require('@sentry/nextjs');
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['cryptologos.cc', 's2.coinmarketcap.com'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'cryptologos.cc' },
+      { protocol: 'https', hostname: 's2.coinmarketcap.com' },
+      { protocol: 'https', hostname: 'assets.coingecko.com' },
+      { protocol: 'https', hostname: 'coin-images.coingecko.com' },
+    ],
   },
   async headers() {
     return [

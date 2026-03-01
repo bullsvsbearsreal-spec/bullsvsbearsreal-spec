@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD, formatPrice, formatRelativeTime } from '@/lib/utils/format';
 import {
   RefreshCw,
@@ -493,7 +493,8 @@ export default function LiquidationHeatmapPage() {
   const refreshMs = timeframe === '7d' ? 5 * 60_000 : 30_000;
 
   const { data, isLoading, isRefreshing, lastUpdate, refresh, error } =
-    useApiData<LiquidationHeatmapResponse>({
+    useApi<LiquidationHeatmapResponse>({
+      key: 'liquidation-heatmap',
       fetcher,
       refreshInterval: refreshMs,
     });

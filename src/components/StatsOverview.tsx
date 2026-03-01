@@ -1,62 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { fetchAllTickers, fetchAllOpenInterest } from '@/lib/api/aggregator';
+import { useApi, useTickers, useOpenInterest } from '@/hooks/useSWRApi';
 import { formatNumber } from '@/lib/utils/format';
 import { DollarSign, BarChart3, TrendingUp, TrendingDown, Layers } from 'lucide-react';
 
 export default function StatsOverview() {
-  const [stats, setStats] = useState({
-    totalVolume: 0,
-    totalOI: 0,
-    topGainer: { symbol: '-', change: 0 },
-    topLoser: { symbol: '-', change: 0 },
-    activeMarkets: 0,
+  const { data: tickers } = useTickers();
+  const { data: oiData } = useOpenInterest();
+  const { data: moversRes } = useApi({
+    key: 'topMovers',
+    fetcher: () => fetch('/api/top-movers').then(r => r.json()).catch(() => ({ gainers: [], losers: [] })),
+    refreshInterval: 60_000,
   });
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [tickers, oiData, moversRes] = await Promise.all([
-          fetchAllTickers(),
-          fetchAllOpenInterest(),
-          fetch('/api/top-movers').then(r => r.json()).catch(() => ({ gainers: [], losers: [] })),
-        ]);
-
-        // Sanity cap: no single ticker should exceed $50B/day (filters Gate.io/BitMEX bad data)
-        const MAX_TICKER_VOL = 50_000_000_000;
-        const totalVolume = tickers.reduce((sum, t) => sum + Math.min(t.quoteVolume24h || 0, MAX_TICKER_VOL), 0);
-        const totalOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
-
-        const topGainerCoin = moversRes.gainers?.[0];
-        const topLoserCoin = moversRes.losers?.[0];
-
-        setStats({
-          totalVolume,
-          totalOI,
-          topGainer: {
-            symbol: topGainerCoin?.symbol || '-',
-            change: topGainerCoin?.change24h || 0,
-          },
-          topLoser: {
-            symbol: topLoserCoin?.symbol || '-',
-            change: topLoserCoin?.change24h || 0,
-          },
-          activeMarkets: tickers.length,
-        });
-      } catch (error) {
-        console.error('Failed to fetch stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
+  const stats = useMemo(() => {
+    const MAX_TICKER_VOL = 50_000_000_000;
+    const totalVolume = tickers?.reduce((sum, t) => sum + Math.min(t.quoteVolume24h || 0, MAX_TICKER_VOL), 0) ?? 0;
+    const totalOI = oiData?.reduce((sum, o) => sum + (o.openInterestValue || 0), 0) ?? 0;
+    const topGainerCoin = moversRes?.gainers?.[0];
+    const topLoserCoin = moversRes?.losers?.[0];
+    return {
+      totalVolume,
+      totalOI,
+      topGainer: { symbol: topGainerCoin?.symbol || '-', change: topGainerCoin?.change24h || 0 },
+      topLoser: { symbol: topLoserCoin?.symbol || '-', change: topLoserCoin?.change24h || 0 },
+      activeMarkets: tickers?.length ?? 0,
     };
+  }, [tickers, oiData, moversRes]);
 
-    fetchStats();
-    const interval = setInterval(fetchStats, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  const isLoading = !tickers;
 
   if (isLoading) {
     return (

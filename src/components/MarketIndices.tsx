@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { fetchAllTickers } from '@/lib/api/aggregator';
+import { useMemo } from 'react';
+import { useTickers } from '@/hooks/useSWRApi';
 import { LineChart, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface IndexData {
@@ -11,62 +11,36 @@ interface IndexData {
 }
 
 export default function MarketIndices() {
-  const [indices, setIndices] = useState<IndexData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: tickers, isLoading: loading } = useTickers();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const tickers = await fetchAllTickers();
+  const indices = useMemo<IndexData[]>(() => {
+    if (!tickers) return [];
+    const btcTicker = tickers.find(t => t.symbol === 'BTC');
+    const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
+    const btcVolume = btcTicker?.quoteVolume24h || 0;
+    const btcDominance = totalVolume > 0 ? (btcVolume / totalVolume) * 100 : 0;
 
-        const btcTicker = tickers.find(t => t.symbol === 'BTC');
-        const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
-        const btcVolume = btcTicker?.quoteVolume24h || 0;
-        const btcDominance = totalVolume > 0 ? (btcVolume / totalVolume) * 100 : 0;
+    const altcoins = tickers.filter(t => t.symbol !== 'BTC' && t.priceChangePercent24h !== undefined);
+    const avgAltcoinChange = altcoins.length > 0
+      ? altcoins.reduce((sum, t) => sum + (t.priceChangePercent24h || 0), 0) / altcoins.length
+      : 0;
+    const btcChange = btcTicker?.priceChangePercent24h || 0;
+    const altcoinOutperformance = avgAltcoinChange - btcChange;
+    const altSeasonIndex = Math.min(100, Math.max(0, 50 + (altcoinOutperformance * 5)));
 
-        const altcoins = tickers.filter(t => t.symbol !== 'BTC' && t.priceChangePercent24h !== undefined);
-        const avgAltcoinChange = altcoins.length > 0
-          ? altcoins.reduce((sum, t) => sum + (t.priceChangePercent24h || 0), 0) / altcoins.length
-          : 0;
-        const btcChange = btcTicker?.priceChangePercent24h || 0;
-        const altcoinOutperformance = avgAltcoinChange - btcChange;
-        const altSeasonIndex = Math.min(100, Math.max(0, 50 + (altcoinOutperformance * 5)));
-
-        setIndices([
-          {
-            name: 'BTC Dominance',
-            value: `${btcDominance.toFixed(2)}%`,
-            change: btcChange,
-          },
-          {
-            name: 'Altcoin Season',
-            value: altSeasonIndex.toFixed(0),
-            change: altcoinOutperformance,
-          },
-          {
-            name: 'BTC Price',
-            value: btcTicker ? `$${btcTicker.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-',
-            change: btcChange,
-          },
-          {
-            name: 'ETH Price',
-            value: tickers.find(t => t.symbol === 'ETH')
-              ? `$${tickers.find(t => t.symbol === 'ETH')!.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-              : '-',
-            change: tickers.find(t => t.symbol === 'ETH')?.priceChangePercent24h || 0,
-          },
-        ]);
-      } catch (error) {
-        console.error('Failed to fetch market indices:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    return [
+      { name: 'BTC Dominance', value: `${btcDominance.toFixed(2)}%`, change: btcChange },
+      { name: 'Altcoin Season', value: altSeasonIndex.toFixed(0), change: altcoinOutperformance },
+      { name: 'BTC Price', value: btcTicker ? `$${btcTicker.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-', change: btcChange },
+      {
+        name: 'ETH Price',
+        value: tickers.find(t => t.symbol === 'ETH')
+          ? `$${tickers.find(t => t.symbol === 'ETH')!.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+          : '-',
+        change: tickers.find(t => t.symbol === 'ETH')?.priceChangePercent24h || 0,
+      },
+    ];
+  }, [tickers]);
 
   return (
     <div className="card-premium p-4">

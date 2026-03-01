@@ -2,13 +2,14 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
-import ChatWidget from '@/components/chat/ChatWidget'
+import dynamic from 'next/dynamic'
+const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
 import { Analytics } from '@vercel/analytics/next'
 import { ALL_EXCHANGES } from '@/lib/constants'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
-const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' })
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' })
 
 export const viewport: Viewport = {
   width: 'device-width',

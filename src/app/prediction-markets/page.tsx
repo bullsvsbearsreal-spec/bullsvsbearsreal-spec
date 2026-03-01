@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ShareButton from '@/components/ShareButton';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { fetchPredictionMarkets } from '@/lib/api/aggregator';
 import { RefreshCw, AlertTriangle, Crosshair, Search, Info } from 'lucide-react';
 import StatsCards from './components/StatsCards';
@@ -26,7 +26,8 @@ export default function PredictionMarketsPage() {
 
   const fetcher = useCallback(() => fetchPredictionMarkets(), []);
 
-  const { data, error, isLoading, lastUpdate, refresh } = useApiData({
+  const { data, error, isLoading, lastUpdate, refresh } = useApi({
+    key: 'prediction-markets',
     fetcher,
     refreshInterval: 60000,
   });

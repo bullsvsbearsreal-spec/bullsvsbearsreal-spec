@@ -260,21 +260,12 @@ export default function FundingHeatmapView({
         return direction === 'desc' ? rateB - rateA : rateA - rateB;
       });
     }
-    // When sorting by a specific exchange, symbols with data first, sorted by rate value
-    // For L/S exchanges (gTrade, GMX): desc sort uses short-side rate, asc sort uses long-side rate
-    // This way extreme-funding coins (e.g. INJ) appear at the top in BOTH sort directions
+    // When sorting by a specific exchange, symbols with data first, sorted by base funding rate
     const withData = symbols.filter(s => heatmapData.get(s)?.get(exchange) !== undefined);
     const withoutData = symbols.filter(s => heatmapData.get(s)?.get(exchange) === undefined);
     withData.sort((a, b) => {
-      let rateA = heatmapData.get(a)!.get(exchange)!;
-      let rateB = heatmapData.get(b)!.get(exchange)!;
-      // For asc sort on L/S exchanges, use the long-side rate (which is more negative for high-demand coins)
-      if (direction === 'asc' && longShortMap) {
-        const lsA = longShortMap.get(`${a}|${exchange}`);
-        const lsB = longShortMap.get(`${b}|${exchange}`);
-        if (lsA) rateA = lsA.long;
-        if (lsB) rateB = lsB.long;
-      }
+      const rateA = heatmapData.get(a)!.get(exchange)!;
+      const rateB = heatmapData.get(b)!.get(exchange)!;
       // Apply period normalization for sorting
       const multA = periodMultiplier(intervalMap?.get(`${a}|${exchange}`), fundingPeriod);
       const multB = periodMultiplier(intervalMap?.get(`${b}|${exchange}`), fundingPeriod);
@@ -596,11 +587,8 @@ export default function FundingHeatmapView({
                         const rawLs = longShortMap?.get(`${symbol}|${ex}`);
                         const ls = rawLs ? { long: rawLs.long * pMult, short: rawLs.short * pMult } : undefined;
                         const hasLS = ls !== undefined && rate !== undefined;
-                        // For L/S exchanges: negate because L/S rates are holding costs (positive = paying = red)
-                        // desc/neutral → short-side rate, asc → long-side rate
-                        const colorRate = hasLS
-                          ? -(exchangeSort?.exchange === ex && exchangeSort?.direction === 'asc' ? ls.long : ls.short)
-                          : rate;
+                        // Cell background always uses base funding rate (comparable across all exchanges)
+                        const colorRate = rate;
                         const colors = rateToColors(colorRate, gridClamp);
 
                         const cellStyle: React.CSSProperties = {
@@ -626,10 +614,10 @@ export default function FundingHeatmapView({
                         const inner = hasLS ? (
                           <>
                             <span className="flex flex-col items-center gap-[2px] leading-none">
-                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.long, gridClamp).text }}>
+                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.long, gridClamp).text }}>
                                 <span className="text-white/25 text-[9px]">L</span> {formatRateAdaptive(ls.long)}
                               </span>
-                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(-ls.short, gridClamp).text }}>
+                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.short, gridClamp).text }}>
                                 <span className="text-white/25 text-[9px]">S</span> {formatRateAdaptive(ls.short)}
                               </span>
                             </span>

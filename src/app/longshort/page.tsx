@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useApiData } from '@/hooks/useApiData';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import {
@@ -87,7 +87,8 @@ export default function LongShortPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Main chart data
-  const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApiData<LSHistoryData>({
+  const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApi<LSHistoryData>({
+    key: 'longshort',
     fetcher: useCallback(async () => {
       const res = await fetch(`/api/longshort?symbol=${symbol}&period=${period}&limit=100`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

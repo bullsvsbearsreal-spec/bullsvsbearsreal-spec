@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout, getTop500Symbols, isTop500Symbol, normalizeSymbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
+import { dedupedFetch } from '../_shared/inflight';
 import { fundingFetchers } from './exchanges';
 import { classifySymbol, KNOWN_STOCKS, KNOWN_COMMODITIES, KNOWN_FOREX, FOREX_BASES } from './normalize';
 
@@ -102,10 +103,12 @@ export async function GET(request: NextRequest) {
   // Cache miss — fetch all exchanges (the expensive part: ~5-10s)
   let data: any[], health: any[], top500: Set<string>;
   try {
-    const [exchangeResult, top500Result] = await Promise.all([
-      fetchAllExchangesWithHealth(fundingFetchers, fetchWithTimeout),
-      getTop500Symbols(),
-    ]);
+    const [exchangeResult, top500Result] = await dedupedFetch('funding-raw', () =>
+      Promise.all([
+        fetchAllExchangesWithHealth(fundingFetchers, fetchWithTimeout),
+        getTop500Symbols(),
+      ]),
+    );
     data = exchangeResult.data;
     health = exchangeResult.health;
     top500 = top500Result;
