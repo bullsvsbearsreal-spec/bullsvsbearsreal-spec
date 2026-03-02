@@ -18,7 +18,7 @@ const teamMembers: TeamMember[] = [
     name: '0x.0celot',
     role: 'Founder',
     image: '/team/ocelot.jpg',
-    bio: 'Full-stack developer building real-time derivatives infrastructure. Ships daily, usually at weird hours.',
+    bio: 'Dev, not a trader. Built InfoHub solo because good perp data shouldn\u2019t cost $200/month. Ships daily, usually at weird hours.',
     stats: [],
     socials: { twitter: 'https://x.com/ocelotIH' },
     ringColor: 'from-hub-yellow via-hub-orange to-hub-yellow-dark',
@@ -28,7 +28,7 @@ const teamMembers: TeamMember[] = [
     name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
-    bio: 'Active derivatives trader across Hyperliquid, dYdX, and Drift. 15 years in markets, TradFi to on-chain.',
+    bio: 'Runs size across Hyperliquid, dYdX, and Drift. 15 years in derivatives, TradFi to on-chain. Pressure-tests every feature against real trades.',
     stats: [
       { label: 'Annual Volume', value: '$1B+' },
       { label: 'In Markets', value: '15+ yrs' },
@@ -71,7 +71,8 @@ export default function TeamPage() {
             </h1>
 
             <p className="text-neutral-500 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-              Building the most comprehensive derivatives intelligence platform.
+              A developer and a derivatives trader who got tired of paying for
+              data that should be free. No VC, no paywall.
             </p>
           </div>
         </section>
