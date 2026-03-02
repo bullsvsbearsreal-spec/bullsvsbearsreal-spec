@@ -33,7 +33,12 @@ function SignupContent() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const pwStrength = password.length >= 12 ? 3 : password.length >= 8 ? 2 : password.length >= 4 ? 1 : 0;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasDigit = /\d/.test(password);
+  const hasMinLen = password.length >= 8;
+  const pwChecks = [hasMinLen, hasUpper, hasLower, hasDigit].filter(Boolean).length;
+  const pwStrength = password.length === 0 ? 0 : pwChecks <= 2 ? 1 : pwChecks === 3 ? 2 : 3;
   const pwLabel = ['', 'Weak', 'Good', 'Strong'][pwStrength];
   const pwColor = ['', '#ef4444', '#f59e0b', '#22c55e'][pwStrength];
 
@@ -48,8 +53,8 @@ function SignupContent() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (!hasMinLen || !hasUpper || !hasLower || !hasDigit) {
+      setError('Password needs 8+ characters with uppercase, lowercase, and a number');
       return;
     }
 

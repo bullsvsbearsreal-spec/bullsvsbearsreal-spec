@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import { auth } from '@/lib/auth';
+import { validatePassword } from '@/lib/auth/password';
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 let sql: ReturnType<typeof postgres> | null = null;
@@ -25,8 +26,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Both current and new password are required' }, { status: 400 });
     }
 
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 });
+    const pw = validatePassword(newPassword);
+    if (!pw.ok) {
+      return NextResponse.json({ error: pw.error }, { status: 400 });
     }
 
     const db = getSQL();

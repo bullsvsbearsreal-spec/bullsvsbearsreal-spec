@@ -13,8 +13,12 @@ const sections = [
     body: 'By accessing or using InfoHub ("the Service"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, you should not use the Service. Your continued use of InfoHub constitutes acceptance of any updates or modifications to these terms.',
   },
   {
+    title: 'Eligibility',
+    body: 'You must be at least 18 years old to use InfoHub. By creating an account or using the Service, you represent and warrant that you are at least 18 years of age and have the legal capacity to enter into these terms. If you are under 18, you may not access or use the Service.',
+  },
+  {
     title: 'Description of Service',
-    body: 'InfoHub provides real-time cryptocurrency market data aggregated from third-party exchanges and data providers. This includes funding rates, open interest, liquidation data, screener tools, options analytics, and related market information. All data is provided for informational purposes only.',
+    body: 'InfoHub provides real-time cryptocurrency market data aggregated from third-party exchanges and data providers. This includes funding rates, open interest, liquidation data, screener tools, options analytics, and related market information. An account is required to access most features. All data is provided for informational purposes only.',
   },
   {
     title: 'No Financial Advice',
@@ -42,7 +46,11 @@ const sections = [
   },
   {
     title: 'Privacy',
-    body: 'InfoHub works without registration. An optional account can be created to sync preferences across devices, in which case we store the information you provide. We use basic, anonymous analytics to understand usage patterns and improve the Service. No personal data is sold or shared with third parties.',
+    body: 'An account is required to access most of the platform. When you register, we store the information you provide (email, display name, preferences). We use basic, anonymous analytics to understand usage patterns and improve the Service. No personal data is sold or shared with third parties. See our Privacy Policy for full details.',
+  },
+  {
+    title: 'Governing Law & Disputes',
+    body: 'These Terms shall be governed by and construed in accordance with applicable law. Any disputes arising from or relating to the use of InfoHub shall be resolved through good-faith negotiation between the parties. If a resolution cannot be reached, disputes shall be submitted to binding arbitration. You agree that any claim or cause of action must be filed within one year after the event giving rise to the claim.',
   },
   {
     title: 'Changes to Terms',
@@ -69,7 +77,7 @@ export default function TermsPage() {
           <div>
             <h1 className="heading-page">Terms & Conditions</h1>
             <p className="text-neutral-500 text-sm mt-0.5">
-              Last updated: February 2026
+              Last updated: March 2026
             </p>
           </div>
         </div>

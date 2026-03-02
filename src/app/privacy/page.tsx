@@ -10,7 +10,7 @@ export const metadata = pageMetadata('/privacy');
 const sections = [
   {
     title: 'Information We Collect',
-    body: 'InfoHub works without registration — no account is needed to use the platform. If you choose to create an optional account to sync preferences across devices, we store the information you provide (email address, display name, and your saved preferences). We do not collect or store any financial data, wallet addresses, or trading activity.',
+    body: 'An account is required to access most of InfoHub. When you register, we store the information you provide: email address, display name, and your saved preferences (watchlist, alerts, layout settings). We do not collect or store any financial data, wallet addresses, or trading activity.',
   },
   {
     title: 'How We Use Information',
@@ -29,16 +29,20 @@ const sections = [
     body: 'InfoHub aggregates data from third-party cryptocurrency exchange APIs (such as Binance, Bybit, OKX, and others) to display market information. These API requests are made server-side — your browser does not directly communicate with exchange APIs, and no user data is sent to these services.',
   },
   {
-    title: 'Data Retention',
-    body: 'Account data is retained for as long as your account exists. If you request account deletion, all associated data (email, preferences, saved watchlists) will be permanently removed. Anonymous analytics data is retained in aggregated form and cannot be linked to individual users.',
+    title: 'Data Retention & Deletion',
+    body: 'Account data is retained for as long as your account exists. If you request account deletion, all associated data (email, preferences, saved watchlists) will be permanently removed within 30 days. Backup copies may persist for up to 90 days before being purged. Anonymous analytics data is retained in aggregated form and cannot be linked to individual users.',
   },
   {
     title: 'Your Rights',
-    body: 'You have the right to: access the personal data we hold about you; request correction of inaccurate data; request deletion of your account and associated data; export your data upon request. To exercise any of these rights, contact us at the address below.',
+    body: 'You have the right to: access the personal data we hold about you; request correction of inaccurate data; request deletion of your account and associated data; export your data in a machine-readable format (JSON). To exercise any of these rights, email us at contact@info-hub.io. We will respond to all requests within 30 days.',
   },
   {
     title: 'Security',
     body: 'We take reasonable measures to protect the information we store. Passwords are hashed using industry-standard algorithms. All data is transmitted over HTTPS. However, no system is perfectly secure, and we cannot guarantee absolute security of your data.',
+  },
+  {
+    title: 'Data Breach Notification',
+    body: 'In the event of a data breach that affects your personal information, we will notify affected users via email within 72 hours of becoming aware of the breach. The notification will include: what data was affected, what steps we are taking, and what actions you can take to protect yourself.',
   },
   {
     title: 'Changes to This Policy',

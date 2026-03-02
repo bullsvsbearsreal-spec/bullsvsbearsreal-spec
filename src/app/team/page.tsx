@@ -18,7 +18,7 @@ const teamMembers: TeamMember[] = [
     name: '0x.0celot',
     role: 'Founder',
     image: '/team/ocelot.jpg',
-    bio: 'Dev, not a trader. Built InfoHub solo because good perp data shouldn\u2019t cost $200/month. Ships daily, usually at weird hours.',
+    bio: 'Honestly just wanted one clean page to compare funding rates. Every tool out there was either ugly, expensive, or both. Built a quick thing for himself, showed it to a few traders, and they wouldn\u2019t stop asking for more features. Still hasn\u2019t stopped adding them.',
     stats: [],
     socials: { twitter: 'https://x.com/ocelotIH' },
     ringColor: 'from-hub-yellow via-hub-orange to-hub-yellow-dark',
@@ -28,7 +28,7 @@ const teamMembers: TeamMember[] = [
     name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
-    bio: 'Runs size across Hyperliquid, dYdX, and Drift. 15 years in derivatives, TradFi to on-chain. Pressure-tests every feature against real trades.',
+    bio: 'Went from trading rates at a desk to trading perps from his couch. 15 years in and derivatives are still the only thing that gets him out of bed. Lives on Hyperliquid, dYdX, and Drift. The kind of person who DMs you at 4am because one number looked slightly off.',
     stats: [
       { label: 'Annual Volume', value: '$1B+' },
       { label: 'In Markets', value: '15+ yrs' },
@@ -71,8 +71,8 @@ export default function TeamPage() {
             </h1>
 
             <p className="text-neutral-500 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-              A developer and a derivatives trader who got tired of paying for
-              data that should be free. No VC, no paywall.
+              Small team, big opinions about how trading data should work.
+              We use what we build. That&apos;s the whole quality process.
             </p>
           </div>
         </section>

@@ -28,12 +28,12 @@ const faqs: FAQEntry[] = [
   {
     category: 'General',
     q: 'Do I need an account?',
-    a: 'No. Most features work without logging in. Create an account to sync your watchlist, alerts, and preferences across devices.',
+    a: 'Yes \u2014 a free account is required to access the full platform. Sign up takes 30 seconds. The landing page, FAQ, and legal pages are available without an account.',
   },
   {
     category: 'General',
     q: 'Who built this?',
-    a: 'A developer and a derivatives trader building the most comprehensive perps dashboard. More on the Team page.',
+    a: 'Small team \u2014 one person building it, one person trading on it and making sure the numbers are right. More on the Team page.',
   },
   {
     category: 'General',
@@ -43,7 +43,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'General',
     q: 'How can I contribute?',
-    a: 'Our GitHub repo is public \u2014 issues and pull requests are welcome. You can also join our Telegram community to discuss features, report bugs, or suggest improvements.',
+    a: 'Join our Telegram community or DM us on X. Feature requests, bug reports, exchange suggestions \u2014 we take all of it seriously.',
   },
 
   /* ── Data & Features ── */
@@ -60,7 +60,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'What DEX exchanges do you support?',
-    a: 'We currently track Hyperliquid, dYdX, Drift, GMX, Aevo, Lighter, gTrade, and Aster DEX. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.',
+    a: 'We currently track Hyperliquid, dYdX, Drift, GMX, Aevo, Lighter, gTrade, Aster DEX, Extended, edgeX, and Variational. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.',
   },
   {
     category: 'Data & Features',

@@ -59,6 +59,8 @@ const AUTH_PATHS = new Set([
   '/api/auth/reset-password',
   '/api/auth/verify-email',
   '/api/auth/verify-email/resend',
+  '/api/auth/check-credentials',
+  '/api/auth/2fa/challenge',
 ]);
 
 // Routes to skip entirely (have own limiters or are auth-protected)
