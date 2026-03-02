@@ -3,6 +3,7 @@
 import { SessionProvider } from 'next-auth/react';
 import { useUserSync } from '@/hooks/useUserSync';
 import SWRProvider from './SWRProvider';
+import AuthGate from './AuthGate';
 
 function SyncProvider({ children }: { children: React.ReactNode }) {
   useUserSync();
@@ -14,7 +15,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <SWRProvider>
         <SyncProvider>
-          {children}
+          <AuthGate>
+            {children}
+          </AuthGate>
         </SyncProvider>
       </SWRProvider>
     </SessionProvider>

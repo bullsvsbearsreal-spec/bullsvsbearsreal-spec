@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -17,7 +18,7 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe } from 'lucide-react';
+import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe, Lock } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
@@ -26,6 +27,8 @@ import { fetchCryptoNews, NewsArticle, formatTimeAgo } from '@/lib/api/coinmarke
 import Footer from '@/components/Footer';
 
 export default function HomeOrange() {
+  const { status } = useSession();
+  const isAuthed = status === 'authenticated';
   const router = useRouter();
   const [topFunding, setTopFunding] = useState<FundingRateData[]>([]);
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
@@ -45,9 +48,9 @@ export default function HomeOrange() {
         const validFunding = fundingData
           .filter(fr => fr && isValidNumber(fr.fundingRate))
           .sort((a, b) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
-          .slice(0, 5);
+          .slice(0, isAuthed ? 5 : 3);
         setTopFunding(validFunding);
-        setLatestNews(newsData);
+        setLatestNews(newsData.slice(0, isAuthed ? 4 : 2));
         setExchangeHealth(healthData.funding);
         setActiveExchangeCount(healthData.meta.activeExchanges);
       } catch (error) {
@@ -194,34 +197,42 @@ export default function HomeOrange() {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-0.5">
-                  {topFunding.map((item, index) => (
-                    <div
-                      key={`${item.symbol}-${item.exchange}-${index}`}
-                      className="data-row-premium flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-neutral-700 text-[10px] font-mono w-3">{index + 1}</span>
-                        <TokenIconSimple symbol={item.symbol} size={18} />
-                        <div className="flex flex-col">
-                          <span className="text-white font-medium text-xs">{item.symbol}</span>
-                          <span className="text-neutral-600 text-[9px] leading-none">{item.exchange}</span>
+                <>
+                  <div className="space-y-0.5">
+                    {topFunding.map((item, index) => (
+                      <div
+                        key={`${item.symbol}-${item.exchange}-${index}`}
+                        className="data-row-premium flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-700 text-[10px] font-mono w-3">{index + 1}</span>
+                          <TokenIconSimple symbol={item.symbol} size={18} />
+                          <div className="flex flex-col">
+                            <span className="text-white font-medium text-xs">{item.symbol}</span>
+                            <span className="text-neutral-600 text-[9px] leading-none">{item.exchange}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`h-5 rounded-md px-1.5 flex items-center ${
-                          item.fundingRate >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
-                        }`}>
-                          <span className={`font-mono font-bold text-[11px] tabular-nums ${
-                            item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
+                        <div className="flex items-center gap-2">
+                          <div className={`h-5 rounded-md px-1.5 flex items-center ${
+                            item.fundingRate >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
                           }`}>
-                            {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
-                          </span>
+                            <span className={`font-mono font-bold text-[11px] tabular-nums ${
+                              item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
+                            }`}>
+                              {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  {!isAuthed && (
+                    <Link href="/signup" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
+                      <Lock size={10} />
+                      Sign up to see more
+                    </Link>
+                  )}
+                </>
               )}
             </div>
 
@@ -249,26 +260,34 @@ export default function HomeOrange() {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-0.5">
-                  {latestNews.map((article, index) => (
-                    <a
-                      key={article.id || index}
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="data-row-premium block group/news"
-                    >
-                      <h4 className="text-neutral-300 group-hover/news:text-white text-xs font-medium line-clamp-2 leading-relaxed transition-colors">
-                        {article.title}
-                      </h4>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[10px] text-hub-yellow/60 font-medium">{article.source_info?.name || article.source}</span>
-                        <span className="text-neutral-700 text-[8px]">&middot;</span>
-                        <span className="text-[10px] text-neutral-600">{formatTimeAgo(article.published_on)}</span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
+                <>
+                  <div className="space-y-0.5">
+                    {latestNews.map((article, index) => (
+                      <a
+                        key={article.id || index}
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="data-row-premium block group/news"
+                      >
+                        <h4 className="text-neutral-300 group-hover/news:text-white text-xs font-medium line-clamp-2 leading-relaxed transition-colors">
+                          {article.title}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-hub-yellow/60 font-medium">{article.source_info?.name || article.source}</span>
+                          <span className="text-neutral-700 text-[8px]">&middot;</span>
+                          <span className="text-[10px] text-neutral-600">{formatTimeAgo(article.published_on)}</span>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                  {!isAuthed && (
+                    <Link href="/signup" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
+                      <Lock size={10} />
+                      Sign up to see more
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>

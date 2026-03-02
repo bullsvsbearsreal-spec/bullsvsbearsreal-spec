@@ -33,7 +33,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'General',
     q: 'Who built this?',
-    a: 'A developer and a derivatives trader who got tired of paying $200/month for data that should be free. More on the About page.',
+    a: 'A developer and a derivatives trader building the most comprehensive perps dashboard. More on the Team page.',
   },
   {
     category: 'General',
@@ -124,7 +124,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Technical',
     q: 'Is there an API?',
-    a: 'Yes \u2014 check the API Docs page. All endpoints are publicly accessible, no auth required. Just don\u2019t hammer them.',
+    a: 'API access is coming soon for subscribers. Stay tuned.',
   },
   {
     category: 'Technical',

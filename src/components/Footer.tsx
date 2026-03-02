@@ -12,7 +12,7 @@ import {
   Rocket, Map, Crown, Building2, Landmark, Coins, GitCompareArrows, Unlock, Bitcoin,
   Thermometer, Fish, Newspaper,
   Star, GitCompare, Bell, Wallet, Search,
-  Calendar, Code2, Palette, Users, BookOpen,
+  Calendar, Palette, Users, BookOpen,
   TrendingUp, DollarSign, Layers, Radio,
   type LucideIcon,
 } from 'lucide-react';
@@ -83,7 +83,6 @@ const footerSections: { heading: string; links: FooterLink[] }[] = [
     links: [
       { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar },
       { name: 'Guides', href: '/guides', icon: BookOpen },
-      { name: 'API Docs', href: '/api-docs', icon: Code2 },
       { name: 'Brand Kit', href: '/brand', icon: Palette },
       { name: 'Team', href: '/team', icon: Users },
       { name: 'FAQ', href: '/faq' },
@@ -437,9 +436,6 @@ export default function Footer() {
             </Link>
             <Link href="/faq" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
               FAQ
-            </Link>
-            <Link href="/api-docs" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
-              API
             </Link>
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)] animate-pulse" />
