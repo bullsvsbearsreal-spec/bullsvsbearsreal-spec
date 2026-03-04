@@ -11,6 +11,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { formatPrice, formatCompact, formatFundingRate } from '@/lib/utils/format';
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
 import { useTheme } from '@/hooks/useTheme';
+import type { Time } from 'lightweight-charts';
 
 const LightweightChart = dynamic(() => import('@/components/charts/LightweightChart'), { ssr: false });
 
@@ -49,7 +50,7 @@ type Interval = '1h' | '4h' | '1d' | '1w';
 
 function toCandleSeries(candles: Candle[]) {
   return candles.map((c) => ({
-    time: (c.time / 1000) as any,
+    time: (c.time / 1000) as Time,
     open: c.open,
     high: c.high,
     low: c.low,
@@ -59,7 +60,7 @@ function toCandleSeries(candles: Candle[]) {
 
 function toVolumeSeries(candles: Candle[]) {
   return candles.map((c) => ({
-    time: (c.time / 1000) as any,
+    time: (c.time / 1000) as Time,
     value: c.volume,
     color: c.close >= c.open ? 'rgba(234,179,8,0.3)' : 'rgba(239,68,68,0.3)',
   }));
@@ -94,10 +95,11 @@ export default function SymbolPage() {
       if (klinesRes?.candles) setCandles(klinesRes.candles);
 
       if (tickerRes?.data) {
+        interface RawTicker { symbol: string; exchange: string; lastPrice?: number; volume24h?: number; priceChangePercent24h?: number; change24h?: number }
         setTickers(
-          (tickerRes.data as any[])
-            .filter((t: any) => t.symbol === symbol)
-            .map((t: any) => ({
+          (tickerRes.data as RawTicker[])
+            .filter((t) => t.symbol === symbol)
+            .map((t) => ({
               exchange: t.exchange,
               lastPrice: t.lastPrice || 0,
               volume24h: t.volume24h || 0,
@@ -107,10 +109,11 @@ export default function SymbolPage() {
       }
 
       if (fundingRes?.data) {
+        interface RawFunding { symbol: string; exchange: string; rate?: number; fundingRate?: number; interval?: string }
         setFunding(
-          (fundingRes.data as any[])
-            .filter((f: any) => f.symbol === symbol)
-            .map((f: any) => ({
+          (fundingRes.data as RawFunding[])
+            .filter((f) => f.symbol === symbol)
+            .map((f) => ({
               exchange: f.exchange,
               rate: f.rate ?? f.fundingRate ?? 0,
               interval: f.interval,
@@ -119,10 +122,11 @@ export default function SymbolPage() {
       }
 
       if (oiRes?.data) {
+        interface RawOI { symbol: string; exchange: string; openInterest?: number }
         setOI(
-          (oiRes.data as any[])
-            .filter((o: any) => o.symbol === symbol)
-            .map((o: any) => ({
+          (oiRes.data as RawOI[])
+            .filter((o) => o.symbol === symbol)
+            .map((o) => ({
               exchange: o.exchange,
               openInterest: o.openInterest || 0,
             })),

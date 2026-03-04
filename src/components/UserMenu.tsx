@@ -9,6 +9,7 @@ import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Shield } from 'lu
 export default function UserMenu() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -21,6 +22,11 @@ export default function UserMenu() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Reset image error when avatar URL changes (e.g. after re-upload)
+  useEffect(() => {
+    setImgError(false);
+  }, [session?.user?.image]);
 
   // Loading state — show nothing
   if (status === 'loading') {
@@ -56,14 +62,15 @@ export default function UserMenu() {
         aria-expanded={open}
         aria-haspopup="true"
       >
-        {session.user?.image ? (
+        {session.user?.image && !imgError ? (
           <Image
             src={session.user.image}
-            alt=""
+            alt={`${session.user.name || 'User'}'s avatar`}
             width={28}
             height={28}
             className="w-7 h-7 rounded-full object-cover"
             unoptimized
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="w-7 h-7 rounded-full bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[11px] font-semibold">
@@ -109,6 +116,16 @@ export default function UserMenu() {
           >
             <LayoutDashboard className="w-3.5 h-3.5" />
             Dashboard
+          </Link>
+
+          {/* Profile */}
+          <Link
+            href="/profile"
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+          >
+            <User className="w-3.5 h-3.5" />
+            Profile
           </Link>
 
           {/* Settings */}

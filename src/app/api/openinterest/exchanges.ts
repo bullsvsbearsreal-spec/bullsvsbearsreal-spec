@@ -47,7 +47,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
                   symbol: ticker.symbol.replace('USDT', ''),
                   exchange: 'Binance',
                   openInterest: parseFloat(oiData.openInterest),
-                  openInterestValue: parseFloat(oiData.openInterest) * parseFloat(ticker.lastPrice),
+                  openInterestValue: (parseFloat(oiData.openInterest) || 0) * (parseFloat(ticker.lastPrice) || 0),
                 };
               }
             } catch {
@@ -166,7 +166,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           symbol: json[0].universe[index]?.name || `ASSET${index}`,
           exchange: 'Hyperliquid',
           openInterest: parseFloat(item.openInterest),
-          openInterestValue: parseFloat(item.openInterest) * parseFloat(item.markPx),
+          openInterestValue: (parseFloat(item.openInterest) || 0) * (parseFloat(item.markPx) || 0),
         }))
         .filter((item: any) => !isNaN(item.openInterestValue) && item.openInterestValue > 0);
     },
@@ -188,7 +188,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           symbol: key.replace('-USD', ''),
           exchange: 'dYdX',
           openInterest: parseFloat(market.openInterest),
-          openInterestValue: parseFloat(market.openInterest) * parseFloat(market.oraclePrice),
+          openInterestValue: (parseFloat(market.openInterest) || 0) * (parseFloat(market.oraclePrice) || 0),
         }))
         .filter((item: any) => item.openInterestValue > 0);
     },

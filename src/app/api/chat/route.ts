@@ -85,16 +85,18 @@ export async function POST(request: NextRequest) {
       fetch(`${origin}/api/openinterest`).then((r) => r.ok ? r.json() : null).catch(() => null),
     ]);
     if (tickerRes?.data) {
-      const btcTickers = (tickerRes.data as any[]).filter((t: any) => t.symbol === 'BTC');
+      interface RawTicker { symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number }
+      const btcTickers = (tickerRes.data as RawTicker[]).filter((t) => t.symbol === 'BTC');
       if (btcTickers.length > 0) {
-        btcPrice = btcTickers.reduce((s: number, t: any) => s + (t.lastPrice || 0), 0) / btcTickers.length;
+        btcPrice = btcTickers.reduce((s: number, t) => s + (t.lastPrice || 0), 0) / btcTickers.length;
         btcChange = btcTickers[0]?.priceChangePercent24h ?? btcTickers[0]?.change24h;
       }
     }
     if (oiRes?.data) {
-      btcOI = (oiRes.data as any[])
-        .filter((e: any) => e.symbol === 'BTC')
-        .reduce((s: number, e: any) => s + (e.openInterest || 0), 0);
+      interface RawOI { symbol: string; openInterest?: number }
+      btcOI = (oiRes.data as RawOI[])
+        .filter((e) => e.symbol === 'BTC')
+        .reduce((s: number, e) => s + (e.openInterest || 0), 0);
     }
   } catch {
     // Non-critical — MK.II works fine without ambient context
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
   // Only send last 6 messages to stay within token budget
   const recentMessages: Anthropic.MessageParam[] = body.messages.slice(-6).map((m) => ({
     role: m.role as 'user' | 'assistant',
-    content: m.content as any,
+    content: m.content as Anthropic.MessageParam['content'],
   }));
 
   // Create SSE stream

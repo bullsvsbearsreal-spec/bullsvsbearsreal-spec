@@ -72,7 +72,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           fundingInterval: '8h' as const,
           markPrice: parseFloat(item.markPrice),
           indexPrice: parseFloat(item.indexPrice),
-          nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
+          nextFundingTime: Number(item.nextFundingTime) || Date.now(),
           type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
@@ -135,7 +135,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                     predictedRate,
                     markPrice,
                     indexPrice: markPrice,
-                    nextFundingTime: parseInt(fr.nextFundingTime) || Date.now(),
+                    nextFundingTime: Number(fr.nextFundingTime) || Date.now(),
                     type: 'cex' as const,
                   };
                 }
@@ -171,7 +171,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           fundingInterval: '8h' as const,
           markPrice: parseFloat(item.markPrice),
           indexPrice: parseFloat(item.indexPrice),
-          nextFundingTime: parseInt(item.nextFundingTime) || Date.now(),
+          nextFundingTime: Number(item.nextFundingTime) || Date.now(),
           type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
@@ -281,7 +281,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPrice || '0'),
             indexPrice: parseFloat(item.indexPrice || '0'),
-            nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
+            nextFundingTime: Number(item.nextFundingTime) || Date.now() + 28800000,
             type: 'dex' as const,
             assetClass: normalized.assetClass,
           };
@@ -670,7 +670,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: interval as '1h' | '4h' | '8h',
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.lastPrice) || 0,
-            nextFundingTime: parseInt(item.nextFundingTime) || Date.now() + 28800000,
+            nextFundingTime: Number(item.nextFundingTime) || Date.now() + 28800000,
             type: 'cex' as const,
           };
         })
@@ -724,7 +724,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           let sym = item.symbol.replace('USDTM', '');
           if (sym === 'XBT') sym = 'BTC';
           const actualRate = overrides.has(item.symbol)
-            ? overrides.get(item.symbol)! * 100
+            ? (overrides.get(item.symbol) ?? 0) * 100
             : parseFloat(item.fundingFeeRate) * 100;
           return {
             symbol: sym,
@@ -733,7 +733,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
-            nextFundingTime: Date.now() + (parseInt(item.nextFundingRateTime) || 28800000),
+            nextFundingTime: Date.now() + (Number(item.nextFundingRateTime) || 28800000),
             type: 'cex' as const,
           };
         })
@@ -1379,7 +1379,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '1h' as const,
             markPrice: parseFloat(stats.markPrice) || 0,
             indexPrice: parseFloat(stats.indexPrice) || 0,
-            nextFundingTime: parseInt(stats.nextFundingRate) || Date.now() + 3600000,
+            nextFundingTime: Number(stats.nextFundingRate) || Date.now() + 3600000,
             type: 'dex' as const,
             assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
           };

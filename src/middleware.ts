@@ -72,12 +72,23 @@ function shouldSkip(path: string): boolean {
   return false;
 }
 
+// Max query string length — reject absurdly long params to prevent abuse
+const MAX_QUERY_LENGTH = 512;
+
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
 
   // Only rate-limit API routes
   if (!pathname.startsWith('/api/')) return NextResponse.next();
   if (shouldSkip(pathname)) return NextResponse.next();
+
+  // Input length guard — reject query strings > 512 chars
+  if (search.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json(
+      { error: 'Query string too long' },
+      { status: 400 },
+    );
+  }
 
   cleanup();
 
@@ -87,7 +98,6 @@ export function middleware(request: NextRequest) {
 
   // Auth routes — strict limits + no-store cache
   if (AUTH_PATHS.has(pathname) || pathname.startsWith('/api/auth/')) {
-    // All auth responses must never be cached
     const response = NextResponse.next();
     response.headers.set('Cache-Control', 'no-store');
 
@@ -97,7 +107,16 @@ export function middleware(request: NextRequest) {
       if (limited) {
         return NextResponse.json(
           { error: 'Too many requests. Please try again later.' },
-          { status: 429, headers: { 'Retry-After': String(retryAfter), 'Cache-Control': 'no-store' } },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(retryAfter),
+              'Cache-Control': 'no-store',
+              'X-RateLimit-Limit': String(AUTH_LIMIT),
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': String(Math.ceil(Date.now() / 1000) + retryAfter),
+            },
+          },
         );
       }
     }
@@ -108,14 +127,32 @@ export function middleware(request: NextRequest) {
   // All other API routes — moderate limits
   const key = `api:${ip}`;
   const { limited, retryAfter } = isRateLimited(apiBuckets, key, API_LIMIT, API_WINDOW);
+
   if (limited) {
     return NextResponse.json(
       { error: 'Rate limit exceeded. Please slow down.' },
-      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(retryAfter),
+          'X-RateLimit-Limit': String(API_LIMIT),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil(Date.now() / 1000) + retryAfter),
+        },
+      },
     );
   }
 
-  return NextResponse.next();
+  // Add rate limit headers to successful responses
+  const response = NextResponse.next();
+  const updatedBucket = apiBuckets.get(key);
+  const remaining = updatedBucket ? Math.max(0, API_LIMIT - updatedBucket.count) : API_LIMIT;
+  const resetAt = updatedBucket ? Math.ceil((updatedBucket.start + API_WINDOW) / 1000) : Math.ceil(Date.now() / 1000) + 60;
+  response.headers.set('X-RateLimit-Limit', String(API_LIMIT));
+  response.headers.set('X-RateLimit-Remaining', String(remaining));
+  response.headers.set('X-RateLimit-Reset', String(resetAt));
+
+  return response;
 }
 
 export const config = {

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Image from 'next/image';
@@ -39,7 +38,6 @@ interface NotificationPrefs {
 
 export default function SettingsPage() {
   const { data: session, status, update: updateSession } = useSession();
-  const router = useRouter();
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Avatar
@@ -101,12 +99,6 @@ export default function SettingsPage() {
     }>;
   } | null>(null);
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   // Load prefs + theme + avatar + account stats
   useEffect(() => {
@@ -213,6 +205,25 @@ export default function SettingsPage() {
     setAvatarUploading(false);
     // Reset file input
     if (avatarInputRef.current) avatarInputRef.current.value = '';
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!avatarUrl) return;
+    setAvatarUploading(true);
+    setAvatarError('');
+    try {
+      const res = await fetch('/api/user/avatar', { method: 'DELETE' });
+      if (!res.ok) {
+        const json = await res.json();
+        setAvatarError(json.error || 'Remove failed');
+      } else {
+        setAvatarUrl(null);
+        await updateSession();
+      }
+    } catch {
+      setAvatarError('Remove failed');
+    }
+    setAvatarUploading(false);
   };
 
   const savePrefs = async (email: boolean, cooldown: number) => {
@@ -437,7 +448,20 @@ export default function SettingsPage() {
     );
   }
 
-  if (!session) return null;
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-hub-black">
+        <Header />
+        <main className="flex flex-col items-center justify-center py-20 text-white">
+          <div className="text-neutral-400 text-sm mb-3">Log in to access settings</div>
+          <a href="/login" className="px-4 py-2 rounded-lg bg-hub-yellow text-black text-sm font-medium hover:brightness-110 transition-all">
+            Log In
+          </a>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -448,25 +472,36 @@ export default function SettingsPage() {
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5 mb-4">
             <div className="flex items-center gap-5">
               {/* Avatar — larger */}
-              <button
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={avatarUploading}
-                className="relative flex-shrink-0 w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/[0.08] hover:border-hub-yellow/50 transition-colors overflow-hidden group"
-                title="Change profile picture"
-              >
-                {avatarUrl ? (
-                  <Image src={avatarUrl} alt="Avatar" width={80} height={80} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-8 h-8 text-neutral-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                )}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  {avatarUploading ? (
-                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="relative w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/[0.08] hover:border-hub-yellow/50 transition-colors overflow-hidden group"
+                  title="Change profile picture"
+                >
+                  {avatarUrl ? (
+                    <Image src={avatarUrl} alt={`${session.user?.name || 'User'}'s avatar`} width={80} height={80} className="w-full h-full object-cover" />
                   ) : (
-                    <Camera className="w-5 h-5 text-white" />
+                    <User className="w-8 h-8 text-neutral-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   )}
-                </div>
-              </button>
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    {avatarUploading ? (
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    ) : (
+                      <Camera className="w-5 h-5 text-white" />
+                    )}
+                  </div>
+                </button>
+                {avatarUrl && !avatarUploading && (
+                  <button
+                    onClick={handleAvatarRemove}
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center z-10 transition-colors"
+                    title="Remove avatar"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
               <input
                 ref={avatarInputRef}
                 type="file"

@@ -88,7 +88,7 @@ export function useFundingRates(assetClass: string = 'crypto') {
     key: `funding-${assetClass}`,
     fetcher: async () => {
       const { fetchAllFundingRates } = await import('@/lib/api/aggregator');
-      return fetchAllFundingRates(assetClass as any);
+      return fetchAllFundingRates(assetClass as import('@/lib/api/aggregator').AssetClassFilter);
     },
     refreshInterval: 30_000,
   });

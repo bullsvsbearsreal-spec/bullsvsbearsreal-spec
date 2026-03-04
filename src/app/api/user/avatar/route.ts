@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import postgres from 'postgres';
 
 export const runtime = 'nodejs';
@@ -70,9 +70,11 @@ export async function POST(request: NextRequest) {
         ContentType: file.type,
         ACL: 'public-read',
       }));
+      // Cache-bust: append timestamp so CDN/browser fetches the new version
+      const cacheBust = `?v=${Date.now()}`;
       imageUrl = DO_SPACES_CDN
-        ? `${DO_SPACES_CDN}/${key}`
-        : `${DO_SPACES_ENDPOINT}/${DO_SPACES_BUCKET}/${key}`;
+        ? `${DO_SPACES_CDN}/${key}${cacheBust}`
+        : `${DO_SPACES_ENDPOINT}/${DO_SPACES_BUCKET}/${key}${cacheBust}`;
     } else {
       // Fallback: store as base64 data URL in DB (client already resizes to 256x256)
       // Limit to 100KB to avoid bloating JWT cookies
@@ -91,5 +93,48 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('Avatar upload error:', err);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const db = getSQL();
+
+    // Get current avatar URL to determine if S3 cleanup is needed
+    const rows = await db`SELECT image FROM users WHERE id = ${session.user.id}`;
+    const currentImage = rows[0]?.image as string | null;
+
+    // Delete from S3 if it's a cloud URL (not a data: URL)
+    if (currentImage && !currentImage.startsWith('data:') && DO_SPACES_ENDPOINT && DO_SPACES_KEY) {
+      try {
+        // Derive the S3 key from the URL pathname
+        // CDN URL pathname: /avatars/userId.ext → key: avatars/userId.ext
+        // Endpoint URL pathname: /bucket/avatars/userId.ext → key: avatars/userId.ext
+        const urlPath = new URL(currentImage).pathname;
+        const parts = urlPath.split('/').filter(Boolean);
+        const avatarIdx = parts.indexOf('avatars');
+        const s3Key = avatarIdx >= 0 ? parts.slice(avatarIdx).join('/') : parts.join('/');
+        const s3 = getS3();
+        await s3.send(new DeleteObjectCommand({
+          Bucket: DO_SPACES_BUCKET,
+          Key: s3Key,
+        }));
+      } catch (err) {
+        console.error('Avatar S3 delete error (non-fatal):', err);
+      }
+    }
+
+    // Clear image in DB
+    await db`UPDATE users SET image = NULL WHERE id = ${session.user.id}`;
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Avatar delete error:', err);
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
   }
 }

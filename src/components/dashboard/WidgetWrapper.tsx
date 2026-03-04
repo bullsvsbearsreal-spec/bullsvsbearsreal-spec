@@ -1,6 +1,7 @@
 'use client';
 
-import { GripVertical, X, Maximize2, Minimize2 } from 'lucide-react';
+import { useState } from 'react';
+import { GripVertical, X, Maximize2, Minimize2, ChevronUp, ChevronDown } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 interface WidgetWrapperProps {
@@ -22,7 +23,8 @@ interface WidgetWrapperProps {
 /** Resolve a lucide icon name string to the actual component */
 function getIcon(name?: string) {
   if (!name) return null;
-  const Icon = (LucideIcons as any)[name];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic icon lookup by string name
+  const Icon = (LucideIcons as any)[name] as React.ComponentType<{ className?: string }> | undefined;
   return Icon ? <Icon className="w-3 h-3" /> : null;
 }
 
@@ -48,6 +50,7 @@ export default function WidgetWrapper({
   children,
 }: WidgetWrapperProps) {
   const iconEl = getIcon(icon);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div
@@ -55,7 +58,7 @@ export default function WidgetWrapper({
       onPointerDown={onPointerDown}
       className={`
         bg-hub-darker border rounded-xl overflow-hidden transition-all
-        ${colSpan === 2 ? 'col-span-2' : 'col-span-1'}
+        ${colSpan === 2 ? 'col-span-1 md:col-span-2' : 'col-span-1'}
         ${isDragOver ? 'border-hub-yellow/50 scale-[1.02]' : 'border-white/[0.06]'}
         ${isDragging ? 'opacity-40' : 'opacity-100'}
       `}
@@ -91,6 +94,13 @@ export default function WidgetWrapper({
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
+            className="p-1 text-neutral-600 hover:text-neutral-400 transition-colors md:hidden"
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+          </button>
           {onToggleSize && canExpand !== undefined && (
             <button
               onClick={(e) => { e.stopPropagation(); onToggleSize(); }}
@@ -109,10 +119,12 @@ export default function WidgetWrapper({
           </button>
         </div>
       </div>
-      {/* Content */}
-      <div className="p-3">
-        {children}
-      </div>
+      {/* Content — collapsible on mobile */}
+      {!collapsed && (
+        <div className="p-3">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

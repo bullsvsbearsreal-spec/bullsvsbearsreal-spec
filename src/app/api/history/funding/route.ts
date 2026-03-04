@@ -127,11 +127,8 @@ export async function GET(request: NextRequest) {
 
       cache.set(cacheKey, { body, ts: Date.now() });
       if (cache.size > 100) {
-        const iter = cache.keys();
-        for (let i = 0; i < 25; i++) {
-          const k = iter.next().value;
-          if (k) cache.delete(k);
-        }
+        const keys = Array.from(cache.keys()).slice(0, 25);
+        for (const k of keys) cache.delete(k);
       }
 
       return NextResponse.json(body, {

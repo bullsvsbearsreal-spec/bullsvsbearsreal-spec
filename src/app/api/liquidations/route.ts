@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
+import { LiquidationsQuerySchema } from '@/lib/validation/schemas';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -19,13 +20,18 @@ const CACHE_TTL = 30_000;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const symbol = searchParams.get('symbol')?.toUpperCase();
-  const exchange = (searchParams.get('exchange') || 'okx').toLowerCase();
-  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '100', 10), 1), 100);
-
-  if (!symbol) {
-    return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 });
+  const parsed = LiquidationsQuerySchema.safeParse({
+    symbol: searchParams.get('symbol') || undefined,
+    exchange: searchParams.get('exchange') || undefined,
+    limit: searchParams.get('limit') || undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || 'Invalid parameters' },
+      { status: 400 },
+    );
   }
+  const { symbol, exchange, limit } = parsed.data;
 
   if (exchange !== 'okx') {
     return NextResponse.json(
@@ -34,7 +40,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const cacheKey = `liq_${exchange}_${symbol}`;
+  const cacheKey = `liq_${exchange}_${symbol}_${limit}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     return NextResponse.json(cached.body, {
@@ -90,11 +96,8 @@ export async function GET(request: NextRequest) {
 
     cache.set(cacheKey, { body, ts: Date.now() });
     if (cache.size > 100) {
-      const iter = cache.keys();
-      for (let i = 0; i < 25; i++) {
-        const k = iter.next().value;
-        if (k) cache.delete(k);
-      }
+      const keys = Array.from(cache.keys()).slice(0, 25);
+      for (const k of keys) cache.delete(k);
     }
 
     return NextResponse.json(body, {

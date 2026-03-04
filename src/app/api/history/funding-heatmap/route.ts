@@ -38,8 +38,9 @@ export async function GET(request: NextRequest) {
     if (fundingRes?.data) {
       // Gather unique symbols, prioritize by appearing on most exchanges
       const symbolCounts = new Map<string, number>();
-      (fundingRes.data as any[]).forEach((item: any) => {
-        const sym = item.symbol as string;
+      interface RawFundingItem { symbol: string }
+      (fundingRes.data as RawFundingItem[]).forEach((item) => {
+        const sym = item.symbol;
         symbolCounts.set(sym, (symbolCounts.get(sym) || 0) + 1);
       });
       // Sort by exchange count descending, take top N

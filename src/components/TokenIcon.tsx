@@ -101,7 +101,9 @@ const symbolMap: Record<string, string> = {
   'SONIC': 'sonic', 'MOG': 'mog', 'BRETT': 'brett', 'ZETA': 'zeta', 'OMNI': 'omni',
   'DOGS': 'dogs', 'HMSTR': 'hmstr', 'CATI': 'cati', 'PONKE': 'ponke', 'BANANA': 'banana',
   'ACT': 'act', 'AI16Z': 'ai16z', 'BB': 'bb', 'REZ': 'rez', 'SOLV': 'solv',
-  'NFT': 'nft',
+  'NFT': 'nft', 'JELLYJELLY': 'jellyjelly', 'RIVER': 'river', 'LAYER': 'layer',
+  'WAL': 'wal', 'TST': 'tst', 'FORM': 'form', 'RED': 'red', 'PARTI': 'parti',
+  'BAN': 'ban', 'MOVE': 'move', 'SAGA': 'saga', 'BIGTIME': 'bigtime',
   // Korean stocks (Lighter DEX)
   'SAMSUNG': 'samsung', 'SKHYNIX': 'skhynix', 'HYUNDAI': 'hyundai',
   'HANMI': 'hanmi', 'SNDK': 'sndk', 'KRCOMP': 'krcomp',
@@ -223,16 +225,17 @@ export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: To
       return;
     }
 
-    // Try GitHub CDN if CMC CDN failed or no cmcId
-    if (src.endsWith('.svg') && src.includes('/tokens/')) {
-      img.src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${mappedSymbol}.png`;
-      return;
-    }
-
-    // Try GitHub CDN if CMC CDN failed
-    if (src.includes('coinmarketcap.com')) {
-      img.src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${mappedSymbol}.png`;
-      return;
+    // Try GitHub CDN only for tokens in our symbolMap (avoids wrong icons for unknown tokens)
+    const isKnownSymbol = !!symbolMap[symbol.toUpperCase().replace(/[-_]/g, '')];
+    if (isKnownSymbol) {
+      if (src.endsWith('.svg') && src.includes('/tokens/')) {
+        img.src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${mappedSymbol}.png`;
+        return;
+      }
+      if (src.includes('coinmarketcap.com')) {
+        img.src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${mappedSymbol}.png`;
+        return;
+      }
     }
 
     // Final fallback: show colored circle with letter via React state

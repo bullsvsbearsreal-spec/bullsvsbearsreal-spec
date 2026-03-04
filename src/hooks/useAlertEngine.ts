@@ -33,14 +33,15 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
 
     // Tickers: build price + change24h
     if (tickerRes?.data) {
-      (tickerRes.data as any[]).forEach((t: any) => {
-        const sym = t.symbol as string;
+      interface RawTicker { symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number }
+      (tickerRes.data as RawTicker[]).forEach((t) => {
+        const sym = t.symbol;
         if (!map.has(sym)) {
           map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
         }
         const entry = map.get(sym)!;
         // Average price across exchanges
-        if (t.lastPrice) {
+        if (t.lastPrice && !isNaN(t.lastPrice)) {
           entry.price = entry.price > 0 ? (entry.price + t.lastPrice) / 2 : t.lastPrice;
         }
         if (t.priceChangePercent24h != null) {
@@ -54,8 +55,9 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
     // Funding rates: average per symbol
     if (fundingRes?.data) {
       const fundingSums = new Map<string, { sum: number; count: number }>();
-      (fundingRes.data as any[]).forEach((f: any) => {
-        const sym = f.symbol as string;
+      interface RawFunding { symbol: string; rate?: number; fundingRate?: number }
+      (fundingRes.data as RawFunding[]).forEach((f) => {
+        const sym = f.symbol;
         const rate = f.rate ?? f.fundingRate;
         if (rate != null) {
           const cur = fundingSums.get(sym) || { sum: 0, count: 0 };
@@ -74,8 +76,9 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
 
     // OI: sum per symbol
     if (oiRes?.data) {
-      (oiRes.data as any[]).forEach((o: any) => {
-        const sym = o.symbol as string;
+      interface RawOI { symbol: string; openInterest?: number }
+      (oiRes.data as RawOI[]).forEach((o) => {
+        const sym = o.symbol;
         if (!map.has(sym)) {
           map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
         }

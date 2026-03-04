@@ -2,7 +2,8 @@
  * GET /api/history/liquidations?symbol=BTC&days=7
  * GET /api/history/liquidations?mode=top&days=1&limit=20
  * GET /api/history/liquidations?symbol=BTC&mode=exchanges&days=7
- * GET /api/history/liquidations?mode=feed&hours=12&limit=500
+ * GET /api/history/liquidations?mode=treemap&hours=4&limit=30
+ * GET /api/history/liquidations?mode=feed&hours=12&limit=200&exchange=binance&side=long
  *
  * Returns historical liquidation data from the database.
  *
@@ -10,7 +11,8 @@
  * - default: Hourly-bucketed liquidation history for a symbol (value, count, long/short breakdown)
  * - top: Top liquidated symbols by total value
  * - exchanges: Per-exchange breakdown for a symbol
- * - feed: Individual liquidation events across all symbols (for the live feed page)
+ * - treemap: Aggregated liquidation data grouped by symbol for treemap visualization
+ * - feed: Individual liquidation events with optional exchange/side filters
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -19,7 +21,8 @@ import {
   getLiquidationHistory,
   getLiquidationsByExchange,
   getTopLiquidatedSymbols,
-  getAllRecentLiquidations,
+  getLiquidationTreemap,
+  getLiquidationFeedFiltered,
 } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -37,18 +40,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  // Feed mode — individual events across all symbols
+  // Treemap mode — aggregated by symbol for treemap visualization
+  if (mode === 'treemap') {
+    const hours = Math.min(parseInt(searchParams.get('hours') || '1') || 1, 72);
+    const treemapLimit = Math.min(parseInt(searchParams.get('limit') || '30') || 30, 100);
+    const data = await getLiquidationTreemap(hours, treemapLimit);
+    return NextResponse.json({ mode: 'treemap', hours, data, count: data.length }, {
+      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
+    });
+  }
+
+  // Feed mode — individual events across all symbols with optional filters
   if (mode === 'feed') {
     const hours = Math.min(parseInt(searchParams.get('hours') || '1') || 1, 72);
-    const feedLimit = Math.min(parseInt(searchParams.get('limit') || '500') || 500, 1000);
-    const data = await getAllRecentLiquidations(hours, feedLimit);
-    return NextResponse.json({
-      mode: 'feed',
-      hours,
-      data,
-      count: data.length,
-    }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    const feedLimit = Math.min(parseInt(searchParams.get('limit') || '500') || 500, 2000);
+    const exchange = searchParams.get('exchange') || undefined;
+    const sideParam = searchParams.get('side');
+    const validSide = sideParam === 'long' || sideParam === 'short' ? sideParam : undefined;
+    const data = await getLiquidationFeedFiltered(hours, feedLimit, exchange, validSide);
+    return NextResponse.json({ mode: 'feed', hours, data, count: data.length }, {
+      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
     });
   }
 

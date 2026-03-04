@@ -27,13 +27,14 @@ export async function GET() {
     }
 
     // Process top stablecoins
-    const stables = (stableRes.peggedAssets as any[])
-      .filter((s: any) => s.pegType === 'peggedUSD')
-      .map((s: any) => {
+    interface RawStable { id?: string; name?: string; symbol?: string; pegType?: string; price?: number; circulating?: { peggedUSD?: number }; circulatingPrevWeek?: { peggedUSD?: number }; circulatingPrevMonth?: { peggedUSD?: number }; chainCirculating?: Record<string, { current?: { peggedUSD?: number } }> }
+    const stables = (stableRes.peggedAssets as RawStable[])
+      .filter((s) => s.pegType === 'peggedUSD')
+      .map((s) => {
         const currentMcap = s.circulating?.peggedUSD || 0;
         const chains: Record<string, number> = {};
         if (s.chainCirculating) {
-          Object.entries(s.chainCirculating).forEach(([chain, data]: [string, any]) => {
+          Object.entries(s.chainCirculating).forEach(([chain, data]) => {
             const val = data?.current?.peggedUSD || 0;
             if (val > 0) chains[chain] = val;
           });

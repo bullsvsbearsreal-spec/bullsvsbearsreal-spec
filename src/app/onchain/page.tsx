@@ -46,9 +46,9 @@ interface MempoolFee {
 }
 
 interface MempoolData {
-  current: number;
-  fees: MempoolFee;
-  pendingTx: number;
+  pendingTxCount: number;
+  totalFees: number;
+  recommendedFees: MempoolFee | null;
 }
 
 interface OnChainResponse {
@@ -59,7 +59,7 @@ interface OnChainResponse {
   mvrv: MetricData;
   mempool: MempoolData;
   transactionVolume: MetricData;
-  supply: MetricData & { max: number; percentMined: number };
+  supply: MetricData & { maxSupply: number; percentMined: number };
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
@@ -213,7 +213,7 @@ export default function OnChainPage() {
   );
 
   const hashRateChange = data?.hashRate?.change30d;
-  const supplyPercent = data?.supply?.percentMined ?? (data?.supply ? (data.supply.current / data.supply.max) * 100 : 0);
+  const supplyPercent = data?.supply?.percentMined ?? (data?.supply ? (data.supply.current / data.supply.maxSupply) * 100 : 0);
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -469,8 +469,8 @@ export default function OnChainPage() {
                       <span className="text-[11px] text-neutral-500">Pending Transactions</span>
                     </div>
                     <span className="text-lg font-bold font-mono text-white">
-                      {data.mempool.pendingTx != null
-                        ? data.mempool.pendingTx.toLocaleString()
+                      {data.mempool.pendingTxCount != null
+                        ? data.mempool.pendingTxCount.toLocaleString()
                         : '-'}
                     </span>
                   </div>
@@ -481,8 +481,8 @@ export default function OnChainPage() {
                       <span className="text-[11px] text-neutral-500">Fastest</span>
                     </div>
                     <span className="text-lg font-bold font-mono text-red-400">
-                      {data.mempool.fees?.fastest != null
-                        ? `${data.mempool.fees.fastest} sat/vB`
+                      {data.mempool.recommendedFees?.fastest != null
+                        ? `${data.mempool.recommendedFees.fastest} sat/vB`
                         : '-'}
                     </span>
                   </div>
@@ -493,8 +493,8 @@ export default function OnChainPage() {
                       <span className="text-[11px] text-neutral-500">30 Minutes</span>
                     </div>
                     <span className="text-lg font-bold font-mono text-orange-400">
-                      {data.mempool.fees?.halfHour != null
-                        ? `${data.mempool.fees.halfHour} sat/vB`
+                      {data.mempool.recommendedFees?.halfHour != null
+                        ? `${data.mempool.recommendedFees.halfHour} sat/vB`
                         : '-'}
                     </span>
                   </div>
@@ -505,8 +505,8 @@ export default function OnChainPage() {
                       <span className="text-[11px] text-neutral-500">1 Hour</span>
                     </div>
                     <span className="text-lg font-bold font-mono text-hub-yellow">
-                      {data.mempool.fees?.hour != null
-                        ? `${data.mempool.fees.hour} sat/vB`
+                      {data.mempool.recommendedFees?.hour != null
+                        ? `${data.mempool.recommendedFees.hour} sat/vB`
                         : '-'}
                     </span>
                   </div>
@@ -517,8 +517,8 @@ export default function OnChainPage() {
                       <span className="text-[11px] text-neutral-500">Economy (No rush)</span>
                     </div>
                     <span className="text-lg font-bold font-mono text-green-400">
-                      {data.mempool.fees?.economy != null
-                        ? `${data.mempool.fees.economy} sat/vB`
+                      {data.mempool.recommendedFees?.economy != null
+                        ? `${data.mempool.recommendedFees.economy} sat/vB`
                         : '-'}
                     </span>
                   </div>

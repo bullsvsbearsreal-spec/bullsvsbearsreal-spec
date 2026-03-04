@@ -419,10 +419,11 @@ async function fetchMacroEvents(): Promise<MacroEvent[]> {
     const data = await res.json();
 
     // Filter to high-impact events only
-    const events: MacroEvent[] = (data as any[])
-      .filter((e: any) => e.impact === 'High' || e.impact === 'Medium')
+    interface RawForexEvent { title?: string; event?: string; date?: string; impact?: string; country?: string; actual?: string; forecast?: string; previous?: string }
+    const events: MacroEvent[] = (data as RawForexEvent[])
+      .filter((e) => e.impact === 'High' || e.impact === 'Medium')
       .slice(0, 10)
-      .map((e: any) => ({
+      .map((e) => ({
         title: e.title || e.event || '',
         date: e.date || '',
         time: e.date ? new Date(e.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC' : undefined,

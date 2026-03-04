@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+const FearGreedChart = dynamic(() => import('./components/FearGreedChart'), { ssr: false });
 
 interface FearGreedEntry {
   value: number;
@@ -89,24 +91,6 @@ interface ChartDataPoint {
   classification: string;
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartDataPoint }> }) {
-  if (!active || !payload || !payload.length) return null;
-  const data = payload[0].payload;
-  const cls = getClassification(data.value);
-
-  return (
-    <div className="bg-hub-gray border border-white/[0.12] rounded-xl px-4 py-3 shadow-xl">
-      <p className="text-neutral-500 text-xs">{data.fullDate}</p>
-      <div className="flex items-center gap-2 mt-1">
-        <span className="text-lg font-bold text-white">{data.value}</span>
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ color: cls.color, backgroundColor: `${cls.color}20` }}>
-          {cls.label}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export default function FearGreedPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>('30');
 
@@ -117,7 +101,7 @@ export default function FearGreedPage() {
   }, [timeframe]);
 
   const { data, isLoading, isRefreshing, lastUpdate, refresh, error } = useApi<HistoryResponse>({
-    key: 'fear-greed',
+    key: `fear-greed-${timeframe}`,
     fetcher,
     refreshInterval: 60000,
   });
@@ -336,59 +320,7 @@ export default function FearGreedPage() {
                 <p className="text-neutral-600 text-sm">Last {TIMEFRAME_LABELS[timeframe]} sentiment values</p>
               </div>
               <div className="h-[400px]">
-                {chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="fearGreedGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
-                          <stop offset="50%" stopColor="#22c55e" stopOpacity={0.05} />
-                          <stop offset="50%" stopColor="#ef4444" stopOpacity={0.05} />
-                          <stop offset="100%" stopColor="#ef4444" stopOpacity={0.4} />
-                        </linearGradient>
-                        <linearGradient id="fearGreedStroke" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#22c55e" />
-                          <stop offset="50%" stopColor="#facc15" />
-                          <stop offset="100%" stopColor="#ef4444" />
-                        </linearGradient>
-                      </defs>
-                      <XAxis
-                        dataKey="date"
-                        stroke="#404040"
-                        tick={{ fill: '#737373', fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                        interval="preserveStartEnd"
-                        minTickGap={40}
-                      />
-                      <YAxis
-                        domain={[0, 100]}
-                        stroke="#404040"
-                        tick={{ fill: '#737373', fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                        ticks={[0, 25, 50, 75, 100]}
-                      />
-                      {/* Reference lines for classification zones */}
-                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                      <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke="url(#fearGreedStroke)"
-                        strokeWidth={2}
-                        fill="url(#fearGreedGradient)"
-                        dot={false}
-                        activeDot={{ r: 5, fill: '#fff', stroke: '#FFA500', strokeWidth: 2 }}
-                        isAnimationActive={true}
-                        animationDuration={500}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-neutral-600">
-                    <p>No historical data available</p>
-                  </div>
-                )}
+                <FearGreedChart chartData={chartData} />
               </div>
 
               {/* Zone indicator bar */}

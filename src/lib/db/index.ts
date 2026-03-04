@@ -541,6 +541,95 @@ export async function getAllRecentLiquidations(
   }
 }
 
+/**
+ * Get aggregated liquidation data grouped by symbol for treemap visualization.
+ * Returns total value, long/short breakdown, and event count per symbol.
+ */
+export async function getLiquidationTreemap(
+  hours: number,
+  limit: number = 30,
+): Promise<Array<{
+  symbol: string;
+  totalValue: number;
+  longValue: number;
+  shortValue: number;
+  count: number;
+}>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${hours} hours`;
+    const rows = await sql`
+      SELECT symbol,
+             SUM(value_usd) AS total_value,
+             SUM(CASE WHEN side = 'long' THEN value_usd ELSE 0 END) AS long_value,
+             SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END) AS short_value,
+             COUNT(*) AS count
+      FROM liquidation_snapshots
+      WHERE ts > NOW() - ${intervalStr}::interval
+      GROUP BY symbol
+      HAVING SUM(value_usd) > 0
+      ORDER BY total_value DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      symbol: r.symbol as string,
+      totalValue: Number(r.total_value),
+      longValue: Number(r.long_value),
+      shortValue: Number(r.short_value),
+      count: Number(r.count),
+    }));
+  } catch (e) {
+    console.error('DB getLiquidationTreemap error:', e);
+    return [];
+  }
+}
+
+/**
+ * Get filtered liquidation feed with optional exchange and side filters.
+ * Same shape as getAllRecentLiquidations but with additional filter support.
+ */
+export async function getLiquidationFeedFiltered(
+  hours: number,
+  limit: number = 200,
+  exchange?: string,
+  side?: 'long' | 'short',
+): Promise<Array<{
+  symbol: string;
+  exchange: string;
+  side: 'long' | 'short';
+  price: number;
+  quantity: number;
+  valueUsd: number;
+  ts: number;
+}>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${hours} hours`;
+    const rows = await sql`
+      SELECT symbol, exchange, side, price, quantity, value_usd,
+             EXTRACT(EPOCH FROM ts) * 1000 AS ts_ms
+      FROM liquidation_snapshots
+      WHERE ts > NOW() - ${intervalStr}::interval
+        ${exchange ? sql`AND exchange = ${exchange}` : sql``}
+        ${side ? sql`AND side = ${side}` : sql``}
+      ORDER BY ts DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      symbol: r.symbol as string,
+      exchange: r.exchange as string,
+      side: r.side as 'long' | 'short',
+      price: Number(r.price),
+      quantity: Number(r.quantity),
+      valueUsd: Number(r.value_usd),
+      ts: Number(r.ts_ms),
+    }));
+  } catch (e) {
+    console.error('DB getLiquidationFeedFiltered error:', e);
+    return [];
+  }
+}
+
 export interface LiquidationHistoryPoint {
   t: number;
   value: number;
@@ -994,6 +1083,14 @@ async function initTelegramTables(): Promise<void> {
       spread REAL DEFAULT 0
     )
   `;
+
+  // Add report_schedule column if missing (safe idempotent ALTER)
+  await sql`
+    DO $$ BEGIN
+      ALTER TABLE telegram_users ADD COLUMN report_schedule TEXT DEFAULT NULL;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$
+  `;
 }
 
 export interface TelegramUser {
@@ -1075,6 +1172,32 @@ export async function getActiveTelegramUsers(): Promise<TelegramUser[]> {
     }));
   } catch (e) {
     console.error('DB getActiveTelegramUsers error:', e);
+    return [];
+  }
+}
+
+export async function updateReportSchedule(chatId: number, schedule: string | null): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      UPDATE telegram_users SET report_schedule = ${schedule}, updated_at = NOW()
+      WHERE chat_id = ${chatId}
+    `;
+  } catch (e) {
+    console.error('DB updateReportSchedule error:', e);
+  }
+}
+
+export async function getSubscribedUsers(schedule: string): Promise<number[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT chat_id FROM telegram_users
+      WHERE report_schedule = ${schedule} AND active = true
+    `;
+    return rows.map((r: any) => Number(r.chat_id));
+  } catch (e) {
+    console.error('DB getSubscribedUsers error:', e);
     return [];
   }
 }

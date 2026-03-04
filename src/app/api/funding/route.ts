@@ -4,6 +4,7 @@ import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { dedupedFetch } from '../_shared/inflight';
 import { fundingFetchers } from './exchanges';
 import { classifySymbol, KNOWN_STOCKS, KNOWN_COMMODITIES, KNOWN_FOREX, FOREX_BASES } from './normalize';
+import { FundingQuerySchema, type AssetClassFilter } from '@/lib/validation/schemas';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -29,8 +30,6 @@ const RAW_TTL = 2 * 60 * 1000; // 2 minutes
 
 // Layer 2: Per-assetClass filtered responses (regenerated from raw data in ~1ms)
 const responseCache = new Map<string, { body: any; timestamp: number }>();
-
-type AssetClassFilter = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'all';
 
 // Filter processed data by asset class (runs in ~1ms on cached data)
 function filterByAssetClass(
@@ -79,7 +78,16 @@ function buildResponseBody(filtered: any[], health: any[], assetClass: AssetClas
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const assetClass = (searchParams.get('assetClass') || 'crypto') as AssetClassFilter;
+  const parsed = FundingQuerySchema.safeParse({
+    assetClass: searchParams.get('assetClass') || undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid parameters', details: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const { assetClass } = parsed.data;
 
   // Layer 2: Return cached filtered response if fresh
   const cacheKey = `funding_${assetClass}`;
@@ -189,6 +197,20 @@ export async function GET(request: NextRequest) {
       entry.markPrice = realPrice;
     }
   });
+  // Backfill indexPrice for exchanges that return 0 (GMX, gTrade, HTX, Variational)
+  const indexPriceMap = new Map<string, number>();
+  data.forEach(entry => {
+    if (entry.indexPrice && entry.indexPrice > 0) {
+      if (!indexPriceMap.has(entry.symbol)) indexPriceMap.set(entry.symbol, entry.indexPrice);
+    }
+  });
+  data.forEach(entry => {
+    if (!entry.indexPrice || entry.indexPrice === 0) {
+      const realIndex = indexPriceMap.get(entry.symbol);
+      if (realIndex) entry.indexPrice = realIndex;
+    }
+  });
+
   // Remove entries that still have no valid mark price after backfill
   // DEX entries (gTrade, GMX, etc.) are exempt — they have curated pair lists
   // and legitimate funding/borrowing rates even without a reliable price.
@@ -206,7 +228,7 @@ export async function GET(request: NextRequest) {
     // Skip continuous funding model exchanges
     if (CONTINUOUS_EXCHANGES.has(entry.exchange)) return;
     // Need valid mark + index prices
-    if (!entry.markPrice || !entry.indexPrice || entry.indexPrice <= 0) return;
+    if (entry.markPrice == null || entry.indexPrice == null || entry.indexPrice <= 0) return;
     const premium = ((entry.markPrice - entry.indexPrice) / entry.indexPrice) * 100;
     entry.predictedRate = Math.max(-PREDICTED_CLAMP, Math.min(PREDICTED_CLAMP, premium));
   });

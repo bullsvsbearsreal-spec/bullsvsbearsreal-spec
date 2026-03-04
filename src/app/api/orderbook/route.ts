@@ -41,7 +41,7 @@ async function fetchBinance(pair: string, limit: number): Promise<RawOrderbook> 
   return {
     bids: (depth.bids || []).map(([p, q]: [string, string]) => ({ price: +p, quantity: +q })),
     asks: (depth.asks || []).map(([p, q]: [string, string]) => ({ price: +p, quantity: +q })),
-    trades: (trades as any[]).slice(-30).map((t: any) => ({
+    trades: (trades as Array<{ price: string; qty: string; quoteQty: string; isBuyerMaker: boolean; time: number }>).slice(-30).map((t) => ({
       price: +t.price,
       quantity: +t.qty,
       quoteQty: +t.quoteQty,

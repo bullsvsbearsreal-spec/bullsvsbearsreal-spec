@@ -10,6 +10,7 @@ import {
   RefreshCw, Info, Landmark, TrendingUp, TrendingDown,
   ChevronUp, ChevronDown, BarChart3, DollarSign, Percent, Activity,
 } from 'lucide-react';
+import type { Time } from 'lightweight-charts';
 
 const LightweightChart = dynamic(
   () => import('@/components/charts/LightweightChart'),
@@ -172,11 +173,11 @@ export default function ETFPage() {
   const chartSeries = useMemo(() => {
     if (!data?.history?.length) return null;
     const lineData = data.history.map((h) => ({
-      time: h.date as any,
+      time: h.date as Time,
       value: h.close,
     }));
     const volData = data.history.map((h) => ({
-      time: h.date as any,
+      time: h.date as Time,
       value: h.volume,
       color: 'rgba(234,179,8,0.15)',
     }));

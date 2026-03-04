@@ -84,6 +84,106 @@ export async function setWebhook(
 }
 
 // ---------------------------------------------------------------------------
+// Photo helper (for chart images)
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a photo via Telegram Bot API using multipart/form-data.
+ * Accepts a Buffer (PNG) and optional caption.
+ */
+export async function sendPhoto(
+  chatId: string | number,
+  imageBuffer: Buffer,
+  caption?: string,
+  parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
+): Promise<void> {
+  try {
+    const formData = new FormData();
+    formData.append('chat_id', String(chatId));
+    formData.append('photo', new Blob([new Uint8Array(imageBuffer)], { type: 'image/png' }), 'chart.png');
+    if (caption) {
+      formData.append('caption', caption);
+      formData.append('parse_mode', parseMode);
+    }
+
+    const res = await fetch(`${API_BASE}/sendPhoto`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[telegram] sendPhoto failed (${res.status}): ${body}`);
+    }
+  } catch (err) {
+    console.error('[telegram] sendPhoto error:', err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Inline keyboard helpers
+// ---------------------------------------------------------------------------
+
+export interface InlineKeyboardButton {
+  text: string;
+  callback_data?: string;
+  url?: string;
+}
+
+/**
+ * Send a text message with an inline keyboard via Telegram Bot API.
+ */
+export async function sendMessageWithKeyboard(
+  chatId: string | number,
+  text: string,
+  keyboard: InlineKeyboardButton[][],
+  parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
+): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: parseMode,
+        disable_web_page_preview: true,
+        reply_markup: { inline_keyboard: keyboard },
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[telegram] sendMessageWithKeyboard failed (${res.status}): ${body}`);
+    }
+  } catch (err) {
+    console.error('[telegram] sendMessageWithKeyboard error:', err);
+  }
+}
+
+/**
+ * Acknowledge a callback query (inline button press).
+ * Required by Telegram API to dismiss the loading indicator on the button.
+ */
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string,
+): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text || '',
+      }),
+    });
+  } catch (err) {
+    console.error('[telegram] answerCallbackQuery error:', err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Formatting helpers
 // ---------------------------------------------------------------------------
 

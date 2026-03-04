@@ -16,8 +16,9 @@ export async function fetchGMXParams(asset: string, fetchFn: typeof fetch): Prom
     if (!res.ok) return null;
     const data = await res.json();
 
-    const markets = Object.values(data) as any[];
-    const market = markets.find((m: any) => {
+    interface RawGMXMarket { name?: string; marketToken?: string; indexTokenPrice?: { max?: string; min?: string }; longOpenInterest?: string; shortOpenInterest?: string; openInterestLong?: string; openInterestShort?: string; fundingRateLong?: string; fundingRateShort?: string; borrowRateLong?: string; borrowRateShort?: string; positionImpactExponent?: string; positionImpactExponentFactor?: string; positionImpactPositiveFactor?: string; positionImpactNegativeFactor?: string; positionImpactFactorPositive?: string; positionImpactFactorNegative?: string }
+    const markets = Object.values(data) as RawGMXMarket[];
+    const market = markets.find((m) => {
       const sym = (m.name || '').split('/')[0].replace(/\.v\d+$/i, '').toUpperCase();
       return sym === asset;
     });

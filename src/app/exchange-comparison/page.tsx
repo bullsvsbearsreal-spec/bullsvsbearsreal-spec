@@ -1,21 +1,15 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApi } from '@/hooks/useSWRApi';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { RefreshCw, AlertTriangle, BarChart3, Table } from 'lucide-react';
 import { formatUSD } from '@/lib/utils/format';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts';
+
+const ComparisonCharts = dynamic(() => import('./components/ComparisonCharts'), { ssr: false });
 
 type ViewMode = 'chart' | 'table';
 type SortKey = 'oi' | 'funding' | 'volume' | 'symbols';
@@ -29,40 +23,8 @@ interface ExchangeStats {
   fundingBySymbol: Map<string, number>;
 }
 
-const CHART_COLORS = [
-  '#FFDF00', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#a855f7',
-  '#ef4444', '#84cc16', '#e879f9', '#fbbf24', '#6366f1',
-  '#10b981', '#f43f5e', '#0ea5e9',
-];
-
 function formatRate(r: number): string {
   return `${r >= 0 ? '+' : ''}${(r * 100).toFixed(4)}%`;
-}
-
-function OITooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  if (!d) return null;
-  return (
-    <div className="bg-hub-gray border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
-      <div className="font-medium text-white mb-1">{d.exchange}</div>
-      <div className="text-neutral-400">Open Interest: <span className="text-white font-mono">{formatUSD(d.totalOI)}</span></div>
-      <div className="text-neutral-400">Symbols: <span className="text-white font-mono">{d.symbolCount}</span></div>
-    </div>
-  );
-}
-
-function FundingTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  if (!d) return null;
-  return (
-    <div className="bg-hub-gray border border-white/[0.1] rounded-lg p-2.5 shadow-xl text-xs">
-      <div className="font-medium text-white mb-1">{d.exchange}</div>
-      <div className="text-neutral-400">Funding Rate: <span className={`font-mono ${d.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatRate(d.rate)}</span></div>
-    </div>
-  );
 }
 
 export default function ExchangeComparisonPage() {
@@ -306,58 +268,13 @@ export default function ExchangeComparisonPage() {
         {!isLoading && sorted.length > 0 && (
           <>
             {viewMode === 'chart' ? (
-              <div className="space-y-6">
-                {/* OI Bar Chart */}
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                  <div className="text-sm font-medium text-neutral-400 mb-3">Total Open Interest by Exchange</div>
-                  <ResponsiveContainer width="100%" height={Math.max(300, oiChartData.length * 36)}>
-                    <BarChart data={oiChartData} layout="vertical" margin={{ left: 80, right: 20 }}>
-                      <XAxis type="number" tickFormatter={formatUSD} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
-                      <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={75} />
-                      <Tooltip content={<OITooltip />} />
-                      <Bar dataKey="totalOI" radius={[0, 4, 4, 0]} barSize={20}>
-                        {oiChartData.map((_, i) => (
-                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Funding Rate per symbol */}
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm font-medium text-neutral-400">
-                      Funding Rate by Exchange — {selectedSymbol}
-                    </div>
-                    <select
-                      value={selectedSymbol}
-                      onChange={e => setSelectedSymbol(e.target.value)}
-                      className="bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1 text-xs text-white"
-                    >
-                      {availableSymbols.slice(0, 50).map(sym => (
-                        <option key={sym} value={sym}>{sym}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {fundingForSymbol.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={Math.max(200, fundingForSymbol.length * 32)}>
-                      <BarChart data={fundingForSymbol} layout="vertical" margin={{ left: 80, right: 20 }}>
-                        <XAxis type="number" tickFormatter={v => `${(v * 100).toFixed(3)}%`} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
-                        <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={75} />
-                        <Tooltip content={<FundingTooltip />} />
-                        <Bar dataKey="rate" radius={[0, 4, 4, 0]} barSize={18}>
-                          {fundingForSymbol.map((d, i) => (
-                            <Cell key={i} fill={d.rate >= 0 ? '#22c55e' : '#ef4444'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-8 text-neutral-600 text-sm">No funding data for {selectedSymbol}</div>
-                  )}
-                </div>
-              </div>
+              <ComparisonCharts
+                oiChartData={oiChartData}
+                fundingForSymbol={fundingForSymbol}
+                selectedSymbol={selectedSymbol}
+                onSymbolChange={setSelectedSymbol}
+                availableSymbols={availableSymbols}
+              />
             ) : (
               /* Table view */
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">

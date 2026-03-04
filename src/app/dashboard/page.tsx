@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
@@ -13,16 +12,8 @@ const LAYOUT_STORAGE_KEY = 'infohub-dashboard-layout';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [layout, setLayout] = useState<WidgetLayout[]>(DEFAULT_LAYOUT);
   const [loaded, setLoaded] = useState(false);
-
-  // Redirect if not logged in
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   // Load layout from user prefs (DB) or localStorage
   useEffect(() => {
@@ -65,6 +56,12 @@ export default function DashboardPage() {
     loadLayout();
   }, [session, status]);
 
+  // Debounced DB save — localStorage is immediate, DB save waits 1.5s
+  const dbSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => { if (dbSaveTimerRef.current) clearTimeout(dbSaveTimerRef.current); };
+  }, []);
+
   // Save layout changes
   const handleLayoutChange = useCallback(
     (newLayout: WidgetLayout[]) => {
@@ -75,19 +72,22 @@ export default function DashboardPage() {
         localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(newLayout));
       } catch {}
 
-      // Save to DB (debounced via fire-and-forget)
+      // Debounce DB save (1.5s) to avoid hammering on rapid reorders
       if (session?.user) {
-        fetch('/api/user/data', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dashboardLayout: newLayout }),
-        }).catch(() => {});
+        if (dbSaveTimerRef.current) clearTimeout(dbSaveTimerRef.current);
+        dbSaveTimerRef.current = setTimeout(() => {
+          fetch('/api/user/data', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dashboardLayout: newLayout }),
+          }).catch(() => {});
+        }, 1500);
       }
     },
     [session],
   );
 
-  if (status === 'loading' || !loaded) {
+  if (!loaded) {
     return (
       <div className="min-h-screen bg-hub-black">
         <Header />
@@ -125,25 +125,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Redirect is handled by useEffect above — show skeleton while redirecting
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-hub-black">
-        <Header />
-        <main className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="text-white">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-          <DashboardHeader userName={session.user?.name || session.user?.email?.split('@')[0] || 'User'} />
+          <DashboardHeader userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />
 
           <DashboardGrid layout={layout} onLayoutChange={handleLayoutChange} />
         </div>

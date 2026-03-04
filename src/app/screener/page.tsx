@@ -138,7 +138,8 @@ export default function ScreenerPage() {
       // Build OI delta map
       const deltaMap = new Map<string, number>();
       const deltaArr = deltaRes?.data || deltaRes?.deltas || [];
-      (deltaArr as any[]).forEach((d: any) => {
+      interface RawDelta { symbol?: string; change24h?: number }
+      (deltaArr as RawDelta[]).forEach((d) => {
         if (d.symbol && d.change24h != null) deltaMap.set(d.symbol, d.change24h);
       });
 

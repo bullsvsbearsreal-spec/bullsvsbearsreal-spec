@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
@@ -61,7 +60,6 @@ const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
 
 export default function AdminPanelPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [stats, setStats] = useState<SiteStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -72,12 +70,6 @@ export default function AdminPanelPage() {
   const userRole = session?.user?.role;
   const hasAdminAccess = userRole === 'admin' || userRole === 'advisor';
 
-  // Redirect non-admins/advisors
-  useEffect(() => {
-    if (status === 'loading') return;
-    if (!session?.user) { router.push('/login'); return; }
-    if (session.user.role !== 'admin' && session.user.role !== 'advisor') router.push('/');
-  }, [session, status, router]);
 
   // Hash routing
   useEffect(() => {
@@ -136,7 +128,20 @@ export default function AdminPanelPage() {
     );
   }
 
-  if (!session?.user || !hasAdminAccess) return null;
+  if (!session?.user || !hasAdminAccess) {
+    return (
+      <div className="min-h-screen bg-hub-black">
+        <Header />
+        <main className="flex flex-col items-center justify-center py-20 text-white">
+          <div className="text-neutral-400 text-sm mb-3">Admin access required</div>
+          <a href="/login" className="px-4 py-2 rounded-lg bg-hub-yellow text-black text-sm font-medium hover:brightness-110 transition-all">
+            Log In
+          </a>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <ToastProvider>

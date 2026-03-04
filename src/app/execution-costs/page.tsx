@@ -47,7 +47,7 @@ function ExecutionCostsInner() {
   // Initialize from URL params > localStorage > defaults
   const [asset, setAsset] = useState(() => {
     const urlAsset = searchParams.get('asset')?.toUpperCase();
-    if (urlAsset && DEFAULT_ASSETS.includes(urlAsset as any)) return urlAsset;
+    if (urlAsset && (DEFAULT_ASSETS as readonly string[]).includes(urlAsset)) return urlAsset;
     return loadPrefs().asset;
   });
   const [size, setSize] = useState(() => {

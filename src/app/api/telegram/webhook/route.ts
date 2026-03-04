@@ -21,10 +21,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sendMessage, formatPriceAlert, formatFundingAlert } from '@/lib/telegram';
+import { sendMessage, sendMessageWithKeyboard, sendPhoto, answerCallbackQuery, formatPriceAlert, formatFundingAlert } from '@/lib/telegram';
 import {
   initDB, isDBConfigured, getTelegramUser, upsertTelegramUser,
   getTelegramAlerts, addTelegramAlert, removeTelegramAlert, clearTelegramAlerts,
+  updateReportSchedule,
 } from '@/lib/db';
 import { detectPriceArbitrage, detectFundingArbitrage } from '@/lib/arbitrage-detector';
 import type { TickerEntry, FundingEntry } from '@/lib/arbitrage-detector';
@@ -63,9 +64,19 @@ async function handleStart(chatId: number): Promise<void> {
     '/watchlist clear — Clear watchlist (all symbols)',
     '',
     '<b>Market Data:</b>',
+    '/price BTC — Current price &amp; 24h change',
+    '/funding BTC — Funding rates across exchanges',
+    '/basis [BTC] — Funding basis (premium/discount)',
+    '/top — Top 5 gainers &amp; losers',
+    '/rsi BTC — RSI-14 across 1h/4h/1d',
     '/history BTC [7d] — Funding rate history',
     '/oi BTC — Open interest by exchange',
     '/liq [BTC] — Top liquidations (24h)',
+    '/whale — Top Hyperliquid whale positions',
+    '/dominance — BTC/ETH/SOL dominance %',
+    '/feargreed — Fear &amp; Greed Index + trend',
+    '/yields — Top DeFi yields by APY',
+    '/menu — Interactive command menu',
     '',
     '<b>Custom Alerts:</b>',
     '/alert add BTC price gt 100000',
@@ -77,6 +88,7 @@ async function handleStart(chatId: number): Promise<void> {
     '/start — Activate alerts',
     '/stop — Pause alerts',
     '/status — Show your current settings',
+    '/help — Show this message',
   ].join('\n');
 
   await sendMessage(chatId, welcome);
@@ -215,18 +227,93 @@ async function handleScan(chatId: number, origin: string): Promise<void> {
     return;
   }
 
-  // Send price arbs
+  const scanKeyboard = [
+    [
+      { text: '🔄 Scan Again', callback_data: 'cmd:scan' },
+      { text: '🌐 InfoHub', url: 'https://info-hub.io/screener' },
+    ],
+  ];
+
+  // Send price arbs (attach keyboard if this is the last section)
   if (topPrice.length > 0) {
     const header = `<b>Top ${topPrice.length} Price Arbs</b>\n`;
-    const messages = topPrice.map((arb) => formatPriceAlert(arb));
-    await sendMessage(chatId, header + messages.join('\n\n'));
+    const body = header + topPrice.map((arb) => formatPriceAlert(arb)).join('\n\n');
+    if (topFunding.length === 0) {
+      await sendMessageWithKeyboard(chatId, body, scanKeyboard);
+    } else {
+      await sendMessage(chatId, body);
+    }
   }
 
-  // Send funding arbs
+  // Send funding arbs (always last, always gets keyboard)
   if (topFunding.length > 0) {
     const header = `<b>Top ${topFunding.length} Funding Arbs</b>\n`;
-    const messages = topFunding.map((arb) => formatFundingAlert(arb));
-    await sendMessage(chatId, header + messages.join('\n\n'));
+    const body = header + topFunding.map((arb) => formatFundingAlert(arb)).join('\n\n');
+    await sendMessageWithKeyboard(chatId, body, scanKeyboard);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /price — quick price lookup
+// ---------------------------------------------------------------------------
+
+async function handlePrice(chatId: number, args: string[], origin: string): Promise<void> {
+  if (args.length === 0) {
+    await sendMessage(chatId, 'Usage: /price BTC');
+    return;
+  }
+
+  const symbol = args[0].toUpperCase();
+
+  try {
+    const res = await fetch(
+      `${origin}/api/tickers?symbols=${encodeURIComponent(symbol)}`,
+      { signal: AbortSignal.timeout(25000) },
+    );
+
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch price data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json = await res.json();
+    const entries: Array<{ exchange: string; lastPrice: number; priceChangePercent24h: number; quoteVolume24h: number }> = json.data || [];
+
+    if (entries.length === 0) {
+      await sendMessage(chatId, `No price data found for <b>${symbol}</b>.`);
+      return;
+    }
+
+    // Best source = highest volume
+    const best = entries.reduce((a, b) => (b.quoteVolume24h > a.quoteVolume24h ? b : a));
+    const totalVolume = entries.reduce((acc, e) => acc + (e.quoteVolume24h || 0), 0);
+
+    const changeEmoji = best.priceChangePercent24h >= 0 ? '🟢' : '🔴';
+    const changeStr = (best.priceChangePercent24h >= 0 ? '+' : '') + best.priceChangePercent24h.toFixed(2) + '%';
+
+    const lines = [
+      `<b>${symbol} Price</b>`,
+      '━━━━━━━━━━━━━━━━',
+      `💰 Price: <b>${fmtUsd(best.lastPrice)}</b>`,
+      `${changeEmoji} 24h: ${changeStr}`,
+      `📊 Volume: ${fmtUsd(totalVolume)}`,
+      `🏦 Source: ${best.exchange} (${entries.length} exchanges)`,
+    ];
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [
+        { text: '📊 Funding', callback_data: `cmd:funding:${symbol}` },
+        { text: '📈 OI', callback_data: `cmd:oi:${symbol}` },
+      ],
+      [
+        { text: '🔔 Set Alert', callback_data: `cmd:alert_prompt:${symbol}` },
+        { text: '💧 Liqs', callback_data: `cmd:liq:${symbol}` },
+      ],
+      [{ text: '📉 Price Chart', callback_data: `chart:price:${symbol}` }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handlePrice error:', err);
+    await sendMessage(chatId, 'Error fetching price data. Please try again later.');
   }
 }
 
@@ -299,6 +386,71 @@ async function handleHistory(chatId: number, args: string[], origin: string): Pr
   } catch (err) {
     console.error('[telegram] handleHistory error:', err);
     await sendMessage(chatId, 'Error fetching funding history. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /funding — current funding rates for a symbol across exchanges
+// ---------------------------------------------------------------------------
+
+async function handleFundingRates(chatId: number, args: string[], origin: string): Promise<void> {
+  if (args.length === 0) {
+    await sendMessage(chatId, 'Usage: /funding BTC');
+    return;
+  }
+
+  const symbol = args[0].toUpperCase();
+
+  try {
+    const res = await fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch funding data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json = await res.json();
+    const all: Array<{ symbol: string; exchange: string; fundingRate: number | null; fundingInterval: string }> = json.data || [];
+    const entries = all.filter((e) => e.symbol.toUpperCase() === symbol && e.fundingRate != null);
+
+    if (entries.length === 0) {
+      await sendMessage(chatId, `No funding data found for <b>${symbol}</b>.`);
+      return;
+    }
+
+    // Sort by rate ascending (most negative = best for longs first)
+    entries.sort((a, b) => (a.fundingRate ?? 0) - (b.fundingRate ?? 0));
+
+    const maxNameLen = Math.max(...entries.slice(0, 10).map((e) => e.exchange.length));
+
+    const lines = [
+      `<b>Funding Rates: ${symbol}</b>`,
+      '━━━━━━━━━━━━━━━━',
+      `Exchanges: ${entries.length}`,
+      '',
+      '<code>',
+      ...entries.slice(0, 10).map((e) => {
+        const name = e.exchange + ' '.repeat(Math.max(1, maxNameLen - e.exchange.length));
+        const rate = fmtRate(e.fundingRate!);
+        const interval = e.fundingInterval || '8h';
+        return `  ${name}  ${rate.padStart(10)}  (${interval})`;
+      }),
+      '</code>',
+    ];
+
+    if (entries.length > 10) {
+      lines.push(`\n...and ${entries.length - 10} more exchanges.`);
+    }
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [
+        { text: '💰 Price', callback_data: `cmd:price:${symbol}` },
+        { text: '📈 OI', callback_data: `cmd:oi:${symbol}` },
+      ],
+      [{ text: '📊 Funding Chart', callback_data: `chart:funding:${symbol}` }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleFundingRates error:', err);
+    await sendMessage(chatId, 'Error fetching funding data. Please try again later.');
   }
 }
 
@@ -460,6 +612,65 @@ async function handleLiq(chatId: number, args: string[], origin: string): Promis
 }
 
 // ---------------------------------------------------------------------------
+// /top — top gainers & losers
+// ---------------------------------------------------------------------------
+
+async function handleTop(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch ticker data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json = await res.json();
+    const data: Array<{ symbol: string; exchange: string; lastPrice: number; priceChangePercent24h: number; quoteVolume24h: number }> = json.data || [];
+
+    // Deduplicate: keep highest-volume entry per symbol
+    const bySymbol = new Map<string, (typeof data)[0]>();
+    for (const entry of data) {
+      if (!entry.lastPrice || entry.priceChangePercent24h == null) continue;
+      const existing = bySymbol.get(entry.symbol);
+      if (!existing || entry.quoteVolume24h > existing.quoteVolume24h) {
+        bySymbol.set(entry.symbol, entry);
+      }
+    }
+
+    const symbols = Array.from(bySymbol.values()).filter((e) => e.quoteVolume24h >= 500_000);
+
+    if (symbols.length === 0) {
+      await sendMessage(chatId, 'No sufficient ticker data available.');
+      return;
+    }
+
+    const sorted = [...symbols].sort((a, b) => b.priceChangePercent24h - a.priceChangePercent24h);
+    const half = Math.min(5, Math.floor(sorted.length / 2));
+    const gainers = sorted.slice(0, half);
+    const losers = sorted.slice(-half).reverse();
+
+    const fmt = (e: (typeof data)[0], i: number) => {
+      const change = (e.priceChangePercent24h >= 0 ? '+' : '') + e.priceChangePercent24h.toFixed(2) + '%';
+      return `${i + 1}. <b>${e.symbol}</b>  ${change}  ${fmtUsd(e.lastPrice)}`;
+    };
+
+    const lines = [
+      '<b>🟢 Top 5 Gainers (24h)</b>',
+      ...gainers.map((e, i) => fmt(e, i)),
+      '',
+      '<b>🔴 Top 5 Losers (24h)</b>',
+      ...losers.map((e, i) => fmt(e, i)),
+    ];
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:top' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleTop error:', err);
+    await sendMessage(chatId, 'Error fetching market data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // /alert — custom alert management
 // ---------------------------------------------------------------------------
 
@@ -588,6 +799,499 @@ async function handleAlert(chatId: number, args: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// /subscribe & /unsubscribe — daily report opt-in
+// ---------------------------------------------------------------------------
+
+async function handleSubscribe(chatId: number, args: string[]): Promise<void> {
+  const schedule = (args[0] || 'daily').toLowerCase();
+  if (schedule !== 'daily') {
+    await sendMessage(chatId, 'Currently only daily reports are available.\nUsage: /subscribe daily');
+    return;
+  }
+  await updateReportSchedule(chatId, schedule);
+  await sendMessage(chatId, 'Subscribed to <b>daily market reports</b>.\nYou will receive a summary every day at 8 AM UTC.\n\nUse /unsubscribe daily to stop.');
+}
+
+async function handleUnsubscribe(chatId: number, args: string[]): Promise<void> {
+  const schedule = (args[0] || 'daily').toLowerCase();
+  if (schedule !== 'daily') {
+    await sendMessage(chatId, 'Usage: /unsubscribe daily');
+    return;
+  }
+  await updateReportSchedule(chatId, null);
+  await sendMessage(chatId, 'Unsubscribed from daily reports.');
+}
+
+// ---------------------------------------------------------------------------
+// /menu — interactive main menu with categories
+// ---------------------------------------------------------------------------
+
+async function handleMenu(chatId: number): Promise<void> {
+  await sendMessageWithKeyboard(
+    chatId,
+    '<b>InfoHub Bot Menu</b>\n\nChoose a category:',
+    [
+      [
+        { text: '📈 Trading', callback_data: 'cmd:menu:trading' },
+        { text: '🌍 Markets', callback_data: 'cmd:menu:markets' },
+      ],
+      [
+        { text: '🔔 Alerts', callback_data: 'cmd:menu:alerts' },
+        { text: '📋 Reports', callback_data: 'cmd:menu:reports' },
+      ],
+    ],
+  );
+}
+
+async function handleMenuCallback(chatId: number, args: string[]): Promise<void> {
+  const category = args[0];
+
+  switch (category) {
+    case 'trading':
+      await sendMessageWithKeyboard(
+        chatId,
+        '<b>📈 Trading Commands</b>\n\nSelect a command:',
+        [
+          [
+            { text: '💰 Price', callback_data: 'cmd:menu_prompt:price' },
+            { text: '📊 Funding', callback_data: 'cmd:menu_prompt:funding' },
+            { text: '📐 Basis', callback_data: 'cmd:menu_prompt:basis' },
+          ],
+          [
+            { text: '📈 OI', callback_data: 'cmd:menu_prompt:oi' },
+            { text: '💧 Liqs', callback_data: 'cmd:liq' },
+          ],
+          [{ text: '⬅️ Back', callback_data: 'cmd:menu_back' }],
+        ],
+      );
+      break;
+
+    case 'markets':
+      await sendMessageWithKeyboard(
+        chatId,
+        '<b>🌍 Markets Commands</b>\n\nSelect a command:',
+        [
+          [
+            { text: '🏆 Top Movers', callback_data: 'cmd:top' },
+            { text: '📊 RSI', callback_data: 'cmd:menu_prompt:rsi' },
+          ],
+          [
+            { text: '🥇 Dominance', callback_data: 'cmd:dominance' },
+            { text: '😱 Fear/Greed', callback_data: 'cmd:feargreed' },
+          ],
+          [
+            { text: '💰 Yields', callback_data: 'cmd:yields' },
+            { text: '🐋 Whales', callback_data: 'cmd:whale' },
+          ],
+          [{ text: '⬅️ Back', callback_data: 'cmd:menu_back' }],
+        ],
+      );
+      break;
+
+    case 'alerts':
+      await sendMessageWithKeyboard(
+        chatId,
+        '<b>🔔 Alerts Commands</b>\n\nSelect a command:',
+        [
+          [
+            { text: '📋 List Alerts', callback_data: 'cmd:alert_list' },
+            { text: '🔍 Scan', callback_data: 'cmd:scan' },
+          ],
+          [
+            { text: '❓ Help', callback_data: 'cmd:help' },
+          ],
+          [{ text: '⬅️ Back', callback_data: 'cmd:menu_back' }],
+        ],
+      );
+      break;
+
+    case 'reports':
+      await sendMessageWithKeyboard(
+        chatId,
+        '<b>📋 Reports</b>\n\nDaily market reports delivered to your chat.',
+        [
+          [
+            { text: '✅ Subscribe Daily', callback_data: 'cmd:subscribe:daily' },
+            { text: '❌ Unsubscribe', callback_data: 'cmd:unsubscribe:daily' },
+          ],
+          [
+            { text: '📊 Status', callback_data: 'cmd:status_check' },
+          ],
+          [{ text: '⬅️ Back', callback_data: 'cmd:menu_back' }],
+        ],
+      );
+      break;
+
+    default:
+      await handleMenu(chatId);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /basis — funding basis (premium/discount) across exchanges
+// ---------------------------------------------------------------------------
+
+async function handleBasis(chatId: number, args: string[], origin: string): Promise<void> {
+  const symbol = args.length > 0 ? args[0].toUpperCase() : null;
+
+  try {
+    const res = await fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch funding data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json = await res.json();
+    const all: Array<{ symbol: string; exchange: string; markPrice: number; indexPrice: number; fundingRate: number | null }> = json.data || [];
+
+    // Filter to entries with valid prices for basis calculation
+    let entries = all.filter(e => e.markPrice > 0 && e.indexPrice > 0);
+
+    if (symbol) {
+      entries = entries.filter(e => e.symbol.toUpperCase() === symbol);
+      if (entries.length === 0) {
+        await sendMessage(chatId, `No basis data found for <b>${symbol}</b>.`);
+        return;
+      }
+
+      // Compute basis per exchange
+      const withBasis = entries.map(e => ({
+        ...e,
+        basis: ((e.markPrice - e.indexPrice) / e.indexPrice) * 100,
+      })).sort((a, b) => b.basis - a.basis);
+
+      const maxNameLen = Math.max(...withBasis.slice(0, 10).map(e => e.exchange.length));
+      const lines = [
+        `<b>Basis: ${symbol}</b>`,
+        '━━━━━━━━━━━━━━━━',
+        `Exchanges: ${withBasis.length}`,
+        '',
+        '<code>',
+        ...withBasis.slice(0, 10).map(e => {
+          const name = e.exchange + ' '.repeat(Math.max(1, maxNameLen - e.exchange.length));
+          const basisStr = (e.basis >= 0 ? '+' : '') + e.basis.toFixed(4) + '%';
+          return `  ${name}  ${basisStr.padStart(10)}`;
+        }),
+        '</code>',
+      ];
+
+      await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+        [
+          { text: '💰 Price', callback_data: `cmd:price:${symbol}` },
+          { text: '📊 Funding', callback_data: `cmd:funding:${symbol}` },
+        ],
+      ]);
+    } else {
+      // No symbol — show top 5 premium + top 5 discount
+      // Deduplicate: keep highest volume or first per symbol
+      const bySymbol = new Map<string, typeof entries[0] & { basis: number }>();
+      for (const e of entries) {
+        const basis = ((e.markPrice - e.indexPrice) / e.indexPrice) * 100;
+        const existing = bySymbol.get(e.symbol);
+        if (!existing || Math.abs(basis) > Math.abs(existing.basis)) {
+          bySymbol.set(e.symbol, { ...e, basis });
+        }
+      }
+      const sorted = Array.from(bySymbol.values()).sort((a, b) => b.basis - a.basis);
+      const premium = sorted.slice(0, 5);
+      const discount = sorted.filter(e => e.basis < 0).sort((a, b) => a.basis - b.basis).slice(0, 5);
+
+      const fmt = (e: { symbol: string; exchange: string; basis: number }) => {
+        const basisStr = (e.basis >= 0 ? '+' : '') + e.basis.toFixed(4) + '%';
+        return `  <b>${e.symbol}</b>  ${basisStr}  (${e.exchange})`;
+      };
+
+      const lines = [
+        '<b>Funding Basis Overview</b>',
+        '━━━━━━━━━━━━━━━━',
+        '',
+        '<b>Top Premium:</b>',
+        ...premium.map(fmt),
+        '',
+        '<b>Top Discount:</b>',
+        ...discount.map(fmt),
+      ];
+
+      await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+        [{ text: '🔄 Refresh', callback_data: 'cmd:basis' }],
+      ]);
+    }
+  } catch (err) {
+    console.error('[telegram] handleBasis error:', err);
+    await sendMessage(chatId, 'Error fetching basis data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /rsi — RSI-14 across timeframes
+// ---------------------------------------------------------------------------
+
+async function handleRsi(chatId: number, args: string[], origin: string): Promise<void> {
+  if (args.length === 0) {
+    await sendMessage(chatId, 'Usage: /rsi BTC');
+    return;
+  }
+
+  const symbol = args[0].toUpperCase();
+
+  try {
+    const res = await fetch(`${origin}/api/rsi`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch RSI data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json = await res.json();
+    const all: Array<{ symbol: string; rsi1h: number | null; rsi4h: number | null; rsi1d: number | null; price: number | null; change24h: number | null }> = json.data || [];
+    const entry = all.find(e => e.symbol.toUpperCase() === symbol);
+
+    if (!entry) {
+      await sendMessage(chatId, `No RSI data found for <b>${symbol}</b>. Available for top 50 symbols only.`);
+      return;
+    }
+
+    const rsiLabel = (v: number | null) => {
+      if (v === null) return '  N/A';
+      const emoji = v < 30 ? '🟢' : v > 70 ? '🔴' : '⚪';
+      const tag = v < 30 ? ' (oversold)' : v > 70 ? ' (overbought)' : '';
+      return `${emoji} ${v.toFixed(1)}${tag}`;
+    };
+
+    const changeStr = entry.change24h != null
+      ? (entry.change24h >= 0 ? '+' : '') + entry.change24h.toFixed(2) + '%'
+      : 'N/A';
+
+    const lines = [
+      `<b>RSI-14: ${symbol}</b>`,
+      '━━━━━━━━━━━━━━━━',
+      entry.price ? `💰 Price: ${fmtUsd(entry.price)} (${changeStr})` : '',
+      '',
+      `1h:  ${rsiLabel(entry.rsi1h)}`,
+      `4h:  ${rsiLabel(entry.rsi4h)}`,
+      `1d:  ${rsiLabel(entry.rsi1d)}`,
+    ].filter(Boolean);
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [
+        { text: '💰 Price', callback_data: `cmd:price:${symbol}` },
+        { text: '📊 Funding', callback_data: `cmd:funding:${symbol}` },
+      ],
+      [{ text: '🔥 RSI Chart', callback_data: `chart:rsi:${symbol}` }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleRsi error:', err);
+    await sendMessage(chatId, 'Error fetching RSI data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /whale — top Hyperliquid whale positions
+// ---------------------------------------------------------------------------
+
+async function handleWhale(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/hl-whales`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch whale data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const whales: Array<{
+      label: string;
+      accountValue: number;
+      positionCount: number;
+      dayPnl?: number;
+      positions: Array<{ coin: string; side: string; positionValue: number; unrealizedPnl: number }>;
+    }> = await res.json();
+
+    if (!Array.isArray(whales) || whales.length === 0) {
+      await sendMessage(chatId, 'No whale data available right now.');
+      return;
+    }
+
+    const top5 = whales.slice(0, 5);
+    const lines = [
+      '<b>Top 5 Hyperliquid Whales</b>',
+      '━━━━━━━━━━━━━━━━',
+    ];
+
+    top5.forEach((w, i) => {
+      const topPos = w.positions?.[0];
+      const dayPnlStr = w.dayPnl != null
+        ? ` | Day PnL: ${w.dayPnl >= 0 ? '+' : ''}${fmtUsd(w.dayPnl)}`
+        : '';
+      lines.push(
+        `\n${i + 1}. <b>${w.label}</b>`,
+        `   AV: ${fmtUsd(w.accountValue)} | ${w.positionCount} pos${dayPnlStr}`,
+      );
+      if (topPos) {
+        const pnlStr = topPos.unrealizedPnl >= 0 ? `+${fmtUsd(topPos.unrealizedPnl)}` : fmtUsd(topPos.unrealizedPnl);
+        lines.push(`   Top: ${topPos.coin} ${topPos.side.toUpperCase()} ${fmtUsd(topPos.positionValue)} (${pnlStr})`);
+      }
+    });
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:whale' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleWhale error:', err);
+    await sendMessage(chatId, 'Error fetching whale data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /dominance — BTC/ETH/SOL market dominance
+// ---------------------------------------------------------------------------
+
+async function handleDominance(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/dominance`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch dominance data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d: {
+      btcDominance: number | null;
+      ethDominance: number | null;
+      totalMarketCap: number | null;
+      totalVolume24h: number | null;
+      marketCapChange24h: number | null;
+      dominanceBreakdown: Record<string, number>;
+    } = await res.json();
+
+    const solDom = d.dominanceBreakdown?.sol;
+    const changeStr = d.marketCapChange24h != null
+      ? (d.marketCapChange24h >= 0 ? '+' : '') + d.marketCapChange24h.toFixed(2) + '%'
+      : 'N/A';
+
+    const lines = [
+      '<b>Market Dominance</b>',
+      '━━━━━━━━━━━━━━━━',
+      `🟠 BTC: <b>${d.btcDominance?.toFixed(1) ?? 'N/A'}%</b>`,
+      `🔷 ETH: <b>${d.ethDominance?.toFixed(1) ?? 'N/A'}%</b>`,
+      solDom != null ? `🟣 SOL: <b>${solDom.toFixed(1)}%</b>` : '',
+      '',
+      `📊 Total Market Cap: ${d.totalMarketCap ? fmtUsd(d.totalMarketCap) : 'N/A'}`,
+      `📈 24h Change: ${changeStr}`,
+      `📊 24h Volume: ${d.totalVolume24h ? fmtUsd(d.totalVolume24h) : 'N/A'}`,
+    ].filter(Boolean);
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:dominance' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleDominance error:', err);
+    await sendMessage(chatId, 'Error fetching dominance data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /feargreed — Fear & Greed Index
+// ---------------------------------------------------------------------------
+
+async function handleFearGreed(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/fear-greed?history=true&limit=7`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch Fear & Greed data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json: {
+      current: { value: number; classification: string; timestamp: number };
+      history: Array<{ value: number; classification: string; timestamp: number }>;
+    } = await res.json();
+
+    const c = json.current;
+    const emoji = c.value <= 25 ? '😱' : c.value <= 45 ? '😰' : c.value <= 55 ? '😐' : c.value <= 75 ? '😊' : '🤑';
+
+    // 7-day trend line using block chars
+    const hist = json.history.slice(0, 7).reverse();
+    const trendLine = hist.map(h => {
+      if (h.value >= 70) return '▇';
+      if (h.value >= 50) return '▅';
+      if (h.value >= 30) return '▃';
+      return '▁';
+    }).join('');
+
+    const lines = [
+      '<b>Fear & Greed Index</b>',
+      '━━━━━━━━━━━━━━━━',
+      `${emoji} <b>${c.value}</b> — ${c.classification}`,
+      '',
+      `7-day trend: <code>${trendLine}</code>`,
+      '',
+    ];
+
+    if (hist.length > 0) {
+      lines.push('<b>Last 7 days:</b>');
+      hist.forEach(h => {
+        const date = new Date(h.timestamp).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        lines.push(`  ${date}: ${h.value} (${h.classification})`);
+      });
+    }
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:feargreed' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleFearGreed error:', err);
+    await sendMessage(chatId, 'Error fetching Fear & Greed data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /yields — top DeFi yields by APY
+// ---------------------------------------------------------------------------
+
+async function handleYields(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/yields?limit=10`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch yield data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json: {
+      data: Array<{ project: string; symbol: string; chain: string; apy: number; tvl: number; stablecoin: boolean }>;
+      count: number;
+    } = await res.json();
+
+    const pools = json.data || [];
+    if (pools.length === 0) {
+      await sendMessage(chatId, 'No yield data available right now.');
+      return;
+    }
+
+    const top5 = pools.slice(0, 5);
+
+    const lines = [
+      '<b>Top DeFi Yields</b>',
+      '━━━━━━━━━━━━━━━━',
+      '',
+    ];
+
+    top5.forEach((p, i) => {
+      const stable = p.stablecoin ? ' 🛡️' : '';
+      lines.push(
+        `${i + 1}. <b>${p.symbol}</b>${stable}`,
+        `   ${p.project} (${p.chain})`,
+        `   APY: <b>${p.apy.toFixed(2)}%</b> | TVL: ${fmtUsd(p.tvl)}`,
+        '',
+      );
+    });
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:yields' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleYields error:', err);
+    await sendMessage(chatId, 'Error fetching yield data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared formatting helpers
 // ---------------------------------------------------------------------------
 
@@ -598,10 +1302,12 @@ function fmtRate(r: number): string {
 
 /** Format a USD amount with compact notation for large values. */
 function fmtUsd(n: number): string {
-  if (n >= 1_000_000_000) return '$' + (n / 1_000_000_000).toFixed(2) + 'B';
-  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(2) + 'M';
-  if (n >= 1_000) return '$' + (n / 1_000).toFixed(1) + 'K';
-  return '$' + n.toFixed(2);
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return sign + '$' + (abs / 1_000_000_000).toFixed(2) + 'B';
+  if (abs >= 1_000_000) return sign + '$' + (abs / 1_000_000).toFixed(2) + 'M';
+  if (abs >= 1_000) return sign + '$' + (abs / 1_000).toFixed(1) + 'K';
+  return sign + '$' + abs.toFixed(2);
 }
 
 // ---------------------------------------------------------------------------
@@ -620,9 +1326,130 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse Telegram update
     const body = await request.json();
+
+    // 2a. Handle callback queries (inline keyboard button presses)
+    const callbackQuery = body?.callback_query;
+    if (callbackQuery?.data && callbackQuery?.message?.chat?.id) {
+      const cbChatId: number = callbackQuery.message.chat.id;
+      const cbData: string = callbackQuery.data;
+
+      await answerCallbackQuery(callbackQuery.id);
+
+      if (isDBConfigured()) {
+        await initDB();
+      } else {
+        return NextResponse.json({ ok: true });
+      }
+
+      const cbParts = cbData.split(':');
+      const cbPrefix = cbParts[0]; // 'cmd', 'chart', 'menu', etc.
+      const cbCmd = cbParts[1];
+      const cbArgs = cbParts.slice(2);
+      const cbOrigin = request.nextUrl.origin;
+
+      // Handle chart image callbacks
+      if (cbPrefix === 'chart' && cbCmd && cbArgs[0]) {
+        try {
+          const chartRes = await fetch(
+            `${cbOrigin}/api/charts/telegram?type=${cbCmd}&symbol=${encodeURIComponent(cbArgs[0])}`,
+            { signal: AbortSignal.timeout(20000) },
+          );
+          if (chartRes.ok) {
+            const buf = Buffer.from(await chartRes.arrayBuffer());
+            await sendPhoto(cbChatId, buf, `${cbArgs[0]} ${cbCmd} chart`);
+          } else {
+            await sendMessage(cbChatId, 'Chart generation failed. Try again later.');
+          }
+        } catch (err) {
+          console.error('[telegram] chart callback error:', err);
+          await sendMessage(cbChatId, 'Chart generation timed out. Try again later.');
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      switch (cbCmd) {
+        case 'price':
+          await handlePrice(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'funding':
+          await handleFundingRates(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'oi':
+          await handleOI(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'liq':
+          await handleLiq(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'scan':
+          await handleScan(cbChatId, cbOrigin);
+          break;
+        case 'top':
+          await handleTop(cbChatId, cbOrigin);
+          break;
+        case 'alert_prompt':
+          if (cbArgs[0]) {
+            await sendMessage(cbChatId,
+              `To create an alert for <b>${cbArgs[0]}</b>:\n` +
+              `/alert add ${cbArgs[0]} price gt &lt;value&gt;\n` +
+              `/alert add ${cbArgs[0]} funding gt &lt;value&gt;`,
+            );
+          }
+          break;
+        case 'basis':
+          await handleBasis(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'rsi':
+          await handleRsi(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'whale':
+          await handleWhale(cbChatId, cbOrigin);
+          break;
+        case 'dominance':
+          await handleDominance(cbChatId, cbOrigin);
+          break;
+        case 'feargreed':
+          await handleFearGreed(cbChatId, cbOrigin);
+          break;
+        case 'yields':
+          await handleYields(cbChatId, cbOrigin);
+          break;
+        case 'menu':
+          await handleMenuCallback(cbChatId, cbArgs);
+          break;
+        case 'menu_back':
+          await handleMenu(cbChatId);
+          break;
+        case 'menu_prompt':
+          // Prompt user to enter a symbol for the given command
+          if (cbArgs[0]) {
+            await sendMessage(cbChatId, `Type: /${cbArgs[0]} &lt;symbol&gt;\n\nExample: /${cbArgs[0]} BTC`);
+          }
+          break;
+        case 'alert_list':
+          await handleAlert(cbChatId, ['list']);
+          break;
+        case 'help':
+          await handleStart(cbChatId);
+          break;
+        case 'status_check':
+          await handleStatus(cbChatId);
+          break;
+        case 'subscribe':
+          await handleSubscribe(cbChatId, cbArgs);
+          break;
+        case 'unsubscribe':
+          await handleUnsubscribe(cbChatId, cbArgs);
+          break;
+        default:
+          break;
+      }
+
+      return NextResponse.json({ ok: true });
+    }
+
     const message = body?.message;
 
-    // No message (e.g. edited_message, callback_query, etc.) — acknowledge
+    // No text message — acknowledge silently
     if (!message?.text || !message?.chat?.id) {
       return NextResponse.json({ ok: true });
     }
@@ -669,6 +1496,22 @@ export async function POST(request: NextRequest) {
         await handleScan(chatId, request.nextUrl.origin);
         break;
 
+      case '/price':
+        await handlePrice(chatId, args, request.nextUrl.origin);
+        break;
+
+      case '/funding':
+        await handleFundingRates(chatId, args, request.nextUrl.origin);
+        break;
+
+      case '/top':
+        await handleTop(chatId, request.nextUrl.origin);
+        break;
+
+      case '/help':
+        await handleStart(chatId);
+        break;
+
       case '/history':
         await handleHistory(chatId, args, request.nextUrl.origin);
         break;
@@ -683,6 +1526,42 @@ export async function POST(request: NextRequest) {
 
       case '/alert':
         await handleAlert(chatId, args);
+        break;
+
+      case '/basis':
+        await handleBasis(chatId, args, request.nextUrl.origin);
+        break;
+
+      case '/rsi':
+        await handleRsi(chatId, args, request.nextUrl.origin);
+        break;
+
+      case '/whale':
+        await handleWhale(chatId, request.nextUrl.origin);
+        break;
+
+      case '/dominance':
+        await handleDominance(chatId, request.nextUrl.origin);
+        break;
+
+      case '/feargreed':
+        await handleFearGreed(chatId, request.nextUrl.origin);
+        break;
+
+      case '/yields':
+        await handleYields(chatId, request.nextUrl.origin);
+        break;
+
+      case '/menu':
+        await handleMenu(chatId);
+        break;
+
+      case '/subscribe':
+        await handleSubscribe(chatId, args);
+        break;
+
+      case '/unsubscribe':
+        await handleUnsubscribe(chatId, args);
         break;
 
       default:

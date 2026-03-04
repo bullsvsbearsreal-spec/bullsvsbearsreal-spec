@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCircuitBreakerStatus } from '../_shared/exchange-fetchers';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -96,11 +97,22 @@ export async function GET(request: NextRequest) {
   if (activeRatio < 0.5) status = 'down';
   else if (activeRatio < 0.8 || errors.length > 5) status = 'degraded';
 
+  // Circuit breaker status
+  const circuitBreakers = getCircuitBreakerStatus();
+  const openBreakers = Object.entries(circuitBreakers)
+    .filter(([, s]) => s.isOpen)
+    .map(([name]) => name);
+
   return NextResponse.json({
     status,
     timestamp: Date.now(),
     routes,
     errors,
+    circuitBreakers: {
+      openCount: openBreakers.length,
+      open: openBreakers,
+      all: circuitBreakers,
+    },
   }, {
     headers: { 'Cache-Control': 'no-store' },
   });

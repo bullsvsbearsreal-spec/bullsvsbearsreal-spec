@@ -12,6 +12,18 @@
     {
       "path": "/api/cron/portfolio-snapshot",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/ingest-liquidations",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/alerts",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/telegram-reports",
+      "schedule": "0 8 * * *"
     }
   ]
 }
