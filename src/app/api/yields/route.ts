@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const resp = await fetch(LLAMA_URL, {
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(20000),
       headers: { 'Accept': 'application/json' },
     });
 

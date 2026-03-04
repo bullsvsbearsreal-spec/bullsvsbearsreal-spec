@@ -159,7 +159,12 @@ export default function YieldsPage() {
     count: number;
   }>({
     key: API_URL,
-    fetcher: () => fetch(API_URL).then(r => r.json()),
+    fetcher: async () => {
+      const r = await fetch(API_URL);
+      const json = await r.json();
+      if (!r.ok || json.error) throw new Error(json.error || `HTTP ${r.status}`);
+      return json;
+    },
     refreshInterval: 300_000,
   });
 
