@@ -6,9 +6,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 const LLAMA_URL = 'https://yields.llama.fi/pools';
 
