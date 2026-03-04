@@ -11,7 +11,7 @@ import { isDBConfigured } from '@/lib/db';
 import postgres from 'postgres';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
 const DATABASE_URL = process.env.DATABASE_URL || '';

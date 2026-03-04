@@ -14,7 +14,7 @@ import {
 } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ECONOMIC_EVENTS, type EconomicEvent } from '@/lib/data/economic-events';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
 /* ─── ForexFactory live feed types ──────────────────────────── */

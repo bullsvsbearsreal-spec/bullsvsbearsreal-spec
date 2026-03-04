@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCircuitBreakerStatus } from '../_shared/exchange-fetchers';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
 const ADMIN_API_KEY = (process.env.ADMIN_API_KEY || '').trim();

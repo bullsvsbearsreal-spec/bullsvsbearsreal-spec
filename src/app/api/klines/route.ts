@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
 const VALID_INTERVALS = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];

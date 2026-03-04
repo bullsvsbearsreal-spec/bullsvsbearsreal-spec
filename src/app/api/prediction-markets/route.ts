@@ -4,7 +4,7 @@ import { CURATED_MAPPINGS, extractKeywords, keywordSimilarity, extractNumbers, h
 import type { PredictionMarket, PredictionArbitrage, PredictionMarketsResponse, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
 // ─── Polymarket ──────────────────────────────────────────────
