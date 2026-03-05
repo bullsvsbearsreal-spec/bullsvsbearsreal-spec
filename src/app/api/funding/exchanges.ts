@@ -1214,12 +1214,14 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // fundingRate8h is the directional funding component (positive = longs pay shorts).
           // fundingRateLong / fundingRateShort are the TOTAL holding fees per side
           // (positive = cost for that side, negative = earning).
+          // Negate per-side rates: SDK uses positive=cost convention,
+          // but display/gTrade UI uses positive=earning (green) convention.
           results.push({
             symbol,
             exchange: 'gTrade',
             fundingRate: fundingRate8h,
-            fundingRateLong: fundingRateLong,
-            fundingRateShort: fundingRateShort,
+            fundingRateLong: -fundingRateLong,
+            fundingRateShort: -fundingRateShort,
             borrowingRate: totalBorrowRate8h > 0.00001 ? totalBorrowRate8h : undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: tokenPrice,
@@ -1304,7 +1306,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         !m.name.includes('SWAP') &&
         !m.name.includes('(deprecated)') &&
         m.isListed &&
-        m.fundingRateLong
+        m.fundingRateLong != null  // explicit null check — "0" string is valid (balanced market)
       );
 
       // Deduplicate: keep highest OI per symbol
@@ -1325,10 +1327,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // GMX convention: negative fundingRateLong = longs pay (cost).
           // Negate to match our convention: positive = longs pay.
           const rawFundingL = Number(BigInt(m.fundingRateLong)) / 1e30 / 8760 * 100;
-          // Don't use raw fundingRateShort — it explodes when short OI ≈ 0
-          // (e.g., JTO short OI $0.89 → 75%/hr). Derive symmetric rate from long instead.
+          const rawFundingS = Number(BigInt(m.fundingRateShort || '0')) / 1e30 / 8760 * 100;
+          // Negate: GMX API negative=cost, our output positive=cost
           const fundingL = -rawFundingL; // positive = longs pay
-          const fundingS = rawFundingL;  // symmetric: shorts earn what longs pay
+          const fundingS = -rawFundingS; // positive = shorts pay, negative = shorts earn
           // Add borrowing rates (always a cost, positive)
           const borrowL = Number(BigInt(m.borrowingRateLong || '0')) / 1e30 / 8760 * 100;
           const borrowS = Number(BigInt(m.borrowingRateShort || '0')) / 1e30 / 8760 * 100;

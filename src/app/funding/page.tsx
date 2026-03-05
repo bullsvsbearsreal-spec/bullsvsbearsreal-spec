@@ -111,8 +111,8 @@ export default function FundingPage() {
   const fetcher = useCallback(async () => {
     const [data, arbData, oiData] = await Promise.all([
       fetchAllFundingRates(assetClass as AssetClassFilter),
-      assetClass === 'crypto' ? fetchFundingArbitrage() : Promise.resolve([]),
-      assetClass === 'crypto' ? fetchAllOpenInterest() : Promise.resolve([]),
+      fetchFundingArbitrage(assetClass as AssetClassFilter),
+      fetchAllOpenInterest(),
     ]);
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
     // Build OI lookup: "SYMBOL|EXCHANGE" → openInterestValue (USD)
@@ -302,7 +302,7 @@ export default function FundingPage() {
 
   const viewTabs: { key: ViewMode; label: string }[] = [
     { key: 'heatmap', label: 'Heatmap' },
-    ...(assetClass === 'crypto' ? [{ key: 'arbitrage' as ViewMode, label: 'Arbitrage' }] : []),
+    { key: 'arbitrage' as ViewMode, label: 'Arbitrage' },
   ];
 
   const categoryKeys = Object.keys(activeCategories);
@@ -619,7 +619,7 @@ export default function FundingPage() {
             {viewMode === 'heatmap' && (
               <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} fundingPeriod={fundingPeriod} />
             )}
-            {viewMode === 'arbitrage' && assetClass === 'crypto' && (
+            {viewMode === 'arbitrage' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} />
             )}
           </>

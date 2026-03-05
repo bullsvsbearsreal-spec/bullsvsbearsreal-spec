@@ -338,21 +338,36 @@ export async function fetchMarketStats(): Promise<{
 }
 
 // Get funding rate comparison across exchanges for arbitrage
-export async function fetchFundingArbitrage(): Promise<Array<{
+export interface ArbitrageItem {
   symbol: string;
   exchanges: Array<{ exchange: string; rate: number }>;
   spread: number;
-}>> {
-  const cached = getCached<any>('fundingArbitrage');
+  markPrices: Array<{ exchange: string; price: number }>;
+  intervals: Record<string, string>;
+}
+
+export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'crypto'): Promise<ArbitrageItem[]> {
+  const cacheKey = `fundingArbitrage_${assetClass}`;
+  const cached = getCached<ArbitrageItem[]>(cacheKey);
   if (cached) return cached;
 
-  const fundingRates = await fetchAllFundingRates();
+  const fundingRates = await fetchAllFundingRates(assetClass);
+
+  // Symbol aliases: group equivalent assets under one canonical symbol
+  // e.g., XAUT (Tether Gold) and PAXG (Paxos Gold) → XAU (spot gold)
+  const SYMBOL_ALIASES: Record<string, string> = {
+    'XAUT': 'XAU', 'PAXG': 'XAU', 'GOLD': 'XAU',
+    'SILVER': 'XAG',
+  };
 
   // Group by symbol — normalize all rates to 8h basis for fair comparison
   const symbolMap = new Map<string, Array<{ exchange: string; rate: number }>>();
+  const priceMap = new Map<string, Array<{ exchange: string; price: number }>>();
+  const intervalTracker = new Map<string, Record<string, string>>();
   fundingRates.forEach(fr => {
+    const canonicalSymbol = SYMBOL_ALIASES[fr.symbol] || fr.symbol;
     const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
-    const existing = symbolMap.get(fr.symbol) || [];
+    const existing = symbolMap.get(canonicalSymbol) || [];
     // For DEXes with separate long/short rates (gTrade, GMX), use only the
     // directional (asymmetric) component — strip out symmetric borrowing fees.
     // When fundingRateLong === fundingRateShort, the entire rate is borrowing
@@ -364,11 +379,25 @@ export async function fetchFundingArbitrage(): Promise<Array<{
       effectiveRate = fr.fundingRate;
     }
     existing.push({ exchange: fr.exchange, rate: effectiveRate * mult });
-    symbolMap.set(fr.symbol, existing);
+    symbolMap.set(canonicalSymbol, existing);
+
+    // Collect per-exchange mark prices
+    if (fr.markPrice && fr.markPrice > 0) {
+      const prices = priceMap.get(canonicalSymbol) || [];
+      prices.push({ exchange: fr.exchange, price: fr.markPrice });
+      priceMap.set(canonicalSymbol, prices);
+    }
+
+    // Track funding intervals per exchange
+    if (fr.fundingInterval) {
+      const intervals = intervalTracker.get(canonicalSymbol) || {};
+      intervals[fr.exchange] = fr.fundingInterval;
+      intervalTracker.set(canonicalSymbol, intervals);
+    }
   });
 
   // Calculate spread for each symbol (only those with 2+ exchanges)
-  const arbitrageData = Array.from(symbolMap.entries())
+  const arbitrageData: ArbitrageItem[] = Array.from(symbolMap.entries())
     .filter(([_, exchanges]) => exchanges.length >= 2)
     .map(([symbol, exchanges]) => {
       const rates = exchanges.map(e => e.rate);
@@ -378,12 +407,13 @@ export async function fetchFundingArbitrage(): Promise<Array<{
         symbol,
         exchanges,
         spread: maxRate - minRate,
+        markPrices: priceMap.get(symbol) || [],
+        intervals: intervalTracker.get(symbol) || {},
       };
     })
-    .sort((a, b) => b.spread - a.spread)
-    .slice(0, 20);
+    .sort((a, b) => b.spread - a.spread);
 
-  setCache('fundingArbitrage', arbitrageData);
+  setCache(cacheKey, arbitrageData);
   return arbitrageData;
 }
 
