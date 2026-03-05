@@ -170,9 +170,11 @@ async function fetch24hTickers(): Promise<Map<string, TickerInfo>> {
       for (const t of tickers) {
         if (!t.symbol.endsWith('USDT')) continue;
         const base = t.symbol.replace('USDT', '');
+        const price = parseFloat(t.lastPrice);
+        const change = parseFloat(t.priceChangePercent);
         map.set(base, {
-          price: parseFloat(t.lastPrice) || null,
-          change24h: parseFloat(t.priceChangePercent) || null,
+          price: isFinite(price) ? price : null,
+          change24h: isFinite(change) ? change : null,
         });
       }
       if (map.size > 0) return map;
@@ -192,9 +194,11 @@ async function fetch24hTickers(): Promise<Map<string, TickerInfo>> {
     for (const t of tickers) {
       if (!t.symbol.endsWith('USDT')) continue;
       const base = t.symbol.replace('USDT', '');
+      const price = parseFloat(t.lastPrice);
+      const change = parseFloat(t.priceChangePercent);
       map.set(base, {
-        price: parseFloat(t.lastPrice) || null,
-        change24h: parseFloat(t.priceChangePercent) || null,
+        price: isFinite(price) ? price : null,
+        change24h: isFinite(change) ? change : null,
       });
     }
   } catch {
@@ -212,9 +216,9 @@ async function fetchSymbolRSI(symbol: string): Promise<{
   rsi1d: number | null;
 }> {
   const [closes1h, closes4h, closes1d] = await Promise.all([
-    fetchKlines(symbol, '1h', 30),
-    fetchKlines(symbol, '4h', 30),
-    fetchKlines(symbol, '1d', 30),
+    fetchKlines(symbol, '1h', 200),
+    fetchKlines(symbol, '4h', 200),
+    fetchKlines(symbol, '1d', 200),
   ]);
 
   return {

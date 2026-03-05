@@ -411,8 +411,10 @@ export default function Footer() {
         {/* ─── Disclaimer ─── */}
         <div className="border-t border-white/[0.04] pt-4 mb-4">
           <p className="text-[10px] text-neutral-700 leading-relaxed text-center">
-            InfoHub provides market data for informational purposes only &mdash; not financial advice.
-            Data sourced from third-party APIs and may be delayed or inaccurate.
+            InfoHub aggregates publicly available market data for informational and educational purposes only.
+            Nothing on this site constitutes financial, investment, or trading advice.
+            Data is sourced from third-party APIs and may be delayed, incomplete, or inaccurate.
+            Always do your own research and consult a qualified professional before making any financial decisions. Use at your own risk.
           </p>
         </div>
 

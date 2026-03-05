@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
-import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, type AssetClassFilter } from '@/lib/api/aggregator';
+import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchArbHistory, type AssetClassFilter } from '@/lib/api/aggregator';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -105,7 +105,7 @@ export default function FundingPage() {
   );
 
   // Per-tab data cache: instantly show previously loaded tab data while fetching fresh data
-  type FundingData = { fundingRates: any[]; arbitrageData: any[]; oiMap: Map<string, number>; _assetClass: string };
+  type FundingData = { fundingRates: any[]; arbitrageData: any[]; oiMap: Map<string, number>; arbHistory: Map<string, { avg7d: number; avg24h: number; avg6d: number }>; _assetClass: string };
   const tabCacheRef = useRef<Map<string, FundingData>>(new Map());
 
   const fetcher = useCallback(async () => {
@@ -122,7 +122,10 @@ export default function FundingPage() {
         oiMap.set(`${oi.symbol}|${oi.exchange}`, oi.openInterestValue);
       }
     });
-    const result: FundingData = { fundingRates: validData, arbitrageData: arbData, oiMap, _assetClass: assetClass };
+    // Fetch arb history for stability/trend (non-blocking — don't delay page load)
+    const arbSymbols = (Array.isArray(arbData) ? arbData : []).map((a: any) => a.symbol);
+    const arbHistory = await fetchArbHistory(arbSymbols).catch(() => new Map());
+    const result: FundingData = { fundingRates: validData, arbitrageData: arbData, oiMap, arbHistory, _assetClass: assetClass };
     // Cache this tab's data for instant switching
     tabCacheRef.current.set(assetClass, result);
     return result;
@@ -142,6 +145,7 @@ export default function FundingPage() {
   const fundingRates = Array.isArray(data?.fundingRates) ? data.fundingRates : [];
   const arbitrageData = Array.isArray(data?.arbitrageData) ? data.arbitrageData : [];
   const oiMap = data?.oiMap ?? new Map<string, number>();
+  const arbHistory = data?.arbHistory ?? new Map<string, { avg7d: number; avg24h: number; avg6d: number }>();
 
   // Build mark prices map: first seen price per symbol (for arb view)
   const markPricesMap = useMemo(() => {
@@ -149,6 +153,17 @@ export default function FundingPage() {
     fundingRates.forEach(fr => {
       if (fr.markPrice && fr.markPrice > 0 && !map.has(fr.symbol)) {
         map.set(fr.symbol, fr.markPrice);
+      }
+    });
+    return map;
+  }, [fundingRates]);
+
+  // Build index prices map for basis calculation in arbitrage view
+  const indexPricesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    fundingRates.forEach(fr => {
+      if (fr.indexPrice && fr.indexPrice > 0 && !map.has(fr.symbol)) {
+        map.set(fr.symbol, fr.indexPrice);
       }
     });
     return map;
@@ -620,7 +635,7 @@ export default function FundingPage() {
               <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} fundingPeriod={fundingPeriod} />
             )}
             {viewMode === 'arbitrage' && (
-              <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} />
+              <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} indexPrices={indexPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} historicalSpreads={arbHistory} />
             )}
           </>
         )}

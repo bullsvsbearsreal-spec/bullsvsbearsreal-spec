@@ -417,6 +417,36 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
   return arbitrageData;
 }
 
+// Fetch historical arbitrage spread data for stability/trend analysis
+export interface ArbHistoricalSpread {
+  avg7d: number;
+  avg24h: number;
+  avg6d: number;
+}
+
+export async function fetchArbHistory(symbols: string[]): Promise<Map<string, ArbHistoricalSpread>> {
+  if (symbols.length === 0) return new Map();
+  const cacheKey = `arbHistory_${symbols.slice(0, 5).join(',')}`;
+  const cached = getCached<Map<string, ArbHistoricalSpread>>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(`/api/arb-history?symbols=${symbols.join(',')}`);
+    if (!response.ok) return new Map();
+    const json = await response.json();
+    const map = new Map<string, ArbHistoricalSpread>();
+    if (json.data) {
+      Object.entries(json.data).forEach(([sym, data]) => {
+        map.set(sym, data as ArbHistoricalSpread);
+      });
+    }
+    setCache(cacheKey, map, FUNDING_TTL);
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 // Fetch exchange health status from the funding API
 export interface ExchangeHealthInfo {
   name: string;
