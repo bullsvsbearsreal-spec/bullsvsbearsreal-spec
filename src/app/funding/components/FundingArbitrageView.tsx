@@ -5,7 +5,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRateAdaptive, type FundingPeriod, PERIOD_HOURS, PERIOD_LABELS } from '../utils';
 import { isExchangeDex, EXCHANGE_FEES, getArbRoundTripFee, getExchangeTradeUrl } from '@/lib/constants';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, ExternalLink, TrendingUp, BarChart3, DollarSign, Activity, Filter, Calculator } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, ExternalLink, TrendingUp, BarChart3, DollarSign, Activity, Filter, Calculator, AlertTriangle, Shield, TrendingDown, Download, Link2, Check, GitCompareArrows } from 'lucide-react';
 import Pagination from './Pagination';
 
 interface ArbitrageItem {
@@ -16,16 +16,46 @@ interface ArbitrageItem {
   intervals?: Record<string, string>;
 }
 
+interface HistoricalSpreadData {
+  avg7d: number;       // 7-day average spread
+  avg24h: number;      // last 24h average spread
+  avg6d: number;       // prior 6d average spread (for trend)
+}
+
 interface FundingArbitrageViewProps {
   arbitrageData: ArbitrageItem[];
   oiMap?: Map<string, number>;
   markPrices?: Map<string, number>;
+  indexPrices?: Map<string, number>;
   intervalMap?: Map<string, string>;
   fundingPeriod: FundingPeriod;
+  historicalSpreads?: Map<string, HistoricalSpreadData>;
 }
 
-type SortKey = 'spread' | 'annualized' | 'dailyPnl' | 'symbol' | 'oi';
+type SortKey = 'spread' | 'annualized' | 'dailyPnl' | 'symbol' | 'oi' | 'grade';
 type VenueFilterType = 'all' | 'cex-dex' | 'cex-cex';
+
+// --- Feasibility Grade ---
+type FeasibilityGrade = 'A' | 'B' | 'C' | 'D';
+
+function computeGrade(spreadPct8h: number, minSideOI: number, stability: 'stable' | 'volatile' | 'new' | null): { grade: FeasibilityGrade; score: number } {
+  // OI Score (0-3)
+  const oiScore = minSideOI >= 10_000_000 ? 3 : minSideOI >= 1_000_000 ? 2 : minSideOI >= 100_000 ? 1 : 0;
+  // Spread Score (0-3): lower = more realistic
+  const spreadScore = spreadPct8h < 1 ? 3 : spreadPct8h < 5 ? 2 : spreadPct8h < 20 ? 1 : 0;
+  // Stability Score (0-2)
+  const stabScore = stability === 'stable' ? 2 : stability === 'volatile' ? 1 : 0;
+  const total = oiScore + spreadScore + stabScore;
+  const grade: FeasibilityGrade = total >= 7 ? 'A' : total >= 5 ? 'B' : total >= 3 ? 'C' : 'D';
+  return { grade, score: total };
+}
+
+const GRADE_COLORS: Record<FeasibilityGrade, string> = {
+  A: 'text-green-400 bg-green-500/15 border-green-500/20',
+  B: 'text-blue-400 bg-blue-500/15 border-blue-500/20',
+  C: 'text-amber-400 bg-amber-500/15 border-amber-500/20',
+  D: 'text-red-400 bg-red-500/15 border-red-500/20',
+};
 
 const ROWS_PER_PAGE = 30;
 
@@ -53,6 +83,22 @@ function IntervalBadge({ interval }: { interval?: string }) {
   if (interval === '1h') return <span className="text-amber-400 text-[8px] font-bold ml-0.5" title="1h payout">*</span>;
   if (interval === '4h') return <span className="text-blue-400 text-[8px] font-bold ml-0.5" title="4h payout">**</span>;
   return null;
+}
+
+function GradeBadge({ grade, isOutlier, isLowLiq, score }: {
+  grade: FeasibilityGrade; isOutlier: boolean; isLowLiq: boolean; score: number;
+}) {
+  const warnings = [isOutlier && '\u26A0', isLowLiq && '!'].filter(Boolean).join('');
+  const tooltip = [
+    `Feasibility: ${grade} (score ${score}/8)`,
+    isOutlier && 'Spread >1%/8h — unusually high',
+    isLowLiq && 'Min side OI <$50K — low liquidity',
+  ].filter(Boolean).join('\n');
+  return (
+    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${GRADE_COLORS[grade]}`} title={tooltip}>
+      {grade}{warnings && <span className="ml-0.5 text-[8px]">{warnings}</span>}
+    </span>
+  );
 }
 
 function getIntervalForExchange(item: ArbitrageItem, exchange: string, intervalMap?: Map<string, string>): string | undefined {
@@ -139,7 +185,77 @@ function ProfitCalculator({ grossSpread8h, roundTripFee, highExchange, lowExchan
   );
 }
 
-export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices, intervalMap, fundingPeriod }: FundingArbitrageViewProps) {
+function ComparisonDrawer({ items, periodScale, onClear }: {
+  items: any[]; periodScale: number; onClear: () => void;
+}) {
+  if (items.length === 0) return null;
+
+  const metrics: { label: string; key: string; format: (i: any) => string; best: 'max' | 'min' | null }[] = [
+    { label: 'Grade', key: 'gradeScore', format: (i) => `${i.grade} (${i.gradeScore}/8)`, best: 'max' },
+    { label: 'Spread/8h', key: 'grossSpread8h', format: (i) => `${i.grossSpread8h.toFixed(4)}%`, best: 'max' },
+    { label: 'Net Ann.', key: 'netAnnualized', format: (i) => `${i.netAnnualized > 0 ? '+' : ''}${i.netAnnualized.toFixed(1)}%`, best: 'max' },
+    { label: 'Short', key: 'high', format: (i) => i.high.exchange, best: null },
+    { label: 'Long', key: 'low', format: (i) => i.low.exchange, best: null },
+    { label: 'Fees', key: 'roundTripFee', format: (i) => `${i.roundTripFee.toFixed(3)}%`, best: 'min' },
+    { label: 'Daily PnL', key: 'dailyPnl', format: (i) => formatPnl(i.dailyPnl), best: 'max' },
+    { label: 'OI', key: 'totalOI', format: (i) => i.totalOI > 0 ? formatUSD(i.totalOI) : '-', best: 'max' },
+    { label: 'Stability', key: 'stability', format: (i) => i.stability || '-', best: null },
+    { label: 'Trend', key: 'trend', format: (i) => i.trend || '-', best: null },
+  ];
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-hub-darker border-t border-white/[0.1] shadow-2xl z-50 max-h-[300px] overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-white text-sm font-semibold">Comparing {items.length} Opportunities</h4>
+          <button onClick={onClear} className="text-neutral-500 hover:text-white text-xs px-2 py-1 rounded bg-white/[0.04] transition-colors">Clear</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                <th className="py-1.5 pr-3 text-left text-neutral-500 text-[10px] font-semibold uppercase w-24">Metric</th>
+                {items.map(item => (
+                  <th key={item.symbol} className="py-1.5 px-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <TokenIconSimple symbol={item.symbol} size={14} />
+                      <span className="text-white font-semibold">{item.symbol}</span>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {metrics.map(metric => {
+                const values = items.map(i => typeof i[metric.key] === 'number' ? i[metric.key] as number : null);
+                const validValues = values.filter((v): v is number => v !== null);
+                const bestVal = metric.best === 'max' && validValues.length > 0 ? Math.max(...validValues)
+                  : metric.best === 'min' && validValues.length > 0 ? Math.min(...validValues)
+                  : null;
+                return (
+                  <tr key={metric.label} className="border-b border-white/[0.03]">
+                    <td className="py-1.5 pr-3 text-neutral-500 text-[10px]">{metric.label}</td>
+                    {items.map(item => {
+                      const val = typeof item[metric.key] === 'number' ? item[metric.key] as number : null;
+                      const isBest = bestVal !== null && val === bestVal && items.length > 1;
+                      return (
+                        <td key={item.symbol} className={`py-1.5 px-3 text-center font-mono ${isBest ? 'text-green-400' : 'text-neutral-300'}`}>
+                          {metric.format(item)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices, indexPrices, intervalMap, fundingPeriod, historicalSpreads }: FundingArbitrageViewProps) {
   const periodScale = PERIOD_HOURS[fundingPeriod] / 8;
   const periodLabel = PERIOD_LABELS[fundingPeriod];
 
@@ -151,7 +267,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
     }
     return 10000;
   });
-  const [sortKey, setSortKey] = useState<SortKey>('spread');
+  const [sortKey, setSortKey] = useState<SortKey>('grade');
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -160,11 +276,48 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   const [venueFilter, setVenueFilter] = useState<VenueFilterType>('all');
   const [exchangeFilter, setExchangeFilter] = useState<string>('');
   const [minOI, setMinOI] = useState(0);
+  const [hideOutliers, setHideOutliers] = useState(true);
+  const [gradeFilter, setGradeFilter] = useState<FeasibilityGrade | 'all'>('all');
+  const [linkCopied, setLinkCopied] = React.useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareItems, setCompareItems] = useState<Set<string>>(new Set());
+
+  const toggleCompare = (symbol: string) => {
+    setCompareItems(prev => {
+      const next = new Set(prev);
+      if (next.has(symbol)) next.delete(symbol);
+      else if (next.size < 3) next.add(symbol);
+      return next;
+    });
+  };
 
   const handlePortfolioChange = (val: number) => {
     setPortfolio(val);
     if (typeof window !== 'undefined') localStorage.setItem('ih_arb_portfolio', String(val));
   };
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get('grade');
+    if (g && ['A', 'B', 'C', 'D'].includes(g)) setGradeFilter(g as FeasibilityGrade);
+    const v = params.get('venue');
+    if (v && ['all', 'cex-dex', 'cex-cex'].includes(v)) setVenueFilter(v as VenueFilterType);
+    const ex = params.get('exchange');
+    if (ex) setExchangeFilter(ex);
+    const ms = params.get('minSpread');
+    if (ms) setMinSpread(parseFloat(ms) || 0);
+    const mo = params.get('minOI');
+    if (mo) setMinOI(parseInt(mo) || 0);
+    const ho = params.get('hideOutliers');
+    if (ho === 'false') setHideOutliers(false);
+    if (ho === 'true') setHideOutliers(true);
+    const sk = params.get('sort');
+    if (sk && ['spread', 'annualized', 'dailyPnl', 'symbol', 'oi', 'grade'].includes(sk)) setSortKey(sk as SortKey);
+    const sd = params.get('sortDir');
+    if (sd === 'asc') setSortAsc(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Enrich data with calculations
   const enriched = useMemo(() => {
@@ -183,17 +336,51 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
       const dailyPnl = (netSpread8h / 100) * portfolio * 3;
       const monthlyPnl = dailyPnl * 30;
 
+      // Per-exchange OI + min side OI
       let totalOI = 0;
+      let minSideOI = Infinity;
       if (oiMap) {
+        const highOI = oiMap.get(`${item.symbol}|${high.exchange}`) || 0;
+        const lowOI = oiMap.get(`${item.symbol}|${low.exchange}`) || 0;
+        minSideOI = Math.min(highOI, lowOI);
         item.exchanges.forEach(ex => {
           const oi = oiMap.get(`${item.symbol}|${ex.exchange}`);
           if (oi) totalOI += oi;
         });
       }
+      if (!isFinite(minSideOI)) minSideOI = 0;
 
       const price = markPrices?.get(item.symbol) || (item.markPrices?.[0]?.price ?? 0);
       const highIsDex = isExchangeDex(high.exchange);
       const lowIsDex = isExchangeDex(low.exchange);
+
+      // Outlier flags
+      const isOutlier = grossSpread8h > 1; // >1% per 8h = extreme
+      const isLowLiq = minSideOI > 0 && minSideOI < 50_000;
+
+      // Basis: mark vs index premium
+      const idxPrice = indexPrices?.get(item.symbol);
+      const basis = (idxPrice && idxPrice > 0 && price > 0) ? ((price - idxPrice) / idxPrice) * 100 : null;
+
+      // Historical stability & trend
+      const hist = historicalSpreads?.get(item.symbol);
+      let stability: 'stable' | 'volatile' | 'new' | null = null;
+      let trend: 'widening' | 'narrowing' | 'flat' | null = null;
+      if (hist) {
+        const deviation = hist.avg7d > 0 ? Math.abs(grossSpread8h - hist.avg7d) / hist.avg7d : 0;
+        stability = deviation <= 0.3 ? 'stable' : 'volatile';
+        // Trend: compare last 24h to prior 6d
+        if (hist.avg6d > 0) {
+          const trendRatio = hist.avg24h / hist.avg6d;
+          trend = trendRatio > 1.1 ? 'widening' : trendRatio < 0.9 ? 'narrowing' : 'flat';
+        }
+      } else {
+        stability = 'new';
+      }
+
+      // Feasibility grade
+      const { grade, score: gradeScore } = computeGrade(grossSpread8h, minSideOI, stability);
+      const maxPractical = minSideOI > 0 ? minSideOI * 0.05 : 0; // 5% of smallest side OI
 
       return {
         ...item,
@@ -209,13 +396,34 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         dailyPnl,
         monthlyPnl,
         totalOI,
+        minSideOI,
         price,
         highIsDex,
         lowIsDex,
         isCexDex: (highIsDex && !lowIsDex) || (!highIsDex && lowIsDex),
+        isOutlier,
+        isLowLiq,
+        basis,
+        stability,
+        trend,
+        grade,
+        gradeScore,
+        maxPractical,
       };
     }).filter((item): item is NonNullable<typeof item> => item !== null);
-  }, [arbitrageData, oiMap, markPrices, portfolio, periodScale]);
+  }, [arbitrageData, oiMap, markPrices, indexPrices, historicalSpreads, portfolio, periodScale]);
+
+  const compareData = useMemo(() => {
+    return enriched.filter(item => compareItems.has(item.symbol));
+  }, [enriched, compareItems]);
+
+  const gradeCounts = useMemo(() => {
+    const counts = { A: 0, B: 0, C: 0, D: 0 };
+    for (const item of enriched) {
+      counts[item.grade]++;
+    }
+    return counts;
+  }, [enriched]);
 
   // Apply filters
   const filtered = useMemo(() => {
@@ -225,9 +433,11 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
       if (venueFilter === 'cex-cex' && item.isCexDex) return false;
       if (exchangeFilter && !item.exchanges.some(ex => ex.exchange.toLowerCase().includes(exchangeFilter.toLowerCase()))) return false;
       if (minOI > 0 && item.totalOI < minOI) return false;
+      if (hideOutliers && (item.isOutlier || item.isLowLiq)) return false;
+      if (gradeFilter !== 'all' && item.grade !== gradeFilter) return false;
       return true;
     });
-  }, [enriched, minSpread, venueFilter, exchangeFilter, minOI, periodScale]);
+  }, [enriched, minSpread, venueFilter, exchangeFilter, minOI, hideOutliers, gradeFilter, periodScale]);
 
   // Sort
   const sortedData = useMemo(() => {
@@ -239,6 +449,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         case 'dailyPnl': cmp = a.dailyPnl - b.dailyPnl; break;
         case 'symbol': cmp = a.symbol.localeCompare(b.symbol); break;
         case 'oi': cmp = a.totalOI - b.totalOI; break;
+        case 'grade': cmp = a.gradeScore - b.gradeScore; break;
       }
       return sortAsc ? cmp : -cmp;
     });
@@ -255,15 +466,70 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
     else { setSortKey(key); setSortAsc(false); }
   };
 
-  // Summary stats — use filtered data so cards reflect what's visible in the table
+  const exportCSV = () => {
+    const headers = ['Symbol', 'Grade', 'Price', 'Spread/8h', 'Net Spread/8h', 'Ann. %', 'Short Exchange', 'Short Rate', 'Long Exchange', 'Long Rate', 'Daily PnL', '30d PnL', 'OI', 'Stability', 'Trend'];
+    const rows = sortedData.map(item => [
+      item.symbol,
+      item.grade,
+      item.price > 0 ? item.price.toString() : '',
+      item.grossSpread8h.toFixed(4),
+      (item.grossSpread8h - item.roundTripFee).toFixed(4),
+      item.netAnnualized.toFixed(1),
+      item.high.exchange,
+      (item.high.rate * periodScale).toFixed(4),
+      item.low.exchange,
+      (item.low.rate * periodScale).toFixed(4),
+      item.dailyPnl.toFixed(2),
+      item.monthlyPnl.toFixed(2),
+      item.totalOI > 0 ? item.totalOI.toFixed(0) : '',
+      item.stability || '',
+      item.trend || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `infohub-arb-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyShareLink = () => {
+    const params = new URLSearchParams();
+    if (gradeFilter !== 'all') params.set('grade', gradeFilter);
+    if (venueFilter !== 'all') params.set('venue', venueFilter);
+    if (exchangeFilter) params.set('exchange', exchangeFilter);
+    if (minSpread > 0) params.set('minSpread', String(minSpread));
+    if (minOI > 0) params.set('minOI', String(minOI));
+    if (!hideOutliers) params.set('hideOutliers', 'false');
+    if (sortKey !== 'grade') params.set('sort', sortKey);
+    if (sortAsc) params.set('sortDir', 'asc');
+    const base = window.location.origin + window.location.pathname;
+    const qs = params.toString();
+    const url = qs ? `${base}?${qs}#arbitrage` : `${base}#arbitrage`;
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
+
+  // Summary stats
   const summary = useMemo(() => {
-    const source = filtered.length > 0 ? filtered : enriched;
-    if (source.length === 0) return null;
-    const best = source.reduce((a, b) => b.grossSpread > a.grossSpread ? b : a, source[0]);
-    const avgNet = source.reduce((s, i) => s + i.netAnnualized, 0) / source.length;
-    const totalOI = source.reduce((s, i) => s + i.totalOI, 0);
-    return { count: source.length, best, avgNet, totalOI };
-  }, [enriched, filtered]);
+    if (enriched.length === 0) return null;
+    const realistic = enriched.filter(i => !i.isOutlier && !i.isLowLiq);
+    const best = realistic.length > 0
+      ? realistic.reduce((a, b) => b.grossSpread > a.grossSpread ? b : a, realistic[0])
+      : enriched.reduce((a, b) => b.grossSpread > a.grossSpread ? b : a, enriched[0]);
+    const avgNet = enriched.reduce((s, i) => s + i.netAnnualized, 0) / enriched.length;
+    const totalOI = enriched.reduce((s, i) => s + i.totalOI, 0);
+    const aGrade = enriched.filter(i => i.grade === 'A');
+    const aGradeAvg = aGrade.length > 0 ? aGrade.reduce((s, i) => s + i.netAnnualized, 0) / aGrade.length : 0;
+    const topPick = aGrade.length > 0
+      ? aGrade.reduce((a, b) => b.netAnnualized > a.netAnnualized ? b : a, aGrade[0])
+      : enriched.filter(i => i.grade === 'B').reduce<typeof enriched[0] | null>((a, b) => !a ? b : (b.netAnnualized > a.netAnnualized ? b : a), null);
+    return { count: enriched.length, best, avgNet, totalOI, aGradeAvg, aGradeCount: aGrade.length, topPick };
+  }, [enriched]);
 
   const SortIcon = ({ k }: { k: SortKey }) => {
     if (sortKey !== k) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
@@ -273,17 +539,22 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   const hasOI = oiMap && oiMap.size > 0;
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${compareMode && compareData.length > 0 ? 'pb-80' : ''}`}>
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Activity className="w-3.5 h-3.5 text-hub-yellow" />
               <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Opportunities</span>
             </div>
             <div className="text-white text-lg font-bold font-mono">{summary.count}</div>
-            <div className="text-neutral-600 text-[10px]">with 2+ exchanges</div>
+            <div className="text-neutral-600 text-[10px]">
+              <span className="text-green-400">{gradeCounts.A}A</span>{' \u00b7 '}
+              <span className="text-blue-400">{gradeCounts.B}B</span>{' \u00b7 '}
+              <span className="text-amber-400">{gradeCounts.C}C</span>{' \u00b7 '}
+              <span className="text-red-400">{gradeCounts.D}D</span>
+            </div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
             <div className="flex items-center gap-1.5 mb-1">
@@ -298,10 +569,12 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
               <DollarSign className="w-3.5 h-3.5 text-green-400" />
               <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Avg Net Ann.</span>
             </div>
-            <div className={`text-lg font-bold font-mono ${summary.avgNet > 0 ? 'text-green-400' : 'text-neutral-500'}`}>
-              {summary.avgNet > 0 ? '+' : ''}{summary.avgNet.toFixed(1)}%
+            <div className={`text-lg font-bold font-mono ${(summary.aGradeCount > 0 ? summary.aGradeAvg : summary.avgNet) > 0 ? 'text-green-400' : 'text-neutral-500'}`}>
+              {(summary.aGradeCount > 0 ? summary.aGradeAvg : summary.avgNet) > 0 ? '+' : ''}{(summary.aGradeCount > 0 ? summary.aGradeAvg : summary.avgNet).toFixed(1)}%
             </div>
-            <div className="text-neutral-600 text-[10px]">across all pairs</div>
+            <div className="text-neutral-600 text-[10px]">
+              {summary.aGradeCount > 0 ? `A-grade avg (${summary.aGradeCount} opps)` : 'across all pairs'}
+            </div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
             <div className="flex items-center gap-1.5 mb-1">
@@ -310,6 +583,25 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
             </div>
             <div className="text-white text-lg font-bold font-mono">{summary.totalOI > 0 ? formatUSD(summary.totalOI) : '-'}</div>
             <div className="text-neutral-600 text-[10px]">addressable liquidity</div>
+          </div>
+          <div className="bg-hub-darker border border-green-500/20 rounded-lg p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Shield className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-neutral-500 text-[10px] uppercase tracking-wider">Top Pick</span>
+            </div>
+            {summary.topPick ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <TokenIconSimple symbol={summary.topPick.symbol} size={16} />
+                  <span className="text-white text-sm font-bold">{summary.topPick.symbol}</span>
+                  <span className={`px-1 py-0.5 rounded text-[8px] font-bold border ${GRADE_COLORS[summary.topPick.grade]}`}>{summary.topPick.grade}</span>
+                </div>
+                <div className="text-green-400 font-mono text-xs mt-0.5">+{summary.topPick.netAnnualized.toFixed(1)}% ann.</div>
+                <div className="text-neutral-600 text-[10px]">{summary.topPick.high.exchange} / {summary.topPick.low.exchange}</div>
+              </>
+            ) : (
+              <div className="text-neutral-600 text-sm">-</div>
+            )}
           </div>
         </div>
       )}
@@ -325,6 +617,20 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${showFilters ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white bg-white/[0.04]'}`}>
               <Filter className="w-3 h-3" /> Filters
+            </button>
+            <button onClick={exportCSV} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-neutral-500 hover:text-white bg-white/[0.04] transition-colors">
+              <Download className="w-3 h-3" /> Export
+            </button>
+            <button onClick={copyShareLink} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${linkCopied ? 'bg-green-500/20 text-green-400' : 'text-neutral-500 hover:text-white bg-white/[0.04]'}`}>
+              {linkCopied ? <Check className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
+              {linkCopied ? 'Copied!' : 'Share'}
+            </button>
+            <button
+              onClick={() => { setCompareMode(!compareMode); if (compareMode) setCompareItems(new Set()); }}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${compareMode ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/20' : 'text-neutral-500 hover:text-white bg-white/[0.04]'}`}
+            >
+              <GitCompareArrows className="w-3 h-3" />
+              Compare {compareItems.size > 0 && `(${compareItems.size})`}
             </button>
             <span className="text-neutral-500 text-xs">Portfolio:</span>
             <div className="flex items-center gap-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1">
@@ -404,8 +710,35 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                 </select>
               </div>
             )}
+            <button
+              onClick={() => { setHideOutliers(!hideOutliers); setCurrentPage(1); }}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${hideOutliers ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/20' : 'text-neutral-600 bg-white/[0.04]'}`}
+            >
+              <AlertTriangle className="w-3 h-3" />
+              Hide Outliers
+            </button>
           </div>
         )}
+
+        {/* Grade Filter Tabs */}
+        <div className="px-4 py-2 border-b border-white/[0.06] flex items-center gap-1.5">
+          <span className="text-neutral-500 text-[10px] mr-1">Grade:</span>
+          {(['all', 'A', 'B', 'C', 'D'] as const).map(g => {
+            const count = g === 'all' ? enriched.length : gradeCounts[g];
+            const isActive = gradeFilter === g;
+            const colors = g === 'all' ? (isActive ? 'bg-hub-yellow text-black' : 'text-neutral-500 bg-white/[0.04]')
+              : isActive ? GRADE_COLORS[g] + ' ring-1' : 'text-neutral-600 bg-white/[0.04]';
+            return (
+              <button
+                key={g}
+                onClick={() => { setGradeFilter(g); setCurrentPage(1); }}
+                className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${colors}`}
+              >
+                {g === 'all' ? 'All' : g} <span className="opacity-60">{count}</span>
+              </button>
+            );
+          })}
+        </div>
 
         {/* Table — Desktop */}
         <div className="hidden md:block overflow-x-auto">
@@ -415,6 +748,9 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 w-8">#</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('symbol')}>
                   <div className="flex items-center gap-1">Symbol <SortIcon k="symbol" /></div>
+                </th>
+                <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('grade')}>
+                  <div className="flex items-center gap-1 justify-center">Grade <SortIcon k="grade" /></div>
                 </th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Price</th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('spread')}>
@@ -445,7 +781,17 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                   >
                     <td className="px-3 py-2 text-neutral-600 text-xs font-mono">
                       <div className="flex items-center gap-1">
-                        {expandedRow === item.symbol ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        {compareMode ? (
+                          <input
+                            type="checkbox"
+                            checked={compareItems.has(item.symbol)}
+                            onChange={() => toggleCompare(item.symbol)}
+                            onClick={e => e.stopPropagation()}
+                            className="w-3 h-3 accent-blue-400"
+                          />
+                        ) : (
+                          expandedRow === item.symbol ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />
+                        )}
                         {startIdx + index + 1}
                       </div>
                     </td>
@@ -456,17 +802,36 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                         <span className="text-neutral-600 text-[10px]">{item.exchanges.length} exch</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right">
-                      <span className="text-neutral-400 font-mono text-xs">
-                        {item.price > 0 ? formatPrice(item.price) : '-'}
-                      </span>
+                    <td className="px-3 py-2 text-center">
+                      <GradeBadge grade={item.grade} isOutlier={item.isOutlier} isLowLiq={item.isLowLiq} score={item.gradeScore} />
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div>
-                        <span className="text-hub-yellow font-bold font-mono text-sm">{item.grossSpread.toFixed(4)}%</span>
-                        {item.netSpread < item.grossSpread && (
-                          <div className="text-neutral-600 text-[10px] font-mono" title={`Round-trip fees: ${item.roundTripFee.toFixed(3)}%`}>net {item.netSpread.toFixed(4)}%</div>
+                        <span className="text-neutral-400 font-mono text-xs">
+                          {item.price > 0 ? formatPrice(item.price) : '-'}
+                        </span>
+                        {item.basis !== null && (
+                          <div className={`font-mono text-[9px] ${item.basis > 0 ? 'text-green-400' : item.basis < 0 ? 'text-red-400' : 'text-neutral-600'}`} title="Mark vs Index basis">
+                            {item.basis > 0 ? '+' : ''}{item.basis.toFixed(3)}%
+                          </div>
                         )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <div>
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-hub-yellow font-bold font-mono text-sm">{item.grossSpread.toFixed(4)}%</span>
+                          {item.trend === 'widening' && <span title="Spread widening (last 24h > prior 6d)"><TrendingUp className="w-3 h-3 text-green-400" /></span>}
+                          {item.trend === 'narrowing' && <span title="Spread narrowing (last 24h < prior 6d)"><TrendingDown className="w-3 h-3 text-red-400" /></span>}
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5 text-[10px]">
+                          {item.netSpread < item.grossSpread && (
+                            <span className="text-neutral-600 font-mono" title={`Round-trip fees: ${item.roundTripFee.toFixed(3)}%`}>net {item.netSpread.toFixed(4)}%</span>
+                          )}
+                          {item.stability === 'stable' && <span className="text-green-400/70">Stable</span>}
+                          {item.stability === 'volatile' && <span className="text-amber-400/70">Volatile</span>}
+                          {item.stability === 'new' && <span className="text-neutral-600">New</span>}
+                        </div>
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -499,7 +864,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                   {/* Expanded Detail Panel */}
                   {expandedRow === item.symbol && (
                     <tr key={`${item.symbol}-expanded`}>
-                      <td colSpan={hasOI ? 10 : 9} className="px-4 py-3 bg-white/[0.01] border-b border-white/[0.06]">
+                      <td colSpan={hasOI ? 11 : 10} className="px-4 py-3 bg-white/[0.01] border-b border-white/[0.06]">
                         <ExpandedPanel item={item} periodScale={periodScale} intervalMap={intervalMap} />
                       </td>
                     </tr>
@@ -520,12 +885,20 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    {expandedRow === item.symbol ? <ChevronDown className="w-3.5 h-3.5 text-neutral-500" /> : <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />}
+                    <GradeBadge grade={item.grade} isOutlier={item.isOutlier} isLowLiq={item.isLowLiq} score={item.gradeScore} />
                     <TokenIconSimple symbol={item.symbol} size={18} />
                     <span className="text-white font-semibold text-sm">{item.symbol}</span>
-                    <span className="text-neutral-600 text-[10px]">#{startIdx + index + 1}</span>
                   </div>
-                  <span className="text-hub-yellow font-bold font-mono text-sm">{item.grossSpread.toFixed(4)}%</span>
+                  <div className="flex items-center gap-1">
+                    {item.trend === 'widening' && <TrendingUp className="w-3 h-3 text-green-400" />}
+                    {item.trend === 'narrowing' && <TrendingDown className="w-3 h-3 text-red-400" />}
+                    <div className="text-right">
+                      <div className="text-hub-yellow font-bold font-mono text-sm">{item.grossSpread.toFixed(4)}%</div>
+                      {item.netSpread < item.grossSpread && (
+                        <div className="text-neutral-600 font-mono text-[9px]">net {item.netSpread.toFixed(4)}%</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -590,6 +963,13 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
           </p>
         </div>
       </div>
+      {compareMode && compareData.length > 0 && (
+        <ComparisonDrawer
+          items={compareData}
+          periodScale={periodScale}
+          onClear={() => { setCompareMode(false); setCompareItems(new Set()); }}
+        />
+      )}
     </div>
   );
 }
@@ -629,61 +1009,90 @@ function ExpandedPanel({ item, periodScale, intervalMap }: {
 
   return (
     <div className="space-y-3">
-      {/* All Exchange Rates */}
-      <div>
-        <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1.5">All Exchange Rates</div>
-        <div className="flex flex-wrap gap-1.5">
-          {item.sorted.map((ex: { exchange: string; rate: number }) => {
-            const tradeUrl = getExchangeTradeUrl(ex.exchange, item.symbol);
-            const interval = getIntervalForExchange(item, ex.exchange, intervalMap);
-            return (
-              <div key={ex.exchange} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.04]">
-                <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={14} />
-                <span className="text-neutral-400 text-[11px]">{ex.exchange}</span>
-                {isExchangeDex(ex.exchange) && <span className="px-0.5 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
-                <span className={`font-mono text-[11px] font-semibold ${ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {formatRateAdaptive(ex.rate * periodScale)}<IntervalBadge interval={interval} />
-                </span>
-                {tradeUrl && (
-                  <a href={tradeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-neutral-600 hover:text-hub-yellow transition-colors">
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Per-Exchange Price Comparison */}
-      {hasPrices && (
-        <div>
-          <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1.5">Price Comparison</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
-            {[...exchangePrices]
-              .sort((a: { price: number }, b: { price: number }) => b.price - a.price)
-              .map((ep: { exchange: string; price: number }) => {
-                const deviation = avgPrice > 0 ? ((ep.price - avgPrice) / avgPrice) * 100 : 0;
-                const isHighest = ep.price === Math.max(...exchangePrices.map((p: { price: number }) => p.price));
-                const isLowest = ep.price === Math.min(...exchangePrices.map((p: { price: number }) => p.price));
+      {/* 2-column layout on desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Left: Exchange Rates + Feasibility */}
+        <div className="space-y-3">
+          {/* All Exchange Rates */}
+          <div>
+            <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1.5">All Exchange Rates</div>
+            <div className="flex flex-wrap gap-1.5">
+              {item.sorted.map((ex: { exchange: string; rate: number }) => {
+                const tradeUrl = getExchangeTradeUrl(ex.exchange, item.symbol);
+                const interval = getIntervalForExchange(item, ex.exchange, intervalMap);
                 return (
-                  <div key={ep.exchange} className={`px-2 py-1.5 rounded-md border ${isHighest ? 'bg-green-500/5 border-green-500/20' : isLowest ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/[0.04]'}`}>
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <ExchangeLogo exchange={ep.exchange.toLowerCase()} size={12} />
-                      <span className="text-neutral-400 text-[10px]">{ep.exchange}</span>
-                    </div>
-                    <div className="text-white font-mono text-xs">{formatPrice(ep.price)}</div>
-                    <div className={`font-mono text-[9px] ${deviation > 0 ? 'text-green-400' : deviation < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
-                      {deviation > 0 ? '+' : ''}{deviation.toFixed(3)}%
-                    </div>
+                  <div key={ex.exchange} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.04]">
+                    <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={14} />
+                    <span className="text-neutral-400 text-[11px]">{ex.exchange}</span>
+                    {isExchangeDex(ex.exchange) && <span className="px-0.5 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
+                    <span className={`font-mono text-[11px] font-semibold ${ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatRateAdaptive(ex.rate * periodScale)}<IntervalBadge interval={interval} />
+                    </span>
+                    {tradeUrl && (
+                      <a href={tradeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-neutral-600 hover:text-hub-yellow transition-colors">
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                   </div>
                 );
               })}
+            </div>
           </div>
+          {/* Feasibility Summary — moved here, with subtle bg card */}
+          {(item.maxPractical > 0 || item.stability) && (
+            <div className="flex flex-wrap items-center gap-3 text-[10px] bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.04]">
+              {item.maxPractical > 0 && (
+                <span className="text-neutral-500">
+                  <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
+                  Max practical: <span className="text-white font-mono">{formatUSD(item.maxPractical)}</span>
+                  <span className="text-neutral-700 ml-1">(5% of min-side OI)</span>
+                </span>
+              )}
+              {item.stability && item.stability !== 'new' && (
+                <span className="text-neutral-500">
+                  Stability: <span className={item.stability === 'stable' ? 'text-green-400' : 'text-amber-400'}>{item.stability}</span>
+                </span>
+              )}
+              {item.trend && (
+                <span className="text-neutral-500">
+                  Trend: <span className={item.trend === 'widening' ? 'text-green-400' : item.trend === 'narrowing' ? 'text-red-400' : 'text-neutral-400'}>{item.trend}</span>
+                </span>
+              )}
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${GRADE_COLORS[item.grade as FeasibilityGrade]}`}>
+                Grade {item.grade} ({item.gradeScore}/8)
+              </span>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Profit Calculator Toggle */}
+        {/* Right: Price Comparison */}
+        {hasPrices && (
+          <div>
+            <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1.5">Price Comparison</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {[...exchangePrices]
+                .sort((a: { price: number }, b: { price: number }) => b.price - a.price)
+                .map((ep: { exchange: string; price: number }) => {
+                  const deviation = avgPrice > 0 ? ((ep.price - avgPrice) / avgPrice) * 100 : 0;
+                  const isHighest = ep.price === Math.max(...exchangePrices.map((p: { price: number }) => p.price));
+                  const isLowest = ep.price === Math.min(...exchangePrices.map((p: { price: number }) => p.price));
+                  return (
+                    <div key={ep.exchange} className={`px-2 py-1.5 rounded-md border ${isHighest ? 'bg-green-500/5 border-green-500/20' : isLowest ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/[0.04]'}`}>
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <ExchangeLogo exchange={ep.exchange.toLowerCase()} size={12} />
+                        <span className="text-neutral-400 text-[10px]">{ep.exchange}</span>
+                      </div>
+                      <div className="text-white font-mono text-xs">{formatPrice(ep.price)}</div>
+                      <div className={`font-mono text-[9px] ${deviation > 0 ? 'text-green-400' : deviation < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
+                        {deviation > 0 ? '+' : ''}{deviation.toFixed(3)}%
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Profit Calculator — full width below */}
       <div>
         <button onClick={() => setShowCalc(!showCalc)} className="flex items-center gap-1.5 text-neutral-500 hover:text-white text-[11px] transition-colors">
           <Calculator className="w-3.5 h-3.5" />
