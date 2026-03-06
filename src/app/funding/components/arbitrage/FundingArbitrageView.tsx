@@ -97,10 +97,12 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
 
       // Per-exchange OI + min side OI
       let totalOI = 0;
+      let highOI = 0;
+      let lowOI = 0;
       let minSideOI = Infinity;
       if (oiMap) {
-        const highOI = oiMap.get(`${item.symbol}|${high.exchange}`) || 0;
-        const lowOI = oiMap.get(`${item.symbol}|${low.exchange}`) || 0;
+        highOI = oiMap.get(`${item.symbol}|${high.exchange}`) || 0;
+        lowOI = oiMap.get(`${item.symbol}|${low.exchange}`) || 0;
         minSideOI = Math.min(highOI, lowOI);
         item.exchanges.forEach(ex => {
           const oi = oiMap.get(`${item.symbol}|${ex.exchange}`);
@@ -136,8 +138,26 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         stability = 'new';
       }
 
-      // Feasibility grade
-      const { grade, score: gradeScore } = computeGrade(grossSpread8h, minSideOI, stability, roundTripFee);
+      // Per-side intervals and daily rate breakdown
+      const highInterval = item.intervals?.[high.exchange] || '8h';
+      const lowInterval = item.intervals?.[low.exchange] || '8h';
+      const intervalMismatch = highInterval !== lowInterval;
+      const highSettlementsPerDay = highInterval === '1h' ? 24 : highInterval === '4h' ? 6 : 3;
+      const lowSettlementsPerDay = lowInterval === '1h' ? 24 : lowInterval === '4h' ? 6 : 3;
+      // Original (non-normalized) per-settlement rates
+      const highRatePerSettlement = high.rate / (highInterval === '1h' ? 8 : highInterval === '4h' ? 2 : 1);
+      const lowRatePerSettlement = low.rate / (lowInterval === '1h' ? 8 : lowInterval === '4h' ? 2 : 1);
+      // Daily income from shorting high-rate exchange (positive = earn)
+      const shortDailyRate = highRatePerSettlement * highSettlementsPerDay;
+      // Daily cost from longing low-rate exchange (negative = earn, positive = pay)
+      const longDailyRate = lowRatePerSettlement * lowSettlementsPerDay;
+      // Fee impact as percentage of gross spread
+      const feeImpactPct = grossSpread8h > 0 ? (roundTripFee / grossSpread8h) * 100 : 100;
+
+      // Feasibility grade with enhanced scoring
+      const { grade, score: gradeScore, flags: gradeFlags } = computeGrade(grossSpread8h, minSideOI, stability, roundTripFee, {
+        highOI, lowOI, highInterval, lowInterval, netAnnualized,
+      });
       const maxPractical = minSideOI > 0 ? minSideOI * 0.05 : 0;
 
       return {
@@ -145,10 +165,12 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         sorted, high, low,
         grossSpread, grossSpread8h, netSpread, roundTripFee,
         annualized, netAnnualized, dailyPnl, monthlyPnl,
-        totalOI, minSideOI, price, highIsDex, lowIsDex,
+        totalOI, highOI, lowOI, minSideOI, price, highIsDex, lowIsDex,
         isCexDex: (highIsDex && !lowIsDex) || (!highIsDex && lowIsDex),
         isOutlier, isLowLiq, basis, stability, trend,
-        grade, gradeScore, maxPractical,
+        grade, gradeScore, gradeFlags, maxPractical,
+        shortDailyRate, longDailyRate,
+        highInterval, lowInterval, intervalMismatch, feeImpactPct,
       };
     }).filter((item): item is NonNullable<typeof item> => item !== null);
   }, [arbitrageData, oiMap, markPrices, indexPrices, historicalSpreads, portfolio, periodScale]);
@@ -501,7 +523,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                 <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500">30d PnL</th>
                 {hasOI && (
                   <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('oi')}>
-                    <div className="flex items-center gap-1 justify-end">OI <SortIcon k="oi" /></div>
+                    <div className="flex items-center gap-1 justify-end">OI (S/L) <SortIcon k="oi" /></div>
                   </th>
                 )}
               </tr>
@@ -575,14 +597,31 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                     </td>
                     <td className="px-3 py-2">
                       <ExchangeSide exchange={item.high.exchange} rate={item.high.rate} symbol={item.symbol} periodScale={periodScale} item={item} intervalMap={intervalMap} side="short" />
+                      {item.intervalMismatch && (
+                        <div className="text-amber-400/60 text-[8px] font-mono mt-0.5" title="Funding intervals differ between exchanges — settlement timing risk">
+                          ⚠ {item.highInterval} interval
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <ExchangeSide exchange={item.low.exchange} rate={item.low.rate} symbol={item.symbol} periodScale={periodScale} item={item} intervalMap={intervalMap} side="long" />
+                      {item.intervalMismatch && (
+                        <div className="text-amber-400/60 text-[8px] font-mono mt-0.5" title="Funding intervals differ between exchanges — settlement timing risk">
+                          ⚠ {item.lowInterval} interval
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className={`font-mono text-xs font-semibold ${item.dailyPnl > 0 ? 'text-green-400' : 'text-neutral-500'}`}>
-                        {formatPnl(item.dailyPnl)}
-                      </span>
+                      <div>
+                        <span className={`font-mono text-xs font-semibold ${item.dailyPnl > 0 ? 'text-green-400' : 'text-neutral-500'}`}>
+                          {formatPnl(item.dailyPnl)}
+                        </span>
+                        {item.feeImpactPct > 30 && (
+                          <div className="text-[8px] text-red-400/60 font-mono" title={`Fees consume ${item.feeImpactPct.toFixed(0)}% of gross spread`}>
+                            {item.feeImpactPct.toFixed(0)}% fees
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <span className={`font-mono text-xs ${item.monthlyPnl > 0 ? 'text-green-400' : 'text-neutral-500'}`}>
@@ -591,7 +630,28 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                     </td>
                     {hasOI && (
                       <td className="px-3 py-2 text-right">
-                        <span className="text-neutral-400 font-mono text-xs">{item.totalOI > 0 ? formatUSD(item.totalOI) : '-'}</span>
+                        {item.highOI > 0 || item.lowOI > 0 ? (
+                          <div className="space-y-0.5">
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-neutral-600 text-[9px]">S</span>
+                              <span className={`font-mono text-[11px] ${item.highOI < 100_000 ? 'text-red-400' : item.highOI < 500_000 ? 'text-amber-400' : 'text-neutral-300'}`}>
+                                {formatUSD(item.highOI)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-neutral-600 text-[9px]">L</span>
+                              <span className={`font-mono text-[11px] ${item.lowOI < 100_000 ? 'text-red-400' : item.lowOI < 500_000 ? 'text-amber-400' : 'text-neutral-300'}`}>
+                                {formatUSD(item.lowOI)}
+                              </span>
+                            </div>
+                            {/* OI imbalance warning */}
+                            {item.highOI > 0 && item.lowOI > 0 && Math.min(item.highOI, item.lowOI) / Math.max(item.highOI, item.lowOI) < 0.1 && (
+                              <div className="text-[8px] text-red-400/60" title="OI heavily imbalanced — rate on thin side may shift quickly">⚠ imbalanced</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-neutral-600 font-mono text-xs">-</span>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -599,7 +659,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                   {expandedRow === item.symbol && (
                     <tr key={`${item.symbol}-expanded`}>
                       <td colSpan={hasOI ? 11 : 10} className="px-4 py-3 bg-white/[0.01] border-b border-white/[0.06]">
-                        <ExpandedPanel item={item} periodScale={periodScale} intervalMap={intervalMap} />
+                        <ExpandedPanel item={item} periodScale={periodScale} intervalMap={intervalMap} oiMap={oiMap} />
                       </td>
                     </tr>
                   )}
@@ -642,6 +702,9 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                       <span className="text-neutral-300 text-[11px]">{item.high.exchange}</span>
                       <span className="text-red-400 font-mono text-[11px] ml-auto">{formatRateAdaptive(item.high.rate * periodScale)}</span>
                     </div>
+                    {item.highOI > 0 && (
+                      <div className={`font-mono text-[9px] mt-0.5 ${item.highOI < 100_000 ? 'text-red-400' : 'text-neutral-600'}`}>OI: {formatUSD(item.highOI)}</div>
+                    )}
                   </div>
                   <div>
                     <div className="text-neutral-600 text-[9px] mb-0.5">Long side</div>
@@ -650,6 +713,9 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                       <span className="text-neutral-300 text-[11px]">{item.low.exchange}</span>
                       <span className="text-green-400 font-mono text-[11px] ml-auto">{formatRateAdaptive(item.low.rate * periodScale)}</span>
                     </div>
+                    {item.lowOI > 0 && (
+                      <div className={`font-mono text-[9px] mt-0.5 ${item.lowOI < 100_000 ? 'text-red-400' : 'text-neutral-600'}`}>OI: {formatUSD(item.lowOI)}</div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-2 text-[10px]">
@@ -661,10 +727,21 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                   </span>
                   {item.price > 0 && <span className="text-neutral-500 font-mono">{formatPrice(item.price)}</span>}
                 </div>
+                {/* Accuracy warnings */}
+                {(item.intervalMismatch || item.feeImpactPct > 30) && (
+                  <div className="flex flex-wrap gap-2 mt-1.5">
+                    {item.intervalMismatch && (
+                      <span className="text-amber-400/60 text-[8px] font-mono">⚠ {item.highInterval}/{item.lowInterval} mismatch</span>
+                    )}
+                    {item.feeImpactPct > 30 && (
+                      <span className="text-red-400/60 text-[8px] font-mono">⚠ {item.feeImpactPct.toFixed(0)}% fees</span>
+                    )}
+                  </div>
+                )}
               </div>
               {expandedRow === item.symbol && (
                 <div className="px-3 pb-3">
-                  <ExpandedPanel item={item} periodScale={periodScale} intervalMap={intervalMap} />
+                  <ExpandedPanel item={item} periodScale={periodScale} intervalMap={intervalMap} oiMap={oiMap} />
                 </div>
               )}
             </div>

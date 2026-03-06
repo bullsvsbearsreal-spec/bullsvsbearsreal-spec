@@ -12,7 +12,7 @@ export function GradeBadge({ grade, isOutlier, isLowLiq, score }: {
 }) {
   const warnings = [isOutlier && '\u26A0', isLowLiq && '!'].filter(Boolean).join('');
   const tooltip = [
-    `Feasibility: ${grade} (score ${score}/8)`,
+    `Feasibility: ${grade} (score ${score}/10)`,
     isOutlier && 'Spread >1%/8h — unusually high',
     isLowLiq && 'Min side OI <$50K — low liquidity',
   ].filter(Boolean).join('\n');

@@ -344,6 +344,7 @@ export interface ArbitrageItem {
   spread: number;
   markPrices: Array<{ exchange: string; price: number }>;
   intervals: Record<string, string>;
+  nextFundingTimes: Record<string, number>;
 }
 
 export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'crypto'): Promise<ArbitrageItem[]> {
@@ -364,6 +365,7 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
   const symbolMap = new Map<string, Array<{ exchange: string; rate: number }>>();
   const priceMap = new Map<string, Array<{ exchange: string; price: number }>>();
   const intervalTracker = new Map<string, Record<string, string>>();
+  const nextFundingTimeTracker = new Map<string, Record<string, number>>();
   fundingRates.forEach(fr => {
     const canonicalSymbol = SYMBOL_ALIASES[fr.symbol] || fr.symbol;
     const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
@@ -394,6 +396,13 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
       intervals[fr.exchange] = fr.fundingInterval;
       intervalTracker.set(canonicalSymbol, intervals);
     }
+
+    // Track next funding time per exchange
+    if (fr.nextFundingTime && fr.nextFundingTime > 0) {
+      const times = nextFundingTimeTracker.get(canonicalSymbol) || {};
+      times[fr.exchange] = fr.nextFundingTime;
+      nextFundingTimeTracker.set(canonicalSymbol, times);
+    }
   });
 
   // Calculate spread for each symbol (only those with 2+ exchanges)
@@ -409,6 +418,7 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
         spread: maxRate - minRate,
         markPrices: priceMap.get(symbol) || [],
         intervals: intervalTracker.get(symbol) || {},
+        nextFundingTimes: nextFundingTimeTracker.get(symbol) || {},
       };
     })
     .sort((a, b) => b.spread - a.spread);

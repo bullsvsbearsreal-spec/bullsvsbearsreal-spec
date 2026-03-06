@@ -147,8 +147,14 @@ export async function GET(request: NextRequest) {
         stability = deviation <= 0.3 ? 'stable' : 'volatile';
       }
 
-      // Grade
-      const { grade } = computeGrade(grossSpread8h, minSideOI, stability, roundTripFee);
+      // Intervals for the short/long sides
+      const highInterval = arb.intervals?.[shortExchange.exchange] || '8h';
+      const lowInterval = arb.intervals?.[longExchange.exchange] || '8h';
+
+      // Grade (with full scoring)
+      const { grade } = computeGrade(grossSpread8h, minSideOI, stability, roundTripFee, {
+        highOI: shortOI, lowOI: longOI, highInterval, lowInterval,
+      });
 
       // Annualized
       const annualizedPct = netSpread8h > 0 ? netSpread8h * (365 * 3) : 0;

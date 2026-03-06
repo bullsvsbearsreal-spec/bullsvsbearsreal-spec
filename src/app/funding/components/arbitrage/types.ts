@@ -6,6 +6,7 @@ export interface ArbitrageItem {
   exchanges: { exchange: string; rate: number }[];
   markPrices?: { exchange: string; price: number }[];
   intervals?: Record<string, string>;
+  nextFundingTimes?: Record<string, number>;  // exchange → unix ms
 }
 
 export interface HistoricalSpreadData {
@@ -41,6 +42,8 @@ export interface EnrichedArb extends ArbitrageItem {
   dailyPnl: number;
   monthlyPnl: number;
   totalOI: number;
+  highOI: number;
+  lowOI: number;
   minSideOI: number;
   price: number;
   highIsDex: boolean;
@@ -53,5 +56,13 @@ export interface EnrichedArb extends ArbitrageItem {
   trend: 'widening' | 'narrowing' | 'flat' | null;
   grade: FeasibilityGrade;
   gradeScore: number;
+  gradeFlags: string[];
   maxPractical: number;
+  // Per-side PnL breakdown
+  shortDailyRate: number;   // daily % earned from short side
+  longDailyRate: number;    // daily % paid on long side (negative = earn)
+  highInterval: string;
+  lowInterval: string;
+  intervalMismatch: boolean;
+  feeImpactPct: number;     // how much fees eat as % of gross spread
 }

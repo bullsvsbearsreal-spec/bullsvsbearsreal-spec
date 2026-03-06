@@ -64,13 +64,6 @@ const EXCHANGE_REFERRALS: ExchangeReferral[] = [
     ],
   },
   {
-    exchange: 'bingx',
-    displayName: 'BingX',
-    links: [
-      { partner: 'ocelot', url: 'https://bingxdao.com/referral-program/Y3CW1M?activityId=1544939211383939078' },
-    ],
-  },
-  {
     exchange: 'kucoin',
     displayName: 'KuCoin',
     links: [

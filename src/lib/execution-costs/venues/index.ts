@@ -9,3 +9,8 @@ export { fetchEdgexBook } from './edgex';
 export { fetchGTradeParams, computeGTradeCost } from './gtrade';
 export { fetchGMXParams, computeGMXCost } from './gmx';
 export { fetchVariationalQuotes } from './variational';
+// CEX venues
+export { fetchBinanceBook } from './binance';
+export { fetchBybitBook } from './bybit';
+export { fetchOKXBook } from './okx';
+export { fetchBitgetBook } from './bitget';
