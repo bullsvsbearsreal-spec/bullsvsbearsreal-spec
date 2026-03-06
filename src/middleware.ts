@@ -75,12 +75,114 @@ function shouldSkip(path: string): boolean {
 // Max query string length — reject absurdly long params to prevent abuse
 const MAX_QUERY_LENGTH = 512;
 
-export function middleware(request: NextRequest) {
+// ---------------------------------------------------------------------------
+// Public API v1 — API key auth + Upstash Redis rate limiting
+// ---------------------------------------------------------------------------
+
+// In-memory cache for validated API keys (avoids DB hit per request)
+const apiKeyCache = new Map<string, { userId: string; tier: string; keyId: string; cachedAt: number }>();
+const API_KEY_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+async function handleV1Route(request: NextRequest): Promise<NextResponse> {
+  const path = request.nextUrl.pathname;
+
+  // /api/v1/status is free — no auth required
+  if (path === '/api/v1/status') return NextResponse.next();
+
+  // Key management endpoints use session auth, not API key
+  if (path.startsWith('/api/v1/keys')) return NextResponse.next();
+
+  // Extract API key from Authorization header
+  const authHeader = request.headers.get('authorization') || '';
+  const match = authHeader.match(/^Bearer\s+(ih_.+)$/i);
+  if (!match) {
+    return NextResponse.json(
+      { success: false, error: 'API key required. Pass Authorization: Bearer ih_xxx' },
+      { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="InfoHub API"' } },
+    );
+  }
+
+  const rawKey = match[1];
+
+  // Check in-memory cache first
+  let keyData = apiKeyCache.get(rawKey);
+  if (!keyData || Date.now() - keyData.cachedAt > API_KEY_CACHE_TTL) {
+    // Validate against DB
+    try {
+      const { validateApiKey } = await import('@/lib/db');
+      const result = await validateApiKey(rawKey);
+      if (!result) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid or revoked API key' },
+          { status: 401 },
+        );
+      }
+      keyData = { ...result, cachedAt: Date.now() };
+      apiKeyCache.set(rawKey, keyData);
+    } catch (e) {
+      console.error('API key validation error:', e);
+      return NextResponse.json(
+        { success: false, error: 'Authentication service unavailable' },
+        { status: 503 },
+      );
+    }
+  }
+
+  // Rate limit via Upstash Redis
+  try {
+    const { checkRateLimit } = await import('@/lib/api/rate-limit');
+    const { allowed, remaining, reset, limit } = await checkRateLimit(keyData.keyId, keyData.tier);
+
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Rate limit exceeded. Upgrade to Pro for higher limits.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.max(1, Math.ceil((reset - Date.now()) / 1000))),
+            'X-RateLimit-Limit': String(limit),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(Math.ceil(reset / 1000)),
+          },
+        },
+      );
+    }
+
+    // Pass user context to route handlers via headers
+    const response = NextResponse.next();
+    response.headers.set('x-api-user-id', keyData.userId);
+    response.headers.set('x-api-tier', keyData.tier);
+    response.headers.set('x-api-key-id', keyData.keyId);
+    response.headers.set('X-RateLimit-Limit', String(limit));
+    response.headers.set('X-RateLimit-Remaining', String(remaining));
+    response.headers.set('X-RateLimit-Reset', String(Math.ceil(reset / 1000)));
+    return response;
+  } catch (e) {
+    // If Redis is down, fall back to allowing the request (graceful degradation)
+    console.error('Rate limit check failed:', e);
+    const response = NextResponse.next();
+    response.headers.set('x-api-user-id', keyData.userId);
+    response.headers.set('x-api-tier', keyData.tier);
+    response.headers.set('x-api-key-id', keyData.keyId);
+    return response;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main middleware
+// ---------------------------------------------------------------------------
+
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   // Only rate-limit API routes
   if (!pathname.startsWith('/api/')) return NextResponse.next();
   if (shouldSkip(pathname)) return NextResponse.next();
+
+  // Public API v1 — separate auth flow
+  if (pathname.startsWith('/api/v1/')) {
+    return handleV1Route(request);
+  }
 
   // Input length guard — reject query strings > 512 chars
   if (search.length > MAX_QUERY_LENGTH) {

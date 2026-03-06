@@ -205,6 +205,24 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_admin_mon_metric_ts ON admin_monitoring(metric, recorded_at DESC)`;
   await sql`ALTER TABLE admin_monitoring ADD COLUMN IF NOT EXISTS details JSONB DEFAULT NULL`;
+
+  // API keys for public API (v1)
+  await sql`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      user_id TEXT NOT NULL,
+      key_hash TEXT NOT NULL UNIQUE,
+      key_prefix TEXT NOT NULL,
+      name TEXT NOT NULL DEFAULT 'Default',
+      tier TEXT NOT NULL DEFAULT 'free',
+      is_active BOOLEAN DEFAULT true,
+      last_used_at TIMESTAMPTZ,
+      requests_today INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id)`;
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -2045,6 +2063,95 @@ export async function getAllActiveTelegramChatIds(): Promise<Array<{ chatId: str
   } catch (e) {
     console.error('DB getAllActiveTelegramChatIds error:', e);
     return [];
+  }
+}
+
+// ─── API Key Management (Public API v1) ─────────────────────────────────────
+
+import { randomBytes, createHash } from 'crypto';
+
+function hashApiKey(key: string): string {
+  return createHash('sha256').update(key).digest('hex');
+}
+
+export async function createApiKey(userId: string, name: string = 'Default'): Promise<{ id: string; key: string; prefix: string }> {
+  const db = getSQL();
+  const raw = 'ih_' + randomBytes(24).toString('base64url'); // e.g. ih_a1b2c3d4...
+  const prefix = raw.slice(0, 10); // "ih_a1b2c3d" for display
+  const keyHash = hashApiKey(raw);
+
+  const rows = await db`
+    INSERT INTO api_keys (user_id, key_hash, key_prefix, name)
+    VALUES (${userId}, ${keyHash}, ${prefix}, ${name})
+    RETURNING id
+  `;
+  return { id: rows[0].id, key: raw, prefix };
+}
+
+export async function validateApiKey(rawKey: string): Promise<{ userId: string; tier: string; keyId: string } | null> {
+  try {
+    const db = getSQL();
+    const keyHash = hashApiKey(rawKey);
+    const rows = await db`
+      SELECT id, user_id, tier FROM api_keys
+      WHERE key_hash = ${keyHash} AND is_active = true
+      LIMIT 1
+    `;
+    if (rows.length === 0) return null;
+    // Update last_used timestamp async (don't block response)
+    db`UPDATE api_keys SET last_used_at = NOW(), requests_today = requests_today + 1 WHERE id = ${rows[0].id}`.catch(() => {});
+    return { userId: rows[0].user_id, tier: rows[0].tier, keyId: rows[0].id };
+  } catch (e) {
+    console.error('DB validateApiKey error:', e);
+    return null;
+  }
+}
+
+export async function listApiKeys(userId: string): Promise<Array<{ id: string; prefix: string; name: string; tier: string; lastUsedAt: string | null; requestsToday: number; createdAt: string }>> {
+  try {
+    const db = getSQL();
+    const rows = await db`
+      SELECT id, key_prefix, name, tier, last_used_at, requests_today, created_at
+      FROM api_keys WHERE user_id = ${userId} AND is_active = true
+      ORDER BY created_at DESC
+    `;
+    return rows.map((r: any) => ({
+      id: r.id,
+      prefix: r.key_prefix,
+      name: r.name,
+      tier: r.tier,
+      lastUsedAt: r.last_used_at?.toISOString() ?? null,
+      requestsToday: r.requests_today ?? 0,
+      createdAt: r.created_at?.toISOString() ?? '',
+    }));
+  } catch (e) {
+    console.error('DB listApiKeys error:', e);
+    return [];
+  }
+}
+
+export async function revokeApiKey(keyId: string, userId: string): Promise<boolean> {
+  try {
+    const db = getSQL();
+    const rows = await db`
+      UPDATE api_keys SET is_active = false
+      WHERE id = ${keyId} AND user_id = ${userId}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  } catch (e) {
+    console.error('DB revokeApiKey error:', e);
+    return false;
+  }
+}
+
+export async function countUserApiKeys(userId: string): Promise<number> {
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT COUNT(*) as cnt FROM api_keys WHERE user_id = ${userId} AND is_active = true`;
+    return Number(rows[0].cnt);
+  } catch (e) {
+    return 0;
   }
 }
 

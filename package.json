@@ -20,6 +20,8 @@
     "@aws-sdk/client-s3": "^3.999.0",
     "@napi-rs/canvas": "^0.1.95",
     "@sentry/nextjs": "^10.39.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.36.3",
     "@vercel/analytics": "^1.6.1",
     "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
