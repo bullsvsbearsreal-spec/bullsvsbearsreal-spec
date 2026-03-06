@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
+import { getOIData } from '../../_shared/oi-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,18 +22,17 @@ export async function GET(request: NextRequest) {
   const exchangeFilter = searchParams.get('exchanges')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const res = await fetch(`${baseUrl}/api/openinterest`, { headers: { 'x-internal': '1' } });
+    // Call shared OI data module directly (no self-referential HTTP)
+    const oiResult = await getOIData();
 
-    if (!res.ok) {
+    if (!oiResult) {
       return NextResponse.json(
         { success: false, error: 'Failed to fetch OI data' },
         { status: 502 },
       );
     }
 
-    const json = await res.json();
-    let data: any[] = json.data || [];
+    let data: any[] = oiResult.result.data || [];
 
     if (symbolFilter && symbolFilter.length > 0) {
       data = data.filter((d: any) => symbolFilter.includes(d.symbol?.toUpperCase()));
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       meta: {
         timestamp: Date.now(),
         entries: cleaned.length,
-        exchanges: json.meta?.activeExchanges ?? 0,
+        exchanges: oiResult.result.meta?.activeExchanges ?? 0,
       },
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },

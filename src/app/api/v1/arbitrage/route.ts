@@ -1,13 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchFundingArbitrage, fetchArbHistory } from '@/lib/api/aggregator';
 import { getArbRoundTripFee, EXCHANGE_FEES, isExchangeDex } from '@/lib/constants/exchanges';
 import { computeGrade } from '@/app/funding/components/arbitrage/utils';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
+import { getFundingData } from '../../_shared/funding-core';
+import { getOIData } from '../../_shared/oi-core';
+import { fetchArbHistory } from '@/lib/api/aggregator';
 import type { AssetClassFilter } from '@/lib/validation/schemas';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
+
+// Symbol aliases for equivalent assets
+const SYMBOL_ALIASES: Record<string, string> = {
+  'XAUT': 'XAU', 'PAXG': 'XAU', 'GOLD': 'XAU',
+  'SILVER': 'XAG',
+};
+
+/**
+ * Compute arbitrage opportunities from raw funding data.
+ * Server-side equivalent of fetchFundingArbitrage() from the aggregator
+ * (which uses HTTP calls that fail in serverless context).
+ */
+function computeArbitrageFromFunding(fundingData: any[]) {
+  const symbolMap = new Map<string, Array<{ exchange: string; rate: number }>>();
+  const priceMap = new Map<string, Array<{ exchange: string; price: number }>>();
+  const intervalTracker = new Map<string, Record<string, string>>();
+
+  fundingData.forEach((fr: any) => {
+    const canonicalSymbol = SYMBOL_ALIASES[fr.symbol] || fr.symbol;
+    const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
+    const existing = symbolMap.get(canonicalSymbol) || [];
+
+    // For DEXes with separate long/short rates, use directional component only
+    let effectiveRate: number;
+    if (fr.fundingRateLong != null && fr.fundingRateShort != null) {
+      effectiveRate = (fr.fundingRateLong - fr.fundingRateShort) / 2;
+    } else {
+      effectiveRate = fr.fundingRate;
+    }
+    existing.push({ exchange: fr.exchange, rate: effectiveRate * mult });
+    symbolMap.set(canonicalSymbol, existing);
+
+    if (fr.markPrice && fr.markPrice > 0) {
+      const prices = priceMap.get(canonicalSymbol) || [];
+      prices.push({ exchange: fr.exchange, price: fr.markPrice });
+      priceMap.set(canonicalSymbol, prices);
+    }
+
+    if (fr.fundingInterval) {
+      const intervals = intervalTracker.get(canonicalSymbol) || {};
+      intervals[fr.exchange] = fr.fundingInterval;
+      intervalTracker.set(canonicalSymbol, intervals);
+    }
+  });
+
+  // Calculate spread for symbols with 2+ exchanges
+  return Array.from(symbolMap.entries())
+    .filter(([_, exchanges]) => exchanges.length >= 2)
+    .map(([symbol, exchanges]) => {
+      const rates = exchanges.map(e => e.rate);
+      const maxRate = Math.max(...rates);
+      const minRate = Math.min(...rates);
+      return {
+        symbol,
+        exchanges,
+        spread: maxRate - minRate,
+        markPrices: priceMap.get(symbol) || [],
+        intervals: intervalTracker.get(symbol) || {},
+      };
+    })
+    .sort((a, b) => b.spread - a.spread);
+}
 
 /**
  * GET /api/v1/arbitrage
@@ -33,13 +97,14 @@ export async function GET(request: NextRequest) {
   const assetClass = (searchParams.get('assetClass') || 'crypto') as AssetClassFilter;
 
   try {
-    // Fetch from internal API to reuse caching
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const oiRes = await fetch(`${baseUrl}/api/openinterest`, { headers: { 'x-internal': '1' } });
-    const oiJson = oiRes.ok ? await oiRes.json() : { data: [] };
-    const oiData: any[] = oiJson.data || [];
+    // Fetch funding + OI data directly (no self-referential HTTP)
+    const [fundingResult, oiResult] = await Promise.all([
+      getFundingData(assetClass),
+      getOIData(),
+    ]);
 
-    // Build OI map by symbol+exchange
+    // Build OI map from direct data
+    const oiData: any[] = oiResult?.result.data || [];
     const oiMap = new Map<string, Map<string, number>>();
     oiData.forEach((item: any) => {
       const sym = item.symbol?.toUpperCase();
@@ -48,8 +113,9 @@ export async function GET(request: NextRequest) {
       oiMap.get(sym)!.set(item.exchange, item.openInterestValue || 0);
     });
 
-    // Fetch arb data
-    const arbData = await fetchFundingArbitrage(assetClass);
+    // Compute arb opportunities from funding data
+    const fundingData = fundingResult?.result.data || [];
+    const arbData = computeArbitrageFromFunding(fundingData);
 
     // Fetch historical spreads for stability analysis
     const symbols = arbData.map(a => a.symbol);
@@ -59,8 +125,8 @@ export async function GET(request: NextRequest) {
     const enriched = arbData.map(arb => {
       const exchanges = arb.exchanges;
       const sorted = [...exchanges].sort((a, b) => b.rate - a.rate);
-      const shortExchange = sorted[0]; // highest rate = short here (earn funding)
-      const longExchange = sorted[sorted.length - 1]; // lowest rate = long here (pay less)
+      const shortExchange = sorted[0]; // highest rate = short here
+      const longExchange = sorted[sorted.length - 1]; // lowest rate = long here
 
       const grossSpread8h = shortExchange.rate - longExchange.rate;
       const roundTripFee = getArbRoundTripFee(shortExchange.exchange, longExchange.exchange);
@@ -85,7 +151,7 @@ export async function GET(request: NextRequest) {
       const { grade } = computeGrade(grossSpread8h, minSideOI, stability, roundTripFee);
 
       // Annualized
-      const annualizedPct = netSpread8h > 0 ? netSpread8h * (365 * 3) : 0; // 3 funding periods/day for 8h
+      const annualizedPct = netSpread8h > 0 ? netSpread8h * (365 * 3) : 0;
 
       // Daily PnL per $10K
       const dailyPnlPer10k = netSpread8h > 0 ? (netSpread8h / 100) * 10000 * 3 : 0;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
+import { getFundingData } from '../../_shared/funding-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,21 +25,17 @@ export async function GET(request: NextRequest) {
   const assetClass = searchParams.get('assetClass') || 'crypto';
 
   try {
-    // Fetch from internal API (reuses its caching layer)
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const res = await fetch(`${baseUrl}/api/funding?assetClass=${assetClass}`, {
-      headers: { 'x-internal': '1' },
-    });
+    // Call shared funding data module directly (no self-referential HTTP)
+    const fundingResult = await getFundingData(assetClass as any);
 
-    if (!res.ok) {
+    if (!fundingResult) {
       return NextResponse.json(
         { success: false, error: 'Failed to fetch funding data' },
         { status: 502 },
       );
     }
 
-    const json = await res.json();
-    let data: any[] = json.data || [];
+    let data: any[] = fundingResult.result.data || [];
 
     // Apply symbol filter
     if (symbolFilter && symbolFilter.length > 0) {
@@ -72,9 +69,11 @@ export async function GET(request: NextRequest) {
       data: cleaned,
       meta: {
         timestamp: Date.now(),
-        exchanges: json.meta?.activeExchanges ?? 0,
+        exchanges: fundingResult.result.meta?.activeExchanges ?? 0,
         pairs: cleaned.length,
-        cacheAge: json.meta?.timestamp ? Math.round((Date.now() - json.meta.timestamp) / 1000) : 0,
+        cacheAge: fundingResult.result.meta?.timestamp
+          ? Math.round((Date.now() - fundingResult.result.meta.timestamp) / 1000)
+          : 0,
       },
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
