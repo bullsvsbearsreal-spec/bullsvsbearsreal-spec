@@ -124,7 +124,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
-        token.image = user.image;
+        // Skip data URIs in JWT — they blow Vercel's 32KB header limit
+        const img = user.image as string | null;
+        token.image = img && !img.startsWith('data:') ? img : null;
       }
       // Fetch role + refresh image from DB on login or session update
       if ((user || trigger === 'update') && token.id) {
@@ -132,7 +134,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const db = getSQL();
           const rows = await db`SELECT image, role FROM users WHERE id = ${token.id as string}`;
           if (rows.length > 0) {
-            token.image = rows[0].image;
+            // Only store image in JWT if it's a short URL (not a base64 data URI)
+            // Data URIs can be 100KB+ and blow Vercel's 32KB header limit
+            const img = rows[0].image as string | null;
+            token.image = img && !img.startsWith('data:') ? img : null;
             token.role = rows[0].role || 'user';
           }
         } catch { /* keep existing */ }
