@@ -12,7 +12,7 @@ import {
   Rocket, Map, Crown, Building2, Landmark, Coins, GitCompareArrows, Unlock, Bitcoin,
   Thermometer, Fish, Newspaper,
   Star, GitCompare, Bell, Wallet, Search,
-  Calendar, Palette, Users, BookOpen,
+  Calendar, Palette, Users, BookOpen, Gift,
   TrendingUp, DollarSign, Layers, Radio,
   type LucideIcon,
 } from 'lucide-react';
@@ -85,6 +85,7 @@ const footerSections: { heading: string; links: FooterLink[] }[] = [
       { name: 'Guides', href: '/guides', icon: BookOpen },
       { name: 'Brand Kit', href: '/brand', icon: Palette },
       { name: 'Team', href: '/team', icon: Users },
+      { name: 'Referrals', href: '/referrals', icon: Gift },
       { name: 'FAQ', href: '/faq' },
       { name: 'Terms', href: '/terms' },
     ],

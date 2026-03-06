@@ -18,6 +18,7 @@ const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrage
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { saveFundingSnapshot } from '@/lib/storage/fundingHistory';
 import { type FundingPeriod, periodMultiplier, PERIOD_HOURS, formatRateAdaptive } from './utils';
 
@@ -673,6 +674,7 @@ export default function FundingPage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { type WidgetLayout, DEFAULT_LAYOUT } from '@/components/dashboard/types';
@@ -135,6 +136,7 @@ export default function DashboardPage() {
           <DashboardGrid layout={layout} onLayoutChange={handleLayoutChange} />
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

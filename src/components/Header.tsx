@@ -11,7 +11,7 @@ import {
   Rocket, Map, Crown, Building2, Landmark, Coins, GitCompareArrows, Unlock, Bitcoin, TrendingUp,
   Thermometer, Fish, Eye, Newspaper,
   Star, GitCompare, Bell, Wallet, Search as SearchIcon,
-  Calendar, Palette, Users, BookOpen,
+  Calendar, Palette, Users, BookOpen, Gift,
   type LucideIcon,
 } from 'lucide-react';
 import Logo from './Logo';
@@ -161,6 +161,7 @@ const navCategories: NavCategory[] = [
           { name: 'Guides', href: '/guides', icon: BookOpen },
           { name: 'Brand Kit', href: '/brand', icon: Palette },
           { name: 'Team', href: '/team', icon: Users },
+          { name: 'Referrals', href: '/referrals', icon: Gift },
         ],
       },
     ],

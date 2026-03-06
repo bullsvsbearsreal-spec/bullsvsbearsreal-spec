@@ -9,6 +9,7 @@ const PUBLIC_ROUTES = new Set([
   '/faq',
   '/terms',
   '/privacy',
+  '/referrals',
   '/login',
   '/signup',
   '/forgot-password',
