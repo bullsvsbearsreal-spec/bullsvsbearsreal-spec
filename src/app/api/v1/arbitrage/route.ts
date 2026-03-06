@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchFundingArbitrage, fetchArbHistory } from '@/lib/api/aggregator';
 import { getArbRoundTripFee, EXCHANGE_FEES, isExchangeDex } from '@/lib/constants/exchanges';
 import { computeGrade } from '@/app/funding/components/arbitrage/utils';
+import { authenticateV1Request } from '@/lib/api/v1-auth';
 import type { AssetClassFilter } from '@/lib/validation/schemas';
 
 export const runtime = 'nodejs';
@@ -21,6 +22,8 @@ export const fetchCache = 'force-no-store';
  *   ?assetClass=crypto  — crypto|stocks|forex|commodities (default: crypto)
  */
 export async function GET(request: NextRequest) {
+  const auth = await authenticateV1Request(request);
+  if (!auth.ok) return auth.response;
   const { searchParams } = request.nextUrl;
   const minSpread = parseFloat(searchParams.get('minSpread') || '0') || 0;
   const minOI = parseFloat(searchParams.get('minOI') || '0') || 0;
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch from internal API to reuse caching
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const oiRes = await fetch(`${baseUrl}/api/openinterest`, { headers: { 'x-internal': '1' } });
     const oiJson = oiRes.ok ? await oiRes.json() : { data: [] };
     const oiData: any[] = oiJson.data || [];

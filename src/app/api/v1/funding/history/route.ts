@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBulkFundingHistory } from '@/lib/db';
+import { authenticateV1Request } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,8 @@ export const dynamic = 'force-dynamic';
  *   ?days=7             — lookback period (1-14, default: 7)
  */
 export async function GET(request: NextRequest) {
+  const auth = await authenticateV1Request(request);
+  if (!auth.ok) return auth.response;
   const { searchParams } = request.nextUrl;
   const symbolsParam = searchParams.get('symbols');
   const days = Math.min(14, Math.max(1, parseInt(searchParams.get('days') || '7', 10) || 7));

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { ALL_EXCHANGES, EXCHANGE_FEES, isExchangeDex, getExchangeTradeUrl } from '@/lib/constants/exchanges';
+import { authenticateV1Request } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
 
@@ -9,7 +10,9 @@ export const runtime = 'nodejs';
  * Returns metadata for all supported exchanges including fees,
  * funding intervals, and trade URLs.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await authenticateV1Request(request);
+  if (!auth.ok) return auth.response;
   const FUNDING_INTERVALS: Record<string, string> = {
     'Binance': '8h', 'Bybit': '8h', 'OKX': '8h', 'Bitget': '8h',
     'MEXC': '8h', 'BingX': '8h', 'Phemex': '8h', 'KuCoin': '8h',

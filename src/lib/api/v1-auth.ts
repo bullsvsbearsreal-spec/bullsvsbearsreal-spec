@@ -1,0 +1,105 @@
+/**
+ * API v1 authentication + rate limiting helper.
+ * Called by each v1 route handler (Node.js runtime) — NOT from middleware (Edge).
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { validateApiKey } from '@/lib/db';
+import { checkRateLimit } from '@/lib/api/rate-limit';
+
+interface V1AuthResult {
+  userId: string;
+  tier: string;
+  keyId: string;
+}
+
+// In-memory cache for validated API keys (avoids DB hit per request)
+const apiKeyCache = new Map<string, V1AuthResult & { cachedAt: number }>();
+const API_KEY_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+/**
+ * Authenticate a v1 API request.
+ * Returns user context + rate limit headers on success, or an error NextResponse on failure.
+ */
+export async function authenticateV1Request(request: NextRequest): Promise<
+  | { ok: true; user: V1AuthResult; headers: Record<string, string> }
+  | { ok: false; response: NextResponse }
+> {
+  // Extract API key from Authorization header
+  const authHeader = request.headers.get('authorization') || '';
+  const match = authHeader.match(/^Bearer\s+(ih_.+)$/i);
+  if (!match) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { success: false, error: 'API key required. Pass Authorization: Bearer ih_xxx' },
+        { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="InfoHub API"' } },
+      ),
+    };
+  }
+
+  const rawKey = match[1];
+
+  // Check in-memory cache first
+  let keyData = apiKeyCache.get(rawKey);
+  if (!keyData || Date.now() - keyData.cachedAt > API_KEY_CACHE_TTL) {
+    try {
+      const result = await validateApiKey(rawKey);
+      if (!result) {
+        return {
+          ok: false,
+          response: NextResponse.json(
+            { success: false, error: 'Invalid or revoked API key' },
+            { status: 401 },
+          ),
+        };
+      }
+      keyData = { ...result, cachedAt: Date.now() };
+      apiKeyCache.set(rawKey, keyData);
+    } catch (e) {
+      console.error('API key validation error:', e);
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { success: false, error: 'Authentication service unavailable' },
+          { status: 503 },
+        ),
+      };
+    }
+  }
+
+  // Rate limit via Upstash Redis
+  const rateLimitHeaders: Record<string, string> = {};
+  try {
+    const { allowed, remaining, reset, limit } = await checkRateLimit(keyData.keyId, keyData.tier);
+    rateLimitHeaders['X-RateLimit-Limit'] = String(limit);
+    rateLimitHeaders['X-RateLimit-Remaining'] = String(remaining);
+    rateLimitHeaders['X-RateLimit-Reset'] = String(Math.ceil(reset / 1000));
+
+    if (!allowed) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { success: false, error: 'Rate limit exceeded. Upgrade to Pro for higher limits.' },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(Math.max(1, Math.ceil((reset - Date.now()) / 1000))),
+              ...rateLimitHeaders,
+              'X-RateLimit-Remaining': '0',
+            },
+          },
+        ),
+      };
+    }
+  } catch (e) {
+    // Graceful degradation — allow request if Redis is down
+    console.error('Rate limit check failed (allowing request):', e);
+  }
+
+  return {
+    ok: true,
+    user: { userId: keyData.userId, tier: keyData.tier, keyId: keyData.keyId },
+    headers: rateLimitHeaders,
+  };
+}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authenticateV1Request } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,9 @@ export const fetchCache = 'force-no-store';
  *   ?assetClass=crypto       — crypto|stocks|forex|commodities|all (default: crypto)
  */
 export async function GET(request: NextRequest) {
+  const auth = await authenticateV1Request(request);
+  if (!auth.ok) return auth.response;
+
   const { searchParams } = request.nextUrl;
   const symbolFilter = searchParams.get('symbols')?.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
   const exchangeFilter = searchParams.get('exchanges')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -21,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch from internal API (reuses its caching layer)
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const res = await fetch(`${baseUrl}/api/funding?assetClass=${assetClass}`, {
       headers: { 'x-internal': '1' },
     });
