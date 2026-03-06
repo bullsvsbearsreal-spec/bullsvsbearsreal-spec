@@ -26,8 +26,11 @@ function FundingCountdown({ nextTime }: { nextTime?: number }) {
     return () => clearInterval(id);
   }, []);
   if (!nextTime || nextTime <= 0) return null;
+  // Guard against bad data: nextTime should be a reasonable ms timestamp (within ~48h from now)
+  const MAX_REASONABLE = 48 * 3600_000;
   const remaining = nextTime - now;
   if (remaining <= 0) return <span className="text-green-400 text-[9px] font-mono">settling</span>;
+  if (remaining > MAX_REASONABLE) return null; // bad data, don't display
   const color = remaining < 900_000 ? 'text-red-400' : remaining < 3_600_000 ? 'text-amber-400' : 'text-neutral-500';
   return <span className={`${color} text-[9px] font-mono`}>{formatCountdown(remaining)}</span>;
 }
@@ -40,16 +43,20 @@ export function ExchangeSide({ exchange, rate, symbol, periodScale, item, interv
   const color = side === 'short' ? 'text-red-400' : 'text-green-400';
   const nextFundingTime = item.nextFundingTimes?.[exchange];
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 min-w-0">
       <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
-      <span className="text-xs text-neutral-300">{exchange}</span>
-      {isExchangeDex(exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
-      <FundingCountdown nextTime={nextFundingTime} />
-      <span className={`${color} font-mono text-[11px] ml-auto`}>
+      <div className="flex flex-col min-w-0">
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-neutral-300 truncate">{exchange}</span>
+          {isExchangeDex(exchange) && <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none shrink-0">DEX</span>}
+          <FundingCountdown nextTime={nextFundingTime} />
+        </div>
+      </div>
+      <span className={`${color} font-mono text-[11px] ml-auto shrink-0`}>
         {formatRateAdaptive(rate * periodScale)}<IntervalBadge interval={interval} />
       </span>
       {tradeUrl && (
-        <a href={tradeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-neutral-600 hover:text-hub-yellow transition-colors" title={`Trade on ${exchange}`}>
+        <a href={tradeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-neutral-600 hover:text-hub-yellow transition-colors shrink-0" title={`Trade on ${exchange}`}>
           <ExternalLink className="w-3 h-3" />
         </a>
       )}
@@ -76,7 +83,7 @@ function FundingTimeline({ exchanges, nextFundingTimes, intervals, highExchange,
   const timelineStart = now;
   const timelineEnd = now + WINDOW;
 
-  const rows = exchanges
+  const allRows = exchanges
     .filter(ex => nextFundingTimes[ex.exchange])
     .map(ex => {
       const interval = intervals?.[ex.exchange] || '8h';
@@ -101,7 +108,13 @@ function FundingTimeline({ exchanges, nextFundingTimes, intervals, highExchange,
     })
     .sort((a, b) => (a.nextSettlement || Infinity) - (b.nextSettlement || Infinity));
 
-  if (rows.length === 0) return null;
+  if (allRows.length === 0) return null;
+
+  // Prioritize: arb sides first, then next to settle, cap at 8 rows
+  const sideRows = allRows.filter(r => r.side);
+  const otherRows = allRows.filter(r => !r.side);
+  const rows = [...sideRows, ...otherRows].slice(0, 8);
+  const hiddenCount = allRows.length - rows.length;
 
   return (
     <div>
@@ -110,18 +123,18 @@ function FundingTimeline({ exchanges, nextFundingTimes, intervals, highExchange,
         <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider">Funding Settlement Timeline</span>
         <span className="text-neutral-700 text-[9px]">(next 24h)</span>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-0.5">
         {rows.map(({ exchange, interval, points, side }) => {
           const sideColor = side === 'short' ? 'bg-red-500' : side === 'long' ? 'bg-green-500' : 'bg-neutral-500';
           const intervalColor = interval === '1h' ? 'text-amber-400' : interval === '4h' ? 'text-blue-400' : 'text-neutral-500';
           return (
-            <div key={exchange} className="flex items-center gap-2">
+            <div key={exchange} className="flex items-center gap-1.5">
               <div className="flex items-center gap-1 w-20 flex-shrink-0">
                 <ExchangeLogo exchange={exchange.toLowerCase()} size={12} />
                 <span className="text-neutral-400 text-[10px] truncate">{exchange}</span>
               </div>
               <span className={`text-[8px] font-mono ${intervalColor} w-5 flex-shrink-0`}>{interval}</span>
-              <div className="flex-1 h-5 bg-white/[0.02] rounded relative border border-white/[0.04]">
+              <div className="flex-1 h-4 bg-white/[0.02] rounded relative border border-white/[0.04]">
                 {/* Now marker */}
                 <div className="absolute left-0 top-0 bottom-0 w-px bg-hub-yellow/40" />
                 {points.map((t, i) => {
@@ -134,7 +147,7 @@ function FundingTimeline({ exchanges, nextFundingTimes, intervals, highExchange,
                       className={`absolute top-1/2 -translate-y-1/2 rounded-full ${
                         isPast ? 'bg-neutral-700' : isNext ? `${sideColor} ring-2 ring-white/20` : sideColor + '/50'
                       }`}
-                      style={{ left: `${Math.min(pct, 99)}%`, width: isNext ? 8 : 5, height: isNext ? 8 : 5 }}
+                      style={{ left: `${Math.min(pct, 99)}%`, width: isNext ? 7 : 4, height: isNext ? 7 : 4 }}
                       title={`${exchange} settlement at ${new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                     />
                   );
@@ -153,6 +166,9 @@ function FundingTimeline({ exchanges, nextFundingTimes, intervals, highExchange,
         <span>+18h</span>
         <span>+24h</span>
       </div>
+      {hiddenCount > 0 && (
+        <div className="text-[8px] text-neutral-700 mt-0.5">+{hiddenCount} more exchanges</div>
+      )}
     </div>
   );
 }
@@ -300,151 +316,122 @@ export function ExpandedPanel({ item, periodScale, intervalMap, oiMap }: {
   const maxOI = exchangeOI.length > 0 ? Math.max(...exchangeOI.map(e => e.oi)) : 0;
 
   return (
-    <div className="space-y-3">
-      {/* 2-column layout on desktop */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left: Exchange Rates + Feasibility */}
-        <div className="space-y-3">
-          {/* All Exchange Rates */}
+    <div className="space-y-2.5">
+      {/* Feasibility Summary — always top, full width */}
+      {(item.maxPractical > 0 || item.stability) && (
+        <div className="text-[10px] bg-white/[0.02] rounded-lg px-3 py-2 border border-white/[0.04] flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${GRADE_COLORS[item.grade as FeasibilityGrade]}`}>
+            {item.grade} ({item.gradeScore}/10)
+          </span>
+          {item.maxPractical > 0 && (
+            <span className="text-neutral-500">Max: <span className="text-white font-mono">{formatUSD(item.maxPractical)}</span></span>
+          )}
+          <span className="text-neutral-500">
+            Fees: <span className={`font-mono ${item.feeImpactPct > 50 ? 'text-red-400' : item.feeImpactPct > 30 ? 'text-amber-400' : 'text-neutral-400'}`}>{item.roundTripFee.toFixed(3)}%</span>
+            <span className="text-neutral-700"> ({item.feeImpactPct.toFixed(0)}%)</span>
+          </span>
+          <span className="text-neutral-600">|</span>
+          <span className="text-neutral-500">
+            Short: <span className={`font-mono ${item.shortDailyRate > 0 ? 'text-green-400' : 'text-red-400'}`}>{item.shortDailyRate > 0 ? '+' : ''}{item.shortDailyRate.toFixed(4)}%</span>/d
+          </span>
+          <span className="text-neutral-500">
+            Long: <span className={`font-mono ${item.longDailyRate <= 0 ? 'text-green-400' : 'text-red-400'}`}>{item.longDailyRate <= 0 ? '+' : ''}{(-item.longDailyRate).toFixed(4)}%</span>/d
+          </span>
+          {item.stability && item.stability !== 'new' && (
+            <span className={item.stability === 'stable' ? 'text-green-400/80' : 'text-amber-400/80'}>{item.stability}</span>
+          )}
+          {item.trend && item.trend !== 'flat' && (
+            <span className={item.trend === 'widening' ? 'text-green-400/80' : 'text-red-400/80'}>{item.trend}</span>
+          )}
+          {item.gradeFlags && item.gradeFlags.length > 0 && item.gradeFlags.map((flag, i) => (
+            <span key={i} className="text-[8px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-400/80 border border-amber-500/10">⚠ {flag}</span>
+          ))}
+        </div>
+      )}
+      {/* 3-column layout: Exchange Rates | OI Bars | Price Comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Col 1: All Exchange Rates */}
+        <div>
+          <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1">All Exchange Rates</div>
+          <div className="flex flex-wrap gap-1">
+            {item.sorted.map((ex: { exchange: string; rate: number }) => {
+              const tradeUrl = getExchangeTradeUrl(ex.exchange, item.symbol);
+              const interval = getIntervalForExchange(item, ex.exchange, intervalMap);
+              return (
+                <div key={ex.exchange} className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/[0.04]">
+                  <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={12} />
+                  <span className="text-neutral-400 text-[10px]">{ex.exchange}</span>
+                  {isExchangeDex(ex.exchange) && <span className="px-0.5 rounded text-[7px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
+                  <span className={`font-mono text-[10px] font-semibold ${ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {formatRateAdaptive(ex.rate * periodScale)}<IntervalBadge interval={interval} />
+                  </span>
+                  {tradeUrl && (
+                    <a href={tradeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-neutral-600 hover:text-hub-yellow transition-colors">
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {/* Col 2: Open Interest by Exchange */}
+        {exchangeOI.length > 0 && (
           <div>
-            <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1.5">All Exchange Rates</div>
-            <div className="flex flex-wrap gap-1.5">
-              {item.sorted.map((ex: { exchange: string; rate: number }) => {
-                const tradeUrl = getExchangeTradeUrl(ex.exchange, item.symbol);
-                const interval = getIntervalForExchange(item, ex.exchange, intervalMap);
+            <div className="flex items-center gap-1.5 mb-1">
+              <BarChart3 className="w-3 h-3 text-blue-400" />
+              <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider">Open Interest</span>
+            </div>
+            <div className="space-y-0.5">
+              {exchangeOI.slice(0, 10).map(({ exchange, oi, side }) => {
+                const pct = maxOI > 0 ? (oi / maxOI) * 100 : 0;
+                const sideLabel = side === 'short' ? 'S' : side === 'long' ? 'L' : null;
+                const barColor = side === 'short' ? 'bg-red-500/30' : side === 'long' ? 'bg-green-500/30' : 'bg-white/[0.06]';
+                const textColor = oi < 100_000 ? 'text-red-400' : oi < 500_000 ? 'text-amber-400' : 'text-neutral-300';
                 return (
-                  <div key={ex.exchange} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.04]">
-                    <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={14} />
-                    <span className="text-neutral-400 text-[11px]">{ex.exchange}</span>
-                    {isExchangeDex(ex.exchange) && <span className="px-0.5 py-0.5 rounded text-[8px] font-bold bg-purple-500/20 text-purple-400 leading-none">DEX</span>}
-                    <FundingCountdown nextTime={item.nextFundingTimes?.[ex.exchange]} />
-                    <span className={`font-mono text-[11px] font-semibold ${ex.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatRateAdaptive(ex.rate * periodScale)}<IntervalBadge interval={interval} />
-                    </span>
-                    {tradeUrl && (
-                      <a href={tradeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-neutral-600 hover:text-hub-yellow transition-colors">
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
+                  <div key={exchange} className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 w-[72px] flex-shrink-0">
+                      <ExchangeLogo exchange={exchange.toLowerCase()} size={11} />
+                      <span className="text-neutral-400 text-[9px] truncate">{exchange}</span>
+                      {sideLabel && (
+                        <span className={`text-[7px] font-bold px-0.5 rounded leading-none ${side === 'short' ? 'bg-red-500/15 text-red-400' : 'bg-green-500/15 text-green-400'}`}>{sideLabel}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 h-2.5 bg-white/[0.02] rounded overflow-hidden">
+                      <div className={`h-full ${barColor} rounded`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                    </div>
+                    <span className={`font-mono text-[9px] w-12 text-right flex-shrink-0 ${textColor}`}>{formatUSD(oi)}</span>
                   </div>
                 );
               })}
             </div>
+            {item.minSideOI > 0 && (
+              <div className="mt-1 text-[8px] text-neutral-600">
+                Min-side: <span className="text-neutral-400 font-mono">{formatUSD(item.minSideOI)}</span>
+              </div>
+            )}
           </div>
-          {/* Feasibility Summary */}
-          {(item.maxPractical > 0 || item.stability) && (
-            <div className="text-[10px] bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.04] space-y-2">
-              <div className="flex flex-wrap items-center gap-3">
-                {item.maxPractical > 0 && (
-                  <span className="text-neutral-500">
-                    <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
-                    Max practical: <span className="text-white font-mono">{formatUSD(item.maxPractical)}</span>
-                    <span className="text-neutral-700 ml-1">(5% of min-side OI)</span>
-                  </span>
-                )}
-                {item.stability && item.stability !== 'new' && (
-                  <span className="text-neutral-500">
-                    Stability: <span className={item.stability === 'stable' ? 'text-green-400' : 'text-amber-400'}>{item.stability}</span>
-                  </span>
-                )}
-                {item.trend && (
-                  <span className="text-neutral-500">
-                    Trend: <span className={item.trend === 'widening' ? 'text-green-400' : item.trend === 'narrowing' ? 'text-red-400' : 'text-neutral-400'}>{item.trend}</span>
-                  </span>
-                )}
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${GRADE_COLORS[item.grade as FeasibilityGrade]}`}>
-                  Grade {item.grade} ({item.gradeScore}/10)
-                </span>
-              </div>
-              {/* Per-side PnL breakdown */}
-              <div className="flex flex-wrap items-center gap-4 text-[10px]">
-                <span className="text-neutral-500">
-                  Short side: <span className={`font-mono ${item.shortDailyRate > 0 ? 'text-green-400' : 'text-red-400'}`}>{item.shortDailyRate > 0 ? '+' : ''}{item.shortDailyRate.toFixed(4)}%</span>
-                  <span className="text-neutral-700">/day</span>
-                </span>
-                <span className="text-neutral-500">
-                  Long side: <span className={`font-mono ${item.longDailyRate <= 0 ? 'text-green-400' : 'text-red-400'}`}>{item.longDailyRate <= 0 ? '+' : ''}{(-item.longDailyRate).toFixed(4)}%</span>
-                  <span className="text-neutral-700">/day</span>
-                </span>
-                <span className="text-neutral-500">
-                  Fees: <span className={`font-mono ${item.feeImpactPct > 50 ? 'text-red-400' : item.feeImpactPct > 30 ? 'text-amber-400' : 'text-neutral-400'}`}>{item.roundTripFee.toFixed(3)}%</span>
-                  <span className="text-neutral-700"> ({item.feeImpactPct.toFixed(0)}% of spread)</span>
-                </span>
-              </div>
-              {/* Grade flags / warnings */}
-              {item.gradeFlags && item.gradeFlags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {item.gradeFlags.map((flag, i) => (
-                    <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400/80 border border-amber-500/10">
-                      ⚠ {flag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {/* Open Interest by Exchange */}
-          {exchangeOI.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <BarChart3 className="w-3 h-3 text-blue-400" />
-                <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider">Open Interest by Exchange</span>
-              </div>
-              <div className="space-y-1">
-                {exchangeOI.map(({ exchange, oi, side }) => {
-                  const pct = maxOI > 0 ? (oi / maxOI) * 100 : 0;
-                  const sideLabel = side === 'short' ? 'S' : side === 'long' ? 'L' : null;
-                  const barColor = side === 'short' ? 'bg-red-500/30' : side === 'long' ? 'bg-green-500/30' : 'bg-white/[0.06]';
-                  const textColor = oi < 100_000 ? 'text-red-400' : oi < 500_000 ? 'text-amber-400' : 'text-neutral-300';
-                  return (
-                    <div key={exchange} className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 w-24 flex-shrink-0">
-                        <ExchangeLogo exchange={exchange.toLowerCase()} size={12} />
-                        <span className="text-neutral-400 text-[10px] truncate">{exchange}</span>
-                        {sideLabel && (
-                          <span className={`text-[8px] font-bold px-1 py-0.5 rounded leading-none ${side === 'short' ? 'bg-red-500/15 text-red-400' : 'bg-green-500/15 text-green-400'}`}>
-                            {sideLabel}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex-1 h-4 bg-white/[0.02] rounded overflow-hidden">
-                        <div className={`h-full ${barColor} rounded transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
-                      </div>
-                      <span className={`font-mono text-[10px] w-16 text-right flex-shrink-0 ${textColor}`}>{formatUSD(oi)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {item.minSideOI > 0 && (
-                <div className="mt-1.5 text-[9px] text-neutral-600">
-                  Min-side OI: <span className="text-neutral-400 font-mono">{formatUSD(item.minSideOI)}</span>
-                  {item.maxPractical > 0 && <> &middot; Max practical position: <span className="text-neutral-400 font-mono">{formatUSD(item.maxPractical)}</span></>}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        {/* Right: Price Comparison */}
+        )}
+        {/* Col 3: Price Comparison — compact table */}
         {hasPrices && (
           <div>
-            <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1.5">Price Comparison</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            <div className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Price Comparison</div>
+            <div className="space-y-0.5">
               {[...exchangePrices]
                 .sort((a: { price: number }, b: { price: number }) => b.price - a.price)
+                .slice(0, 10)
                 .map((ep: { exchange: string; price: number }) => {
                   const deviation = avgPrice > 0 ? ((ep.price - avgPrice) / avgPrice) * 100 : 0;
-                  const isHighest = ep.price === Math.max(...exchangePrices.map((p: { price: number }) => p.price));
-                  const isLowest = ep.price === Math.min(...exchangePrices.map((p: { price: number }) => p.price));
                   return (
-                    <div key={ep.exchange} className={`px-2 py-1.5 rounded-md border ${isHighest ? 'bg-green-500/5 border-green-500/20' : isLowest ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/[0.04]'}`}>
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <ExchangeLogo exchange={ep.exchange.toLowerCase()} size={12} />
-                        <span className="text-neutral-400 text-[10px]">{ep.exchange}</span>
+                    <div key={ep.exchange} className="flex items-center gap-1.5 text-[10px]">
+                      <div className="flex items-center gap-1 w-[72px] flex-shrink-0">
+                        <ExchangeLogo exchange={ep.exchange.toLowerCase()} size={11} />
+                        <span className="text-neutral-400 text-[9px] truncate">{ep.exchange}</span>
                       </div>
-                      <div className="text-white font-mono text-xs">{formatPrice(ep.price)}</div>
-                      <div className={`font-mono text-[9px] ${deviation > 0 ? 'text-green-400' : deviation < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
+                      <span className="text-white font-mono text-[10px]">{formatPrice(ep.price)}</span>
+                      <span className={`font-mono text-[9px] ml-auto ${deviation > 0 ? 'text-green-400' : deviation < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
                         {deviation > 0 ? '+' : ''}{deviation.toFixed(3)}%
-                      </div>
+                      </span>
                     </div>
                   );
                 })}

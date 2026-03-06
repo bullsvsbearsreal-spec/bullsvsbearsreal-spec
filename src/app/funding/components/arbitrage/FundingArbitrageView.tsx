@@ -582,18 +582,25 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                         </div>
                         <div className="flex items-center justify-end gap-1.5 text-[10px]">
                           {item.netSpread < item.grossSpread && (
-                            <span className="text-neutral-600 font-mono" title={`Round-trip fees: ${item.roundTripFee.toFixed(3)}%`}>net {item.netSpread.toFixed(4)}%</span>
+                            <span className={`font-mono ${item.feeImpactPct > 50 ? 'text-red-400/60' : 'text-neutral-600'}`} title={`Round-trip fees: ${item.roundTripFee.toFixed(3)}% (${item.feeImpactPct.toFixed(0)}% of spread)`}>
+                              net {item.netSpread.toFixed(4)}%
+                            </span>
                           )}
                           {item.stability === 'stable' && <span className="text-green-400/70">Stable</span>}
-                          {item.stability === 'volatile' && <span className="text-amber-400/70">Volatile</span>}
+                          {item.stability === 'volatile' && <span className="text-amber-400/70">Vol</span>}
                           {item.stability === 'new' && <span className="text-neutral-600">New</span>}
                         </div>
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className={`font-mono text-xs font-semibold ${item.netAnnualized > 0 ? 'text-green-400' : 'text-neutral-500'}`}>
-                        {item.netAnnualized > 0 ? '+' : ''}{item.netAnnualized.toFixed(1)}%
-                      </span>
+                      <div>
+                        <span className={`font-mono text-xs font-semibold ${item.netAnnualized > 0 ? 'text-green-400' : 'text-neutral-500'}`}>
+                          {item.netAnnualized > 0 ? '+' : ''}{item.netAnnualized.toFixed(1)}%
+                        </span>
+                        {item.netAnnualized > 500 && (
+                          <div className="text-[8px] text-amber-400/50 font-mono" title="Annualized rate assumes spread persists — unlikely at this level">unlikely</div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <ExchangeSide exchange={item.high.exchange} rate={item.high.rate} symbol={item.symbol} periodScale={periodScale} item={item} intervalMap={intervalMap} side="short" />

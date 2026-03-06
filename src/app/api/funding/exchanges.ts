@@ -936,7 +936,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             predictedRate,
             markPrice: parseFloat(frData.mark_price || t.mark_price) || 0,
             indexPrice: parseFloat(t.index_price) || 0,
-            nextFundingTime: frData.next_funding_time ? parseInt(frData.next_funding_time) : Date.now() + 28800000,
+            nextFundingTime: frData.next_funding_time ? parseInt(frData.next_funding_time) * 1000 : Date.now() + 28800000,
             type: 'cex' as const,
           };
         } catch { return null; }
@@ -1381,7 +1381,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '1h' as const,
             markPrice: parseFloat(stats.markPrice) || 0,
             indexPrice: parseFloat(stats.indexPrice) || 0,
-            nextFundingTime: Number(stats.nextFundingRate) || Date.now() + 3600000,
+            nextFundingTime: Date.now() + 3600000, // Extended uses continuous funding (1h), no discrete settlement time
             type: 'dex' as const,
             assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
           };
