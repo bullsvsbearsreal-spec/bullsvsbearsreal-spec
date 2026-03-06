@@ -206,6 +206,11 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_admin_mon_metric_ts ON admin_monitoring(metric, recorded_at DESC)`;
   await sql`ALTER TABLE admin_monitoring ADD COLUMN IF NOT EXISTS details JSONB DEFAULT NULL`;
 
+  // ── One-time cleanup: nuke base64 data URIs from users.image ──
+  // These bloat JWT cookies past Vercel's 32KB header limit (494 error).
+  // Safe to run repeatedly — only affects rows with data: prefix.
+  await sql`UPDATE users SET image = NULL WHERE image LIKE 'data:%'`;
+
   // API keys for public API (v1)
   await sql`
     CREATE TABLE IF NOT EXISTS api_keys (

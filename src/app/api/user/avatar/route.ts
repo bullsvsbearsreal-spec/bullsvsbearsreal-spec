@@ -76,13 +76,12 @@ export async function POST(request: NextRequest) {
         ? `${DO_SPACES_CDN}/${key}${cacheBust}`
         : `${DO_SPACES_ENDPOINT}/${DO_SPACES_BUCKET}/${key}${cacheBust}`;
     } else {
-      // Fallback: store as base64 data URL in DB (client already resizes to 256x256)
-      // Limit to 100KB to avoid bloating JWT cookies
-      if (buffer.length > 100_000) {
-        return NextResponse.json({ error: 'Image too large for fallback storage. Max 100KB.' }, { status: 413 });
-      }
-      const b64 = buffer.toString('base64');
-      imageUrl = `data:${file.type};base64,${b64}`;
+      // No S3 storage configured — reject upload instead of storing base64 in DB.
+      // Base64 data URIs bloat JWT cookies past Vercel's 32KB header limit (494 error).
+      return NextResponse.json(
+        { error: 'Avatar uploads are temporarily unavailable. Please try again later.' },
+        { status: 503 },
+      );
     }
 
     // Update user record
