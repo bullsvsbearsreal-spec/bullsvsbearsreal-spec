@@ -437,9 +437,9 @@ export default function FundingPage() {
             })}
           </div>
 
-          <div className="flex-1" />
+          <div className="flex-1 hidden lg:block" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
             {/* CEX / DEX venue filter */}
             <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
               {(['all', 'cex', 'dex'] as VenueFilter[]).map((v) => (
@@ -457,7 +457,7 @@ export default function FundingPage() {
               ))}
             </div>
 
-            <span className="w-px h-5 bg-white/[0.06]" />
+            <span className="w-px h-5 bg-white/[0.06] hidden lg:block" />
 
             {/* Period normalization toggle */}
             <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
@@ -476,7 +476,7 @@ export default function FundingPage() {
               ))}
             </div>
 
-            <span className="w-px h-5 bg-white/[0.06]" />
+            <span className="w-px h-5 bg-white/[0.06] hidden lg:block" />
 
             {/* Heatmap / Arbitrage view toggle */}
             <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
@@ -495,7 +495,7 @@ export default function FundingPage() {
               ))}
             </div>
 
-            <span className="w-px h-5 bg-white/[0.06]" />
+            <span className="w-px h-5 bg-white/[0.06] hidden lg:block" />
 
             {/* Exchange selector */}
             <div className="relative" ref={exchangeSelectorRef}>
