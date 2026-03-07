@@ -307,6 +307,14 @@ body {
   .stagger > *:nth-child(7) { animation-delay: 300ms; }
   .stagger > *:nth-child(8) { animation-delay: 350ms; }
   .stagger > *:nth-child(9) { animation-delay: 400ms; }
+  .stagger > *:nth-child(10) { animation-delay: 450ms; }
+  .stagger > *:nth-child(11) { animation-delay: 500ms; }
+  .stagger > *:nth-child(12) { animation-delay: 550ms; }
+  .stagger > *:nth-child(13) { animation-delay: 600ms; }
+  .stagger > *:nth-child(14) { animation-delay: 650ms; }
+  .stagger > *:nth-child(15) { animation-delay: 700ms; }
+  .stagger > *:nth-child(16) { animation-delay: 750ms; }
+  .stagger > *:nth-child(17) { animation-delay: 800ms; }
 
   /* Accent line */
   .accent-line {

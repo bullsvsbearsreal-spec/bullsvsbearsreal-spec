@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -9,18 +9,8 @@ import {
   User, Camera, Loader2, Trash2, Shield, Star, Bell, BarChart3,
   Activity, Clock, Save, Check, ChevronDown,
 } from 'lucide-react';
-
-function formatTimeAgo(dateStr: string): string {
-  const ms = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(ms / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return `${Math.floor(days / 30)}mo ago`;
-}
+import { formatTimeAgo } from '@/lib/utils/format';
+import { useAvatarUpload } from '@/hooks/useAvatarUpload';
 
 interface AccountStats {
   memberSince: string | null;
@@ -53,12 +43,7 @@ const FUNDING_DISPLAY_OPTIONS = [
 
 export default function ProfilePage() {
   const { data: session, status, update: updateSession } = useSession();
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-
-  // Avatar
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarError, setAvatarError] = useState('');
+  const avatar = useAvatarUpload();
 
   // Bio
   const [bio, setBio] = useState('');
@@ -81,7 +66,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!session?.user) return;
 
-    if (session.user.image) setAvatarUrl(session.user.image);
+    if (session.user.image) avatar.setUrl(session.user.image);
 
     // Load account stats
     (async () => {
@@ -104,74 +89,6 @@ export default function ProfilePage() {
       } catch {}
     })();
   }, [session]);
-
-  // Avatar upload
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setAvatarError('');
-
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-      setAvatarError('Use JPG, PNG, WebP, or GIF');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setAvatarError('File too large (max 10MB)');
-      return;
-    }
-
-    setAvatarUploading(true);
-    try {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
-      const ctx = canvas.getContext('2d')!;
-      const size = Math.min(bitmap.width, bitmap.height);
-      const sx = (bitmap.width - size) / 2;
-      const sy = (bitmap.height - size) / 2;
-      ctx.drawImage(bitmap, sx, sy, size, size, 0, 0, 256, 256);
-
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Canvas failed'))), 'image/webp', 0.85);
-      });
-
-      const formData = new FormData();
-      formData.append('avatar', blob, 'avatar.webp');
-      const res = await fetch('/api/user/avatar', { method: 'POST', body: formData });
-      const json = await res.json();
-
-      if (!res.ok) {
-        setAvatarError(json.error || 'Upload failed');
-      } else {
-        setAvatarUrl(json.image);
-        await updateSession();
-      }
-    } catch {
-      setAvatarError('Upload failed');
-    }
-    setAvatarUploading(false);
-    if (avatarInputRef.current) avatarInputRef.current.value = '';
-  };
-
-  const handleAvatarRemove = async () => {
-    if (!avatarUrl) return;
-    setAvatarUploading(true);
-    setAvatarError('');
-    try {
-      const res = await fetch('/api/user/avatar', { method: 'DELETE' });
-      if (!res.ok) {
-        const json = await res.json();
-        setAvatarError(json.error || 'Remove failed');
-      } else {
-        setAvatarUrl(null);
-        await updateSession();
-      }
-    } catch {
-      setAvatarError('Remove failed');
-    }
-    setAvatarUploading(false);
-  };
 
   // Save bio
   const handleSaveBio = async () => {
@@ -257,25 +174,25 @@ export default function ProfilePage() {
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={avatarUploading}
+                  onClick={() => avatar.inputRef.current?.click()}
+                  disabled={avatar.uploading}
                   className="relative w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/[0.08] hover:border-hub-yellow/50 transition-colors overflow-hidden group"
                   title="Change profile picture"
                 >
-                  {avatarUrl ? (
-                    <Image src={avatarUrl} alt={`${session.user?.name || 'User'}'s avatar`} width={80} height={80} className="w-full h-full object-cover" unoptimized />
+                  {avatar.url ? (
+                    <Image src={avatar.url} alt={`${session.user?.name || 'User'}'s avatar`} width={80} height={80} className="w-full h-full object-cover" unoptimized />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-hub-yellow/20 text-hub-yellow text-xl font-bold">
                       {initials}
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    {avatarUploading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                    {avatar.uploading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
                   </div>
                 </button>
-                {avatarUrl && !avatarUploading && (
+                {avatar.url && !avatar.uploading && (
                   <button
-                    onClick={handleAvatarRemove}
+                    onClick={avatar.handleRemove}
                     className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center z-10 transition-colors"
                     title="Remove avatar"
                   >
@@ -283,7 +200,7 @@ export default function ProfilePage() {
                   </button>
                 )}
               </div>
-              <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatarUpload} className="hidden" />
+              <input ref={avatar.inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={avatar.handleUpload} className="hidden" />
               <div className="min-w-0 flex-1 text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-2">
                   <h1 className="text-xl font-bold text-white truncate">{session.user?.name || 'User'}</h1>
@@ -304,7 +221,7 @@ export default function ProfilePage() {
                     Member since {new Date(accountStats.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                   </p>
                 )}
-                {avatarError && <p className="text-xs text-red-400 mt-1">{avatarError}</p>}
+                {avatar.error && <p className="text-xs text-red-400 mt-1">{avatar.error}</p>}
               </div>
             </div>
           </div>

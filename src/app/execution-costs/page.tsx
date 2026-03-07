@@ -14,6 +14,7 @@ import DirectionToggle from './components/DirectionToggle';
 import VenueCard from './components/VenueCard';
 import CostBreakdownTable from './components/CostBreakdownTable';
 import DepthChart from './components/DepthChart';
+import SlippageHeatmap from './components/SlippageHeatmap';
 import { RefreshCw, AlertTriangle, Share2, Check, Info } from 'lucide-react';
 import { DEFAULT_ASSETS } from '@/lib/execution-costs/symbol-map';
 
@@ -78,6 +79,18 @@ function ExecutionCostsInner() {
       fetcher,
       refreshInterval: 15_000,
     });
+
+  // Multi-exchange slippage heatmap data
+  const slippageFetcher = useCallback(
+    () => fetch(`/api/orderbook/multi?symbol=${asset}&exchanges=Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter`)
+      .then(r => r.ok ? r.json() : null).catch(() => null),
+    [asset],
+  );
+  const { data: slippageData, isLoading: slippageLoading } = useApi({
+    key: `slippage-heatmap-${asset}`,
+    fetcher: slippageFetcher,
+    refreshInterval: 15_000,
+  });
 
   // Detect stale data: response doesn't match current parameters
   const isStale = data ? (data.asset !== asset || data.size !== size || data.direction !== direction) : false;
@@ -251,6 +264,12 @@ function ExecutionCostsInner() {
                 <DepthChart venues={activeData.venues} orderSizeUsd={size} />
               </div>
             )}
+
+            {/* Slippage heatmap - multi-exchange depth comparison */}
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3">Cross-Exchange Slippage</h2>
+              <SlippageHeatmap data={slippageData} loading={slippageLoading} />
+            </div>
           </div>
         )}
       </main>

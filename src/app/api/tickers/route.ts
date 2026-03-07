@@ -48,6 +48,24 @@ export async function GET(request: Request) {
     // Normalize symbols for token rebrands (RNDR→RENDER, MATIC→POL)
     data.forEach((entry: any) => { entry.symbol = normalizeSymbol(entry.symbol); });
 
+    // Calculate total volume across ALL exchanges before client-side dedup.
+    // Per-symbol: sum volumes across exchanges (each exchange contributes once per symbol).
+    // Cap individual entries at $100B to filter exchanges with inflated data (e.g. Gate.io).
+    const MAX_SANE_VOL = 100_000_000_000;
+    const volBySymbol = new Map<string, Map<string, number>>();
+    for (const t of data) {
+      const vol = t.quoteVolume24h || 0;
+      if (vol <= 0 || vol > MAX_SANE_VOL) continue;
+      let symMap = volBySymbol.get(t.symbol);
+      if (!symMap) { symMap = new Map(); volBySymbol.set(t.symbol, symMap); }
+      const existing = symMap.get(t.exchange) || 0;
+      if (vol > existing) symMap.set(t.exchange, vol); // Best entry per exchange+symbol
+    }
+    let totalVolume = 0;
+    volBySymbol.forEach((symMap) => {
+      symMap.forEach((vol) => { totalVolume += vol; });
+    });
+
     const activeExchanges = health.filter(h => h.status === 'ok').length;
     const responseBody = {
       data,
@@ -56,6 +74,7 @@ export async function GET(request: Request) {
         totalExchanges: health.length,
         activeExchanges,
         totalEntries: data.length,
+        totalVolume,
         timestamp: Date.now(),
       },
     };

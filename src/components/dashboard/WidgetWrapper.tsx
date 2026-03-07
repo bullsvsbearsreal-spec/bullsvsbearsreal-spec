@@ -62,7 +62,6 @@ export default function WidgetWrapper({
         ${isDragOver ? 'border-hub-yellow/50 scale-[1.02]' : 'border-white/[0.06]'}
         ${isDragging ? 'opacity-40' : 'opacity-100'}
       `}
-      style={{ touchAction: 'none' }}
     >
       {/* Accent bar — bolder: 2px, 70% opacity, subtle glow */}
       {accentColor && (
@@ -78,7 +77,7 @@ export default function WidgetWrapper({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.04]">
         <div className="flex items-center gap-2 min-w-0">
-          <div data-drag-handle className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 text-neutral-600 hover:text-neutral-400 transition-colors">
+          <div data-drag-handle className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 text-neutral-600 hover:text-neutral-400 transition-colors" style={{ touchAction: 'none' }}>
             <GripVertical className="w-3.5 h-3.5" />
           </div>
           {/* Widget icon */}

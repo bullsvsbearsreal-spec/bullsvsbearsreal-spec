@@ -3,6 +3,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import UserDetailDrawer from './UserDetailDrawer';
 import { TableSkeleton } from './AdminSkeletons';
+import Pagination from '@/components/Pagination';
+
+const ROWS_PER_PAGE = 25;
 
 interface User {
   id: string;
@@ -48,6 +51,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
   const [sortKey, setSortKey] = useState<SortKey>('email');
   const [sortAsc, setSortAsc] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const loadUsers = () => {
     setLoading(true);
@@ -83,6 +87,12 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
     return list;
   }, [users, search, filter, sortKey, sortAsc]);
 
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [search, filter, sortKey, sortAsc]);
+
+  const totalPages = Math.ceil(filtered.length / ROWS_PER_PAGE);
+  const paged = filtered.slice((page - 1) * ROWS_PER_PAGE, page * ROWS_PER_PAGE);
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(true); }
@@ -106,7 +116,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
   );
 
   const SortIcon = ({ active, asc }: { active: boolean; asc: boolean }) => (
-    <svg className={`w-3 h-3 inline ml-0.5 ${active ? 'text-amber-400' : 'text-neutral-600'}`} viewBox="0 0 12 12" fill="currentColor">
+    <svg className={`w-3 h-3 inline ml-0.5 ${active ? 'text-hub-yellow' : 'text-neutral-600'}`} viewBox="0 0 12 12" fill="currentColor">
       {asc ? <path d="M6 2l4 5H2z" /> : <path d="M6 10l4-5H2z" />}
     </svg>
   );
@@ -120,7 +130,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search users..."
-          className="w-full sm:w-56 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-amber-500/50"
+          className="w-full sm:w-56 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/50"
         />
         <div className="flex gap-1">
           {filters.map((f) => (
@@ -129,7 +139,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
               onClick={() => setFilter(f.key)}
               className={`px-2.5 py-1 text-[11px] rounded-full border transition-colors ${
                 filter === f.key
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                  ? 'border-hub-yellow/40 bg-hub-yellow/10 text-hub-yellow'
                   : 'border-white/[0.08] text-neutral-500 hover:text-neutral-300'
               }`}
             >
@@ -168,7 +178,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {filtered.map((u) => (
+              {paged.map((u) => (
                 <tr
                   key={u.id}
                   onClick={() => setSelectedUserId(u.id)}
@@ -189,7 +199,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
                   <td className="px-3 py-2 text-neutral-400 truncate max-w-[180px]">{u.email || '—'}</td>
                   <td className="px-3 py-2 text-center">
                     {u.role === 'admin' ? (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">admin</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-hub-yellow/20 text-hub-yellow font-medium">admin</span>
                     ) : u.role === 'advisor' ? (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">advisor</span>
                     ) : (
@@ -209,10 +219,15 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
             </tbody>
           </table>
         </div>
-        <div className="px-3 py-2 border-t border-white/[0.06] text-[10px] text-neutral-600">
-          Showing {filtered.length} of {users.length} users
-        </div>
       </div>
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={filtered.length}
+        rowsPerPage={ROWS_PER_PAGE}
+        onPageChange={setPage}
+        label="users"
+      />
 
       <UserDetailDrawer
         userId={selectedUserId}

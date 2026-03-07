@@ -818,72 +818,12 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // edgeX — per-contract tickers (batched). Includes 24h OHLCV + prices.
-  {
-    name: 'edgeX',
-    fetcher: async (fetchFn) => {
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000);
-      if (!metaRes.ok) return [];
-      const meta = await metaRes.json();
-      if (meta.code !== 'SUCCESS') return [];
-      const contracts = (meta.data?.contractList || []).filter(
-        (c: any) => c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP') && !c.isStock
-      );
-      if (contracts.length === 0) return [];
-
-      const BATCH_SIZE = 20;
-      const results: TickerData[] = [];
-      for (let i = 0; i < contracts.length; i += BATCH_SIZE) {
-        const batch = contracts.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (c: any) => {
-            try {
-              const tickerRes = await fetchFn(
-                `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
-                {},
-                8000
-              );
-              if (!tickerRes.ok) return null;
-              const tickerJson = await tickerRes.json();
-              if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
-              const t = tickerJson.data[0];
-
-              let symbol = c.contractName.replace(/USD$/, '');
-              if (symbol.endsWith('2') && symbol.length > 2) {
-                const base = symbol.slice(0, -1);
-                if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
-                  return null;
-                }
-                symbol = base;
-              }
-              if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
-              else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
-              if (!isCryptoSymbol(symbol)) return null;
-
-              const lastPrice = parseFloat(t.lastPrice) || 0;
-              const changePercent = parseFloat(t.priceChangePercent) * 100 || 0;
-              return {
-                symbol,
-                exchange: 'edgeX',
-                lastPrice,
-                price: lastPrice,
-                priceChangePercent24h: changePercent,
-                changePercent24h: changePercent,
-                high24h: parseFloat(t.high) || 0,
-                low24h: parseFloat(t.low) || 0,
-                volume24h: parseFloat(t.size) || 0,
-                quoteVolume24h: parseFloat(t.value) || 0,
-              };
-            } catch {
-              return null;
-            }
-          })
-        );
-        results.push(...batchResults.filter(Boolean) as TickerData[]);
-      }
-      return results.filter(item => item.lastPrice > 0);
-    },
-  },
+  // edgeX — DISABLED: CloudFlare blocks per-contract ticker calls from server IPs (403 since ~Mar 2026)
+  // Metadata endpoint works but individual getTicker calls return CF challenge page.
+  // {
+  //   name: 'edgeX',
+  //   fetcher: async (fetchFn) => { ... },
+  // },
 
   // Variational (Arbitrum DEX) — /metadata/stats has mark_price + 24h volume
   {

@@ -46,6 +46,11 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
     // API returns { data, health, meta } — extract data array
     const allTickers = Array.isArray(json) ? json : (json.data ?? json);
 
+    // Cache server-computed total volume (sum across all exchanges, before dedup)
+    if (json.meta?.totalVolume) {
+      setCache('serverTotalVolume', json.meta.totalVolume, 60_000);
+    }
+
     // Aggregate by symbol - use highest volume exchange as primary
     // Cap per-ticker volume at $100B to filter exchanges with inflated numbers (Gate.io reports trillions)
     const MAX_SANE_VOLUME = 100_000_000_000;
@@ -214,6 +219,11 @@ export function calculateTotalVolume(tickers: TickerData[]): number {
   return tickers.reduce((sum, t) => sum + t.quoteVolume24h, 0);
 }
 
+// Get the server-computed total volume (sum across all exchanges, not just best-per-symbol)
+export function getServerTotalVolume(): number | null {
+  return getCached<number>('serverTotalVolume');
+}
+
 // Fetch complete aggregated market data
 export async function fetchAggregatedMarketData(): Promise<AggregatedMarketData> {
   const [tickers, fundingRates, openInterest] = await Promise.all([
@@ -290,17 +300,35 @@ export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers:
   return result;
 }
 
-// Get OI Changes - coins with biggest OI changes (would need historical data)
-export async function fetchOIChanges(): Promise<OpenInterestData[]> {
-  const cached = getCached<OpenInterestData[]>('oiChanges');
+// Get OI Changes - top OI coins with 1h/4h/24h change % when available
+export async function fetchOIChanges(): Promise<(OpenInterestData & { pct1h?: number; pct4h?: number; pct24h?: number })[]> {
+  const cached = getCached<(OpenInterestData & { pct1h?: number; pct4h?: number; pct24h?: number })[]>('oiChanges');
   if (cached) return cached;
 
-  const oiData = await fetchAllOpenInterest();
-  // Sort by OI value (we don't have historical change data yet)
-  const sorted = [...oiData].sort((a, b) => b.openInterestValue - a.openInterestValue);
+  // Fetch OI with change data in a single call
+  try {
+    const res = await fetch('/api/openinterest?changes=1');
+    if (!res.ok) throw new Error('OI fetch failed');
+    const json = await res.json();
+    const oiData: OpenInterestData[] = json.data || [];
+    const changesMap: Record<string, { pct1h?: number; pct4h?: number; pct24h?: number }> = json.oiChanges || {};
 
-  setCache('oiChanges', sorted.slice(0, 20));
-  return sorted.slice(0, 20);
+    const sorted = [...oiData].sort((a, b) => b.openInterestValue - a.openInterestValue);
+    const result = sorted.slice(0, 20).map(d => ({
+      ...d,
+      ...changesMap[d.symbol],
+    }));
+
+    setCache('oiChanges', result);
+    return result;
+  } catch {
+    // Fallback: use basic OI data without changes
+    const oiData = await fetchAllOpenInterest();
+    const sorted = [...oiData].sort((a, b) => b.openInterestValue - a.openInterestValue);
+    const result = sorted.slice(0, 20);
+    setCache('oiChanges', result);
+    return result;
+  }
 }
 
 // Get aggregated market stats for the top stats bar
@@ -309,6 +337,7 @@ export async function fetchMarketStats(): Promise<{
   totalOpenInterest: number;
   btcLongShort: { longRatio: number; shortRatio: number };
   btcDominance: number;
+  altcoinSeasonIndex: number | null;
 }> {
   const cached = getCached<any>('marketStats');
   if (cached) return cached;
@@ -320,17 +349,30 @@ export async function fetchMarketStats(): Promise<{
     getGlobalData(),
   ]);
 
-  const totalVolume = tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
-  const totalOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
+  // Use CoinGecko/CMC global volume (spot + derivatives, whole market)
+  // Falls back to server-computed derivatives volume, then client-side dedup sum
+  const globalVolume = globalData?.total_volume?.usd;
+  const serverVol = getServerTotalVolume();
+  const totalVolume = globalVolume || serverVol || tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
+
+  // Use CoinGecko global derivatives OI (sum across all exchanges) as primary,
+  // fall back to our own per-exchange OI aggregation
+  const globalOI = globalData?.total_derivatives_oi;
+  const localOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
+  const totalOI = globalOI && globalOI > 0 ? globalOI : localOI;
 
   // Get BTC dominance from CoinGecko global data (more accurate)
   const btcDominance = globalData?.market_cap_percentage?.btc || 54.2;
+
+  // Altcoin Season Index from CoinGecko (CMC 90d methodology)
+  const altcoinSeasonIndex: number | null = globalData?.altcoin_season_index ?? null;
 
   const result = {
     totalVolume24h: totalVolume,
     totalOpenInterest: totalOI,
     btcLongShort: longShort,
     btcDominance,
+    altcoinSeasonIndex,
   };
 
   setCache('marketStats', result);

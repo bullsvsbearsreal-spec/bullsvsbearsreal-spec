@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchArbHistory, type AssetClassFilter } from '@/lib/api/aggregator';
+import { detectPriceArbitrage, type PriceArb } from '@/lib/arbitrage-detector';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -14,16 +15,18 @@ import FundingStats from './components/FundingStats';
 import dynamic from 'next/dynamic';
 const FundingHeatmapView = dynamic(() => import('./components/FundingHeatmapView'), { ssr: false });
 const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrageView'), { ssr: false });
+const PriceArbitrageView = dynamic(() => import('./components/PriceArbitrageView'), { ssr: false });
 
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { saveFundingSnapshot } from '@/lib/storage/fundingHistory';
+import { saveFundingSnapshot, getAccumulatedFundingBatch, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
 import { type FundingPeriod, periodMultiplier, PERIOD_HOURS, formatRateAdaptive } from './utils';
 
-type ViewMode = 'heatmap' | 'arbitrage';
+type ViewMode = 'heatmap' | 'arbitrage' | 'price';
 type VenueFilter = 'all' | 'cex' | 'dex';
+type MarginFilter = 'linear' | 'inverse' | 'all';
 
 const ASSET_CLASS_TABS: { key: AssetClass; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'crypto', label: 'Crypto', icon: TrendingUp },
@@ -45,6 +48,7 @@ export default function FundingPage() {
   const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(new Set(ALL_EXCHANGES));
   const [showExchangeSelector, setShowExchangeSelector] = useState(false);
   const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
+  const [marginFilter, setMarginFilter] = useState<MarginFilter>('linear');
   const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
   const [fundingPeriod, setFundingPeriod] = useState<FundingPeriod>('8h');
   const exchangeSelectorRef = useRef<HTMLDivElement>(null);
@@ -106,15 +110,17 @@ export default function FundingPage() {
   );
 
   // Per-tab data cache: instantly show previously loaded tab data while fetching fresh data
-  type FundingData = { fundingRates: any[]; arbitrageData: any[]; oiMap: Map<string, number>; arbHistory: Map<string, { avg7d: number; avg24h: number; avg6d: number }>; _assetClass: string };
+  type FundingData = { fundingRates: any[]; arbitrageData: any[]; priceArbs: PriceArb[]; oiMap: Map<string, number>; arbHistory: Map<string, { avg7d: number; avg24h: number; avg6d: number }>; _assetClass: string };
   const tabCacheRef = useRef<Map<string, FundingData>>(new Map());
 
   const fetcher = useCallback(async () => {
-    const [data, arbData, oiData] = await Promise.all([
+    const [data, arbData, oiData, tickerRes] = await Promise.all([
       fetchAllFundingRates(assetClass as AssetClassFilter),
       fetchFundingArbitrage(assetClass as AssetClassFilter),
       fetchAllOpenInterest(),
+      fetch('/api/tickers').then(r => r.ok ? r.json() : { data: [] }),
     ]);
+    const tickerData = Array.isArray(tickerRes) ? tickerRes : (tickerRes.data ?? []);
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
     // Build OI lookup: "SYMBOL|EXCHANGE" → openInterestValue (USD)
     const oiMap = new Map<string, number>();
@@ -123,10 +129,12 @@ export default function FundingPage() {
         oiMap.set(`${oi.symbol}|${oi.exchange}`, oi.openInterestValue);
       }
     });
+    // Detect cross-exchange price arbs from raw tickers
+    const priceArbs = detectPriceArbitrage(tickerData as any[]);
     // Fetch arb history for stability/trend (non-blocking — don't delay page load)
     const arbSymbols = (Array.isArray(arbData) ? arbData : []).map((a: any) => a.symbol);
     const arbHistory = await fetchArbHistory(arbSymbols).catch(() => new Map());
-    const result: FundingData = { fundingRates: validData, arbitrageData: arbData, oiMap, arbHistory, _assetClass: assetClass };
+    const result: FundingData = { fundingRates: validData, arbitrageData: arbData, priceArbs, oiMap, arbHistory, _assetClass: assetClass };
     // Cache this tab's data for instant switching
     tabCacheRef.current.set(assetClass, result);
     return result;
@@ -143,8 +151,12 @@ export default function FundingPage() {
     ? freshData
     : tabCacheRef.current.get(assetClass) ?? null;
 
-  const fundingRates = Array.isArray(data?.fundingRates) ? data.fundingRates : [];
+  const allFundingRates = Array.isArray(data?.fundingRates) ? data.fundingRates : [];
+  // Filter by margin type: undefined/missing marginType treated as 'linear'
+  const fundingRates = marginFilter === 'all' ? allFundingRates
+    : allFundingRates.filter(fr => (fr.marginType || 'linear') === marginFilter);
   const arbitrageData = Array.isArray(data?.arbitrageData) ? data.arbitrageData : [];
+  const priceArbs = Array.isArray(data?.priceArbs) ? data.priceArbs : [];
   const oiMap = data?.oiMap ?? new Map<string, number>();
   const arbHistory = data?.arbHistory ?? new Map<string, { avg7d: number; avg24h: number; avg6d: number }>();
 
@@ -270,6 +282,7 @@ export default function FundingPage() {
   const intervalMap = new Map<string, string>(); // "SYMBOL|EXCHANGE" → interval
   const longShortMap = new Map<string, { long: number; short: number }>(); // L/S rates for skew-based DEXes
   const borrowingMap = new Map<string, number>(); // Symmetric borrowing fees (gTrade)
+  const predictedMap = new Map<string, Map<string, number>>(); // predicted next funding rate
   fundingRates.forEach(fr => {
     if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
     // Always use base funding rate for display/sorting/averages — comparable across all exchanges.
@@ -284,7 +297,35 @@ export default function FundingPage() {
     if (fr.borrowingRate != null && fr.borrowingRate > 0.00001) {
       borrowingMap.set(`${fr.symbol}|${fr.exchange}`, fr.borrowingRate);
     }
+    if (fr.predictedRate !== undefined) {
+      if (!predictedMap.has(fr.symbol)) predictedMap.set(fr.symbol, new Map());
+      predictedMap.get(fr.symbol)!.set(fr.exchange, fr.predictedRate);
+    }
   });
+
+  // Compute per-symbol accumulated funding (7d) from localStorage history
+  const accumulatedMap = useMemo<Map<string, AccumulatedFunding>>(() => {
+    if (fundingRates.length === 0) return new Map();
+    // Build unique symbol-exchange pairs for batch lookup
+    const pairs = fundingRates.map(fr => ({ symbol: fr.symbol, exchange: fr.exchange }));
+    const pairResult = getAccumulatedFundingBatch(pairs);
+    // Aggregate per-symbol: average across exchanges
+    const symbolAccMap = new Map<string, { d1: number[]; d7: number[]; d30: number[] }>();
+    pairResult.forEach((acc, key) => {
+      const symbol = key.split('|')[0];
+      if (!symbolAccMap.has(symbol)) symbolAccMap.set(symbol, { d1: [], d7: [], d30: [] });
+      const s = symbolAccMap.get(symbol)!;
+      if (acc.d1 !== 0) s.d1.push(acc.d1);
+      if (acc.d7 !== 0) s.d7.push(acc.d7);
+      if (acc.d30 !== 0) s.d30.push(acc.d30);
+    });
+    const result = new Map<string, AccumulatedFunding>();
+    symbolAccMap.forEach((vals, sym) => {
+      const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      result.set(sym, { d1: avg(vals.d1), d7: avg(vals.d7), d30: avg(vals.d30) });
+    });
+    return result;
+  }, [fundingRates]);
 
   const visibleExchanges = ALL_EXCHANGES.filter(ex => {
     if (!selectedExchanges.has(ex)) return false;
@@ -318,7 +359,8 @@ export default function FundingPage() {
 
   const viewTabs: { key: ViewMode; label: string }[] = [
     { key: 'heatmap', label: 'Heatmap' },
-    { key: 'arbitrage' as ViewMode, label: 'Arbitrage' },
+    { key: 'arbitrage', label: 'Funding Arbs' },
+    { key: 'price', label: 'Price Arbs' },
   ];
 
   const categoryKeys = Object.keys(activeCategories);
@@ -453,6 +495,23 @@ export default function FundingPage() {
                   }`}
                 >
                   {v === 'all' ? 'All' : v.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* Margin type filter */}
+            <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+              {([['linear', 'USDT'], ['inverse', 'COIN'], ['all', 'All']] as [MarginFilter, string][]).map(([m, label]) => (
+                <button
+                  key={m}
+                  onClick={() => setMarginFilter(m)}
+                  className={`px-2.5 py-[7px] text-[11px] font-semibold tracking-wide transition-all duration-200 ${
+                    marginFilter === m
+                      ? 'bg-hub-yellow text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {label}
                 </button>
               ))}
             </div>
@@ -633,10 +692,13 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} fundingPeriod={fundingPeriod} />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} predictedMap={predictedMap} accumulatedMap={accumulatedMap} fundingPeriod={fundingPeriod} />
             )}
             {viewMode === 'arbitrage' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} indexPrices={indexPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} historicalSpreads={arbHistory} />
+            )}
+            {viewMode === 'price' && (
+              <PriceArbitrageView priceArbs={priceArbs} />
             )}
           </>
         )}

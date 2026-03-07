@@ -38,6 +38,7 @@ export interface FundingRateData {
   indexPrice?: number;
   type?: 'cex' | 'dex';
   assetClass?: 'crypto' | 'stocks' | 'forex' | 'commodities';
+  marginType?: 'linear' | 'inverse'; // USDT-margined vs coin-margined
 }
 
 export interface OpenInterestData {
@@ -46,6 +47,7 @@ export interface OpenInterestData {
   openInterest: number;
   openInterestValue: number;
   timestamp: number;
+  marginType?: 'linear' | 'inverse'; // USDT-margined vs coin-margined
 }
 
 export interface LiquidationData {

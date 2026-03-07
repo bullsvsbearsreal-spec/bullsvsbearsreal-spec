@@ -142,7 +142,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
     { key: 'cache', icon: ICONS.cache, label: 'Flush Cache', desc: 'Clear all cached API responses', handler: handleFlushCache, color: 'text-red-400', adminOnly: true },
     { key: 'health', icon: ICONS.health, label: 'Health Check', desc: 'Run full system health check', handler: handleHealthCheck, color: 'text-emerald-400', adminOnly: false },
     { key: 'broadcast', icon: ICONS.broadcast, label: 'Broadcast', desc: 'Send notification to all users', handler: handleBroadcast, color: 'text-blue-400', adminOnly: true },
-    { key: 'snapshot', icon: ICONS.snapshot, label: 'Trigger Snapshot', desc: 'Trigger a data collection cycle', handler: handleTriggerSnapshot, color: 'text-amber-400', adminOnly: false },
+    { key: 'snapshot', icon: ICONS.snapshot, label: 'Trigger Snapshot', desc: 'Trigger a data collection cycle', handler: handleTriggerSnapshot, color: 'text-hub-yellow', adminOnly: false },
   ];
 
   return (
@@ -213,7 +213,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
               maxLength={500}
               rows={3}
               placeholder="Message to send..."
-              className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/50 resize-none"
             />
             <div className="mt-2 flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer">
@@ -225,7 +225,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
                       e.target.checked ? [...ch, 'push'] : ch.filter((c) => c !== 'push'),
                     )
                   }
-                  className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30"
+                  className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30"
                 />
                 Push
               </label>
@@ -238,7 +238,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
                       e.target.checked ? [...ch, 'telegram'] : ch.filter((c) => c !== 'telegram'),
                     )
                   }
-                  className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30"
+                  className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30"
                 />
                 Telegram
               </label>

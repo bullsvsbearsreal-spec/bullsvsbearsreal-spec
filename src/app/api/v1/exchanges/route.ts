@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     'MEXC': '8h', 'BingX': '8h', 'Phemex': '8h', 'KuCoin': '8h',
     'Deribit': '8h', 'HTX': '8h', 'Bitfinex': '8h', 'WhiteBIT': '8h',
     'CoinEx': '8h', 'Aster': '8h', 'gTrade': '8h', 'Bitunix': '8h',
-    'Kraken': '4h', 'edgeX': '4h',
+    'Kraken': '4h',
     'Hyperliquid': '1h', 'dYdX': '1h', 'Aevo': '1h', 'Coinbase': '1h',
     'Drift': '1h', 'GMX': '1h', 'Extended': '1h', 'Lighter': '1h',
     'Variational': '1h',

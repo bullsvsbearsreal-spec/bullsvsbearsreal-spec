@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useTickers } from '@/hooks/useSWRApi';
+import { useTickers, useMarketStats } from '@/hooks/useSWRApi';
 import { LineChart, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface IndexData {
@@ -12,6 +12,7 @@ interface IndexData {
 
 export default function MarketIndices() {
   const { data: tickers, isLoading: loading } = useTickers();
+  const { data: marketStats } = useMarketStats();
 
   const indices = useMemo<IndexData[]>(() => {
     if (!tickers) return [];
@@ -20,17 +21,28 @@ export default function MarketIndices() {
     const btcVolume = btcTicker?.quoteVolume24h || 0;
     const btcDominance = totalVolume > 0 ? (btcVolume / totalVolume) * 100 : 0;
 
-    const altcoins = tickers.filter(t => t.symbol !== 'BTC' && t.priceChangePercent24h !== undefined);
-    const avgAltcoinChange = altcoins.length > 0
-      ? altcoins.reduce((sum, t) => sum + (t.priceChangePercent24h || 0), 0) / altcoins.length
-      : 0;
     const btcChange = btcTicker?.priceChangePercent24h || 0;
-    const altcoinOutperformance = avgAltcoinChange - btcChange;
-    const altSeasonIndex = Math.min(100, Math.max(0, 50 + (altcoinOutperformance * 5)));
+
+    // Altcoin Season: prefer server-side 30d index, fallback to 24h calc
+    let altSeasonIndex = marketStats?.altcoinSeasonIndex ?? null;
+    if (altSeasonIndex === null) {
+      const altcoins = tickers
+        .filter(t => t.symbol !== 'BTC' && t.priceChangePercent24h !== undefined)
+        .sort((a, b) => (b.quoteVolume24h || 0) - (a.quoteVolume24h || 0))
+        .slice(0, 50);
+      const outperformCount = altcoins.filter(t => (t.priceChangePercent24h || 0) > btcChange).length;
+      altSeasonIndex = altcoins.length > 0 ? Math.round((outperformCount / altcoins.length) * 100) : 50;
+    }
+
+    // Long/Short ratio from marketStats (Binance BTC perps)
+    const ls = marketStats?.btcLongShort as { longRatio: number; shortRatio: number } | undefined;
+    const lsValue = ls && ls.longRatio !== 50 ? `${ls.longRatio.toFixed(1)}% / ${ls.shortRatio.toFixed(1)}%` : '-';
+    const lsChange = ls ? ls.longRatio - ls.shortRatio : 0; // positive = more longs
 
     return [
-      { name: 'BTC Dominance', value: `${btcDominance.toFixed(2)}%`, change: btcChange },
-      { name: 'Altcoin Season', value: altSeasonIndex.toFixed(0), change: altcoinOutperformance },
+      { name: 'BTC Vol Share', value: `${btcDominance.toFixed(2)}%`, change: btcChange },
+      { name: 'Altcoin Season', value: altSeasonIndex.toString(), change: altSeasonIndex - 50 },
+      { name: 'Long/Short', value: lsValue, change: lsChange },
       { name: 'BTC Price', value: btcTicker ? `$${btcTicker.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-', change: btcChange },
       {
         name: 'ETH Price',
@@ -40,7 +52,7 @@ export default function MarketIndices() {
         change: tickers.find(t => t.symbol === 'ETH')?.priceChangePercent24h || 0,
       },
     ];
-  }, [tickers]);
+  }, [tickers, marketStats]);
 
   return (
     <div className="card-premium p-4">
@@ -56,7 +68,7 @@ export default function MarketIndices() {
 
       {loading ? (
         <div className="space-y-1.5">
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="animate-pulse h-10 bg-white/[0.03] rounded-lg" />
           ))}
         </div>

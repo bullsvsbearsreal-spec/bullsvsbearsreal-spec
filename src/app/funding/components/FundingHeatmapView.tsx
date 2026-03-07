@@ -19,6 +19,8 @@ interface ExchangeSort {
 
 type HeatmapMode = 'grid' | 'treemap';
 
+interface AccumulatedFunding { d1: number; d7: number; d30: number }
+
 interface FundingHeatmapViewProps {
   symbols: string[];
   visibleExchanges: string[];
@@ -27,6 +29,8 @@ interface FundingHeatmapViewProps {
   oiMap?: Map<string, number>;
   longShortMap?: Map<string, { long: number; short: number }>;
   borrowingMap?: Map<string, number>;
+  predictedMap?: Map<string, Map<string, number>>;
+  accumulatedMap?: Map<string, AccumulatedFunding>;
   fundingPeriod: FundingPeriod;
 }
 
@@ -142,7 +146,7 @@ function squarify(
    ═══════════════════════════════════════ */
 
 export default function FundingHeatmapView({
-  symbols, visibleExchanges, heatmapData, intervalMap, oiMap, longShortMap, fundingPeriod,
+  symbols, visibleExchanges, heatmapData, intervalMap, oiMap, longShortMap, predictedMap, accumulatedMap, fundingPeriod,
 }: FundingHeatmapViewProps) {
   // Period-scaled color clamps
   const periodScale = PERIOD_HOURS[fundingPeriod] / 8;
@@ -572,6 +576,16 @@ export default function FundingHeatmapView({
                                 {avg !== undefined ? formatRateAdaptive(avg) : '—'}
                               </span>
                               <span className="text-[9px] text-neutral-700 tabular-nums">{listings}/{visibleExchanges.length}</span>
+                              {(() => {
+                                const acc = accumulatedMap?.get(symbol);
+                                if (!acc || acc.d7 === 0) return null;
+                                const color7d = acc.d7 > 0 ? 'text-green-400/60' : 'text-red-400/60';
+                                return (
+                                  <span className={`text-[9px] font-mono tabular-nums ${color7d}`} title={`7D accumulated: ${acc.d7.toFixed(4)}%\n30D accumulated: ${acc.d30.toFixed(4)}%`}>
+                                    7D {acc.d7 > 0 ? '+' : ''}{acc.d7.toFixed(3)}%
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                         </Link>
@@ -582,6 +596,8 @@ export default function FundingHeatmapView({
                         const interval = intervalMap?.get(`${symbol}|${ex}`);
                         const pMult = periodMultiplier(interval, fundingPeriod);
                         const rate = rawRate !== undefined ? rawRate * pMult : undefined;
+                        const rawPredicted = predictedMap?.get(symbol)?.get(ex);
+                        const predicted = rawPredicted !== undefined ? rawPredicted * pMult : undefined;
                         const tradeUrl = rawRate !== undefined ? getExchangeTradeUrl(ex, symbol) : null;
                         const isCross = isRowHovered && hoveredCol === ex;
                         const rawLs = longShortMap?.get(`${symbol}|${ex}`);
@@ -608,8 +624,9 @@ export default function FundingHeatmapView({
                         ) : null;
 
                         const lsLine = ls ? `\nL: ${formatRateAdaptive(ls.long)} / S: ${formatRateAdaptive(ls.short)}` : '';
+                        const predLine = predicted !== undefined ? `\nPredicted: ${formatRateAdaptive(predicted)}` : '';
                         const title = rate !== undefined
-                          ? `${symbol} · ${ex} · ${formatRateAdaptive(rate)} (${interval || '8h'})${lsLine}\nClick to trade`
+                          ? `${symbol} · ${ex} · ${formatRateAdaptive(rate)} (${interval || '8h'})${lsLine}${predLine}\nClick to trade`
                           : `Not on ${ex}`;
                         const inner = hasLS ? (
                           <>
@@ -628,8 +645,15 @@ export default function FundingHeatmapView({
                           </>
                         ) : (
                           <>
-                            <span className="text-[13px] font-mono tabular-nums leading-none font-semibold" style={{ color: colors.text }}>
-                              {rate !== undefined ? formatRateAdaptive(rate) : '—'}
+                            <span className="flex flex-col items-center gap-[1px] leading-none">
+                              <span className="text-[13px] font-mono tabular-nums font-semibold" style={{ color: colors.text }}>
+                                {rate !== undefined ? formatRateAdaptive(rate) : '—'}
+                              </span>
+                              {predicted !== undefined && rate !== undefined && isCross && (
+                                <span className="text-[8px] font-mono tabular-nums" style={{ color: rateToColors(predicted, gridClamp).text, opacity: 0.7 }}>
+                                  P {formatRateAdaptive(predicted)}
+                                </span>
+                              )}
                             </span>
                             {intervalDot}
                             {isCross && rate !== undefined && tradeUrl && (

@@ -525,53 +525,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // CME Group (via CoinGecko derivatives API — institutional BTC/ETH futures)
-  {
-    name: 'CME',
-    fetcher: async (fetchFn) => {
-      try {
-        const res = await fetchFn(
-          'https://api.coingecko.com/api/v3/derivatives/exchanges/cme_group?include_tickers=unexpired',
-          {},
-          10000,
-        );
-        if (!res.ok) return [];
-        const json = await res.json();
-        const tickers = json.tickers || [];
-        if (!Array.isArray(tickers) || tickers.length === 0) return [];
-
-        // Aggregate OI by base currency (BTC, ETH)
-        const oiMap = new Map<string, { oi: number; price: number }>();
-        tickers.forEach((t: any) => {
-          const base = (t.base || '').toUpperCase();
-          if (!['BTC', 'ETH'].includes(base)) return;
-          const oiUsd = parseFloat(t.open_interest_usd) || 0;
-          const price = parseFloat(t.last) || parseFloat(t.converted_last?.usd) || 0;
-          if (oiUsd <= 0) return;
-          const existing = oiMap.get(base);
-          if (existing) {
-            existing.oi += oiUsd;
-            if (price > 0) existing.price = price; // Use latest price
-          } else {
-            oiMap.set(base, { oi: oiUsd, price });
-          }
-        });
-
-        const results: OIData[] = [];
-        oiMap.forEach(({ oi, price }, symbol) => {
-          results.push({
-            symbol,
-            exchange: 'CME',
-            openInterest: price > 0 ? oi / price : 0,
-            openInterestValue: oi,
-          });
-        });
-        return results;
-      } catch {
-        return [];
-      }
-    },
-  },
+  // CME Group — DISABLED: CoinGecko removed cme_group from derivatives API (404 since ~Mar 2026)
+  // No free alternative found. CME DataMine API requires paid subscription.
 
   // Bitunix — no public OI endpoint available (tickers don't include open interest)
 
@@ -689,70 +644,13 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // edgeX (StarkEx DEX) — per-contract ticker calls, OI in base asset units
-  {
-    name: 'edgeX',
-    fetcher: async (fetchFn) => {
-      // Step 1: Get metadata for active contract list
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000);
-      if (!metaRes.ok) return [];
-      const meta = await metaRes.json();
-      if (meta.code !== 'SUCCESS') return [];
-      const contracts = (meta.data?.contractList || []).filter(
-        (c: any) => c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP') && !c.isStock
-      );
-      if (contracts.length === 0) return [];
-
-      // Step 2: Fetch tickers in parallel batches of 20
-      const BATCH_SIZE = 20;
-      const results: OIData[] = [];
-      for (let i = 0; i < contracts.length; i += BATCH_SIZE) {
-        const batch = contracts.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (c: any) => {
-            try {
-              const tickerRes = await fetchFn(
-                `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`,
-                {},
-                8000
-              );
-              if (!tickerRes.ok) return null;
-              const tickerJson = await tickerRes.json();
-              if (tickerJson.code !== 'SUCCESS' || !tickerJson.data?.[0]) return null;
-              const t = tickerJson.data[0];
-
-              let symbol = c.contractName.replace(/USD$/, '');
-              // Skip duplicate "2" suffix contracts
-              if (symbol.endsWith('2') && symbol.length > 2) {
-                const base = symbol.slice(0, -1);
-                if (contracts.some((other: any) => other.contractName === base + 'USD' && other.contractId !== c.contractId)) {
-                  return null;
-                }
-                symbol = base;
-              }
-              if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
-              else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
-
-              if (!isCryptoSymbol(symbol)) return null;
-
-              const oiBase = parseFloat(t.openInterest) || 0;
-              const price = parseFloat(t.lastPrice) || 0;
-              return {
-                symbol,
-                exchange: 'edgeX',
-                openInterest: oiBase,
-                openInterestValue: oiBase * price,
-              };
-            } catch {
-              return null;
-            }
-          })
-        );
-        results.push(...batchResults.filter(Boolean) as OIData[]);
-      }
-      return results.filter(item => item.openInterestValue > 0);
-    },
-  },
+  // edgeX — DISABLED: CloudFlare blocks per-contract ticker calls from server IPs (403 since ~Mar 2026)
+  // Metadata endpoint works but individual getTicker calls return CF challenge page.
+  // Re-enable if edgeX whitelists server IPs or provides a bulk API.
+  // {
+  //   name: 'edgeX',
+  //   fetcher: async (fetchFn) => { ... },
+  // },
 
   // Variational (Arbitrum DEX) — /metadata/stats has long+short OI in USD
   {

@@ -69,7 +69,7 @@ export default function ConfirmModal({
             className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50 ${
               danger
                 ? 'bg-red-600 hover:bg-red-500 text-white'
-                : 'bg-amber-500 hover:bg-amber-400 text-black'
+                : 'bg-hub-yellow hover:bg-hub-yellow-light text-black'
             }`}
           >
             {loading ? 'Working...' : confirmLabel}

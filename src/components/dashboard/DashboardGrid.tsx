@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { Plus, RotateCcw } from 'lucide-react';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import { Plus, RotateCcw, Loader2 } from 'lucide-react';
 import { type WidgetLayout, type WidgetType, WIDGET_CATALOG, WIDGET_CATEGORIES, DEFAULT_LAYOUT } from './types';
 import { useGridDrag } from './useGridDrag';
 import WidgetWrapper from './WidgetWrapper';
@@ -11,44 +11,34 @@ import WidgetErrorBoundary from './WidgetErrorBoundary';
 
 const QUICK_ADD_TYPES: WidgetType[] = ['market-overview', 'news', 'long-short', 'trending', 'token-unlocks'];
 
-// Widget components (lazy-ish — just direct imports for now)
-import WatchlistWidget from './widgets/WatchlistWidget';
-import PortfolioWidget from './widgets/PortfolioWidget';
-import AlertsWidget from './widgets/AlertsWidget';
-import WalletsWidget from './widgets/WalletsWidget';
-import BtcPriceWidget from './widgets/BtcPriceWidget';
-import FearGreedWidget from './widgets/FearGreedWidget';
-import TopMoversWidget from './widgets/TopMoversWidget';
-import LiquidationsWidget from './widgets/LiquidationsWidget';
-import BtcChartWidget from './widgets/BtcChartWidget';
-import FundingHeatmapWidget from './widgets/FundingHeatmapWidget';
-import OiChartWidget from './widgets/OiChartWidget';
-import DominanceWidget from './widgets/DominanceWidget';
-import MarketOverviewWidget from './widgets/MarketOverviewWidget';
-import NewsWidget from './widgets/NewsWidget';
-import LongShortWidget from './widgets/LongShortWidget';
-import TrendingWidget from './widgets/TrendingWidget';
-import TokenUnlocksWidget from './widgets/TokenUnlocksWidget';
-
-const WIDGET_COMPONENTS: Record<WidgetType, React.ComponentType<{ wide?: boolean }>> = {
-  watchlist: WatchlistWidget,
-  portfolio: PortfolioWidget,
-  alerts: AlertsWidget,
-  wallets: WalletsWidget,
-  'btc-price': BtcPriceWidget,
-  'fear-greed': FearGreedWidget,
-  'top-movers': TopMoversWidget,
-  liquidations: LiquidationsWidget,
-  'btc-chart': BtcChartWidget,
-  'funding-heatmap': FundingHeatmapWidget,
-  'oi-chart': OiChartWidget,
-  dominance: DominanceWidget,
-  'market-overview': MarketOverviewWidget,
-  news: NewsWidget,
-  'long-short': LongShortWidget,
-  trending: TrendingWidget,
-  'token-unlocks': TokenUnlocksWidget,
+// Lazy-loaded widget components
+const WIDGET_COMPONENTS: Record<WidgetType, React.LazyExoticComponent<React.ComponentType<{ wide?: boolean }>>> = {
+  watchlist: lazy(() => import('./widgets/WatchlistWidget')),
+  portfolio: lazy(() => import('./widgets/PortfolioWidget')),
+  alerts: lazy(() => import('./widgets/AlertsWidget')),
+  wallets: lazy(() => import('./widgets/WalletsWidget')),
+  'btc-price': lazy(() => import('./widgets/BtcPriceWidget')),
+  'fear-greed': lazy(() => import('./widgets/FearGreedWidget')),
+  'top-movers': lazy(() => import('./widgets/TopMoversWidget')),
+  liquidations: lazy(() => import('./widgets/LiquidationsWidget')),
+  'btc-chart': lazy(() => import('./widgets/BtcChartWidget')),
+  'funding-heatmap': lazy(() => import('./widgets/FundingHeatmapWidget')),
+  'oi-chart': lazy(() => import('./widgets/OiChartWidget')),
+  dominance: lazy(() => import('./widgets/DominanceWidget')),
+  'market-overview': lazy(() => import('./widgets/MarketOverviewWidget')),
+  news: lazy(() => import('./widgets/NewsWidget')),
+  'long-short': lazy(() => import('./widgets/LongShortWidget')),
+  trending: lazy(() => import('./widgets/TrendingWidget')),
+  'token-unlocks': lazy(() => import('./widgets/TokenUnlocksWidget')),
 };
+
+function WidgetSkeleton() {
+  return (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="w-5 h-5 text-neutral-600 animate-spin" />
+    </div>
+  );
+}
 
 interface DashboardGridProps {
   layout: WidgetLayout[];
@@ -170,7 +160,9 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
               canExpand={widget.w < 2}
             >
               <WidgetErrorBoundary widgetName={meta.name}>
-                <Component wide={widget.w === 2} />
+                <Suspense fallback={<WidgetSkeleton />}>
+                  <Component wide={widget.w === 2} />
+                </Suspense>
               </WidgetErrorBoundary>
             </WidgetWrapper>
           );

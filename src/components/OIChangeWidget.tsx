@@ -56,8 +56,22 @@ export default function OIChangeWidget() {
                 <div className="text-white font-mono font-bold text-xs tabular-nums">
                   {formatUSD(item.openInterestValue)}
                 </div>
-                <div className="text-neutral-600 text-[9px] font-mono tabular-nums">
-                  {item.openInterest.toLocaleString(undefined, { maximumFractionDigits: 0 })} contracts
+                <div className="flex items-center gap-1.5 justify-end">
+                  {item.pct1h != null && (
+                    <span className={`text-[9px] font-mono tabular-nums ${item.pct1h > 0 ? 'text-green-400' : item.pct1h < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
+                      {item.pct1h > 0 ? '+' : ''}{item.pct1h.toFixed(1)}%
+                    </span>
+                  )}
+                  {item.pct24h != null && (
+                    <span className={`text-[9px] font-mono tabular-nums ${item.pct24h > 0 ? 'text-green-400' : item.pct24h < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
+                      24h {item.pct24h > 0 ? '+' : ''}{item.pct24h.toFixed(1)}%
+                    </span>
+                  )}
+                  {item.pct1h == null && item.pct24h == null && (
+                    <span className="text-neutral-600 text-[9px] font-mono tabular-nums">
+                      {item.openInterest.toLocaleString(undefined, { maximumFractionDigits: 0 })} contracts
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

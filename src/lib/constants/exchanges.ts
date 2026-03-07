@@ -3,7 +3,7 @@ export const ALL_EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC',
   'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
   'Aevo', 'Drift', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
-  'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'edgeX', 'Variational',
+  'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'Variational',
   'BitMEX', 'Gate.io',
 ] as const;
 
@@ -36,7 +36,6 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'CoinEx': 'bg-teal-400',
   'gTrade': 'bg-teal-500',
   'Extended': 'bg-amber-400',
-  'edgeX': 'bg-sky-400',
   'Variational': 'bg-fuchsia-400',
   'BitMEX': 'bg-red-500',
   'Gate.io': 'bg-blue-400',
@@ -69,7 +68,6 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'CoinEx': 'bg-teal-400/20 text-teal-300',
   'gTrade': 'bg-teal-500/20 text-teal-400',
   'Extended': 'bg-amber-400/20 text-amber-300',
-  'edgeX': 'bg-sky-400/20 text-sky-300',
   'Variational': 'bg-fuchsia-400/20 text-fuchsia-300',
   'BitMEX': 'bg-red-500/20 text-red-400',
   'Gate.io': 'bg-blue-400/20 text-blue-300',
@@ -78,7 +76,7 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
 // DEX exchanges (on-chain / decentralized perpetual protocols)
 export const DEX_EXCHANGES: ReadonlySet<string> = new Set([
   'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'Drift', 'GMX', 'gTrade',
-  'Extended', 'edgeX', 'Variational',
+  'Extended', 'Variational',
 ]);
 
 // CEX exchanges (centralized)
@@ -128,7 +126,6 @@ export const EXCHANGE_FEES: Record<string, ExchangeFees> = {
   'Drift':        { taker: 0.0350, maker: 0.0000 }, // maker rebate ignored
   'GMX':          { taker: 0.0700, maker: 0.0500 }, // position open+close fee
   'Extended':     { taker: 0.0250, maker: 0.0000 },
-  'edgeX':        { taker: 0.0380, maker: 0.0120 },
   'Variational':  { taker: 0.0000, maker: 0.0000 }, // zero explicit fees
   'BitMEX':       { taker: 0.0500, maker: 0.0000 }, // maker rebate ignored
   'Gate.io':      { taker: 0.0500, maker: 0.0150 },
@@ -173,7 +170,6 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'CoinEx':     return `https://www.coinex.com/en/futures/${s}USDT`;
     case 'gTrade':     return `https://gains.trade/trading#${s}/USD`;
     case 'Extended':   return `https://app.extended.exchange/trade/${s}-USD`;
-    case 'edgeX':      return `https://pro.edgex.exchange/trade/${s}USD`;
     case 'Variational': return `https://app.variational.io/trade/${s}`;
     case 'BitMEX':     return `https://www.bitmex.com/app/trade/${s}USD`;
     case 'Gate.io':    return `https://www.gate.io/futures_trade/USDT/${s}_USDT`;

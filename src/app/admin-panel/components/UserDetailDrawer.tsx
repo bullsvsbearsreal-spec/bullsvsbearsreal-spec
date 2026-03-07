@@ -94,7 +94,7 @@ export default function UserDetailDrawer({ userId, onClose, canManageRoles, curr
                 </div>
                 <span className="ml-auto">
                   {data.role === 'admin' && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">ADMIN</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-hub-yellow/20 text-hub-yellow font-medium">ADMIN</span>
                   )}
                   {data.role === 'advisor' && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">ADVISOR</span>
@@ -154,7 +154,7 @@ export default function UserDetailDrawer({ userId, onClose, canManageRoles, curr
                         className={`px-3 py-1.5 text-[11px] rounded-lg border font-medium transition-colors disabled:opacity-50 ${
                           data.role === role
                             ? role === 'admin'
-                              ? 'border-amber-500/40 bg-amber-500/15 text-amber-400'
+                              ? 'border-hub-yellow/40 bg-hub-yellow/15 text-hub-yellow'
                               : role === 'advisor'
                                 ? 'border-blue-500/40 bg-blue-500/15 text-blue-400'
                                 : 'border-white/20 bg-white/[0.08] text-white'
@@ -196,7 +196,7 @@ export default function UserDetailDrawer({ userId, onClose, canManageRoles, curr
                     {data.recentNotifications.map((n) => (
                       <div key={n.id} className="rounded border border-white/[0.04] bg-white/[0.02] p-2 text-xs">
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-amber-400 font-medium">{n.symbol}</span>
+                          <span className="text-hub-yellow font-medium">{n.symbol}</span>
                           <span className="text-[10px] text-neutral-600">{new Date(n.sent_at).toLocaleString()}</span>
                         </div>
                         <p className="text-neutral-400 leading-relaxed">{n.metric}: {n.actual_value}</p>

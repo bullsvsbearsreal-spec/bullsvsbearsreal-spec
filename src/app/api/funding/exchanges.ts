@@ -18,6 +18,7 @@ type FundingData = {
   fundingInterval?: '1h' | '4h' | '8h'; // Settlement interval (default: 8h)
   type?: 'cex' | 'dex'; // CEX vs DEX classification
   assetClass?: 'crypto' | 'stocks' | 'forex' | 'commodities';
+  marginType?: 'linear' | 'inverse'; // USDT-margined vs coin-margined
 };
 
 export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
@@ -47,6 +48,40 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           type: 'cex' as const,
         }))
         .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Binance COIN-M (inverse/token-margined perps) — separate from USDT-M
+  {
+    name: 'Binance',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      const targetUrl = 'https://dapi.binance.com/dapi/v1/premiumIndex';
+      const url = proxyUrl
+        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
+        : targetUrl;
+      try {
+        const res = await fetchFn(url, {}, 12000);
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (!Array.isArray(data)) return [];
+        return data
+          .filter((item: any) => item.symbol?.endsWith('USD_PERP') && item.lastFundingRate != null)
+          .map((item: any) => ({
+            symbol: item.symbol.replace('USD_PERP', ''),
+            exchange: 'Binance',
+            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            fundingInterval: '8h' as const,
+            markPrice: parseFloat(item.markPrice),
+            indexPrice: parseFloat(item.indexPrice),
+            nextFundingTime: item.nextFundingTime,
+            type: 'cex' as const,
+            marginType: 'inverse' as const,
+          }))
+          .filter((item: any) => !isNaN(item.fundingRate));
+      } catch {
+        return [];
+      }
     },
   },
 
@@ -1390,87 +1425,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // edgeX (StarkEx DEX) — funding settles every 4 hours
-  // Direct API is CloudFlare-challenged; use CoinGecko derivatives as data source
-  // Fetch metadata in parallel to filter out ghost pairs (enableDisplay=false)
-  {
-    name: 'edgeX',
-    fetcher: async (fetchFn) => {
-      // Fetch CoinGecko data + EdgeX metadata in parallel
-      const [res, metaRes] = await Promise.all([
-        fetchFn(
-          'https://api.coingecko.com/api/v3/derivatives/exchanges/edgex?include_tickers=unexpired',
-          {}, 15000
-        ),
-        fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000),
-      ]);
-      if (!res.ok) return [];
-      const data = await res.json();
-      const tickers: any[] = (data.tickers || []).filter(
-        (t: any) => t.contract_type === 'perpetual' && t.base && t.funding_rate != null
-      );
-      if (tickers.length === 0) return [];
-
-      // Build whitelist of visible symbols from EdgeX metadata
-      // Filters out ghost pairs where enableDisplay=false (e.g. KITE)
-      let visibleSymbols: Set<string> | null = null;
-      if (metaRes.ok) {
-        try {
-          const meta = await metaRes.json();
-          if (meta.code === 'SUCCESS' && meta.data?.contractList) {
-            visibleSymbols = new Set<string>();
-            for (const c of meta.data.contractList) {
-              if (c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP') && !c.isStock) {
-                let sym = c.contractName.replace(/USD$/, '');
-                // Normalize "2" suffix duplicates
-                if (sym.endsWith('2') && sym.length > 2) sym = sym.slice(0, -1);
-                if (sym.startsWith('1000000')) sym = sym.slice(7);
-                else if (sym.startsWith('1000')) sym = sym.slice(4);
-                visibleSymbols.add(sym.toUpperCase());
-              }
-            }
-          }
-        } catch { /* metadata fetch failed — skip filtering, use CoinGecko as-is */ }
-      }
-
-      // Deduplicate by base symbol — keep highest OI entry
-      const bestByBase = new Map<string, any>();
-      for (const t of tickers) {
-        const existing = bestByBase.get(t.base);
-        if (!existing || (t.open_interest_usd || 0) > (existing.open_interest_usd || 0)) {
-          bestByBase.set(t.base, t);
-        }
-      }
-
-      const results: FundingData[] = [];
-      for (const t of Array.from(bestByBase.values())) {
-        let symbol = t.base;
-        // Handle 1000/1000000 prefixes
-        if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
-        else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
-
-        // Skip ghost pairs not visible on EdgeX
-        if (visibleSymbols && !visibleSymbols.has(symbol.toUpperCase())) continue;
-
-        const norm = normalizeSymbol(symbol, 'edgeX');
-        const rate = parseFloat(t.funding_rate);
-        if (isNaN(rate)) continue;
-
-        results.push({
-          symbol: norm.symbol,
-          exchange: 'edgeX',
-          fundingRate: rate, // CoinGecko returns % directly
-          fundingInterval: '4h' as const,
-          markPrice: parseFloat(t.last) || 0,
-          indexPrice: t.index || 0,
-          nextFundingTime: Date.now() + 14400000,
-          type: 'dex' as const,
-          assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
-        });
-      }
-      return results;
-    },
-  },
+  // edgeX — DISABLED: CloudFlare blocks server-side API calls (403 since ~Mar 2026)
+  // CoinGecko derivatives endpoint may still work but direct ticker/OI calls fail,
+  // so data is incomplete. Re-enable if CloudFlare situation resolves.
+  // {
+  //   name: 'edgeX',
+  //   fetcher: async (fetchFn) => {
+  //     // Fetch CoinGecko data + EdgeX metadata in parallel
+  //     const [res, metaRes] = await Promise.all([...]);
+  //     ... (full fetcher body omitted for brevity)
+  //     return results;
+  //   },
+  // },
 
   // Variational (Arbitrum DEX) — single /metadata/stats endpoint has everything
   // Funding intervals vary per market (1h, 2h, 4h, 8h)

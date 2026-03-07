@@ -104,7 +104,7 @@ export default function DashboardPage() {
               </div>
             </div>
             {/* Widget grid skeleton — mimics 2-col layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <div key={n} className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                   <div className="px-3 py-2 border-b border-white/[0.04] flex items-center gap-2">

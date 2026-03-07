@@ -2,13 +2,14 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { useApi, useTickers, useOpenInterest } from '@/hooks/useSWRApi';
+import { useApi, useTickers, useOpenInterest, useMarketStats } from '@/hooks/useSWRApi';
 import { formatNumber } from '@/lib/utils/format';
 import { DollarSign, BarChart3, TrendingUp, TrendingDown, Layers } from 'lucide-react';
 
 export default function StatsOverview() {
   const { data: tickers } = useTickers();
   const { data: oiData } = useOpenInterest();
+  const { data: marketStats } = useMarketStats();
   const { data: moversRes } = useApi({
     key: 'topMovers',
     fetcher: () => fetch('/api/top-movers').then(r => r.json()).catch(() => ({ gainers: [], losers: [] })),
@@ -16,9 +17,9 @@ export default function StatsOverview() {
   });
 
   const stats = useMemo(() => {
-    const MAX_TICKER_VOL = 50_000_000_000;
-    const totalVolume = tickers?.reduce((sum, t) => sum + Math.min(t.quoteVolume24h || 0, MAX_TICKER_VOL), 0) ?? 0;
-    const totalOI = oiData?.reduce((sum, o) => sum + (o.openInterestValue || 0), 0) ?? 0;
+    // Use marketStats for volume + OI (single source of truth, consistent with TopStatsBar)
+    const totalVolume = marketStats?.totalVolume24h ?? 0;
+    const totalOI = marketStats?.totalOpenInterest ?? oiData?.reduce((sum, o) => sum + (o.openInterestValue || 0), 0) ?? 0;
     const topGainerCoin = moversRes?.gainers?.[0];
     const topLoserCoin = moversRes?.losers?.[0];
     return {
@@ -28,7 +29,7 @@ export default function StatsOverview() {
       topLoser: { symbol: topLoserCoin?.symbol || '-', change: topLoserCoin?.change24h || 0 },
       activeMarkets: tickers?.length ?? 0,
     };
-  }, [tickers, oiData, moversRes]);
+  }, [tickers, oiData, moversRes, marketStats]);
 
   const isLoading = !tickers;
 
