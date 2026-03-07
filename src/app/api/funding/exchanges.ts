@@ -1392,19 +1392,46 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
   // edgeX (StarkEx DEX) — funding settles every 4 hours
   // Direct API is CloudFlare-challenged; use CoinGecko derivatives as data source
+  // Fetch metadata in parallel to filter out ghost pairs (enableDisplay=false)
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn(
-        'https://api.coingecko.com/api/v3/derivatives/exchanges/edgex?include_tickers=unexpired',
-        {}, 15000
-      );
+      // Fetch CoinGecko data + EdgeX metadata in parallel
+      const [res, metaRes] = await Promise.all([
+        fetchFn(
+          'https://api.coingecko.com/api/v3/derivatives/exchanges/edgex?include_tickers=unexpired',
+          {}, 15000
+        ),
+        fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 12000),
+      ]);
       if (!res.ok) return [];
       const data = await res.json();
       const tickers: any[] = (data.tickers || []).filter(
         (t: any) => t.contract_type === 'perpetual' && t.base && t.funding_rate != null
       );
       if (tickers.length === 0) return [];
+
+      // Build whitelist of visible symbols from EdgeX metadata
+      // Filters out ghost pairs where enableDisplay=false (e.g. KITE)
+      let visibleSymbols: Set<string> | null = null;
+      if (metaRes.ok) {
+        try {
+          const meta = await metaRes.json();
+          if (meta.code === 'SUCCESS' && meta.data?.contractList) {
+            visibleSymbols = new Set<string>();
+            for (const c of meta.data.contractList) {
+              if (c.enableTrade && c.enableDisplay && !c.contractName.startsWith('TEMP') && !c.isStock) {
+                let sym = c.contractName.replace(/USD$/, '');
+                // Normalize "2" suffix duplicates
+                if (sym.endsWith('2') && sym.length > 2) sym = sym.slice(0, -1);
+                if (sym.startsWith('1000000')) sym = sym.slice(7);
+                else if (sym.startsWith('1000')) sym = sym.slice(4);
+                visibleSymbols.add(sym.toUpperCase());
+              }
+            }
+          }
+        } catch { /* metadata fetch failed — skip filtering, use CoinGecko as-is */ }
+      }
 
       // Deduplicate by base symbol — keep highest OI entry
       const bestByBase = new Map<string, any>();
@@ -1421,6 +1448,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         // Handle 1000/1000000 prefixes
         if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
         else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+
+        // Skip ghost pairs not visible on EdgeX
+        if (visibleSymbols && !visibleSymbols.has(symbol.toUpperCase())) continue;
 
         const norm = normalizeSymbol(symbol, 'edgeX');
         const rate = parseFloat(t.funding_rate);
