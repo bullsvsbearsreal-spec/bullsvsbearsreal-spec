@@ -60,7 +60,8 @@ export default function HomeOrange() {
       }
     }
     loadData();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed]);
 
   const handleCoinSelect = (coin: CoinSearchResult) => {
     router.push(`/coin/${coin.id}`);

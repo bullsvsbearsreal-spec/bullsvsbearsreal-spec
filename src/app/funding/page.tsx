@@ -153,8 +153,11 @@ export default function FundingPage() {
 
   const allFundingRates = Array.isArray(data?.fundingRates) ? data.fundingRates : [];
   // Filter by margin type: undefined/missing marginType treated as 'linear'
-  const fundingRates = marginFilter === 'all' ? allFundingRates
-    : allFundingRates.filter(fr => (fr.marginType || 'linear') === marginFilter);
+  const fundingRates = useMemo(() =>
+    marginFilter === 'all' ? allFundingRates
+      : allFundingRates.filter(fr => (fr.marginType || 'linear') === marginFilter),
+    [allFundingRates, marginFilter]
+  );
   const arbitrageData = Array.isArray(data?.arbitrageData) ? data.arbitrageData : [];
   const priceArbs = Array.isArray(data?.priceArbs) ? data.priceArbs : [];
   const oiMap = data?.oiMap ?? new Map<string, number>();

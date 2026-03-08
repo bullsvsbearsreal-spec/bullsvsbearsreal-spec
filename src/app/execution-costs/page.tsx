@@ -75,7 +75,7 @@ function ExecutionCostsInner() {
 
   const { data, error, isLoading, isRefreshing, lastUpdate, refresh } =
     useApi<ExecutionCostResponse>({
-      key: 'execution-costs',
+      key: `execution-costs-${asset}-${size}-${direction}`,
       fetcher,
       refreshInterval: 15_000,
     });
