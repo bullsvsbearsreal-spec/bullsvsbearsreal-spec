@@ -22,7 +22,7 @@ interface CryptoMetricsPanelProps {
 interface FundingEntry {
   symbol: string;
   exchange: string;
-  rate: number;
+  fundingRate: number;
   annualized?: number;
 }
 
@@ -37,7 +37,7 @@ interface TickerEntry {
   symbol: string;
   exchange: string;
   lastPrice?: number;
-  priceChangePercent?: number;
+  priceChangePercent24h?: number;
   quoteVolume24h?: number;
 }
 
@@ -109,14 +109,14 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
 
     // Funding
     const fundingEntries = fundingData?.data?.filter(f => f.symbol === sym) ?? [];
-    const rates = fundingEntries.map(f => f.rate).filter(r => typeof r === 'number' && isFinite(r));
+    const rates = fundingEntries.map(f => f.fundingRate).filter(r => typeof r === 'number' && isFinite(r));
     const avgFunding = rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : null;
     let minFunding: { rate: number; exchange: string } | null = null;
     let maxFunding: { rate: number; exchange: string } | null = null;
     for (const f of fundingEntries) {
-      if (typeof f.rate !== 'number' || !isFinite(f.rate)) continue;
-      if (!minFunding || f.rate < minFunding.rate) minFunding = { rate: f.rate, exchange: f.exchange };
-      if (!maxFunding || f.rate > maxFunding.rate) maxFunding = { rate: f.rate, exchange: f.exchange };
+      if (typeof f.fundingRate !== 'number' || !isFinite(f.fundingRate)) continue;
+      if (!minFunding || f.fundingRate < minFunding.rate) minFunding = { rate: f.fundingRate, exchange: f.exchange };
+      if (!maxFunding || f.fundingRate > maxFunding.rate) maxFunding = { rate: f.fundingRate, exchange: f.exchange };
     }
 
     // OI
@@ -125,10 +125,10 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
 
     // Tickers
     const tickerEntries = tickerData?.data?.filter(t => t.symbol === sym) ?? [];
-    const totalVolume = tickerEntries.reduce((sum, t) => sum + (t.quoteVolume24h ?? 0), 0);
+    const totalVolume = tickerEntries.reduce((sum, t) => sum + (Number(t.quoteVolume24h) || 0), 0);
     const priceEntry = tickerEntries.find(t => t.lastPrice && t.lastPrice > 0);
     const price = priceEntry?.lastPrice ?? null;
-    const change24h = priceEntry?.priceChangePercent ?? null;
+    const change24h = priceEntry?.priceChangePercent24h ?? null;
 
     return { avgFunding, minFunding, maxFunding, totalOI, totalVolume, price, change24h, exchangeCount: fundingEntries.length };
   }, [symbol, fundingData, oiData, tickerData]);
