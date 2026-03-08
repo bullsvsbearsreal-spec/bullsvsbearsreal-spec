@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 const CMC_API_KEY = process.env.CMC_API_KEY || '';

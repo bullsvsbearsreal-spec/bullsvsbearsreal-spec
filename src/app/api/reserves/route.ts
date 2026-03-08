@@ -1,5 +1,5 @@
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 

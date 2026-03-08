@@ -13,7 +13,7 @@ import { getFundingHistory, isDBConfigured } from '@/lib/db';
 import { fetchWithTimeout } from '../../_shared/fetch';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 // L1 in-memory cache for exchange sources (300s TTL)

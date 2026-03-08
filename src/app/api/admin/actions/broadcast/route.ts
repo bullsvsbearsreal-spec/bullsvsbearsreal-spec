@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: chatId, text: `📢 *Admin Broadcast*\n\n${message}`, parse_mode: 'Markdown' }),
+            signal: AbortSignal.timeout(10000),
           });
           if (res.ok) result.telegram.sent++;
           else result.telegram.failed++;

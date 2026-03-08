@@ -7,7 +7,7 @@ import { checkRateLimit } from './rate-limit';
 import { auth } from '@/lib/auth';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 const MAX_TOOL_ROUNDS = 3;

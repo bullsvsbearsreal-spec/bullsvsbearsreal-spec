@@ -4,7 +4,7 @@ import { fetchAllExchanges } from '../_shared/exchange-fetchers';
 import { tickerFetchers } from '../tickers/exchanges';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 

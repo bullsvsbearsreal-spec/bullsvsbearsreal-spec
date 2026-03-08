@@ -516,19 +516,26 @@ export interface ArbHistoricalSpread {
 
 export async function fetchArbHistory(symbols: string[]): Promise<Map<string, ArbHistoricalSpread>> {
   if (symbols.length === 0) return new Map();
-  const cacheKey = `arbHistory_${symbols.slice(0, 5).join(',')}`;
+  // Deduplicate and cap to avoid URL-too-long errors
+  const unique = Array.from(new Set(symbols)).slice(0, 200);
+  const cacheKey = `arbHistory_${unique.slice(0, 5).join(',')}`;
   const cached = getCached<Map<string, ArbHistoricalSpread>>(cacheKey);
   if (cached) return cached;
 
   try {
-    const response = await fetch(`/api/arb-history?symbols=${symbols.join(',')}`);
-    if (!response.ok) return new Map();
-    const json = await response.json();
     const map = new Map<string, ArbHistoricalSpread>();
-    if (json.data) {
-      Object.entries(json.data).forEach(([sym, data]) => {
-        map.set(sym, data as ArbHistoricalSpread);
-      });
+    // Batch into chunks of 100 to stay within URL length limits
+    const BATCH = 100;
+    for (let i = 0; i < unique.length; i += BATCH) {
+      const batch = unique.slice(i, i + BATCH);
+      const response = await fetch(`/api/arb-history?symbols=${batch.join(',')}`);
+      if (!response.ok) continue;
+      const json = await response.json();
+      if (json.data) {
+        Object.entries(json.data).forEach(([sym, data]) => {
+          map.set(sym, data as ArbHistoricalSpread);
+        });
+      }
     }
     setCache(cacheKey, map, FUNDING_TTL);
     return map;

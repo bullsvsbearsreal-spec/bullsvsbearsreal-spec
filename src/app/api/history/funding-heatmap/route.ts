@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getBulkFundingHistory, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 const TOP_N = 40;

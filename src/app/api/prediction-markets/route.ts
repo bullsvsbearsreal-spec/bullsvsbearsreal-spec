@@ -4,7 +4,7 @@ import { CURATED_MAPPINGS, extractKeywords, keywordSimilarity, extractNumbers, h
 import type { PredictionMarket, PredictionArbitrage, PredictionMarketsResponse, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 // ─── Polymarket ──────────────────────────────────────────────
@@ -247,9 +247,10 @@ function matchPair(
       const numsA = extractNumbers(mA.question);
       const numsB = extractNumbers(mB.question);
       if (numsA.length > 0 && numsB.length > 0) {
-        const hasNumMatch = numsA.some(a => numsB.some(b =>
-          Math.min(a, b) / Math.max(a, b) > 0.8
-        ));
+        const hasNumMatch = numsA.some(a => numsB.some(b => {
+          const max = Math.max(a, b);
+          return max > 0 && Math.min(a, b) / max > 0.8;
+        }));
         if (!hasNumMatch) continue;
       }
 
