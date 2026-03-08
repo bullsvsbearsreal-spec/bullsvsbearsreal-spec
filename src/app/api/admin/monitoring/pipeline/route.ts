@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     fetch(`${origin}/api/health`, { signal: timeout, headers: healthHeaders }).catch(() => null),
     fetch(`${origin}/api/funding`, { signal: timeout }).catch(() => null),
     fetch(`${origin}/api/openinterest`, { signal: timeout }).catch(() => null),
-    isDBConfigured() ? getCollectorHealth() : null,
+    isDBConfigured() ? getCollectorHealth().catch(() => null) : null,
   ]);
 
   // Parse health data

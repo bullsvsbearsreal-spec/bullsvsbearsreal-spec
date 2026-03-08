@@ -30,6 +30,11 @@ const WIDGET_COMPONENTS: Record<WidgetType, React.LazyExoticComponent<React.Comp
   'long-short': lazy(() => import('./widgets/LongShortWidget')),
   trending: lazy(() => import('./widgets/TrendingWidget')),
   'token-unlocks': lazy(() => import('./widgets/TokenUnlocksWidget')),
+  arbitrage: lazy(() => import('./widgets/ArbitrageWidget')),
+  'exchange-status': lazy(() => import('./widgets/ExchangeStatusWidget')),
+  'fear-greed-chart': lazy(() => import('./widgets/FearGreedChartWidget')),
+  altseason: lazy(() => import('./widgets/AltseasonWidget')),
+  'stablecoin-flows': lazy(() => import('./widgets/StablecoinFlowsWidget')),
 };
 
 function WidgetSkeleton() {

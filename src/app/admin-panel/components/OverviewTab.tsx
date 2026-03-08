@@ -128,6 +128,38 @@ export default function OverviewTab({ onNavigate }: Props) {
         </div>
       )}
 
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button
+          onClick={() => onNavigate('pipeline')}
+          className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5 hover:bg-white/[0.06] transition-colors text-left"
+        >
+          <p className="text-xs font-medium text-white">Pipeline</p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">Monitor exchange feeds</p>
+        </button>
+        <button
+          onClick={() => onNavigate('database')}
+          className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5 hover:bg-white/[0.06] transition-colors text-left"
+        >
+          <p className="text-xs font-medium text-white">Database</p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">Storage & cache health</p>
+        </button>
+        <button
+          onClick={() => onNavigate('users')}
+          className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5 hover:bg-white/[0.06] transition-colors text-left"
+        >
+          <p className="text-xs font-medium text-white">Users</p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">Manage accounts</p>
+        </button>
+        <button
+          onClick={() => onNavigate('actions')}
+          className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5 hover:bg-white/[0.06] transition-colors text-left"
+        >
+          <p className="text-xs font-medium text-white">Actions</p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">Admin operations</p>
+        </button>
+      </div>
+
       {/* Audit timeline */}
       <div className="rounded-lg border border-white/[0.06] bg-white/[0.01] p-3">
         <p className="text-xs font-medium text-neutral-400 mb-2">Recent Activity</p>

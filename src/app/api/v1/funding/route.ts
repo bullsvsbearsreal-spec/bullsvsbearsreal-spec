@@ -3,6 +3,7 @@ import { authenticateV1Request } from '@/lib/api/v1-auth';
 import { getFundingData } from '../../_shared/funding-core';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 

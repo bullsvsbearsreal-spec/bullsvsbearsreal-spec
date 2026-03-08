@@ -94,6 +94,7 @@ const navCategories: NavCategory[] = [
         items: [
           { name: 'Top Movers', href: '/top-movers', icon: Rocket },
           { name: 'Heatmap', href: '/market-heatmap', icon: Map },
+          { name: 'Stock Heatmap', href: '/stock-heatmap', icon: Map },
           { name: 'Dominance', href: '/dominance', icon: Crown },
           { name: 'Market Cycle', href: '/market-cycle', icon: Activity },
           { name: 'Correlation', href: '/correlation', icon: GitCompareArrows },
@@ -105,6 +106,7 @@ const navCategories: NavCategory[] = [
           { name: 'ETF Tracker', href: '/etf', icon: LineChart },
           { name: 'BTC Treasuries', href: '/bitcoin-treasuries', icon: Bitcoin },
           { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock },
+          { name: 'Airdrops', href: '/airdrops', icon: Gift },
         ],
       },
       {

@@ -8,6 +8,8 @@ interface HeaderStats {
   btcChange: number | null;
   fearGreed: number | null;
   marketCapChange: number | null;
+  totalMarketCap: number | null;
+  btcDominance: number | null;
 }
 
 function getGreeting(): string {
@@ -20,6 +22,7 @@ function getGreeting(): string {
 export default function DashboardHeader({ userName }: { userName: string }) {
   const [stats, setStats] = useState<HeaderStats>({
     btcPrice: null, btcChange: null, fearGreed: null, marketCapChange: null,
+    totalMarketCap: null, btcDominance: null,
   });
 
   useEffect(() => {
@@ -45,6 +48,8 @@ export default function DashboardHeader({ userName }: { userName: string }) {
         btcChange: btc?.priceChangePercent ?? btc?.change24h ?? null,
         fearGreed: fgData?.value ?? null,
         marketCapChange: globalData?.market_cap_change_percentage_24h_usd ?? null,
+        totalMarketCap: globalData?.total_market_cap?.usd ?? null,
+        btcDominance: globalData?.market_cap_percentage?.btc ?? null,
       });
     };
     load();
@@ -53,6 +58,7 @@ export default function DashboardHeader({ userName }: { userName: string }) {
   }, []);
 
   const fmtPrice = (p: number) => '$' + p.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const fmtCap = (n: number) => n >= 1e12 ? `$${(n / 1e12).toFixed(2)}T` : `$${(n / 1e9).toFixed(0)}B`;
 
   return (
     <div className="mb-5">
@@ -82,12 +88,21 @@ export default function DashboardHeader({ userName }: { userName: string }) {
             </span>
           </div>
         )}
-        {stats.marketCapChange !== null && (
+        {stats.totalMarketCap !== null && (
           <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-neutral-500">Market</span>
-            <span className={`flex items-center gap-0.5 font-medium ${stats.marketCapChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {stats.marketCapChange >= 0 ? '+' : ''}{stats.marketCapChange.toFixed(1)}%
-            </span>
+            <span className="text-neutral-500">MCap</span>
+            <span className="text-white font-medium tabular-nums">{fmtCap(stats.totalMarketCap)}</span>
+            {stats.marketCapChange !== null && (
+              <span className={`${stats.marketCapChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {stats.marketCapChange >= 0 ? '+' : ''}{stats.marketCapChange.toFixed(1)}%
+              </span>
+            )}
+          </div>
+        )}
+        {stats.btcDominance !== null && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-neutral-500">BTC.D</span>
+            <span className="text-white font-medium tabular-nums">{stats.btcDominance.toFixed(1)}%</span>
           </div>
         )}
       </div>

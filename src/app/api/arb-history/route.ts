@@ -46,40 +46,42 @@ export async function GET(request: NextRequest) {
 
     const sql = postgres(DATABASE_URL, { max: 3, idle_timeout: 10, connect_timeout: 5, ssl: 'require' });
 
-    // Query: per-symbol, per-day, compute max and min exchange rate → spread
-    // Then average spread over 7 days, last 24h, and prior 6 days
-    const rows = await sql`
-      WITH daily_spreads AS (
+    let data: Record<string, { avg7d: number; avg24h: number; avg6d: number }> = {};
+    try {
+      // Query: per-symbol, per-day, compute max and min exchange rate → spread
+      // Then average spread over 7 days, last 24h, and prior 6 days
+      const rows = await sql`
+        WITH daily_spreads AS (
+          SELECT
+            symbol,
+            DATE(ts) AS day,
+            MAX(rate) - MIN(rate) AS spread,
+            COUNT(DISTINCT exchange) AS exchange_count
+          FROM funding_snapshots
+          WHERE symbol = ANY(${symbols})
+            AND ts > NOW() - INTERVAL '7 days'
+          GROUP BY symbol, DATE(ts)
+          HAVING COUNT(DISTINCT exchange) >= 2
+        )
         SELECT
           symbol,
-          DATE(ts) AS day,
-          MAX(rate) - MIN(rate) AS spread,
-          COUNT(DISTINCT exchange) AS exchange_count
-        FROM funding_snapshots
-        WHERE symbol = ANY(${symbols})
-          AND ts > NOW() - INTERVAL '7 days'
-        GROUP BY symbol, DATE(ts)
-        HAVING COUNT(DISTINCT exchange) >= 2
-      )
-      SELECT
-        symbol,
-        AVG(spread) AS avg7d,
-        AVG(CASE WHEN day >= CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg24h,
-        AVG(CASE WHEN day < CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg6d
-      FROM daily_spreads
-      GROUP BY symbol
-    `;
+          AVG(spread) AS avg7d,
+          AVG(CASE WHEN day >= CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg24h,
+          AVG(CASE WHEN day < CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg6d
+        FROM daily_spreads
+        GROUP BY symbol
+      `;
 
-    const data: Record<string, { avg7d: number; avg24h: number; avg6d: number }> = {};
-    rows.forEach((r: any) => {
-      data[r.symbol] = {
-        avg7d: Number(r.avg7d) || 0,
-        avg24h: Number(r.avg24h) || 0,
-        avg6d: Number(r.avg6d) || 0,
-      };
-    });
-
-    await sql.end();
+      rows.forEach((r: any) => {
+        data[r.symbol] = {
+          avg7d: Number(r.avg7d) || 0,
+          avg24h: Number(r.avg24h) || 0,
+          avg6d: Number(r.avg6d) || 0,
+        };
+      });
+    } finally {
+      await sql.end();
+    }
 
     // Update cache with ALL symbols we computed (not just requested ones)
     l1Cache = { data, timestamp: Date.now() };

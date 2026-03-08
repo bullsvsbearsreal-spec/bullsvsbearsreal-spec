@@ -49,7 +49,7 @@ function formatNumber(n: number): string {
   return String(n);
 }
 
-const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+const BASE_TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview', label: 'Overview', icon: <Activity className="w-3.5 h-3.5" /> },
   { id: 'pipeline', label: 'Pipeline', icon: <BarChart3 className="w-3.5 h-3.5" /> },
   { id: 'alerts', label: 'Alerts', icon: <Bell className="w-3.5 h-3.5" /> },
@@ -57,6 +57,10 @@ const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
   { id: 'users', label: 'Users', icon: <Users className="w-3.5 h-3.5" /> },
   { id: 'actions', label: 'Actions', icon: <Settings className="w-3.5 h-3.5" /> },
 ];
+
+function buildTabs(badges: Record<string, string | undefined>) {
+  return BASE_TABS.map(t => ({ ...t, badge: badges[t.id] }));
+}
 
 export default function AdminPanelPage() {
   const { data: session, status } = useSession();
@@ -66,16 +70,50 @@ export default function AdminPanelPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [tabKey, setTabKey] = useState(0);
+  const [pipelineIssues, setPipelineIssues] = useState(0);
 
   const userRole = session?.user?.role;
   const hasAdminAccess = userRole === 'admin' || userRole === 'advisor';
 
+  // Fetch pipeline health for badge counts
+  useEffect(() => {
+    if (!hasAdminAccess) return;
+    let mounted = true;
+    const check = async () => {
+      try {
+        const res = await fetch('/api/funding?assetClass=crypto');
+        if (!res.ok) return;
+        const json = await res.json();
+        const entries: { exchange: string; updatedAt?: string }[] = json?.data || [];
+        // Count exchanges with stale data (>10 min old)
+        const now = Date.now();
+        const exchanges = new Map<string, number>();
+        for (const e of entries) {
+          const ts = e.updatedAt ? new Date(e.updatedAt).getTime() : 0;
+          const existing = exchanges.get(e.exchange) || 0;
+          if (ts > existing) exchanges.set(e.exchange, ts);
+        }
+        let stale = 0;
+        for (const ts of Array.from(exchanges.values())) {
+          if (ts > 0 && now - ts > 10 * 60 * 1000) stale++;
+        }
+        if (mounted) setPipelineIssues(stale);
+      } catch {}
+    };
+    check();
+    const iv = setInterval(check, 120_000);
+    return () => { mounted = false; clearInterval(iv); };
+  }, [hasAdminAccess]);
+
+  const tabs = buildTabs({
+    pipeline: pipelineIssues > 0 ? String(pipelineIssues) : undefined,
+  });
 
   // Hash routing
   useEffect(() => {
     const readHash = () => {
       const h = window.location.hash.replace('#', '') as AdminTab;
-      if (TABS.some((t) => t.id === h)) setActiveTab(h);
+      if (BASE_TABS.some((t) => t.id === h)) setActiveTab(h);
     };
     readHash();
     window.addEventListener('hashchange', readHash);
@@ -100,14 +138,14 @@ export default function AdminPanelPage() {
     if (!hasAdminAccess) return;
     setStatsLoading(true);
     loadStats().finally(() => setStatsLoading(false));
-  }, [session, loadStats]);
+  }, [hasAdminAccess, loadStats]);
 
   // Auto-refresh stats every 2 min
   useEffect(() => {
     if (!hasAdminAccess) return;
     const interval = setInterval(loadStats, 120_000);
     return () => clearInterval(interval);
-  }, [session, loadStats]);
+  }, [hasAdminAccess, loadStats]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -236,7 +274,7 @@ export default function AdminPanelPage() {
             ) : null}
 
             {/* Tab Bar */}
-            <TabBar tabs={TABS} activeTab={activeTab} onChange={handleTabChange} />
+            <TabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
             {/* Tab Content */}
             <div className="mt-4" key={tabKey}>

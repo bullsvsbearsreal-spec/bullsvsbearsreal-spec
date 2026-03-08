@@ -32,6 +32,7 @@ function getIcon(name?: string) {
 const LIVE_TYPES = new Set([
   'btc-price', 'fear-greed', 'top-movers', 'liquidations', 'market-overview',
   'long-short', 'watchlist', 'portfolio', 'alerts', 'funding-heatmap', 'oi-chart',
+  'arbitrage', 'exchange-status', 'fear-greed-chart', 'altseason', 'stablecoin-flows',
 ]);
 
 export default function WidgetWrapper({
@@ -59,7 +60,7 @@ export default function WidgetWrapper({
       className={`
         bg-hub-darker border rounded-xl overflow-hidden transition-all
         ${colSpan === 2 ? 'col-span-1 md:col-span-2' : 'col-span-1'}
-        ${isDragOver ? 'border-hub-yellow/50 scale-[1.02]' : 'border-white/[0.06]'}
+        ${isDragOver ? 'border-hub-yellow/50 scale-[1.02]' : 'border-white/[0.06] hover:border-white/[0.12]'}
         ${isDragging ? 'opacity-40' : 'opacity-100'}
       `}
     >

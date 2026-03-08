@@ -23,7 +23,12 @@ export type WidgetType =
   | 'news'
   | 'long-short'
   | 'trending'
-  | 'token-unlocks';
+  | 'token-unlocks'
+  | 'arbitrage'
+  | 'exchange-status'
+  | 'fear-greed-chart'
+  | 'altseason'
+  | 'stablecoin-flows';
 
 export type WidgetCategory = 'market' | 'trading' | 'portfolio' | 'sentiment' | 'events';
 
@@ -67,6 +72,12 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
   // Events
   { type: 'btc-chart',       name: 'BTC Chart',        description: '7-day Bitcoin price chart',              defaultW: 2, icon: 'LineChart',     category: 'market' },
   { type: 'token-unlocks',   name: 'Token Unlocks',    description: 'Upcoming vesting unlock events',         defaultW: 1, icon: 'Unlock',        category: 'events' },
+  // New widgets
+  { type: 'arbitrage',        name: 'Arbitrage',          description: 'Top funding rate arbitrage opportunities', defaultW: 2, icon: 'ArrowLeftRight', category: 'trading' },
+  { type: 'exchange-status',  name: 'Exchange Status',    description: 'Exchange health & data freshness',         defaultW: 1, icon: 'Activity',       category: 'market' },
+  { type: 'fear-greed-chart', name: 'Fear & Greed Chart', description: '30-day Fear & Greed history',              defaultW: 2, icon: 'Gauge',          category: 'sentiment' },
+  { type: 'altseason',        name: 'Altseason Index',    description: 'Altcoin vs Bitcoin performance (90d)',      defaultW: 1, icon: 'Zap',            category: 'sentiment' },
+  { type: 'stablecoin-flows', name: 'Stablecoin Flows',   description: 'Net stablecoin mint/burn indicator',        defaultW: 1, icon: 'Coins',          category: 'market' },
 ];
 
 export const DEFAULT_LAYOUT: WidgetLayout[] = [
