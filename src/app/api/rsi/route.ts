@@ -10,7 +10,7 @@
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'sin1';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
@@ -107,7 +107,32 @@ async function fetchKlines(
     // try next source
   }
 
-  // Source 2: Bybit
+  // Source 2: OKX — works reliably from datacenter IPs
+  const okxIntervalMap: Record<string, string> = { '1h': '1H', '4h': '4H', '1d': '1D' };
+  const okxBar = okxIntervalMap[interval];
+  if (okxBar) {
+    try {
+      const instId = `${symbol}-USDT-SWAP`;
+      const res = await fetch(
+        `https://www.okx.com/api/v5/market/candles?instId=${instId}&bar=${okxBar}&limit=${limit}`,
+        { signal: AbortSignal.timeout(6000) },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const candles: string[][] = json?.data || [];
+        // OKX returns [ts, open, high, low, close, vol, volCcy, ...] in reverse chronological order
+        const closes = candles
+          .map((k) => parseFloat(k[4]))
+          .filter((v) => isFinite(v))
+          .reverse(); // Reverse to chronological order
+        if (closes.length >= 15) return closes;
+      }
+    } catch {
+      // try next source
+    }
+  }
+
+  // Source 3: Bybit
   const bybitIntervalMap: Record<string, string> = { '1h': '60', '4h': '240', '1d': 'D' };
   const bybitInterval = bybitIntervalMap[interval];
   if (bybitInterval) {
@@ -131,7 +156,7 @@ async function fetchKlines(
     }
   }
 
-  // Source 3: Binance Spot (often blocked from datacenter IPs)
+  // Source 4: Binance Spot (often blocked from datacenter IPs)
   try {
     const res = await fetch(
       `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
@@ -181,6 +206,32 @@ async function fetch24hTickers(): Promise<Map<string, TickerInfo>> {
     }
   } catch {
     // try fallback
+  }
+
+  // Fallback: OKX tickers
+  try {
+    const res = await fetch(
+      'https://www.okx.com/api/v5/market/tickers?instType=SWAP',
+      { signal: AbortSignal.timeout(8000) },
+    );
+    if (res.ok) {
+      const json = await res.json();
+      const tickers: { instId: string; last: string; open24h: string }[] = json?.data || [];
+      for (const t of tickers) {
+        if (!t.instId.endsWith('-USDT-SWAP')) continue;
+        const base = t.instId.replace('-USDT-SWAP', '');
+        const price = parseFloat(t.last);
+        const open = parseFloat(t.open24h);
+        const change = open > 0 ? ((price - open) / open) * 100 : 0;
+        map.set(base, {
+          price: isFinite(price) ? price : null,
+          change24h: isFinite(change) ? change : null,
+        });
+      }
+      if (map.size > 0) return map;
+    }
+  } catch {
+    // try next fallback
   }
 
   // Fallback: Binance Spot
@@ -239,6 +290,7 @@ async function processInBatches<T>(
   const results = new Map<string, T>();
 
   for (let i = 0; i < items.length; i += batchSize) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 200)); // rate-limit pacing
     const batch = items.slice(i, i + batchSize);
     const batchResults = await Promise.all(
       batch.map(async (item) => {
@@ -270,7 +322,7 @@ export async function GET() {
     // Tickers are fetched once (single call), RSI is batched per-symbol
     const [tickerMap, rsiMap] = await Promise.all([
       fetch24hTickers(),
-      processInBatches(TOP_SYMBOLS, 10, fetchSymbolRSI),
+      processInBatches(TOP_SYMBOLS, 3, fetchSymbolRSI),
     ]);
 
     const data: RsiEntry[] = [];
