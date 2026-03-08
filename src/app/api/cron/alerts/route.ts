@@ -44,9 +44,9 @@ const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
 
 export async function GET(request: NextRequest) {
   // Auth check
-  if (CRON_SECRET) {
+  {
     const auth = request.headers.get('authorization');
-    if (auth !== `Bearer ${CRON_SECRET}`) {
+    if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }

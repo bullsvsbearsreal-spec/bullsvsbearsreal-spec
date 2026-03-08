@@ -27,7 +27,10 @@ interface HolderEntry {
   country?: string;
 }
 
-/* --- Static holder data --------------------------------------------------- */
+/* --- Static holder data (approximate, updated periodically) --------------- */
+// Source: public filings, blockchain data, media reports
+// Last verified: 2026-02-15
+const DATA_AS_OF = '2026-02-15';
 
 const HOLDERS: HolderEntry[] = [
   { name: 'BlackRock IBIT ETF', ticker: 'IBIT', type: 'etf', btcHoldings: 570_000 },
@@ -99,6 +102,7 @@ export async function GET() {
     totalValueUsd,
     holders,
     entityCount: holders.length,
+    dataAsOf: DATA_AS_OF,
     timestamp: Date.now(),
   };
 

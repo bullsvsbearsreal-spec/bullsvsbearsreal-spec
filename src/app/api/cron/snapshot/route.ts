@@ -27,11 +27,9 @@ const MAX_SYMBOLS = 200; // Store top 200 symbols — balances coverage vs DB gr
 
 export async function GET(request: NextRequest) {
   // Verify auth — Vercel cron sends Authorization: Bearer <CRON_SECRET>
-  if (CRON_SECRET) {
-    const auth = request.headers.get('authorization');
-    if (auth !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const auth = request.headers.get('authorization');
+  if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   if (!isDBConfigured()) {

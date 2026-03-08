@@ -6,8 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { walkBook, maxFillableUsd, computeCostFromWalk } from '@/lib/execution-costs/book-walker';
-import type { RawBookData } from '@/lib/execution-costs/types';
+import { walkBook, maxFillableUsd, computeCostFromWalk, buildDepthCurve } from '@/lib/execution-costs/book-walker';
+import type { RawBookData, DepthPoint } from '@/lib/execution-costs/types';
 import {
   fetchBinanceBook,
   fetchBybitBook,
@@ -49,10 +49,11 @@ const DEPTH_SIZES = [10_000, 50_000, 100_000, 500_000];
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const symbol = (searchParams.get('symbol') || 'BTC').toUpperCase();
-  const exchangesParam = searchParams.get('exchanges') || 'Binance,Bybit';
+  const exchangesParam = searchParams.get('exchanges') || 'Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter';
   const requestedExchanges = exchangesParam.split(',').map(e => e.trim()).filter(Boolean);
+  const includeDepth = searchParams.get('depth') === 'true';
 
-  const cacheKey = `multi_ob_${symbol}_${requestedExchanges.sort().join(',')}`;
+  const cacheKey = `multi_ob_${symbol}_${requestedExchanges.sort().join(',')}${includeDepth ? '_depth' : ''}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     return NextResponse.json(cached.data, { headers: { 'X-Cache': 'HIT' } });
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    return {
+    const venue: Record<string, any> = {
       exchange: book.exchange,
       available: true,
       midPrice: book.midPrice,
@@ -111,6 +112,13 @@ export async function GET(request: NextRequest) {
       askDepthUsd: Math.round(askDepthUsd),
       slippage,
     };
+
+    if (includeDepth) {
+      venue.bidCurve = buildDepthCurve(book.bids, book.midPrice, book.exchange);
+      venue.askCurve = buildDepthCurve(book.asks, book.midPrice, book.exchange);
+    }
+
+    return venue;
   });
 
   const body = {

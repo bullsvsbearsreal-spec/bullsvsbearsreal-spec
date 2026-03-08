@@ -94,9 +94,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fallback: return stale cache or empty
+    // Fallback: return stale cache or unavailable signal
     if (cached) return NextResponse.json(cached.data);
-    return NextResponse.json({ current: { value: 50, classification: 'Neutral', timestamp: Date.now() }, history: [] });
+    return NextResponse.json({ current: { value: 50, classification: 'Neutral', timestamp: Date.now(), unavailable: true }, history: [] });
   }
 
   // --- Current value mode (unchanged) ---
@@ -178,5 +178,6 @@ export async function GET(request: NextRequest) {
     value: 50,
     classification: 'Neutral',
     timestamp: Date.now(),
+    unavailable: true,
   });
 }

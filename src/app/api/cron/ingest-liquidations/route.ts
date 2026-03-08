@@ -258,7 +258,7 @@ async function fetchDeribitLiqs(): Promise<LiqRow[]> {
 export async function GET(request: NextRequest) {
   // Verify cron auth (Vercel sends CRON_SECRET in Authorization header)
   const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

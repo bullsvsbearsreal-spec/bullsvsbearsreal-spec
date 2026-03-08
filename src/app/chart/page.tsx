@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign, Wheat, Globe2 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import CryptoMetricsPanel from './components/CryptoMetricsPanel';
 
 /* ═══════════════════════════════════════════════════════════════════════
    Asset class definitions
@@ -246,6 +247,9 @@ export default function ChartPage() {
   const [displayLabel, setDisplayLabel] = useState('BTC');
   const [displayPair, setDisplayPair] = useState('/USD');
   const [interval, setInterval_] = useState('60');
+
+  // Bottom panel
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
 
   // Symbol dropdown
   const [symbolOpen, setSymbolOpen] = useState(false);
@@ -518,9 +522,18 @@ export default function ChartPage() {
         </div>
       </div>
 
-      {/* ─── TradingView Chart ──────────────────────────────────────── */}
-      <div className="flex-1 relative min-h-0">
-        <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
+      {/* ─── TradingView Chart + Metrics Panel ─────────────────────── */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex-1 relative" style={{ minHeight: '300px' }}>
+          <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
+        </div>
+        {assetClass === 'crypto' && (
+          <CryptoMetricsPanel
+            symbol={displayLabel}
+            open={bottomPanelOpen}
+            onToggle={() => setBottomPanelOpen(v => !v)}
+          />
+        )}
       </div>
     </div>
   );
