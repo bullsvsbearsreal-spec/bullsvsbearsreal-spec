@@ -403,12 +403,35 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
     'SILVER': 'XAG',
   };
 
+  // --- Filter out Bitfinex clamped rates ---
+  // Bitfinex caps funding at ±0.25% (clamp_min/clamp_max). Rates hitting the
+  // clamp are not market-driven and create false arb signals.
+  const BITFINEX_CLAMP = 0.25;
+  const filteredRates = fundingRates.filter(fr => {
+    if (fr.exchange === 'Bitfinex' && Math.abs(fr.fundingRate) >= BITFINEX_CLAMP - 0.001) {
+      return false; // skip clamped rates
+    }
+    return true;
+  });
+
+  // --- Deduplicate same exchange entries (e.g., Binance linear + COIN-M) ---
+  // Keep only one entry per exchange+symbol, preferring the one without marginType
+  // (linear/USDT-M) since that has more liquidity.
+  const dedupeKey = (fr: { symbol: string; exchange: string }) => `${fr.exchange}|${fr.symbol}`;
+  const seen = new Set<string>();
+  const dedupedRates = filteredRates.filter(fr => {
+    const key = dedupeKey(fr);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   // Group by symbol — normalize all rates to 8h basis for fair comparison
   const symbolMap = new Map<string, Array<{ exchange: string; rate: number }>>();
   const priceMap = new Map<string, Array<{ exchange: string; price: number }>>();
   const intervalTracker = new Map<string, Record<string, string>>();
   const nextFundingTimeTracker = new Map<string, Record<string, number>>();
-  fundingRates.forEach(fr => {
+  dedupedRates.forEach(fr => {
     const canonicalSymbol = SYMBOL_ALIASES[fr.symbol] || fr.symbol;
     const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
     const existing = symbolMap.get(canonicalSymbol) || [];
@@ -448,21 +471,36 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
   });
 
   // Calculate spread for each symbol (only those with 2+ exchanges)
+  // Cap at 2% 8h spread — anything higher is almost certainly bad data or a junk coin
+  const MAX_FUNDING_SPREAD_8H = 2.0;
   const arbitrageData: ArbitrageItem[] = Array.from(symbolMap.entries())
     .filter(([_, exchanges]) => exchanges.length >= 2)
     .map(([symbol, exchanges]) => {
-      const rates = exchanges.map(e => e.rate);
+      // --- Outlier filter: remove rates that deviate wildly from the median ---
+      // This catches exchange-specific data errors (e.g., a stale rate from a
+      // briefly disconnected exchange) that create false arb signals.
+      const sortedRates = exchanges.map(e => e.rate).sort((a, b) => a - b);
+      const medianRate = sortedRates[Math.floor(sortedRates.length / 2)];
+      const filteredExchanges = exchanges.length >= 4
+        ? exchanges.filter(e => Math.abs(e.rate - medianRate) < 1.0) // remove >1% outliers when 4+ exchanges
+        : exchanges;
+      if (filteredExchanges.length < 2) return null;
+
+      const rates = filteredExchanges.map(e => e.rate);
       const maxRate = Math.max(...rates);
       const minRate = Math.min(...rates);
+      const spread = maxRate - minRate;
+      if (spread > MAX_FUNDING_SPREAD_8H) return null;
       return {
         symbol,
-        exchanges,
-        spread: maxRate - minRate,
+        exchanges: filteredExchanges,
+        spread,
         markPrices: priceMap.get(symbol) || [],
         intervals: intervalTracker.get(symbol) || {},
         nextFundingTimes: nextFundingTimeTracker.get(symbol) || {},
       };
     })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
     .sort((a, b) => b.spread - a.spread);
 
   setCache(cacheKey, arbitrageData);

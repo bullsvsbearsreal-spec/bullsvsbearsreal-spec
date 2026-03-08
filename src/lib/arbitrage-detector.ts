@@ -15,6 +15,20 @@ const ROUND_TRIP_FEE_PCT = 0.10;
 /** Minimum 24h quote volume (USD) required on BOTH sides of a price arb. */
 const MIN_VOLUME_USD = 500_000;
 
+/**
+ * Maximum allowed spread (%) for price arbs.
+ * Anything above this is almost certainly a denomination mismatch or stale data
+ * (e.g., Drift 1MPEPE vs Bitfinex PEPE, or dYdX GME-token vs Bitget GME-stock).
+ */
+const MAX_PRICE_SPREAD_PCT = 5;
+
+/**
+ * Maximum ratio between high and median price within a symbol group.
+ * If high/median > this OR median/low > this, the outlier exchange is removed
+ * before computing the arb. Catches denomination mismatches (1M-prefixed tokens).
+ */
+const MAX_PRICE_DEVIATION_FROM_MEDIAN = 3;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -109,11 +123,23 @@ export function detectPriceArbitrage(
   grouped.forEach((entries, symbol) => {
     if (entries.length < 2) return;
 
-    let low = entries[0];
-    let high = entries[0];
+    // --- Denomination mismatch filter ---
+    // Compute median price for this symbol. If any exchange's price deviates
+    // by more than MAX_PRICE_DEVIATION_FROM_MEDIAN from the median, it's likely
+    // a different denomination (e.g., 1MPEPE vs PEPE, GME-token vs GME-stock).
+    const prices = entries.map(e => e.lastPrice).sort((a, b) => a - b);
+    const median = prices[Math.floor(prices.length / 2)];
+    const filtered = entries.filter(e => {
+      const ratio = e.lastPrice > median ? e.lastPrice / median : median / e.lastPrice;
+      return ratio <= MAX_PRICE_DEVIATION_FROM_MEDIAN;
+    });
+    if (filtered.length < 2) return;
 
-    for (let i = 1; i < entries.length; i++) {
-      const e = entries[i];
+    let low = filtered[0];
+    let high = filtered[0];
+
+    for (let i = 1; i < filtered.length; i++) {
+      const e = filtered[i];
       if (e.lastPrice < low.lastPrice) low = e;
       if (e.lastPrice > high.lastPrice) high = e;
     }
@@ -126,6 +152,10 @@ export function detectPriceArbitrage(
     if (high.quoteVolume24h < MIN_VOLUME_USD) return;
 
     const spreadPct = ((high.lastPrice - low.lastPrice) / low.lastPrice) * 100;
+
+    // Hard cap: anything above MAX_PRICE_SPREAD_PCT is not a real arb
+    if (spreadPct > MAX_PRICE_SPREAD_PCT) return;
+
     const netPct = spreadPct - ROUND_TRIP_FEE_PCT;
 
     if (netPct < threshold) return;
