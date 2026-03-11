@@ -221,33 +221,65 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 12000);
       try {
-        // Cache-busting: Hyperliquid's CDN can serve stale data to datacenter IPs.
-        // Use unique nonce in body + no-cache headers + Next.js no-store to force fresh response.
-        const res = await fetch(`https://api.hyperliquid.xyz/info?_t=${Date.now()}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-          },
-          body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
-          signal: controller.signal,
-          cache: 'no-store' as RequestCache,
-        });
+        const hlHeaders = {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        };
+        const hlCache = 'no-store' as RequestCache;
+        // Fetch meta+asset contexts and predicted fundings in parallel
+        const [metaRes, predRes] = await Promise.all([
+          fetch(`https://api.hyperliquid.xyz/info?_t=${Date.now()}`, {
+            method: 'POST', headers: hlHeaders,
+            body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
+            signal: controller.signal, cache: hlCache,
+          }),
+          fetch(`https://api.hyperliquid.xyz/info?_t=${Date.now()}_p`, {
+            method: 'POST', headers: hlHeaders,
+            body: JSON.stringify({ type: 'predictedFundings' }),
+            signal: controller.signal, cache: hlCache,
+          }).catch(() => null),
+        ]);
         clearTimeout(timeout);
-        if (!res.ok) return [];
-        const json = await res.json();
+        if (!metaRes.ok) return [];
+        const json = await metaRes.json();
         if (!json || !Array.isArray(json) || !json[1]) return [];
         const universe = json[0]?.universe || [];
+
+        // Build predicted rate map: coin → rate (HlPerp venue)
+        const predictedMap = new Map<string, number>();
+        if (predRes && predRes.ok) {
+          try {
+            const predJson = await predRes.json();
+            if (Array.isArray(predJson)) {
+              for (const entry of predJson) {
+                // Format: [coin, [[venue, {fundingRate}], ...]]
+                const coin = entry[0];
+                const venues = entry[1];
+                if (Array.isArray(venues)) {
+                  for (const [venue, data] of venues) {
+                    if (venue === 'HlPerp' && data?.fundingRate) {
+                      predictedMap.set(coin, parseFloat(data.fundingRate) * 100);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          } catch { /* ignore predicted parse errors */ }
+        }
+
         return json[1]
           .map((item: any, index: number) => {
             const fundingRaw = parseFloat(item.funding);
             if (isNaN(fundingRaw)) return null;
+            const sym = universe[index]?.name || `ASSET${index}`;
             return {
-              symbol: universe[index]?.name || `ASSET${index}`,
+              symbol: sym,
               exchange: 'Hyperliquid',
               fundingRate: fundingRaw * 100, // native 1h fraction → %
               fundingInterval: '1h' as const,
+              predictedRate: predictedMap.get(sym),
               markPrice: parseFloat(item.markPx) || 0,
               indexPrice: parseFloat(item.oraclePx) || 0,
               nextFundingTime: Date.now() + 3600000,
@@ -539,11 +571,16 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // Kraken settles every 4h; keep native 4h rate (no normalization)
           const absoluteRate = parseFloat(item.fundingRate);
           const relativeRate = markPrice > 0 ? (absoluteRate / markPrice) : 0;
+          const absolutePredicted = item.fundingRatePrediction != null ? parseFloat(item.fundingRatePrediction) : undefined;
+          const predictedRate = absolutePredicted !== undefined && markPrice > 0
+            ? (absolutePredicted / markPrice) * 100
+            : undefined;
           return {
             symbol: sym,
             exchange: 'Kraken',
             fundingRate: relativeRate * 100,
             fundingInterval: '4h' as const,
+            predictedRate,
             markPrice,
             indexPrice: parseFloat(item.indexPrice) || 0,
             nextFundingTime: Date.now() + 14400000,

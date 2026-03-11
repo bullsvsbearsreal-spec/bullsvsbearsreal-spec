@@ -3,23 +3,21 @@
 import React, { useState, useMemo } from 'react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, TrendingUp, TrendingDown, Zap, Filter } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Filter, ArrowRightLeft } from 'lucide-react';
 import Pagination from './Pagination';
 import { getExchangeTradeUrl } from '@/lib/constants';
 
 const ROWS_PER_PAGE = 40;
 
-interface BasisEntry {
+interface SpotArbEntry {
   symbol: string;
-  exchange: string;
-  markPrice: number;
-  indexPrice: number;
-  basisPct: number;
-  basisAnnualized: number;
-  fundingRate: number;
-  fundingInterval: string;
-  oi: number;
-  carryScore: number; // basis and funding alignment strength
+  buyExchange: string;
+  sellExchange: string;
+  buyPrice: number;
+  sellPrice: number;
+  spreadPct: number;      // (sell - buy) / buy * 100
+  avgOI: number;           // average OI across exchanges for this symbol
+  exchangeCount: number;   // how many exchanges list this symbol
 }
 
 interface SpotArbitrageViewProps {
@@ -27,7 +25,7 @@ interface SpotArbitrageViewProps {
   oiMap: Map<string, number>;
 }
 
-type SortKey = 'basisPct' | 'basisAnnualized' | 'symbol' | 'exchange' | 'oi' | 'fundingRate' | 'carryScore';
+type SortKey = 'spreadPct' | 'symbol' | 'avgOI' | 'exchangeCount';
 
 function formatPrice(price: number): string {
   if (price >= 10000) return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -43,35 +41,17 @@ function formatOI(value: number): string {
   return `$${value.toFixed(0)}`;
 }
 
-/** Annualize a basis percentage based on funding interval */
-function annualizeBasis(basisPct: number, interval: string): number {
-  // Basis resets roughly each funding period, so annualize by periods per year
-  const periodsPerYear = interval === '1h' ? 8760 : interval === '4h' ? 2190 : 1095; // 8h default
-  return basisPct * periodsPerYear;
-}
-
-/** Compute carry trade alignment score: basis and funding pointing same direction */
-function computeCarryScore(basisPct: number, fundingRate: number, oi: number): number {
-  // Both positive (premium + longs pay) or both negative (discount + shorts pay) = aligned carry trade
-  const aligned = (basisPct > 0 && fundingRate > 0) || (basisPct < 0 && fundingRate < 0);
-  if (!aligned) return 0;
-  // Score = geometric mean of |basis| and |funding| * OI weight
-  const raw = Math.sqrt(Math.abs(basisPct) * Math.abs(fundingRate));
-  const oiBoost = oi > 1e6 ? 1.5 : oi > 100_000 ? 1.0 : 0.5;
-  return raw * oiBoost;
-}
-
 export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrageViewProps) {
-  const [sortKey, setSortKey] = useState<SortKey>('carryScore');
+  const [sortKey, setSortKey] = useState<SortKey>('spreadPct');
   const [sortAsc, setSortAsc] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [basisFilter, setBasisFilter] = useState<'all' | 'premium' | 'discount' | 'carry'>('all');
-  const [minOI, setMinOI] = useState(false); // filter to $100K+ OI only
+  const [minOI, setMinOI] = useState(false);
+  const [minSpread, setMinSpread] = useState<'all' | '0.1' | '0.5' | '1'>('all');
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(key === 'symbol' || key === 'exchange'); }
+    else { setSortKey(key); setSortAsc(key === 'symbol'); }
   };
 
   const SortIcon = ({ col }: { col: SortKey }) => {
@@ -79,30 +59,60 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
     return sortAsc ? <ArrowUp className="w-3 h-3 text-hub-yellow" /> : <ArrowDown className="w-3 h-3 text-hub-yellow" />;
   };
 
-  // Build basis entries from funding data
-  const entries = useMemo<BasisEntry[]>(() => {
-    const result: BasisEntry[] = [];
+  // Build spot arb entries: group by symbol, compare index prices across exchanges
+  const entries = useMemo<SpotArbEntry[]>(() => {
+    // Collect mark prices (actual tradeable perp prices) per symbol per exchange
+    const symbolMap = new Map<string, { exchange: string; price: number }[]>();
     for (const fr of fundingRates) {
-      if (!fr.markPrice || !fr.indexPrice || fr.markPrice <= 0 || fr.indexPrice <= 0) continue;
-      const basisPct = ((fr.markPrice - fr.indexPrice) / fr.indexPrice) * 100;
-      if (Math.abs(basisPct) < 0.005 || Math.abs(basisPct) > 5) continue;
-      const oi = oiMap.get(`${fr.symbol}|${fr.exchange}`) || 0;
-      const interval = fr.fundingInterval || '8h';
-      const basisAnnualized = annualizeBasis(basisPct, interval);
-      const carryScore = computeCarryScore(basisPct, fr.fundingRate, oi);
-      result.push({
-        symbol: fr.symbol,
-        exchange: fr.exchange,
-        markPrice: fr.markPrice,
-        indexPrice: fr.indexPrice,
-        basisPct,
-        basisAnnualized,
-        fundingRate: fr.fundingRate,
-        fundingInterval: interval,
-        oi,
-        carryScore,
-      });
+      const price = fr.markPrice;
+      if (!price || !isFinite(price) || price <= 0) continue;
+      if (!symbolMap.has(fr.symbol)) symbolMap.set(fr.symbol, []);
+      // Deduplicate: only keep one price per exchange per symbol (first seen)
+      const existing = symbolMap.get(fr.symbol)!;
+      if (!existing.some(e => e.exchange === fr.exchange)) {
+        existing.push({ exchange: fr.exchange, price });
+      }
     }
+
+    const result: SpotArbEntry[] = [];
+    symbolMap.forEach((prices, symbol) => {
+      if (prices.length < 2) return; // Need at least 2 exchanges to compare
+
+      // Find cheapest and most expensive
+      let minIdx = 0, maxIdx = 0;
+      for (let i = 1; i < prices.length; i++) {
+        if (prices[i].price < prices[minIdx].price) minIdx = i;
+        if (prices[i].price > prices[maxIdx].price) maxIdx = i;
+      }
+
+      const buyPrice = prices[minIdx].price;
+      const sellPrice = prices[maxIdx].price;
+      const spreadPct = ((sellPrice - buyPrice) / buyPrice) * 100;
+
+      // Filter out negligible spreads and extreme outliers
+      if (spreadPct < 0.005 || spreadPct > 20) return;
+      // Skip if buy and sell are the same exchange (shouldn't happen but safety)
+      if (minIdx === maxIdx) return;
+
+      // Average OI across exchanges that list this symbol
+      let totalOI = 0;
+      let oiCount = 0;
+      for (const p of prices) {
+        const oi = oiMap.get(`${symbol}|${p.exchange}`) || 0;
+        if (oi > 0) { totalOI += oi; oiCount++; }
+      }
+
+      result.push({
+        symbol,
+        buyExchange: prices[minIdx].exchange,
+        sellExchange: prices[maxIdx].exchange,
+        buyPrice,
+        sellPrice,
+        spreadPct,
+        avgOI: oiCount > 0 ? totalOI / oiCount : 0,
+        exchangeCount: prices.length,
+      });
+    });
     return result;
   }, [fundingRates, oiMap]);
 
@@ -110,27 +120,28 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
     let items = entries;
     if (search) {
       const q = search.toUpperCase();
-      items = items.filter(e => e.symbol.includes(q) || e.exchange.toLowerCase().includes(search.toLowerCase()));
+      items = items.filter(e =>
+        e.symbol.includes(q) ||
+        e.buyExchange.toLowerCase().includes(search.toLowerCase()) ||
+        e.sellExchange.toLowerCase().includes(search.toLowerCase())
+      );
     }
-    if (basisFilter === 'premium') items = items.filter(e => e.basisPct > 0);
-    else if (basisFilter === 'discount') items = items.filter(e => e.basisPct < 0);
-    else if (basisFilter === 'carry') items = items.filter(e => e.carryScore > 0);
-    if (minOI) items = items.filter(e => e.oi >= 100_000);
+    if (minOI) items = items.filter(e => e.avgOI >= 100_000);
+    if (minSpread === '0.1') items = items.filter(e => e.spreadPct >= 0.1);
+    else if (minSpread === '0.5') items = items.filter(e => e.spreadPct >= 0.5);
+    else if (minSpread === '1') items = items.filter(e => e.spreadPct >= 1);
     return items;
-  }, [entries, search, basisFilter, minOI]);
+  }, [entries, search, minOI, minSpread]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
       let diff = 0;
       switch (sortKey) {
-        case 'basisPct': diff = Math.abs(a.basisPct) - Math.abs(b.basisPct); break;
-        case 'basisAnnualized': diff = Math.abs(a.basisAnnualized) - Math.abs(b.basisAnnualized); break;
+        case 'spreadPct': diff = a.spreadPct - b.spreadPct; break;
         case 'symbol': diff = a.symbol.localeCompare(b.symbol); break;
-        case 'exchange': diff = a.exchange.localeCompare(b.exchange); break;
-        case 'oi': diff = a.oi - b.oi; break;
-        case 'fundingRate': diff = a.fundingRate - b.fundingRate; break;
-        case 'carryScore': diff = a.carryScore - b.carryScore; break;
+        case 'avgOI': diff = a.avgOI - b.avgOI; break;
+        case 'exchangeCount': diff = a.exchangeCount - b.exchangeCount; break;
       }
       return sortAsc ? diff : -diff;
     });
@@ -142,29 +153,16 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
   const pageItems = sorted.slice((page - 1) * ROWS_PER_PAGE, page * ROWS_PER_PAGE);
 
   // Stats
-  const premiumCount = entries.filter(e => e.basisPct > 0).length;
-  const discountCount = entries.filter(e => e.basisPct < 0).length;
-  const carryCount = entries.filter(e => e.carryScore > 0).length;
-  const avgBasis = entries.length > 0 ? entries.reduce((s, e) => s + e.basisPct, 0) / entries.length : 0;
-  // Weighted average basis by OI
-  const totalOI = entries.reduce((s, e) => s + e.oi, 0);
-  const weightedAvgBasis = totalOI > 0
-    ? entries.reduce((s, e) => s + e.basisPct * e.oi, 0) / totalOI
-    : avgBasis;
+  const avgSpread = entries.length > 0 ? entries.reduce((s, e) => s + e.spreadPct, 0) / entries.length : 0;
+  const maxSpread = entries.length > 0 ? Math.max(...entries.map(e => e.spreadPct)) : 0;
+  const above1Pct = entries.filter(e => e.spreadPct >= 1).length;
 
-  const basisColor = (pct: number) => {
-    if (pct > 0.1) return 'text-green-400';
-    if (pct > 0.03) return 'text-green-400/70';
-    if (pct < -0.1) return 'text-red-400';
-    if (pct < -0.03) return 'text-red-400/70';
+  const spreadColor = (pct: number) => {
+    if (pct >= 1) return 'text-green-400';
+    if (pct >= 0.5) return 'text-green-400/80';
+    if (pct >= 0.1) return 'text-emerald-400/70';
     return 'text-neutral-400';
   };
-
-  // Max basis for visual bar scaling
-  const maxAbsBasis = useMemo(() => {
-    if (pageItems.length === 0) return 0.5;
-    return Math.max(...pageItems.map(e => Math.abs(e.basisPct)), 0.1);
-  }, [pageItems]);
 
   return (
     <div className="space-y-3">
@@ -174,24 +172,17 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
           <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Pairs</span>
           <span className="text-sm font-bold text-white font-mono">{entries.length}</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
-          <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-          <span className="text-[10px] text-green-400/70 uppercase tracking-wider font-semibold">Premium</span>
-          <span className="text-sm font-bold text-green-400 font-mono">{premiumCount}</span>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.12)' }}>
-          <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-          <span className="text-[10px] text-red-400/70 uppercase tracking-wider font-semibold">Discount</span>
-          <span className="text-sm font-bold text-red-400 font-mono">{discountCount}</span>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.12)' }}>
-          <Zap className="w-3.5 h-3.5 text-hub-yellow" />
-          <span className="text-[10px] text-hub-yellow/70 uppercase tracking-wider font-semibold">Carry</span>
-          <span className="text-sm font-bold text-hub-yellow font-mono">{carryCount}</span>
-        </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">OI-Wt Basis</span>
-          <span className={`text-sm font-bold font-mono ${basisColor(weightedAvgBasis)}`}>{weightedAvgBasis > 0 ? '+' : ''}{weightedAvgBasis.toFixed(4)}%</span>
+          <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Avg Spread</span>
+          <span className={`text-sm font-bold font-mono ${spreadColor(avgSpread)}`}>{avgSpread.toFixed(3)}%</span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
+          <span className="text-[10px] text-green-400/70 uppercase tracking-wider font-semibold">Max Spread</span>
+          <span className="text-sm font-bold text-green-400 font-mono">{maxSpread.toFixed(3)}%</span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
+          <span className="text-[10px] text-green-400/70 uppercase tracking-wider font-semibold">&gt;1%</span>
+          <span className="text-sm font-bold text-green-400 font-mono">{above1Pct}</span>
         </div>
       </div>
 
@@ -215,17 +206,17 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
           )}
         </div>
         <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
-          {(['all', 'carry', 'premium', 'discount'] as const).map(f => (
+          {(['all', '0.1', '0.5', '1'] as const).map(f => (
             <button
               key={f}
-              onClick={() => { setBasisFilter(f); setCurrentPage(1); }}
-              className={`px-2.5 sm:px-3 py-[7px] text-[11px] font-semibold capitalize transition-all duration-200 ${
-                basisFilter === f
-                  ? f === 'carry' ? 'bg-hub-yellow text-black' : 'bg-hub-yellow text-black'
+              onClick={() => { setMinSpread(f); setCurrentPage(1); }}
+              className={`px-2.5 sm:px-3 py-[7px] text-[11px] font-semibold transition-all duration-200 ${
+                minSpread === f
+                  ? 'bg-hub-yellow text-black'
                   : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
               }`}
             >
-              {f === 'all' ? 'All' : f === 'carry' ? 'Carry' : f === 'premium' ? 'Premium' : 'Discount'}
+              {f === 'all' ? 'All' : `≥${f}%`}
             </button>
           ))}
         </div>
@@ -240,9 +231,9 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
           <Filter className="w-3 h-3" />
           $100K+ OI
         </button>
-        {(search || basisFilter !== 'all' || minOI) && (
+        {(search || minSpread !== 'all' || minOI) && (
           <span className="text-[10px] text-neutral-600 font-mono">
-            {filtered.length}{search || minOI ? `/${entries.length}` : ''} results
+            {filtered.length}{search || minOI || minSpread !== 'all' ? `/${entries.length}` : ''} results
           </span>
         )}
       </div>
@@ -257,49 +248,36 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
                   Symbol <SortIcon col="symbol" />
                 </button>
               </th>
-              <th className="text-left px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
-                <button onClick={() => handleSort('exchange')} className="flex items-center gap-1 hover:text-white transition-colors">
-                  Exchange <SortIcon col="exchange" />
-                </button>
-              </th>
-              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden sm:table-cell">Spot</th>
-              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden sm:table-cell">Perp</th>
+              <th className="text-left px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">Buy on</th>
+              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden sm:table-cell">Buy Price</th>
+              <th className="text-center px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider w-8"><ArrowRightLeft className="w-3 h-3 mx-auto text-neutral-600" /></th>
+              <th className="text-left px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">Sell on</th>
+              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden sm:table-cell">Sell Price</th>
               <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
-                <button onClick={() => handleSort('basisPct')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
-                  Basis <SortIcon col="basisPct" />
+                <button onClick={() => handleSort('spreadPct')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
+                  Spread <SortIcon col="spreadPct" />
                 </button>
               </th>
               <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden md:table-cell">
-                <button onClick={() => handleSort('basisAnnualized')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
-                  Ann. % <SortIcon col="basisAnnualized" />
+                <button onClick={() => handleSort('exchangeCount')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
+                  Exch <SortIcon col="exchangeCount" />
                 </button>
               </th>
               <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
-                <button onClick={() => handleSort('fundingRate')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
-                  Funding <SortIcon col="fundingRate" />
-                </button>
-              </th>
-              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
-                <button onClick={() => handleSort('oi')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
-                  OI <SortIcon col="oi" />
-                </button>
-              </th>
-              <th className="text-center px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden lg:table-cell">
-                <button onClick={() => handleSort('carryScore')} className="flex items-center gap-1 hover:text-white transition-colors mx-auto">
-                  Signal <SortIcon col="carryScore" />
+                <button onClick={() => handleSort('avgOI')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
+                  Avg OI <SortIcon col="avgOI" />
                 </button>
               </th>
             </tr>
           </thead>
           <tbody>
             {pageItems.map((entry, idx) => {
-              const tradeUrl = getExchangeTradeUrl(entry.exchange, entry.symbol);
-              const barWidth = maxAbsBasis > 0 ? Math.min(Math.abs(entry.basisPct) / maxAbsBasis * 100, 100) : 0;
-              const isCarry = entry.carryScore > 0;
+              const buyUrl = getExchangeTradeUrl(entry.buyExchange, entry.symbol);
+              const sellUrl = getExchangeTradeUrl(entry.sellExchange, entry.symbol);
               return (
                 <tr
-                  key={`${entry.symbol}-${entry.exchange}-${idx}`}
-                  className={`group transition-colors ${isCarry ? 'hover:bg-hub-yellow/[0.03]' : 'hover:bg-white/[0.02]'}`}
+                  key={`${entry.symbol}-${idx}`}
+                  className="group transition-colors hover:bg-white/[0.02]"
                 >
                   <td className="px-3 py-2.5">
                     <a href={`/funding/${entry.symbol}`} className="flex items-center gap-2 no-underline">
@@ -309,60 +287,45 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
                   </td>
                   <td className="px-3 py-2.5">
                     <a
-                      href={tradeUrl || '#'}
+                      href={buyUrl || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 no-underline"
                     >
-                      <ExchangeLogo exchange={entry.exchange.toLowerCase()} size={16} />
-                      <span className="text-neutral-300 group-hover:text-white transition-colors">{entry.exchange}</span>
+                      <ExchangeLogo exchange={entry.buyExchange.toLowerCase()} size={16} />
+                      <span className="text-neutral-300 group-hover:text-white transition-colors">{entry.buyExchange}</span>
                     </a>
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500 hidden sm:table-cell">
-                    {formatPrice(entry.indexPrice)}
+                    {formatPrice(entry.buyPrice)}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <ArrowRightLeft className="w-3 h-3 mx-auto text-neutral-700" />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <a
+                      href={sellUrl || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 no-underline"
+                    >
+                      <ExchangeLogo exchange={entry.sellExchange.toLowerCase()} size={16} />
+                      <span className="text-neutral-300 group-hover:text-white transition-colors">{entry.sellExchange}</span>
+                    </a>
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-400 hidden sm:table-cell">
-                    {formatPrice(entry.markPrice)}
+                    {formatPrice(entry.sellPrice)}
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {/* Tiny visual bar */}
-                      <div className="w-12 h-1.5 rounded-full bg-white/[0.04] overflow-hidden hidden sm:block">
-                        <div
-                          className={`h-full rounded-full transition-all ${entry.basisPct > 0 ? 'bg-green-400/60 ml-auto' : 'bg-red-400/60'}`}
-                          style={{
-                            width: `${barWidth}%`,
-                            ...(entry.basisPct > 0 ? {} : {}),
-                          }}
-                        />
-                      </div>
-                      <span className={`font-mono tabular-nums font-bold ${basisColor(entry.basisPct)}`}>
-                        {entry.basisPct > 0 ? '+' : ''}{entry.basisPct.toFixed(4)}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-right hidden md:table-cell">
-                    <span className={`font-mono tabular-nums text-[11px] ${basisColor(entry.basisAnnualized)}`}>
-                      {entry.basisAnnualized > 0 ? '+' : ''}{Math.abs(entry.basisAnnualized) >= 100 ? `${entry.basisAnnualized.toFixed(0)}%` : `${entry.basisAnnualized.toFixed(1)}%`}
+                    <span className={`font-mono tabular-nums font-bold ${spreadColor(entry.spreadPct)}`}>
+                      +{entry.spreadPct.toFixed(4)}%
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <span className={`font-mono tabular-nums ${entry.fundingRate > 0 ? 'text-green-400/80' : entry.fundingRate < 0 ? 'text-red-400/80' : 'text-neutral-500'}`}>
-                      {entry.fundingRate > 0 ? '+' : ''}{entry.fundingRate.toFixed(4)}%
-                    </span>
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500 hidden md:table-cell">
+                    {entry.exchangeCount}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500">
-                    {entry.oi > 0 ? formatOI(entry.oi) : '-'}
-                  </td>
-                  <td className="px-3 py-2.5 text-center hidden lg:table-cell">
-                    {isCarry ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-hub-yellow/10 text-hub-yellow ring-1 ring-hub-yellow/20">
-                        <Zap className="w-2.5 h-2.5" />
-                        {entry.carryScore >= 0.1 ? 'Strong' : 'Weak'}
-                      </span>
-                    ) : (
-                      <span className="text-neutral-700 text-[10px]">-</span>
-                    )}
+                    {entry.avgOI > 0 ? formatOI(entry.avgOI) : '-'}
                   </td>
                 </tr>
               );
@@ -370,7 +333,7 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
             {pageItems.length === 0 && (
               <tr>
                 <td colSpan={9} className="text-center py-12 text-neutral-600 text-sm">
-                  No spot-perp basis opportunities found matching filters
+                  No spot price arbitrage opportunities found matching filters
                 </td>
               </tr>
             )}
@@ -388,10 +351,10 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
       />
 
       <p className="text-[10px] text-neutral-700 leading-relaxed px-1">
-        <span className="text-green-400/60 font-medium">Premium</span> = perp above spot (longs pay).{' '}
-        <span className="text-red-400/60 font-medium">Discount</span> = perp below spot (shorts pay).{' '}
-        <span className="text-hub-yellow/60 font-medium">Carry</span> = basis and funding align (basis + funding same sign = potential carry trade).{' '}
-        Ann. % extrapolates current basis over a year based on funding interval. OI-weighted basis reflects market-wide sentiment.
+        Cross-exchange arbitrage compares perp mark prices across exchanges for the same symbol.{' '}
+        <span className="text-green-400/60 font-medium">Spread</span> = price difference between cheapest and most expensive exchange.{' '}
+        Buy the perp on one exchange, sell on another. Larger spreads = bigger potential profit.{' '}
+        <span className="text-neutral-500">Exch</span> = number of exchanges listing this symbol.
       </p>
     </div>
   );
