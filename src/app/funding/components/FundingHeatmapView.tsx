@@ -751,17 +751,17 @@ export default function FundingHeatmapView({
                                 {avg !== undefined ? formatRateAdaptive(avg) : '—'}
                               </span>
                               <span className="text-[9px] text-neutral-700 tabular-nums">{listings}/{visibleExchanges.length}</span>
-                              {showAccumulated && (() => {
-                                const acc = accumulatedMap?.get(symbol);
-                                if (!acc || acc.d7 === 0) return null;
-                                const color7d = acc.d7 > 0 ? 'text-green-400/60' : 'text-red-400/60';
-                                return (
-                                  <span className={`text-[9px] font-mono tabular-nums ${color7d}`} title={`7D accumulated: ${acc.d7.toFixed(4)}%\n30D accumulated: ${acc.d30.toFixed(4)}%`}>
-                                    7D {acc.d7 > 0 ? '+' : ''}{acc.d7.toFixed(3)}%
-                                  </span>
-                                );
-                              })()}
                             </div>
+                            {showAccumulated && (() => {
+                              const acc = accumulatedMap?.get(symbol);
+                              if (!acc || acc.d7 === 0) return null;
+                              const color7d = acc.d7 > 0 ? 'text-green-400/60' : 'text-red-400/60';
+                              return (
+                                <span className={`text-[9px] font-mono tabular-nums leading-tight ${color7d}`} title={`7D accumulated: ${acc.d7.toFixed(4)}%\n30D accumulated: ${acc.d30.toFixed(4)}%`}>
+                                  7D {acc.d7 > 0 ? '+' : ''}{acc.d7.toFixed(3)}%
+                                </span>
+                              );
+                            })()}
                           </div>
                         </Link>
                       </td>
