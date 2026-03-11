@@ -29,12 +29,56 @@ import {
 } from '@/lib/db';
 import { detectPriceArbitrage, detectFundingArbitrage } from '@/lib/arbitrage-detector';
 import type { TickerEntry, FundingEntry } from '@/lib/arbitrage-detector';
+import Anthropic from '@anthropic-ai/sdk';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+
+// ─── AI Chat (Haiku — cheap & fast) ────────────────────────────────────────
+const AI_RATE_LIMIT = new Map<number, number[]>(); // chatId → timestamps
+const AI_MAX_PER_HOUR = 10;
+const AI_MAX_TOKENS = 200;
+
+function checkAIRateLimit(chatId: number): boolean {
+  const now = Date.now();
+  const cutoff = now - 3600_000; // 1 hour
+  const timestamps = (AI_RATE_LIMIT.get(chatId) || []).filter(t => t > cutoff);
+  if (timestamps.length >= AI_MAX_PER_HOUR) return false;
+  timestamps.push(now);
+  AI_RATE_LIMIT.set(chatId, timestamps);
+  return true;
+}
+
+async function handleAIChat(chatId: number, question: string): Promise<void> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    await sendMessage(chatId, 'AI chat is not configured. Use /help for available commands.');
+    return;
+  }
+  if (!checkAIRateLimit(chatId)) {
+    await sendMessage(chatId, '⏳ Rate limit reached (10 questions/hour). Try again later or use /commands.');
+    return;
+  }
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: AI_MAX_TOKENS,
+      system: `You are MK2, a witty crypto assistant by InfoHub. Keep replies to 2-3 sentences max. Be slightly funny and casual. NEVER use dashes or em dashes in your text. Use Telegram HTML: <b>bold</b>, <i>italic</i>, <code>code</code>. No markdown. For live data, point to /price /funding /oi commands.`,
+      messages: [{ role: 'user', content: question }],
+    });
+    const text = response.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
+    await sendMessage(chatId, text || 'I couldn\'t generate a response. Try /help for commands.');
+  } catch (e) {
+    console.error('[telegram/ai-chat] Error:', e);
+    await sendMessage(chatId, '⚠️ AI is temporarily unavailable. Use /help for commands.');
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1827,6 +1871,17 @@ export async function POST(request: NextRequest) {
 
     const chatId: number = message.chat.id;
     const text: string = message.text.trim();
+    const isGroup = message.chat.type === 'group' || message.chat.type === 'supergroup';
+    const botUsername = 'mk2ihbot';
+
+    // In groups, only respond if mentioned or replied to
+    if (isGroup && !text.startsWith('/')) {
+      const isMentioned = text.toLowerCase().includes(`@${botUsername}`) ||
+        message.reply_to_message?.from?.is_bot;
+      if (!isMentioned) {
+        return NextResponse.json({ ok: true }); // ignore non-mentioned messages in groups
+      }
+    }
 
     // 3. Ensure DB is ready
     if (isDBConfigured()) {
@@ -1964,10 +2019,16 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        await sendMessage(
-          chatId,
-          'Unknown command. Send /start to see available commands.',
-        );
+        // Non-command text → AI chat; unknown /commands → hint
+        if (command.startsWith('/')) {
+          await sendMessage(chatId, 'Unknown command. Send /help to see available commands.');
+        } else {
+          // Strip bot mention from the question
+          const question = text.replace(new RegExp(`@${botUsername}`, 'gi'), '').trim();
+          if (question.length > 0) {
+            await handleAIChat(chatId, question);
+          }
+        }
         break;
     }
 
