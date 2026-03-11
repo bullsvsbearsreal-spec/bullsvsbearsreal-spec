@@ -644,13 +644,57 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // edgeX — DISABLED: CloudFlare blocks per-contract ticker calls from server IPs (403 since ~Mar 2026)
-  // Metadata endpoint works but individual getTicker calls return CF challenge page.
-  // Re-enable if edgeX whitelists server IPs or provides a bulk API.
-  // {
-  //   name: 'edgeX',
-  //   fetcher: async (fetchFn) => { ... },
-  // },
+  // edgeX — CloudFlare-blocked, routed through PROXY_URL
+  {
+    name: 'edgeX',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const proxy = proxyUrl.replace(/\/$/, '');
+
+      const metaTarget = 'https://pro.edgex.exchange/api/v1/public/meta/getMetaData';
+      const metaRes = await fetchFn(`${proxy}/?url=${encodeURIComponent(metaTarget)}`, {}, 10000);
+      if (!metaRes.ok) return [];
+      const metaData = await metaRes.json();
+      const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
+      if (contracts.length === 0) return [];
+
+      const batchSize = 10;
+      const results: OIData[] = [];
+      for (let i = 0; i < contracts.length; i += batchSize) {
+        const batch = contracts.slice(i, i + batchSize);
+        const promises = batch.map((c: any) => {
+          const target = `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`;
+          return fetchFn(`${proxy}/?url=${encodeURIComponent(target)}`, {}, 8000)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null);
+        });
+        const tickerResults = await Promise.all(promises);
+
+        for (let j = 0; j < batch.length; j++) {
+          const contract = batch[j];
+          const ticker = tickerResults[j]?.data?.[0] || tickerResults[j]?.data;
+          if (!ticker) continue;
+
+          const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
+          if (!symbol || !isCryptoSymbol(symbol)) continue;
+
+          const price = parseFloat(ticker.oraclePrice || ticker.markPrice || ticker.mark_price || '0');
+          const oiContracts = parseFloat(ticker.openInterest || ticker.open_interest || '0');
+          const oiValue = parseFloat(ticker.openInterestValue || ticker.open_interest_value || '0') || (oiContracts * price);
+          if (oiValue <= 0) continue;
+
+          results.push({
+            symbol,
+            exchange: 'edgeX',
+            openInterest: oiContracts,
+            openInterestValue: oiValue,
+          });
+        }
+      }
+      return results;
+    },
+  },
 
   // Variational (Arbitrum DEX) — /metadata/stats has long+short OI in USD
   {

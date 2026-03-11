@@ -7,7 +7,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRateAdaptive, type FundingPeriod, periodMultiplier, PERIOD_HOURS } from '../utils';
 import Pagination from './Pagination';
 import { ChevronUp, ChevronDown, ExternalLink, Grid3X3, LayoutGrid, Settings2, Search, X } from 'lucide-react';
-import { getExchangeTradeUrl } from '@/lib/constants';
+import { getExchangeTradeUrl, EXCHANGE_FEES } from '@/lib/constants';
 import type { FundingPrefs } from '@/lib/db';
 
 const ROWS_PER_PAGE = 80;
@@ -63,19 +63,21 @@ function rateToColors(rate: number | undefined, clamp = 0.3, colored = false): {
   }
 }
 
-// Treemap: brighter, more saturated for large blocks
+// Treemap: vivid, saturated colors with neutral zone for near-zero rates
 function rateToTreemapColor(rate: number, clamp = 0.25): string {
   const abs = Math.min(Math.abs(rate), clamp);
-  const t = Math.pow(abs / clamp, 0.5);
+  // Near-zero: neutral charcoal
+  if (abs < 0.002 * clamp) return 'rgb(35, 38, 42)';
+  const t = Math.pow(abs / clamp, 0.6); // aggressive ramp
   if (rate >= 0) {
-    const r = Math.round(13 + (16 - 13) * t);
-    const g = Math.round(30 + (185 - 30) * t);
-    const b = Math.round(28 + (129 - 28) * t);
+    const r = Math.round(15 + (22 - 15) * t);
+    const g = Math.round(45 + (200 - 45) * t);
+    const b = Math.round(35 + (120 - 35) * t);
     return `rgb(${r}, ${g}, ${b})`;
   } else {
-    const r = Math.round(50 + (220 - 50) * t);
-    const g = Math.round(20 + (50 - 20) * t * 0.4);
-    const b = Math.round(28 + (60 - 28) * t * 0.4);
+    const r = Math.round(55 + (230 - 55) * t);
+    const g = Math.round(20 + (50 - 20) * t * 0.3);
+    const b = Math.round(25 + (60 - 25) * t * 0.3);
     return `rgb(${r}, ${g}, ${b})`;
   }
 }
@@ -88,6 +90,7 @@ interface TreemapRect {
   symbol: string;
   rate: number;
   oi: number;
+  listings: number;
   x: number;
   y: number;
   w: number;
@@ -95,7 +98,7 @@ interface TreemapRect {
 }
 
 function squarify(
-  items: { symbol: string; rate: number; oi: number }[],
+  items: { symbol: string; rate: number; oi: number; listings: number }[],
   x: number, y: number, w: number, h: number
 ): TreemapRect[] {
   if (items.length === 0) return [];
@@ -183,6 +186,8 @@ export default function FundingHeatmapView({
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [hoveredCol, setHoveredCol] = useState<string | null>(null);
   const [hoveredTreemapSym, setHoveredTreemapSym] = useState<string | null>(null);
+  const [tooltipData, setTooltipData] = useState<{ symbol: string; rate: number; oi: number; listings: number; x: number; y: number } | null>(null);
+  const [selectedTreemapSym, setSelectedTreemapSym] = useState<string | null>(null);
   const treemapRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -345,11 +350,12 @@ export default function FundingHeatmapView({
         symbol: sym,
         rate: avgRates.get(sym) ?? 0,
         oi: symbolOI.get(sym) ?? 1, // fallback to 1 so everything shows
+        listings: listingCounts.get(sym) ?? 0,
       }))
       .sort((a, b) => b.oi - a.oi)
       .slice(0, TREEMAP_MAX);
     return squarify(items, 0, 0, treemapSize.w, treemapSize.h);
-  }, [mode, filteredSymbols, avgRates, symbolOI, treemapSize]);
+  }, [mode, filteredSymbols, avgRates, symbolOI, listingCounts, treemapSize]);
 
   const formatOI = (val: number) => {
     if (val >= 1e9) return `$${(val / 1e9).toFixed(1)}B`;
@@ -578,21 +584,23 @@ export default function FundingHeatmapView({
             ref={treemapRef}
             className="relative w-full rounded-lg overflow-hidden"
             style={{ height: treemapSize.h, background: 'rgba(0,0,0,0.2)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setSelectedTreemapSym(null); }}
           >
             {treemapRects.map(rect => {
               const isHovered = hoveredTreemapSym === rect.symbol;
+              const isSelected = selectedTreemapSym === rect.symbol;
               const color = rateToTreemapColor(rect.rate, treemapClamp);
-              const showLabel = rect.w > 36 && rect.h > 28;
-              const showRate = rect.w > 50 && rect.h > 38;
-              const showOI = rect.w > 65 && rect.h > 50;
-              const showIcon = rect.w > 50 && rect.h > 50;
-              const fontSize = rect.w > 100 && rect.h > 60 ? 13 : rect.w > 60 ? 11 : 9;
+              // Tiered display: XL > Large > Medium > Small > Tiny
+              const isXL = rect.w > 120 && rect.h > 80;
+              const isLarge = rect.w > 80 && rect.h > 60;
+              const isMedium = rect.w > 50 && rect.h > 38;
+              const isSmall = rect.w > 36 && rect.h > 28;
+              const fontSize = isXL ? 14 : isLarge ? 12 : isMedium ? 10 : 9;
 
               return (
-                <Link
+                <div
                   key={rect.symbol}
-                  href={`/funding/${rect.symbol}`}
-                  className="absolute flex flex-col items-center justify-center no-underline transition-all duration-100 group"
+                  className="absolute flex flex-col items-center justify-center cursor-pointer transition-all duration-100"
                   style={{
                     left: rect.x + 1,
                     top: rect.y + 1,
@@ -600,54 +608,156 @@ export default function FundingHeatmapView({
                     height: rect.h - 2,
                     background: color,
                     borderRadius: 4,
-                    zIndex: isHovered ? 10 : 1,
-                    outline: isHovered ? '2px solid rgba(255,255,255,0.3)' : '1px solid rgba(0,0,0,0.3)',
+                    zIndex: isSelected ? 20 : isHovered ? 10 : 1,
+                    outline: isSelected ? '2px solid rgba(234,179,8,0.8)' : isHovered ? '2px solid rgba(255,255,255,0.3)' : '1px solid rgba(0,0,0,0.3)',
                     outlineOffset: -1,
                     transform: isHovered ? 'scale(1.01)' : 'none',
                     transformOrigin: 'center',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
                   }}
                   onMouseEnter={() => setHoveredTreemapSym(rect.symbol)}
-                  onMouseLeave={() => setHoveredTreemapSym(null)}
-                  title={`${rect.symbol}\nAvg: ${formatRateAdaptive(rect.rate)}\nOI: ${formatOI(rect.oi)}`}
+                  onMouseLeave={() => { setHoveredTreemapSym(null); setTooltipData(null); }}
+                  onMouseMove={(e) => setTooltipData({ symbol: rect.symbol, rate: rect.rate, oi: rect.oi, listings: rect.listings, x: e.clientX, y: e.clientY })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (e.ctrlKey || e.metaKey) {
+                      window.open(`/funding/${rect.symbol}`, '_blank');
+                    } else {
+                      setSelectedTreemapSym(prev => prev === rect.symbol ? null : rect.symbol);
+                    }
+                  }}
                 >
-                  {showIcon && <TokenIconSimple symbol={rect.symbol} size={fontSize > 11 ? 20 : 14} />}
-                  {showLabel && (
-                    <span
-                      className="font-bold text-white leading-none mt-0.5"
-                      style={{ fontSize, textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
-                    >
+                  {(isLarge || isXL) && <TokenIconSimple symbol={rect.symbol} size={isXL ? 24 : 18} />}
+                  {isSmall && (
+                    <span className="font-bold text-white leading-none mt-0.5" style={{ fontSize, textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}>
                       {rect.symbol}
                     </span>
                   )}
-                  {showRate && (
-                    <span
-                      className="font-mono tabular-nums leading-none mt-0.5"
-                      style={{
-                        fontSize: fontSize - 2,
-                        color: 'rgba(255,255,255,0.85)',
-                        textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-                      }}
-                    >
+                  {isMedium && (
+                    <span className="font-mono tabular-nums leading-none mt-0.5" style={{ fontSize: fontSize - 2, color: 'rgba(255,255,255,0.85)', textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}>
                       {formatRateAdaptive(rect.rate)}
                     </span>
                   )}
-                  {showOI && (
-                    <span
-                      className="font-mono tabular-nums leading-none mt-0.5"
-                      style={{
-                        fontSize: Math.max(fontSize - 4, 8),
-                        color: 'rgba(255,255,255,0.4)',
-                      }}
-                    >
+                  {isLarge && (
+                    <span className="font-mono tabular-nums leading-none mt-0.5" style={{ fontSize: Math.max(fontSize - 4, 8), color: 'rgba(255,255,255,0.45)' }}>
                       {formatOI(rect.oi)}
                     </span>
                   )}
-                </Link>
+                  {isXL && (
+                    <span className="font-mono tabular-nums leading-none mt-0.5" style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+                      {rect.listings}/{visibleExchanges.length} exch
+                    </span>
+                  )}
+                </div>
               );
             })}
           </div>
+
+          {/* Floating tooltip */}
+          {tooltipData && !selectedTreemapSym && (
+            <div
+              className="fixed z-50 pointer-events-none px-3 py-2.5 rounded-lg shadow-xl"
+              style={{
+                left: Math.min(tooltipData.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 220),
+                top: tooltipData.y - 80,
+                background: 'rgba(15, 15, 18, 0.95)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                minWidth: 160,
+              }}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <TokenIconSimple symbol={tooltipData.symbol} size={18} />
+                <span className="font-bold text-white text-[13px]">{tooltipData.symbol}</span>
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] text-neutral-500 w-10">Rate</span>
+                <span className={`font-mono text-[12px] font-bold ${tooltipData.rate >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {formatRateAdaptive(tooltipData.rate)}
+                </span>
+              </div>
+              {tooltipData.oi > 1 && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] text-neutral-500 w-10">OI</span>
+                  <span className="font-mono text-[11px] text-neutral-300">{formatOI(tooltipData.oi)}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] text-neutral-500 w-10">Listed</span>
+                <span className="text-[11px] text-neutral-400">{tooltipData.listings}/{visibleExchanges.length} exchanges</span>
+              </div>
+              <div className="text-[9px] text-neutral-600 border-t border-white/5 pt-1">
+                Click to expand · Ctrl+Click for details
+              </div>
+            </div>
+          )}
+
+          {/* Detail panel for selected symbol */}
+          {selectedTreemapSym && (() => {
+            const sym = selectedTreemapSym;
+            const rates = heatmapData.get(sym);
+            const avgRate = avgRates.get(sym);
+            const oi = symbolOI.get(sym) ?? 0;
+            const listings = listingCounts.get(sym) ?? 0;
+            return (
+              <div className="mt-3 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="flex items-center gap-3">
+                    <TokenIconSimple symbol={sym} size={28} />
+                    <div>
+                      <span className="font-bold text-white text-[15px]">{sym}</span>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className={`font-mono text-[12px] font-bold ${(avgRate ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {avgRate !== undefined ? formatRateAdaptive(avgRate) : '—'}
+                        </span>
+                        {oi > 1 && <span className="font-mono text-[11px] text-neutral-500">{formatOI(oi)} OI</span>}
+                        <span className="text-[11px] text-neutral-600">{listings}/{visibleExchanges.length} exchanges</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/funding/${sym}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-hub-yellow hover:bg-hub-yellow/10 transition-colors no-underline">
+                      View details <ExternalLink className="w-3 h-3" />
+                    </Link>
+                    <button onClick={() => setSelectedTreemapSym(null)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                {/* Per-exchange rate strip */}
+                {rates && (
+                  <div className="px-4 py-2.5 flex flex-wrap gap-1.5">
+                    {visibleExchanges.map(ex => {
+                      const r = rates.get(ex);
+                      if (r === undefined) return null;
+                      const interval = intervalMap?.get(`${sym}|${ex}`);
+                      const adjusted = r * periodMultiplier(interval, fundingPeriod);
+                      const cellColor = rateToColors(adjusted, gridClamp, true);
+                      return (
+                        <a
+                          key={ex}
+                          href={getExchangeTradeUrl(ex, sym) || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-md no-underline transition-colors hover:brightness-125"
+                          style={{ background: cellColor.bg, border: '1px solid rgba(255,255,255,0.05)' }}
+                        >
+                          <ExchangeLogo exchange={ex.toLowerCase()} size={14} />
+                          <span className="text-[10px] text-neutral-500 font-medium">{ex.length > 8 ? ex.slice(0, 6) + '..' : ex}</span>
+                          <span className="font-mono text-[11px] font-bold" style={{ color: cellColor.text }}>
+                            {formatRateAdaptive(adjusted)}
+                          </span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <p className="text-[10px] text-neutral-700 mt-2 text-center">
-            Sized by open interest · Top {Math.min(TREEMAP_MAX, filteredSymbols.length)} symbols · Click to view details
+            Sized by open interest · Top {Math.min(TREEMAP_MAX, filteredSymbols.length)} symbols · Click to expand · Ctrl+Click for details
           </p>
         </div>
       )}
@@ -689,6 +799,7 @@ export default function FundingHeatmapView({
                   </th>
                   {visibleExchanges.map(ex => {
                     const isActive = exchangeSort?.exchange === ex;
+                    const fee = EXCHANGE_FEES[ex];
                     return (
                       <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 78 }}>
                         <button
@@ -710,6 +821,11 @@ export default function FundingHeatmapView({
                                 : <ChevronUp className="w-2 h-2 text-hub-yellow" />
                             )}
                           </div>
+                          {fee && (
+                            <span className={`text-[8px] font-mono leading-none ${fee.taker === 0 ? 'text-green-500/70' : 'text-neutral-600'}`}>
+                              {fee.taker === 0 ? '0% fee' : `${fee.taker.toFixed(2)}%`}
+                            </span>
+                          )}
                         </button>
                       </th>
                     );

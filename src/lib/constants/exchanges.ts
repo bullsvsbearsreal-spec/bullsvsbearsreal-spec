@@ -4,7 +4,7 @@ export const ALL_EXCHANGES = [
   'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
   'Aevo', 'Drift', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
   'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'Variational',
-  'BitMEX', 'Gate.io',
+  'BitMEX', 'Gate.io', 'edgeX',
 ] as const;
 
 export type ExchangeName = (typeof ALL_EXCHANGES)[number];
@@ -39,6 +39,7 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'Variational': 'bg-fuchsia-400',
   'BitMEX': 'bg-red-500',
   'Gate.io': 'bg-blue-400',
+  'edgeX': 'bg-sky-400',
 };
 
 // Exchange badge colors for table cells
@@ -71,12 +72,13 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'Variational': 'bg-fuchsia-400/20 text-fuchsia-300',
   'BitMEX': 'bg-red-500/20 text-red-400',
   'Gate.io': 'bg-blue-400/20 text-blue-300',
+  'edgeX': 'bg-sky-400/20 text-sky-300',
 };
 
 // DEX exchanges (on-chain / decentralized perpetual protocols)
 export const DEX_EXCHANGES: ReadonlySet<string> = new Set([
   'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'Drift', 'GMX', 'gTrade',
-  'Extended', 'Variational',
+  'Extended', 'Variational', 'edgeX',
 ]);
 
 // CEX exchanges (centralized)
@@ -129,6 +131,7 @@ export const EXCHANGE_FEES: Record<string, ExchangeFees> = {
   'Variational':  { taker: 0.0000, maker: 0.0000 }, // zero explicit fees
   'BitMEX':       { taker: 0.0500, maker: 0.0000 }, // maker rebate ignored
   'Gate.io':      { taker: 0.0500, maker: 0.0150 },
+  'edgeX':        { taker: 0.0350, maker: 0.0150 },
 };
 
 // Get round-trip fee for an arbitrage pair (taker on both sides: open + close on each exchange)
@@ -150,7 +153,7 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Bybit':      return `https://www.bybit.com/trade/usdt/${s}USDT?affiliate_id=VL792O`;
     case 'OKX':        return `https://www.okx.com/trade-swap/${s.toLowerCase()}-usdt-swap`;
     case 'Bitget':     return `https://www.bitget.com/futures/usdt/${s}USDT?shareChannel=SSFL1S2B`;
-    case 'MEXC':       return `https://futures.mexc.com/exchange/${s}_USDT?inviteCode=7zeuU9AdFM`;
+    case 'MEXC':       return `https://futures.mexc.com/exchange/${s}_USDT?inviteCode=${Math.random() < 0.5 ? '7zeuU9AdFM' : 'i98MMJzX'}`;
     case 'Kraken':     return `https://futures.kraken.com/trade/futures/${s.toLowerCase()}-perpetual`;
     case 'BingX':      return `https://bingx.com/en/perpetual/${s}-USDT/`;
     case 'Phemex':     return `https://phemex.com/contract/trade/${s}USDT`;
@@ -161,8 +164,8 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT?referral=7162321B`;
     case 'Aevo':       return `https://app.aevo.xyz/perpetual/${s.toLowerCase()}`;
     case 'Drift':      return `https://app.drift.trade/trade/${s}-PERP`;
-    case 'GMX':        return `https://app.gmx.io/#/trade/?ref=Q9ENQ`;
-    case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM?rcode=CXEJE3SG`;
+    case 'GMX':        return `https://app.gmx.io/#/trade/?ref=${Math.random() < 0.5 ? 'Q9ENQ' : 'snakether'}`;
+    case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM?rcode=${Math.random() < 0.5 ? 'CXEJE3SG' : 'QBS4DW6N'}`;
     case 'Deribit':    return `https://www.deribit.com/futures/${s}`;
     case 'HTX':        return `https://www.htx.com/futures/linear_swap/exchange#contract_code=${s}-USDT`;
     case 'Bitfinex':   return `https://trading.bitfinex.com/t/${s}F0:USTF0`;
@@ -174,6 +177,7 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Variational': return `https://app.variational.io/trade/${s}`;
     case 'BitMEX':     return `https://www.bitmex.com/app/trade/${s}USD`;
     case 'Gate.io':    return `https://www.gate.io/futures_trade/USDT/${s}_USDT`;
+    case 'edgeX':      return `https://pro.edgex.exchange/trade/${s}USDT`;
     default:           return null;
   }
 }

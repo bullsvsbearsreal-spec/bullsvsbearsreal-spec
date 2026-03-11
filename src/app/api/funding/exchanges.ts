@@ -1475,18 +1475,63 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // edgeX — DISABLED: CloudFlare blocks server-side API calls (403 since ~Mar 2026)
-  // CoinGecko derivatives endpoint may still work but direct ticker/OI calls fail,
-  // so data is incomplete. Re-enable if CloudFlare situation resolves.
-  // {
-  //   name: 'edgeX',
-  //   fetcher: async (fetchFn) => {
-  //     // Fetch CoinGecko data + EdgeX metadata in parallel
-  //     const [res, metaRes] = await Promise.all([...]);
-  //     ... (full fetcher body omitted for brevity)
-  //     return results;
-  //   },
-  // },
+  // edgeX — CloudFlare-blocked, routed through PROXY_URL. Hourly funding settlement.
+  {
+    name: 'edgeX',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const proxy = proxyUrl.replace(/\/$/, '');
+
+      // Step 1: Fetch contract metadata to get contractIds
+      const metaTarget = 'https://pro.edgex.exchange/api/v1/public/meta/getMetaData';
+      const metaRes = await fetchFn(`${proxy}/?url=${encodeURIComponent(metaTarget)}`, {}, 10000);
+      if (!metaRes.ok) return [];
+      const metaData = await metaRes.json();
+      const contracts = metaData?.data?.contractList || [];
+      const active = contracts.filter((c: any) => c.enableTrade);
+      if (active.length === 0) return [];
+
+      // Step 2: Fetch tickers in parallel batches (each has funding rate + mark price)
+      const batchSize = 10;
+      const results: FundingData[] = [];
+      for (let i = 0; i < active.length; i += batchSize) {
+        const batch = active.slice(i, i + batchSize);
+        const tickerPromises = batch.map((c: any) => {
+          const tickerTarget = `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`;
+          return fetchFn(`${proxy}/?url=${encodeURIComponent(tickerTarget)}`, {}, 8000)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null);
+        });
+        const tickerResults = await Promise.all(tickerPromises);
+
+        for (let j = 0; j < batch.length; j++) {
+          const contract = batch[j];
+          const ticker = tickerResults[j]?.data?.[0] || tickerResults[j]?.data;
+          if (!ticker) continue;
+
+          const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
+          if (!symbol || !isCryptoSymbol(symbol)) continue;
+
+          const fundingRate = parseFloat(ticker.fundingRate || ticker.funding_rate || '0') * 100;
+          const markPrice = parseFloat(ticker.oraclePrice || ticker.markPrice || ticker.mark_price || '0');
+          if (!markPrice || markPrice <= 0) continue;
+
+          results.push({
+            symbol,
+            exchange: 'edgeX',
+            fundingRate,
+            markPrice,
+            indexPrice: parseFloat(ticker.indexPrice || ticker.index_price || '0') || markPrice,
+            nextFundingTime: parseInt(ticker.nextFundingTime || '0') || (Date.now() + 3600000),
+            fundingInterval: '1h',
+            type: 'dex',
+          });
+        }
+      }
+      return results;
+    },
+  },
 
   // Variational (Arbitrum DEX) — single /metadata/stats endpoint has everything
   // Funding intervals vary per market (1h, 2h, 4h, 8h)

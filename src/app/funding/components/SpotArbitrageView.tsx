@@ -6,6 +6,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Filter, ArrowRightLeft } from 'lucide-react';
 import Pagination from './Pagination';
 import { getExchangeTradeUrl } from '@/lib/constants';
+import type { SpotPriceEntry } from '@/lib/api/aggregator';
 
 const ROWS_PER_PAGE = 40;
 
@@ -16,16 +17,15 @@ interface SpotArbEntry {
   buyPrice: number;
   sellPrice: number;
   spreadPct: number;      // (sell - buy) / buy * 100
-  avgOI: number;           // average OI across exchanges for this symbol
+  avgVolume: number;       // average 24h spot volume across exchanges
   exchangeCount: number;   // how many exchanges list this symbol
 }
 
 interface SpotArbitrageViewProps {
-  fundingRates: any[];
-  oiMap: Map<string, number>;
+  spotPrices: SpotPriceEntry[];
 }
 
-type SortKey = 'spreadPct' | 'symbol' | 'avgOI' | 'exchangeCount';
+type SortKey = 'spreadPct' | 'symbol' | 'avgVolume' | 'exchangeCount';
 
 function formatPrice(price: number): string {
   if (price >= 10000) return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -34,19 +34,19 @@ function formatPrice(price: number): string {
   return `$${price.toFixed(6)}`;
 }
 
-function formatOI(value: number): string {
+function formatVolume(value: number): string {
   if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
   if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
   if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
   return `$${value.toFixed(0)}`;
 }
 
-export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrageViewProps) {
+export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spreadPct');
   const [sortAsc, setSortAsc] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [minOI, setMinOI] = useState(false);
+  const [minVolume, setMinVolume] = useState(false);
   const [minSpread, setMinSpread] = useState<'all' | '0.1' | '0.5' | '1'>('all');
 
   const handleSort = (key: SortKey) => {
@@ -59,26 +59,23 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
     return sortAsc ? <ArrowUp className="w-3 h-3 text-hub-yellow" /> : <ArrowDown className="w-3 h-3 text-hub-yellow" />;
   };
 
-  // Build spot arb entries: group by symbol, compare index prices across exchanges
+  // Build spot arb entries from real spot prices
   const entries = useMemo<SpotArbEntry[]>(() => {
-    // Collect mark prices (actual tradeable perp prices) per symbol per exchange
-    const symbolMap = new Map<string, { exchange: string; price: number }[]>();
-    for (const fr of fundingRates) {
-      const price = fr.markPrice;
-      if (!price || !isFinite(price) || price <= 0) continue;
-      if (!symbolMap.has(fr.symbol)) symbolMap.set(fr.symbol, []);
-      // Deduplicate: only keep one price per exchange per symbol (first seen)
-      const existing = symbolMap.get(fr.symbol)!;
-      if (!existing.some(e => e.exchange === fr.exchange)) {
-        existing.push({ exchange: fr.exchange, price });
+    const symbolMap = new Map<string, { exchange: string; price: number; volume24h: number }[]>();
+    for (const sp of spotPrices) {
+      if (!sp.price || !isFinite(sp.price) || sp.price <= 0) continue;
+      if (!symbolMap.has(sp.symbol)) symbolMap.set(sp.symbol, []);
+      const existing = symbolMap.get(sp.symbol)!;
+      // Deduplicate: one price per exchange per symbol
+      if (!existing.some(e => e.exchange === sp.exchange)) {
+        existing.push({ exchange: sp.exchange, price: sp.price, volume24h: sp.volume24h || 0 });
       }
     }
 
     const result: SpotArbEntry[] = [];
     symbolMap.forEach((prices, symbol) => {
-      if (prices.length < 2) return; // Need at least 2 exchanges to compare
+      if (prices.length < 2) return;
 
-      // Find cheapest and most expensive
       let minIdx = 0, maxIdx = 0;
       for (let i = 1; i < prices.length; i++) {
         if (prices[i].price < prices[minIdx].price) minIdx = i;
@@ -91,15 +88,13 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
 
       // Filter out negligible spreads and extreme outliers
       if (spreadPct < 0.005 || spreadPct > 20) return;
-      // Skip if buy and sell are the same exchange (shouldn't happen but safety)
       if (minIdx === maxIdx) return;
 
-      // Average OI across exchanges that list this symbol
-      let totalOI = 0;
-      let oiCount = 0;
+      // Average spot volume across exchanges
+      let totalVol = 0;
+      let volCount = 0;
       for (const p of prices) {
-        const oi = oiMap.get(`${symbol}|${p.exchange}`) || 0;
-        if (oi > 0) { totalOI += oi; oiCount++; }
+        if (p.volume24h > 0) { totalVol += p.volume24h; volCount++; }
       }
 
       result.push({
@@ -109,12 +104,12 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
         buyPrice,
         sellPrice,
         spreadPct,
-        avgOI: oiCount > 0 ? totalOI / oiCount : 0,
+        avgVolume: volCount > 0 ? totalVol / volCount : 0,
         exchangeCount: prices.length,
       });
     });
     return result;
-  }, [fundingRates, oiMap]);
+  }, [spotPrices]);
 
   const filtered = useMemo(() => {
     let items = entries;
@@ -126,12 +121,12 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
         e.sellExchange.toLowerCase().includes(search.toLowerCase())
       );
     }
-    if (minOI) items = items.filter(e => e.avgOI >= 100_000);
+    if (minVolume) items = items.filter(e => e.avgVolume >= 100_000);
     if (minSpread === '0.1') items = items.filter(e => e.spreadPct >= 0.1);
     else if (minSpread === '0.5') items = items.filter(e => e.spreadPct >= 0.5);
     else if (minSpread === '1') items = items.filter(e => e.spreadPct >= 1);
     return items;
-  }, [entries, search, minOI, minSpread]);
+  }, [entries, search, minVolume, minSpread]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -140,7 +135,7 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
       switch (sortKey) {
         case 'spreadPct': diff = a.spreadPct - b.spreadPct; break;
         case 'symbol': diff = a.symbol.localeCompare(b.symbol); break;
-        case 'avgOI': diff = a.avgOI - b.avgOI; break;
+        case 'avgVolume': diff = a.avgVolume - b.avgVolume; break;
         case 'exchangeCount': diff = a.exchangeCount - b.exchangeCount; break;
       }
       return sortAsc ? diff : -diff;
@@ -221,19 +216,19 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
           ))}
         </div>
         <button
-          onClick={() => { setMinOI(!minOI); setCurrentPage(1); }}
+          onClick={() => { setMinVolume(!minVolume); setCurrentPage(1); }}
           className={`flex items-center gap-1.5 px-3 py-[7px] rounded-lg text-[11px] font-semibold transition-all duration-200 ring-1 ${
-            minOI
+            minVolume
               ? 'bg-hub-yellow/10 text-hub-yellow ring-hub-yellow/30'
               : 'text-neutral-500 hover:text-neutral-300 ring-white/[0.06] hover:bg-white/[0.04]'
           }`}
         >
           <Filter className="w-3 h-3" />
-          $100K+ OI
+          $100K+ Vol
         </button>
-        {(search || minSpread !== 'all' || minOI) && (
+        {(search || minSpread !== 'all' || minVolume) && (
           <span className="text-[10px] text-neutral-600 font-mono">
-            {filtered.length}{search || minOI || minSpread !== 'all' ? `/${entries.length}` : ''} results
+            {filtered.length}{search || minVolume || minSpread !== 'all' ? `/${entries.length}` : ''} results
           </span>
         )}
       </div>
@@ -264,8 +259,8 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
                 </button>
               </th>
               <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
-                <button onClick={() => handleSort('avgOI')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
-                  Avg OI <SortIcon col="avgOI" />
+                <button onClick={() => handleSort('avgVolume')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
+                  Avg Vol <SortIcon col="avgVolume" />
                 </button>
               </th>
             </tr>
@@ -325,7 +320,7 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
                     {entry.exchangeCount}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500">
-                    {entry.avgOI > 0 ? formatOI(entry.avgOI) : '-'}
+                    {entry.avgVolume > 0 ? formatVolume(entry.avgVolume) : '-'}
                   </td>
                 </tr>
               );
@@ -351,10 +346,11 @@ export default function SpotArbitrageView({ fundingRates, oiMap }: SpotArbitrage
       />
 
       <p className="text-[10px] text-neutral-700 leading-relaxed px-1">
-        Cross-exchange arbitrage compares perp mark prices across exchanges for the same symbol.{' '}
+        Spot arbitrage compares real spot trading prices across CEX exchanges.{' '}
         <span className="text-green-400/60 font-medium">Spread</span> = price difference between cheapest and most expensive exchange.{' '}
-        Buy the perp on one exchange, sell on another. Larger spreads = bigger potential profit.{' '}
-        <span className="text-neutral-500">Exch</span> = number of exchanges listing this symbol.
+        Buy spot on one exchange, sell on another.{' '}
+        <span className="text-neutral-500">Exch</span> = number of exchanges with active spot pairs.{' '}
+        <span className="text-neutral-500">Vol</span> = average 24h spot volume per exchange.
       </p>
     </div>
   );

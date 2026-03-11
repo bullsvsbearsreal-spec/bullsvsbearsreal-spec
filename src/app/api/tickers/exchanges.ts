@@ -818,12 +818,64 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // edgeX — DISABLED: CloudFlare blocks per-contract ticker calls from server IPs (403 since ~Mar 2026)
-  // Metadata endpoint works but individual getTicker calls return CF challenge page.
-  // {
-  //   name: 'edgeX',
-  //   fetcher: async (fetchFn) => { ... },
-  // },
+  // edgeX — CloudFlare-blocked, routed through PROXY_URL
+  {
+    name: 'edgeX',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const proxy = proxyUrl.replace(/\/$/, '');
+
+      const metaTarget = 'https://pro.edgex.exchange/api/v1/public/meta/getMetaData';
+      const metaRes = await fetchFn(`${proxy}/?url=${encodeURIComponent(metaTarget)}`, {}, 10000);
+      if (!metaRes.ok) return [];
+      const metaData = await metaRes.json();
+      const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
+      if (contracts.length === 0) return [];
+
+      const batchSize = 10;
+      const results: TickerData[] = [];
+      for (let i = 0; i < contracts.length; i += batchSize) {
+        const batch = contracts.slice(i, i + batchSize);
+        const promises = batch.map((c: any) => {
+          const target = `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`;
+          return fetchFn(`${proxy}/?url=${encodeURIComponent(target)}`, {}, 8000)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null);
+        });
+        const tickerResults = await Promise.all(promises);
+
+        for (let j = 0; j < batch.length; j++) {
+          const contract = batch[j];
+          const ticker = tickerResults[j]?.data?.[0] || tickerResults[j]?.data;
+          if (!ticker) continue;
+
+          const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
+          if (!symbol || !isCryptoSymbol(symbol)) continue;
+
+          const lastPrice = parseFloat(ticker.lastTradePrice || ticker.last_trade_price || ticker.oraclePrice || '0');
+          if (lastPrice <= 0) continue;
+
+          const volume24h = parseFloat(ticker.volume24h || ticker.volume || '0');
+          const priceChange = parseFloat(ticker.priceChangePercent24h || ticker.price24hPcnt || '0');
+
+          results.push({
+            symbol,
+            exchange: 'edgeX',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: priceChange,
+            changePercent24h: priceChange,
+            high24h: parseFloat(ticker.highPrice24h || ticker.high_price_24h || '0') || lastPrice,
+            low24h: parseFloat(ticker.lowPrice24h || ticker.low_price_24h || '0') || lastPrice,
+            volume24h,
+            quoteVolume24h: parseFloat(ticker.turnover24h || ticker.quoteVolume24h || '0') || (volume24h * lastPrice),
+          });
+        }
+      }
+      return results;
+    },
+  },
 
   // Variational (Arbitrum DEX) — /metadata/stats has mark_price + 24h volume
   {

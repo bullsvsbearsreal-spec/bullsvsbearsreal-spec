@@ -180,6 +180,26 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
   }
 }
 
+// Spot prices — real spot/CEX trading prices (not perp)
+export type SpotPriceEntry = { symbol: string; exchange: string; price: number; volume24h: number };
+
+export async function fetchSpotPrices(): Promise<SpotPriceEntry[]> {
+  const cached = getCached<SpotPriceEntry[]>('spotPrices');
+  if (cached) return cached;
+
+  try {
+    const response = await fetch('/api/spot-prices');
+    if (!response.ok) throw new Error('Failed to fetch spot prices');
+    const json = await response.json();
+    const data = Array.isArray(json) ? json : (json.data ?? json);
+    setCache('spotPrices', data);
+    return data;
+  } catch (error) {
+    console.error('Error fetching spot prices:', error);
+    return [];
+  }
+}
+
 // Get aggregated open interest by symbol
 export function aggregateOpenInterestBySymbol(oiData: OpenInterestData[]): Map<string, number> {
   const symbolOI = new Map<string, number>();
