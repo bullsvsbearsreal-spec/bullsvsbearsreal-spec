@@ -1,4 +1,5 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';

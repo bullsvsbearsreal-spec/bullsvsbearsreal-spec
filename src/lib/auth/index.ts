@@ -10,16 +10,7 @@ import Google from 'next-auth/providers/google';
 import Discord from 'next-auth/providers/discord';
 import Twitter from 'next-auth/providers/twitter';
 import bcrypt from 'bcryptjs';
-import postgres from 'postgres';
-import { PostgresAdapter } from './adapter';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
+import { PostgresAdapter, getSQL } from './adapter';
 
 // Build providers list — only include OAuth providers with configured credentials
 const providers: any[] = [
@@ -28,6 +19,7 @@ const providers: any[] = [
     credentials: {
       email: { label: 'Email', type: 'email', placeholder: 'you@example.com' },
       password: { label: 'Password', type: 'password' },
+      twoFactorValidated: { label: '2FA Validated', type: 'text' },
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
@@ -48,6 +40,20 @@ const providers: any[] = [
       // Block unverified email accounts (!user.email_verified catches both null and undefined)
       if (!user.email_verified) {
         throw new Error('EMAIL_NOT_VERIFIED');
+      }
+
+      // Server-side 2FA enforcement — prevents bypass via direct NextAuth callback.
+      // The client flow is: check-credentials → 2fa/validate → signIn(), but an attacker
+      // could skip straight to signIn(). This check ensures 2FA cannot be bypassed.
+      const twofa = await db`
+        SELECT totp_enabled, email_2fa_enabled FROM user_2fa WHERE user_id = ${user.id}
+      `;
+      if (twofa.length > 0 && (twofa[0].totp_enabled || twofa[0].email_2fa_enabled)) {
+        // 2FA is enabled — require a validated 2FA token.
+        // The client must pass twoFactorValidated=true after completing 2fa/validate.
+        if (credentials.twoFactorValidated !== 'true') {
+          throw new Error('2FA_REQUIRED');
+        }
       }
 
       return { id: user.id, name: user.name, email: user.email, image: user.image };
@@ -88,25 +94,34 @@ export async function isAdmin(userId: string): Promise<boolean> {
   }
 }
 
-/** Require admin role — returns error Response or null if authorized */
+/** Require admin role — re-verifies against DB to prevent stale JWT exploits */
 export async function requireAdmin(): Promise<Response | null> {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (session.user.role !== 'admin') {
+  // Real-time DB check — JWT role can be stale after revocation
+  if (!(await isAdmin(session.user.id))) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
   return null;
 }
 
-/** Require admin or advisor role — for read-only and safe-action routes */
+/** Require admin or advisor role — re-verifies against DB to prevent stale JWT exploits */
 export async function requireAdminOrAdvisor(): Promise<Response | null> {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (session.user.role !== 'admin' && session.user.role !== 'advisor') {
+  // Real-time DB check — JWT role can be stale after revocation
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT role FROM users WHERE id = ${session.user.id}`;
+    const role = rows.length > 0 ? rows[0].role : null;
+    if (role !== 'admin' && role !== 'advisor') {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  } catch {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
   return null;

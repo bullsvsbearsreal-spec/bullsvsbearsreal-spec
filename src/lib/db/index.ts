@@ -11,7 +11,7 @@ const DATABASE_URL = process.env.DATABASE_URL || '';
 
 let sql: ReturnType<typeof postgres> | null = null;
 
-function getSQL() {
+export function getSQL() {
   if (!DATABASE_URL) {
     throw new Error('No database URL configured. Set DATABASE_URL env var.');
   }
@@ -161,6 +161,18 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_evc_user ON email_verification_codes(user_id, used)`;
 
+  // 2FA login codes (one-time codes sent via email during login)
+  await sql`
+    CREATE TABLE IF NOT EXISTS twofa_login_codes (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
   // Two-factor authentication
   await sql`
     CREATE TABLE IF NOT EXISTS user_2fa (
@@ -189,6 +201,8 @@ async function _doInitDB(): Promise<void> {
   await initTelegramTables();
   await initTelegramAlertTables();
 
+  // Email verification column
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`;
   // User roles (admin, user)
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
   // Seed admin accounts
@@ -1029,6 +1043,16 @@ export interface NotificationPrefs {
   cooldownMinutes: number;
 }
 
+export interface FundingPrefs {
+  cellColors?: boolean;       // true = colored bg fills, false = text-only (default: false)
+  gridSpacing?: 'compact' | 'normal' | 'spacious';  // default: 'normal'
+  hiddenExchanges?: string[]; // exchanges to hide from heatmap grid
+  fontSize?: 'small' | 'medium' | 'large';  // default: 'medium'
+  showPredicted?: boolean;    // always show predicted next rate (default: false — only on hover)
+  showLongShort?: boolean;    // show L/S breakdown when available (default: true)
+  showAccumulated?: boolean;  // show 7D accumulated funding in symbol column (default: true)
+}
+
 export interface UserData {
   watchlist?: string[];
   portfolio?: any[];
@@ -1037,6 +1061,7 @@ export interface UserData {
   wallets?: any[];
   notificationPrefs?: NotificationPrefs;
   theme?: string;
+  fundingPrefs?: FundingPrefs;
 }
 
 export async function getUserData(userId: string): Promise<UserData | null> {

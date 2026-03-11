@@ -176,8 +176,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           exchange: 'dYdX',
           lastPrice: parseFloat(market.oraclePrice),
           price: parseFloat(market.oraclePrice),
-          priceChangePercent24h: parseFloat(market.priceChange24H) || 0,
-          changePercent24h: parseFloat(market.priceChange24H) || 0,
+          priceChangePercent24h: (parseFloat(market.priceChange24H) || 0) * 100, // dYdX returns decimal ratio
+          changePercent24h: (parseFloat(market.priceChange24H) || 0) * 100,
           high24h: 0,
           low24h: 0,
           volume24h: parseFloat(market.volume24H),

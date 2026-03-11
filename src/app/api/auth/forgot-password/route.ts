@@ -1,26 +1,33 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import postgres from 'postgres';
 import { Resend } from 'resend';
+import { getSQL } from '@/lib/db';
+import { forgotPasswordLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
+let _resend: Resend | null = null;
+function getResend(): Resend | null {
+  if (!_resend && process.env.RESEND_API_KEY) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
 }
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://info-hub.io';
 
 export async function POST(req: Request) {
   try {
+    // Rate limit by IP
+    const ip = getClientIP(req);
+    if (!forgotPasswordLimiter.check(ip)) {
+      return NextResponse.json({ message: 'If that email exists, we sent a reset link' });
+    }
+
     const { email } = await req.json();
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    if (!email || !isValidEmail(email)) {
+      return NextResponse.json({ message: 'If that email exists, we sent a reset link' });
     }
 
     const db = getSQL();
@@ -32,17 +39,6 @@ export async function POST(req: Request) {
       // Generate a secure token
       const token = randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-      // Ensure table exists before any queries against it
-      await db`
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-          token TEXT PRIMARY KEY,
-          email TEXT NOT NULL,
-          expires_at TIMESTAMPTZ NOT NULL,
-          used BOOLEAN DEFAULT false,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `;
 
       // Invalidate any existing tokens for this email
       await db`UPDATE password_reset_tokens SET used = true WHERE email = ${email} AND used = false`;
@@ -56,6 +52,11 @@ export async function POST(req: Request) {
       const resetUrl = `${BASE_URL}/reset-password?token=${token}`;
 
       // Send the email (non-fatal — don't leak success/failure to client)
+      const resend = getResend();
+      if (!resend) {
+        console.error('RESEND_API_KEY not configured — skipping reset email');
+        return NextResponse.json({ message: 'If that email exists, we sent a reset link' });
+      }
       try {
         await resend.emails.send({
           from: 'InfoHub <noreply@info-hub.io>',

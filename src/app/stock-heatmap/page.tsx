@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -34,8 +33,9 @@ function StockHeatmapWidget({ dataSource, blockColor }: { dataSource: DataSource
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    containerRef.current.innerHTML = '';
+    const container = containerRef.current;
+    if (!container) return;
+    container.innerHTML = '';
 
     const widgetContainer = document.createElement('div');
     widgetContainer.className = 'tradingview-widget-container';
@@ -73,12 +73,15 @@ function StockHeatmapWidget({ dataSource, blockColor }: { dataSource: DataSource
 
     widgetContainer.appendChild(widgetInner);
     widgetContainer.appendChild(script);
-    containerRef.current.appendChild(widgetContainer);
+    container.appendChild(widgetContainer);
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
+      // Remove all iframes (TradingView widgets) to release their connections
+      container.querySelectorAll('iframe').forEach((iframe) => {
+        iframe.src = 'about:blank';
+        iframe.remove();
+      });
+      container.innerHTML = '';
     };
   }, [dataSource, blockColor]);
 
@@ -92,65 +95,58 @@ export default function StockHeatmapPage() {
   const [blockColor, setBlockColor] = useState<BlockColor>('change');
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
+    <div className="h-screen bg-black flex flex-col overflow-hidden">
       <Header />
 
-      <main className="flex-1 flex flex-col">
-        {/* Controls bar */}
-        <div className="border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
-          <div className="max-w-[1800px] mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
-            <div>
-              <h1 className="text-lg font-bold text-white">Stock Heatmap</h1>
-              <p className="text-xs text-neutral-500">Market overview by sector and performance</p>
-            </div>
+      {/* Controls bar */}
+      <div className="shrink-0 border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
+        <div className="max-w-[1800px] mx-auto px-4 py-2 flex flex-wrap items-center gap-4">
+          <h1 className="text-sm font-bold text-white">Stock Heatmap</h1>
 
-            <div className="flex-1" />
+          <div className="flex-1" />
 
-            {/* Data source toggle */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-neutral-500 mr-1.5">Market:</span>
-              {DATA_SOURCES.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => setDataSource(s.id)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                    dataSource === s.id
-                      ? 'bg-hub-yellow/15 text-hub-yellow'
-                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
+          {/* Data source toggle */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-neutral-500 mr-1.5">Market:</span>
+            {DATA_SOURCES.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setDataSource(s.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  dataSource === s.id
+                    ? 'bg-hub-yellow/15 text-hub-yellow'
+                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
 
-            {/* Color-by toggle */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-neutral-500 mr-1.5">Color by:</span>
-              {COLOR_OPTIONS.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setBlockColor(c.id)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                    blockColor === c.id
-                      ? 'bg-hub-yellow/15 text-hub-yellow'
-                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
+          {/* Color-by toggle */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-neutral-500 mr-1.5">Color by:</span>
+            {COLOR_OPTIONS.map(c => (
+              <button
+                key={c.id}
+                onClick={() => setBlockColor(c.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  blockColor === c.id
+                    ? 'bg-hub-yellow/15 text-hub-yellow'
+                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Heatmap widget */}
-        <div className="flex-1 min-h-[600px]">
-          <StockHeatmapWidget dataSource={dataSource} blockColor={blockColor} />
-        </div>
-      </main>
-
-      <Footer />
+      {/* Heatmap widget — fills all remaining space */}
+      <div className="flex-1 min-h-0">
+        <StockHeatmapWidget dataSource={dataSource} blockColor={blockColor} />
+      </div>
     </div>
   );
 }

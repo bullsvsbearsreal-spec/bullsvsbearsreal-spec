@@ -3,6 +3,7 @@ import { requireAdminOrAdvisor } from '@/lib/auth';
 import { getUserDetailForAdmin } from '@/lib/db';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 export async function GET(
   _request: NextRequest,

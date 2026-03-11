@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[arb-cron] error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

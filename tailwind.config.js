@@ -10,17 +10,24 @@ module.exports = {
     extend: {
       colors: {
         hub: {
+          /* 60% Dominant */
           black: 'var(--hub-black)',
           dark: 'var(--hub-dark)',
           darker: 'var(--hub-darker)',
+          /* 30% Secondary */
+          secondary: 'var(--hub-secondary)',
+          'secondary-light': 'var(--hub-secondary-light)',
+          'secondary-medium': 'var(--hub-secondary-medium)',
+          /* Backward-compat aliases */
           gray: 'var(--hub-gray)',
           'gray-light': 'var(--hub-gray-light)',
           'gray-medium': 'var(--hub-gray-medium)',
-          // Accent colors — driven by CSS variables for theme switching
+          /* 10% Accent — driven by CSS variables for theme switching */
           yellow: 'rgb(var(--hub-accent-rgb) / <alpha-value>)',
           'yellow-light': 'rgb(var(--hub-accent-light-rgb) / <alpha-value>)',
           'yellow-dark': 'rgb(var(--hub-accent-dark-rgb) / <alpha-value>)',
           orange: 'rgb(var(--hub-accent-secondary-rgb) / <alpha-value>)',
+          /* Neutrals */
           white: '#ffffff',
           'gray-text': '#888888',
           'gray-text-light': '#b0b0b0',
@@ -31,6 +38,11 @@ module.exports = {
         info: '#3b82f6',
         long: '#22c55e',
         short: '#ef4444',
+      },
+      borderColor: {
+        'hub-subtle': 'var(--hub-border-subtle)',
+        'hub-default': 'var(--hub-border)',
+        'hub-hover': 'var(--hub-border-hover)',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],

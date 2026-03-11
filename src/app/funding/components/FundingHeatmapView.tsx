@@ -6,8 +6,9 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRateAdaptive, type FundingPeriod, periodMultiplier, PERIOD_HOURS } from '../utils';
 import Pagination from './Pagination';
-import { ChevronUp, ChevronDown, ExternalLink, Grid3X3, LayoutGrid } from 'lucide-react';
+import { ChevronUp, ChevronDown, ExternalLink, Grid3X3, LayoutGrid, Settings2, Search, X } from 'lucide-react';
 import { getExchangeTradeUrl } from '@/lib/constants';
+import type { FundingPrefs } from '@/lib/db';
 
 const ROWS_PER_PAGE = 80;
 const TREEMAP_MAX = 100;
@@ -28,34 +29,36 @@ interface FundingHeatmapViewProps {
   intervalMap?: Map<string, string>;
   oiMap?: Map<string, number>;
   longShortMap?: Map<string, { long: number; short: number }>;
-  borrowingMap?: Map<string, number>;
+  // borrowingMap removed — was computed but never used
   predictedMap?: Map<string, Map<string, number>>;
   accumulatedMap?: Map<string, AccumulatedFunding>;
   fundingPeriod: FundingPeriod;
+  fundingPrefs?: Required<FundingPrefs>;
+  onUpdatePrefs?: (partial: Partial<FundingPrefs>) => void;
 }
 
 /* ═══════════════════════════════════════
    COLOR ENGINE
    ═══════════════════════════════════════ */
 
-function rateToColors(rate: number | undefined, clamp = 0.3): { bg: string; text: string; glow: string } {
+function rateToColors(rate: number | undefined, clamp = 0.3, colored = false): { bg: string; text: string; glow: string } {
   if (rate === undefined) return { bg: 'rgba(255,255,255,0.02)', text: 'rgba(255,255,255,0.12)', glow: 'transparent' };
-  if (rate === 0) return { bg: 'rgba(255,255,255,0.035)', text: 'rgba(255,255,255,0.35)', glow: 'transparent' };
+  if (rate === 0) return { bg: 'rgba(255,255,255,0.02)', text: 'rgba(255,255,255,0.35)', glow: 'transparent' };
 
   const abs = Math.min(Math.abs(rate), clamp);
   const t = Math.pow(abs / clamp, 0.55); // gamma for perceptual linearity
 
   if (rate > 0) {
     return {
-      bg: `rgba(16, 185, 129, ${(0.07 + t * 0.38).toFixed(3)})`,
+      bg: colored ? `rgba(16, 185, 129, ${(0.05 + t * 0.2).toFixed(3)})` : 'rgba(255,255,255,0.02)',
       text: `rgba(52, 211, 153, ${(0.5 + t * 0.5).toFixed(3)})`,
-      glow: t > 0.25 ? `rgba(16, 185, 129, ${(t * 0.15).toFixed(3)})` : 'transparent',
+      glow: colored ? `rgba(16, 185, 129, ${(t * 0.15).toFixed(3)})` : 'transparent',
     };
   } else {
     return {
-      bg: `rgba(244, 63, 94, ${(0.07 + t * 0.38).toFixed(3)})`,
+      bg: colored ? `rgba(244, 63, 94, ${(0.05 + t * 0.2).toFixed(3)})` : 'rgba(255,255,255,0.02)',
       text: `rgba(251, 113, 133, ${(0.5 + t * 0.5).toFixed(3)})`,
-      glow: t > 0.25 ? `rgba(244, 63, 94, ${(t * 0.15).toFixed(3)})` : 'transparent',
+      glow: colored ? `rgba(244, 63, 94, ${(t * 0.15).toFixed(3)})` : 'transparent',
     };
   }
 }
@@ -145,16 +148,38 @@ function squarify(
    MAIN COMPONENT
    ═══════════════════════════════════════ */
 
+const SPACING_MAP: Record<string, string> = {
+  compact: '1px 1px',
+  normal: '3px 2px',
+  spacious: '5px 3px',
+};
+
+const FONT_SIZE_MAP: Record<string, { rate: string; sub: string; ls: string }> = {
+  small:  { rate: 'text-[11px]', sub: 'text-[7px]', ls: 'text-[9px]' },
+  medium: { rate: 'text-[13px]', sub: 'text-[8px]', ls: 'text-[11px]' },
+  large:  { rate: 'text-[15px]', sub: 'text-[9px]', ls: 'text-[13px]' },
+};
+
 export default function FundingHeatmapView({
   symbols, visibleExchanges, heatmapData, intervalMap, oiMap, longShortMap, predictedMap, accumulatedMap, fundingPeriod,
+  fundingPrefs, onUpdatePrefs,
 }: FundingHeatmapViewProps) {
   // Period-scaled color clamps
   const periodScale = PERIOD_HOURS[fundingPeriod] / 8;
   const gridClamp = 0.3 * periodScale;
   const treemapClamp = 0.25 * periodScale;
+  const cellColors = fundingPrefs?.cellColors ?? false;
+  const gridSpacing = fundingPrefs?.gridSpacing ?? 'normal';
+  const fontSize = fundingPrefs?.fontSize ?? 'medium';
+  const showPredicted = fundingPrefs?.showPredicted ?? false;
+  const showLongShort = fundingPrefs?.showLongShort ?? true;
+  const showAccumulated = fundingPrefs?.showAccumulated ?? true;
   const [mode, setMode] = useState<HeatmapMode>('grid');
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [exchangeSort, setExchangeSort] = useState<ExchangeSort | null>(null);
+  const [coinSearch, setCoinSearch] = useState('');
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [hoveredCol, setHoveredCol] = useState<string | null>(null);
   const [hoveredTreemapSym, setHoveredTreemapSym] = useState<string | null>(null);
@@ -175,6 +200,18 @@ export default function FundingHeatmapView({
     return () => ro.disconnect();
   }, [mode]);
 
+  // Close settings dropdown on Escape or click outside
+  useEffect(() => {
+    if (!showSettings) return;
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowSettings(false); };
+    const handleClick = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    document.addEventListener('mousedown', handleClick);
+    return () => { window.removeEventListener('keydown', handleKey); document.removeEventListener('mousedown', handleClick); };
+  }, [showSettings]);
+
   // Sync top scrollbar ↔ table scroll
   useEffect(() => {
     if (mode !== 'grid') return;
@@ -193,7 +230,7 @@ export default function FundingHeatmapView({
     topEl.addEventListener('scroll', syncFromTop);
     tableEl.addEventListener('scroll', syncFromTable);
     return () => { cancelAnimationFrame(rafId); ro.disconnect(); topEl.removeEventListener('scroll', syncFromTop); tableEl.removeEventListener('scroll', syncFromTable); };
-  }, [mode, visibleExchanges.length, symbols.length]);
+  }, [mode, visibleExchanges.length, symbols.length, coinSearch]);
 
   const handleExchangeClick = useCallback((exchange: string) => {
     setExchangeSort(prev => {
@@ -204,11 +241,18 @@ export default function FundingHeatmapView({
     setCurrentPage(1);
   }, []);
 
+  // ── Coin search filter ──
+  const filteredSymbols = useMemo(() => {
+    if (!coinSearch) return symbols;
+    const q = coinSearch.toUpperCase();
+    return symbols.filter(s => s.includes(q));
+  }, [symbols, coinSearch]);
+
   // ── Computed data ──
 
   const avgRates = useMemo(() => {
     const map = new Map<string, number>();
-    symbols.forEach(sym => {
+    filteredSymbols.forEach(sym => {
       const rates = heatmapData.get(sym);
       if (!rates) return;
       let sum = 0, count = 0;
@@ -223,12 +267,12 @@ export default function FundingHeatmapView({
       if (count > 0) map.set(sym, sum / count);
     });
     return map;
-  }, [symbols, visibleExchanges, heatmapData, intervalMap, fundingPeriod]);
+  }, [filteredSymbols, visibleExchanges, heatmapData, intervalMap, fundingPeriod]);
 
   const symbolOI = useMemo(() => {
     const map = new Map<string, number>();
     if (!oiMap) return map;
-    symbols.forEach(sym => {
+    filteredSymbols.forEach(sym => {
       let total = 0;
       visibleExchanges.forEach(ex => {
         const val = oiMap.get(`${sym}|${ex}`);
@@ -237,11 +281,11 @@ export default function FundingHeatmapView({
       if (total > 0) map.set(sym, total);
     });
     return map;
-  }, [symbols, visibleExchanges, oiMap]);
+  }, [filteredSymbols, visibleExchanges, oiMap]);
 
   const listingCounts = useMemo(() => {
     const map = new Map<string, number>();
-    symbols.forEach(sym => {
+    filteredSymbols.forEach(sym => {
       const rates = heatmapData.get(sym);
       if (!rates) return;
       let count = 0;
@@ -249,13 +293,13 @@ export default function FundingHeatmapView({
       map.set(sym, count);
     });
     return map;
-  }, [symbols, visibleExchanges, heatmapData]);
+  }, [filteredSymbols, visibleExchanges, heatmapData]);
 
   const sortedSymbols = useMemo(() => {
-    if (!exchangeSort) return symbols;
+    if (!exchangeSort) return filteredSymbols;
     const { exchange, direction } = exchangeSort;
     if (exchange === '__avg__') {
-      return [...symbols].sort((a, b) => {
+      return [...filteredSymbols].sort((a, b) => {
         const rateA = avgRates.get(a);
         const rateB = avgRates.get(b);
         if (rateA === undefined && rateB === undefined) return 0;
@@ -265,8 +309,8 @@ export default function FundingHeatmapView({
       });
     }
     // When sorting by a specific exchange, symbols with data first, sorted by base funding rate
-    const withData = symbols.filter(s => heatmapData.get(s)?.get(exchange) !== undefined);
-    const withoutData = symbols.filter(s => heatmapData.get(s)?.get(exchange) === undefined);
+    const withData = filteredSymbols.filter(s => heatmapData.get(s)?.get(exchange) !== undefined);
+    const withoutData = filteredSymbols.filter(s => heatmapData.get(s)?.get(exchange) === undefined);
     withData.sort((a, b) => {
       const rateA = heatmapData.get(a)!.get(exchange)!;
       const rateB = heatmapData.get(b)!.get(exchange)!;
@@ -276,7 +320,7 @@ export default function FundingHeatmapView({
       return direction === 'desc' ? rateB * multB - rateA * multA : rateA * multA - rateB * multB;
     });
     return [...withData, ...withoutData];
-  }, [symbols, exchangeSort, heatmapData, avgRates, longShortMap]);
+  }, [filteredSymbols, exchangeSort, heatmapData, avgRates, intervalMap, fundingPeriod]);
 
   const totalPages = Math.max(1, Math.ceil(sortedSymbols.length / ROWS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -286,17 +330,17 @@ export default function FundingHeatmapView({
   // Market summary
   const { bullish, bearish } = useMemo(() => {
     let b = 0, br = 0;
-    symbols.forEach(sym => {
+    filteredSymbols.forEach(sym => {
       const avg = avgRates.get(sym);
       if (avg !== undefined) { if (avg > 0) b++; else if (avg < 0) br++; }
     });
     return { bullish: b, bearish: br };
-  }, [symbols, avgRates]);
+  }, [filteredSymbols, avgRates]);
 
   // Treemap data
   const treemapRects = useMemo(() => {
     if (mode !== 'treemap') return [];
-    const items = symbols
+    const items = filteredSymbols
       .map(sym => ({
         symbol: sym,
         rate: avgRates.get(sym) ?? 0,
@@ -305,7 +349,7 @@ export default function FundingHeatmapView({
       .sort((a, b) => b.oi - a.oi)
       .slice(0, TREEMAP_MAX);
     return squarify(items, 0, 0, treemapSize.w, treemapSize.h);
-  }, [mode, symbols, avgRates, symbolOI, treemapSize]);
+  }, [mode, filteredSymbols, avgRates, symbolOI, treemapSize]);
 
   const formatOI = (val: number) => {
     if (val >= 1e9) return `$${(val / 1e9).toFixed(1)}B`;
@@ -349,10 +393,139 @@ export default function FundingHeatmapView({
           </div>
 
           <div className="h-3.5 w-px bg-white/[0.06]" />
-          <span className="text-neutral-600 text-[11px] font-mono tabular-nums">{symbols.length} <span className="text-neutral-700">pairs</span></span>
+          <span className="text-neutral-600 text-[11px] font-mono tabular-nums">{filteredSymbols.length}{coinSearch && `/${symbols.length}`} <span className="text-neutral-700">pairs</span></span>
+
+          {/* Settings gear */}
+          {onUpdatePrefs && (
+            <div className="relative" ref={settingsRef}>
+              <button
+                onClick={() => setShowSettings(p => !p)}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-150 ${
+                  showSettings ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-neutral-300'
+                }`}
+                title="Display settings"
+              >
+                <Settings2 className="w-3 h-3" />
+              </button>
+
+              {showSettings && (
+                <div className="absolute left-0 top-full mt-2 z-50 rounded-xl shadow-2xl shadow-black/90 min-w-[230px] overflow-hidden" style={{ background: 'linear-gradient(180deg, #141414 0%, #0c0c0c 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="px-3 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span className="text-white font-semibold text-[12px]">Display</span>
+                  </div>
+                  <div className="p-3 space-y-3">
+                    {/* Cell Colors Toggle */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-neutral-400">Cell colors</span>
+                      <button
+                        onClick={() => onUpdatePrefs({ cellColors: !cellColors })}
+                        className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${cellColors ? 'bg-hub-yellow' : 'bg-white/[0.08]'}`}
+                      >
+                        <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full transition-all duration-200 ${cellColors ? 'left-[15px] bg-black' : 'left-[2px] bg-neutral-500'}`} />
+                      </button>
+                    </div>
+
+                    {/* Show Predicted Toggle */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-neutral-400">Predicted rates</span>
+                      <button
+                        onClick={() => onUpdatePrefs({ showPredicted: !showPredicted })}
+                        className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${showPredicted ? 'bg-hub-yellow' : 'bg-white/[0.08]'}`}
+                      >
+                        <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full transition-all duration-200 ${showPredicted ? 'left-[15px] bg-black' : 'left-[2px] bg-neutral-500'}`} />
+                      </button>
+                    </div>
+
+                    {/* Show L/S Breakdown Toggle */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-neutral-400">L/S breakdown</span>
+                      <button
+                        onClick={() => onUpdatePrefs({ showLongShort: !showLongShort })}
+                        className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${showLongShort ? 'bg-hub-yellow' : 'bg-white/[0.08]'}`}
+                      >
+                        <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full transition-all duration-200 ${showLongShort ? 'left-[15px] bg-black' : 'left-[2px] bg-neutral-500'}`} />
+                      </button>
+                    </div>
+
+                    {/* Show Accumulated 7D Toggle */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-neutral-400">7D accumulated</span>
+                      <button
+                        onClick={() => onUpdatePrefs({ showAccumulated: !showAccumulated })}
+                        className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${showAccumulated ? 'bg-hub-yellow' : 'bg-white/[0.08]'}`}
+                      >
+                        <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full transition-all duration-200 ${showAccumulated ? 'left-[15px] bg-black' : 'left-[2px] bg-neutral-500'}`} />
+                      </button>
+                    </div>
+
+                    <div className="h-px bg-white/[0.04]" />
+
+                    {/* Grid Spacing */}
+                    <div>
+                      <span className="text-[11px] text-neutral-400 block mb-1.5">Spacing</span>
+                      <div className="flex rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        {(['compact', 'normal', 'spacious'] as const).map(opt => (
+                          <button
+                            key={opt}
+                            onClick={() => onUpdatePrefs({ gridSpacing: opt })}
+                            className={`flex-1 px-2 py-1.5 text-[10px] font-semibold capitalize transition-all duration-150 ${
+                              gridSpacing === opt ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-neutral-300'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Font Size */}
+                    <div>
+                      <span className="text-[11px] text-neutral-400 block mb-1.5">Font size</span>
+                      <div className="flex rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        {(['small', 'medium', 'large'] as const).map(opt => (
+                          <button
+                            key={opt}
+                            onClick={() => onUpdatePrefs({ fontSize: opt })}
+                            className={`flex-1 px-2 py-1.5 text-[10px] font-semibold capitalize transition-all duration-150 ${
+                              fontSize === opt ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-neutral-300'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Coin search */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-600 pointer-events-none" />
+            <input
+              type="text"
+              value={coinSearch}
+              onChange={e => { setCoinSearch(e.target.value); setCurrentPage(1); }}
+              placeholder="Search coin..."
+              className="w-[130px] sm:w-[160px] pl-7 pr-7 py-1.5 rounded-lg text-[11px] text-white placeholder-neutral-600 outline-none transition-all focus:ring-1 focus:ring-hub-yellow/40"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+            />
+            {coinSearch && (
+              <button
+                onClick={() => { setCoinSearch(''); setCurrentPage(1); }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-neutral-500 hover:text-white hover:bg-white/[0.08] transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="h-3.5 w-px bg-white/[0.06] hidden sm:block" />
+
           {/* Sentiment bar */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-emerald-400/80 font-mono tabular-nums font-medium">{bullish}</span>
@@ -474,7 +647,7 @@ export default function FundingHeatmapView({
             })}
           </div>
           <p className="text-[10px] text-neutral-700 mt-2 text-center">
-            Sized by open interest · Top {Math.min(TREEMAP_MAX, symbols.length)} symbols · Click to view details
+            Sized by open interest · Top {Math.min(TREEMAP_MAX, filteredSymbols.length)} symbols · Click to view details
           </p>
         </div>
       )}
@@ -488,7 +661,7 @@ export default function FundingHeatmapView({
           </div>
           <div className="relative">
           <div ref={tableScrollRef} className="overflow-x-auto heatmap-scroll">
-            <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+            <table style={{ borderCollapse: 'separate', borderSpacing: SPACING_MAP[gridSpacing], tableLayout: 'fixed', width: 145 + visibleExchanges.length * 81 }}>
               <thead>
                 <tr>
                   <th
@@ -496,7 +669,9 @@ export default function FundingHeatmapView({
                     style={{
                       background: 'var(--hub-darker)',
                       boxShadow: '2px 0 8px -2px rgba(0,0,0,0.6)',
+                      width: 145,
                       minWidth: 145,
+                      maxWidth: 145,
                     }}
                   >
                     <button
@@ -548,7 +723,7 @@ export default function FundingHeatmapView({
                   const avg = avgRates.get(symbol);
                   const listings = listingCounts.get(symbol) ?? 0;
                   const isRowHovered = hoveredRow === symbol;
-                  const avgColors = rateToColors(avg, gridClamp);
+                  const avgColors = rateToColors(avg, gridClamp, cellColors);
 
                   return (
                     <tr
@@ -576,7 +751,7 @@ export default function FundingHeatmapView({
                                 {avg !== undefined ? formatRateAdaptive(avg) : '—'}
                               </span>
                               <span className="text-[9px] text-neutral-700 tabular-nums">{listings}/{visibleExchanges.length}</span>
-                              {(() => {
+                              {showAccumulated && (() => {
                                 const acc = accumulatedMap?.get(symbol);
                                 if (!acc || acc.d7 === 0) return null;
                                 const color7d = acc.d7 > 0 ? 'text-green-400/60' : 'text-red-400/60';
@@ -602,16 +777,18 @@ export default function FundingHeatmapView({
                         const isCross = isRowHovered && hoveredCol === ex;
                         const rawLs = longShortMap?.get(`${symbol}|${ex}`);
                         const ls = rawLs ? { long: rawLs.long * pMult, short: rawLs.short * pMult } : undefined;
-                        const hasLS = ls !== undefined && rate !== undefined;
+                        const hasLS = showLongShort && ls !== undefined && rate !== undefined;
                         // Cell background always uses base funding rate (comparable across all exchanges)
                         const colorRate = rate;
-                        const colors = rateToColors(colorRate, gridClamp);
+                        const colors = rateToColors(colorRate, gridClamp, cellColors);
+                        const fs = FONT_SIZE_MAP[fontSize] || FONT_SIZE_MAP.medium;
 
                         const cellStyle: React.CSSProperties = {
                           background: colors.bg,
                           borderWidth: 1,
                           borderStyle: 'solid',
-                          borderColor: isCross ? 'rgba(255,255,255,0.2)' : colors.glow,
+                          borderColor: isCross ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.04)',
+                          borderRadius: 4,
                           minHeight: hasLS ? 42 : 38,
                           height: hasLS ? 42 : 38,
                           transition: 'border-color 60ms',
@@ -628,15 +805,21 @@ export default function FundingHeatmapView({
                         const title = rate !== undefined
                           ? `${symbol} · ${ex} · ${formatRateAdaptive(rate)} (${interval || '8h'})${lsLine}${predLine}\nClick to trade`
                           : `Not on ${ex}`;
+                        const showPred = predicted !== undefined && rate !== undefined && (showPredicted || isCross);
                         const inner = hasLS ? (
                           <>
                             <span className="flex flex-col items-center gap-[2px] leading-none">
-                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.long, gridClamp).text }}>
+                              <span className={`${fs.ls} font-mono tabular-nums font-semibold`} style={{ color: rateToColors(ls.long, gridClamp).text }}>
                                 <span className="text-white/25 text-[9px]">L</span> {formatRateAdaptive(ls.long)}
                               </span>
-                              <span className="text-[11px] font-mono tabular-nums font-semibold" style={{ color: rateToColors(ls.short, gridClamp).text }}>
+                              <span className={`${fs.ls} font-mono tabular-nums font-semibold`} style={{ color: rateToColors(ls.short, gridClamp).text }}>
                                 <span className="text-white/25 text-[9px]">S</span> {formatRateAdaptive(ls.short)}
                               </span>
+                              {showPred && (
+                                <span className={`${fs.sub} font-mono tabular-nums`} style={{ color: rateToColors(predicted, gridClamp).text, opacity: 0.7 }}>
+                                  P {formatRateAdaptive(predicted)}
+                                </span>
+                              )}
                             </span>
                             {intervalDot}
                             {isCross && tradeUrl && (
@@ -646,11 +829,11 @@ export default function FundingHeatmapView({
                         ) : (
                           <>
                             <span className="flex flex-col items-center gap-[1px] leading-none">
-                              <span className="text-[13px] font-mono tabular-nums font-semibold" style={{ color: colors.text }}>
+                              <span className={`${fs.rate} font-mono tabular-nums font-semibold`} style={{ color: colors.text }}>
                                 {rate !== undefined ? formatRateAdaptive(rate) : '—'}
                               </span>
-                              {predicted !== undefined && rate !== undefined && isCross && (
-                                <span className="text-[8px] font-mono tabular-nums" style={{ color: rateToColors(predicted, gridClamp).text, opacity: 0.7 }}>
+                              {showPred && (
+                                <span className={`${fs.sub} font-mono tabular-nums`} style={{ color: rateToColors(predicted, gridClamp).text, opacity: 0.7 }}>
                                   P {formatRateAdaptive(predicted)}
                                 </span>
                               )}

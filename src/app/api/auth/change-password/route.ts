@@ -1,17 +1,11 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import postgres from 'postgres';
 import { auth } from '@/lib/auth';
 import { validatePassword } from '@/lib/auth/password';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
+import { isDBConfigured, getSQL } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {

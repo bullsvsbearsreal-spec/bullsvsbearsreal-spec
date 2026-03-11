@@ -166,4 +166,59 @@ export const CHAT_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    name: 'get_options_data',
+    description: 'BTC/ETH/SOL options: max pain, put/call ratio, IV, OI by strike/exchange. Use for: options sentiment, hedging, pin risk.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        currency: { type: 'string', enum: ['BTC', 'ETH', 'SOL'], description: 'Default: BTC' },
+      },
+    },
+  },
+  {
+    name: 'get_onchain_metrics',
+    description: 'BTC on-chain: hash rate, MVRV, Puell Multiple, mempool fees, difficulty, supply. Use for: fundamental analysis, miner health, network activity.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'get_market_cycle',
+    description: 'Pi Cycle, Rainbow Chart band, 200W MA, Stock-to-Flow model. Use for: macro cycle position, long-term valuation.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'get_prediction_markets',
+    description: 'Polymarket/Kalshi markets + cross-platform arb opportunities. Use for: event odds, political/economic event pricing.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'get_oi_delta',
+    description: 'OI momentum: 1h/4h/24h % changes per symbol. Use for: new money flows, positioning shifts, trend confirmation.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'get_stablecoin_flows',
+    description: 'Stablecoin market caps, 7d changes, total supply. Use for: capital flows, dry powder, risk-on/off signal.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'get_rsi_data',
+    description: 'RSI-14 across 1h/4h/1d for top symbols. Use for: overbought/oversold, momentum, divergence.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        symbol: { type: 'string', description: 'e.g. BTC, ETH. Omit for top symbols.' },
+      },
+    },
+  },
+  {
+    name: 'get_execution_costs',
+    description: 'Venue-specific slippage estimates by trade size. Use for: best execution, liquidity comparison.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        symbol: { type: 'string', description: 'e.g. BTC, ETH' },
+      },
+    },
+  },
 ];

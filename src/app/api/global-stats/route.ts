@@ -34,7 +34,7 @@ async function fetchAltcoinSeasonIndex(): Promise<number | null> {
     const btc = coins.find((c: any) => c.symbol === 'BTC');
     const btcChange90d = btc?.quote?.USD?.percent_change_90d ?? 0;
 
-    const stables = new Set(['USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'USDP', 'FDUSD', 'USDD', 'PYUSD', 'USDE', 'FRAX']);
+    const stables = new Set(['USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'USDP', 'FDUSD', 'USDD', 'PYUSD', 'USDE', 'FRAX', 'GHO', 'CRVUSD', 'MKUSD', 'USD0', 'DOLA', 'EURC', 'USDX', 'sUSDe', 'USDe']);
     const alts = coins
       .filter((c: any) => c.symbol !== 'BTC' && !stables.has(c.symbol) && c.quote?.USD?.percent_change_90d != null)
       .slice(0, 100);

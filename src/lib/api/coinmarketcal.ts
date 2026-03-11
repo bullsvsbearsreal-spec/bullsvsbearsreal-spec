@@ -6,7 +6,7 @@ const CRYPTOCOMPARE_NEWS_API = 'https://min-api.cryptocompare.com/data/v2/news';
 const COINMARKETCAL_API = 'https://developers.coinmarketcal.com/v1';
 
 // Optional API key for CoinMarketCal (paid service)
-const COINMARKETCAL_API_KEY = process.env.NEXT_PUBLIC_COINMARKETCAL_API_KEY || '';
+const COINMARKETCAL_API_KEY = process.env.COINMARKETCAL_API_KEY || '';
 
 export interface CryptoEvent {
   id: number;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 
 // Exchange logos using real PNG images from /exchanges/ directory
 
@@ -126,7 +126,7 @@ export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps
 const FILE_KEY_MAP: Record<string, string> = { 'gate.io': 'gate' };
 
 // Generic exchange logo component
-export function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange: string; size?: number; className?: string }) {
+export const ExchangeLogo = memo(function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange: string; size?: number; className?: string }) {
   const key = exchange.toLowerCase();
   const [imgError, setImgError] = useState(false);
 
@@ -170,4 +170,4 @@ export function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange
       {exchange.charAt(0).toUpperCase()}
     </div>
   );
-}
+});

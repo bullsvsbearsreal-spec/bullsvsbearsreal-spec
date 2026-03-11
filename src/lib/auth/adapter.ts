@@ -8,18 +8,12 @@
  */
 
 import type { Adapter, AdapterUser, AdapterAccount, AdapterSession } from 'next-auth/adapters';
-import postgres from 'postgres';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
-
-let sql: ReturnType<typeof postgres> | null = null;
-
-function getSQL() {
-  if (!sql) {
-    sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  }
-  return sql;
-}
+// Import from the canonical DB module to avoid duplicate connection pools.
+// Previously this file created its own pool (max: 5) alongside db/index.ts (max: 10),
+// wasting connections on serverless cold starts.
+import { getSQL } from '@/lib/db';
+export { getSQL };
 
 export function PostgresAdapter(): Adapter {
   const sql = getSQL();

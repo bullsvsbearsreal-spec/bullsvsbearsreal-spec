@@ -40,7 +40,7 @@ export default function MarketIndices() {
     const lsChange = ls ? ls.longRatio - ls.shortRatio : 0; // positive = more longs
 
     return [
-      { name: 'BTC Vol Share', value: `${btcDominance.toFixed(2)}%`, change: btcChange },
+      { name: 'BTC Vol Share', value: `${btcDominance.toFixed(2)}%`, change: 0 },
       { name: 'Altcoin Season', value: altSeasonIndex.toString(), change: altSeasonIndex - 50 },
       { name: 'Long/Short', value: lsValue, change: lsChange },
       { name: 'BTC Price', value: btcTicker ? `$${btcTicker.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-', change: btcChange },

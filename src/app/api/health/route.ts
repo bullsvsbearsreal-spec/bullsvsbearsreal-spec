@@ -27,12 +27,10 @@ interface RouteHealth {
 }
 
 export async function GET(request: NextRequest) {
-  // Auth check — require Bearer token if ADMIN_API_KEY is set
-  if (ADMIN_API_KEY) {
-    const auth = request.headers.get('authorization');
-    if (auth !== `Bearer ${ADMIN_API_KEY}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  // Auth check — always require Bearer token
+  const authHeader = request.headers.get('authorization');
+  if (!ADMIN_API_KEY || authHeader !== `Bearer ${ADMIN_API_KEY}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const origin = request.nextUrl.origin;

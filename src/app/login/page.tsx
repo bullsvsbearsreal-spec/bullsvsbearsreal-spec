@@ -87,6 +87,7 @@ export default function LoginPage() {
       const res = await signIn('credentials', {
         email,
         password,
+        twoFactorValidated: 'true',
         redirect: false,
       });
 

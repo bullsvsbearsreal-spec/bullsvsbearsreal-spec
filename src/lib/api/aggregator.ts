@@ -51,6 +51,20 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
       setCache('serverTotalVolume', json.meta.totalVolume, 60_000);
     }
 
+    // Build exchange count per symbol from RAW data (before dedup) for ghost-pair filtering
+    const exchangeCountMap = new Map<string, Set<string>>();
+    allTickers.forEach((ticker: any) => {
+      if (ticker.symbol && ticker.exchange) {
+        const set = exchangeCountMap.get(ticker.symbol) || new Set();
+        set.add(ticker.exchange);
+        exchangeCountMap.set(ticker.symbol, set);
+      }
+    });
+    // Cache exchange counts — used by fetchTopMovers to filter ghost pairs
+    const exchangeCounts = new Map<string, number>();
+    exchangeCountMap.forEach((exchanges, sym) => exchangeCounts.set(sym, exchanges.size));
+    setCache('tickerExchangeCounts', exchangeCounts, 60_000);
+
     // Aggregate by symbol - use highest volume exchange as primary
     // Cap per-ticker volume at $100B to filter exchanges with inflated numbers (Gate.io reports trillions)
     const MAX_SANE_VOLUME = 100_000_000_000;
@@ -279,9 +293,8 @@ export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers:
 
   const tickers = await fetchAllTickers();
 
-  // Count how many exchanges list each symbol
-  const exchangeCount = new Map<string, number>();
-  tickers.forEach(t => exchangeCount.set(t.symbol, (exchangeCount.get(t.symbol) || 0) + 1));
+  // Use pre-computed exchange counts from raw (pre-dedup) data — cached by fetchAllTickers
+  const exchangeCount = getCached<Map<string, number>>('tickerExchangeCounts') || new Map<string, number>();
 
   const validTickers = tickers.filter(t =>
     isValidNumber(t.priceChangePercent24h) &&
@@ -441,7 +454,9 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
     // fees paid by both sides equally, so effective funding spread is 0.
     let effectiveRate: number;
     if (fr.fundingRateLong != null && fr.fundingRateShort != null) {
-      effectiveRate = (fr.fundingRateLong - fr.fundingRateShort) / 2;
+      // L/S use earning convention: positive = earning for that side.
+      // (S - L)/2 extracts directional funding: positive = longs pay shorts.
+      effectiveRate = (fr.fundingRateShort - fr.fundingRateLong) / 2;
     } else {
       effectiveRate = fr.fundingRate;
     }
@@ -518,18 +533,24 @@ export async function fetchArbHistory(symbols: string[]): Promise<Map<string, Ar
   if (symbols.length === 0) return new Map();
   // Deduplicate and cap to avoid URL-too-long errors
   const unique = Array.from(new Set(symbols)).slice(0, 200);
-  const cacheKey = `arbHistory_${unique.slice(0, 5).join(',')}`;
+  // Use sorted join for stable cache key — avoids collisions from truncating to 5 symbols
+  const cacheKey = `arbHistory_${unique.slice().sort().join(',')}`;
   const cached = getCached<Map<string, ArbHistoricalSpread>>(cacheKey);
   if (cached) return cached;
 
   try {
     const map = new Map<string, ArbHistoricalSpread>();
-    // Batch into chunks of 100 to stay within URL length limits
+    // Batch into chunks of 100, fetch in parallel to avoid sequential waterfall
     const BATCH = 100;
+    const batches: string[][] = [];
     for (let i = 0; i < unique.length; i += BATCH) {
-      const batch = unique.slice(i, i + BATCH);
-      const response = await fetch(`/api/arb-history?symbols=${batch.join(',')}`);
-      if (!response.ok) continue;
+      batches.push(unique.slice(i, i + BATCH));
+    }
+    const responses = await Promise.all(
+      batches.map(batch => fetch(`/api/arb-history?symbols=${batch.join(',')}`).catch(() => null))
+    );
+    for (const response of responses) {
+      if (!response || !response.ok) continue;
       const json = await response.json();
       if (json.data) {
         Object.entries(json.data).forEach(([sym, data]) => {

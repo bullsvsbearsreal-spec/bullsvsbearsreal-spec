@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -24,67 +25,67 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'symbols parameter required' }, { status: 400 });
   }
 
-  const symbols = symbolsParam.split(',').slice(0, 200); // cap at 200
+  const symbols = symbolsParam.split(',').map(s => s.trim()).filter(Boolean).slice(0, 200);
 
-  // Check cache
+  // Check cache — only serve from cache if ALL requested symbols are present
   if (l1Cache && Date.now() - l1Cache.timestamp < L1_TTL) {
-    // Filter to requested symbols
     const filtered: Record<string, { avg7d: number; avg24h: number; avg6d: number }> = {};
-    symbols.forEach(s => { if (l1Cache!.data[s]) filtered[s] = l1Cache!.data[s]; });
-    return NextResponse.json({ data: filtered }, {
-      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    let allFound = true;
+    symbols.forEach(s => {
+      if (l1Cache!.data[s]) filtered[s] = l1Cache!.data[s];
+      else allFound = false;
     });
+    if (allFound) {
+      return NextResponse.json({ data: filtered }, {
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+      });
+    }
+    // Fall through to DB query for missing symbols
   }
 
   try {
-    // Dynamic import to avoid bundling DB in edge contexts
-    const { default: postgres } = await import('postgres');
-    const DATABASE_URL = process.env.DATABASE_URL || '';
-    if (!DATABASE_URL) {
+    if (!isDBConfigured()) {
       return NextResponse.json({ data: {} }, { headers: { 'Cache-Control': 'public, s-maxage=60' } });
     }
 
-    const sql = postgres(DATABASE_URL, { max: 3, idle_timeout: 10, connect_timeout: 5, ssl: 'require' });
+    const sql = getSQL();
 
     let data: Record<string, { avg7d: number; avg24h: number; avg6d: number }> = {};
-    try {
-      // Query: per-symbol, per-day, compute max and min exchange rate → spread
-      // Then average spread over 7 days, last 24h, and prior 6 days
-      const rows = await sql`
-        WITH daily_spreads AS (
-          SELECT
-            symbol,
-            DATE(ts) AS day,
-            MAX(rate) - MIN(rate) AS spread,
-            COUNT(DISTINCT exchange) AS exchange_count
-          FROM funding_snapshots
-          WHERE symbol = ANY(${symbols})
-            AND ts > NOW() - INTERVAL '7 days'
-          GROUP BY symbol, DATE(ts)
-          HAVING COUNT(DISTINCT exchange) >= 2
-        )
+    // Query: per-symbol, per-day, compute max and min exchange rate → spread
+    // Then average spread over 7 days, last 24h, and prior 6 days
+    const rows = await sql`
+      WITH daily_spreads AS (
         SELECT
           symbol,
-          AVG(spread) AS avg7d,
-          AVG(CASE WHEN day >= CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg24h,
-          AVG(CASE WHEN day < CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg6d
-        FROM daily_spreads
-        GROUP BY symbol
-      `;
+          DATE(ts) AS day,
+          MAX(rate) - MIN(rate) AS spread,
+          COUNT(DISTINCT exchange) AS exchange_count
+        FROM funding_snapshots
+        WHERE symbol = ANY(${symbols})
+          AND ts > NOW() - INTERVAL '7 days'
+        GROUP BY symbol, DATE(ts)
+        HAVING COUNT(DISTINCT exchange) >= 2
+      )
+      SELECT
+        symbol,
+        AVG(spread) AS avg7d,
+        AVG(CASE WHEN day >= CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg24h,
+        AVG(CASE WHEN day < CURRENT_DATE - INTERVAL '1 day' THEN spread END) AS avg6d
+      FROM daily_spreads
+      GROUP BY symbol
+    `;
 
-      rows.forEach((r: any) => {
-        data[r.symbol] = {
-          avg7d: Number(r.avg7d) || 0,
-          avg24h: Number(r.avg24h) || 0,
-          avg6d: Number(r.avg6d) || 0,
-        };
-      });
-    } finally {
-      await sql.end();
-    }
+    rows.forEach((r: any) => {
+      data[r.symbol] = {
+        avg7d: Number(r.avg7d) || 0,
+        avg24h: Number(r.avg24h) || 0,
+        avg6d: Number(r.avg6d) || 0,
+      };
+    });
 
-    // Update cache with ALL symbols we computed (not just requested ones)
-    l1Cache = { data, timestamp: Date.now() };
+    // Merge new results into existing cache (so symbols from prior queries are retained)
+    const merged = l1Cache ? { ...l1Cache.data, ...data } : data;
+    l1Cache = { data: merged, timestamp: Date.now() };
 
     return NextResponse.json({ data }, {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },

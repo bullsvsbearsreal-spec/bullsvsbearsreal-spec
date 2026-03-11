@@ -14,38 +14,43 @@ export function isValidNumber(value: unknown): value is number {
  * Handles very small prices like PEPE, SHIB, BONK, etc.
  */
 export function formatPrice(num: SafeNumber): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0.00';
-  if (num >= 1000) return `$${num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  if (num >= 1) return `$${num.toFixed(2)}`;
-  if (num >= 0.01) return `$${num.toFixed(4)}`;
-  if (num >= 0.0001) return `$${num.toFixed(6)}`;
-  if (num >= 0.00000001) return `$${num.toFixed(10)}`;
-  // For extremely small numbers - use scientific notation
-  return `$${num.toExponential(4)}`;
+  if (num === undefined || num === null || isNaN(num) || !isFinite(num)) return '$0.00';
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1000) return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  if (abs >= 1) return `${sign}$${abs.toFixed(2)}`;
+  if (abs >= 0.01) return `${sign}$${abs.toFixed(4)}`;
+  if (abs >= 0.0001) return `${sign}$${abs.toFixed(6)}`;
+  if (abs >= 0.00000001) return `${sign}$${abs.toFixed(10)}`;
+  return `${sign}$${abs.toExponential(4)}`;
 }
 
 /**
  * Format large numbers with K, M, B, T suffixes
  */
 export function formatNumber(num: SafeNumber): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0';
-  if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
-  return `$${num.toLocaleString()}`;
+  if (num === undefined || num === null || isNaN(num) || !isFinite(num)) return '$0';
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(2)}K`;
+  return `${sign}$${abs.toLocaleString()}`;
 }
 
 /**
  * Format compact numbers without $ sign
  */
 export function formatCompact(num: SafeNumber): string {
-  if (num === undefined || num === null || isNaN(num)) return '0';
-  if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
-  if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
-  if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
-  return num.toLocaleString();
+  if (num === undefined || num === null || isNaN(num) || !isFinite(num)) return '0';
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1e12) return `${sign}${(abs / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(2)}K`;
+  return `${sign}${abs.toLocaleString()}`;
 }
 
 /**

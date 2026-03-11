@@ -3,11 +3,12 @@ import { NextRequest } from 'next/server';
 import { ALL_EXCHANGES } from '@/lib/constants';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const title = searchParams.get('title') || 'Real-Time Derivatives Data';
-  const description = searchParams.get('desc') || `Funding Rates · Open Interest · Liquidations · ${ALL_EXCHANGES.length}+ Exchanges`;
+  const title = (searchParams.get('title') || 'Real-Time Derivatives Data').slice(0, 100);
+  const description = (searchParams.get('desc') || `Funding Rates · Open Interest · Liquidations · ${ALL_EXCHANGES.length}+ Exchanges`).slice(0, 200);
 
   // Heatmap cell data — realistic funding rates
   const rows = [
@@ -52,21 +53,31 @@ export async function GET(request: NextRequest) {
         }}
       >
         {/* Ambient glow effects */}
-        <div style={{ position: 'absolute', top: '-120px', left: '60px', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 65%)', display: 'flex' }} />
+        <div style={{ position: 'absolute', top: '-120px', left: '60px', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,140,0,0.12) 0%, transparent 65%)', display: 'flex' }} />
         <div style={{ position: 'absolute', bottom: '-80px', right: '100px', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 65%)', display: 'flex' }} />
         <div style={{ position: 'absolute', top: '200px', right: '-50px', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(244,63,94,0.06) 0%, transparent 65%)', display: 'flex' }} />
 
         {/* Top gradient accent */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, transparent, #f59e0b, #f97316, #f59e0b, transparent)', display: 'flex' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, transparent, #FFB800, #FF8C00, #E06600, #FF8C00, transparent)', display: 'flex' }} />
 
         {/* Main layout: left side text, right side heatmap */}
         <div style={{ display: 'flex', flex: 1, padding: '48px' }}>
           {/* Left column — branding + text */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '420px', paddingRight: '40px' }}>
-            {/* Logo */}
+            {/* Logo — matches src/components/Logo.tsx */}
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '28px' }}>
-              <span style={{ fontSize: '52px', fontWeight: 900, color: '#ffffff', letterSpacing: '-2px' }}>Info</span>
-              <span style={{ fontSize: '52px', fontWeight: 900, color: '#f59e0b', letterSpacing: '-2px' }}>Hub</span>
+              <span style={{ fontSize: '52px', fontWeight: 900, color: '#ffffff', letterSpacing: '-2px', lineHeight: 1 }}>Info</span>
+              <span style={{
+                fontSize: '52px',
+                fontWeight: 900,
+                color: '#000000',
+                letterSpacing: '-2px',
+                lineHeight: 1,
+                background: 'linear-gradient(135deg, #FFB800, #FF8C00, #E06600)',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                marginLeft: '2px',
+              }}>Hub</span>
             </div>
 
             {/* Title */}
@@ -81,10 +92,10 @@ export async function GET(request: NextRequest) {
 
             {/* Stats pills */}
             <div style={{ display: 'flex', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '100px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#f59e0b' }}>{ALL_EXCHANGES.length}+ Exchanges</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '100px', background: 'rgba(255,140,0,0.1)', border: '1px solid rgba(255,140,0,0.25)' }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFA500' }}>{ALL_EXCHANGES.length}+ Exchanges</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '100px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '100px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
                 <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', display: 'flex' }} />
                 <span style={{ fontSize: '14px', fontWeight: 700, color: '#22c55e' }}>LIVE</span>
               </div>

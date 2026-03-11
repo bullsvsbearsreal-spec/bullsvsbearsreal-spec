@@ -6,19 +6,11 @@
 
 import { NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
-import { isDBConfigured } from '@/lib/db';
-import postgres from 'postgres';
+import { isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
 
 export async function GET() {
   const denied = await requireAdminOrAdvisor();

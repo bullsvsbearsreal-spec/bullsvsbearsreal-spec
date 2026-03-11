@@ -7,8 +7,18 @@ import { Resend } from 'resend';
 import { sendMessage } from './telegram';
 import webpush from 'web-push';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend | null {
+  if (!_resend && process.env.RESEND_API_KEY) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://info-hub.io';
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 export interface TriggeredAlertInfo {
   alertId: string;
@@ -46,9 +56,9 @@ function buildAlertEmailHTML(alerts: TriggeredAlertInfo[]): string {
     const opLabel = a.operator === 'gt' ? 'above' : 'below';
     return `
       <tr>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #fff; font-weight: 600;">${a.symbol}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #999;">${formatMetricLabel(a.metric)} ${opLabel} ${formatValue(a.metric, a.threshold)}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #f5a623; font-weight: 600;">${formatValue(a.metric, a.actualValue)}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #fff; font-weight: 600;">${escapeHtml(a.symbol)}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #999;">${escapeHtml(formatMetricLabel(a.metric))} ${opLabel} ${escapeHtml(formatValue(a.metric, a.threshold))}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #f5a623; font-weight: 600;">${escapeHtml(formatValue(a.metric, a.actualValue))}</td>
       </tr>
     `;
   }).join('');
@@ -89,7 +99,8 @@ export async function sendAlertEmail(
   to: string,
   alerts: TriggeredAlertInfo[],
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY || alerts.length === 0) return false;
+  const resend = getResend();
+  if (!resend || alerts.length === 0) return false;
   try {
     await resend.emails.send({
       from: 'InfoHub <noreply@info-hub.io>',
@@ -109,7 +120,7 @@ export async function sendAlertEmail(
 function buildTelegramMessage(alerts: TriggeredAlertInfo[]): string {
   const lines = alerts.map((a) => {
     const opLabel = a.operator === 'gt' ? '▲ above' : '▼ below';
-    return `<b>${a.symbol}</b> — ${formatMetricLabel(a.metric)} ${opLabel} ${formatValue(a.metric, a.threshold)}\nCurrent: <b>${formatValue(a.metric, a.actualValue)}</b>`;
+    return `<b>${escapeHtml(a.symbol)}</b> — ${escapeHtml(formatMetricLabel(a.metric))} ${opLabel} ${escapeHtml(formatValue(a.metric, a.threshold))}\nCurrent: <b>${escapeHtml(formatValue(a.metric, a.actualValue))}</b>`;
   });
   return `🔔 <b>Alert${alerts.length > 1 ? 's' : ''} Triggered</b>\n\n${lines.join('\n\n')}`;
 }
@@ -130,12 +141,22 @@ export async function sendAlertTelegram(
 
 // ─── Web Push Notifications ──────────────────────────────────────────────────
 
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:noreply@info-hub.io',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  );
+let vapidConfigured = false;
+function ensureVapid(): boolean {
+  if (vapidConfigured) return true;
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return false;
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:noreply@info-hub.io',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY,
+    );
+    vapidConfigured = true;
+    return true;
+  } catch (e) {
+    console.error('[notifications] VAPID setup failed:', e);
+    return false;
+  }
 }
 
 export interface PushSubscriptionData {
@@ -148,7 +169,7 @@ export async function sendAlertPush(
   subscriptions: PushSubscriptionData[],
   alerts: TriggeredAlertInfo[],
 ): Promise<{ sent: number; failed: number; expiredEndpoints: string[] }> {
-  if (!process.env.VAPID_PUBLIC_KEY || alerts.length === 0 || subscriptions.length === 0) {
+  if (!ensureVapid() || alerts.length === 0 || subscriptions.length === 0) {
     return { sent: 0, failed: 0, expiredEndpoints: [] };
   }
 

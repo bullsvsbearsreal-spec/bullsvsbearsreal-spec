@@ -50,8 +50,10 @@ export async function fetchMarketDataServer(
     fetchJSON<{ data: any[] }>(`${origin}/api/openinterest`),
   ]);
 
-  // Tickers → price + change24h
+  // Tickers → price + change24h (proper averaging across exchanges)
   if (tickerRes?.data) {
+    const priceAccum = new Map<string, { sum: number; count: number }>();
+    const changeAccum = new Map<string, { sum: number; count: number }>();
     for (const t of tickerRes.data) {
       const sym = t.symbol as string;
       if (!map.has(sym)) {
@@ -59,12 +61,20 @@ export async function fetchMarketDataServer(
       }
       const entry = map.get(sym)!;
       if (t.lastPrice) {
-        entry.price = entry.price > 0 ? (entry.price + t.lastPrice) / 2 : t.lastPrice;
+        const acc = priceAccum.get(sym) || { sum: 0, count: 0 };
+        acc.sum += t.lastPrice;
+        acc.count++;
+        priceAccum.set(sym, acc);
+        entry.price = acc.sum / acc.count;
       }
-      if (t.priceChangePercent24h != null) {
-        entry.change24h = t.priceChangePercent24h;
-      } else if (t.change24h != null) {
-        entry.change24h = t.change24h;
+      // Average change24h across exchanges (not just last exchange wins)
+      const change = t.priceChangePercent24h ?? t.change24h;
+      if (change != null && !isNaN(change)) {
+        const acc = changeAccum.get(sym) || { sum: 0, count: 0 };
+        acc.sum += change;
+        acc.count++;
+        changeAccum.set(sym, acc);
+        entry.change24h = acc.sum / acc.count;
       }
     }
   }
@@ -97,7 +107,7 @@ export async function fetchMarketDataServer(
       if (!map.has(sym)) {
         map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
       }
-      map.get(sym)!.openInterest += o.openInterest || 0;
+      map.get(sym)!.openInterest += o.openInterestValue || 0;
     }
   }
 

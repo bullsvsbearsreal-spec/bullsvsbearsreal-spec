@@ -1,13 +1,23 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
-import postgres from 'postgres';
+import { isDBConfigured, getSQL } from '@/lib/db';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
+// In-memory rate limit: max 20 lookups per email per 5 minutes
+const statusAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkStatusRate(email: string): boolean {
+  const now = Date.now();
+  const key = email.toLowerCase();
+  const entry = statusAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    statusAttempts.set(key, { count: 1, resetAt: now + 5 * 60 * 1000 });
+    return true;
+  }
+  if (entry.count >= 20) return false;
+  entry.count++;
+  return true;
 }
 
 // Check 2FA status for a user (pre-login) or for current session
@@ -18,7 +28,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    if (!DATABASE_URL) {
+    if (!checkStatusRate(email)) {
+      return NextResponse.json({ error: 'Too many attempts' }, { status: 429 });
+    }
+
+    if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 

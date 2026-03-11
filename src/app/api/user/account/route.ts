@@ -1,15 +1,9 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
-import postgres from 'postgres';
 import { auth } from '@/lib/auth';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
+import { getSQL } from '@/lib/db';
 
 /**
  * DELETE /api/user/account — permanently delete the authenticated user's account
@@ -25,14 +19,24 @@ export async function DELETE() {
     const db = getSQL();
     const userId = session.user.id;
 
-    // Delete in order: dependent rows first, then user
-    await db`DELETE FROM alert_notifications WHERE user_id = ${userId}`;
-    await db`DELETE FROM portfolio_snapshots WHERE user_id = ${userId}`;
-    await db`DELETE FROM user_prefs WHERE user_id = ${userId}`;
-    await db`DELETE FROM watchlists WHERE user_id = ${userId}`;
-    await db`DELETE FROM accounts WHERE user_id = ${userId}`;
-    await db`DELETE FROM sessions WHERE user_id = ${userId}`;
-    await db`DELETE FROM users WHERE id = ${userId}`;
+    // Delete all user data atomically — prevents partial deletion on error
+    await db.begin(async (tx: any) => {
+      const emailRows = await tx`SELECT email FROM users WHERE id = ${userId}`;
+      await tx`DELETE FROM alert_notifications WHERE user_id = ${userId}`;
+      await tx`DELETE FROM portfolio_snapshots WHERE user_id = ${userId}`;
+      await tx`DELETE FROM user_prefs WHERE user_id = ${userId}`;
+      await tx`DELETE FROM watchlists WHERE user_id = ${userId}`;
+      await tx`DELETE FROM api_keys WHERE user_id = ${userId}`;
+      await tx`DELETE FROM push_subscriptions WHERE user_id = ${userId}`;
+      await tx`DELETE FROM email_verification_codes WHERE user_id = ${userId}`;
+      await tx`DELETE FROM user_2fa WHERE user_id = ${userId}`;
+      if (emailRows.length > 0) {
+        await tx`DELETE FROM password_reset_tokens WHERE email = ${emailRows[0].email}`;
+      }
+      await tx`DELETE FROM accounts WHERE user_id = ${userId}`;
+      await tx`DELETE FROM sessions WHERE user_id = ${userId}`;
+      await tx`DELETE FROM users WHERE id = ${userId}`;
+    });
 
     return NextResponse.json({ message: 'Account deleted successfully' });
   } catch (e: any) {

@@ -768,7 +768,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
-            nextFundingTime: Date.now() + (Number(item.nextFundingRateTime) || 28800000),
+            nextFundingTime: Number(item.nextFundingRateTime) || (Date.now() + 28800000),
             type: 'cex' as const,
           };
         })
@@ -1152,9 +1152,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               const ratePerSecondCap = absoluteRatePerSecondCap * (currentVelocityPerYear < 0 ? -1 : 1);
 
               if (ratePerSecondCap !== lastFundingRatePerSecondP) {
-                const secondsToReachCap = ((ratePerSecondCap - lastFundingRatePerSecondP) * ONE_YEAR) / currentVelocityPerYear;
+                const secondsToReachCap = Math.max(0, ((ratePerSecondCap - lastFundingRatePerSecondP) * ONE_YEAR) / currentVelocityPerYear);
 
-                if (secondsSinceLastUpdate > secondsToReachCap) {
+                if (secondsSinceLastUpdate >= secondsToReachCap) {
                   currentFundingRatePerSecondP = ratePerSecondCap;
                 } else {
                   currentFundingRatePerSecondP = lastFundingRatePerSecondP +
@@ -1169,15 +1169,19 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
             // gTrade's skew model (from @gainsnetwork/sdk getLongShortAprMultiplier):
+            // The minority side pays an amplified rate proportional to the OI imbalance.
+            // SDK allows up to 100x but we cap at 10x since extreme ratios produce absurd
+            // holding fees that don't reflect practical trading costs.
             fundingRateLong = fundingRate8h;
             fundingRateShort = -fundingRate8h;
+            const APR_MULT_CAP = 10;
             if (params.aprMultiplierEnabled && oiLongToken > 0 && oiShortToken > 0) {
               if (fundingRate8h < 0) {
-                fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, 100);
+                fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, APR_MULT_CAP);
                 fundingRateShort = -fundingRate8h;
               } else if (fundingRate8h > 0) {
                 fundingRateLong = fundingRate8h;
-                fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, 100);
+                fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, APR_MULT_CAP);
               }
             }
           }
@@ -1251,12 +1255,15 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // (positive = cost for that side, negative = earning).
           // Negate per-side rates: SDK uses positive=cost convention,
           // but display/gTrade UI uses positive=earning (green) convention.
+          // Only show separate L/S when there's meaningful directional funding —
+          // if both sides are equal (pure borrowing), L/S display is redundant and confusing.
+          const hasDirectionalFunding = Math.abs(fundingRate8h) > 0.00001;
           results.push({
             symbol,
             exchange: 'gTrade',
             fundingRate: fundingRate8h,
-            fundingRateLong: -fundingRateLong,
-            fundingRateShort: -fundingRateShort,
+            fundingRateLong: hasDirectionalFunding ? -fundingRateLong : undefined,
+            fundingRateShort: hasDirectionalFunding ? -fundingRateShort : undefined,
             borrowingRate: totalBorrowRate8h > 0.00001 ? totalBorrowRate8h : undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: tokenPrice,
@@ -1330,6 +1337,12 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'GMX',
     fetcher: async (fetchFn) => {
+      // Safe BigInt parser — returns 0 on invalid strings instead of throwing
+      const safeBigInt = (v: string | null | undefined): number => {
+        if (!v) return 0;
+        try { return Number(BigInt(v)); } catch { return 0; }
+      };
+
       const res = await fetchFn('https://arbitrum-api.gmxinfra.io/markets/info', {}, 12000);
       if (!res.ok) return [];
       const json = await res.json();
@@ -1348,7 +1361,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const bestBySymbol = new Map<string, { market: any; totalOi: number }>();
       for (const m of perpMarkets) {
         const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
-        const totalOi = Number(BigInt(m.openInterestLong || '0')) + Number(BigInt(m.openInterestShort || '0'));
+        const totalOi = safeBigInt(m.openInterestLong) + safeBigInt(m.openInterestShort);
         const existing = bestBySymbol.get(symbol);
         if (!existing || totalOi > existing.totalOi) {
           bestBySymbol.set(symbol, { market: m, totalOi });
@@ -1361,22 +1374,22 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // GMX V2: annual rate at 1e30 precision -> hourly percentage
           // GMX convention: negative fundingRateLong = longs pay (cost).
           // Negate to match our convention: positive = longs pay.
-          const rawFundingL = Number(BigInt(m.fundingRateLong)) / 1e30 / 8760 * 100;
-          const rawFundingS = Number(BigInt(m.fundingRateShort || '0')) / 1e30 / 8760 * 100;
+          const rawFundingL = safeBigInt(m.fundingRateLong) / 1e30 / 8760 * 100;
+          const rawFundingS = safeBigInt(m.fundingRateShort) / 1e30 / 8760 * 100;
           // Negate: GMX API negative=cost, our output positive=cost
           const fundingL = -rawFundingL; // positive = longs pay
           const fundingS = -rawFundingS; // positive = shorts pay, negative = shorts earn
           // Add borrowing rates (always a cost, positive)
-          const borrowL = Number(BigInt(m.borrowingRateLong || '0')) / 1e30 / 8760 * 100;
-          const borrowS = Number(BigInt(m.borrowingRateShort || '0')) / 1e30 / 8760 * 100;
+          const borrowL = safeBigInt(m.borrowingRateLong) / 1e30 / 8760 * 100;
+          const borrowS = safeBigInt(m.borrowingRateShort) / 1e30 / 8760 * 100;
           const rateLong = fundingL + borrowL;
           const rateShort = fundingS + borrowS;
           return {
             symbol,
             exchange: 'GMX',
             fundingRate: fundingL,        // Base funding component (positive = longs pay)
-            fundingRateLong: rateLong,     // Funding + borrowing for long side
-            fundingRateShort: rateShort,   // Funding + borrowing for short side
+            fundingRateLong: -rateLong,    // Earning convention: positive = earning for longs
+            fundingRateShort: -rateShort,  // Earning convention: positive = earning for shorts
             borrowingRate: borrowL + borrowS > 0.00001 ? borrowL : undefined,
             markPrice: 0, // GMX markets/info doesn't provide mark price
             indexPrice: 0,

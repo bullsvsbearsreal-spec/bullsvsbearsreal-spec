@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   type Liquidation,
   parseBinanceLiq,
@@ -316,10 +316,23 @@ function loadFromStorage(key: string, ttlMs: number): { liquidations: Liquidatio
     // Filter out individual liquidations older than TTL
     const cutoff = Date.now() - ttlMs;
     const liqs = data.liquidations.filter(l => l.timestamp > cutoff);
+    // Recompute stats and aggregated from filtered liqs (not stale saved stats)
+    const freshAgg = new Map<string, AggregatedLiq>();
+    let totalLongs = 0, totalShorts = 0, longValue = 0, shortValue = 0;
+    let largestLiq: Liquidation | null = null;
+    for (const l of liqs) {
+      const existing = freshAgg.get(l.symbol) || { symbol: l.symbol, totalValue: 0, longValue: 0, shortValue: 0, count: 0 };
+      existing.totalValue += l.value;
+      existing.count += 1;
+      if (l.side === 'long') { existing.longValue += l.value; totalLongs++; longValue += l.value; }
+      else { existing.shortValue += l.value; totalShorts++; shortValue += l.value; }
+      if (!largestLiq || l.value > largestLiq.value) largestLiq = l;
+      freshAgg.set(l.symbol, existing);
+    }
     return {
       liquidations: liqs,
-      aggregated: new Map(data.aggregated),
-      stats: data.stats,
+      aggregated: freshAgg,
+      stats: { totalLongs, totalShorts, longValue, shortValue, largestLiq },
     };
   } catch {
     return null;
@@ -334,6 +347,13 @@ export function useMultiExchangeLiquidations({
   persistKey = 'ih-liq-data',
   persistTtlMs = 3600000, // default 1h
 }: UseMultiExchangeLiquidationsOptions) {
+  // Stabilize exchanges array reference — if the parent passes a new array literal
+  // with the same content on every render, we keep the previous reference to avoid
+  // tearing down and reconnecting all WebSocket connections.
+  const exchangesKey = exchanges.slice().sort().join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stableExchanges = useMemo(() => exchanges, [exchangesKey]);
+
   // Start with empty state for SSR, restore from localStorage after mount
   const [liquidations, setLiquidations] = useState<Liquidation[]>([]);
   const [connections, setConnections] = useState<ConnectionStatus[]>([]);
@@ -350,6 +370,9 @@ export function useMultiExchangeLiquidations({
       setLiquidations(saved.liquidations);
       setStats(saved.stats);
       setAggregated(saved.aggregated);
+      liqRef.current = saved.liquidations;
+      statsRef.current = saved.stats;
+      aggRef.current = saved.aggregated;
     }
   }, [persistKey, persistTtlMs]);
 
@@ -357,6 +380,10 @@ export function useMultiExchangeLiquidations({
   const onLiquidationRef = useRef(onLiquidation);
   const maxItemsRef = useRef(maxItems);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs to track latest state for debounced save (avoids nested setState)
+  const liqRef = useRef<Liquidation[]>([]);
+  const aggRef = useRef<Map<string, AggregatedLiq>>(new Map());
+  const statsRef = useRef<LiquidationStats>({ ...EMPTY_STATS });
 
   useEffect(() => { minValueRef.current = minValue; }, [minValue]);
   useEffect(() => { onLiquidationRef.current = onLiquidation; }, [onLiquidation]);
@@ -365,55 +392,57 @@ export function useMultiExchangeLiquidations({
   const handleLiquidation = useCallback((liq: Liquidation) => {
     if (liq.value < minValueRef.current) return;
 
-    setLiquidations(prev => [liq, ...prev].slice(0, maxItemsRef.current));
+    setLiquidations(prev => {
+      const next = [liq, ...prev].slice(0, maxItemsRef.current);
+      liqRef.current = next;
+      return next;
+    });
 
     setAggregated(prev => {
       const newMap = new Map(prev);
-      const existing = newMap.get(liq.symbol) || {
+      const old = newMap.get(liq.symbol) || {
         symbol: liq.symbol, totalValue: 0, longValue: 0, shortValue: 0, count: 0,
       };
+      // Clone to avoid mutating previous state (shallow Map clone shares object refs)
+      const existing = { ...old };
       existing.totalValue += liq.value;
       existing.count += 1;
       if (liq.side === 'long') existing.longValue += liq.value;
       else existing.shortValue += liq.value;
       newMap.set(liq.symbol, existing);
+      aggRef.current = newMap;
       return newMap;
     });
 
-    setStats(prev => ({
-      totalLongs: prev.totalLongs + (liq.side === 'long' ? 1 : 0),
-      totalShorts: prev.totalShorts + (liq.side === 'short' ? 1 : 0),
-      longValue: prev.longValue + (liq.side === 'long' ? liq.value : 0),
-      shortValue: prev.shortValue + (liq.side === 'short' ? liq.value : 0),
-      largestLiq: !prev.largestLiq || liq.value > prev.largestLiq.value ? liq : prev.largestLiq,
-    }));
+    setStats(prev => {
+      const next = {
+        totalLongs: prev.totalLongs + (liq.side === 'long' ? 1 : 0),
+        totalShorts: prev.totalShorts + (liq.side === 'short' ? 1 : 0),
+        longValue: prev.longValue + (liq.side === 'long' ? liq.value : 0),
+        shortValue: prev.shortValue + (liq.side === 'short' ? liq.value : 0),
+        largestLiq: !prev.largestLiq || liq.value > prev.largestLiq.value ? liq : prev.largestLiq,
+      };
+      statsRef.current = next;
+      return next;
+    });
 
     onLiquidationRef.current?.(liq);
 
     // Debounced save to localStorage (every 2s max)
+    // Read from refs instead of nested setState callbacks to avoid extra re-renders
     if (!saveTimerRef.current) {
       saveTimerRef.current = setTimeout(() => {
         saveTimerRef.current = null;
-        // Read current state via setState callback to get latest values
-        setLiquidations(cur => {
-          setAggregated(curAgg => {
-            setStats(curStats => {
-              saveToStorage(persistKey, cur, curAgg, curStats);
-              return curStats;
-            });
-            return curAgg;
-          });
-          return cur;
-        });
+        saveToStorage(persistKey, liqRef.current, aggRef.current, statsRef.current);
       }, 2000);
     }
   }, [persistKey]);
 
   useEffect(() => {
     // Initialize connections status
-    setConnections(exchanges.map(ex => ({ exchange: ex, connected: false })));
+    setConnections(stableExchanges.map(ex => ({ exchange: ex, connected: false })));
 
-    const wsHandles = exchanges.map(exchange => {
+    const wsHandles = stableExchanges.map(exchange => {
       return createExchangeWS(
         exchange,
         handleLiquidation,
@@ -427,13 +456,21 @@ export function useMultiExchangeLiquidations({
 
     return () => {
       wsHandles.forEach(h => h.close());
+      // Clear any pending save timer on unmount
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
     };
-  }, [exchanges, handleLiquidation]);
+  }, [stableExchanges, handleLiquidation]);
 
   const clearAll = useCallback(() => {
     setLiquidations([]);
     setAggregated(new Map());
     setStats({ ...EMPTY_STATS });
+    liqRef.current = [];
+    aggRef.current = new Map();
+    statsRef.current = { ...EMPTY_STATS };
     try { localStorage.removeItem(persistKey); } catch {}
   }, [persistKey]);
 
@@ -443,6 +480,7 @@ export function useMultiExchangeLiquidations({
    */
   const loadHistorical = useCallback((liqs: Liquidation[]) => {
     setLiquidations(liqs);
+    liqRef.current = liqs;
 
     // Recompute aggregated map
     const newAgg = new Map<string, AggregatedLiq>();
@@ -457,6 +495,7 @@ export function useMultiExchangeLiquidations({
       newAgg.set(liq.symbol, existing);
     }
     setAggregated(newAgg);
+    aggRef.current = newAgg;
 
     // Recompute stats
     let largestLiq: Liquidation | null = null;
@@ -466,7 +505,9 @@ export function useMultiExchangeLiquidations({
       else { totalShorts++; shortValue += liq.value; }
       if (!largestLiq || liq.value > largestLiq.value) largestLiq = liq;
     }
-    setStats({ totalLongs, totalShorts, longValue, shortValue, largestLiq });
+    const newStats = { totalLongs, totalShorts, longValue, shortValue, largestLiq };
+    setStats(newStats);
+    statsRef.current = newStats;
 
     // Save to localStorage
     saveToStorage(persistKey, liqs, newAgg, { totalLongs, totalShorts, longValue, shortValue, largestLiq });

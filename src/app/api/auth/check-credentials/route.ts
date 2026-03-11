@@ -1,14 +1,34 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import postgres from 'postgres';
+import { isDBConfigured, getSQL } from '@/lib/db';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
+// In-memory rate limit: max 10 attempts per email per 15 minutes
+const attempts = new Map<string, { count: number; resetAt: number }>();
+let lastCleanup = 0;
+
+function checkBruteForce(email: string): boolean {
+  const now = Date.now();
+  const key = email.toLowerCase();
+
+  // Periodic cleanup of expired entries (at most once per minute)
+  if (now - lastCleanup > 60_000) {
+    lastCleanup = now;
+    attempts.forEach((v, k) => {
+      if (now > v.resetAt) attempts.delete(k);
+    });
+  }
+
+  const entry = attempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    attempts.set(key, { count: 1, resetAt: now + 15 * 60 * 1000 });
+    return true;
+  }
+  if (entry.count >= 10) return false;
+  entry.count++;
+  return true;
 }
 
 /**
@@ -23,7 +43,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    if (!DATABASE_URL) {
+    // Rate limit check — prevent brute-force password guessing
+    if (!checkBruteForce(email)) {
+      return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+    }
+
+    if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 

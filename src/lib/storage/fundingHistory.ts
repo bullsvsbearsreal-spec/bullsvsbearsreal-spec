@@ -71,11 +71,14 @@ export function saveFundingSnapshot(rates: FundingEntry[]): void {
 
   try {
     localStorage.setItem(key, JSON.stringify({ t: roundTo5Min(now), r: compact }));
+    // Invalidate accumulated funding cache so new data is picked up immediately
+    _accBatchCache = null;
   } catch {
     // localStorage full — prune aggressively
     pruneOldSnapshots(14 * 24 * 60 * 60 * 1000); // Keep only 14 days
     try {
       localStorage.setItem(key, JSON.stringify({ t: roundTo5Min(now), r: compact }));
+      _accBatchCache = null;
     } catch {
       // Still full — give up silently
     }
@@ -102,7 +105,9 @@ export function getFundingHistory(symbol: string, exchange: string, days: number
     if (!key || !key.startsWith(STORAGE_PREFIX)) continue;
 
     try {
-      const data = JSON.parse(localStorage.getItem(key)!);
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
       if (data.t < cutoff) continue;
 
       const rate = data.r[lookupKey];
@@ -132,7 +137,9 @@ export function getSymbolHistory(symbol: string, days: number = 30): HistoryPoin
     if (!key || !key.startsWith(STORAGE_PREFIX)) continue;
 
     try {
-      const data = JSON.parse(localStorage.getItem(key)!);
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
       if (data.t < cutoff) continue;
 
       for (const [k, rate] of Object.entries(data.r)) {
@@ -149,7 +156,7 @@ export function getSymbolHistory(symbol: string, days: number = 30): HistoryPoin
   return Array.from(pointsMap.entries())
     .map(([t, rates]) => ({
       t,
-      rate: rates.reduce((a, b) => a + b, 0) / rates.length,
+      rate: rates.reduce((a, b) => a + b, 0) / (rates.length || 1),
     }))
     .sort((a, b) => a.t - b.t);
 }
@@ -176,22 +183,33 @@ export function getAccumulatedFunding(symbol: string, exchange: string, days: nu
   // Sum the average rate from each 8h period
   let accumulated = 0;
   periodMap.forEach(rates => {
-    const avgRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+    const avgRate = rates.reduce((sum, r) => sum + r, 0) / (rates.length || 1);
     accumulated += avgRate;
   });
 
   return accumulated;
 }
 
+// In-memory cache for accumulated funding to avoid rescanning localStorage every 30s
+let _accBatchCache: { result: Map<string, AccumulatedFunding>; ts: number } | null = null;
+const ACC_BATCH_TTL = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Efficient batch calculation of accumulated funding for multiple pairs.
  * Scans localStorage once and computes 1D/7D/30D accumulated for each pair.
+ * Results are cached in memory for 5 minutes.
  */
 export function getAccumulatedFundingBatch(
   pairs: { symbol: string; exchange: string }[]
 ): Map<string, AccumulatedFunding> {
   if (typeof window === 'undefined') return new Map();
   if (pairs.length === 0) return new Map();
+
+  // Return cached result if fresh AND all requested pairs are present in cache
+  if (_accBatchCache && Date.now() - _accBatchCache.ts < ACC_BATCH_TTL) {
+    const allCached = pairs.every(p => _accBatchCache!.result.has(`${p.symbol}|${p.exchange}`));
+    if (allCached) return _accBatchCache.result;
+  }
 
   const now = Date.now();
   const cutoff30d = now - 30 * 24 * 60 * 60 * 1000;
@@ -212,7 +230,9 @@ export function getAccumulatedFundingBatch(
     if (!key || !key.startsWith(STORAGE_PREFIX)) continue;
 
     try {
-      const data = JSON.parse(localStorage.getItem(key)!);
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
       if (data.t < cutoff30d) continue;
 
       for (const [k, rate] of Object.entries(data.r)) {
@@ -234,7 +254,7 @@ export function getAccumulatedFundingBatch(
     let d1 = 0, d7 = 0, d30 = 0;
 
     periods.forEach((rates, periodStart) => {
-      const avgRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+      const avgRate = rates.reduce((sum, r) => sum + r, 0) / (rates.length || 1);
       d30 += avgRate;
       if (periodStart >= cutoff7d) d7 += avgRate;
       if (periodStart >= cutoff1d) d1 += avgRate;
@@ -245,6 +265,14 @@ export function getAccumulatedFundingBatch(
     }
   });
 
+  // Merge new results into existing cache so different callers requesting
+  // different pair sets don't overwrite each other's cached data
+  if (_accBatchCache && Date.now() - _accBatchCache.ts < ACC_BATCH_TTL) {
+    result.forEach((v, k) => _accBatchCache!.result.set(k, v));
+    _accBatchCache.ts = Date.now();
+  } else {
+    _accBatchCache = { result, ts: Date.now() };
+  }
   return result;
 }
 

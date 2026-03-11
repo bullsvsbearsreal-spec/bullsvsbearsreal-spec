@@ -10,9 +10,9 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
-const MAX_TOOL_ROUNDS = 3;
-const MAX_TOKENS = 600;
-const ADMIN_MAX_TOKENS = 1200; // admins get longer responses
+const MAX_TOOL_ROUNDS = 4;
+const MAX_TOKENS = 700; // keep responses tight — forces conciseness
+const ADMIN_MAX_TOKENS = 1500; // admins get longer responses
 
 // Content can be a plain string or multimodal array (with images)
 type MessageContent = string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
@@ -36,15 +36,24 @@ export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') || 'unknown';
 
-  const body: ChatRequestBody = await request.json();
+  let body: ChatRequestBody;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), { status: 400 });
+  }
   const lastContent = body.messages?.[body.messages.length - 1]?.content || '';
   const lastText = extractText(lastContent);
 
   // Check if user is admin (bypasses rate limit, gets higher token budget)
+  // Re-verify against DB to prevent stale JWT role exploit
   let isAdminUser = false;
   try {
     const session = await auth();
-    isAdminUser = session?.user?.role === 'admin';
+    if (session?.user?.id) {
+      const { isAdmin } = await import('@/lib/auth');
+      isAdminUser = await isAdmin(session.user.id);
+    }
   } catch { /* not logged in or auth error */ }
 
   if (!isAdminUser) {
@@ -93,10 +102,10 @@ export async function POST(request: NextRequest) {
       }
     }
     if (oiRes?.data) {
-      interface RawOI { symbol: string; openInterest?: number }
+      interface RawOI { symbol: string; openInterestValue?: number }
       btcOI = (oiRes.data as RawOI[])
         .filter((e) => e.symbol === 'BTC')
-        .reduce((s: number, e) => s + (e.openInterest || 0), 0);
+        .reduce((s: number, e) => s + (e.openInterestValue || 0), 0);
     }
   } catch {
     // Non-critical — MK.II works fine without ambient context
@@ -109,8 +118,8 @@ export async function POST(request: NextRequest) {
     btcOI,
   });
 
-  // Only send last 6 messages to stay within token budget
-  const recentMessages: Anthropic.MessageParam[] = body.messages.slice(-6).map((m) => ({
+  // Only send last 8 messages to stay within token budget
+  const recentMessages: Anthropic.MessageParam[] = body.messages.slice(-8).map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content as Anthropic.MessageParam['content'],
   }));
@@ -120,9 +129,15 @@ export async function POST(request: NextRequest) {
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
 
-  // Helper to send SSE events
+  // Helper to send SSE events — guards against writing to a closed/errored stream
+  let streamClosed = false;
   const sendEvent = async (event: string, data: string) => {
-    await writer.write(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+    if (streamClosed) return;
+    try {
+      await writer.write(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+    } catch {
+      streamClosed = true; // client disconnected
+    }
   };
 
   // Process in background
@@ -249,7 +264,8 @@ export async function POST(request: NextRequest) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       await sendEvent('error', JSON.stringify({ message }));
     } finally {
-      await writer.close();
+      try { await writer.close(); } catch { /* stream already closed/errored */ }
+      streamClosed = true;
     }
   })();
 

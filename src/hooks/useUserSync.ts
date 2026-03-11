@@ -15,6 +15,7 @@ const SYNC_KEYS: Record<string, string> = {
   ih_wallets: 'wallets',
   ih_notification_prefs: 'notificationPrefs',
   'infohub-theme': 'theme',
+  ih_funding_prefs: 'fundingPrefs',
 };
 
 /**
@@ -101,6 +102,13 @@ function mergeData(
     } else if (remoteVal === undefined || remoteVal === null) {
       // Remote has nothing — use local
       merged[key] = localVal;
+    } else if (
+      typeof localVal === 'object' && localVal !== null && !Array.isArray(localVal) &&
+      typeof remoteVal === 'object' && remoteVal !== null && !Array.isArray(remoteVal)
+    ) {
+      // For plain objects (e.g. fundingPrefs, notificationPrefs): merge at key level,
+      // local values override remote so recent local changes aren't lost on login sync
+      merged[key] = { ...remoteVal, ...localVal };
     }
     // Otherwise remote wins (already in merged from spread)
   }
@@ -145,6 +153,13 @@ export function useUserSync() {
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
     pushTimerRef.current = setTimeout(pushToRemote, 2000);
   }, [pushToRemote]);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    };
+  }, []);
 
   // Initial sync on login
   useEffect(() => {
@@ -202,20 +217,32 @@ export function useUserSync() {
     return () => window.removeEventListener('storage', handleStorage);
   }, [status, debouncedPush]);
 
+  // Store the true original setItem once to prevent stacking wrappers on re-renders
+  const originalSetItemRef = useRef<((key: string, value: string) => void) | null>(null);
+
   // Patch localStorage.setItem to detect same-tab mutations
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    // Capture the real setItem only once (before any patching)
+    if (!originalSetItemRef.current) {
+      originalSetItemRef.current = localStorage.setItem.bind(localStorage);
+    }
+    const original = originalSetItemRef.current;
 
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = (key: string, value: string) => {
-      originalSetItem(key, value);
-      if (Object.keys(SYNC_KEYS).includes(key)) {
-        debouncedPush();
-      }
-    };
+    // Only patch when authenticated — but ALWAYS return cleanup so the patch
+    // is removed when status changes to 'loading'/'unauthenticated'.
+    // Previously, early-returning without cleanup left a stale patch in place
+    // that pushed to a null user after logout.
+    if (status === 'authenticated') {
+      localStorage.setItem = (key: string, value: string) => {
+        original(key, value);
+        if (Object.keys(SYNC_KEYS).includes(key)) {
+          debouncedPush();
+        }
+      };
+    }
 
     return () => {
-      localStorage.setItem = originalSetItem;
+      localStorage.setItem = original;
     };
   }, [status, debouncedPush]);
 

@@ -38,6 +38,15 @@ export function useApiData<T>({
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const retriesRef = useRef(0);
   const mountedRef = useRef(true);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stabilize callback refs so inline arrows don't cause infinite re-render loops
+  const fetcherRef = useRef(fetcher);
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  fetcherRef.current = fetcher;
+  onSuccessRef.current = onSuccess;
+  onErrorRef.current = onError;
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (!enabled) return;
@@ -50,26 +59,29 @@ export function useApiData<T>({
     setError(null);
 
     try {
-      const result = await fetcher();
+      const result = await fetcherRef.current();
       if (mountedRef.current) {
         setData(result);
         setLastUpdate(new Date());
         retriesRef.current = 0;
-        onSuccess?.(result);
+        onSuccessRef.current?.(result);
       }
     } catch (err) {
       if (mountedRef.current) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch data';
 
-        // Retry logic
+        // Retry logic — track timer so we can cancel on unmount
         if (retriesRef.current < retryCount) {
           retriesRef.current++;
-          setTimeout(() => fetchData(isRefresh), retryDelay * retriesRef.current);
-          return;
+          retryTimerRef.current = setTimeout(() => {
+            retryTimerRef.current = null;
+            fetchData(isRefresh);
+          }, retryDelay * retriesRef.current);
+          return; // Don't clear isLoading — retry is pending
         }
 
         setError(errorMessage);
-        onError?.(err instanceof Error ? err : new Error(errorMessage));
+        onErrorRef.current?.(err instanceof Error ? err : new Error(errorMessage));
       }
     } finally {
       if (mountedRef.current) {
@@ -77,7 +89,7 @@ export function useApiData<T>({
         setIsRefreshing(false);
       }
     }
-  }, [fetcher, enabled, onSuccess, onError, retryCount, retryDelay]);
+  }, [enabled, retryCount, retryDelay]);
 
   const refresh = useCallback(async () => {
     retriesRef.current = 0;
@@ -95,6 +107,11 @@ export function useApiData<T>({
 
     return () => {
       mountedRef.current = false;
+      // Cancel any pending retry timer to prevent fetch after unmount
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
     };
   }, [fetchData]);
 

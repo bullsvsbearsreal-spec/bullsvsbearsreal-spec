@@ -3,6 +3,7 @@ import { ALL_EXCHANGES, EXCHANGE_FEES, isExchangeDex, getExchangeTradeUrl } from
 import { authenticateV1Request } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 /**
  * GET /api/v1/exchanges

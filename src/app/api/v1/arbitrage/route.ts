@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Build OI map from direct data
-    const oiData: any[] = oiResult?.result.data || [];
+    const oiData: any[] = oiResult?.result?.data || [];
     const oiMap = new Map<string, Map<string, number>>();
     oiData.forEach((item: any) => {
       const sym = item.symbol?.toUpperCase();
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Compute arb opportunities from funding data
-    const fundingData = fundingResult?.result.data || [];
+    const fundingData = fundingResult?.result?.data || [];
     const arbData = computeArbitrageFromFunding(fundingData);
 
     // Fetch historical spreads for stability analysis

@@ -13,7 +13,9 @@ interface StatCardProps {
 
 export default function StatCard({ title, value, change, changePositive, icon: Icon, subtitle }: StatCardProps) {
   return (
-    <div className="glass-card rounded-2xl p-5 hover-lift group transition-all duration-300">
+    <div className="glass-card rounded-2xl p-5 hover-lift group transition-all duration-300 relative overflow-hidden">
+      {/* Top accent gradient line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-hub-yellow-dark/40 to-transparent" />
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-hub-gray-text text-sm font-medium mb-2">{title}</p>
@@ -33,8 +35,8 @@ export default function StatCard({ title, value, change, changePositive, icon: I
           )}
         </div>
         {Icon && (
-          <div className="p-3 bg-gradient-to-br from-hub-yellow/20 to-hub-orange/10 rounded-xl group-hover:from-hub-yellow/30 group-hover:to-hub-orange/20 transition-all duration-300">
-            <Icon className="w-6 h-6 text-hub-yellow group-hover:scale-110 transition-transform duration-300" />
+          <div className="p-3 bg-gradient-to-br from-hub-yellow-light/15 via-hub-yellow/20 to-hub-orange/10 rounded-xl group-hover:from-hub-yellow-light/25 group-hover:via-hub-yellow/30 group-hover:to-hub-orange/20 transition-all duration-300">
+            <Icon className="w-6 h-6 text-hub-yellow group-hover:text-hub-yellow-light group-hover:scale-110 transition-all duration-300" />
           </div>
         )}
       </div>

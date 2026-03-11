@@ -11,10 +11,11 @@ import { initDB, isDBConfigured, getSubscribedUsers } from '@/lib/db';
 import { sendMessage } from '@/lib/telegram';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const CRON_SECRET = process.env.CRON_SECRET || '';
+const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
 
 /** Format a USD amount with compact notation. */
 function fmtUsd(n: number): string {
@@ -47,10 +48,14 @@ export async function GET(request: NextRequest) {
 
   // Fetch market data in parallel
   const origin = request.nextUrl.origin;
-  const [tickersRes, fundingRes, fearGreedRes] = await Promise.allSettled([
+  const [tickersRes, fundingRes, fearGreedRes, oiRes, etfRes, whalesRes, optionsRes] = await Promise.allSettled([
     fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(20000) }).then(r => r.ok ? r.json() : null),
     fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(20000) }).then(r => r.ok ? r.json() : null),
     fetch(`${origin}/api/fear-greed`, { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
+    fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(15000) }).then(r => r.ok ? r.json() : null),
+    fetch(`${origin}/api/etf?type=btc`, { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
+    fetch(`${origin}/api/hl-whales`, { signal: AbortSignal.timeout(15000) }).then(r => r.ok ? r.json() : null),
+    fetch(`${origin}/api/options?currency=BTC`, { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
   ]);
 
   const tickers = tickersRes.status === 'fulfilled' ? tickersRes.value?.data || [] : [];
@@ -133,6 +138,52 @@ export async function GET(request: NextRequest) {
       lines.push(`  ${f.symbol} (${f.exchange}): ${rate}`);
     });
     lines.push('');
+  }
+
+  // OI Summary
+  const oiData = oiRes.status === 'fulfilled' ? oiRes.value?.data || [] : [];
+  if (oiData.length > 0) {
+    const btcOI = oiData.filter((e: any) => e.symbol === 'BTC').reduce((s: number, e: any) => s + (e.openInterestValue || 0), 0);
+    const ethOI = oiData.filter((e: any) => e.symbol === 'ETH').reduce((s: number, e: any) => s + (e.openInterestValue || 0), 0);
+    if (btcOI > 0 || ethOI > 0) {
+      lines.push('<b>📊 Open Interest:</b>');
+      if (btcOI > 0) lines.push(`  BTC: ${fmtUsd(btcOI)}`);
+      if (ethOI > 0) lines.push(`  ETH: ${fmtUsd(ethOI)}`);
+      lines.push('');
+    }
+  }
+
+  // ETF Flows
+  const etfData = etfRes.status === 'fulfilled' ? etfRes.value : null;
+  if (etfData?.flows?.length > 0) {
+    const latest = etfData.flows[0];
+    if (latest?.netFlow != null) {
+      const flowStr = (latest.netFlow >= 0 ? '+' : '') + fmtUsd(latest.netFlow);
+      lines.push(`<b>🏦 BTC ETF:</b> ${flowStr} net flow (${latest.date || 'latest'})`);
+      lines.push('');
+    }
+  }
+
+  // Options
+  const optionsData = optionsRes.status === 'fulfilled' ? optionsRes.value : null;
+  if (optionsData?.putCallRatio != null) {
+    const pcr = optionsData.putCallRatio;
+    const sentiment = pcr < 0.7 ? 'bullish' : pcr > 1.3 ? 'bearish' : 'neutral';
+    lines.push(`<b>🎯 BTC Options:</b> PCR ${pcr.toFixed(2)} (${sentiment}) | Max Pain: ${fmtUsd(optionsData.maxPain || 0)}`);
+    lines.push('');
+  }
+
+  // Whale Spotlight
+  const whales = whalesRes.status === 'fulfilled' ? whalesRes.value : null;
+  if (Array.isArray(whales) && whales.length > 0) {
+    const topWhale = whales[0];
+    const topPos = topWhale.positions?.[0];
+    if (topPos) {
+      const pnl = topPos.unrealizedPnl >= 0 ? `+${fmtUsd(topPos.unrealizedPnl)}` : fmtUsd(topPos.unrealizedPnl);
+      lines.push(`<b>🐋 Top Whale:</b> ${topWhale.label}`);
+      lines.push(`  ${topPos.coin} ${topPos.side.toUpperCase()} ${fmtUsd(topPos.positionValue)} (${pnl})`);
+      lines.push('');
+    }
   }
 
   // Fear & Greed

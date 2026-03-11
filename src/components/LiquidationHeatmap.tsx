@@ -5,7 +5,7 @@ import { RefreshCw, Flame } from 'lucide-react';
 import { formatLiqValue } from '@/lib/utils/format';
 import { useMultiExchangeLiquidations } from '@/hooks/useMultiExchangeLiquidations';
 
-const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX'];
+const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX', 'HTX', 'gTrade'];
 
 export default function LiquidationHeatmap() {
   const { connections, stats, aggregated } = useMultiExchangeLiquidations({

@@ -1,5 +1,5 @@
 {
-  "regions": ["sin1"],
+  "regions": ["dxb1"],
   "functions": {
     "app/api/**/*": {
       "maxDuration": 30
@@ -25,6 +25,10 @@
     {
       "path": "/api/cron/telegram-reports",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/telegram-weekly",
+      "schedule": "0 10 * * 0"
     }
   ]
 }

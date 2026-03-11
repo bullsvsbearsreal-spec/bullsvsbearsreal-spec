@@ -367,9 +367,9 @@ export default function Header() {
                     {/* Category trigger */}
                     <button
                       type="button"
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 ${
                         hasActive
-                          ? 'text-hub-yellow'
+                          ? 'text-hub-yellow hover:shadow-[0_0_12px_rgba(255,140,0,0.15)]'
                           : 'text-neutral-400 hover:text-white'
                       }`}
                       aria-expanded={isOpen}

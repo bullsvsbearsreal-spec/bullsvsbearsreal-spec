@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 const FundingHeatmapView = dynamic(() => import('./components/FundingHeatmapView'), { ssr: false });
 const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrageView'), { ssr: false });
 const PriceArbitrageView = dynamic(() => import('./components/PriceArbitrageView'), { ssr: false });
+const SpotArbitrageView = dynamic(() => import('./components/SpotArbitrageView'), { ssr: false });
 
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
@@ -23,8 +24,9 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { saveFundingSnapshot, getAccumulatedFundingBatch, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
 import { type FundingPeriod, periodMultiplier, PERIOD_HOURS, formatRateAdaptive } from './utils';
+import { useFundingPrefs } from '@/hooks/useFundingPrefs';
 
-type ViewMode = 'heatmap' | 'arbitrage' | 'price';
+type ViewMode = 'heatmap' | 'arbitrage' | 'price' | 'spot';
 type VenueFilter = 'all' | 'cex' | 'dex';
 type MarginFilter = 'linear' | 'inverse' | 'all';
 
@@ -52,11 +54,13 @@ export default function FundingPage() {
   const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
   const [fundingPeriod, setFundingPeriod] = useState<FundingPeriod>('8h');
   const exchangeSelectorRef = useRef<HTMLDivElement>(null);
+  const { prefs: fundingPrefs, updatePrefs: updateFundingPrefs } = useFundingPrefs();
 
   // Restore all user preferences from localStorage after hydration
   // (initializing from localStorage during SSR causes hydration mismatches)
   useEffect(() => {
     try {
+      // Migrate from old exchange key to fundingPrefs.hiddenExchanges
       const savedExchanges = localStorage.getItem('infohub:funding:exchanges');
       if (savedExchanges) {
         const arr = JSON.parse(savedExchanges) as string[];
@@ -237,34 +241,54 @@ export default function FundingPage() {
     setSelectedExchanges(new Set(sectionExchanges));
   };
 
-  const getSymbolAvgRate = (symbol: string) => {
-    const rates = fundingRates.filter(fr => fr.symbol === symbol);
-    if (rates.length === 0) return 0;
-    const sumNormalized = rates.reduce((sum, fr) => {
-      return sum + fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
-    }, 0);
-    return sumNormalized / rates.length;
-  };
+  // Pre-compute per-symbol avg rates (O(n) single pass instead of O(n*m) per-symbol filter)
+  const symbolAvgRates = useMemo(() => {
+    const rateMap = new Map<string, { sum: number; count: number }>();
+    for (const fr of fundingRates) {
+      const entry = rateMap.get(fr.symbol);
+      const normalized = fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
+      if (entry) { entry.sum += normalized; entry.count++; }
+      else rateMap.set(fr.symbol, { sum: normalized, count: 1 });
+    }
+    const result = new Map<string, number>();
+    rateMap.forEach(({ sum, count }, sym) => result.set(sym, sum / count));
+    return result;
+  }, [fundingRates, fundingPeriod]);
 
-  const allSymbolsWithRates = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
-    .map(symbol => ({ symbol, avgRate: getSymbolAvgRate(symbol) }));
+  const getSymbolAvgRate = (symbol: string) => symbolAvgRates.get(symbol) ?? 0;
 
-  const highestRateSymbols = [...allSymbolsWithRates]
-    .sort((a, b) => b.avgRate - a.avgRate).slice(0, 30).map(s => s.symbol);
-  const lowestRateSymbols = [...allSymbolsWithRates]
-    .sort((a, b) => a.avgRate - b.avgRate).slice(0, 30).map(s => s.symbol);
+  const { highestRateSymbols, lowestRateSymbols } = useMemo(() => {
+    const all = Array.from(symbolAvgRates.entries()).map(([symbol, avgRate]) => ({ symbol, avgRate }));
+    const highest = [...all].sort((a, b) => b.avgRate - a.avgRate).slice(0, 30).map(s => s.symbol);
+    const lowest = [...all].sort((a, b) => a.avgRate - b.avgRate).slice(0, 30).map(s => s.symbol);
+    return { highestRateSymbols: highest, lowestRateSymbols: lowest };
+  }, [symbolAvgRates]);
 
-  const getCategorySymbols = () => {
+  const categorySymbols = useMemo(() => {
     if (categoryFilter === 'all') return null;
     if (categoryFilter === 'highest') return highestRateSymbols;
     if (categoryFilter === 'lowest') return lowestRateSymbols;
     return activeCategories[categoryFilter]?.symbols || null;
-  };
-  const categorySymbols = getCategorySymbols();
+  }, [categoryFilter, highestRateSymbols, lowestRateSymbols, activeCategories]);
 
-  const symbols = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
-    .filter(symbol => !categorySymbols || categorySymbols.includes(symbol))
-    .sort((a, b) => {
+  // Pre-compute per-symbol abs avg rates for sorting (single pass)
+  const symbolAbsAvgRates = useMemo(() => {
+    const rateMap = new Map<string, { sum: number; count: number }>();
+    for (const fr of fundingRates) {
+      const entry = rateMap.get(fr.symbol);
+      const absNormalized = Math.abs(fr.fundingRate) * periodMultiplier(fr.fundingInterval, fundingPeriod);
+      if (entry) { entry.sum += absNormalized; entry.count++; }
+      else rateMap.set(fr.symbol, { sum: absNormalized, count: 1 });
+    }
+    const result = new Map<string, number>();
+    rateMap.forEach(({ sum, count }, sym) => result.set(sym, sum / count));
+    return result;
+  }, [fundingRates, fundingPeriod]);
+
+  const symbols = useMemo(() => {
+    const unique = Array.from(new Set(fundingRates.map(fr => fr.symbol)))
+      .filter(symbol => !categorySymbols || categorySymbols.includes(symbol));
+    return unique.sort((a, b) => {
       if (categoryFilter === 'highest') return getSymbolAvgRate(b) - getSymbolAvgRate(a);
       if (categoryFilter === 'lowest') return getSymbolAvgRate(a) - getSymbolAvgRate(b);
       const aPriority = activePrioritySymbols.indexOf(a);
@@ -272,39 +296,31 @@ export default function FundingPage() {
       if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
       if (aPriority !== -1) return -1;
       if (bPriority !== -1) return 1;
-      const aRates = fundingRates.filter(fr => fr.symbol === a);
-      const bRates = fundingRates.filter(fr => fr.symbol === b);
-      const norm = (fr: typeof aRates[0]) => Math.abs(fr.fundingRate) * periodMultiplier(fr.fundingInterval, fundingPeriod);
-      const aAvg = aRates.reduce((sum, fr) => sum + norm(fr), 0) / aRates.length;
-      const bAvg = bRates.reduce((sum, fr) => sum + norm(fr), 0) / bRates.length;
-      return bAvg - aAvg;
-    })
-;
+      return (symbolAbsAvgRates.get(b) ?? 0) - (symbolAbsAvgRates.get(a) ?? 0);
+    });
+  }, [fundingRates, categoryFilter, categorySymbols, activePrioritySymbols, symbolAvgRates, symbolAbsAvgRates]);
 
-  const heatmapData = new Map<string, Map<string, number>>();
-  const intervalMap = new Map<string, string>(); // "SYMBOL|EXCHANGE" → interval
-  const longShortMap = new Map<string, { long: number; short: number }>(); // L/S rates for skew-based DEXes
-  const borrowingMap = new Map<string, number>(); // Symmetric borrowing fees (gTrade)
-  const predictedMap = new Map<string, Map<string, number>>(); // predicted next funding rate
-  fundingRates.forEach(fr => {
-    if (!heatmapData.has(fr.symbol)) heatmapData.set(fr.symbol, new Map());
-    // Always use base funding rate for display/sorting/averages — comparable across all exchanges.
-    // L/S details (including borrowing) are shown separately in the heatmap cell text.
-    heatmapData.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
-    if (fr.fundingInterval && fr.fundingInterval !== '8h') {
-      intervalMap.set(`${fr.symbol}|${fr.exchange}`, fr.fundingInterval);
+  const { heatmapData, intervalMap, longShortMap, predictedMap } = useMemo(() => {
+    const hm = new Map<string, Map<string, number>>();
+    const im = new Map<string, string>();
+    const ls = new Map<string, { long: number; short: number }>();
+    const pm = new Map<string, Map<string, number>>();
+    for (const fr of fundingRates) {
+      if (!hm.has(fr.symbol)) hm.set(fr.symbol, new Map());
+      hm.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
+      if (fr.fundingInterval && fr.fundingInterval !== '8h') {
+        im.set(`${fr.symbol}|${fr.exchange}`, fr.fundingInterval);
+      }
+      if (fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined) {
+        ls.set(`${fr.symbol}|${fr.exchange}`, { long: fr.fundingRateLong, short: fr.fundingRateShort });
+      }
+      if (fr.predictedRate !== undefined) {
+        if (!pm.has(fr.symbol)) pm.set(fr.symbol, new Map());
+        pm.get(fr.symbol)!.set(fr.exchange, fr.predictedRate);
+      }
     }
-    if (fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined) {
-      longShortMap.set(`${fr.symbol}|${fr.exchange}`, { long: fr.fundingRateLong, short: fr.fundingRateShort });
-    }
-    if (fr.borrowingRate != null && fr.borrowingRate > 0.00001) {
-      borrowingMap.set(`${fr.symbol}|${fr.exchange}`, fr.borrowingRate);
-    }
-    if (fr.predictedRate !== undefined) {
-      if (!predictedMap.has(fr.symbol)) predictedMap.set(fr.symbol, new Map());
-      predictedMap.get(fr.symbol)!.set(fr.exchange, fr.predictedRate);
-    }
-  });
+    return { heatmapData: hm, intervalMap: im, longShortMap: ls, predictedMap: pm };
+  }, [fundingRates]);
 
   // Compute per-symbol accumulated funding (7d) from localStorage history
   const accumulatedMap = useMemo<Map<string, AccumulatedFunding>>(() => {
@@ -330,12 +346,12 @@ export default function FundingPage() {
     return result;
   }, [fundingRates]);
 
-  const visibleExchanges = ALL_EXCHANGES.filter(ex => {
+  const visibleExchanges = useMemo(() => ALL_EXCHANGES.filter(ex => {
     if (!selectedExchanges.has(ex)) return false;
     if (venueFilter === 'dex' && !isExchangeDex(ex)) return false;
     if (venueFilter === 'cex' && isExchangeDex(ex)) return false;
     return true;
-  });
+  }), [selectedExchanges, venueFilter]);
 
   // Compute actual exchange counts from live data for the subtitle
   const activeExchangeNames = useMemo(() => {
@@ -349,21 +365,21 @@ export default function FundingPage() {
     return count;
   }, [activeExchangeNames]);
 
-  const validRates = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
-  const avgRate = validRates.length > 0
-    ? validRates.reduce((sum, fr) => {
-        return sum + fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
-      }, 0) / validRates.length : 0;
-  const normRate = (fr: typeof validRates[0]) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
-  const highestRate = validRates.length > 0
-    ? validRates.reduce((max, fr) => normRate(fr) > normRate(max) ? fr : max, validRates[0]) : null;
-  const lowestRate = validRates.length > 0
-    ? validRates.reduce((min, fr) => normRate(fr) < normRate(min) ? fr : min, validRates[0]) : null;
+  const { avgRate, highestRate, lowestRate } = useMemo(() => {
+    const valid = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
+    if (valid.length === 0) return { avgRate: 0, highestRate: null, lowestRate: null };
+    const norm = (fr: typeof valid[0]) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
+    const avg = valid.reduce((sum, fr) => sum + norm(fr), 0) / valid.length;
+    const highest = valid.reduce((max, fr) => norm(fr) > norm(max) ? fr : max, valid[0]);
+    const lowest = valid.reduce((min, fr) => norm(fr) < norm(min) ? fr : min, valid[0]);
+    return { avgRate: avg, highestRate: highest, lowestRate: lowest };
+  }, [fundingRates, fundingPeriod]);
 
   const viewTabs: { key: ViewMode; label: string }[] = [
     { key: 'heatmap', label: 'Heatmap' },
     { key: 'arbitrage', label: 'Funding Arbs' },
     { key: 'price', label: 'Price Arbs' },
+    { key: 'spot', label: 'Spot Arbs' },
   ];
 
   const categoryKeys = Object.keys(activeCategories);
@@ -695,13 +711,16 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} predictedMap={predictedMap} accumulatedMap={accumulatedMap} fundingPeriod={fundingPeriod} />
+              <FundingHeatmapView symbols={symbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} predictedMap={predictedMap} accumulatedMap={accumulatedMap} fundingPeriod={fundingPeriod} fundingPrefs={fundingPrefs} onUpdatePrefs={updateFundingPrefs} />
             )}
             {viewMode === 'arbitrage' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} indexPrices={indexPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} historicalSpreads={arbHistory} />
             )}
             {viewMode === 'price' && (
               <PriceArbitrageView priceArbs={priceArbs} />
+            )}
+            {viewMode === 'spot' && (
+              <SpotArbitrageView fundingRates={fundingRates} oiMap={oiMap} />
             )}
           </>
         )}

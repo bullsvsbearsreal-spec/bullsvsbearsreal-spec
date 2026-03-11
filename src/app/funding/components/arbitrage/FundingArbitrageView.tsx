@@ -5,7 +5,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRateAdaptive, PERIOD_HOURS, PERIOD_LABELS } from '../../utils';
 import { isExchangeDex, getArbRoundTripFee } from '@/lib/constants';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, TrendingUp, BarChart3, DollarSign, Activity, Filter, AlertTriangle, Shield, TrendingDown, Download, Link2, Check, GitCompareArrows } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, TrendingUp, BarChart3, DollarSign, Activity, Filter, AlertTriangle, Shield, TrendingDown, Download, Link2, Check, GitCompareArrows, Search, X } from 'lucide-react';
 import Pagination from '../Pagination';
 
 import type { FundingArbitrageViewProps, SortKey, VenueFilterType, FeasibilityGrade, EnrichedArb } from './types';
@@ -37,6 +37,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   const [minOI, setMinOI] = useState(0);
   const [hideOutliers, setHideOutliers] = useState(true);
   const [gradeFilter, setGradeFilter] = useState<FeasibilityGrade | 'all'>('all');
+  const [symbolSearch, setSymbolSearch] = useState('');
   const [linkCopied, setLinkCopied] = React.useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [compareItems, setCompareItems] = useState<Set<string>>(new Set());
@@ -188,6 +189,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   // Apply filters
   const filtered = useMemo(() => {
     return enriched.filter(item => {
+      if (symbolSearch && !item.symbol.toUpperCase().includes(symbolSearch.toUpperCase())) return false;
       if (item.grossSpread < minSpread * periodScale) return false;
       if (venueFilter === 'cex-dex' && !item.isCexDex) return false;
       if (venueFilter === 'cex-cex' && item.isCexDex) return false;
@@ -197,7 +199,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
       if (gradeFilter !== 'all' && item.grade !== gradeFilter) return false;
       return true;
     });
-  }, [enriched, minSpread, venueFilter, exchangeFilter, minOI, hideOutliers, gradeFilter, periodScale]);
+  }, [enriched, symbolSearch, minSpread, venueFilter, exchangeFilter, minOI, hideOutliers, gradeFilter, periodScale]);
 
   // Sort
   const sortedData = useMemo(() => {
@@ -371,6 +373,26 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
             <p className="text-neutral-600 text-xs">Cross-exchange funding rate spreads &middot; Net of real per-exchange taker fees</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Symbol search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-600 pointer-events-none" />
+              <input
+                type="text"
+                value={symbolSearch}
+                onChange={e => { setSymbolSearch(e.target.value); setCurrentPage(1); }}
+                placeholder="Search coin..."
+                className="w-[120px] sm:w-[140px] pl-7 pr-7 py-1 rounded-lg text-[11px] text-white placeholder-neutral-600 outline-none transition-all focus:ring-1 focus:ring-hub-yellow/40"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+              />
+              {symbolSearch && (
+                <button
+                  onClick={() => { setSymbolSearch(''); setCurrentPage(1); }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-neutral-500 hover:text-white hover:bg-white/[0.08] transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
             <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${showFilters ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white bg-white/[0.04]'}`}>
               <Filter className="w-3 h-3" /> Filters
             </button>
@@ -559,7 +581,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                       </div>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <GradeBadge grade={item.grade} isOutlier={item.isOutlier} isLowLiq={item.isLowLiq} score={item.gradeScore} />
+                      <GradeBadge grade={item.grade} isOutlier={item.isOutlier} isLowLiq={item.isLowLiq} score={item.gradeScore} flags={item.gradeFlags} />
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div>
@@ -686,7 +708,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <GradeBadge grade={item.grade} isOutlier={item.isOutlier} isLowLiq={item.isLowLiq} score={item.gradeScore} />
+                    <GradeBadge grade={item.grade} isOutlier={item.isOutlier} isLowLiq={item.isLowLiq} score={item.gradeScore} flags={item.gradeFlags} />
                     <TokenIconSimple symbol={item.symbol} size={18} />
                     <span className="text-white font-semibold text-sm">{item.symbol}</span>
                   </div>

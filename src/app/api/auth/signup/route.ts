@@ -1,20 +1,21 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import postgres from 'postgres';
 import { Resend } from 'resend';
 import { validatePassword } from '@/lib/auth/password';
+import { isDBConfigured, getSQL } from '@/lib/db';
+import { signupLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
+let _resend: Resend | null = null;
+function getResend(): Resend | null {
+  if (!_resend && process.env.RESEND_API_KEY) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
 }
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function generateCode(): string {
   return crypto.randomInt(100000, 1000000).toString();
@@ -22,6 +23,12 @@ function generateCode(): string {
 
 export async function POST(req: Request) {
   try {
+    // Rate limit by IP
+    const ip = getClientIP(req);
+    if (!signupLimiter.check(ip)) {
+      return NextResponse.json({ error: 'Too many signup attempts. Please try again later.' }, { status: 429 });
+    }
+
     const body = await req.json();
     const { name, email, password } = body;
 
@@ -29,12 +36,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+
+    // Limit name length
+    const safeName = typeof name === 'string' ? name.trim().slice(0, 100) : null;
+
     const pw = validatePassword(password);
     if (!pw.ok) {
       return NextResponse.json({ error: pw.error }, { status: 400 });
     }
 
-    if (!DATABASE_URL) {
+    if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
@@ -42,28 +56,17 @@ export async function POST(req: Request) {
 
     const existing = await db`SELECT id FROM users WHERE email = ${email}`;
     if (existing.length > 0) {
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+      // Return generic response to prevent email enumeration
+      return NextResponse.json({ requiresVerification: true, message: 'Check your email to complete registration' }, { status: 201 });
     }
-
-    // Ensure email_verified column exists
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`.catch(() => {});
 
     // Hash password and create user (unverified)
     const hash = await bcrypt.hash(password, 12);
     const id = crypto.randomUUID();
     const rows = await db`
       INSERT INTO users (id, name, email, password_hash)
-      VALUES (${id}, ${name || null}, ${email}, ${hash})
+      VALUES (${id}, ${safeName}, ${email}, ${hash})
       RETURNING id, name, email
-    `;
-
-    // Ensure verification table exists
-    await db`
-      CREATE TABLE IF NOT EXISTS email_verification_codes (
-        id SERIAL PRIMARY KEY, user_id TEXT NOT NULL, email TEXT NOT NULL,
-        code TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL,
-        used BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW()
-      )
     `;
 
     // Generate and store verification code
@@ -75,6 +78,11 @@ export async function POST(req: Request) {
     `;
 
     // Send verification email
+    const resend = getResend();
+    if (!resend) {
+      console.error('RESEND_API_KEY not configured — skipping verification email');
+      return NextResponse.json({ user: rows[0], requiresVerification: true }, { status: 201 });
+    }
     try {
       await resend.emails.send({
         from: 'InfoHub <noreply@info-hub.io>',

@@ -27,6 +27,7 @@ let rawDataCache: CachedRawData | null = null;
 const RAW_TTL = 2 * 60 * 1000; // 2 minutes
 
 const responseCache = new Map<string, { body: FundingResult; timestamp: number }>();
+const RESPONSE_CACHE_MAX = 10; // Max asset class variants to cache
 
 export interface FundingResult {
   data: any[];
@@ -80,7 +81,7 @@ function buildResult(filtered: any[], health: any[], assetClass: AssetClassFilte
       timestamp: Date.now(),
       normalization: {
         basis: 'native',
-        note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h). 8h: Binance, Bybit, OKX, Bitget, MEXC, BingX, Phemex, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade. 4h: Kraken, edgeX. 1h: Hyperliquid, dYdX, Aevo, Coinbase, Drift, GMX, Extended, Lighter. Bitunix/Variational vary per market. OKX/CoinEx include native predictedRate. For others with mark+index prices, predictedRate is implied via clamp((mark-index)/index × 100, ±0.75%). Continuous-funding exchanges excluded from prediction.',
+        note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h). 8h: Binance, Bybit, OKX, Bitget, MEXC, BingX, Phemex, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade. 4h: Kraken, edgeX. 1h: Hyperliquid, dYdX, Aevo, Coinbase, Drift, GMX, Extended, Lighter. Bitunix/Variational vary per market. predictedRate only present when natively provided by the exchange.',
       },
     },
   };
@@ -203,20 +204,13 @@ export async function getFundingData(
     entry.type === 'dex' || (entry.markPrice && entry.markPrice > 0),
   );
 
-  // Compute implied predicted rates from mark-index spread
-  const CONTINUOUS_EXCHANGES = new Set(['Hyperliquid', 'dYdX', 'gTrade', 'Coinbase', 'Aevo', 'Drift', 'GMX', 'Extended', 'Lighter']);
-  const PREDICTED_CLAMP = 0.75;
-  dataWithPrices.forEach(entry => {
-    if (entry.predictedRate !== undefined) return;
-    if (CONTINUOUS_EXCHANGES.has(entry.exchange)) return;
-    if (entry.markPrice == null || entry.indexPrice == null || entry.indexPrice <= 0) return;
-    const premium = ((entry.markPrice - entry.indexPrice) / entry.indexPrice) * 100;
-    entry.predictedRate = Math.max(-PREDICTED_CLAMP, Math.min(PREDICTED_CLAMP, premium));
-  });
+  // Only keep native predicted rates from exchanges that actually provide them (OKX, CoinEx, Binance, Bybit, etc.)
+  // Previously we computed implied predicted rates from mark-index spread, but those were inaccurate.
 
   // Build set of crypto symbols listed on 2+ exchanges
   const exchangeCountMap = new Map<string, Set<string>>();
   dataWithPrices.forEach(r => {
+    if (!r.symbol) return;
     if (!r.assetClass || r.assetClass === 'crypto') {
       const sym = r.symbol.toUpperCase();
       if (!exchangeCountMap.has(sym)) exchangeCountMap.set(sym, new Set());
@@ -228,8 +222,9 @@ export async function getFundingData(
     if (exchanges.size >= 2) multiExchangeSymbols.add(sym);
   });
 
-  // Update raw data cache
+  // Update raw data cache — clear stale response entries
   rawDataCache = { dataWithPrices, health, top500, multiExchangeSymbols, timestamp: Date.now() };
+  responseCache.clear();
 
   // Filter and build result
   const filtered = filterByAssetClass(dataWithPrices, top500, multiExchangeSymbols, assetClass);

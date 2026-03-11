@@ -37,9 +37,11 @@ export default function ChatWidget() {
   const [activeToolName, setActiveToolName] = useState<string | undefined>();
   const [remaining, setRemaining] = useState<number | undefined>();
   const abortRef = useRef<AbortController | null>(null);
+  const loadingRef = useRef(false);
 
   const sendMessage = useCallback(async (text: string, image?: ImageAttachment) => {
-    if (isLoading) return;
+    if (loadingRef.current) return;
+    loadingRef.current = true;
 
     const userMsg = addMessage({ role: 'user', content: text });
     const userUI: UIMessage = {
@@ -201,21 +203,34 @@ export default function ChatWidget() {
         }
       }
     } catch (error) {
-      if ((error as Error).name === 'AbortError') return;
+      if ((error as Error).name === 'AbortError') {
+        // Clear isStreaming on the partial message so it doesn't show a stale spinner
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, isStreaming: false } : m,
+          ),
+        );
+        return;
+      }
       const errMsg = error instanceof Error ? error.message : 'Something went wrong';
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: `Error: ${errMsg}`, isStreaming: false }
-            : m,
-        ),
+        prev.map((m) => {
+          if (m.id !== assistantId) return m;
+          // Append error to partial text instead of replacing it
+          const existing = m.content?.trim();
+          const content = existing
+            ? `${existing}\n\n_Error: ${errMsg}_`
+            : `Error: ${errMsg}`;
+          return { ...m, content, isStreaming: false };
+        }),
       );
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
       setActiveToolName(undefined);
       abortRef.current = null;
     }
-  }, [isLoading]);
+  }, []);
 
   const handleClear = () => {
     clearChat();
@@ -274,7 +289,11 @@ export default function ChatWidget() {
                 <h3 className="text-sm font-bold text-white leading-none tracking-tight">MK.II</h3>
                 <p className="text-[10px] text-neutral-500 mt-0.5">
                   {isLoading ? (
-                    <span className="text-amber-400/70">Analyzing...</span>
+                    <span className="text-amber-400/70">
+                      {activeToolName
+                        ? `Fetching ${activeToolName.replace(/^get_/, '').replace(/_/g, ' ')}...`
+                        : 'Analyzing...'}
+                    </span>
                   ) : (
                     'Derivatives Intelligence'
                   )}

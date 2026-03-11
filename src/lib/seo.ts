@@ -192,6 +192,22 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Execution Costs',
     description: 'Compare real-time execution costs across DEX perpetual exchanges. Fees, spread, price impact, and orderbook depth for Hyperliquid, dYdX, Drift, Aster, and more.',
   },
+  '/stock-heatmap': {
+    title: 'Stock Heatmap',
+    description: 'Real-time stock market heatmap — S&P 500, US stocks, and global equities. Visualize performance by sector, market cap, and timeframe.',
+  },
+  '/airdrops': {
+    title: 'Airdrop Tracker',
+    description: 'Track upcoming and active crypto airdrops. Filter by status, chain, and requirements. Never miss a free token distribution.',
+  },
+  '/yields': {
+    title: 'DeFi Yields',
+    description: 'Compare DeFi yield opportunities across protocols and chains. Track APY, TVL, and risk metrics for lending, staking, and liquidity pools.',
+  },
+  '/developers': {
+    title: 'Developers',
+    description: 'InfoHub developer portal — create and manage API keys, view usage, and access real-time crypto derivatives data programmatically.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

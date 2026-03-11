@@ -6,6 +6,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKey } from '@/lib/db';
 import { checkRateLimit } from '@/lib/api/rate-limit';
+import { createRateLimiter } from '@/lib/auth/rate-limit';
+
+// Fallback in-memory rate limiter when Redis is unavailable
+const fallbackLimiter = createRateLimiter({ maxAttempts: 60, windowMs: 60 * 1000 });
 
 interface V1AuthResult {
   userId: string;
@@ -15,7 +19,24 @@ interface V1AuthResult {
 
 // In-memory cache for validated API keys (avoids DB hit per request)
 const apiKeyCache = new Map<string, V1AuthResult & { cachedAt: number }>();
-const API_KEY_CACHE_TTL = 5 * 60 * 1000; // 5 min
+const API_KEY_CACHE_TTL = 60 * 1000; // 1 min (shorter to limit revocation window)
+const API_KEY_CACHE_MAX = 1000; // cap to prevent unbounded growth
+let lastCacheCleanup = 0;
+
+/** Clear all cached API keys — call after key revocation to prevent stale auth. */
+export function clearApiKeyCache(): void {
+  apiKeyCache.clear();
+}
+
+/** Evict expired entries periodically (at most once per minute). */
+function evictStaleKeys(): void {
+  const now = Date.now();
+  if (now - lastCacheCleanup < 60_000) return;
+  lastCacheCleanup = now;
+  apiKeyCache.forEach((v, k) => {
+    if (now - v.cachedAt > API_KEY_CACHE_TTL) apiKeyCache.delete(k);
+  });
+}
 
 /**
  * Authenticate a v1 API request.
@@ -25,6 +46,9 @@ export async function authenticateV1Request(request: NextRequest): Promise<
   | { ok: true; user: V1AuthResult; headers: Record<string, string> }
   | { ok: false; response: NextResponse }
 > {
+  // Periodic cleanup of expired cache entries
+  evictStaleKeys();
+
   // Extract API key from Authorization header
   const authHeader = request.headers.get('authorization') || '';
   const match = authHeader.match(/^Bearer\s+(ih_.+)$/i);
@@ -55,6 +79,11 @@ export async function authenticateV1Request(request: NextRequest): Promise<
         };
       }
       keyData = { ...result, cachedAt: Date.now() };
+      // Enforce max cache size — evict oldest entry if at cap
+      if (apiKeyCache.size >= API_KEY_CACHE_MAX) {
+        const firstKey = apiKeyCache.keys().next().value;
+        if (firstKey) apiKeyCache.delete(firstKey);
+      }
       apiKeyCache.set(rawKey, keyData);
     } catch (e) {
       console.error('API key validation error:', e);
@@ -93,8 +122,17 @@ export async function authenticateV1Request(request: NextRequest): Promise<
       };
     }
   } catch (e) {
-    // Graceful degradation — allow request if Redis is down
-    console.error('Rate limit check failed (allowing request):', e);
+    // Fallback to in-memory rate limiter when Redis is down
+    console.error('Redis rate limit failed, using in-memory fallback:', e);
+    if (!fallbackLimiter.check(keyData.keyId)) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { success: false, error: 'Rate limit exceeded (service degraded). Try again shortly.' },
+          { status: 429, headers: { 'Retry-After': '60' } },
+        ),
+      };
+    }
   }
 
   return {

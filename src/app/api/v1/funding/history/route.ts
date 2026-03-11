@@ -3,6 +3,7 @@ import { getBulkFundingHistory } from '@/lib/db';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 /**

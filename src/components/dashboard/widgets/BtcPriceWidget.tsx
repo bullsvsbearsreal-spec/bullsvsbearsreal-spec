@@ -22,7 +22,7 @@ export default function BtcPriceWidget() {
         const btc = Array.isArray(data) ? data.find((t: any) => t.symbol === 'BTC' || t.symbol === 'BTCUSDT') : null;
         if (btc && mounted) {
           setPrice(btc.price || btc.lastPrice);
-          setChange(btc.priceChangePercent ?? btc.change24h ?? null);
+          setChange(btc.priceChangePercent24h ?? btc.change24h ?? null);
           setUpdatedAt(Date.now());
         }
       } catch (err) { console.error('[BtcPrice] fetch error:', err); }

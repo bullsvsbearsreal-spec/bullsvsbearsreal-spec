@@ -105,7 +105,7 @@ export default function HomeOrange() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                    <span className="text-white">info</span><span className="bg-gradient-to-r from-hub-yellow to-hub-orange bg-clip-text text-transparent">hub</span>
+                    <span className="text-white">info</span><span className="bg-gradient-to-r from-hub-yellow-light via-hub-yellow to-hub-orange bg-clip-text text-transparent">hub</span>
                   </h1>
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
                     <span className="live-dot" />
@@ -134,7 +134,7 @@ export default function HomeOrange() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="group flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow/30 hover:bg-hub-yellow/[0.04] transition-all duration-200"
+                  className="group flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow-dark/30 hover:bg-hub-yellow/[0.04] hover:shadow-[0_0_16px_rgba(255,140,0,0.08)] transition-all duration-200"
                 >
                   <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-hub-yellow/10 flex items-center justify-center transition-colors">
                     <link.icon className="w-4 h-4 text-neutral-500 group-hover:text-hub-yellow transition-colors" />

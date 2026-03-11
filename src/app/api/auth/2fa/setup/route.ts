@@ -1,18 +1,12 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import postgres from 'postgres';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
+import { isDBConfigured, getSQL } from '@/lib/db';
 
 function generateBackupCodes(): string[] {
   const codes: string[] = [];
@@ -29,7 +23,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!DATABASE_URL) {
+    if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 

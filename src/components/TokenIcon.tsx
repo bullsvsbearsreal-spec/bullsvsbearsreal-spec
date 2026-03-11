@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 
 interface TokenIconProps {
   symbol: string;
@@ -141,31 +141,40 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
 
   // Forex pairs: render dual overlapping circular flags
   const forexMatch = detectForexPair(normalizedSymbol);
+
+  // Probe image availability in useEffect (not during render)
+  useEffect(() => {
+    if (forexMatch) return;
+
+    // Reset state when symbol changes
+    setHasError(false);
+    setImgSrc(null);
+
+    let cancelled = false;
+    const img = new window.Image();
+    img.onload = () => { if (!cancelled) setImgSrc(`/tokens/${mappedSymbol}.png`); };
+    img.onerror = () => {
+      const img2 = new window.Image();
+      img2.onload = () => { if (!cancelled) setImgSrc(`/tokens/${mappedSymbol}.svg`); };
+      img2.onerror = () => {
+        const remotePath = getRemotePath(symbol);
+        const img3 = new window.Image();
+        img3.onload = () => { if (!cancelled) setImgSrc(remotePath); };
+        img3.onerror = () => { if (!cancelled) setHasError(true); };
+        img3.src = remotePath;
+      };
+      img2.src = `/tokens/${mappedSymbol}.svg`;
+    };
+    img.src = `/tokens/${mappedSymbol}.png`;
+
+    return () => { cancelled = true; };
+  }, [mappedSymbol]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (forexMatch) {
     return <ForexIcon base={forexMatch.base} quote={forexMatch.quote} size={size} className={className} />;
   }
 
   if (hasError || !imgSrc) {
-    if (!imgSrc && !hasError) {
-      const img = new window.Image();
-      // Try local PNG first
-      img.onload = () => setImgSrc(`/tokens/${mappedSymbol}.png`);
-      img.onerror = () => {
-        // Try local SVG
-        const img2 = new window.Image();
-        img2.onload = () => setImgSrc(`/tokens/${mappedSymbol}.svg`);
-        img2.onerror = () => {
-          // Try remote CDN
-          const img3 = new window.Image();
-          img3.onload = () => setImgSrc(getRemotePath(symbol));
-          img3.onerror = () => setHasError(true);
-          img3.src = getRemotePath(symbol);
-        };
-        img2.src = `/tokens/${mappedSymbol}.svg`;
-      };
-      img.src = `/tokens/${mappedSymbol}.png`;
-    }
-
     return (
       <div
         className={`flex items-center justify-center rounded-full ${className}`}
@@ -203,7 +212,7 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
 
 // Simple version for lists — tries local PNG → local SVG → CMC CDN → GitHub CDN → letter fallback
 // Uses React state for the final fallback instead of raw DOM innerHTML manipulation
-export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: TokenIconProps) {
+export const TokenIconSimple = memo(function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: TokenIconProps) {
   const normalizedSymbol = symbol.toUpperCase().replace(/[-_]/g, '');
   const mappedSymbol = symbolMap[normalizedSymbol] || normalizedSymbol.toLowerCase();
   const fallbackText = normalizedSymbol.slice(0, 2);
@@ -275,8 +284,9 @@ export function TokenIconSimple({ symbol, size = 24, className = '', cmcId }: To
         width={size}
         height={size}
         className="rounded-full object-cover"
+        loading="lazy"
         onError={handleError}
       />
     </div>
   );
-}
+});

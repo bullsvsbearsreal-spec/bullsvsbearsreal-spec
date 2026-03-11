@@ -1,15 +1,9 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextRequest, NextResponse } from 'next/server';
-import postgres from 'postgres';
 import { auth } from '@/lib/auth';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
+import { getSQL } from '@/lib/db';
 
 // POST — save push subscription
 export async function POST(req: NextRequest) {

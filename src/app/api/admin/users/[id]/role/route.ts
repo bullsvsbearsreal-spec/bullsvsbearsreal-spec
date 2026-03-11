@@ -7,19 +7,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, auth } from '@/lib/auth';
-import { isDBConfigured } from '@/lib/db';
-import postgres from 'postgres';
+import { isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
 
 const VALID_ROLES = ['admin', 'advisor', 'user'] as const;
 
@@ -51,24 +43,25 @@ export async function PUT(
   try {
     const db = getSQL();
 
-    // If demoting an admin, ensure at least one other admin remains
-    if (role !== 'admin') {
-      const target = await db`SELECT role FROM users WHERE id = ${id}`;
-      if (target.length > 0 && target[0].role === 'admin') {
-        const adminCount = await db`SELECT COUNT(*) as count FROM users WHERE role = 'admin'`;
-        if (Number(adminCount[0].count) <= 1) {
-          return NextResponse.json({ error: 'Cannot remove the last admin' }, { status: 403 });
-        }
-      }
-    }
-
+    // Atomic role update with last-admin guard to prevent TOCTOU race
     const rows = await db`
-      UPDATE users SET role = ${role} WHERE id = ${id}
+      UPDATE users SET role = ${role}
+      WHERE id = ${id}
+        AND (
+          ${role} = 'admin'
+          OR role != 'admin'
+          OR (SELECT COUNT(*) FROM users WHERE role = 'admin' AND id != ${id}) >= 1
+        )
       RETURNING id, email, role
     `;
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      // Distinguish: user not found vs last-admin guard
+      const exists = await db`SELECT id, role FROM users WHERE id = ${id}`;
+      if (exists.length === 0) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      return NextResponse.json({ error: 'Cannot remove the last admin' }, { status: 403 });
     }
 
     return NextResponse.json({ user: rows[0] });

@@ -1,24 +1,58 @@
 'use client';
 
-import { Zap, TrendingUp, BarChart3, Anchor, Activity, Clock } from 'lucide-react';
+import {
+  Zap, TrendingUp, BarChart3, Anchor, Activity, Clock,
+  Target, Landmark, PieChart, ArrowUpDown, Gauge, DollarSign,
+} from 'lucide-react';
 
-const SUGGESTIONS = [
-  { label: 'BTC Analysis', prompt: 'Give me a full analysis of BTC right now — funding, OI, whale positioning, and sentiment.', icon: TrendingUp },
-  { label: 'Top Arb', prompt: 'What are the best funding rate arbitrage opportunities right now?', icon: Zap },
-  { label: 'Market Mood', prompt: "What's the overall market sentiment? Fear/greed, top movers, and any red flags?", icon: Activity },
-  { label: 'Whale Watch', prompt: 'What are the top Hyperliquid whales doing? Any notable positions?', icon: Anchor },
-  { label: 'OI Snapshot', prompt: 'Show me the biggest open interest positions and any notable OI changes.', icon: BarChart3 },
-  { label: 'Macro Events', prompt: 'Any upcoming economic events or token unlocks that could move the market?', icon: Clock },
-];
+const POOLS = {
+  trading: [
+    { label: 'BTC Outlook', prompt: 'BTC — bullish or bearish? Funding, OI, positioning.', icon: TrendingUp },
+    { label: 'Best Arbs', prompt: 'Best funding arb opportunities right now.', icon: Zap },
+    { label: 'Whale Watch', prompt: 'Top whale positions on Hyperliquid.', icon: Anchor },
+    { label: 'OI Shifts', prompt: 'Biggest OI changes — where is money flowing?', icon: BarChart3 },
+  ],
+  macro: [
+    { label: 'Market Vibe', prompt: 'Quick market pulse — sentiment, movers, red flags.', icon: Activity },
+    { label: 'Catalysts', prompt: 'Upcoming macro events or token unlocks this week.', icon: Clock },
+    { label: 'Cycle Check', prompt: 'Where are we in the cycle? Pi Cycle, S2F, Rainbow.', icon: Gauge },
+    { label: 'Flows', prompt: 'Stablecoin + ETF flows — risk on or off?', icon: DollarSign },
+  ],
+  data: [
+    { label: 'Options', prompt: 'BTC options: max pain, PCR, key levels.', icon: Target },
+    { label: 'On-Chain', prompt: 'BTC on-chain health check.', icon: Landmark },
+    { label: 'OI Momentum', prompt: 'OI delta — which coins are loading up?', icon: ArrowUpDown },
+    { label: 'Polymarket', prompt: 'Prediction market arb spreads.', icon: PieChart },
+  ],
+};
+
+function pickFromPool(pool: typeof POOLS.trading, seed: number, count: number) {
+  // Deterministic shuffle using seed
+  const indices = pool.map((_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = (seed + i * 7) % (i + 1);
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  return indices.slice(0, count).map((i) => pool[i]);
+}
 
 interface ChatSuggestionsProps {
   onSelect: (prompt: string) => void;
 }
 
 export default function ChatSuggestions({ onSelect }: ChatSuggestionsProps) {
+  // Rotate every 10 minutes
+  const seed = Math.floor(Date.now() / 600000);
+
+  const suggestions = [
+    ...pickFromPool(POOLS.trading, seed, 2),
+    ...pickFromPool(POOLS.macro, seed + 1, 2),
+    ...pickFromPool(POOLS.data, seed + 2, 2),
+  ];
+
   return (
     <div className="flex flex-wrap gap-1.5 p-3">
-      {SUGGESTIONS.map((s) => {
+      {suggestions.map((s) => {
         const Icon = s.icon;
         return (
           <button

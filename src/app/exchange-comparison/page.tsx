@@ -24,7 +24,7 @@ interface ExchangeStats {
 }
 
 function formatRate(r: number): string {
-  return `${r >= 0 ? '+' : ''}${(r * 100).toFixed(4)}%`;
+  return `${r >= 0 ? '+' : ''}${r.toFixed(4)}%`;
 }
 
 export default function ExchangeComparisonPage() {

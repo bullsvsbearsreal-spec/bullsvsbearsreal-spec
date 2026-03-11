@@ -126,6 +126,7 @@ export async function getOIData(): Promise<{ result: OIResult; cacheStatus: stri
     // Allow symbols listed on 2+ exchanges even if not top 500
     const exchangeCountMap = new Map<string, Set<string>>();
     data.forEach(r => {
+      if (!r.symbol) return;
       const sym = r.symbol.toUpperCase();
       if (!exchangeCountMap.has(sym)) exchangeCountMap.set(sym, new Set());
       exchangeCountMap.get(sym)!.add(r.exchange);
@@ -136,7 +137,7 @@ export async function getOIData(): Promise<{ result: OIResult; cacheStatus: stri
     });
 
     const filtered = data.filter(r =>
-      isTop500Symbol(r.symbol, top500) || multiExchangeSymbols.has(r.symbol.toUpperCase()),
+      r.symbol && (isTop500Symbol(r.symbol, top500) || multiExchangeSymbols.has(r.symbol.toUpperCase())),
     );
 
     const result: OIResult = {

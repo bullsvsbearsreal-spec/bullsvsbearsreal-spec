@@ -3,6 +3,7 @@ import { requireAdmin, auth } from '@/lib/auth';
 import { recordAuditEvent, getAllPushSubscriptions, getAllActiveTelegramChatIds } from '@/lib/db';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 export async function POST(request: NextRequest) {
   const adminErr = await requireAdmin();
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
           const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: chatId, text: `📢 *Admin Broadcast*\n\n${message}`, parse_mode: 'Markdown' }),
+            body: JSON.stringify({ chat_id: chatId, text: `📢 <b>Admin Broadcast</b>\n\n${message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`, parse_mode: 'HTML' }),
             signal: AbortSignal.timeout(10000),
           });
           if (res.ok) result.telegram.sent++;
@@ -72,6 +73,8 @@ export async function POST(request: NextRequest) {
         } catch {
           result.telegram.failed++;
         }
+        // Throttle to stay under Telegram's ~30 msg/sec rate limit
+        await new Promise(r => setTimeout(r, 100));
       }
     }
   }

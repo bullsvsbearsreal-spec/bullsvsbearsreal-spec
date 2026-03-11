@@ -31,6 +31,7 @@ import { detectPriceArbitrage, detectFundingArbitrage } from '@/lib/arbitrage-de
 import type { TickerEntry, FundingEntry } from '@/lib/arbitrage-detector';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
@@ -42,6 +43,11 @@ const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
 /** Clamp a numeric value between min and max. */
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+/** Escape HTML special chars for Telegram parse_mode: 'HTML' messages. */
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +83,15 @@ async function handleStart(chatId: number): Promise<void> {
     '/feargreed — Fear &amp; Greed Index + trend',
     '/yields — Top DeFi yields by APY',
     '/menu — Interactive command menu',
+    '',
+    '<b>Advanced:</b>',
+    '/options [BTC] — Options max pain, PCR, OI',
+    '/onchain — BTC hash rate, MVRV, Puell',
+    '/cycle — Pi Cycle, Rainbow, Stock-to-Flow',
+    '/prediction — Prediction market arb spreads',
+    '/stablecoins — Stablecoin supply &amp; flows',
+    '/oidelta — OI momentum (biggest changes)',
+    '/longshort [BTC] — Binance long/short ratio',
     '',
     '<b>Custom Alerts:</b>',
     '/alert add BTC price gt 100000',
@@ -280,7 +295,7 @@ async function handlePrice(chatId: number, args: string[], origin: string): Prom
     const entries: Array<{ exchange: string; lastPrice: number; priceChangePercent24h: number; quoteVolume24h: number }> = json.data || [];
 
     if (entries.length === 0) {
-      await sendMessage(chatId, `No price data found for <b>${symbol}</b>.`);
+      await sendMessage(chatId, `No price data found for <b>${esc(symbol)}</b>.`);
       return;
     }
 
@@ -357,7 +372,7 @@ async function handleHistory(chatId: number, args: string[], origin: string): Pr
     const data: Array<{ exchange: string; day: string; rate: number }> = json.data || [];
 
     if (data.length === 0) {
-      await sendMessage(chatId, `No funding history found for <b>${symbol}</b> in the last ${days}d.`);
+      await sendMessage(chatId, `No funding history found for <b>${esc(symbol)}</b> in the last ${days}d.`);
       return;
     }
 
@@ -413,7 +428,7 @@ async function handleFundingRates(chatId: number, args: string[], origin: string
     const entries = all.filter((e) => e.symbol.toUpperCase() === symbol && e.fundingRate != null);
 
     if (entries.length === 0) {
-      await sendMessage(chatId, `No funding data found for <b>${symbol}</b>.`);
+      await sendMessage(chatId, `No funding data found for <b>${esc(symbol)}</b>.`);
       return;
     }
 
@@ -486,7 +501,7 @@ async function handleOI(chatId: number, args: string[], origin: string): Promise
     );
 
     if (entries.length === 0) {
-      await sendMessage(chatId, `No OI data found for <b>${symbol}</b>.`);
+      await sendMessage(chatId, `No OI data found for <b>${esc(symbol)}</b>.`);
       return;
     }
 
@@ -550,7 +565,7 @@ async function handleLiq(chatId: number, args: string[], origin: string): Promis
         json.byExchange || [];
 
       if (!summary || summary.totalCount === 0) {
-        await sendMessage(chatId, `No liquidations for <b>${symbol}</b> in the last 24h.`);
+        await sendMessage(chatId, `No liquidations for <b>${esc(symbol)}</b> in the last 24h.`);
         return;
       }
 
@@ -744,22 +759,22 @@ async function handleAlert(chatId: number, args: string[]): Promise<void> {
 
       const metric = METRIC_ALIASES[metricInput];
       if (!metric) {
-        await sendMessage(chatId, `Invalid metric: ${args[2]}\nValid: price, fundingRate, openInterest, change24h`);
+        await sendMessage(chatId, `Invalid metric: ${esc(args[2])}\nValid: price, fundingRate, openInterest, change24h`);
         return;
       }
       if (!VALID_OPERATORS.has(operator)) {
-        await sendMessage(chatId, `Invalid operator: ${args[3]}\nUse: gt (greater than) or lt (less than)`);
+        await sendMessage(chatId, `Invalid operator: ${esc(args[3])}\nUse: gt (greater than) or lt (less than)`);
         return;
       }
       if (isNaN(threshold)) {
-        await sendMessage(chatId, `Invalid threshold value: ${args[4]}`);
+        await sendMessage(chatId, `Invalid threshold value: ${esc(args[4])}`);
         return;
       }
 
       await addTelegramAlert(chatId, symbol, metric, operator, threshold);
 
       const op = operator === 'gt' ? '>' : '<';
-      await sendMessage(chatId, `Alert created: <b>${symbol}</b> ${metric} ${op} ${threshold}`);
+      await sendMessage(chatId, `Alert created: <b>${esc(symbol)}</b> ${metric} ${op} ${threshold}`);
       break;
     }
 
@@ -883,6 +898,18 @@ async function handleMenuCallback(chatId: number, args: string[]): Promise<void>
             { text: '💰 Yields', callback_data: 'cmd:yields' },
             { text: '🐋 Whales', callback_data: 'cmd:whale' },
           ],
+          [
+            { text: '🎯 Options', callback_data: 'cmd:options:BTC' },
+            { text: '⛏️ On-Chain', callback_data: 'cmd:onchain' },
+          ],
+          [
+            { text: '🔄 Cycle', callback_data: 'cmd:cycle' },
+            { text: '💵 Stablecoins', callback_data: 'cmd:stablecoins' },
+          ],
+          [
+            { text: '📈 OI Delta', callback_data: 'cmd:oidelta' },
+            { text: '🔮 Predictions', callback_data: 'cmd:prediction' },
+          ],
           [{ text: '⬅️ Back', callback_data: 'cmd:menu_back' }],
         ],
       );
@@ -950,7 +977,7 @@ async function handleBasis(chatId: number, args: string[], origin: string): Prom
     if (symbol) {
       entries = entries.filter(e => e.symbol.toUpperCase() === symbol);
       if (entries.length === 0) {
-        await sendMessage(chatId, `No basis data found for <b>${symbol}</b>.`);
+        await sendMessage(chatId, `No basis data found for <b>${esc(symbol)}</b>.`);
         return;
       }
 
@@ -1046,7 +1073,7 @@ async function handleRsi(chatId: number, args: string[], origin: string): Promis
     const entry = all.find(e => e.symbol.toUpperCase() === symbol);
 
     if (!entry) {
-      await sendMessage(chatId, `No RSI data found for <b>${symbol}</b>. Available for top 50 symbols only.`);
+      await sendMessage(chatId, `No RSI data found for <b>${esc(symbol)}</b>. Available for top 50 symbols only.`);
       return;
     }
 
@@ -1292,6 +1319,327 @@ async function handleYields(chatId: number, origin: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// /options — BTC/ETH/SOL options data
+// ---------------------------------------------------------------------------
+
+async function handleOptions(chatId: number, args: string[], origin: string): Promise<void> {
+  const currency = args.length > 0 ? args[0].toUpperCase() : 'BTC';
+  if (!['BTC', 'ETH', 'SOL'].includes(currency)) {
+    await sendMessage(chatId, 'Usage: /options [BTC|ETH|SOL]');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${origin}/api/options?currency=${currency}`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch options data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d = await res.json();
+    const pcr = d.putCallRatio ?? 0;
+    const sentiment = pcr < 0.7 ? '🟢 Bullish' : pcr > 1.3 ? '🔴 Bearish' : '⚪ Neutral';
+
+    const lines = [
+      `<b>Options: ${currency}</b>`,
+      '━━━━━━━━━━━━━━━━',
+      `💰 Price: <b>${fmtUsd(d.underlyingPrice || 0)}</b>`,
+      `🎯 Max Pain: <b>${fmtUsd(d.maxPain || 0)}</b>`,
+      `📊 Put/Call Ratio: <b>${pcr.toFixed(2)}</b> ${sentiment}`,
+      `📈 Total OI: ${fmtUsd(d.totalOI || 0)}`,
+      `  Calls: ${fmtUsd(d.totalCallOI || 0)}`,
+      `  Puts: ${fmtUsd(d.totalPutOI || 0)}`,
+    ];
+
+    const exchanges = d.exchangeBreakdown || [];
+    if (exchanges.length > 0) {
+      lines.push('', '<b>By Exchange:</b>');
+      exchanges.slice(0, 5).forEach((e: { exchange: string; totalOI: number }) => {
+        lines.push(`  ${e.exchange}: ${fmtUsd(e.totalOI)}`);
+      });
+    }
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: `cmd:options:${currency}` }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleOptions error:', err);
+    await sendMessage(chatId, 'Error fetching options data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /onchain — BTC on-chain metrics
+// ---------------------------------------------------------------------------
+
+async function handleOnchain(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/onchain`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch on-chain data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d = await res.json();
+    const hr = d.hashRate || {};
+    const puell = d.puellMultiple || {};
+    const mvrv = d.mvrv || {};
+    const mem = d.mempool || {};
+    const supply = d.supply || {};
+
+    const lines = [
+      '<b>BTC On-Chain Metrics</b>',
+      '━━━━━━━━━━━━━━━━',
+      `⛏️ Hash Rate: <b>${hr.current ? (hr.current / 1e18).toFixed(1) + ' EH/s' : 'N/A'}</b>`,
+      hr.change30d != null ? `   30d: ${hr.change30d >= 0 ? '+' : ''}${hr.change30d.toFixed(1)}%` : '',
+      `📊 Puell Multiple: <b>${puell.current?.toFixed(2) ?? 'N/A'}</b> ${puell.signal || ''}`,
+      `📈 MVRV: <b>${mvrv.current?.toFixed(2) ?? 'N/A'}</b> (z: ${mvrv.zScore?.toFixed(2) ?? 'N/A'})`,
+      `   ${mvrv.signal || ''}`,
+      `💾 Mempool: ${mem.pendingTxCount?.toLocaleString() ?? 'N/A'} pending txs`,
+      `💰 Supply: ${supply.percentMined?.toFixed(1) ?? 'N/A'}% mined`,
+    ].filter(Boolean);
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:onchain' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleOnchain error:', err);
+    await sendMessage(chatId, 'Error fetching on-chain data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /cycle — market cycle indicators
+// ---------------------------------------------------------------------------
+
+async function handleCycle(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/market-cycle`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch cycle data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d = await res.json();
+    const pi = d.piCycle || {};
+    const rainbow = d.rainbow || {};
+    const s2f = d.stockToFlow || {};
+    const ma = d.weeklyMA200 || {};
+
+    const lines = [
+      '<b>Market Cycle Indicators</b>',
+      '━━━━━━━━━━━━━━━━',
+      `🔴 Pi Cycle: <b>${pi.signal || 'N/A'}</b>`,
+      `🌈 Rainbow Band: <b>${rainbow.currentBand || 'N/A'}</b>`,
+      `📐 Stock-to-Flow:`,
+      s2f.modelPrice ? `   Model: ${fmtUsd(s2f.modelPrice)} | Actual: ${fmtUsd(s2f.actualPrice || 0)}` : '   N/A',
+      s2f.deviation != null ? `   Deviation: ${s2f.deviation >= 0 ? '+' : ''}${s2f.deviation.toFixed(1)}%` : '',
+      ma.ma?.length > 0 ? `📊 200W MA: ${fmtUsd(ma.ma[ma.ma.length - 1])}` : '',
+    ].filter(Boolean);
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:cycle' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleCycle error:', err);
+    await sendMessage(chatId, 'Error fetching cycle data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /prediction — prediction market arbitrage
+// ---------------------------------------------------------------------------
+
+async function handlePrediction(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/prediction-markets`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch prediction data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d = await res.json();
+    const arbs = d.arbitrage || [];
+
+    if (arbs.length === 0) {
+      await sendMessage(chatId, 'No prediction market arbitrage opportunities found.');
+      return;
+    }
+
+    const top5 = arbs.slice(0, 5);
+    const lines = [
+      '<b>Prediction Market Arbs</b>',
+      '━━━━━━━━━━━━━━━━',
+      '',
+    ];
+
+    top5.forEach((a: { question: string; platformA: { name: string; price: number }; platformB: { name: string; price: number }; spreadPercent: number; category?: string }, i: number) => {
+      const q = a.question.length > 60 ? a.question.slice(0, 57) + '...' : a.question;
+      lines.push(
+        `${i + 1}. <b>${q}</b>`,
+        `   ${a.platformA.name}: ${(a.platformA.price * 100).toFixed(0)}¢ vs ${a.platformB.name}: ${(a.platformB.price * 100).toFixed(0)}¢`,
+        `   Spread: <b>${a.spreadPercent.toFixed(1)}%</b>${a.category ? ` (${a.category})` : ''}`,
+        '',
+      );
+    });
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:prediction' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handlePrediction error:', err);
+    await sendMessage(chatId, 'Error fetching prediction data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /stablecoins — stablecoin supply & flows
+// ---------------------------------------------------------------------------
+
+async function handleStablecoins(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/stablecoins`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch stablecoin data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d = await res.json();
+    const coins = d.stablecoins || [];
+    const totalMcap = d.totalMcap || 0;
+
+    const lines = [
+      '<b>Stablecoin Flows</b>',
+      '━━━━━━━━━━━━━━━━',
+      `💰 Total Supply: <b>${fmtUsd(totalMcap)}</b>`,
+      '',
+    ];
+
+    coins.slice(0, 6).forEach((c: { symbol: string; mcap: number; change7d?: number; change30d?: number }) => {
+      const c7d = c.change7d != null ? ` | 7d: ${c.change7d >= 0 ? '+' : ''}${c.change7d.toFixed(1)}%` : '';
+      lines.push(`  <b>${c.symbol}</b>: ${fmtUsd(c.mcap)}${c7d}`);
+    });
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:stablecoins' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleStablecoins error:', err);
+    await sendMessage(chatId, 'Error fetching stablecoin data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /oidelta — OI momentum (biggest changes)
+// ---------------------------------------------------------------------------
+
+async function handleOIDelta(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/oi-delta`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch OI delta data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d = await res.json();
+    const items = d.data || [];
+
+    if (items.length === 0) {
+      await sendMessage(chatId, 'No OI delta data available.');
+      return;
+    }
+
+    // Sort by absolute 1h change
+    const sorted = [...items]
+      .filter((e: { delta1h?: number }) => e.delta1h != null)
+      .sort((a: { delta1h: number }, b: { delta1h: number }) => Math.abs(b.delta1h) - Math.abs(a.delta1h));
+
+    const top10 = sorted.slice(0, 10);
+    const lines = [
+      '<b>OI Momentum (Top Changes)</b>',
+      '━━━━━━━━━━━━━━━━',
+      '',
+      '<code>Symbol    1h      4h      24h',
+    ];
+
+    top10.forEach((e: { symbol: string; delta1h: number; delta4h?: number; delta24h?: number }) => {
+      const sym = e.symbol.padEnd(8).slice(0, 8);
+      const d1h = (e.delta1h >= 0 ? '+' : '') + e.delta1h.toFixed(1) + '%';
+      const d4h = e.delta4h != null ? (e.delta4h >= 0 ? '+' : '') + e.delta4h.toFixed(1) + '%' : 'N/A';
+      const d24h = e.delta24h != null ? (e.delta24h >= 0 ? '+' : '') + e.delta24h.toFixed(1) + '%' : 'N/A';
+      lines.push(`${sym}  ${d1h.padStart(6)}  ${d4h.padStart(6)}  ${d24h.padStart(6)}`);
+    });
+
+    lines.push('</code>');
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:oidelta' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleOIDelta error:', err);
+    await sendMessage(chatId, 'Error fetching OI delta data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /longshort — Binance long/short ratio
+// ---------------------------------------------------------------------------
+
+async function handleLongShort(chatId: number, args: string[], origin: string): Promise<void> {
+  const symbol = args.length > 0 ? args[0].toUpperCase() : 'BTC';
+  const pair = symbol.endsWith('USDT') ? symbol : symbol + 'USDT';
+
+  try {
+    const res = await fetch(`${origin}/api/longshort?symbol=${encodeURIComponent(pair)}&period=1h`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch long/short data (HTTP ${res.status}).`);
+      return;
+    }
+
+    const d = await res.json();
+    const current = d.current;
+    const history = d.history || [];
+
+    if (!current) {
+      await sendMessage(chatId, `No long/short data found for <b>${esc(symbol)}</b>.`);
+      return;
+    }
+
+    const ratio = current.longShortRatio ?? 0;
+    const longPct = current.longAccount ?? current.longPercent ?? 0;
+    const shortPct = current.shortAccount ?? current.shortPercent ?? 0;
+    const bias = ratio > 1.5 ? '🟢 Heavy Longs' : ratio < 0.67 ? '🔴 Heavy Shorts' : '⚪ Balanced';
+
+    const lines = [
+      `<b>Long/Short Ratio: ${symbol}</b>`,
+      '━━━━━━━━━━━━━━━━',
+      `📊 Ratio: <b>${ratio.toFixed(2)}</b> ${bias}`,
+      `🟢 Longs: ${(longPct * 100).toFixed(1)}%`,
+      `🔴 Shorts: ${(shortPct * 100).toFixed(1)}%`,
+    ];
+
+    if (history.length > 0) {
+      lines.push('', '<b>Recent (1h):</b>');
+      history.slice(0, 5).forEach((h: { timestamp: number; longShortRatio: number }) => {
+        const time = new Date(h.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        lines.push(`  ${time}: ${h.longShortRatio.toFixed(2)}`);
+      });
+    }
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [
+        { text: '💰 Price', callback_data: `cmd:price:${symbol}` },
+        { text: '📊 Funding', callback_data: `cmd:funding:${symbol}` },
+      ],
+      [{ text: '🔄 Refresh', callback_data: `cmd:longshort:${symbol}` }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleLongShort error:', err);
+    await sendMessage(chatId, 'Error fetching long/short data. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared formatting helpers
 // ---------------------------------------------------------------------------
 
@@ -1316,12 +1664,14 @@ function fmtUsd(n: number): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verify webhook secret
-    if (WEBHOOK_SECRET) {
-      const token = request.headers.get('x-telegram-bot-api-secret-token');
-      if (token !== WEBHOOK_SECRET) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      }
+    // 1. Verify webhook secret (fail closed — reject if secret not configured)
+    if (!WEBHOOK_SECRET) {
+      console.error('TELEGRAM_WEBHOOK_SECRET not configured — rejecting request');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const token = request.headers.get('x-telegram-bot-api-secret-token');
+    if (token !== WEBHOOK_SECRET) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // 2. Parse Telegram update
@@ -1440,6 +1790,27 @@ export async function POST(request: NextRequest) {
         case 'unsubscribe':
           await handleUnsubscribe(cbChatId, cbArgs);
           break;
+        case 'options':
+          await handleOptions(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'onchain':
+          await handleOnchain(cbChatId, cbOrigin);
+          break;
+        case 'cycle':
+          await handleCycle(cbChatId, cbOrigin);
+          break;
+        case 'prediction':
+          await handlePrediction(cbChatId, cbOrigin);
+          break;
+        case 'stablecoins':
+          await handleStablecoins(cbChatId, cbOrigin);
+          break;
+        case 'oidelta':
+          await handleOIDelta(cbChatId, cbOrigin);
+          break;
+        case 'longshort':
+          await handleLongShort(cbChatId, cbArgs, cbOrigin);
+          break;
         default:
           break;
       }
@@ -1554,6 +1925,34 @@ export async function POST(request: NextRequest) {
 
       case '/menu':
         await handleMenu(chatId);
+        break;
+
+      case '/options':
+        await handleOptions(chatId, args, request.nextUrl.origin);
+        break;
+
+      case '/onchain':
+        await handleOnchain(chatId, request.nextUrl.origin);
+        break;
+
+      case '/cycle':
+        await handleCycle(chatId, request.nextUrl.origin);
+        break;
+
+      case '/prediction':
+        await handlePrediction(chatId, request.nextUrl.origin);
+        break;
+
+      case '/stablecoins':
+        await handleStablecoins(chatId, request.nextUrl.origin);
+        break;
+
+      case '/oidelta':
+        await handleOIDelta(chatId, request.nextUrl.origin);
+        break;
+
+      case '/longshort':
+        await handleLongShort(chatId, args, request.nextUrl.origin);
         break;
 
       case '/subscribe':

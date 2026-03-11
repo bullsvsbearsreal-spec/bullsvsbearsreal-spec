@@ -1,33 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import postgres from 'postgres';
+import { getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
 const DO_SPACES_ENDPOINT = process.env.DO_SPACES_ENDPOINT || '';
 const DO_SPACES_KEY = process.env.DO_SPACES_KEY || '';
 const DO_SPACES_SECRET = process.env.DO_SPACES_SECRET || '';
 const DO_SPACES_BUCKET = process.env.DO_SPACES_BUCKET || 'infohub';
 const DO_SPACES_CDN = process.env.DO_SPACES_CDN || '';
 
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 3, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
-
+// Cache S3Client instance to reuse connections across requests
+let _s3: S3Client | null = null;
 function getS3() {
-  return new S3Client({
-    endpoint: DO_SPACES_ENDPOINT,
-    region: 'us-east-1', // DO Spaces ignores region but SDK requires it
-    credentials: {
-      accessKeyId: DO_SPACES_KEY,
-      secretAccessKey: DO_SPACES_SECRET,
-    },
-    forcePathStyle: false,
-  });
+  if (!_s3) {
+    _s3 = new S3Client({
+      endpoint: DO_SPACES_ENDPOINT,
+      region: 'us-east-1', // DO Spaces ignores region but SDK requires it
+      credentials: {
+        accessKeyId: DO_SPACES_KEY,
+        secretAccessKey: DO_SPACES_SECRET,
+      },
+      forcePathStyle: false,
+    });
+  }
+  return _s3;
 }
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB (already resized client-side)

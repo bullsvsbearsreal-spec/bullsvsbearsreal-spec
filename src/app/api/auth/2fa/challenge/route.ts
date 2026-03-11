@@ -1,28 +1,35 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import postgres from 'postgres';
 import { Resend } from 'resend';
+import { isDBConfigured, getSQL } from '@/lib/db';
+import { twoFaChallengeLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
+let _resend: Resend | null = null;
+function getResend(): Resend | null {
+  if (!_resend && process.env.RESEND_API_KEY) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
 }
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Send a 2FA email code during login
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    // Rate limit by IP
+    const ip = getClientIP(req);
+    if (!twoFaChallengeLimiter.check(ip)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
     }
 
-    if (!DATABASE_URL) {
+    const { email } = await req.json();
+    if (!email || !isValidEmail(email)) {
+      return NextResponse.json({ sent: true }); // Don't reveal validation details
+    }
+
+    if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
@@ -39,18 +46,6 @@ export async function POST(req: Request) {
     if (twofa.length === 0 || !twofa[0].email_2fa_enabled) {
       return NextResponse.json({ sent: true });
     }
-
-    // Ensure 2fa_login_codes table exists
-    await db`
-      CREATE TABLE IF NOT EXISTS twofa_login_codes (
-        id SERIAL PRIMARY KEY,
-        email TEXT NOT NULL,
-        code TEXT NOT NULL,
-        expires_at TIMESTAMPTZ NOT NULL,
-        used BOOLEAN DEFAULT false,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
 
     // Rate limit: 1 code per 60 seconds
     const recent = await db`
@@ -70,7 +65,17 @@ export async function POST(req: Request) {
       VALUES (${email}, ${code}, ${expiresAt.toISOString()})
     `;
 
+    // Probabilistic cleanup of expired codes (~5% of requests)
+    if (Math.random() < 0.05) {
+      db`DELETE FROM twofa_login_codes WHERE expires_at < NOW() - INTERVAL '1 hour'`.catch(() => {});
+    }
+
     // Send email
+    const resend = getResend();
+    if (!resend) {
+      console.error('RESEND_API_KEY not configured — skipping 2FA email');
+      return NextResponse.json({ sent: true });
+    }
     try {
       await resend.emails.send({
         from: 'InfoHub <noreply@info-hub.io>',

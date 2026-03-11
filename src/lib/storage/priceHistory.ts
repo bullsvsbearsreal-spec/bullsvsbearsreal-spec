@@ -7,7 +7,7 @@
 
 const STORAGE_KEY = 'ih_price_history';
 const SNAPSHOT_INTERVAL = 5 * 60 * 1000; // 5 min
-const MAX_AGE = 7 * 24 * 60 * 1000; // 7 days max retention
+const MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days max retention
 const MAX_ENTRIES = 2016; // 7 days * 24h * 60/5
 
 interface PriceSnapshot {

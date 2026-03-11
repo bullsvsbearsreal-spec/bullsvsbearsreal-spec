@@ -16,12 +16,15 @@ function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /** Render inline markdown: bold, italic, inline code, links */
 function formatInline(text: string): string {
-  return text
+  // Escape HTML FIRST to prevent XSS, then apply markdown formatting
+  return escapeHtml(text)
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
     .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-white/[0.08] text-amber-400 text-[11px] font-mono">$1</code>');
 }
@@ -92,11 +95,9 @@ function formatMarkdown(text: string): string {
         // Numbered list: collect consecutive items
         if (/^\d+[.)]\s/.test(trimmed)) {
           const items: string[] = [];
-          let num = 1;
           while (i < lines.length && /^\d+[.)]\s/.test(lines[i].trim())) {
             items.push(formatInline(lines[i].trim().replace(/^\d+[.)]\s/, '')));
             i++;
-            num++;
           }
           const lis = items
             .map(
@@ -106,6 +107,40 @@ function formatMarkdown(text: string): string {
             .join('');
           output.push(`<ol class="space-y-0.5 my-1">${lis}</ol>`);
           continue;
+        }
+
+        // Pipe-delimited table: detect header + separator + rows
+        if (trimmed.includes('|') && i + 1 < lines.length && /^\|?[\s-:|]+\|/.test(lines[i + 1]?.trim())) {
+          const tableLines: string[] = [];
+          while (i < lines.length && lines[i].trim().includes('|')) {
+            tableLines.push(lines[i].trim());
+            i++;
+          }
+          if (tableLines.length >= 2) {
+            const parseRow = (row: string) =>
+              row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+
+            const headers = parseRow(tableLines[0]);
+            // Skip separator row (index 1)
+            const dataRows = tableLines.slice(2).map(parseRow);
+
+            const ths = headers
+              .map((h) => `<th class="px-2 py-1.5 text-left text-[10px] font-semibold text-amber-400/80 uppercase tracking-wider whitespace-nowrap">${formatInline(h)}</th>`)
+              .join('');
+            const trs = dataRows
+              .map(
+                (row) =>
+                  `<tr class="border-t border-white/[0.04]">${row
+                    .map((cell) => `<td class="px-2 py-1 text-[11px] font-mono text-neutral-300 whitespace-nowrap">${formatInline(cell)}</td>`)
+                    .join('')}</tr>`,
+              )
+              .join('');
+
+            output.push(
+              `<div class="my-2 overflow-x-auto rounded-lg border border-white/[0.06]"><table class="w-full"><thead class="bg-white/[0.04]"><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`,
+            );
+            continue;
+          }
         }
 
         // Regular text line

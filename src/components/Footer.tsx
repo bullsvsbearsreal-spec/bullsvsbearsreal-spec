@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import Link from 'next/link';
 import Logo from './Logo';
 import { ALL_EXCHANGES } from '@/lib/constants';
@@ -116,8 +116,8 @@ function getFearGreedColor(value: number): string {
 
 function StatPill({ icon: Icon, label, value, loading, color }: { icon: LucideIcon; label: string; value: string; loading: boolean; color?: string }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
-      <Icon className="w-3 h-3 flex-shrink-0" style={{ color: color ?? 'rgba(255,223,0,0.7)' }} />
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-hub-default flex-shrink-0">
+      <Icon className="w-3 h-3 flex-shrink-0" style={{ color: color ?? 'var(--hub-accent-dark)' }} />
       <span className="text-neutral-600 text-[10px] whitespace-nowrap">{label}</span>
       {loading ? (
         <span className="h-3 w-12 bg-white/[0.06] rounded animate-pulse" />
@@ -137,7 +137,7 @@ function safeParseJson(data: unknown): unknown {
 
 /* ─── Footer ────────────────────────────────────────────────────── */
 
-export default function Footer() {
+function FooterInner() {
   const [stats, setStats] = useState<LiveStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -399,7 +399,7 @@ export default function Footer() {
                     className="group flex items-center gap-2 text-neutral-500 hover:text-white text-xs transition-colors py-1"
                   >
                     {link.icon && (
-                      <link.icon className="w-3 h-3 flex-shrink-0 text-neutral-700 group-hover:text-hub-yellow/70 transition-colors" />
+                      <link.icon className="w-3 h-3 flex-shrink-0 text-neutral-700 group-hover:text-hub-yellow-light/70 transition-colors" />
                     )}
                     {link.name}
                   </Link>
@@ -450,3 +450,6 @@ export default function Footer() {
     </footer>
   );
 }
+
+const Footer = memo(FooterInner);
+export default Footer;

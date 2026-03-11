@@ -1,18 +1,18 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import postgres from 'postgres';
 import { Resend } from 'resend';
+import { isDBConfigured, getSQL } from '@/lib/db';
 
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
+let _resend: Resend | null = null;
+function getResend(): Resend | null {
+  if (!_resend && process.env.RESEND_API_KEY) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
 }
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    if (!DATABASE_URL) {
+    if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
@@ -56,6 +56,11 @@ export async function POST(req: Request) {
     `;
 
     // Send email
+    const resend = getResend();
+    if (!resend) {
+      console.error('RESEND_API_KEY not configured — skipping verification email');
+      return NextResponse.json({ sent: true });
+    }
     try {
       await resend.emails.send({
         from: 'InfoHub <noreply@info-hub.io>',

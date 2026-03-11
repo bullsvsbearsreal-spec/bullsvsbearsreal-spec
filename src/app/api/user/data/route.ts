@@ -1,4 +1,5 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
@@ -35,6 +36,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Body must be a JSON object' }, { status: 400 });
     }
 
+    // Whitelist allowed keys to prevent arbitrary JSON key injection
+    const ALLOWED_KEYS = ['watchlist', 'portfolio', 'alerts', 'screenerPresets', 'wallets', 'notificationPrefs', 'theme', 'fundingPrefs'];
+    const sanitized = Object.fromEntries(
+      Object.entries(incoming).filter(([k]) => ALLOWED_KEYS.includes(k))
+    ) as Partial<UserData>;
+
     // Merge with existing data (so partial updates work)
     const existing = (await getUserData(session.user.id)) ?? {};
 
@@ -44,7 +51,7 @@ export async function PUT(request: NextRequest) {
       : {};
     const merged: UserData = {
       ...safeExisting,
-      ...incoming,
+      ...sanitized,
     };
 
     await setUserData(session.user.id, merged);

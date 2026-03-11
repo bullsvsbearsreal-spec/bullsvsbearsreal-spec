@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { revokeApiKey, initDB } from '@/lib/db';
+import { clearApiKeyCache } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -20,6 +22,7 @@ export async function DELETE(
   const { id } = await params;
   await initDB();
   const revoked = await revokeApiKey(id, session.user.id);
+  if (revoked) clearApiKeyCache(); // Invalidate cached keys so revocation takes effect immediately
 
   if (!revoked) {
     return NextResponse.json(

@@ -51,16 +51,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: true, skipped: 'no ticker data' });
     }
 
-    // Build price map (highest volume per symbol)
-    const priceMap = new Map<string, number>();
+    // Build price map — keep highest-volume exchange per symbol
+    const priceEntries = new Map<string, { price: number; vol: number }>();
     for (const t of tickerJson.data) {
       if (t.lastPrice && t.symbol) {
-        const existing = priceMap.get(t.symbol);
-        if (!existing || t.lastPrice > 0) {
-          priceMap.set(t.symbol, t.lastPrice);
+        const vol = t.quoteVolume24h || 0;
+        const existing = priceEntries.get(t.symbol);
+        if (!existing || vol > existing.vol) {
+          priceEntries.set(t.symbol, { price: t.lastPrice, vol });
         }
       }
     }
+    const priceMap = new Map<string, number>();
+    priceEntries.forEach((v, k) => priceMap.set(k, v.price));
 
     const users = await getUsersWithPortfolios();
     let snapshots = 0;
@@ -103,7 +106,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[portfolio-cron] error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

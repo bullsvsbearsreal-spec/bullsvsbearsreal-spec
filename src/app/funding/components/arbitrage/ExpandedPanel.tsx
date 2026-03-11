@@ -7,7 +7,7 @@ import { formatRateAdaptive } from '../../utils';
 import { isExchangeDex, getExchangeTradeUrl } from '@/lib/constants';
 import type { ArbitrageItem, FeasibilityGrade, EnrichedArb } from './types';
 import { IntervalBadge } from './GradeBadge';
-import { formatUSD, formatPrice, getIntervalForExchange, GRADE_COLORS } from './utils';
+import { formatUSD, formatPrice, getIntervalForExchange, GRADE_COLORS, getGradeBreakdown } from './utils';
 import { ProfitCalculator } from './ProfitCalculator';
 
 function formatCountdown(ms: number): string {
@@ -318,36 +318,86 @@ export function ExpandedPanel({ item, periodScale, intervalMap, oiMap }: {
   return (
     <div className="space-y-2.5">
       {/* Feasibility Summary — always top, full width */}
-      {(item.maxPractical > 0 || item.stability) && (
-        <div className="text-[10px] bg-white/[0.02] rounded-lg px-3 py-2 border border-white/[0.04] flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${GRADE_COLORS[item.grade as FeasibilityGrade]}`}>
-            {item.grade} ({item.gradeScore}/10)
-          </span>
-          {item.maxPractical > 0 && (
-            <span className="text-neutral-500">Max: <span className="text-white font-mono">{formatUSD(item.maxPractical)}</span></span>
-          )}
-          <span className="text-neutral-500">
-            Fees: <span className={`font-mono ${item.feeImpactPct > 50 ? 'text-red-400' : item.feeImpactPct > 30 ? 'text-amber-400' : 'text-neutral-400'}`}>{item.roundTripFee.toFixed(3)}%</span>
-            <span className="text-neutral-700"> ({item.feeImpactPct.toFixed(0)}%)</span>
-          </span>
-          <span className="text-neutral-600">|</span>
-          <span className="text-neutral-500">
-            Short: <span className={`font-mono ${item.shortDailyRate > 0 ? 'text-green-400' : 'text-red-400'}`}>{item.shortDailyRate > 0 ? '+' : ''}{item.shortDailyRate.toFixed(4)}%</span>/d
-          </span>
-          <span className="text-neutral-500">
-            Long: <span className={`font-mono ${item.longDailyRate <= 0 ? 'text-green-400' : 'text-red-400'}`}>{item.longDailyRate <= 0 ? '+' : ''}{(-item.longDailyRate).toFixed(4)}%</span>/d
-          </span>
-          {item.stability && item.stability !== 'new' && (
-            <span className={item.stability === 'stable' ? 'text-green-400/80' : 'text-amber-400/80'}>{item.stability}</span>
-          )}
-          {item.trend && item.trend !== 'flat' && (
-            <span className={item.trend === 'widening' ? 'text-green-400/80' : 'text-red-400/80'}>{item.trend}</span>
-          )}
-          {item.gradeFlags && item.gradeFlags.length > 0 && item.gradeFlags.map((flag, i) => (
-            <span key={i} className="text-[8px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-400/80 border border-amber-500/10">⚠ {flag}</span>
-          ))}
-        </div>
-      )}
+      {(item.maxPractical > 0 || item.stability) && (() => {
+        const breakdown = getGradeBreakdown({
+          spreadPct8h: item.grossSpread8h,
+          minSideOI: item.minSideOI,
+          stability: item.stability,
+          roundTripFee: item.roundTripFee,
+          highOI: item.highOI,
+          lowOI: item.lowOI,
+          highInterval: item.highInterval,
+          lowInterval: item.lowInterval,
+          netAnnualized: item.netAnnualized,
+        });
+        return (
+          <div className="bg-white/[0.02] rounded-lg border border-white/[0.04] overflow-hidden">
+            {/* Top row: grade + key stats */}
+            <div className="px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${GRADE_COLORS[item.grade as FeasibilityGrade]}`}>
+                {item.grade} ({item.gradeScore}/10)
+              </span>
+              {item.maxPractical > 0 && (
+                <span className="text-neutral-500">Max: <span className="text-white font-mono">{formatUSD(item.maxPractical)}</span></span>
+              )}
+              <span className="text-neutral-500">
+                Fees: <span className={`font-mono ${item.feeImpactPct > 50 ? 'text-red-400' : item.feeImpactPct > 30 ? 'text-amber-400' : 'text-neutral-400'}`}>{item.roundTripFee.toFixed(3)}%</span>
+                <span className="text-neutral-700"> ({item.feeImpactPct.toFixed(0)}%)</span>
+              </span>
+              <span className="text-neutral-600">|</span>
+              <span className="text-neutral-500">
+                Short: <span className={`font-mono ${item.shortDailyRate > 0 ? 'text-green-400' : 'text-red-400'}`}>{item.shortDailyRate > 0 ? '+' : ''}{item.shortDailyRate.toFixed(4)}%</span>/d
+              </span>
+              <span className="text-neutral-500">
+                Long: <span className={`font-mono ${item.longDailyRate <= 0 ? 'text-green-400' : 'text-red-400'}`}>{item.longDailyRate <= 0 ? '+' : ''}{(-item.longDailyRate).toFixed(4)}%</span>/d
+              </span>
+              {item.stability && item.stability !== 'new' && (
+                <span className={item.stability === 'stable' ? 'text-green-400/80' : 'text-amber-400/80'}>{item.stability}</span>
+              )}
+              {item.trend && item.trend !== 'flat' && (
+                <span className={item.trend === 'widening' ? 'text-green-400/80' : 'text-red-400/80'}>{item.trend}</span>
+              )}
+            </div>
+            {/* Grade Breakdown — why this grade */}
+            <div className="border-t border-white/[0.04] px-3 py-2">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Shield className="w-3 h-3 text-hub-yellow" />
+                <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-wider">Grade Breakdown</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+                {breakdown.map((row, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[10px]">
+                    <span className="text-neutral-500 w-20 shrink-0">{row.label}</span>
+                    <div className="flex-1 flex items-center gap-1">
+                      {/* Mini score bar */}
+                      {row.max > 0 && (
+                        <div className="w-10 h-1.5 bg-white/[0.04] rounded-full overflow-hidden shrink-0">
+                          <div
+                            className={`h-full rounded-full ${row.score >= row.max ? 'bg-green-500' : row.score > 0 ? 'bg-amber-500' : 'bg-red-500'}`}
+                            style={{ width: `${Math.max((row.score / row.max) * 100, 0)}%` }}
+                          />
+                        </div>
+                      )}
+                      {row.score < 0 && (
+                        <span className="text-red-400 text-[9px] font-mono shrink-0">-1</span>
+                      )}
+                      <span className={`${row.color} truncate`}>{row.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Warning flags */}
+              {item.gradeFlags && item.gradeFlags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5 pt-1.5 border-t border-white/[0.03]">
+                  {item.gradeFlags.map((flag, i) => (
+                    <span key={i} className="text-[8px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-400/80 border border-amber-500/10">⚠ {flag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {/* 3-column layout: Exchange Rates | OI Bars | Price Comparison */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Col 1: All Exchange Rates */}

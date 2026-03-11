@@ -254,12 +254,15 @@ export function parseDeribitLiq(data: any): Liquidation | null {
     if (!symbol) return null;
     const price = parseFloat(d.price || '0');
     const quantity = parseFloat(d.quantity || d.amount || '0');
+    // Inverse contracts (BTC-PERPETUAL): quantity is in USD, no multiplication needed.
+    // Linear contracts (BTC-USDC-PERPETUAL): quantity is in base currency, multiply by price.
+    const isLinear = instrument.includes('USDC') || instrument.includes('USDT');
     return {
       id: `drb-${instrument}-${d.timestamp || Date.now()}`,
       symbol,
       side: d.direction === 'buy' ? 'short' : 'long',
       price, quantity,
-      value: price * quantity,
+      value: isLinear ? price * quantity : quantity,
       exchange: 'Deribit',
       timestamp: d.timestamp || Date.now(),
     };
@@ -275,12 +278,13 @@ export function parseDeribitLiq(data: any): Liquidation | null {
       if (!symbol) return null;
       const price = parseFloat(d.price || '0');
       const quantity = parseFloat(d.quantity || d.amount || '0');
+      const isLinear = instrument.includes('USDC') || instrument.includes('USDT');
       return {
         id: `drb-${instrument}-${d.timestamp || Date.now()}`,
         symbol,
         side: d.direction === 'buy' ? 'short' : 'long',
         price, quantity,
-        value: price * quantity,
+        value: isLinear ? price * quantity : quantity,
         exchange: 'Deribit',
         timestamp: d.timestamp || Date.now(),
       };

@@ -67,6 +67,57 @@ export function computeGrade(
   return { grade, score: total, flags };
 }
 
+/** Human-readable breakdown of why an opportunity got its grade */
+export function getGradeBreakdown(input: GradeInput): { label: string; value: string; score: number; max: number; color: string }[] {
+  const items: { label: string; value: string; score: number; max: number; color: string }[] = [];
+
+  // Net profitability
+  const netRatio = input.spreadPct8h > 0 ? (input.spreadPct8h - input.roundTripFee) / input.spreadPct8h : 0;
+  if (input.spreadPct8h - input.roundTripFee <= 0) {
+    items.push({ label: 'Profitability', value: 'Fees exceed spread — no real profit', score: 0, max: 10, color: 'text-red-400' });
+    return items;
+  }
+
+  // OI Score
+  const oiScore = input.minSideOI >= 10_000_000 ? 3 : input.minSideOI >= 1_000_000 ? 2 : input.minSideOI >= 100_000 ? 1 : 0;
+  const oiLabel = input.minSideOI >= 10_000_000 ? 'Deep liquidity (>$10M)' : input.minSideOI >= 1_000_000 ? 'Good liquidity ($1-10M)' : input.minSideOI >= 100_000 ? 'Thin liquidity ($100K-1M)' : 'Very low liquidity (<$100K)';
+  items.push({ label: 'Liquidity', value: oiLabel, score: oiScore, max: 3, color: oiScore >= 2 ? 'text-green-400' : oiScore >= 1 ? 'text-amber-400' : 'text-red-400' });
+
+  // OI Balance
+  let oiBalanceScore = 1;
+  let balanceLabel = 'Balanced';
+  if (input.highOI && input.lowOI && input.highOI > 0 && input.lowOI > 0) {
+    const ratio = Math.min(input.highOI, input.lowOI) / Math.max(input.highOI, input.lowOI);
+    if (ratio < 0.05) { oiBalanceScore = 0; balanceLabel = 'Heavily imbalanced (>20:1)'; }
+    else if (ratio < 0.1) { oiBalanceScore = 0; balanceLabel = 'Imbalanced (>10:1)'; }
+    else if (ratio < 0.25) { balanceLabel = 'Moderately imbalanced'; }
+    else { balanceLabel = 'Well balanced'; }
+  }
+  items.push({ label: 'OI Balance', value: balanceLabel, score: oiBalanceScore, max: 1, color: oiBalanceScore === 1 ? 'text-green-400' : 'text-red-400' });
+
+  // Spread Score — realistic spreads preferred
+  const spreadScore = input.spreadPct8h < 0.5 ? 3 : input.spreadPct8h < 2 ? 2 : input.spreadPct8h < 10 ? 1 : 0;
+  const spreadLabel = input.spreadPct8h < 0.5 ? 'Realistic & sustainable' : input.spreadPct8h < 2 ? 'Moderate spread' : input.spreadPct8h < 10 ? 'High spread — may not last' : 'Extreme spread — likely to vanish';
+  items.push({ label: 'Spread Quality', value: spreadLabel, score: spreadScore, max: 3, color: spreadScore >= 2 ? 'text-green-400' : spreadScore >= 1 ? 'text-amber-400' : 'text-red-400' });
+
+  // Net profitability after fees
+  const netScore = netRatio >= 0.5 ? 1 : 0;
+  const netLabel = netRatio >= 0.7 ? `Fees take only ${((1 - netRatio) * 100).toFixed(0)}% of spread` : netRatio >= 0.5 ? `Fees take ${((1 - netRatio) * 100).toFixed(0)}% of spread` : `Fees eat ${((1 - netRatio) * 100).toFixed(0)}% of spread`;
+  items.push({ label: 'Fee Impact', value: netLabel, score: netScore, max: 1, color: netScore === 1 ? 'text-green-400' : 'text-red-400' });
+
+  // Stability
+  const stabScore = input.stability === 'stable' ? 2 : input.stability === 'volatile' ? 1 : 0;
+  const stabLabel = input.stability === 'stable' ? '7d spread is consistent' : input.stability === 'volatile' ? 'Spread fluctuates significantly' : 'New/untracked pair — no history';
+  items.push({ label: 'Stability', value: stabLabel, score: stabScore, max: 2, color: stabScore >= 2 ? 'text-green-400' : stabScore >= 1 ? 'text-amber-400' : 'text-neutral-500' });
+
+  // Interval mismatch
+  if (input.highInterval && input.lowInterval && input.highInterval !== input.lowInterval) {
+    items.push({ label: 'Interval', value: `Mismatch (${input.highInterval}/${input.lowInterval}) — timing risk`, score: -1, max: 0, color: 'text-red-400' });
+  }
+
+  return items;
+}
+
 export const GRADE_COLORS: Record<FeasibilityGrade, string> = {
   A: 'text-green-400 bg-green-500/15 border-green-500/20',
   B: 'text-blue-400 bg-blue-500/15 border-blue-500/20',

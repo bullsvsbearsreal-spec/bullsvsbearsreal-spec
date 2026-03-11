@@ -1,22 +1,27 @@
 export const runtime = 'nodejs';
+export const preferredRegion = 'dxb1';
 
 import { NextResponse } from 'next/server';
-import postgres from 'postgres';
 import * as OTPAuth from 'otpauth';
-
-const DATABASE_URL = process.env.DATABASE_URL || '';
-let sql: ReturnType<typeof postgres> | null = null;
-function getSQL() {
-  if (!sql) sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require' });
-  return sql;
-}
+import crypto from 'crypto';
+import { isDBConfigured, getSQL } from '@/lib/db';
 
 // In-memory rate limit: max 5 attempts per email per 15 minutes
 const attempts = new Map<string, { count: number; resetAt: number }>();
+let lastCleanup = 0;
 
 function checkRateLimit(email: string): boolean {
   const now = Date.now();
   const key = email.toLowerCase();
+
+  // Periodic cleanup of expired entries (at most once per minute)
+  if (now - lastCleanup > 60_000) {
+    lastCleanup = now;
+    attempts.forEach((v, k) => {
+      if (now > v.resetAt) attempts.delete(k);
+    });
+  }
+
   const entry = attempts.get(key);
 
   if (!entry || now > entry.resetAt) {
@@ -42,7 +47,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
     }
 
-    if (!DATABASE_URL) {
+    if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
@@ -80,32 +85,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 });
     }
 
-    // Method: email
+    // Method: email — atomic claim to prevent TOCTOU race
     if (method === 'email' && settings.email_2fa_enabled) {
-      const rows = await db`
-        SELECT id FROM twofa_login_codes
-        WHERE email = ${email}
-          AND code = ${code}
-          AND used = false
-          AND expires_at > NOW()
-        ORDER BY created_at DESC
-        LIMIT 1
+      const claimed = await db`
+        UPDATE twofa_login_codes SET used = true
+        WHERE id = (
+          SELECT id FROM twofa_login_codes
+          WHERE email = ${email}
+            AND code = ${code}
+            AND used = false
+            AND expires_at > NOW()
+          ORDER BY created_at DESC
+          LIMIT 1
+        )
+        RETURNING id
       `;
-      if (rows.length > 0) {
-        await db`UPDATE twofa_login_codes SET used = true WHERE id = ${rows[0].id}`;
+      if (claimed.length > 0) {
         return NextResponse.json({ valid: true });
       }
       return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
     }
 
-    // Method: backup
+    // Method: backup (timing-safe compare, atomic removal to prevent race conditions)
     if (method === 'backup') {
       const backupCodes: string[] = settings.backup_codes || [];
-      const idx = backupCodes.indexOf(code.toUpperCase());
-      if (idx !== -1) {
-        // Remove used backup code
-        backupCodes.splice(idx, 1);
-        await db`UPDATE user_2fa SET backup_codes = ${backupCodes}, updated_at = NOW() WHERE user_id = ${userId}`;
+      const upperCode = code.toUpperCase();
+      // Timing-safe: compare all codes so timing doesn't leak which index matched
+      let matchIdx = -1;
+      for (let i = 0; i < backupCodes.length; i++) {
+        const stored = Buffer.from(backupCodes[i]);
+        const input = Buffer.from(upperCode);
+        if (stored.length === input.length && crypto.timingSafeEqual(stored, input)) {
+          matchIdx = i;
+        }
+      }
+      if (matchIdx !== -1) {
+        // Atomic removal: use array_remove to prevent race condition with concurrent requests
+        const removed = await db`
+          UPDATE user_2fa
+          SET backup_codes = array_remove(backup_codes, ${backupCodes[matchIdx]}), updated_at = NOW()
+          WHERE user_id = ${userId} AND ${backupCodes[matchIdx]} = ANY(backup_codes)
+          RETURNING user_id
+        `;
+        if (removed.length === 0) {
+          return NextResponse.json({ error: 'Backup code already used' }, { status: 400 });
+        }
         return NextResponse.json({ valid: true });
       }
       return NextResponse.json({ error: 'Invalid backup code' }, { status: 400 });
