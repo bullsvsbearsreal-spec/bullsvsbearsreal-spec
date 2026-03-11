@@ -1,8 +1,8 @@
 {
-  "regions": ["dxb1"],
   "functions": {
     "app/api/**/*": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "regions": ["dxb1"]
     }
   },
   "crons": [
