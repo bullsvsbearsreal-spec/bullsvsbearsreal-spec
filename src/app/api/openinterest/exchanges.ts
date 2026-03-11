@@ -731,6 +731,76 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // BitMEX (~$158M OI) — CloudFlare-blocked, requires PROXY_URL
+  {
+    name: 'BitMEX',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,openInterest,openValue,lastPrice,typ,state,rootSymbol,quoteCurrency&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
+      const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((i: any) => i.lastPrice > 0 && i.openInterest > 0)
+        .map((i: any) => {
+          // BitMEX symbol normalization: XBTUSD → BTC, ETHUSD → ETH
+          let symbol = (i.rootSymbol || i.symbol || '').replace(/USD.*$/, '');
+          if (symbol === 'XBT') symbol = 'BTC';
+          if (!symbol || !isCryptoSymbol(symbol)) return null;
+
+          const lastPrice = parseFloat(i.lastPrice) || 0;
+          // openValue is in satoshis for inverse perps (XBT-quoted), USD for linear
+          const isInverse = i.quoteCurrency === 'XBt' || i.quoteCurrency === 'XBT';
+          const oiValue = isInverse
+            ? (parseFloat(i.openValue) || 0) / 1e8 * lastPrice  // satoshis → BTC → USD
+            : (parseFloat(i.openValue) || 0) / 1e8;             // already in USD (scaled by 1e8)
+          const oiContracts = parseFloat(i.openInterest) || 0;
+
+          return {
+            symbol,
+            exchange: 'BitMEX',
+            openInterest: oiContracts,
+            openInterestValue: oiValue > 0 ? oiValue : oiContracts * lastPrice,
+          };
+        })
+        .filter((i: any): i is OIData => i !== null && i.openInterestValue > 1000);
+    },
+  },
+
+  // Gate.io (~$1.5B OI) — CloudFlare-blocked, requires PROXY_URL
+  {
+    name: 'Gate.io',
+    fetcher: async (fetchFn) => {
+      const proxyUrl = process.env.PROXY_URL;
+      if (!proxyUrl) return [];
+      const targetUrl = 'https://api.gateio.ws/api/v4/futures/usdt/contracts';
+      const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((c: any) => c.name?.endsWith('_USDT') && c.position_size > 0)
+        .map((c: any) => {
+          const symbol = c.name.replace('_USDT', '');
+          if (!isCryptoSymbol(symbol)) return null;
+          const markPrice = parseFloat(c.mark_price) || 0;
+          const positionSize = parseFloat(c.position_size) || 0;
+          const multiplier = parseFloat(c.quanto_multiplier) || 1;
+          // OI = position_size * quanto_multiplier * mark_price
+          const oiValue = positionSize * multiplier * markPrice;
+          return {
+            symbol,
+            exchange: 'Gate.io',
+            openInterest: positionSize * multiplier,
+            openInterestValue: oiValue,
+          };
+        })
+        .filter((i: any): i is OIData => i !== null && i.openInterestValue > 1000);
+    },
+  },
+
   // Synthetix V3 Perps — DEPRECATED as of July 2025
   // Base chain deployment was sunset; migrated to Ethereum Mainnet CLOB
   // Re-enable when mainnet CLOB has a public data API
