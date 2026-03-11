@@ -156,7 +156,7 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Phemex':     return `https://phemex.com/contract/trade/${s}USDT`;
     case 'Bitunix':    return `https://www.bitunix.com/futures/${s}USDT?inviteCode=sv6axk`;
     case 'Hyperliquid': return `https://app.hyperliquid.xyz/trade/${s}?ref=SNAKETHER`;
-    case 'dYdX':       return `https://trade.dydx.exchange/trade/${s}-USD`;
+    case 'dYdX':       return `https://www.dydx.xyz/trade/${s}-USD`;
     case 'Aster':      return `https://app.aster.finance/?ref=48aFb9#/perpetual/${s}USDT`;
     case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT?referral=7162321B`;
     case 'Aevo':       return `https://app.aevo.xyz/perpetual/${s.toLowerCase()}`;
