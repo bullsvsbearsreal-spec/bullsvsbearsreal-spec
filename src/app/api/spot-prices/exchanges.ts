@@ -142,8 +142,9 @@ export const spotPriceFetchers: ExchangeFetcherConfig<SpotPrice>[] = [
         let symbol = '';
         if (pair.endsWith('ZUSD')) {
           symbol = pair.replace('ZUSD', '');
-          if (symbol.startsWith('X')) symbol = symbol.slice(1); // XXBT → XBT
-          if (symbol.startsWith('X')) symbol = symbol.slice(1); // double X prefix
+          // Strip Kraken's X prefix (crypto) and Z prefix (fiat) — XXBT→XBT, ZGBP→GBP
+          if (symbol.startsWith('X') || symbol.startsWith('Z')) symbol = symbol.slice(1);
+          if (symbol.startsWith('X')) symbol = symbol.slice(1); // double X prefix (XXBT)
         } else if (pair.endsWith('USD')) {
           symbol = pair.replace('USD', '');
         } else if (pair.endsWith('USDT')) {
@@ -153,6 +154,9 @@ export const spotPriceFetchers: ExchangeFetcherConfig<SpotPrice>[] = [
         }
         if (symbol === 'XBT') symbol = 'BTC';
         if (symbol === 'XDG') symbol = 'DOGE';
+        // Filter out fiat currencies that Kraken lists as ZUSD pairs
+        const FIAT = new Set(['GBP', 'EUR', 'CAD', 'AUD', 'JPY', 'CHF']);
+        if (FIAT.has(symbol)) continue;
         if (!symbol || symbol.length > 10 || !isCryptoSymbol(symbol)) continue;
 
         const price = parseFloat(data.c?.[0]) || 0;

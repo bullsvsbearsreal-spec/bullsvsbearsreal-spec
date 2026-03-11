@@ -192,7 +192,7 @@ export async function fetchSpotPrices(): Promise<SpotPriceEntry[]> {
     if (!response.ok) throw new Error('Failed to fetch spot prices');
     const json = await response.json();
     const data = Array.isArray(json) ? json : (json.data ?? json);
-    setCache('spotPrices', data);
+    setCache('spotPrices', data, 30_000); // match server L1 TTL
     return data;
   } catch (error) {
     console.error('Error fetching spot prices:', error);
