@@ -314,9 +314,11 @@ export default function FundingPage() {
       if (fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined) {
         ls.set(`${fr.symbol}|${fr.exchange}`, { long: fr.fundingRateLong, short: fr.fundingRateShort });
       }
-      if (fr.predictedRate !== undefined) {
+      // Use native predicted rate if available, otherwise fall back to current rate
+      const pred = fr.predictedRate !== undefined ? fr.predictedRate : fr.fundingRate;
+      if (pred !== undefined && pred !== null) {
         if (!pm.has(fr.symbol)) pm.set(fr.symbol, new Map());
-        pm.get(fr.symbol)!.set(fr.exchange, fr.predictedRate);
+        pm.get(fr.symbol)!.set(fr.exchange, pred);
       }
     }
     return { heatmapData: hm, intervalMap: im, longShortMap: ls, predictedMap: pm };
