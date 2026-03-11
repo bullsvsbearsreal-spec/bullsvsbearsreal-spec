@@ -141,34 +141,35 @@ export function getArbRoundTripFee(exchangeA: string, exchangeB: string): number
   return costA + costB;
 }
 
-// Generate a direct trading link to the exchange's perpetual futures page for a given symbol
+// Generate a direct trading link to the exchange's perpetual futures page for a given symbol.
+// Embeds referral codes where available so new users sign up via our affiliate links.
 export function getExchangeTradeUrl(exchange: string, symbol: string): string | null {
   const s = symbol.toUpperCase();
   switch (exchange) {
     case 'Binance':    return `https://www.binance.com/en/futures/${s}USDT`;
-    case 'Bybit':      return `https://www.bybit.com/trade/usdt/${s}USDT`;
+    case 'Bybit':      return `https://www.bybit.com/trade/usdt/${s}USDT?affiliate_id=VL792O`;
     case 'OKX':        return `https://www.okx.com/trade-swap/${s.toLowerCase()}-usdt-swap`;
-    case 'Bitget':     return `https://www.bitget.com/futures/usdt/${s}USDT`;
-    case 'MEXC':       return `https://futures.mexc.com/exchange/${s}_USDT`;
+    case 'Bitget':     return `https://www.bitget.com/futures/usdt/${s}USDT?shareChannel=SSFL1S2B`;
+    case 'MEXC':       return `https://futures.mexc.com/exchange/${s}_USDT?inviteCode=7zeuU9AdFM`;
     case 'Kraken':     return `https://futures.kraken.com/trade/futures/${s.toLowerCase()}-perpetual`;
     case 'BingX':      return `https://bingx.com/en/perpetual/${s}-USDT/`;
     case 'Phemex':     return `https://phemex.com/contract/trade/${s}USDT`;
-    case 'Bitunix':    return `https://www.bitunix.com/futures/${s}USDT`;
-    case 'Hyperliquid': return `https://app.hyperliquid.xyz/trade/${s}`;
+    case 'Bitunix':    return `https://www.bitunix.com/futures/${s}USDT?inviteCode=sv6axk`;
+    case 'Hyperliquid': return `https://app.hyperliquid.xyz/trade/${s}?ref=SNAKETHER`;
     case 'dYdX':       return `https://trade.dydx.exchange/trade/${s}-USD`;
-    case 'Aster':      return `https://app.aster.finance/#/perpetual/${s}USDT`;
-    case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT`;
+    case 'Aster':      return `https://app.aster.finance/?ref=48aFb9#/perpetual/${s}USDT`;
+    case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT?referral=7162321B`;
     case 'Aevo':       return `https://app.aevo.xyz/perpetual/${s.toLowerCase()}`;
     case 'Drift':      return `https://app.drift.trade/trade/${s}-PERP`;
-    case 'GMX':        return 'https://app.gmx.io/#/trade';
-    case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM`;
+    case 'GMX':        return `https://app.gmx.io/#/trade/?ref=Q9ENQ`;
+    case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM?rcode=CXEJE3SG`;
     case 'Deribit':    return `https://www.deribit.com/futures/${s}`;
     case 'HTX':        return `https://www.htx.com/futures/linear_swap/exchange#contract_code=${s}-USDT`;
     case 'Bitfinex':   return `https://trading.bitfinex.com/t/${s}F0:USTF0`;
     case 'WhiteBIT':   return `https://whitebit.com/trade/${s}_USDT?type=futures`;
     case 'Coinbase':   return `https://www.coinbase.com/advanced-trade/spot/${s}-USDT`;
     case 'CoinEx':     return `https://www.coinex.com/en/futures/${s}USDT`;
-    case 'gTrade':     return `https://gains.trade/trading#${s}/USD`;
+    case 'gTrade':     return `https://gains.trade/trading?ref=arasaka#${s}/USD`;
     case 'Extended':   return `https://app.extended.exchange/trade/${s}-USD`;
     case 'Variational': return `https://app.variational.io/trade/${s}`;
     case 'BitMEX':     return `https://www.bitmex.com/app/trade/${s}USD`;
