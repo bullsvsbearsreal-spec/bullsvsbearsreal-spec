@@ -60,6 +60,9 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_sym_ts ON funding_snapshots(symbol, ts DESC)`;
 
+  // Add mark_price column (added Mar 2026 for price gap tracking)
+  await sql`ALTER TABLE funding_snapshots ADD COLUMN IF NOT EXISTS mark_price REAL`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS oi_snapshots (
       id SERIAL PRIMARY KEY,
@@ -288,6 +291,7 @@ interface FundingSnapshotEntry {
   exchange: string;
   rate: number;
   predicted?: number;
+  markPrice?: number;
 }
 
 export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Promise<number> {
@@ -298,8 +302,8 @@ export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Prom
   for (let i = 0; i < entries.length; i += 50) {
     const chunk = entries.slice(i, i + 50);
     const promises = chunk.map(e =>
-      sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted)
-          VALUES (${e.symbol}, ${e.exchange}, ${e.rate}, ${e.predicted ?? null})`
+      sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
+          VALUES (${e.symbol}, ${e.exchange}, ${e.rate}, ${e.predicted ?? null}, ${e.markPrice ?? null})`
     );
     await Promise.all(promises);
     inserted += chunk.length;
@@ -1679,6 +1683,57 @@ export async function getFundingHistoryMulti(
     return result;
   } catch (e) {
     console.error('DB getFundingHistoryMulti error:', e);
+    return {};
+  }
+}
+
+/**
+ * Get mark price history per exchange for a symbol.
+ * For >7 days, buckets into hourly averages to reduce data points.
+ */
+export async function getPriceHistoryMulti(
+  symbol: string,
+  days: number = 7,
+): Promise<Record<string, { t: number; price: number }[]>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    let rows;
+
+    if (days > 7) {
+      rows = await sql`
+        SELECT exchange,
+               EXTRACT(EPOCH FROM date_trunc('hour', ts)) * 1000 AS t,
+               AVG(mark_price) AS price
+        FROM funding_snapshots
+        WHERE symbol = ${symbol}
+          AND mark_price IS NOT NULL AND mark_price > 0
+          AND ts > NOW() - ${intervalStr}::interval
+        GROUP BY exchange, date_trunc('hour', ts)
+        ORDER BY exchange, t ASC
+      `;
+    } else {
+      rows = await sql`
+        SELECT exchange,
+               EXTRACT(EPOCH FROM ts) * 1000 AS t,
+               mark_price AS price
+        FROM funding_snapshots
+        WHERE symbol = ${symbol}
+          AND mark_price IS NOT NULL AND mark_price > 0
+          AND ts > NOW() - ${intervalStr}::interval
+        ORDER BY exchange, ts ASC
+      `;
+    }
+
+    const result: Record<string, { t: number; price: number }[]> = {};
+    rows.forEach((r: any) => {
+      const ex = r.exchange as string;
+      if (!result[ex]) result[ex] = [];
+      result[ex].push({ t: Number(r.t), price: Number(r.price) });
+    });
+    return result;
+  } catch (e) {
+    console.error('DB getPriceHistoryMulti error:', e);
     return {};
   }
 }

@@ -15,7 +15,7 @@ const PNG_EXCHANGES = new Set([
   'mexc', 'kraken', 'bingx', 'phemex', 'hyperliquid', 'gmx', 'dydx',
   'aevo', 'vertex', 'drift', 'gtrade', 'bitfinex', 'whitebit',
   'coinbase', 'coinex', 'aster', 'bitunix', 'lighter',
-  'bitmex', 'gate', 'gate.io', 'edgex', 'variational', 'extended',
+  'bitmex', 'gate', 'gate.io', 'edgex', 'variational', 'extended', 'nado',
 ]);
 
 // SVG fallbacks for exchanges without downloadable logos

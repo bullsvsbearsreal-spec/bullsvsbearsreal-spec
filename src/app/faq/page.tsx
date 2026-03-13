@@ -50,7 +50,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'What data do you provide?',
-    a: 'Funding rates, open interest, liquidations, a screener (RSI, volume, 24h change), CVD, options data (max pain, put/call, IV smile), prediction markets, basis tracking, long/short ratios, whale alerts, and news. We keep adding stuff.',
+    a: 'Funding rates, open interest, liquidations, funding/price/spot arbitrage, spread history, heatmaps (funding, OI, liquidation, market), a screener (RSI, volume, 24h change), CVD, options data (max pain, put/call, IV smile), prediction markets, basis tracking, long/short ratios, whale alerts, stablecoin flows, token unlocks, order flow, exchange reserves, correlation analysis, and news. We keep adding stuff.',
   },
   {
     category: 'Data & Features',
@@ -60,7 +60,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'What DEX exchanges do you support?',
-    a: 'We currently track Hyperliquid, dYdX, Drift, GMX, Aevo, Lighter, gTrade, Aster DEX, Extended, edgeX, and Variational. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.',
+    a: 'We currently track Hyperliquid, dYdX, Drift, GMX, Aevo, Lighter, gTrade, Aster DEX, Extended, edgeX, Nado, and Variational. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.',
   },
   {
     category: 'Data & Features',
@@ -124,7 +124,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Technical',
     q: 'Is there an API?',
-    a: 'API access is coming soon for subscribers. Stay tuned.',
+    a: 'Yes. We have a public API with real-time funding rates, open interest, and arbitrage data. Generate API keys in the Developer Dashboard at /developers.',
   },
   {
     category: 'Technical',

@@ -644,17 +644,29 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // edgeX — CloudFlare-blocked, routed through PROXY_URL
+  // edgeX — tries direct fetch first, falls back to PROXY_URL
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      if (!proxyUrl) return [];
-      const proxy = proxyUrl.replace(/\/$/, '');
+      const proxy = proxyUrl ? proxyUrl.replace(/\/$/, '') : '';
+
+      const edgeFetch = async (url: string, timeout = 8000): Promise<Response | null> => {
+        try {
+          const direct = await fetchFn(url, {}, timeout);
+          if (direct.ok) return direct;
+        } catch { /* direct failed */ }
+        if (!proxy) return null;
+        try {
+          const proxied = await fetchFn(`${proxy}/?url=${encodeURIComponent(url)}`, {}, timeout);
+          if (proxied.ok) return proxied;
+        } catch { /* proxy also failed */ }
+        return null;
+      };
 
       const metaTarget = 'https://pro.edgex.exchange/api/v1/public/meta/getMetaData';
-      const metaRes = await fetchFn(`${proxy}/?url=${encodeURIComponent(metaTarget)}`, {}, 10000);
-      if (!metaRes.ok) return [];
+      const metaRes = await edgeFetch(metaTarget, 10000);
+      if (!metaRes) return [];
       const metaData = await metaRes.json();
       const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
       if (contracts.length === 0) return [];
@@ -665,8 +677,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         const batch = contracts.slice(i, i + batchSize);
         const promises = batch.map((c: any) => {
           const target = `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`;
-          return fetchFn(`${proxy}/?url=${encodeURIComponent(target)}`, {}, 8000)
-            .then(r => r.ok ? r.json() : null)
+          return edgeFetch(target)
+            .then(r => r ? r.json() : null)
             .catch(() => null);
         });
         const tickerResults = await Promise.all(promises);

@@ -1,5 +1,5 @@
 /**
- * Cron endpoint: takes a snapshot of funding rates and open interest every 10 minutes.
+ * Cron endpoint: takes a snapshot of funding rates and open interest every hour.
  * Called by Vercel Cron or external cron service.
  *
  * Security: Verifies CRON_SECRET Bearer token.
@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
           exchange: r.exchange,
           rate: r.fundingRate,
           predicted: r.predictedRate ?? undefined,
+          markPrice: r.markPrice ?? undefined,
         }));
 
       fundingInserted = await saveFundingSnapshot(fundingEntries);
@@ -162,8 +163,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Prune old data every run — keep 14 days max to stay within DB limits
-    const pruned = await pruneOldData(14);
+    // Prune old data every run — keep 7 days max to stay within DB limits
+    const pruned = await pruneOldData(7);
 
     // Record DB size for admin monitoring (~1 in 6 runs, roughly hourly)
     if (Math.random() < 0.17) {

@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { isDBConfigured, getSQL } from '@/lib/db';
 
 // In-memory rate limit: max 10 attempts per email per 15 minutes
+const MAX_TRACKED_KEYS = 10_000;
 const attempts = new Map<string, { count: number; resetAt: number }>();
 let lastCleanup = 0;
 
@@ -19,6 +20,11 @@ function checkBruteForce(email: string): boolean {
     attempts.forEach((v, k) => {
       if (now > v.resetAt) attempts.delete(k);
     });
+  }
+
+  // Hard cap to prevent memory exhaustion under attack
+  if (attempts.size >= MAX_TRACKED_KEYS && !attempts.has(key)) {
+    return false; // reject new entries when map is full
   }
 
   const entry = attempts.get(key);

@@ -22,9 +22,15 @@ export default function OverviewTab({ onNavigate }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/health')
+    fetch('/api/admin/actions/health-check', { method: 'POST' })
       .then((r) => r.json())
-      .then((d) => setHealth(d))
+      .then((d) => {
+        if (d.success && d.healthResult) {
+          setHealth(d.healthResult);
+        } else {
+          setHealth({ status: 'unknown', errors: d.error ? [{ exchange: 'system', error: d.error }] : [] });
+        }
+      })
       .catch(() => setHealth({ status: 'unknown' }))
       .finally(() => setLoading(false));
   }, []);

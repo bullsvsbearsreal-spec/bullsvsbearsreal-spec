@@ -102,7 +102,7 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
 
         <Section id="funding-rates" title="Funding Rates">
           <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/funding</code></p>
-          <p className="text-gray-400 mb-4">Real-time funding rates across 24 exchanges. Rates are in native interval percentage.</p>
+          <p className="text-gray-400 mb-4">Real-time funding rates across 30 exchanges. Rates are in native interval percentage.</p>
           <ParamTable params={[
             ['symbols', 'string', '—', 'Comma-separated symbols (e.g. BTC,ETH,SOL)'],
             ['exchanges', 'string', '—', 'Comma-separated exchanges (e.g. binance,bybit)'],
@@ -131,7 +131,7 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
 
         <Section id="funding-history" title="Funding History">
           <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/funding/history</code></p>
-          <p className="text-gray-400 mb-4">Historical funding rate snapshots from database (10-min resolution, up to 14 days).</p>
+          <p className="text-gray-400 mb-4">Historical funding rate snapshots from database (10-min resolution, up to 7 days).</p>
           <ParamTable params={[
             ['symbols', 'string', '(required)', 'Comma-separated symbols (max 20)'],
             ['days', 'number', '7', 'Lookback period (1-14)'],

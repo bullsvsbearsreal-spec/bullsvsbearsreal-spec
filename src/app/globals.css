@@ -131,6 +131,10 @@ body {
 [data-theme="light"] .heatmap-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,165,0,0.5); }
 
 @layer utilities {
+  /* --- Hide scrollbar utility --- */
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
   /* --- Surface system (60→30 elevation) --- */
   .surface-0 { background: var(--hub-dark); border: 1px solid var(--hub-border); }
   .surface-1 { background: var(--hub-darker); border: 1px solid var(--hub-border); }

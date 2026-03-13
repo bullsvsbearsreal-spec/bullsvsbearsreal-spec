@@ -801,28 +801,28 @@ export default function FundingHeatmapView({
                     const isActive = exchangeSort?.exchange === ex;
                     const fee = EXCHANGE_FEES[ex];
                     return (
-                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 78 }}>
+                      <th key={ex} className="px-0.5 py-1.5 text-center select-none" style={{ minWidth: 84 }}>
                         <button
                           onClick={() => handleExchangeClick(ex)}
                           className={`w-full flex flex-col items-center gap-1 py-1 px-0.5 rounded-md transition-all cursor-pointer ${
                             isActive ? 'bg-white/[0.06]' : hoveredCol === ex ? 'bg-white/[0.03]' : 'hover:bg-white/[0.03]'
                           }`}
                         >
-                          <ExchangeLogo exchange={ex.toLowerCase()} size={18} />
+                          <ExchangeLogo exchange={ex.toLowerCase()} size={24} />
                           <div className="flex items-center gap-0.5">
-                            <span className={`${ex.length > 8 ? 'text-[9px]' : 'text-[10px]'} font-medium leading-none transition-colors ${
+                            <span className={`${ex.length > 8 ? 'text-[10px]' : 'text-[11px]'} font-medium leading-none transition-colors ${
                               isActive ? 'text-hub-yellow' : 'text-neutral-600'
                             }`}>
                               {ex}
                             </span>
                             {isActive && (
                               exchangeSort?.direction === 'desc'
-                                ? <ChevronDown className="w-2 h-2 text-hub-yellow" />
-                                : <ChevronUp className="w-2 h-2 text-hub-yellow" />
+                                ? <ChevronDown className="w-2.5 h-2.5 text-hub-yellow" />
+                                : <ChevronUp className="w-2.5 h-2.5 text-hub-yellow" />
                             )}
                           </div>
                           {fee && (
-                            <span className={`text-[8px] font-mono leading-none ${fee.taker === 0 ? 'text-green-500/70' : 'text-neutral-600'}`}>
+                            <span className={`text-[9px] font-mono leading-none ${fee.taker === 0 ? 'text-green-500/70' : 'text-neutral-600'}`}>
                               {fee.taker === 0 ? '0% fee' : `${fee.taker.toFixed(2)}%`}
                             </span>
                           )}

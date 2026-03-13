@@ -14,7 +14,11 @@ export async function POST() {
 
   try {
     const baseUrl = process.env.NEXTAUTH_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+
+    if (!baseUrl) {
+      return NextResponse.json({ success: false, error: 'Server URL not configured' }, { status: 500 });
+    }
     const apiKey = process.env.ADMIN_API_KEY || '';
 
     const res = await fetch(`${baseUrl}/api/health`, {

@@ -563,12 +563,12 @@ export default function FundingPage() {
             <span className="w-px h-5 bg-white/[0.06] hidden lg:block" />
 
             {/* Heatmap / Arbitrage view toggle */}
-            <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <div className="flex rounded-lg overflow-x-auto no-scrollbar ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
               {viewTabs.map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => setViewMode(key)}
-                  className={`px-3.5 py-[7px] text-[11px] font-semibold tracking-wide transition-all duration-200 ${
+                  className={`px-3.5 py-[7px] text-[11px] font-semibold tracking-wide transition-all duration-200 whitespace-nowrap ${
                     viewMode === key
                       ? 'bg-hub-yellow text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
                       : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'

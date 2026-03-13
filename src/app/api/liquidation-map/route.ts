@@ -94,9 +94,12 @@ async function fetchCurrentPrice(symbol: SupportedSymbol): Promise<number> {
 // ---------------------------------------------------------------------------
 async function fetchSymbolOI(symbol: string): Promise<{ totalOI: number; exchangeCount: number }> {
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXTAUTH_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+
+    if (!baseUrl) {
+      return { totalOI: 0, exchangeCount: 0 };
+    }
 
     const res = await fetch(`${baseUrl}/api/openinterest`, {
       signal: AbortSignal.timeout(10000),

@@ -1475,18 +1475,31 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // edgeX — CloudFlare-blocked, routed through PROXY_URL. Hourly funding settlement.
+  // edgeX — tries direct fetch first, falls back to PROXY_URL. Hourly funding settlement.
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      if (!proxyUrl) return [];
-      const proxy = proxyUrl.replace(/\/$/, '');
+      const proxy = proxyUrl ? proxyUrl.replace(/\/$/, '') : '';
+
+      // Helper: try direct first, fall back to proxy
+      const edgeFetch = async (url: string, timeout = 8000): Promise<Response | null> => {
+        try {
+          const direct = await fetchFn(url, {}, timeout);
+          if (direct.ok) return direct;
+        } catch { /* direct failed, try proxy */ }
+        if (!proxy) return null;
+        try {
+          const proxied = await fetchFn(`${proxy}/?url=${encodeURIComponent(url)}`, {}, timeout);
+          if (proxied.ok) return proxied;
+        } catch { /* proxy also failed */ }
+        return null;
+      };
 
       // Step 1: Fetch contract metadata to get contractIds
       const metaTarget = 'https://pro.edgex.exchange/api/v1/public/meta/getMetaData';
-      const metaRes = await fetchFn(`${proxy}/?url=${encodeURIComponent(metaTarget)}`, {}, 10000);
-      if (!metaRes.ok) return [];
+      const metaRes = await edgeFetch(metaTarget, 10000);
+      if (!metaRes) return [];
       const metaData = await metaRes.json();
       const contracts = metaData?.data?.contractList || [];
       const active = contracts.filter((c: any) => c.enableTrade);
@@ -1499,8 +1512,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         const batch = active.slice(i, i + batchSize);
         const tickerPromises = batch.map((c: any) => {
           const tickerTarget = `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`;
-          return fetchFn(`${proxy}/?url=${encodeURIComponent(tickerTarget)}`, {}, 8000)
-            .then(r => r.ok ? r.json() : null)
+          return edgeFetch(tickerTarget)
+            .then(r => r ? r.json() : null)
             .catch(() => null);
         });
         const tickerResults = await Promise.all(tickerPromises);

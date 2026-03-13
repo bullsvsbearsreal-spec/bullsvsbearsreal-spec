@@ -26,7 +26,7 @@ export default function AuthOverlay() {
           </h2>
           <p className="text-neutral-500 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
             Create an account to access real-time funding rates, open interest,
-            liquidations, and more across 24+ exchanges.
+            liquidations, and more across 30+ exchanges.
           </p>
 
           <div className="space-y-3">

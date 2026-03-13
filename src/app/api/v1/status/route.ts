@@ -16,8 +16,8 @@ export async function GET() {
     status: 'operational',
     version: 'v1',
     endpoints: [
-      { path: '/api/v1/funding', method: 'GET', description: 'Real-time funding rates across 24 exchanges' },
-      { path: '/api/v1/funding/history', method: 'GET', description: 'Historical funding rate snapshots (up to 14 days)' },
+      { path: '/api/v1/funding', method: 'GET', description: 'Real-time funding rates across 30 exchanges' },
+      { path: '/api/v1/funding/history', method: 'GET', description: 'Historical funding rate snapshots (up to 7 days)' },
       { path: '/api/v1/arbitrage', method: 'GET', description: 'Funding rate arbitrage opportunities with feasibility grades' },
       { path: '/api/v1/openinterest', method: 'GET', description: 'Open interest data across exchanges' },
       { path: '/api/v1/exchanges', method: 'GET', description: 'Supported exchanges with fees and intervals' },
