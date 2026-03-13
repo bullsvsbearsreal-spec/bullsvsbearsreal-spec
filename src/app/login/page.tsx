@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Shield, Smartphone } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginPageInner() {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -94,7 +97,7 @@ export default function LoginPage() {
       if (res?.error) {
         setError('Sign in failed. Please try again.');
       } else {
-        window.location.href = '/';
+        window.location.href = callbackUrl;
       }
     } catch {
       setError('Something went wrong');
@@ -476,5 +479,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

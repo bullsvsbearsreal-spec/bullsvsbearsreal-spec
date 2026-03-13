@@ -17,6 +17,7 @@ const FundingHeatmapView = dynamic(() => import('./components/FundingHeatmapView
 const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrageView'), { ssr: false });
 const PriceArbitrageView = dynamic(() => import('./components/PriceArbitrageView'), { ssr: false });
 const SpotArbitrageView = dynamic(() => import('./components/SpotArbitrageView'), { ssr: false });
+const FundingSpreadComparison = dynamic(() => import('./components/FundingSpreadComparison'), { ssr: false });
 
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
@@ -26,7 +27,7 @@ import { saveFundingSnapshot, getAccumulatedFundingBatch, type AccumulatedFundin
 import { type FundingPeriod, periodMultiplier, PERIOD_HOURS, formatRateAdaptive } from './utils';
 import { useFundingPrefs } from '@/hooks/useFundingPrefs';
 
-type ViewMode = 'heatmap' | 'arbitrage' | 'price' | 'spot';
+type ViewMode = 'heatmap' | 'arbitrage' | 'price' | 'spot' | 'spread';
 type VenueFilter = 'all' | 'cex' | 'dex';
 type MarginFilter = 'linear' | 'inverse' | 'all';
 
@@ -384,6 +385,7 @@ export default function FundingPage() {
     { key: 'arbitrage', label: 'Funding Arbs' },
     { key: 'price', label: 'Price Arbs' },
     { key: 'spot', label: 'Spot Arbs' },
+    { key: 'spread', label: 'Spread History' },
   ];
 
   const categoryKeys = Object.keys(activeCategories);
@@ -725,6 +727,9 @@ export default function FundingPage() {
             )}
             {viewMode === 'spot' && (
               <SpotArbitrageView spotPrices={spotPrices} />
+            )}
+            {viewMode === 'spread' && (
+              <FundingSpreadComparison />
             )}
           </>
         )}

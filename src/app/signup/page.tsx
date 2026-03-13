@@ -18,6 +18,7 @@ export default function SignupPage() {
 function SignupContent() {
   const searchParams = useSearchParams();
   const verifyEmail = searchParams.get('verify');
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState(verifyEmail || '');
@@ -83,7 +84,7 @@ function SignupContent() {
         if (signInRes?.error) {
           window.location.href = '/login';
         } else {
-          window.location.href = '/';
+          window.location.href = callbackUrl;
         }
       }
     } catch {
@@ -156,7 +157,7 @@ function SignupContent() {
       if (signInRes?.error) {
         window.location.href = '/login';
       } else {
-        window.location.href = '/';
+        window.location.href = callbackUrl;
       }
     } catch {
       setError('Something went wrong');

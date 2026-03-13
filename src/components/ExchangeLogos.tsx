@@ -64,6 +64,16 @@ function VariationalLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
+// Nado: black background with white storm/trident mark
+function NadoLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 256 256" width={size} height={size} className={className}>
+      <rect width="256" height="256" rx="8" fill="black"/>
+      <path d="M94.284 145.768L160.639 219.178L165.812 222L181.58L184.872 218.708V192.354L182.521 186.941L142.289 141.528C132.173 130.232 124.408 119.877 109.581 117.055L111.463 110.702L101.578 111.882L92.634 140.587L94.284 145.761V145.768ZM144.879 65.296L47.938 85.767L42.764 88.828L35 102.706L36.411 107.178L59.233 120.355L64.877 121.065L124.408 108.829C139.235 105.767 152.173 104.125 162.058 92.83L167.231 98.242L171.233 89.067L150.053 66.476L144.879 65.304V65.296ZM189.815 148.822L220.401 54.702V48.588L212.398 34.941L207.695 34L184.872 47.177L181.341 51.649L162.281 109.299C157.578 123.656 152.396 135.653 157.339 150.001L150.045 151.651L155.928 159.655L186.044 152.831L189.807 148.83L189.815 148.822Z" fill="white"/>
+    </svg>
+  );
+}
+
 // Extended: amber accent with "×" geometric cross
 function ExtendedLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
@@ -82,6 +92,7 @@ const svgFallbacks: Record<string, React.ComponentType<ExchangeLogoProps>> = {
   edgex: EdgeXLogoSVG,
   variational: VariationalLogoSVG,
   extended: ExtendedLogoSVG,
+  nado: NadoLogoSVG,
 };
 
 // Exchange brand colors for styling
@@ -116,6 +127,7 @@ export const exchangeColors: Record<string, string> = {
   extended: '#F59E0B',
   edgex: '#38BDF8',
   variational: '#E879F9',
+  nado: '#E4002B',
 };
 
 // Backwards compatibility: keep the old named exports as well

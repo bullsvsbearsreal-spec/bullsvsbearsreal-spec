@@ -917,4 +917,48 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
+  // ─── Nado (Ink L2 CLOB DEX) ───
+  // V2 tickers endpoint returns price, volume, 24h change for all perps
+  {
+    name: 'Nado',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn(
+        'https://archive.prod.nado.xyz/v2/tickers?market=perp',
+        { headers: { 'Accept-Encoding': 'gzip' } },
+        12000
+      );
+      if (!res.ok) return [];
+      const json = await res.json();
+
+      return Object.values(json)
+        .map((t: any) => {
+          let symbol = (t.base_currency || '').replace('-PERP', '');
+          if (!symbol) return null;
+          // Normalize: kPEPE → PEPE, kBONK → BONK
+          if (symbol.startsWith('k') && symbol.length > 1 && symbol[1] === symbol[1].toUpperCase()) {
+            symbol = symbol.slice(1);
+          }
+
+          const lastPrice = parseFloat(t.last_price) || 0;
+          const priceChange = parseFloat(t.price_change_percent_24h) || 0;
+          const quoteVolume = parseFloat(t.quote_volume) || 0;
+          const baseVolume = parseFloat(t.base_volume) || 0;
+
+          return {
+            symbol,
+            exchange: 'Nado',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: priceChange,
+            changePercent24h: priceChange,
+            high24h: 0,
+            low24h: 0,
+            volume24h: baseVolume,
+            quoteVolume24h: quoteVolume,
+          };
+        })
+        .filter((item: any) => item && item.lastPrice > 0);
+    },
+  },
+
 ];

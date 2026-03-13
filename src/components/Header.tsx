@@ -344,7 +344,7 @@ export default function Header() {
           {/* Left: Logo + Nav */}
           <div className="flex items-center gap-6">
             <Link href="/" className="flex-shrink-0">
-              <Logo size="sm" />
+              <Logo size="lg" />
             </Link>
 
             {/* Desktop navigation */}

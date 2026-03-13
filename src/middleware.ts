@@ -76,6 +76,56 @@ function shouldSkip(path: string): boolean {
 const MAX_QUERY_LENGTH = 512;
 
 // ---------------------------------------------------------------------------
+// Auth wall — pages that DON'T require authentication
+// ---------------------------------------------------------------------------
+
+const PUBLIC_PAGES = new Set([
+  '/',
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/terms',
+  '/privacy',
+  '/faq',
+  '/team',
+  '/brand',
+  '/referrals',
+  '/api-docs',
+  '/guides',
+  '/trailer',
+]);
+
+// Prefixes that are always public (static assets, next internals)
+function isPublicPath(pathname: string): boolean {
+  if (PUBLIC_PAGES.has(pathname)) return true;
+  if (pathname.startsWith('/_next/')) return true;
+  if (pathname.startsWith('/api/')) return true;       // API has its own auth
+  if (pathname.startsWith('/exchanges/')) return true;  // static logos
+  if (pathname.startsWith('/icons/')) return true;
+  if (pathname === '/favicon.ico') return true;
+  if (pathname === '/robots.txt') return true;
+  if (pathname === '/sitemap.xml') return true;
+  if (pathname.endsWith('.png') || pathname.endsWith('.svg') || pathname.endsWith('.ico')) return true;
+  return false;
+}
+
+/**
+ * Check if user has a valid session cookie.
+ * NextAuth v5 JWT strategy uses:
+ *   - Production (HTTPS): __Secure-next-auth.session-token
+ *   - Development (HTTP):  next-auth.session-token
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  return !!(
+    request.cookies.get('__Secure-next-auth.session-token')?.value ||
+    request.cookies.get('next-auth.session-token')?.value ||
+    request.cookies.get('__Secure-authjs.session-token')?.value ||
+    request.cookies.get('authjs.session-token')?.value
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Public API v1 — lightweight middleware (Edge-compatible)
 // Auth + rate limiting happens in route handlers via v1-auth.ts (Node.js)
 // ---------------------------------------------------------------------------
@@ -108,6 +158,13 @@ function handleV1Route(request: NextRequest): NextResponse {
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
+  // ── Auth wall: redirect unauthenticated users to login ──
+  if (!isPublicPath(pathname) && !hasSessionCookie(request)) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname + search);
+    return NextResponse.redirect(loginUrl);
+  }
 
   // Only rate-limit API routes
   if (!pathname.startsWith('/api/')) return NextResponse.next();
@@ -191,6 +248,15 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
+// Match ALL routes now (not just /api/*) for the auth wall
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    /*
+     * Match all request paths except static files:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico
+     */
+    '/((?!_next/static|_next/image).*)',
+  ],
 };

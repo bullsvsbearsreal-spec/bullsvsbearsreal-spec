@@ -5,7 +5,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Filter, ArrowRightLeft } from 'lucide-react';
 import Pagination from './Pagination';
-import { getExchangeTradeUrl } from '@/lib/constants';
+import { getExchangeTradeUrl, EXCHANGE_FEES } from '@/lib/constants';
 import type { SpotPriceEntry } from '@/lib/api/aggregator';
 
 const ROWS_PER_PAGE = 40;
@@ -16,9 +16,11 @@ interface SpotArbEntry {
   sellExchange: string;
   buyPrice: number;
   sellPrice: number;
-  spreadPct: number;      // (sell - buy) / buy * 100
+  spreadPct: number;       // (sell - buy) / buy * 100
+  netSpreadPct: number;    // spread minus estimated trading fees
   avgVolume: number;       // average 24h spot volume across exchanges
   exchangeCount: number;   // how many exchanges list this symbol
+  allPrices: { exchange: string; price: number; volume24h: number }[];
 }
 
 interface SpotArbitrageViewProps {
@@ -48,6 +50,7 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
   const [search, setSearch] = useState('');
   const [minVolume, setMinVolume] = useState(false);
   const [minSpread, setMinSpread] = useState<'all' | '0.1' | '0.5' | '1'>('all');
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -90,12 +93,20 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
       if (spreadPct < 0.005 || spreadPct > 20) return;
       if (minIdx === maxIdx) return;
 
+      // Net spread after estimated spot taker fees on both legs
+      const buyFee = EXCHANGE_FEES[prices[minIdx].exchange]?.taker ?? 0.05;
+      const sellFee = EXCHANGE_FEES[prices[maxIdx].exchange]?.taker ?? 0.05;
+      const netSpreadPct = spreadPct - buyFee - sellFee;
+
       // Average spot volume across exchanges
       let totalVol = 0;
       let volCount = 0;
       for (const p of prices) {
         if (p.volume24h > 0) { totalVol += p.volume24h; volCount++; }
       }
+
+      // Sort all prices low → high for detail view
+      const sortedPrices = [...prices].sort((a, b) => a.price - b.price);
 
       result.push({
         symbol,
@@ -104,8 +115,10 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
         buyPrice,
         sellPrice,
         spreadPct,
+        netSpreadPct,
         avgVolume: volCount > 0 ? totalVol / volCount : 0,
         exchangeCount: prices.length,
+        allPrices: sortedPrices,
       });
     });
     return result;
@@ -151,6 +164,7 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
   const avgSpread = entries.length > 0 ? entries.reduce((s, e) => s + e.spreadPct, 0) / entries.length : 0;
   const maxSpread = entries.length > 0 ? Math.max(...entries.map(e => e.spreadPct)) : 0;
   const above1Pct = entries.filter(e => e.spreadPct >= 1).length;
+  const profitableCount = entries.filter(e => e.netSpreadPct > 0).length;
 
   const spreadColor = (pct: number) => {
     if (pct >= 1) return 'text-green-400';
@@ -178,6 +192,10 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
           <span className="text-[10px] text-green-400/70 uppercase tracking-wider font-semibold">&gt;1%</span>
           <span className="text-sm font-bold text-green-400 font-mono">{above1Pct}</span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: profitableCount > 0 ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.03)', border: `1px solid ${profitableCount > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.06)'}` }}>
+          <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Net Profit</span>
+          <span className={`text-sm font-bold font-mono ${profitableCount > 0 ? 'text-green-400' : 'text-neutral-500'}`}>{profitableCount}</span>
         </div>
       </div>
 
@@ -253,6 +271,9 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
                   Spread <SortIcon col="spreadPct" />
                 </button>
               </th>
+              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden lg:table-cell">
+                Net
+              </th>
               <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden md:table-cell">
                 <button onClick={() => handleSort('exchangeCount')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
                   Exch <SortIcon col="exchangeCount" />
@@ -270,8 +291,8 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
               const buyUrl = getExchangeTradeUrl(entry.buyExchange, entry.symbol);
               const sellUrl = getExchangeTradeUrl(entry.sellExchange, entry.symbol);
               return (
+                <React.Fragment key={`${entry.symbol}-${idx}`}>
                 <tr
-                  key={`${entry.symbol}-${idx}`}
                   className="group transition-colors hover:bg-white/[0.02]"
                 >
                   <td className="px-3 py-2.5">
@@ -316,18 +337,59 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
                       +{entry.spreadPct.toFixed(4)}%
                     </span>
                   </td>
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums hidden lg:table-cell">
+                    <span className={entry.netSpreadPct > 0 ? 'text-green-400' : 'text-red-400'}>
+                      {entry.netSpreadPct > 0 ? '+' : ''}{entry.netSpreadPct.toFixed(4)}%
+                    </span>
+                  </td>
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500 hidden md:table-cell">
-                    {entry.exchangeCount}
+                    <button
+                      onClick={() => setExpandedRow(expandedRow === entry.symbol ? null : entry.symbol)}
+                      className="hover:text-hub-yellow transition-colors cursor-pointer"
+                      title="Show all exchange prices"
+                    >
+                      {entry.exchangeCount}
+                    </button>
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500">
                     {entry.avgVolume > 0 ? formatVolume(entry.avgVolume) : '-'}
                   </td>
                 </tr>
+                {expandedRow === entry.symbol && (
+                  <tr>
+                    <td colSpan={10} className="px-3 pb-3 pt-0">
+                      <div className="rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="px-3 py-2 flex items-center gap-2 border-b border-white/[0.04]">
+                          <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">All prices for {entry.symbol}</span>
+                          <span className="text-[10px] text-neutral-600">({entry.allPrices.length} exchanges)</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-px" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                          {entry.allPrices.map(p => {
+                            const isBuy = p.exchange === entry.buyExchange;
+                            const isSell = p.exchange === entry.sellExchange;
+                            return (
+                              <div key={p.exchange} className="flex items-center gap-2 px-3 py-2" style={{ background: isBuy ? 'rgba(34,197,94,0.06)' : isSell ? 'rgba(249,115,22,0.06)' : 'rgba(10,10,10,0.8)' }}>
+                                <ExchangeLogo exchange={p.exchange.toLowerCase()} size={14} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[11px] text-neutral-400 truncate">{p.exchange}</div>
+                                  <div className="text-[12px] font-mono tabular-nums text-white">{formatPrice(p.price)}</div>
+                                </div>
+                                {isBuy && <span className="text-[9px] font-bold text-green-400 uppercase">Buy</span>}
+                                {isSell && <span className="text-[9px] font-bold text-orange-400 uppercase">Sell</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
             {pageItems.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-center py-12 text-neutral-600 text-sm">
+                <td colSpan={10} className="text-center py-12 text-neutral-600 text-sm">
                   No spot price arbitrage opportunities found matching filters
                 </td>
               </tr>
@@ -346,10 +408,10 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
       />
 
       <p className="text-[10px] text-neutral-700 leading-relaxed px-1">
-        Spot arbitrage compares real spot trading prices across CEX exchanges.{' '}
+        Spot arbitrage compares real spot trading prices across 15 CEX exchanges.{' '}
         <span className="text-green-400/60 font-medium">Spread</span> = price difference between cheapest and most expensive exchange.{' '}
-        Buy spot on one exchange, sell on another.{' '}
-        <span className="text-neutral-500">Exch</span> = number of exchanges with active spot pairs.{' '}
+        <span className="text-green-400/60 font-medium">Net</span> = spread minus estimated taker fees on both legs (buy + sell).{' '}
+        Green net = profitable after fees. Click exchange count to see all prices.{' '}
         <span className="text-neutral-500">Vol</span> = average 24h spot volume per exchange.
       </p>
     </div>

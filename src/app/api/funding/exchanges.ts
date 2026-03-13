@@ -1650,6 +1650,97 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
+  // ─── Nado (Ink L2 CLOB DEX) ───
+  // Two endpoints: gateway/all_products for prices+OI, archive/funding_rates for rates
+  // funding_rate_x18 = 24h rate at 1e18 precision; divide by 24 for hourly %
+  // Hourly settlement
+  {
+    name: 'Nado',
+    fetcher: async (fetchFn) => {
+      const headers = { 'Accept-Encoding': 'gzip' };
+      // 1. Get all products (prices + product IDs)
+      const productsRes = await fetchFn(
+        'https://gateway.prod.nado.xyz/v1/query?type=all_products',
+        { headers },
+        12000
+      );
+      if (!productsRes.ok) return [];
+      const productsJson = await productsRes.json();
+      const perps: any[] = productsJson?.data?.perp_products || [];
+      if (!perps.length) return [];
+
+      // 2. Get tickers for symbol mapping (product_id → symbol)
+      const tickersRes = await fetchFn(
+        'https://archive.prod.nado.xyz/v2/tickers?market=perp',
+        { headers },
+        12000
+      );
+      if (!tickersRes.ok) return [];
+      const tickersJson = await tickersRes.json();
+      const symbolMap: Record<number, string> = {};
+      for (const [, v] of Object.entries(tickersJson) as [string, any][]) {
+        let sym = (v.base_currency || '').replace('-PERP', '');
+        // Normalize: kPEPE → PEPE, kBONK → BONK
+        if (sym.startsWith('k') && sym.length > 1 && sym[1] === sym[1].toUpperCase()) {
+          sym = sym.slice(1);
+        }
+        symbolMap[v.product_id] = sym;
+      }
+
+      // 3. Get funding rates for all perp product IDs
+      const productIds = perps.map((p: any) => p.product_id);
+      const fundingRes = await fetchFn(
+        'https://archive.prod.nado.xyz/v1',
+        {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ funding_rates: { product_ids: productIds } }),
+        },
+        12000
+      );
+      if (!fundingRes.ok) return [];
+      const fundingJson = await fundingRes.json();
+
+      const results: FundingData[] = [];
+      for (const p of perps) {
+        try {
+          const pid = p.product_id;
+          const symbol = symbolMap[pid];
+          if (!symbol) continue;
+
+          const price = Number(BigInt(p.oracle_price_x18)) / 1e18;
+          if (price <= 0) continue;
+
+          // OI filter: skip tiny markets
+          const oi = Number(BigInt(p.state?.open_interest || '0')) / 1e18;
+          if (oi * price < 1000) continue;
+
+          // Funding rate: 24h rate at x18, convert to hourly %
+          const frData = fundingJson[String(pid)];
+          if (!frData) continue;
+          const dailyRate = Number(BigInt(frData.funding_rate_x18)) / 1e18;
+          const hourlyRate = dailyRate / 24;
+          // Convert to percentage
+          const fundingRate = hourlyRate * 100;
+
+          results.push({
+            symbol,
+            exchange: 'Nado',
+            fundingRate,
+            fundingInterval: '1h' as const,
+            markPrice: price,
+            indexPrice: price,
+            nextFundingTime: Date.now() + 3600000,
+            type: 'dex' as const,
+          });
+        } catch {
+          continue;
+        }
+      }
+      return results;
+    },
+  },
+
 ];
 
 // Paused exchanges (kept for reference):

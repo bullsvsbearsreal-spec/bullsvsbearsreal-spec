@@ -4,7 +4,7 @@ export const ALL_EXCHANGES = [
   'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
   'Aevo', 'Drift', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
   'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'Variational',
-  'BitMEX', 'Gate.io', 'edgeX',
+  'BitMEX', 'Gate.io', 'edgeX', 'Nado',
 ] as const;
 
 export type ExchangeName = (typeof ALL_EXCHANGES)[number];
@@ -40,6 +40,7 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'BitMEX': 'bg-red-500',
   'Gate.io': 'bg-blue-400',
   'edgeX': 'bg-sky-400',
+  'Nado': 'bg-red-400',
 };
 
 // Exchange badge colors for table cells
@@ -73,12 +74,13 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'BitMEX': 'bg-red-500/20 text-red-400',
   'Gate.io': 'bg-blue-400/20 text-blue-300',
   'edgeX': 'bg-sky-400/20 text-sky-300',
+  'Nado': 'bg-red-400/20 text-red-300',
 };
 
 // DEX exchanges (on-chain / decentralized perpetual protocols)
 export const DEX_EXCHANGES: ReadonlySet<string> = new Set([
   'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'Drift', 'GMX', 'gTrade',
-  'Extended', 'Variational', 'edgeX',
+  'Extended', 'Variational', 'edgeX', 'Nado',
 ]);
 
 // CEX exchanges (centralized)
@@ -132,6 +134,7 @@ export const EXCHANGE_FEES: Record<string, ExchangeFees> = {
   'BitMEX':       { taker: 0.0500, maker: 0.0000 }, // maker rebate ignored
   'Gate.io':      { taker: 0.0500, maker: 0.0150 },
   'edgeX':        { taker: 0.0350, maker: 0.0150 },
+  'Nado':         { taker: 0.0150, maker: -0.0080 }, // taker 1.5bps, maker rebate up to -0.8bps
 };
 
 // Get round-trip fee for an arbitrage pair (taker on both sides: open + close on each exchange)
@@ -178,6 +181,7 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'BitMEX':     return `https://www.bitmex.com/app/trade/${s}USD`;
     case 'Gate.io':    return `https://www.gate.io/futures_trade/USDT/${s}_USDT`;
     case 'edgeX':      return `https://pro.edgex.exchange/trade/${s}USDT`;
+    case 'Nado':       return `https://www.nado.xyz/trade/${s}-PERP`;
     default:           return null;
   }
 }

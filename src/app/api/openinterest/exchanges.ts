@@ -801,6 +801,58 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // ─── Nado (Ink L2 CLOB DEX) ───
+  // Uses gateway all_products for OI (open_interest at x18 precision) + V2 tickers for symbol map
+  {
+    name: 'Nado',
+    fetcher: async (fetchFn) => {
+      const headers = { 'Accept-Encoding': 'gzip' };
+      const [productsRes, tickersRes] = await Promise.all([
+        fetchFn('https://gateway.prod.nado.xyz/v1/query?type=all_products', { headers }, 12000),
+        fetchFn('https://archive.prod.nado.xyz/v2/tickers?market=perp', { headers }, 12000),
+      ]);
+      if (!productsRes.ok || !tickersRes.ok) return [];
+      const productsJson = await productsRes.json();
+      const tickersJson = await tickersRes.json();
+
+      const perps: any[] = productsJson?.data?.perp_products || [];
+      // Build product_id → symbol map from tickers
+      const symbolMap: Record<number, string> = {};
+      for (const [, v] of Object.entries(tickersJson) as [string, any][]) {
+        let sym = (v.base_currency || '').replace('-PERP', '');
+        if (sym.startsWith('k') && sym.length > 1 && sym[1] === sym[1].toUpperCase()) {
+          sym = sym.slice(1);
+        }
+        symbolMap[v.product_id] = sym;
+      }
+
+      const results: OIData[] = [];
+      for (const p of perps) {
+        try {
+          const symbol = symbolMap[p.product_id];
+          if (!symbol) continue;
+
+          const price = Number(BigInt(p.oracle_price_x18)) / 1e18;
+          if (price <= 0) continue;
+
+          const oi = Number(BigInt(p.state?.open_interest || '0')) / 1e18;
+          const oiValue = oi * price;
+          if (oiValue < 1000) continue;
+
+          results.push({
+            symbol,
+            exchange: 'Nado',
+            openInterest: oi,
+            openInterestValue: oiValue,
+          });
+        } catch {
+          continue;
+        }
+      }
+      return results;
+    },
+  },
+
   // Synthetix V3 Perps — DEPRECATED as of July 2025
   // Base chain deployment was sunset; migrated to Ethereum Mainnet CLOB
   // Re-enable when mainnet CLOB has a public data API
