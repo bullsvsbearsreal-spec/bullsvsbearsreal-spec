@@ -100,7 +100,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ valid: true, emailVerified: true, requires2FA, methods });
   } catch (e: any) {
-    console.error('Check credentials error:', e?.message || e);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const msg = e?.message || String(e);
+    console.error('Check credentials error:', msg);
+    // Temporarily expose error detail for debugging (remove after fix)
+    return NextResponse.json({ error: 'Internal server error', _dbg: msg.slice(0, 200) }, { status: 500 });
   }
 }
