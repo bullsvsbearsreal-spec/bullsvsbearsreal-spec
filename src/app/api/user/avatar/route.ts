@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
 
     const blob = await put(pathname, file, {
       access: 'public',
-      addRandomSuffix: false, // deterministic path per user
+      addRandomSuffix: false,
+      allowOverwrite: true,
       contentType: file.type,
     });
 
