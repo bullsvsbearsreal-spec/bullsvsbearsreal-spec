@@ -21,16 +21,41 @@ export async function POST() {
     }
     const apiKey = process.env.ADMIN_API_KEY || '';
 
-    const res = await fetch(`${baseUrl}/api/health`, {
-      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-      signal: AbortSignal.timeout(28000),
-    });
-
     let healthResult;
-    try {
-      healthResult = await res.json();
-    } catch {
-      healthResult = { status: 'error', error: `Health API returned ${res.status}`, timestamp: Date.now() };
+
+    // Try the full health endpoint first (requires ADMIN_API_KEY)
+    if (apiKey) {
+      try {
+        const res = await fetch(`${baseUrl}/api/health`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal: AbortSignal.timeout(25000),
+        });
+        healthResult = await res.json().catch(() => null);
+      } catch {
+        healthResult = null;
+      }
+    }
+
+    // Fallback: quick health check by pinging the funding API directly
+    if (!healthResult || !healthResult.status) {
+      try {
+        const fundingRes = await fetch(`${baseUrl}/api/funding`, { signal: AbortSignal.timeout(15000) });
+        if (fundingRes.ok) {
+          const fj = await fundingRes.json();
+          const activeExchanges = fj.health?.filter((h: any) => h.status === 'ok').length ?? 0;
+          const totalExchanges = fj.health?.length ?? 0;
+          const ratio = totalExchanges > 0 ? activeExchanges / totalExchanges : 0;
+          healthResult = {
+            status: ratio >= 0.8 ? 'healthy' : ratio >= 0.5 ? 'degraded' : 'down',
+            errors: fj.health?.filter((h: any) => h.status === 'error').map((h: any) => ({ exchange: h.name, error: h.error || 'Error' })) || [],
+            lastUpdate: new Date().toISOString(),
+          };
+        } else {
+          healthResult = { status: 'degraded', errors: [{ exchange: 'system', error: `Funding API returned ${fundingRes.status}` }], lastUpdate: new Date().toISOString() };
+        }
+      } catch {
+        healthResult = { status: 'degraded', errors: [{ exchange: 'system', error: 'Could not reach APIs' }], lastUpdate: new Date().toISOString() };
+      }
     }
 
     await recordAuditEvent('health_check', {

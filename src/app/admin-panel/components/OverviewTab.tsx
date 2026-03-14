@@ -35,27 +35,36 @@ export default function OverviewTab({ onNavigate }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  const statusColor = !health
+  // Normalize status — the health API returns 'healthy'|'degraded'|'down',
+  // but errors/timeouts produce 'error'|'unknown' which should show as degraded, not down
+  const rawStatus = health?.status;
+  const normalizedStatus = !rawStatus ? null
+    : rawStatus === 'healthy' ? 'healthy'
+    : rawStatus === 'degraded' ? 'degraded'
+    : rawStatus === 'down' ? 'down'
+    : 'degraded'; // 'error', 'unknown', etc. → degraded (not System Down)
+
+  const statusColor = !normalizedStatus
     ? 'border-neutral-700 bg-neutral-800/50'
-    : health.status === 'healthy'
+    : normalizedStatus === 'healthy'
     ? 'border-emerald-500/30 bg-emerald-500/10'
-    : health.status === 'degraded'
+    : normalizedStatus === 'degraded'
     ? 'border-amber-500/30 bg-amber-500/10'
     : 'border-red-500/30 bg-red-500/10';
 
-  const statusText = !health
+  const statusText = !normalizedStatus
     ? 'Checking...'
-    : health.status === 'healthy'
+    : normalizedStatus === 'healthy'
     ? 'All Systems Operational'
-    : health.status === 'degraded'
-    ? 'Degraded Performance'
+    : normalizedStatus === 'degraded'
+    ? (rawStatus === 'error' || rawStatus === 'unknown' ? 'Health Check Unavailable' : 'Degraded Performance')
     : 'System Down';
 
-  const statusDot = !health
+  const statusDot = !normalizedStatus
     ? 'bg-neutral-500'
-    : health.status === 'healthy'
+    : normalizedStatus === 'healthy'
     ? 'bg-emerald-400'
-    : health.status === 'degraded'
+    : normalizedStatus === 'degraded'
     ? 'bg-amber-400'
     : 'bg-red-400';
 
@@ -66,7 +75,7 @@ export default function OverviewTab({ onNavigate }: Props) {
     <div className="space-y-4">
       {/* System status banner */}
       <div className={`rounded-lg border p-3 flex items-center gap-3 ${statusColor}`}>
-        <div className={`w-2.5 h-2.5 rounded-full ${statusDot} ${health?.status !== 'healthy' ? 'animate-pulse' : ''}`} />
+        <div className={`w-2.5 h-2.5 rounded-full ${statusDot} ${normalizedStatus !== 'healthy' ? 'animate-pulse' : ''}`} />
         <span className="text-sm font-medium text-white">{statusText}</span>
         {health?.lastUpdate && (
           <span className="ml-auto text-[10px] text-neutral-500">
