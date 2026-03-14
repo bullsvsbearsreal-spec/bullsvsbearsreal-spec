@@ -6,7 +6,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import {
   ArrowUpDown, ArrowUp, ArrowDown, Search, X, Filter,
   ArrowRightLeft, AlertTriangle, Clock, Wifi, WifiOff,
-  ChevronDown, ChevronUp, Info, Zap,
+  ChevronDown, ChevronUp, Info, Zap, Calculator, DollarSign,
 } from 'lucide-react';
 import Pagination from './Pagination';
 import { getExchangeTradeUrl, EXCHANGE_FEES } from '@/lib/constants';
@@ -94,6 +94,8 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
   const [minVolume, setMinVolume] = useState(false);
   const [minSpread, setMinSpread] = useState<'all' | '0.1' | '0.5' | '1'>('all');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [tradeSize, setTradeSize] = useState(1000);
+  const [showSimulator, setShowSimulator] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
@@ -281,6 +283,23 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
     return '';
   };
 
+  /** Calculate profit breakdown for a given trade size */
+  const calcProfit = useCallback((entry: SpotArbEntry, size: number) => {
+    const buyTotal = size; // spend this much buying
+    const buyFeeUsd = buyTotal * (entry.buyFee / 100);
+    const coinsBought = (buyTotal - buyFeeUsd) / entry.buyPrice;
+    const wdFeeCoins = entry.withdrawal.feeUsd / entry.buyPrice; // approximate WD fee in coins
+    const coinsArrived = Math.max(0, coinsBought - wdFeeCoins);
+    const sellRevenue = coinsArrived * entry.sellPrice;
+    const sellFeeUsd = sellRevenue * (entry.sellFee / 100);
+    const netRevenue = sellRevenue - sellFeeUsd;
+    const netProfit = netRevenue - buyTotal;
+    const netProfitPct = (netProfit / buyTotal) * 100;
+    return { buyTotal, buyFeeUsd, coinsBought, wdFeeCoins, coinsArrived, sellRevenue, sellFeeUsd, netRevenue, netProfit, netProfitPct };
+  }, []);
+
+  const TRADE_PRESETS = [100, 250, 500, 1000, 2500, 5000, 10000];
+
   const secondsAgo = Math.floor((Date.now() - lastRefresh) / 1000);
 
   return (
@@ -372,6 +391,64 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
           <span className="text-[10px] text-neutral-600 font-mono">
             {filtered.length}{search || minVolume || minSpread !== 'all' ? `/${entries.length}` : ''} results
           </span>
+        )}
+      </div>
+
+      {/* Profit Simulator */}
+      <div className="rounded-lg overflow-hidden" style={{ background: 'rgba(255,165,0,0.03)', border: '1px solid rgba(255,165,0,0.10)' }}>
+        <button
+          onClick={() => setShowSimulator(!showSimulator)}
+          className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/[0.02] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Calculator className="w-3.5 h-3.5 text-hub-yellow" />
+            <span className="text-[11px] font-semibold text-hub-yellow/90 uppercase tracking-wider">Profit Simulator</span>
+            <span className="text-[10px] text-neutral-500 font-mono">${tradeSize.toLocaleString()}</span>
+          </div>
+          {showSimulator ? <ChevronUp className="w-3.5 h-3.5 text-neutral-500" /> : <ChevronDown className="w-3.5 h-3.5 text-neutral-500" />}
+        </button>
+        {showSimulator && (
+          <div className="px-3 pb-3 space-y-2.5 border-t border-white/[0.04]">
+            <div className="pt-2.5 flex items-center gap-3">
+              <DollarSign className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+              <input
+                type="range"
+                min={50}
+                max={50000}
+                step={50}
+                value={tradeSize}
+                onChange={e => setTradeSize(Number(e.target.value))}
+                className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{ background: `linear-gradient(to right, rgba(255,165,0,0.5) ${((tradeSize - 50) / (50000 - 50)) * 100}%, rgba(255,255,255,0.08) ${((tradeSize - 50) / (50000 - 50)) * 100}%)` }}
+              />
+              <input
+                type="number"
+                value={tradeSize}
+                onChange={e => { const v = Number(e.target.value); if (v >= 1 && v <= 1000000) setTradeSize(v); }}
+                className="w-20 px-2 py-1 rounded text-[12px] text-white font-mono text-right outline-none focus:ring-1 focus:ring-hub-yellow/40"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {TRADE_PRESETS.map(p => (
+                <button
+                  key={p}
+                  onClick={() => setTradeSize(p)}
+                  className={`px-2.5 py-1 rounded text-[10px] font-semibold font-mono transition-all ${
+                    tradeSize === p
+                      ? 'bg-hub-yellow text-black'
+                      : 'text-neutral-500 hover:text-white hover:bg-white/[0.06]'
+                  }`}
+                  style={tradeSize !== p ? { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' } : {}}
+                >
+                  ${p >= 1000 ? `${p / 1000}K` : p}
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] text-neutral-600">
+              All Net profit/loss values below update to reflect your trade size. Expand any row for a step-by-step breakdown.
+            </p>
+          </div>
         )}
       </div>
 
@@ -473,14 +550,16 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-right">
+                    {(() => { const sim = calcProfit(entry, tradeSize); return (
                     <div className="flex flex-col items-end">
-                      <span className={`font-mono tabular-nums font-bold ${entry.netAfterWdPct > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {entry.netAfterWdPct > 0 ? '+' : ''}{entry.netAfterWdPct.toFixed(3)}%
+                      <span className={`font-mono tabular-nums font-bold ${sim.netProfitPct > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {sim.netProfitPct > 0 ? '+' : ''}{sim.netProfitPct.toFixed(3)}%
                       </span>
-                      <span className={`text-[9px] font-mono ${entry.netAfterWdUsd > 0 ? 'text-green-400/60' : 'text-red-400/60'}`}>
-                        {entry.netAfterWdUsd > 0 ? '+' : ''}${entry.netAfterWdUsd.toFixed(2)}
+                      <span className={`text-[9px] font-mono ${sim.netProfit > 0 ? 'text-green-400/60' : 'text-red-400/60'}`}>
+                        {sim.netProfit > 0 ? '+' : ''}${sim.netProfit.toFixed(2)}
                       </span>
                     </div>
+                    ); })()}
                   </td>
                   <td className="px-3 py-2.5 text-center hidden md:table-cell">
                     <div className="flex flex-col items-center gap-0.5">
@@ -512,27 +591,32 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
                   <tr>
                     <td colSpan={11} className="px-3 pb-3 pt-0">
                       <div className="rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        {/* Fee breakdown */}
-                        <div className="px-3 py-2 flex flex-wrap items-center gap-4 border-b border-white/[0.04]">
-                          <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Fee Breakdown</span>
-                          <span className="text-[10px] text-neutral-400">
-                            Buy fee: <span className="text-white font-mono">{entry.buyFee.toFixed(2)}%</span> ({entry.buyExchange})
-                          </span>
-                          <span className="text-[10px] text-neutral-400">
-                            Sell fee: <span className="text-white font-mono">{entry.sellFee.toFixed(2)}%</span> ({entry.sellExchange})
-                          </span>
-                          <span className="text-[10px] text-neutral-400">
-                            WD fee: <span className="text-white font-mono">${entry.withdrawal.feeUsd.toFixed(2)}</span> ({entry.withdrawal.network})
-                          </span>
-                          <span className="text-[10px] text-neutral-400">
-                            Transfer: <span className="text-white font-mono">~{entry.withdrawal.confirmMins}min</span>
-                          </span>
-                          <span className="text-[10px] text-neutral-400">
-                            Net on $1K: <span className={`font-mono font-bold ${entry.netAfterWdUsd > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {entry.netAfterWdUsd > 0 ? '+' : ''}${entry.netAfterWdUsd.toFixed(2)}
-                            </span>
-                          </span>
+                        {/* Profit Simulator Breakdown */}
+                        {(() => { const sim = calcProfit(entry, tradeSize); return (
+                        <div className="border-b border-white/[0.04]">
+                          <div className="px-3 py-2 flex items-center gap-2 border-b border-white/[0.04]">
+                            <Calculator className="w-3 h-3 text-hub-yellow" />
+                            <span className="text-[10px] text-hub-yellow/80 font-semibold uppercase tracking-wider">Profit Simulator — ${tradeSize.toLocaleString()} Trade</span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-px" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                            {[
+                              { label: '1. Buy on ' + entry.buyExchange, value: `$${sim.buyTotal.toFixed(2)}`, sub: `${sim.coinsBought.toFixed(6)} ${entry.symbol}`, color: 'text-white' },
+                              { label: '2. Buy Fee (' + entry.buyFee.toFixed(2) + '%)', value: `-$${sim.buyFeeUsd.toFixed(2)}`, sub: entry.buyExchange, color: 'text-red-400' },
+                              { label: '3. Withdraw via ' + entry.withdrawal.network, value: `-$${entry.withdrawal.feeUsd.toFixed(2)}`, sub: `~${entry.withdrawal.confirmMins}min`, color: 'text-red-400' },
+                              { label: '4. Coins Arrive', value: `${sim.coinsArrived.toFixed(6)}`, sub: `${entry.symbol} on ${entry.sellExchange}`, color: 'text-white' },
+                              { label: '5. Sell Revenue', value: `$${sim.sellRevenue.toFixed(2)}`, sub: `@ ${formatPrice(entry.sellPrice)}`, color: 'text-white' },
+                              { label: '6. Sell Fee (' + entry.sellFee.toFixed(2) + '%)', value: `-$${sim.sellFeeUsd.toFixed(2)}`, sub: entry.sellExchange, color: 'text-red-400' },
+                              { label: '7. Net Profit', value: `${sim.netProfit > 0 ? '+' : ''}$${sim.netProfit.toFixed(2)}`, sub: `${sim.netProfitPct > 0 ? '+' : ''}${sim.netProfitPct.toFixed(3)}%`, color: sim.netProfit > 0 ? 'text-green-400' : 'text-red-400' },
+                            ].map((step, i) => (
+                              <div key={i} className="px-3 py-2" style={{ background: i === 6 ? (sim.netProfit > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)') : 'rgba(10,10,10,0.6)' }}>
+                                <div className="text-[9px] text-neutral-500 truncate">{step.label}</div>
+                                <div className={`text-[12px] font-mono font-bold ${step.color}`}>{step.value}</div>
+                                <div className="text-[8px] text-neutral-600 truncate">{step.sub}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
+                        ); })()}
                         {/* All exchange prices */}
                         <div className="px-3 py-2 border-b border-white/[0.04]">
                           <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">All prices ({entry.allPrices.length} exchanges)</span>
@@ -609,9 +693,11 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
                     <div className={`font-mono tabular-nums font-bold text-[13px] ${spreadColor(entry.spreadPct)}`}>
                       +{entry.spreadPct.toFixed(3)}%
                     </div>
-                    <div className={`font-mono tabular-nums text-[10px] ${entry.netAfterWdPct > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      Net: {entry.netAfterWdPct > 0 ? '+' : ''}{entry.netAfterWdPct.toFixed(3)}%
+                    {(() => { const sim = calcProfit(entry, tradeSize); return (
+                    <div className={`font-mono tabular-nums text-[10px] ${sim.netProfitPct > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      Net: {sim.netProfitPct > 0 ? '+' : ''}{sim.netProfitPct.toFixed(3)}% ({sim.netProfit > 0 ? '+' : ''}${sim.netProfit.toFixed(2)})
                     </div>
+                    ); })()}
                   </div>
                   {volumeIcon(entry.volumeLevel)}
                 </div>
@@ -656,12 +742,20 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
               {/* Expanded details */}
               {isExpanded && (
                 <div className="border-t border-white/[0.04]">
-                  <div className="px-3 py-2 flex flex-wrap gap-3 text-[9px] text-neutral-400 border-b border-white/[0.04]">
-                    <span>Buy: <span className="text-white">{entry.buyFee.toFixed(2)}%</span></span>
-                    <span>Sell: <span className="text-white">{entry.sellFee.toFixed(2)}%</span></span>
-                    <span>WD: <span className="text-white">${entry.withdrawal.feeUsd.toFixed(2)}</span></span>
-                    <span>Net/1K: <span className={entry.netAfterWdUsd > 0 ? 'text-green-400' : 'text-red-400'}>${entry.netAfterWdUsd.toFixed(2)}</span></span>
+                  {(() => { const sim = calcProfit(entry, tradeSize); return (
+                  <div className="px-3 py-2 border-b border-white/[0.04]">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Calculator className="w-3 h-3 text-hub-yellow" />
+                      <span className="text-[9px] text-hub-yellow/70 font-semibold uppercase tracking-wider">${tradeSize.toLocaleString()} Trade</span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-[9px] text-neutral-400">
+                      <span>Buy fee: <span className="text-red-400 font-mono">-${sim.buyFeeUsd.toFixed(2)}</span></span>
+                      <span>WD: <span className="text-red-400 font-mono">-${entry.withdrawal.feeUsd.toFixed(2)}</span></span>
+                      <span>Sell fee: <span className="text-red-400 font-mono">-${sim.sellFeeUsd.toFixed(2)}</span></span>
+                      <span>Profit: <span className={`font-mono font-bold ${sim.netProfit > 0 ? 'text-green-400' : 'text-red-400'}`}>{sim.netProfit > 0 ? '+' : ''}${sim.netProfit.toFixed(2)}</span></span>
+                    </div>
                   </div>
+                  ); })()}
                   <div className="grid grid-cols-2 gap-px" style={{ background: 'rgba(255,255,255,0.04)' }}>
                     {entry.allPrices.map(p => {
                       const isBuy = p.exchange === entry.buyExchange;
@@ -711,9 +805,9 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
       <p className="text-[10px] text-neutral-700 leading-relaxed px-1">
         Spot arbitrage across 15 CEX exchanges with real taker fees and withdrawal costs.{' '}
         <span className="text-green-400/60 font-medium">Spread</span> = price difference.{' '}
-        <span className="text-green-400/60 font-medium">Net</span> = spread minus buy fee + sell fee + withdrawal fee (on $1K trade).{' '}
+        <span className="text-green-400/60 font-medium">Net</span> = spread minus buy fee + sell fee + withdrawal fee (on ${tradeSize.toLocaleString()} trade).{' '}
         <span className="text-yellow-400/60"><AlertTriangle className="w-2.5 h-2.5 inline" /></span> = low liquidity warning.{' '}
-        Click exchange count to see all prices, fees (Taker/Maker), and cost breakdown.
+        Use the <span className="text-hub-yellow/60 font-medium">Profit Simulator</span> to set your trade size. Click exchange count for step-by-step breakdown.
       </p>
     </div>
   );
