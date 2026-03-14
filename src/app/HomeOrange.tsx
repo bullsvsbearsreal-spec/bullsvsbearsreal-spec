@@ -71,11 +71,15 @@ export default function HomeOrange() {
   const dexExchanges = ALL_EXCHANGES.filter(e => isExchangeDex(e));
   // Before health data loads, assume all exchanges are active (they usually are)
   const healthLoaded = exchangeHealth.length > 0;
+  const isExchangeActive = (name: string) => {
+    const h = exchangeHealth.find(x => x.name === name);
+    return h?.status === 'ok';
+  };
   const activeCex = healthLoaded
-    ? cexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length
+    ? cexExchanges.filter(isExchangeActive).length
     : cexExchanges.length;
   const activeDex = healthLoaded
-    ? dexExchanges.filter(e => exchangeHealth.find(h => h.name === e)?.status === 'ok').length
+    ? dexExchanges.filter(isExchangeActive).length
     : dexExchanges.length;
 
   const quickLinks = [
@@ -319,8 +323,8 @@ export default function HomeOrange() {
                 <span className="text-neutral-500">Active</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-                <span className="text-neutral-500">Empty</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                <span className="text-neutral-500">Recovering</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-red-500/60" />
@@ -338,6 +342,14 @@ export default function HomeOrange() {
                 <span className="text-[10px] font-mono text-neutral-500 bg-white/[0.04] px-1.5 py-0.5 rounded">
                   {activeCex + activeDex}/{ALL_EXCHANGES.length} online
                 </span>
+                {healthLoaded && (() => {
+                  const cbCount = exchangeHealth.filter(h => h.status === 'circuit-open').length;
+                  return cbCount > 0 ? (
+                    <span className="text-[10px] font-mono text-orange-500/70 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                      {cbCount} recovering
+                    </span>
+                  ) : null;
+                })()}
               </div>
             </div>
 
@@ -357,27 +369,33 @@ export default function HomeOrange() {
                     const health = exchangeHealth.find(h => h.name === exchange);
                     const isActive = health?.status === 'ok' || !healthLoaded;
                     const isEmpty = healthLoaded && health?.status === 'empty';
+                    const isCircuitOpen = healthLoaded && health?.status === 'circuit-open';
                     return (
                       <div
                         key={exchange}
                         className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-all duration-200 ${
                           isActive
                             ? 'bg-green-500/5 border border-green-500/15 hover:border-green-500/30'
-                            : isEmpty
-                              ? 'bg-yellow-500/5 border border-yellow-500/15'
-                              : health
-                                ? 'bg-red-500/5 border border-red-500/15'
-                                : 'bg-white/[0.02] border border-white/[0.04]'
+                            : isCircuitOpen
+                              ? 'bg-orange-500/5 border border-orange-500/15'
+                              : isEmpty
+                                ? 'bg-yellow-500/5 border border-yellow-500/15'
+                                : health
+                                  ? 'bg-red-500/5 border border-red-500/15'
+                                  : 'bg-white/[0.02] border border-white/[0.04]'
                         }`}
-                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${health.error ? ` · ${health.error}` : ''}` : exchange}
+                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
-                          isActive ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
+                          isActive ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : isCircuitOpen ? 'bg-orange-500 animate-pulse' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
                         }`} />
                         <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
-                        <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : 'text-neutral-600'}`}>{exchange}</span>
+                        <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : isCircuitOpen ? 'text-neutral-500' : 'text-neutral-600'}`}>{exchange}</span>
                         {isActive && health && (
                           <span className="text-[9px] text-green-500/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
+                        )}
+                        {isCircuitOpen && (
+                          <span className="text-[9px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
                         )}
                       </div>
                     );
@@ -403,27 +421,33 @@ export default function HomeOrange() {
                     const health = exchangeHealth.find(h => h.name === exchange);
                     const isActive = health?.status === 'ok' || !healthLoaded;
                     const isEmpty = healthLoaded && health?.status === 'empty';
+                    const isCircuitOpen = healthLoaded && health?.status === 'circuit-open';
                     return (
                       <div
                         key={exchange}
                         className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-all duration-200 ${
                           isActive
                             ? 'bg-purple-500/5 border border-purple-500/15 hover:border-purple-500/30'
-                            : isEmpty
-                              ? 'bg-yellow-500/5 border border-yellow-500/15'
-                              : health
-                                ? 'bg-red-500/5 border border-red-500/15'
-                                : 'bg-white/[0.02] border border-white/[0.04]'
+                            : isCircuitOpen
+                              ? 'bg-orange-500/5 border border-orange-500/15'
+                              : isEmpty
+                                ? 'bg-yellow-500/5 border border-yellow-500/15'
+                                : health
+                                  ? 'bg-red-500/5 border border-red-500/15'
+                                  : 'bg-white/[0.02] border border-white/[0.04]'
                         }`}
-                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${health.error ? ` · ${health.error}` : ''}` : exchange}
+                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
-                          isActive ? 'bg-purple-500 shadow-[0_0_4px_rgba(168,85,247,0.4)]' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
+                          isActive ? 'bg-purple-500 shadow-[0_0_4px_rgba(168,85,247,0.4)]' : isCircuitOpen ? 'bg-orange-500 animate-pulse' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
                         }`} />
                         <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
-                        <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : 'text-neutral-600'}`}>{exchange}</span>
+                        <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : isCircuitOpen ? 'text-neutral-500' : 'text-neutral-600'}`}>{exchange}</span>
                         {isActive && health && (
                           <span className="text-[9px] text-purple-400/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
+                        )}
+                        {isCircuitOpen && (
+                          <span className="text-[9px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
                         )}
                       </div>
                     );

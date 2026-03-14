@@ -4,7 +4,7 @@ import { revokeApiKey, initDB } from '@/lib/db';
 import { clearApiKeyCache } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 /**

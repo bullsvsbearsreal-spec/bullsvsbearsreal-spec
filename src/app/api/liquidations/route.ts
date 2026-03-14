@@ -11,7 +11,7 @@ import { fetchWithTimeout } from '../_shared/fetch';
 import { LiquidationsQuerySchema } from '@/lib/validation/schemas';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 // L1 in-memory cache (30s TTL)
@@ -52,7 +52,8 @@ export async function GET(request: NextRequest) {
     const instId = `${symbol}-USDT-SWAP`;
     const uly = `${symbol}-USDT`;
     const res = await fetchWithTimeout(
-      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instId=${instId}&uly=${uly}&state=filled&limit=${limit}`
+      `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instId=${instId}&uly=${uly}&state=filled&limit=${limit}`,
+      {}, 10000,
     );
 
     if (!res.ok) {
@@ -96,8 +97,16 @@ export async function GET(request: NextRequest) {
 
     cache.set(cacheKey, { body, ts: Date.now() });
     if (cache.size > 100) {
-      const keys = Array.from(cache.keys()).slice(0, 25);
-      for (const k of keys) cache.delete(k);
+      // Evict expired entries first
+      const now = Date.now();
+      cache.forEach((v, k) => { if (now - v.ts > CACHE_TTL) cache.delete(k); });
+      // If still over limit, evict oldest entries
+      if (cache.size > 100) {
+        const entries: [string, { body: any; ts: number }][] = [];
+        cache.forEach((v, k) => entries.push([k, v]));
+        entries.sort((a, b) => a[1].ts - b[1].ts);
+        entries.slice(0, 25).forEach(([k]) => cache.delete(k));
+      }
     }
 
     return NextResponse.json(body, {

@@ -54,10 +54,7 @@ function filterByAssetClass(
 
   if (assetClass === 'all') {
     return dataWithPrices.filter(r => {
-      if (!r.assetClass || r.assetClass === 'crypto') {
-        return r.type === 'dex' || isAllowed(r.symbol);
-      }
-      return true;
+      return r.type === 'dex' || isAllowed(r.symbol);
     });
   } else if (assetClass === 'crypto') {
     return dataWithPrices.filter(r => {

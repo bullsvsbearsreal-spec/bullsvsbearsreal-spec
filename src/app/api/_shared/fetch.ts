@@ -10,6 +10,7 @@ const STOCK_SUFFIX_SYMBOLS = new Set([
   'MSFTX', 'TSLAX', 'COINX', 'HOODDX', 'ARMX', 'INTCX', 'PLTRX', 'MRVLX',
 ]);
 export function isCryptoSymbol(symbol: string): boolean {
+  if (!symbol) return false;
   if (STOCK_SYMBOL_PATTERNS.test(symbol)) return false;
   if (STOCK_SUFFIX_SYMBOLS.has(symbol)) return false;
   return true;
@@ -82,8 +83,11 @@ export async function getTop500Symbols(): Promise<Set<string>> {
       }
     }
     return symbols;
-  } catch {
+  } catch (err) {
     // On failure, return cached data if available, otherwise allow all
+    if (!top500Cache) {
+      console.warn('[CMC] Top500 fetch failed with no cache — all symbols will pass filter:', err instanceof Error ? err.message : err);
+    }
     return top500Cache?.symbols ?? new Set<string>();
   }
 }

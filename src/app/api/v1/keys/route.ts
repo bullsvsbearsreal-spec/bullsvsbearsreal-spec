@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { createApiKey, listApiKeys, countUserApiKeys, initDB } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 const MAX_KEYS_PER_USER = 5;
@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
     if (body.name && typeof body.name === 'string') {
       name = body.name.slice(0, 50);
     }
-  } catch {}
+  } catch (e) {
+    console.warn('API key body parse failed:', e instanceof Error ? e.message : e);
+  }
 
   const result = await createApiKey(session.user.id, name);
 

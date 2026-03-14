@@ -3,7 +3,7 @@ import { authenticateV1Request } from '@/lib/api/v1-auth';
 import { getFundingData } from '../../_shared/funding-core';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
@@ -23,11 +23,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const symbolFilter = searchParams.get('symbols')?.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
   const exchangeFilter = searchParams.get('exchanges')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  const assetClass = searchParams.get('assetClass') || 'crypto';
+  const VALID_ASSET_CLASSES = ['crypto', 'stocks', 'forex', 'commodities', 'all'] as const;
+  const rawAssetClass = searchParams.get('assetClass') || 'crypto';
+  const assetClass = (VALID_ASSET_CLASSES as readonly string[]).includes(rawAssetClass) ? rawAssetClass as typeof VALID_ASSET_CLASSES[number] : 'crypto';
 
   try {
     // Call shared funding data module directly (no self-referential HTTP)
-    const fundingResult = await getFundingData(assetClass as any);
+    const fundingResult = await getFundingData(assetClass);
 
     if (!fundingResult) {
       return NextResponse.json(

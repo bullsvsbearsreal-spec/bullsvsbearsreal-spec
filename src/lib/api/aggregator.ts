@@ -599,7 +599,7 @@ export async function fetchArbHistory(symbols: string[]): Promise<Map<string, Ar
 // Fetch exchange health status from the funding API
 export interface ExchangeHealthInfo {
   name: string;
-  status: 'ok' | 'error' | 'empty';
+  status: 'ok' | 'error' | 'empty' | 'circuit-open';
   count: number;
   latencyMs: number;
   error?: string;
@@ -617,7 +617,18 @@ export async function fetchExchangeHealth(): Promise<{
     if (!response.ok) throw new Error('Failed to fetch');
     const json = await response.json();
     if (json.health && json.meta) {
-      const result = { funding: json.health, meta: json.meta };
+      // Deduplicate health entries by exchange name — keep best status (ok > empty > circuit-open > error)
+      const byName = new Map<string, ExchangeHealthInfo>();
+      const statusRank: Record<string, number> = { ok: 3, empty: 2, 'circuit-open': 1, error: 0 };
+      for (const h of json.health as ExchangeHealthInfo[]) {
+        const existing = byName.get(h.name);
+        if (!existing || (statusRank[h.status] ?? 0) > (statusRank[existing.status] ?? 0)) {
+          byName.set(h.name, h);
+        }
+      }
+      const deduped: ExchangeHealthInfo[] = [];
+      byName.forEach((v) => deduped.push(v));
+      const result = { funding: deduped, meta: json.meta };
       setCache('exchangeHealth', result);
       return result;
     }

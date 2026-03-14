@@ -22,17 +22,25 @@ type FundingData = {
 };
 
 export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
-  // Binance — geo-blocked from Vercel dxb1 (451). Route through CF Worker proxy with Smart Placement.
+  // Binance — geo-blocked from some Vercel regions. Try direct → fallback domain → proxy.
   {
     name: 'Binance',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      const targetUrl = 'https://fapi.binance.com/fapi/v1/premiumIndex';
-      const url = proxyUrl
-        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
-        : targetUrl;
-      const res = await fetchFn(url, {}, 12000);
-      if (!res.ok) return [];
+      const urls = [
+        'https://fapi.binance.com/fapi/v1/premiumIndex',
+        'https://fapi.binance.me/fapi/v1/premiumIndex',
+        ...(proxyUrl ? [`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent('https://fapi.binance.com/fapi/v1/premiumIndex')}`] : []),
+      ];
+      let res: Response | null = null;
+      for (const url of urls) {
+        try {
+          res = await fetchFn(url, {}, 8000);
+          if (res.ok) break;
+          res = null;
+        } catch { res = null; }
+      }
+      if (!res || !res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
@@ -56,13 +64,21 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     name: 'Binance',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      const targetUrl = 'https://dapi.binance.com/dapi/v1/premiumIndex';
-      const url = proxyUrl
-        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
-        : targetUrl;
+      const urls = [
+        'https://dapi.binance.com/dapi/v1/premiumIndex',
+        'https://dapi.binance.me/dapi/v1/premiumIndex',
+        ...(proxyUrl ? [`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent('https://dapi.binance.com/dapi/v1/premiumIndex')}`] : []),
+      ];
       try {
-        const res = await fetchFn(url, {}, 12000);
-        if (!res.ok) return [];
+        let res: Response | null = null;
+        for (const url of urls) {
+          try {
+            res = await fetchFn(url, {}, 8000);
+            if (res.ok) break;
+            res = null;
+          } catch { res = null; }
+        }
+        if (!res || !res.ok) return [];
         const data = await res.json();
         if (!Array.isArray(data)) return [];
         return data
@@ -85,17 +101,25 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Bybit — geo-blocked from Vercel dxb1 (403). Route through CF Worker proxy with Smart Placement.
+  // Bybit — geo-blocked from some Vercel regions. Try direct → fallback domain → proxy.
   {
     name: 'Bybit',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      const targetUrl = 'https://api.bybit.com/v5/market/tickers?category=linear';
-      const url = proxyUrl
-        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
-        : targetUrl;
-      const res = await fetchFn(url, {}, 12000);
-      if (!res.ok) return [];
+      const urls = [
+        'https://api.bybit.com/v5/market/tickers?category=linear',
+        'https://api.bytick.com/v5/market/tickers?category=linear',
+        ...(proxyUrl ? [`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent('https://api.bybit.com/v5/market/tickers?category=linear')}`] : []),
+      ];
+      let res: Response | null = null;
+      for (const url of urls) {
+        try {
+          res = await fetchFn(url, {}, 8000);
+          if (res.ok) break;
+          res = null;
+        } catch { res = null; }
+      }
+      if (!res || !res.ok) return [];
       const json = await res.json();
       if (json.retCode !== 0) return [];
       return json.result.list
