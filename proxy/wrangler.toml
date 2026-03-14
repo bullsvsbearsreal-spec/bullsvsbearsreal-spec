@@ -1,0 +1,7 @@
+name = "infohub-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Optional: set PROXY_TOKEN in Cloudflare dashboard for auth
+# [vars]
+# PROXY_TOKEN = "your-secret-token"

@@ -10,7 +10,7 @@ import { exchangeColors, ExchangeLogo } from '@/components/ExchangeLogos';
 
 // ── Types ──
 
-type TimeRange = '1d' | '3d' | '7d';
+type TimeRange = '1d' | '3d' | '7d' | '30d';
 type ChartMode = 'funding' | 'price';
 
 interface HistoryPoint { t: number; rate: number }
@@ -51,8 +51,8 @@ interface PriceGapStats {
 // ── Constants ──
 
 const POPULAR_SYMBOLS = ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP', 'PEPE', 'SUI', 'ARB', 'HYPE', 'WIF'];
-const TIME_RANGES: TimeRange[] = ['1d', '3d', '7d'];
-const DAYS_MAP: Record<TimeRange, number> = { '1d': 1, '3d': 3, '7d': 7 };
+const TIME_RANGES: TimeRange[] = ['1d', '3d', '7d', '30d'];
+const DAYS_MAP: Record<TimeRange, number> = { '1d': 1, '3d': 3, '7d': 7, '30d': 30 };
 
 function getExColor(exchange: string): string {
   return exchangeColors[exchange.toLowerCase()] || exchangeColors[exchange.toLowerCase().replace(/[. ]/g, '')] || '#888';
@@ -268,6 +268,7 @@ export default function FundingSpreadComparison() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [positionSize, setPositionSize] = useState<string>('');
+  const [sizeUnit, setSizeUnit] = useState<'usd' | 'coin'>('usd');
   const [showCalc, setShowCalc] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -284,10 +285,12 @@ export default function FundingSpreadComparison() {
   const fetchData = useCallback(async (sym: string) => {
     setLoading(true);
     setError(null);
+    setRawData({});
+    setPriceData({});
     try {
       const [fundingRes, priceRes] = await Promise.all([
-        fetch(`/api/history/funding-multi?symbol=${sym}&days=7`),
-        fetch(`/api/history/price-multi?symbol=${sym}&days=7`),
+        fetch(`/api/history/funding-multi?symbol=${sym}&days=30`),
+        fetch(`/api/history/price-multi?symbol=${sym}&days=30`),
       ]);
       if (!fundingRes.ok) {
         const body = await fundingRes.json().catch(() => ({}));
@@ -389,33 +392,61 @@ export default function FundingSpreadComparison() {
     return { chartData: points, stats: st };
   }, [rawData, exchangeA, exchangeB, timeRange]);
 
-  // Build price gap chart data
-  const { priceChartData, priceGapStats } = useMemo(() => {
+  // Build price gap chart data + multi-window averages
+  const { priceChartData, priceGapStats, gapAverages } = useMemo(() => {
     if (!exchangeA || !exchangeB || !priceData[exchangeA] || !priceData[exchangeB]) {
-      return { priceChartData: [], priceGapStats: null };
+      return { priceChartData: [], priceGapStats: null, gapAverages: null };
     }
 
-    const cutoff = Date.now() - DAYS_MAP[timeRange] * 86400000;
+    const now = Date.now();
     const BUCKET_MS = 30 * 60 * 1000;
     const round = (t: number) => Math.round(t / BUCKET_MS) * BUCKET_MS;
 
+    // Build full maps from all data (up to 30d)
     const mapA = new Map<number, number>();
-    for (const p of priceData[exchangeA]) {
-      if (p.t >= cutoff) mapA.set(round(p.t), p.price);
-    }
+    for (const p of priceData[exchangeA]) mapA.set(round(p.t), p.price);
     const mapB = new Map<number, number>();
-    for (const p of priceData[exchangeB]) {
-      if (p.t >= cutoff) mapB.set(round(p.t), p.price);
-    }
+    for (const p of priceData[exchangeB]) mapB.set(round(p.t), p.price);
 
     const allTimes = new Set([...Array.from(mapA.keys()), ...Array.from(mapB.keys())]);
     const sorted = Array.from(allTimes).sort((a, b) => a - b);
 
+    // Compute gaps for all available data
+    const allGaps: { t: number; gap: number; pct: number }[] = [];
+    for (const t of sorted) {
+      const a = mapA.get(t) ?? null;
+      const b = mapB.get(t) ?? null;
+      if (a != null && b != null) {
+        const gap = a - b;
+        const avgPrice = (a + b) / 2;
+        allGaps.push({ t, gap, pct: avgPrice > 0 ? (gap / avgPrice) * 100 : 0 });
+      }
+    }
+
+    // Compute 1D/7D/30D averages from full data
+    const avgForWindow = (days: number) => {
+      const cutoff = now - days * 86400000;
+      const windowGaps = allGaps.filter(g => g.t >= cutoff);
+      if (windowGaps.length === 0) return null;
+      const avgGap = windowGaps.reduce((s, g) => s + g.gap, 0) / windowGaps.length;
+      const avgPct = windowGaps.reduce((s, g) => s + g.pct, 0) / windowGaps.length;
+      return { avg: avgGap, avgPct, count: windowGaps.length };
+    };
+
+    const ga = {
+      d1: avgForWindow(1),
+      d7: avgForWindow(7),
+      d30: avgForWindow(30),
+    };
+
+    // Filter to selected time range for chart display
+    const cutoff = now - DAYS_MAP[timeRange] * 86400000;
     const points: PriceChartPoint[] = [];
     const gaps: number[] = [];
     const gapPcts: number[] = [];
 
     for (const t of sorted) {
+      if (t < cutoff) continue;
       const a = mapA.get(t) ?? null;
       const b = mapB.get(t) ?? null;
       const gap = a != null && b != null ? a - b : null;
@@ -439,10 +470,20 @@ export default function FundingSpreadComparison() {
         }
       : null;
 
-    return { priceChartData: points, priceGapStats: st };
+    return { priceChartData: points, priceGapStats: st, gapAverages: ga };
   }, [priceData, exchangeA, exchangeB, timeRange]);
 
   const hasPriceData = Object.keys(priceData).length > 0;
+
+  // Get current price for coin ↔ USD conversion
+  const currentPrice = useMemo(() => {
+    // Try to get latest price from either exchange
+    for (const ex of [exchangeA, exchangeB]) {
+      const arr = priceData[ex];
+      if (arr && arr.length > 0) return arr[arr.length - 1].price;
+    }
+    return null;
+  }, [priceData, exchangeA, exchangeB]);
 
   const swapExchanges = () => {
     setExchangeA(exchangeB);
@@ -453,6 +494,9 @@ export default function FundingSpreadComparison() {
     setSymbol(s);
     setSymbolSearch('');
     setShowSearch(false);
+    // Reset calculator state for new symbol
+    setPositionSize('');
+    setSizeUnit('usd');
   };
 
   const filteredSymbols = symbolSearch
@@ -603,28 +647,61 @@ export default function FundingSpreadComparison() {
 
       {/* Stats bar — Price Gap */}
       {chartMode === 'price' && priceGapStats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { label: 'Current Gap', value: priceGapStats.current, pct: priceGapStats.currentPct },
-            { label: `${timeRange} Avg Gap`, value: priceGapStats.mean, pct: priceGapStats.meanPct },
-            { label: 'Min Gap', value: priceGapStats.min, pct: null },
-            { label: 'Max Gap', value: priceGapStats.max, pct: null },
-          ].map(({ label, value, pct }) => (
-            <div key={label} className="bg-[#0d0d0d] border border-white/[0.06] rounded-lg px-3 py-2.5">
-              <p className="text-[10px] text-neutral-600 uppercase tracking-wide">{label}</p>
-              <p
-                className="text-sm font-mono font-bold mt-0.5"
-                style={{ color: value != null ? (value >= 0 ? '#FBBF24' : '#F97316') : '#555' }}
-              >
-                {value != null ? `${value >= 0 ? '+' : ''}$${Math.abs(value).toFixed(2)}` : '—'}
-              </p>
-              {pct != null && (
-                <p className="text-[10px] font-mono text-neutral-500 mt-0.5">
-                  {pct >= 0 ? '+' : ''}{pct.toFixed(3)}%
+        <div className="space-y-2">
+          {/* Current + Min/Max */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: 'Current Gap', value: priceGapStats.current, pct: priceGapStats.currentPct },
+              { label: `${timeRange} Avg Gap`, value: priceGapStats.mean, pct: priceGapStats.meanPct },
+              { label: 'Min Gap', value: priceGapStats.min, pct: null },
+              { label: 'Max Gap', value: priceGapStats.max, pct: null },
+            ].map(({ label, value, pct }) => (
+              <div key={label} className="bg-[#0d0d0d] border border-white/[0.06] rounded-lg px-3 py-2.5">
+                <p className="text-[10px] text-neutral-600 uppercase tracking-wide">{label}</p>
+                <p
+                  className="text-sm font-mono font-bold mt-0.5"
+                  style={{ color: value != null ? (value >= 0 ? '#FBBF24' : '#F97316') : '#555' }}
+                >
+                  {value != null ? `${value >= 0 ? '+' : ''}$${Math.abs(value).toFixed(2)}` : '—'}
                 </p>
-              )}
+                {pct != null && (
+                  <p className="text-[10px] font-mono text-neutral-500 mt-0.5">
+                    {pct >= 0 ? '+' : ''}{pct.toFixed(3)}%
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          {/* 1D / 7D / 30D Average Spread */}
+          {gapAverages && (
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { label: '1D Avg Spread', data: gapAverages.d1 },
+                { label: '7D Avg Spread', data: gapAverages.d7 },
+                { label: '30D Avg Spread', data: gapAverages.d30 },
+              ] as const).map(({ label, data }) => (
+                <div key={label} className="bg-[#0d0d0d] border border-white/[0.06] rounded-lg px-3 py-2.5">
+                  <p className="text-[10px] text-neutral-600 uppercase tracking-wide">{label}</p>
+                  {data ? (
+                    <>
+                      <p
+                        className="text-sm font-mono font-bold mt-0.5"
+                        style={{ color: data.avg >= 0 ? '#FBBF24' : '#F97316' }}
+                      >
+                        {data.avg >= 0 ? '+' : '-'}${Math.abs(data.avg).toFixed(2)}
+                      </p>
+                      <p className="text-[10px] font-mono text-neutral-500 mt-0.5">
+                        {data.avgPct >= 0 ? '+' : ''}{data.avgPct.toFixed(3)}%
+                        <span className="text-neutral-700 ml-1">({data.count} pts)</span>
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm font-mono text-neutral-700 mt-0.5">—</p>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -645,9 +722,15 @@ export default function FundingSpreadComparison() {
             <div className="px-4 pb-4 border-t border-white/[0.04]">
               <div className="flex flex-wrap items-end gap-3 mt-3">
                 <div className="flex-1 min-w-[180px]">
-                  <label className="text-[10px] text-neutral-600 uppercase tracking-wide mb-1 block">Position Size (USD)</label>
+                  <label className="text-[10px] text-neutral-600 uppercase tracking-wide mb-1 block">
+                    Position Size ({sizeUnit === 'usd' ? 'USD' : symbol})
+                  </label>
                   <div className="relative">
-                    <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
+                    {sizeUnit === 'usd' ? (
+                      <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
+                    ) : (
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono text-neutral-600">{symbol}</span>
+                    )}
                     <input
                       type="text"
                       inputMode="decimal"
@@ -656,33 +739,89 @@ export default function FundingSpreadComparison() {
                         const v = e.target.value.replace(/[^0-9.]/g, '');
                         setPositionSize(v);
                       }}
-                      placeholder="e.g. 10,000"
-                      className="w-full pl-7 pr-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white outline-none placeholder:text-neutral-700 focus:border-hub-yellow/30 transition-colors font-mono"
+                      placeholder={sizeUnit === 'usd' ? 'e.g. 10,000' : `e.g. 1`}
+                      className={`w-full pr-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white outline-none placeholder:text-neutral-700 focus:border-hub-yellow/30 transition-colors font-mono ${sizeUnit === 'usd' ? 'pl-7' : 'pl-12'}`}
                     />
                   </div>
+                  {/* Show conversion hint */}
+                  {currentPrice && positionSize && (
+                    <p className="text-[10px] text-neutral-600 mt-1 font-mono">
+                      {sizeUnit === 'usd'
+                        ? `= ${(parseFloat(positionSize) / currentPrice).toFixed(4)} ${symbol}`
+                        : `= $${(parseFloat(positionSize) * currentPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      }
+                    </p>
+                  )}
+                </div>
+                {/* USD / Coin toggle */}
+                <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+                  <button
+                    onClick={() => {
+                      if (sizeUnit === 'coin' && currentPrice && positionSize) {
+                        setPositionSize((parseFloat(positionSize) * currentPrice).toFixed(0));
+                      }
+                      setSizeUnit('usd');
+                    }}
+                    className={`px-3 py-2 text-[11px] font-medium transition-colors ${
+                      sizeUnit === 'usd' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'
+                    }`}
+                  >
+                    USD
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (sizeUnit === 'usd' && currentPrice && positionSize) {
+                        setPositionSize((parseFloat(positionSize) / currentPrice).toFixed(4));
+                      }
+                      setSizeUnit('coin');
+                    }}
+                    className={`px-3 py-2 text-[11px] font-medium transition-colors ${
+                      sizeUnit === 'coin' ? 'bg-hub-yellow text-black' : 'text-neutral-600 hover:text-white'
+                    }`}
+                  >
+                    {symbol}
+                  </button>
                 </div>
                 {/* Quick size buttons */}
-                <div className="flex gap-1.5">
-                  {['1000', '5000', '10000', '50000', '100000'].map(v => (
-                    <button
-                      key={v}
-                      onClick={() => setPositionSize(v)}
-                      className={`px-2 py-2 rounded-lg text-[11px] font-medium transition-colors ${
-                        positionSize === v
-                          ? 'bg-hub-yellow/10 text-hub-yellow border border-hub-yellow/20'
-                          : 'bg-white/[0.03] text-neutral-600 border border-white/[0.04] hover:text-neutral-300'
-                      }`}
-                    >
-                      {Number(v) >= 1000 ? `$${Number(v) / 1000}k` : `$${v}`}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-1.5">
+                  {sizeUnit === 'usd' ? (
+                    ['1000', '5000', '10000', '50000', '100000'].map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setPositionSize(v)}
+                        className={`px-2 py-2 rounded-lg text-[11px] font-medium transition-colors ${
+                          positionSize === v
+                            ? 'bg-hub-yellow/10 text-hub-yellow border border-hub-yellow/20'
+                            : 'bg-white/[0.03] text-neutral-600 border border-white/[0.04] hover:text-neutral-300'
+                        }`}
+                      >
+                        {Number(v) >= 1000 ? `$${Number(v) / 1000}k` : `$${v}`}
+                      </button>
+                    ))
+                  ) : (
+                    ['0.1', '0.5', '1', '5', '10'].map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setPositionSize(v)}
+                        className={`px-2 py-2 rounded-lg text-[11px] font-medium transition-colors ${
+                          positionSize === v
+                            ? 'bg-hub-yellow/10 text-hub-yellow border border-hub-yellow/20'
+                            : 'bg-white/[0.03] text-neutral-600 border border-white/[0.04] hover:text-neutral-300'
+                        }`}
+                      >
+                        {v} {symbol}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 
               {/* Results */}
               {(() => {
-                const size = parseFloat(positionSize);
-                if (!size || size <= 0) return null;
+                const rawSize = parseFloat(positionSize);
+                if (!rawSize || rawSize <= 0) return null;
+                // Convert to USD if in coin mode
+                const size = sizeUnit === 'coin' && currentPrice ? rawSize * currentPrice : rawSize;
                 const spreadPct = stats.current ?? 0;
                 const meanPct = stats.mean;
                 // Funding paid per period (hourly rates → per 8h period for context)
@@ -829,7 +968,7 @@ export default function FundingSpreadComparison() {
             </ResponsiveContainer>
 
             <p className="text-[10px] text-neutral-700 mt-2 text-center">
-              {stats?.count || 0} data points · 30-min resolution · up to 7 days history
+              {stats?.count || 0} data points · 30-min resolution · up to 30 days history
             </p>
           </>
         )}
@@ -922,7 +1061,7 @@ export default function FundingSpreadComparison() {
             </ResponsiveContainer>
 
             <p className="text-[10px] text-neutral-700 mt-2 text-center">
-              {priceGapStats?.count || 0} data points · 30-min resolution · up to 7 days history
+              {priceGapStats?.count || 0} data points · 30-min resolution · up to 30 days history
             </p>
           </>
         )}

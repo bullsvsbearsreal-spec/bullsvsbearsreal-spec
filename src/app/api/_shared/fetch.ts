@@ -38,6 +38,33 @@ export const commonHeaders = {
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
+// Proxy URL for CloudFlare-blocked exchanges (BitMEX, Gate.io)
+// Set PROXY_URL env var to a proxy service URL, e.g. "https://your-proxy.workers.dev"
+// The proxy should forward: GET {PROXY_URL}?url={encoded_target_url}
+const _rawProxyUrl = process.env.PROXY_URL || '';
+const PROXY_URL = _rawProxyUrl && _rawProxyUrl.startsWith('https://') ? _rawProxyUrl : '';
+if (_rawProxyUrl && !PROXY_URL) {
+  console.warn('[proxy] PROXY_URL ignored — must start with https://');
+}
+
+/** Domains that need proxying due to CloudFlare datacenter IP blocks */
+const PROXIED_DOMAINS = new Set([
+  'www.bitmex.com',
+  'api.gateio.ws',
+]);
+
+/** Rewrite a URL through the proxy if the domain is blocked and proxy is configured */
+export function maybeProxyUrl(url: string): string {
+  if (!PROXY_URL) return url;
+  try {
+    const { hostname } = new URL(url);
+    if (PROXIED_DOMAINS.has(hostname)) {
+      return `${PROXY_URL}?url=${encodeURIComponent(url)}`;
+    }
+  } catch {}
+  return url;
+}
+
 // Top 500 coins by market cap — cached for 30 minutes (CMC)
 let top500Cache: { symbols: Set<string>; timestamp: number } | null = null;
 const TOP500_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
@@ -129,8 +156,10 @@ function getDomainFallbacks(url: string): string[] {
 export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
+  // Route through proxy for CloudFlare-blocked domains
+  const effectiveUrl = maybeProxyUrl(url);
   try {
-    const response = await fetch(url, {
+    const response = await fetch(effectiveUrl, {
       ...options,
       signal: controller.signal,
       headers: { ...commonHeaders, ...options.headers },

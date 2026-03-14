@@ -62,13 +62,17 @@ export default function ProfilePage() {
   // Account stats
   const [accountStats, setAccountStats] = useState<AccountStats | null>(null);
 
-  // Load data
+  // Sync avatar URL from session (only when session image changes, not during local preview)
+  const sessionImage = session?.user?.image ?? null;
   useEffect(() => {
-    if (!session?.user) return;
+    if (sessionImage && !avatar.hasUnsaved) avatar.setUrl(sessionImage);
+  }, [sessionImage]);
 
-    if (session.user.image) avatar.setUrl(session.user.image);
+  // Load account stats + user data once on mount
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (!userId) return;
 
-    // Load account stats
     (async () => {
       try {
         const res = await fetch('/api/user/stats');
@@ -76,7 +80,6 @@ export default function ProfilePage() {
       } catch {}
     })();
 
-    // Load user data (bio + display prefs)
     (async () => {
       try {
         const res = await fetch('/api/user/data');
@@ -88,7 +91,7 @@ export default function ProfilePage() {
         }
       } catch {}
     })();
-  }, [session]);
+  }, [userId]);
 
   // Save bio
   const handleSaveBio = async () => {
@@ -176,11 +179,13 @@ export default function ProfilePage() {
                 <button
                   onClick={() => avatar.inputRef.current?.click()}
                   disabled={avatar.uploading}
-                  className="relative w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/[0.08] hover:border-hub-yellow/50 transition-colors overflow-hidden group"
+                  className={`relative w-20 h-20 rounded-full bg-white/[0.06] border-2 transition-colors overflow-hidden group ${
+                    avatar.hasUnsaved ? 'border-hub-yellow/60 ring-2 ring-hub-yellow/20' : 'border-white/[0.08] hover:border-hub-yellow/50'
+                  }`}
                   title="Change profile picture"
                 >
-                  {avatar.url ? (
-                    <Image src={avatar.url} alt={`${session.user?.name || 'User'}'s avatar`} width={80} height={80} className="w-full h-full object-cover" unoptimized />
+                  {(avatar.preview || avatar.url) ? (
+                    <Image src={avatar.preview || avatar.url!} alt={`${session.user?.name || 'User'}'s avatar`} width={80} height={80} className="w-full h-full object-cover" unoptimized />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-hub-yellow/20 text-hub-yellow text-xl font-bold">
                       {initials}
@@ -190,7 +195,7 @@ export default function ProfilePage() {
                     {avatar.uploading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
                   </div>
                 </button>
-                {avatar.url && !avatar.uploading && (
+                {avatar.url && !avatar.uploading && !avatar.hasUnsaved && (
                   <button
                     onClick={avatar.handleRemove}
                     className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center z-10 transition-colors"
@@ -200,7 +205,7 @@ export default function ProfilePage() {
                   </button>
                 )}
               </div>
-              <input ref={avatar.inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={avatar.handleUpload} className="hidden" />
+              <input ref={avatar.inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={avatar.handlePick} className="hidden" />
               <div className="min-w-0 flex-1 text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-2">
                   <h1 className="text-xl font-bold text-white truncate">{session.user?.name || 'User'}</h1>
@@ -222,6 +227,26 @@ export default function ProfilePage() {
                   </p>
                 )}
                 {avatar.error && <p className="text-xs text-red-400 mt-1">{avatar.error}</p>}
+                {/* Avatar Save / Cancel buttons */}
+                {avatar.hasUnsaved && (
+                  <div className="flex items-center gap-2 mt-2 justify-center sm:justify-start">
+                    <button
+                      onClick={avatar.handleSave}
+                      disabled={avatar.uploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-hub-yellow text-black hover:brightness-110 disabled:opacity-50 transition-all"
+                    >
+                      {avatar.uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                      Save Avatar
+                    </button>
+                    <button
+                      onClick={avatar.handleCancel}
+                      disabled={avatar.uploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-white/[0.06] text-neutral-400 hover:text-white hover:bg-white/[0.1] disabled:opacity-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

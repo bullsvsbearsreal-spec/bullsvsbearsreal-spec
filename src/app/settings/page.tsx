@@ -36,10 +36,14 @@ export default function SettingsPage() {
   const [accountStats, setAccountStats] = useState<AccountStats | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
+  const sessionImage = session?.user?.image ?? null;
   useEffect(() => {
-    if (!session?.user) return;
+    if (sessionImage && !avatar.hasUnsaved) avatar.setUrl(sessionImage);
+  }, [sessionImage]);
 
-    if (session.user.image) avatar.setUrl(session.user.image);
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (!userId) return;
 
     (async () => {
       try {
@@ -50,7 +54,7 @@ export default function SettingsPage() {
 
     const savedTheme = localStorage.getItem('infohub-theme');
     if (savedTheme === 'light') setTheme('light');
-  }, [session]);
+  }, [userId]);
 
   const handleThemeToggle = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
