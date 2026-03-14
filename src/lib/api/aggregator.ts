@@ -182,6 +182,9 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
 
 // Spot prices — real spot/CEX trading prices (not perp)
 export type SpotPriceEntry = { symbol: string; exchange: string; price: number; volume24h: number };
+export type CurrencyStatusMap = Record<string, { canDeposit: boolean; canWithdraw: boolean }>;
+
+let currencyStatusCache: CurrencyStatusMap = {};
 
 export async function fetchSpotPrices(): Promise<SpotPriceEntry[]> {
   const cached = getCached<SpotPriceEntry[]>('spotPrices');
@@ -192,12 +195,20 @@ export async function fetchSpotPrices(): Promise<SpotPriceEntry[]> {
     if (!response.ok) throw new Error('Failed to fetch spot prices');
     const json = await response.json();
     const data = Array.isArray(json) ? json : (json.data ?? json);
+    // Cache currency status separately
+    if (json.currencyStatus && typeof json.currencyStatus === 'object') {
+      currencyStatusCache = json.currencyStatus;
+    }
     setCache('spotPrices', data, 30_000); // match server L1 TTL
     return data;
   } catch (error) {
     console.error('Error fetching spot prices:', error);
     return [];
   }
+}
+
+export function getCurrencyStatus(): CurrencyStatusMap {
+  return currencyStatusCache;
 }
 
 // Get aggregated open interest by symbol

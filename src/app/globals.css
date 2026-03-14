@@ -135,6 +135,15 @@ body {
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
 
+  /* Flash animation for price updates */
+  @keyframes flash-green {
+    0% { background-color: rgba(34, 197, 94, 0.12); }
+    100% { background-color: transparent; }
+  }
+  .animate-flash {
+    animation: flash-green 1.5s ease-out;
+  }
+
   /* --- Surface system (60→30 elevation) --- */
   .surface-0 { background: var(--hub-dark); border: 1px solid var(--hub-border); }
   .surface-1 { background: var(--hub-darker); border: 1px solid var(--hub-border); }

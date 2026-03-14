@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
-import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchSpotPrices, fetchArbHistory, type AssetClassFilter, type SpotPriceEntry } from '@/lib/api/aggregator';
+import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchSpotPrices, fetchArbHistory, getCurrencyStatus, type AssetClassFilter, type SpotPriceEntry, type CurrencyStatusMap } from '@/lib/api/aggregator';
 import { detectPriceArbitrage, type PriceArb } from '@/lib/arbitrage-detector';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
@@ -726,7 +726,7 @@ export default function FundingPage() {
               <PriceArbitrageView priceArbs={priceArbs} />
             )}
             {viewMode === 'spot' && (
-              <SpotArbitrageView spotPrices={spotPrices} />
+              <SpotArbitrageView spotPrices={spotPrices} onRefresh={fetchData} currencyStatus={getCurrencyStatus()} />
             )}
             {viewMode === 'spread' && (
               <FundingSpreadComparison />

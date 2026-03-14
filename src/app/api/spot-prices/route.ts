@@ -3,6 +3,7 @@ import { fetchWithTimeout, normalizeSymbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { dedupedFetch } from '../_shared/inflight';
 import { spotPriceFetchers } from './exchanges';
+import { fetchAllCurrencyStatus } from '@/lib/currency-status';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'dxb1';
@@ -22,17 +23,28 @@ export async function GET() {
   }
 
   try {
-    const { data, health } = await dedupedFetch('spot-prices', () =>
-      fetchAllExchangesWithHealth(spotPriceFetchers, fetchWithTimeout),
-    );
+    // Fetch spot prices and currency status in parallel
+    const [{ data, health }, currencyStatusMap] = await Promise.all([
+      dedupedFetch('spot-prices', () =>
+        fetchAllExchangesWithHealth(spotPriceFetchers, fetchWithTimeout),
+      ),
+      fetchAllCurrencyStatus().catch(() => new Map()),
+    ]);
 
     // Normalize symbols for token rebrands
     data.forEach((entry: any) => { entry.symbol = normalizeSymbol(entry.symbol); });
+
+    // Build currency status object for JSON response
+    const currencyStatus: Record<string, { canDeposit: boolean; canWithdraw: boolean }> = {};
+    for (const [key, status] of Array.from(currencyStatusMap)) {
+      currencyStatus[key] = { canDeposit: status.canDeposit, canWithdraw: status.canWithdraw };
+    }
 
     const activeExchanges = health.filter(h => h.status === 'ok').length;
     const responseBody = {
       data,
       health,
+      currencyStatus,
       meta: {
         totalExchanges: health.length,
         activeExchanges,

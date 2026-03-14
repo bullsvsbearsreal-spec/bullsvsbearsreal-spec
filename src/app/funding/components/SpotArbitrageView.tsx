@@ -1,14 +1,26 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Filter, ArrowRightLeft } from 'lucide-react';
+import {
+  ArrowUpDown, ArrowUp, ArrowDown, Search, X, Filter,
+  ArrowRightLeft, AlertTriangle, Clock, Wifi, WifiOff,
+  ChevronDown, ChevronUp, Info, Zap,
+} from 'lucide-react';
 import Pagination from './Pagination';
 import { getExchangeTradeUrl, EXCHANGE_FEES } from '@/lib/constants';
-import type { SpotPriceEntry } from '@/lib/api/aggregator';
+import {
+  getSpotTakerFee, getWithdrawalInfo, getVolumeLevel,
+  SPOT_TAKER_FEES, type WithdrawalInfo, type VolumeLevel,
+} from '@/lib/spot-withdrawal-fees';
+import type { SpotPriceEntry, CurrencyStatusMap } from '@/lib/api/aggregator';
 
 const ROWS_PER_PAGE = 40;
+const AUTO_REFRESH_MS = 30_000;
+
+// Exchanges that have public deposit/withdrawal status APIs
+const STATUS_EXCHANGES = new Set(['OKX', 'KuCoin', 'Gate.io']);
 
 interface SpotArbEntry {
   symbol: string;
@@ -16,18 +28,49 @@ interface SpotArbEntry {
   sellExchange: string;
   buyPrice: number;
   sellPrice: number;
-  spreadPct: number;       // (sell - buy) / buy * 100
-  netSpreadPct: number;    // spread minus estimated trading fees
-  avgVolume: number;       // average 24h spot volume across exchanges
-  exchangeCount: number;   // how many exchanges list this symbol
+  spreadPct: number;
+  netSpreadPct: number;    // spread minus trading fees
+  netAfterWdPct: number;   // net spread minus withdrawal fee
+  netAfterWdUsd: number;   // net profit in USD after all costs
+  buyFee: number;          // buy exchange taker fee %
+  sellFee: number;         // sell exchange taker fee %
+  withdrawal: WithdrawalInfo;
+  avgVolume: number;
+  volumeLevel: VolumeLevel;
+  exchangeCount: number;
   allPrices: { exchange: string; price: number; volume24h: number }[];
 }
 
 interface SpotArbitrageViewProps {
   spotPrices: SpotPriceEntry[];
+  onRefresh?: () => void;
+  currencyStatus?: CurrencyStatusMap;
 }
 
-type SortKey = 'spreadPct' | 'symbol' | 'avgVolume' | 'exchangeCount';
+/** Tiny dot indicator for deposit/withdrawal status */
+function StatusDot({ canDo, label }: { canDo: boolean | undefined; label: string }) {
+  if (canDo === undefined) return null;
+  return (
+    <span
+      title={`${label}: ${canDo ? 'Open' : 'Suspended'}`}
+      className={`inline-block w-1.5 h-1.5 rounded-full ${canDo ? 'bg-green-500' : 'bg-red-500'}`}
+    />
+  );
+}
+
+/** Get deposit/withdrawal status for an exchange+symbol pair */
+function getStatus(currencyStatus: CurrencyStatusMap | undefined, exchange: string, symbol: string) {
+  if (!currencyStatus) return { canDeposit: undefined as boolean | undefined, canWithdraw: undefined as boolean | undefined, hasStatus: false };
+  const key = `${exchange}:${symbol}`;
+  const status = currencyStatus[key];
+  return {
+    canDeposit: status?.canDeposit,
+    canWithdraw: status?.canWithdraw,
+    hasStatus: !!status,
+  };
+}
+
+type SortKey = 'spreadPct' | 'netAfterWdPct' | 'symbol' | 'avgVolume' | 'exchangeCount';
 
 function formatPrice(price: number): string {
   if (price >= 10000) return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -43,14 +86,50 @@ function formatVolume(value: number): string {
   return `$${value.toFixed(0)}`;
 }
 
-export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps) {
-  const [sortKey, setSortKey] = useState<SortKey>('spreadPct');
+export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatus }: SpotArbitrageViewProps) {
+  const [sortKey, setSortKey] = useState<SortKey>('netAfterWdPct');
   const [sortAsc, setSortAsc] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
   const [minVolume, setMinVolume] = useState(false);
   const [minSpread, setMinSpread] = useState<'all' | '0.1' | '0.5' | '1'>('all');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
+  const prevPricesRef = useRef<Map<string, number>>(new Map());
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auto-refresh
+  useEffect(() => {
+    if (!autoRefresh || !onRefresh) return;
+    refreshTimerRef.current = setInterval(() => {
+      onRefresh();
+      setLastRefresh(Date.now());
+    }, AUTO_REFRESH_MS);
+    return () => { if (refreshTimerRef.current) clearInterval(refreshTimerRef.current); };
+  }, [autoRefresh, onRefresh]);
+
+  // Flash animation on price changes
+  useEffect(() => {
+    const newFlash = new Set<string>();
+    const prevMap = prevPricesRef.current;
+
+    for (const sp of spotPrices) {
+      const key = `${sp.symbol}-${sp.exchange}`;
+      const prev = prevMap.get(key);
+      if (prev !== undefined && prev !== sp.price) {
+        newFlash.add(sp.symbol);
+      }
+      prevMap.set(key, sp.price);
+    }
+
+    if (newFlash.size > 0) {
+      setFlashKeys(newFlash);
+      const timer = setTimeout(() => setFlashKeys(new Set()), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [spotPrices]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -62,14 +141,13 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
     return sortAsc ? <ArrowUp className="w-3 h-3 text-hub-yellow" /> : <ArrowDown className="w-3 h-3 text-hub-yellow" />;
   };
 
-  // Build spot arb entries from real spot prices
+  // Build spot arb entries with withdrawal fees and volume warnings
   const entries = useMemo<SpotArbEntry[]>(() => {
     const symbolMap = new Map<string, { exchange: string; price: number; volume24h: number }[]>();
     for (const sp of spotPrices) {
       if (!sp.price || !isFinite(sp.price) || sp.price <= 0) continue;
       if (!symbolMap.has(sp.symbol)) symbolMap.set(sp.symbol, []);
       const existing = symbolMap.get(sp.symbol)!;
-      // Deduplicate: one price per exchange per symbol
       if (!existing.some(e => e.exchange === sp.exchange)) {
         existing.push({ exchange: sp.exchange, price: sp.price, volume24h: sp.volume24h || 0 });
       }
@@ -79,46 +157,61 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
     symbolMap.forEach((prices, symbol) => {
       if (prices.length < 2) return;
 
+      // Denomination mismatch filter
+      const sortedPrices = prices.map(p => p.price).sort((a, b) => a - b);
+      const median = sortedPrices[Math.floor(sortedPrices.length / 2)];
+      const filtered = prices.filter(p => {
+        const ratio = p.price > median ? p.price / median : median / p.price;
+        return ratio <= 3;
+      });
+      if (filtered.length < 2) return;
+
       let minIdx = 0, maxIdx = 0;
-      for (let i = 1; i < prices.length; i++) {
-        if (prices[i].price < prices[minIdx].price) minIdx = i;
-        if (prices[i].price > prices[maxIdx].price) maxIdx = i;
+      for (let i = 1; i < filtered.length; i++) {
+        if (filtered[i].price < filtered[minIdx].price) minIdx = i;
+        if (filtered[i].price > filtered[maxIdx].price) maxIdx = i;
       }
 
-      const buyPrice = prices[minIdx].price;
-      const sellPrice = prices[maxIdx].price;
+      const buyPrice = filtered[minIdx].price;
+      const sellPrice = filtered[maxIdx].price;
       const spreadPct = ((sellPrice - buyPrice) / buyPrice) * 100;
 
-      // Filter out negligible spreads and extreme outliers
       if (spreadPct < 0.005 || spreadPct > 20) return;
       if (minIdx === maxIdx) return;
 
-      // Net spread after estimated spot taker fees on both legs
-      const buyFee = EXCHANGE_FEES[prices[minIdx].exchange]?.taker ?? 0.05;
-      const sellFee = EXCHANGE_FEES[prices[maxIdx].exchange]?.taker ?? 0.05;
+      // Per-exchange spot fees
+      const buyFee = getSpotTakerFee(filtered[minIdx].exchange);
+      const sellFee = getSpotTakerFee(filtered[maxIdx].exchange);
       const netSpreadPct = spreadPct - buyFee - sellFee;
 
-      // Average spot volume across exchanges
-      let totalVol = 0;
-      let volCount = 0;
-      for (const p of prices) {
+      // Withdrawal info
+      const withdrawal = getWithdrawalInfo(symbol);
+      const tradeSize = 1000; // $1000 reference size for USD calculations
+      const wdFeePct = (withdrawal.feeUsd / tradeSize) * 100;
+      const netAfterWdPct = netSpreadPct - wdFeePct;
+      const netAfterWdUsd = (netAfterWdPct / 100) * tradeSize;
+
+      // Volume
+      let totalVol = 0, volCount = 0;
+      for (const p of filtered) {
         if (p.volume24h > 0) { totalVol += p.volume24h; volCount++; }
       }
+      const avgVolume = volCount > 0 ? totalVol / volCount : 0;
 
-      // Sort all prices low → high for detail view
-      const sortedPrices = [...prices].sort((a, b) => a.price - b.price);
+      const allSorted = [...filtered].sort((a, b) => a.price - b.price);
 
       result.push({
         symbol,
-        buyExchange: prices[minIdx].exchange,
-        sellExchange: prices[maxIdx].exchange,
-        buyPrice,
-        sellPrice,
-        spreadPct,
-        netSpreadPct,
-        avgVolume: volCount > 0 ? totalVol / volCount : 0,
-        exchangeCount: prices.length,
-        allPrices: sortedPrices,
+        buyExchange: filtered[minIdx].exchange,
+        sellExchange: filtered[maxIdx].exchange,
+        buyPrice, sellPrice,
+        spreadPct, netSpreadPct, netAfterWdPct, netAfterWdUsd,
+        buyFee, sellFee,
+        withdrawal,
+        avgVolume,
+        volumeLevel: getVolumeLevel(avgVolume),
+        exchangeCount: filtered.length,
+        allPrices: allSorted,
       });
     });
     return result;
@@ -147,6 +240,7 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
       let diff = 0;
       switch (sortKey) {
         case 'spreadPct': diff = a.spreadPct - b.spreadPct; break;
+        case 'netAfterWdPct': diff = a.netAfterWdPct - b.netAfterWdPct; break;
         case 'symbol': diff = a.symbol.localeCompare(b.symbol); break;
         case 'avgVolume': diff = a.avgVolume - b.avgVolume; break;
         case 'exchangeCount': diff = a.exchangeCount - b.exchangeCount; break;
@@ -164,7 +258,7 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
   const avgSpread = entries.length > 0 ? entries.reduce((s, e) => s + e.spreadPct, 0) / entries.length : 0;
   const maxSpread = entries.length > 0 ? Math.max(...entries.map(e => e.spreadPct)) : 0;
   const above1Pct = entries.filter(e => e.spreadPct >= 1).length;
-  const profitableCount = entries.filter(e => e.netSpreadPct > 0).length;
+  const profitableCount = entries.filter(e => e.netAfterWdPct > 0).length;
 
   const spreadColor = (pct: number) => {
     if (pct >= 1) return 'text-green-400';
@@ -172,6 +266,22 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
     if (pct >= 0.1) return 'text-emerald-400/70';
     return 'text-neutral-400';
   };
+
+  const volumeIcon = (level: VolumeLevel) => {
+    if (level === 'danger') return <AlertTriangle className="w-3 h-3 text-red-400" />;
+    if (level === 'warning') return <AlertTriangle className="w-3 h-3 text-yellow-400" />;
+    if (level === 'caution') return <Info className="w-3 h-3 text-neutral-500" />;
+    return null;
+  };
+
+  const volumeTooltip = (level: VolumeLevel) => {
+    if (level === 'danger') return 'Very low liquidity — high slippage risk';
+    if (level === 'warning') return 'Low liquidity — may not fill at displayed price';
+    if (level === 'caution') return 'Moderate liquidity';
+    return '';
+  };
+
+  const secondsAgo = Math.floor((Date.now() - lastRefresh) / 1000);
 
   return (
     <div className="space-y-3">
@@ -186,7 +296,7 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
           <span className={`text-sm font-bold font-mono ${spreadColor(avgSpread)}`}>{avgSpread.toFixed(3)}%</span>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
-          <span className="text-[10px] text-green-400/70 uppercase tracking-wider font-semibold">Max Spread</span>
+          <span className="text-[10px] text-green-400/70 uppercase tracking-wider font-semibold">Max</span>
           <span className="text-sm font-bold text-green-400 font-mono">{maxSpread.toFixed(3)}%</span>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
@@ -194,9 +304,23 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
           <span className="text-sm font-bold text-green-400 font-mono">{above1Pct}</span>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: profitableCount > 0 ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.03)', border: `1px solid ${profitableCount > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.06)'}` }}>
-          <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Net Profit</span>
+          <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Profitable</span>
           <span className={`text-sm font-bold font-mono ${profitableCount > 0 ? 'text-green-400' : 'text-neutral-500'}`}>{profitableCount}</span>
         </div>
+        {/* Auto-refresh toggle */}
+        <button
+          onClick={() => setAutoRefresh(!autoRefresh)}
+          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[10px] font-semibold transition-all ml-auto ${
+            autoRefresh
+              ? 'text-green-400/80 ring-1 ring-green-400/20'
+              : 'text-neutral-600 ring-1 ring-white/[0.06]'
+          }`}
+          style={{ background: autoRefresh ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.02)' }}
+          title={autoRefresh ? 'Auto-refresh ON (30s)' : 'Auto-refresh OFF'}
+        >
+          {autoRefresh ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+          <span className="hidden sm:inline">{autoRefresh ? 'LIVE' : 'PAUSED'}</span>
+        </button>
       </div>
 
       {/* Filters */}
@@ -229,7 +353,7 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
                   : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
               }`}
             >
-              {f === 'all' ? 'All' : `≥${f}%`}
+              {f === 'all' ? 'All' : `\u2265${f}%`}
             </button>
           ))}
         </div>
@@ -251,8 +375,8 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
         )}
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop Table */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-[12px]" style={{ borderCollapse: 'separate', borderSpacing: '0 2px' }}>
           <thead>
             <tr>
@@ -262,26 +386,31 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
                 </button>
               </th>
               <th className="text-left px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">Buy on</th>
-              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden sm:table-cell">Buy Price</th>
+              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden lg:table-cell">Buy Price</th>
               <th className="text-center px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider w-8"><ArrowRightLeft className="w-3 h-3 mx-auto text-neutral-600" /></th>
               <th className="text-left px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">Sell on</th>
-              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden sm:table-cell">Sell Price</th>
+              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden lg:table-cell">Sell Price</th>
               <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
                 <button onClick={() => handleSort('spreadPct')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
                   Spread <SortIcon col="spreadPct" />
                 </button>
               </th>
-              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden lg:table-cell">
-                Net
-              </th>
-              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden md:table-cell">
-                <button onClick={() => handleSort('exchangeCount')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
-                  Exch <SortIcon col="exchangeCount" />
+              <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
+                <button onClick={() => handleSort('netAfterWdPct')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
+                  Net <SortIcon col="netAfterWdPct" />
                 </button>
+              </th>
+              <th className="text-center px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden md:table-cell">
+                Network
               </th>
               <th className="text-right px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">
                 <button onClick={() => handleSort('avgVolume')} className="flex items-center gap-1 hover:text-white transition-colors ml-auto">
-                  Avg Vol <SortIcon col="avgVolume" />
+                  Vol <SortIcon col="avgVolume" />
+                </button>
+              </th>
+              <th className="text-center px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden md:table-cell w-8">
+                <button onClick={() => handleSort('exchangeCount')} className="flex items-center gap-1 hover:text-white transition-colors">
+                  <SortIcon col="exchangeCount" />
                 </button>
               </th>
             </tr>
@@ -290,10 +419,11 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
             {pageItems.map((entry, idx) => {
               const buyUrl = getExchangeTradeUrl(entry.buyExchange, entry.symbol);
               const sellUrl = getExchangeTradeUrl(entry.sellExchange, entry.symbol);
+              const isFlashing = flashKeys.has(entry.symbol);
               return (
                 <React.Fragment key={`${entry.symbol}-${idx}`}>
                 <tr
-                  className="group transition-colors hover:bg-white/[0.02]"
+                  className={`group transition-all hover:bg-white/[0.02] ${isFlashing ? 'animate-flash' : ''}`}
                 >
                   <td className="px-3 py-2.5">
                     <a href={`/funding/${entry.symbol}`} className="flex items-center gap-2 no-underline">
@@ -302,77 +432,134 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
                     </a>
                   </td>
                   <td className="px-3 py-2.5">
-                    <a
-                      href={buyUrl || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 no-underline"
-                    >
+                    {(() => { const s = getStatus(currencyStatus, entry.buyExchange, entry.symbol); return (
+                    <a href={buyUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 no-underline">
                       <ExchangeLogo exchange={entry.buyExchange.toLowerCase()} size={16} />
-                      <span className="text-neutral-300 group-hover:text-white transition-colors">{entry.buyExchange}</span>
+                      <div className="min-w-0 flex items-center gap-1">
+                        <span className="text-neutral-300 group-hover:text-white transition-colors text-[12px]">{entry.buyExchange}</span>
+                        <span className="text-[9px] text-neutral-600">{entry.buyFee.toFixed(2)}%</span>
+                        {s.hasStatus && <StatusDot canDo={s.canWithdraw} label="Withdraw" />}
+                      </div>
                     </a>
+                    ); })()}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500 hidden sm:table-cell">
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500 hidden lg:table-cell">
                     {formatPrice(entry.buyPrice)}
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <ArrowRightLeft className="w-3 h-3 mx-auto text-neutral-700" />
+                    <div className="flex flex-col items-center gap-0.5">
+                      <ArrowRightLeft className="w-3 h-3 text-neutral-700" />
+                      <span className="text-[8px] text-neutral-600">{entry.withdrawal.confirmMins}m</span>
+                    </div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <a
-                      href={sellUrl || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 no-underline"
-                    >
+                    {(() => { const s = getStatus(currencyStatus, entry.sellExchange, entry.symbol); return (
+                    <a href={sellUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 no-underline">
                       <ExchangeLogo exchange={entry.sellExchange.toLowerCase()} size={16} />
-                      <span className="text-neutral-300 group-hover:text-white transition-colors">{entry.sellExchange}</span>
+                      <div className="min-w-0 flex items-center gap-1">
+                        <span className="text-neutral-300 group-hover:text-white transition-colors text-[12px]">{entry.sellExchange}</span>
+                        <span className="text-[9px] text-neutral-600">{entry.sellFee.toFixed(2)}%</span>
+                        {s.hasStatus && <StatusDot canDo={s.canDeposit} label="Deposit" />}
+                      </div>
                     </a>
+                    ); })()}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-400 hidden sm:table-cell">
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-400 hidden lg:table-cell">
                     {formatPrice(entry.sellPrice)}
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <span className={`font-mono tabular-nums font-bold ${spreadColor(entry.spreadPct)}`}>
-                      +{entry.spreadPct.toFixed(4)}%
+                      +{entry.spreadPct.toFixed(3)}%
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono tabular-nums hidden lg:table-cell">
-                    <span className={entry.netSpreadPct > 0 ? 'text-green-400' : 'text-red-400'}>
-                      {entry.netSpreadPct > 0 ? '+' : ''}{entry.netSpreadPct.toFixed(4)}%
-                    </span>
+                  <td className="px-3 py-2.5 text-right">
+                    <div className="flex flex-col items-end">
+                      <span className={`font-mono tabular-nums font-bold ${entry.netAfterWdPct > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {entry.netAfterWdPct > 0 ? '+' : ''}{entry.netAfterWdPct.toFixed(3)}%
+                      </span>
+                      <span className={`text-[9px] font-mono ${entry.netAfterWdUsd > 0 ? 'text-green-400/60' : 'text-red-400/60'}`}>
+                        {entry.netAfterWdUsd > 0 ? '+' : ''}${entry.netAfterWdUsd.toFixed(2)}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500 hidden md:table-cell">
+                  <td className="px-3 py-2.5 text-center hidden md:table-cell">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[10px] text-neutral-400">{entry.withdrawal.network}</span>
+                      <span className="text-[9px] text-neutral-600">${entry.withdrawal.feeUsd.toFixed(2)}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      {volumeIcon(entry.volumeLevel)}
+                      <span className={`font-mono tabular-nums ${entry.volumeLevel === 'danger' ? 'text-red-400' : entry.volumeLevel === 'warning' ? 'text-yellow-400' : 'text-neutral-500'}`}
+                        title={volumeTooltip(entry.volumeLevel)}>
+                        {entry.avgVolume > 0 ? formatVolume(entry.avgVolume) : '-'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-center font-mono tabular-nums text-neutral-500 hidden md:table-cell">
                     <button
                       onClick={() => setExpandedRow(expandedRow === entry.symbol ? null : entry.symbol)}
-                      className="hover:text-hub-yellow transition-colors cursor-pointer"
-                      title="Show all exchange prices"
+                      className="hover:text-hub-yellow transition-colors cursor-pointer flex items-center gap-0.5 mx-auto"
+                      title="Show all exchange prices and fee details"
                     >
                       {entry.exchangeCount}
+                      {expandedRow === entry.symbol ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     </button>
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500">
-                    {entry.avgVolume > 0 ? formatVolume(entry.avgVolume) : '-'}
                   </td>
                 </tr>
                 {expandedRow === entry.symbol && (
                   <tr>
-                    <td colSpan={10} className="px-3 pb-3 pt-0">
+                    <td colSpan={11} className="px-3 pb-3 pt-0">
                       <div className="rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div className="px-3 py-2 flex items-center gap-2 border-b border-white/[0.04]">
-                          <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">All prices for {entry.symbol}</span>
-                          <span className="text-[10px] text-neutral-600">({entry.allPrices.length} exchanges)</span>
+                        {/* Fee breakdown */}
+                        <div className="px-3 py-2 flex flex-wrap items-center gap-4 border-b border-white/[0.04]">
+                          <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Fee Breakdown</span>
+                          <span className="text-[10px] text-neutral-400">
+                            Buy fee: <span className="text-white font-mono">{entry.buyFee.toFixed(2)}%</span> ({entry.buyExchange})
+                          </span>
+                          <span className="text-[10px] text-neutral-400">
+                            Sell fee: <span className="text-white font-mono">{entry.sellFee.toFixed(2)}%</span> ({entry.sellExchange})
+                          </span>
+                          <span className="text-[10px] text-neutral-400">
+                            WD fee: <span className="text-white font-mono">${entry.withdrawal.feeUsd.toFixed(2)}</span> ({entry.withdrawal.network})
+                          </span>
+                          <span className="text-[10px] text-neutral-400">
+                            Transfer: <span className="text-white font-mono">~{entry.withdrawal.confirmMins}min</span>
+                          </span>
+                          <span className="text-[10px] text-neutral-400">
+                            Net on $1K: <span className={`font-mono font-bold ${entry.netAfterWdUsd > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {entry.netAfterWdUsd > 0 ? '+' : ''}${entry.netAfterWdUsd.toFixed(2)}
+                            </span>
+                          </span>
+                        </div>
+                        {/* All exchange prices */}
+                        <div className="px-3 py-2 border-b border-white/[0.04]">
+                          <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">All prices ({entry.allPrices.length} exchanges)</span>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-px" style={{ background: 'rgba(255,255,255,0.04)' }}>
                           {entry.allPrices.map(p => {
                             const isBuy = p.exchange === entry.buyExchange;
                             const isSell = p.exchange === entry.sellExchange;
+                            const fee = getSpotTakerFee(p.exchange);
+                            const makerFee = EXCHANGE_FEES[p.exchange]?.maker ?? fee;
                             return (
                               <div key={p.exchange} className="flex items-center gap-2 px-3 py-2" style={{ background: isBuy ? 'rgba(34,197,94,0.06)' : isSell ? 'rgba(249,115,22,0.06)' : 'rgba(10,10,10,0.8)' }}>
                                 <ExchangeLogo exchange={p.exchange.toLowerCase()} size={14} />
                                 <div className="min-w-0 flex-1">
-                                  <div className="text-[11px] text-neutral-400 truncate">{p.exchange}</div>
+                                  <div className="text-[11px] text-neutral-400 truncate flex items-center gap-1">
+                                    {p.exchange}
+                                    {(() => { const s = getStatus(currencyStatus, p.exchange, entry.symbol); return s.hasStatus ? (
+                                      <span className="flex items-center gap-0.5" title={`D:${s.canDeposit ? 'Open' : 'Closed'} W:${s.canWithdraw ? 'Open' : 'Closed'}`}>
+                                        <StatusDot canDo={s.canDeposit} label="Deposit" />
+                                        <StatusDot canDo={s.canWithdraw} label="Withdraw" />
+                                      </span>
+                                    ) : null; })()}
+                                  </div>
                                   <div className="text-[12px] font-mono tabular-nums text-white">{formatPrice(p.price)}</div>
+                                  <div className="text-[9px] text-neutral-600 font-mono">
+                                    T:{fee.toFixed(2)}% M:{makerFee.toFixed(2)}%
+                                  </div>
                                 </div>
                                 {isBuy && <span className="text-[9px] font-bold text-green-400 uppercase">Buy</span>}
                                 {isSell && <span className="text-[9px] font-bold text-orange-400 uppercase">Sell</span>}
@@ -389,13 +576,127 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
             })}
             {pageItems.length === 0 && (
               <tr>
-                <td colSpan={10} className="text-center py-12 text-neutral-600 text-sm">
+                <td colSpan={11} className="text-center py-12 text-neutral-600 text-sm">
                   No spot price arbitrage opportunities found matching filters
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card Layout */}
+      <div className="sm:hidden space-y-2">
+        {pageItems.map((entry, idx) => {
+          const buyUrl = getExchangeTradeUrl(entry.buyExchange, entry.symbol);
+          const sellUrl = getExchangeTradeUrl(entry.sellExchange, entry.symbol);
+          const isFlashing = flashKeys.has(entry.symbol);
+          const isExpanded = expandedRow === entry.symbol;
+          return (
+            <div
+              key={`m-${entry.symbol}-${idx}`}
+              className={`rounded-lg transition-all ${isFlashing ? 'animate-flash' : ''}`}
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              {/* Card header */}
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <a href={`/funding/${entry.symbol}`} className="flex items-center gap-2 no-underline">
+                  <TokenIconSimple symbol={entry.symbol} size={22} />
+                  <span className="font-bold text-white text-[13px]">{entry.symbol}</span>
+                </a>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <div className={`font-mono tabular-nums font-bold text-[13px] ${spreadColor(entry.spreadPct)}`}>
+                      +{entry.spreadPct.toFixed(3)}%
+                    </div>
+                    <div className={`font-mono tabular-nums text-[10px] ${entry.netAfterWdPct > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      Net: {entry.netAfterWdPct > 0 ? '+' : ''}{entry.netAfterWdPct.toFixed(3)}%
+                    </div>
+                  </div>
+                  {volumeIcon(entry.volumeLevel)}
+                </div>
+              </div>
+
+              {/* Buy → Sell row */}
+              <div className="flex items-center gap-2 px-3 pb-2">
+                <a href={buyUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 no-underline flex-1 min-w-0">
+                  <ExchangeLogo exchange={entry.buyExchange.toLowerCase()} size={14} />
+                  <span className="text-[11px] text-green-400 truncate">{entry.buyExchange}</span>
+                  {(() => { const s = getStatus(currencyStatus, entry.buyExchange, entry.symbol); return s.hasStatus ? <StatusDot canDo={s.canWithdraw} label="Withdraw" /> : null; })()}
+                  <span className="text-[10px] font-mono text-neutral-500">{formatPrice(entry.buyPrice)}</span>
+                </a>
+                <div className="flex flex-col items-center flex-shrink-0">
+                  <ArrowRightLeft className="w-3 h-3 text-neutral-700" />
+                  <span className="text-[8px] text-neutral-600">{entry.withdrawal.confirmMins}m</span>
+                </div>
+                <a href={sellUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 no-underline flex-1 min-w-0 justify-end">
+                  <span className="text-[10px] font-mono text-neutral-500">{formatPrice(entry.sellPrice)}</span>
+                  <span className="text-[11px] text-orange-400 truncate">{entry.sellExchange}</span>
+                  {(() => { const s = getStatus(currencyStatus, entry.sellExchange, entry.symbol); return s.hasStatus ? <StatusDot canDo={s.canDeposit} label="Deposit" /> : null; })()}
+                  <ExchangeLogo exchange={entry.sellExchange.toLowerCase()} size={14} />
+                </a>
+              </div>
+
+              {/* Info bar */}
+              <div className="flex items-center justify-between px-3 py-1.5 border-t border-white/[0.04]">
+                <div className="flex items-center gap-3 text-[9px] text-neutral-500">
+                  <span>{entry.withdrawal.network} ${entry.withdrawal.feeUsd.toFixed(2)}</span>
+                  <span>Vol: {entry.avgVolume > 0 ? formatVolume(entry.avgVolume) : '-'}</span>
+                  <span>Fees: {entry.buyFee.toFixed(1)}%+{entry.sellFee.toFixed(1)}%</span>
+                </div>
+                <button
+                  onClick={() => setExpandedRow(isExpanded ? null : entry.symbol)}
+                  className="text-[9px] text-neutral-500 hover:text-hub-yellow flex items-center gap-0.5"
+                >
+                  {entry.exchangeCount} exch
+                  {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+              </div>
+
+              {/* Expanded details */}
+              {isExpanded && (
+                <div className="border-t border-white/[0.04]">
+                  <div className="px-3 py-2 flex flex-wrap gap-3 text-[9px] text-neutral-400 border-b border-white/[0.04]">
+                    <span>Buy: <span className="text-white">{entry.buyFee.toFixed(2)}%</span></span>
+                    <span>Sell: <span className="text-white">{entry.sellFee.toFixed(2)}%</span></span>
+                    <span>WD: <span className="text-white">${entry.withdrawal.feeUsd.toFixed(2)}</span></span>
+                    <span>Net/1K: <span className={entry.netAfterWdUsd > 0 ? 'text-green-400' : 'text-red-400'}>${entry.netAfterWdUsd.toFixed(2)}</span></span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-px" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    {entry.allPrices.map(p => {
+                      const isBuy = p.exchange === entry.buyExchange;
+                      const isSell = p.exchange === entry.sellExchange;
+                      return (
+                        <div key={p.exchange} className="flex items-center gap-2 px-3 py-1.5" style={{ background: isBuy ? 'rgba(34,197,94,0.06)' : isSell ? 'rgba(249,115,22,0.06)' : 'rgba(10,10,10,0.8)' }}>
+                          <ExchangeLogo exchange={p.exchange.toLowerCase()} size={12} />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10px] text-neutral-400 truncate flex items-center gap-1">
+                              {p.exchange}
+                              {(() => { const s = getStatus(currencyStatus, p.exchange, entry.symbol); return s.hasStatus ? (
+                                <span className="flex items-center gap-0.5">
+                                  <StatusDot canDo={s.canDeposit} label="Deposit" />
+                                  <StatusDot canDo={s.canWithdraw} label="Withdraw" />
+                                </span>
+                              ) : null; })()}
+                            </div>
+                            <div className="text-[11px] font-mono text-white">{formatPrice(p.price)}</div>
+                          </div>
+                          {isBuy && <span className="text-[8px] font-bold text-green-400">BUY</span>}
+                          {isSell && <span className="text-[8px] font-bold text-orange-400">SELL</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {pageItems.length === 0 && (
+          <div className="text-center py-12 text-neutral-600 text-sm">
+            No spot arbitrage opportunities found
+          </div>
+        )}
       </div>
 
       <Pagination
@@ -408,11 +709,11 @@ export default function SpotArbitrageView({ spotPrices }: SpotArbitrageViewProps
       />
 
       <p className="text-[10px] text-neutral-700 leading-relaxed px-1">
-        Spot arbitrage compares real spot trading prices across 15 CEX exchanges.{' '}
-        <span className="text-green-400/60 font-medium">Spread</span> = price difference between cheapest and most expensive exchange.{' '}
-        <span className="text-green-400/60 font-medium">Net</span> = spread minus estimated taker fees on both legs (buy + sell).{' '}
-        Green net = profitable after fees. Click exchange count to see all prices.{' '}
-        <span className="text-neutral-500">Vol</span> = average 24h spot volume per exchange.
+        Spot arbitrage across 15 CEX exchanges with real taker fees and withdrawal costs.{' '}
+        <span className="text-green-400/60 font-medium">Spread</span> = price difference.{' '}
+        <span className="text-green-400/60 font-medium">Net</span> = spread minus buy fee + sell fee + withdrawal fee (on $1K trade).{' '}
+        <span className="text-yellow-400/60"><AlertTriangle className="w-2.5 h-2.5 inline" /></span> = low liquidity warning.{' '}
+        Click exchange count to see all prices, fees (Taker/Maker), and cost breakdown.
       </p>
     </div>
   );
