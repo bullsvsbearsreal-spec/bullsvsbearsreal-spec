@@ -21,13 +21,16 @@ interface Props {
   canManageRoles?: boolean;
   currentUserId?: string;
   onRoleChanged?: () => void;
+  onUserDeleted?: () => void;
 }
 
-export default function UserDetailDrawer({ userId, onClose, canManageRoles, currentUserId, onRoleChanged }: Props) {
+export default function UserDetailDrawer({ userId, onClose, canManageRoles, currentUserId, onRoleChanged, onUserDeleted }: Props) {
   const [data, setData] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [roleChanging, setRoleChanging] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!userId) { setData(null); return; }
@@ -171,6 +174,59 @@ export default function UserDetailDrawer({ userId, onClose, canManageRoles, curr
                       </svg>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* delete account */}
+              {canManageRoles && data.id && data.id !== currentUserId && data.role !== 'admin' && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/[0.03] p-3">
+                  <p className="text-xs text-red-400 mb-2">Danger Zone</p>
+                  {!confirmDelete ? (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="px-3 py-1.5 text-[11px] rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors font-medium"
+                    >
+                      Delete Account
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-red-300">
+                        Permanently delete <span className="font-medium">{data.email || data.name || 'this user'}</span> and all their data?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          disabled={deleting}
+                          onClick={async () => {
+                            setDeleting(true);
+                            setError('');
+                            try {
+                              const res = await fetch(`/api/admin/users/${data.id}`, { method: 'DELETE' });
+                              if (!res.ok) {
+                                const err = await res.json();
+                                throw new Error(err.error || 'Failed');
+                              }
+                              onUserDeleted?.();
+                              onClose();
+                            } catch (e: any) {
+                              setError(e.message);
+                            } finally {
+                              setDeleting(false);
+                              setConfirmDelete(false);
+                            }
+                          }}
+                          className="px-3 py-1.5 text-[11px] rounded-lg bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 transition-colors font-medium disabled:opacity-50"
+                        >
+                          {deleting ? 'Deleting...' : 'Confirm Delete'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          className="px-3 py-1.5 text-[11px] rounded-lg border border-white/[0.08] text-neutral-400 hover:text-white transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

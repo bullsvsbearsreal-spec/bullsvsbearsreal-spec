@@ -235,6 +235,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
         canManageRoles={userRole === 'admin'}
         currentUserId={currentUserId}
         onRoleChanged={loadUsers}
+        onUserDeleted={loadUsers}
       />
     </div>
   );
