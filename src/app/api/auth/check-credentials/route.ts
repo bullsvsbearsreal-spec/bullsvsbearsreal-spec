@@ -101,6 +101,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ valid: true, emailVerified: true, requires2FA, methods });
   } catch (e: any) {
     console.error('Check credentials error:', e?.message || e);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', _dbg: e?.message }, { status: 500 });
   }
 }
