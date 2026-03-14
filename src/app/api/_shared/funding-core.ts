@@ -71,8 +71,8 @@ function buildResult(filtered: any[], health: any[], assetClass: AssetClassFilte
     data: filtered,
     health,
     meta: {
-      totalExchanges: fundingFetchers.length,
-      activeExchanges: health.filter((h: any) => h.status === 'ok').length,
+      totalExchanges: new Set(fundingFetchers.map(f => f.name)).size,
+      activeExchanges: new Set(health.filter((h: any) => h.status === 'ok').map((h: any) => h.name)).size,
       totalEntries: filtered.length,
       assetClass,
       timestamp: Date.now(),

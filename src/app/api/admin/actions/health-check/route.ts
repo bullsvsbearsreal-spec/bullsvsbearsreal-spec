@@ -21,8 +21,11 @@ export async function POST() {
 
     if (fundingResult) {
       const health = fundingResult.result.health || [];
-      const activeExchanges = health.filter((h: any) => h.status === 'ok').length;
-      const totalExchanges = health.length;
+      // Deduplicate by exchange name (e.g. Binance has USDT-M + COIN-M fetchers)
+      const uniqueExchanges = new Set(health.map((h: any) => h.name));
+      const activeNames = new Set(health.filter((h: any) => h.status === 'ok').map((h: any) => h.name));
+      const activeExchanges = activeNames.size;
+      const totalExchanges = uniqueExchanges.size;
       const ratio = totalExchanges > 0 ? activeExchanges / totalExchanges : 0;
       const staleExchanges: string[] = [];
       const now = Date.now();
