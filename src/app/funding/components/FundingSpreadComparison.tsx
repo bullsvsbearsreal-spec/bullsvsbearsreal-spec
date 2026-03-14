@@ -821,6 +821,13 @@ export default function FundingSpreadComparison() {
                 const rawSize = parseFloat(positionSize);
                 if (!rawSize || rawSize <= 0) return null;
                 // Convert to USD if in coin mode
+                if (sizeUnit === 'coin' && !currentPrice) {
+                  return (
+                    <p className="mt-3 text-xs text-neutral-600 italic">
+                      Price data unavailable — switch to USD mode or wait for data to load.
+                    </p>
+                  );
+                }
                 const size = sizeUnit === 'coin' && currentPrice ? rawSize * currentPrice : rawSize;
                 const spreadPct = stats.current ?? 0;
                 const meanPct = stats.mean;
