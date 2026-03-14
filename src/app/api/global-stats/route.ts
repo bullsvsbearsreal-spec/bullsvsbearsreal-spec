@@ -3,7 +3,7 @@ import { fetchWithTimeout } from '../_shared/fetch';
 import { getCache, setCache, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 const CMC_API_KEY = process.env.CMC_API_KEY || '';

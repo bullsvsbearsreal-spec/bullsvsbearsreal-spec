@@ -4,7 +4,7 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import { getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 
 const DO_SPACES_ENDPOINT = process.env.DO_SPACES_ENDPOINT || '';
 const DO_SPACES_KEY = process.env.DO_SPACES_KEY || '';

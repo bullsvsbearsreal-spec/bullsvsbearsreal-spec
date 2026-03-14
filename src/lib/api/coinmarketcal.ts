@@ -104,7 +104,7 @@ export async function fetchCryptoNews(limit: number = 20): Promise<NewsArticle[]
 
     if (response.ok) {
       const data = await response.json();
-      const articles = (data.Data || []).slice(0, limit);
+      const articles = (Array.isArray(data.Data) ? data.Data : []).slice(0, limit);
       setCache(cacheKey, articles);
       return articles;
     }
@@ -158,7 +158,7 @@ export async function fetchCoinNews(coinSymbol: string, limit: number = 10): Pro
 
     if (response.ok) {
       const data = await response.json();
-      const articles: NewsArticle[] = data.Data || [];
+      const articles: NewsArticle[] = Array.isArray(data.Data) ? data.Data : [];
 
       // Filter for actual relevance — article must mention the symbol
       const relevant = articles.filter(a => isArticleRelevant(a, symbol));
@@ -182,7 +182,7 @@ export async function fetchCoinNews(coinSymbol: string, limit: number = 10): Pro
 
     if (response.ok) {
       const data = await response.json();
-      const articles: NewsArticle[] = data.Data || [];
+      const articles: NewsArticle[] = Array.isArray(data.Data) ? data.Data : [];
       const relevant = articles.filter(a => isArticleRelevant(a, symbol));
 
       if (relevant.length > 0) {

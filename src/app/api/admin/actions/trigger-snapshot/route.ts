@@ -3,7 +3,7 @@ import { requireAdminOrAdvisor, auth } from '@/lib/auth';
 import { recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const maxDuration = 30;
 
 export async function POST() {

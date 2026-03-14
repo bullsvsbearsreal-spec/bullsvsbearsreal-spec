@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireAdminOrAdvisor, auth } from '@/lib/auth';
 import { recordAuditEvent } from '@/lib/db';
+import { getFundingData } from '@/app/api/_shared/funding-core';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const maxDuration = 30;
 
 export async function POST() {
@@ -13,56 +14,56 @@ export async function POST() {
   const session = await auth();
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
-
-    if (!baseUrl) {
-      return NextResponse.json({ success: false, error: 'Server URL not configured' }, { status: 500 });
-    }
-    const apiKey = process.env.ADMIN_API_KEY || '';
+    // Call getFundingData directly — no self-referential HTTP calls
+    const fundingResult = await getFundingData('crypto');
 
     let healthResult;
 
-    // Try the full health endpoint first (requires ADMIN_API_KEY)
-    if (apiKey) {
-      try {
-        const res = await fetch(`${baseUrl}/api/health`, {
-          headers: { Authorization: `Bearer ${apiKey}` },
-          signal: AbortSignal.timeout(25000),
-        });
-        healthResult = await res.json().catch(() => null);
-      } catch {
-        healthResult = null;
-      }
-    }
+    if (fundingResult) {
+      const health = fundingResult.result.health || [];
+      const activeExchanges = health.filter((h: any) => h.status === 'ok').length;
+      const totalExchanges = health.length;
+      const ratio = totalExchanges > 0 ? activeExchanges / totalExchanges : 0;
+      const staleExchanges: string[] = [];
+      const now = Date.now();
 
-    // Fallback: quick health check by pinging the funding API directly
-    if (!healthResult || !healthResult.status) {
-      try {
-        const fundingRes = await fetch(`${baseUrl}/api/funding`, { signal: AbortSignal.timeout(15000) });
-        if (fundingRes.ok) {
-          const fj = await fundingRes.json();
-          const activeExchanges = fj.health?.filter((h: any) => h.status === 'ok').length ?? 0;
-          const totalExchanges = fj.health?.length ?? 0;
-          const ratio = totalExchanges > 0 ? activeExchanges / totalExchanges : 0;
-          healthResult = {
-            status: ratio >= 0.8 ? 'healthy' : ratio >= 0.5 ? 'degraded' : 'down',
-            errors: fj.health?.filter((h: any) => h.status === 'error').map((h: any) => ({ exchange: h.name, error: h.error || 'Error' })) || [],
-            lastUpdate: new Date().toISOString(),
-          };
-        } else {
-          healthResult = { status: 'degraded', errors: [{ exchange: 'system', error: `Funding API returned ${fundingRes.status}` }], lastUpdate: new Date().toISOString() };
-        }
-      } catch {
-        healthResult = { status: 'degraded', errors: [{ exchange: 'system', error: 'Could not reach APIs' }], lastUpdate: new Date().toISOString() };
+      // Detect stale exchanges (>10 min since last update)
+      const entries: any[] = fundingResult.result.data || [];
+      const latestByExchange = new Map<string, number>();
+      for (const e of entries) {
+        const ts = e.updatedAt ? new Date(e.updatedAt).getTime() : 0;
+        const existing = latestByExchange.get(e.exchange) || 0;
+        if (ts > existing) latestByExchange.set(e.exchange, ts);
       }
+      latestByExchange.forEach((ts, name) => {
+        if (ts > 0 && now - ts > 10 * 60 * 1000) staleExchanges.push(name);
+      });
+
+      healthResult = {
+        status: ratio >= 0.8 ? 'healthy' : ratio >= 0.5 ? 'degraded' : 'down',
+        errors: health
+          .filter((h: any) => h.status === 'error')
+          .map((h: any) => ({ exchange: h.name, error: h.error || 'Error', latencyMs: h.latencyMs })),
+        staleExchanges,
+        activeExchanges,
+        totalExchanges,
+        totalEntries: entries.length,
+        cache: fundingResult.cacheStatus,
+        lastUpdate: new Date().toISOString(),
+      };
+    } else {
+      healthResult = {
+        status: 'degraded',
+        errors: [{ exchange: 'system', error: 'Funding data unavailable' }],
+        lastUpdate: new Date().toISOString(),
+      };
     }
 
     await recordAuditEvent('health_check', {
       admin: session?.user?.email ?? 'unknown',
-      status: healthResult?.status ?? 'unknown',
-      errorCount: healthResult?.errors?.length ?? 0,
-    }).catch(() => {}); // Don't fail the whole request if audit fails
+      status: healthResult.status,
+      errorCount: healthResult.errors?.length ?? 0,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -70,7 +71,6 @@ export async function POST() {
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
-    // Even on timeout/error, return success:false with useful info
     const isTimeout = err.name === 'TimeoutError' || err.message?.includes('timeout');
     return NextResponse.json(
       {

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
-import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchSpotPrices, fetchArbHistory, getCurrencyStatus, type AssetClassFilter, type SpotPriceEntry, type CurrencyStatusMap } from '@/lib/api/aggregator';
+import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchArbHistory, type AssetClassFilter } from '@/lib/api/aggregator';
 import { detectPriceArbitrage, type PriceArb } from '@/lib/arbitrage-detector';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
@@ -16,7 +16,6 @@ import dynamic from 'next/dynamic';
 const FundingHeatmapView = dynamic(() => import('./components/FundingHeatmapView'), { ssr: false });
 const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrageView'), { ssr: false });
 const PriceArbitrageView = dynamic(() => import('./components/PriceArbitrageView'), { ssr: false });
-const SpotArbitrageView = dynamic(() => import('./components/SpotArbitrageView'), { ssr: false });
 const FundingSpreadComparison = dynamic(() => import('./components/FundingSpreadComparison'), { ssr: false });
 
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
@@ -27,7 +26,7 @@ import { saveFundingSnapshot, getAccumulatedFundingBatch, type AccumulatedFundin
 import { type FundingPeriod, periodMultiplier, PERIOD_HOURS, formatRateAdaptive } from './utils';
 import { useFundingPrefs } from '@/hooks/useFundingPrefs';
 
-type ViewMode = 'heatmap' | 'arbitrage' | 'price' | 'spot' | 'spread';
+type ViewMode = 'heatmap' | 'arbitrage' | 'price' | 'spread';
 type VenueFilter = 'all' | 'cex' | 'dex';
 type MarginFilter = 'linear' | 'inverse' | 'all';
 
@@ -115,16 +114,15 @@ export default function FundingPage() {
   );
 
   // Per-tab data cache: instantly show previously loaded tab data while fetching fresh data
-  type FundingData = { fundingRates: any[]; arbitrageData: any[]; priceArbs: PriceArb[]; oiMap: Map<string, number>; spotPrices: SpotPriceEntry[]; arbHistory: Map<string, { avg7d: number; avg24h: number; avg6d: number }>; _assetClass: string };
+  type FundingData = { fundingRates: any[]; arbitrageData: any[]; priceArbs: PriceArb[]; oiMap: Map<string, number>; arbHistory: Map<string, { avg7d: number; avg24h: number; avg6d: number }>; _assetClass: string };
   const tabCacheRef = useRef<Map<string, FundingData>>(new Map());
 
   const fetcher = useCallback(async () => {
-    const [data, arbData, oiData, tickerRes, spotData] = await Promise.all([
+    const [data, arbData, oiData, tickerRes] = await Promise.all([
       fetchAllFundingRates(assetClass as AssetClassFilter),
       fetchFundingArbitrage(assetClass as AssetClassFilter),
       fetchAllOpenInterest(),
       fetch('/api/tickers').then(r => r.ok ? r.json() : { data: [] }),
-      fetchSpotPrices(),
     ]);
     const tickerData = Array.isArray(tickerRes) ? tickerRes : (tickerRes.data ?? []);
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
@@ -140,7 +138,7 @@ export default function FundingPage() {
     // Fetch arb history for stability/trend (non-blocking — don't delay page load)
     const arbSymbols = (Array.isArray(arbData) ? arbData : []).map((a: any) => a.symbol);
     const arbHistory = await fetchArbHistory(arbSymbols).catch(() => new Map());
-    const result: FundingData = { fundingRates: validData, arbitrageData: arbData, priceArbs, oiMap, spotPrices: spotData, arbHistory, _assetClass: assetClass };
+    const result: FundingData = { fundingRates: validData, arbitrageData: arbData, priceArbs, oiMap, arbHistory, _assetClass: assetClass };
     // Cache this tab's data for instant switching
     tabCacheRef.current.set(assetClass, result);
     return result;
@@ -167,7 +165,6 @@ export default function FundingPage() {
   const arbitrageData = Array.isArray(data?.arbitrageData) ? data.arbitrageData : [];
   const priceArbs = Array.isArray(data?.priceArbs) ? data.priceArbs : [];
   const oiMap = data?.oiMap ?? new Map<string, number>();
-  const spotPrices = data?.spotPrices ?? [];
   const arbHistory = data?.arbHistory ?? new Map<string, { avg7d: number; avg24h: number; avg6d: number }>();
 
   // Build mark prices map: first seen price per symbol (for arb view)
@@ -384,7 +381,6 @@ export default function FundingPage() {
     { key: 'heatmap', label: 'Heatmap' },
     { key: 'arbitrage', label: 'Funding Arbs' },
     { key: 'price', label: 'Price Arbs' },
-    { key: 'spot', label: 'Spot Arbs' },
     { key: 'spread', label: 'Spread History' },
   ];
 
@@ -724,9 +720,6 @@ export default function FundingPage() {
             )}
             {viewMode === 'price' && (
               <PriceArbitrageView priceArbs={priceArbs} />
-            )}
-            {viewMode === 'spot' && (
-              <SpotArbitrageView spotPrices={spotPrices} onRefresh={fetchData} currencyStatus={getCurrencyStatus()} />
             )}
             {viewMode === 'spread' && (
               <FundingSpreadComparison />

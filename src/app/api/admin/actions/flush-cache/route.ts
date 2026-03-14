@@ -3,7 +3,7 @@ import { requireAdmin, auth } from '@/lib/auth';
 import { flushApiCache, recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 
 export async function POST() {
   const adminErr = await requireAdmin();

@@ -46,6 +46,41 @@ async function fetchKuCoinStatus(): Promise<CurrencyStatus[]> {
   } catch { return []; }
 }
 
+async function fetchHTXStatus(): Promise<CurrencyStatus[]> {
+  try {
+    const res = await fetch('https://api.huobi.pro/v2/reference/currencies', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (json.code !== 200 || !Array.isArray(json.data)) return [];
+    const results: CurrencyStatus[] = [];
+    for (const c of json.data) {
+      const symbol = (c.currency || '').toUpperCase();
+      // Each currency has chains — aggregate: can deposit/withdraw if ANY chain allows it
+      let canDeposit = false;
+      let canWithdraw = false;
+      if (Array.isArray(c.chains)) {
+        for (const chain of c.chains) {
+          if (chain.depositStatus === 'allowed') canDeposit = true;
+          if (chain.withdrawStatus === 'allowed') canWithdraw = true;
+        }
+      }
+      results.push({ exchange: 'HTX', symbol, canDeposit, canWithdraw });
+    }
+    return results;
+  } catch { return []; }
+}
+
+async function fetchMEXCStatus(): Promise<CurrencyStatus[]> {
+  try {
+    // MEXC doesn't have a public currency status endpoint without API key
+    // Use the server info endpoint which has trading status per symbol
+    const res = await fetch('https://api.mexc.com/api/v3/defaultSymbols', { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    // This endpoint doesn't give deposit/withdraw status, so skip MEXC for now
+    return [];
+  } catch { return []; }
+}
+
 async function fetchGateStatus(): Promise<CurrencyStatus[]> {
   try {
     const proxyUrl = process.env.PROXY_URL;
@@ -79,25 +114,27 @@ export async function fetchAllCurrencyStatus(): Promise<Map<string, CurrencyStat
     return flat;
   }
 
-  const [okx, kucoin, gate] = await Promise.all([
+  const [okx, kucoin, gate, htx] = await Promise.all([
     fetchOKXStatus(),
     fetchKuCoinStatus(),
     fetchGateStatus(),
+    fetchHTXStatus(),
   ]);
 
   const byExchange = new Map<string, CurrencyStatus[]>();
   byExchange.set('OKX', okx);
   byExchange.set('KuCoin', kucoin);
   byExchange.set('Gate.io', gate);
+  byExchange.set('HTX', htx);
 
   statusCache = { data: byExchange, timestamp: Date.now() };
 
   const flat = new Map<string, CurrencyStatus>();
-  for (const statuses of [okx, kucoin, gate]) {
+  for (const statuses of [okx, kucoin, gate, htx]) {
     for (const s of statuses) flat.set(`${s.exchange}:${s.symbol}`, s);
   }
   return flat;
 }
 
 // Exchanges that have public status APIs
-export const STATUS_EXCHANGES = new Set(['OKX', 'KuCoin', 'Gate.io']);
+export const STATUS_EXCHANGES = new Set(['OKX', 'KuCoin', 'Gate.io', 'HTX']);

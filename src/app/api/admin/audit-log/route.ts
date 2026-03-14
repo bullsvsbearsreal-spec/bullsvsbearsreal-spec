@@ -3,7 +3,7 @@ import { requireAdminOrAdvisor } from '@/lib/auth';
 import { getAuditLog, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 
 export async function GET(request: NextRequest) {
   const adminErr = await requireAdminOrAdvisor();

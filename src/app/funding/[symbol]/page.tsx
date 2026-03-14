@@ -48,6 +48,54 @@ const EXCHANGE_HEX: Record<string, string> = {
 
 type TimeRange = '7d' | '30d';
 
+// ── Custom tooltip — compact, sorted, max 8 visible ──
+
+function FundingChartTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+
+  const entries = payload
+    .filter((e: any) => e.value != null)
+    .sort((a: any, b: any) => b.value - a.value); // highest rate first
+
+  const visible = entries.slice(0, 8);
+  const remaining = entries.length - visible.length;
+
+  return (
+    <div
+      className="rounded-lg px-3 py-2.5 text-xs shadow-xl max-w-[220px]"
+      style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}
+    >
+      <p className="text-neutral-400 mb-1.5 font-medium">
+        {new Date(label).toLocaleString(undefined, {
+          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+        })}
+      </p>
+      <div className="flex flex-col gap-0.5">
+        {visible.map((entry: any) => (
+          <div key={entry.name} className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-neutral-400 truncate text-[11px]">{entry.name}</span>
+            </div>
+            <span
+              className="font-mono tabular-nums font-semibold text-[11px] flex-shrink-0"
+              style={{ color: entry.value >= 0 ? '#34D399' : '#FB7185' }}
+            >
+              {entry.value >= 0 ? '+' : ''}{entry.value.toFixed(4)}%
+            </span>
+          </div>
+        ))}
+      </div>
+      {remaining > 0 && (
+        <p className="text-[10px] text-neutral-600 mt-1">+{remaining} more</p>
+      )}
+    </div>
+  );
+}
+
 export default function SymbolFundingPage() {
   const params = useParams();
   const router = useRouter();
@@ -394,21 +442,8 @@ export default function SymbolFundingPage() {
                         width={70}
                       />
                       <RechartsTooltip
-                        contentStyle={{
-                          backgroundColor: '#1a1a1a',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 8,
-                          fontSize: 11,
-                        }}
-                        labelFormatter={(t: number) =>
-                          new Date(t).toLocaleString(undefined, {
-                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                          })
-                        }
-                        formatter={(value: number, name: string) => [
-                          `${value >= 0 ? '+' : ''}${value.toFixed(4)}%`,
-                          name,
-                        ]}
+                        content={<FundingChartTooltip />}
+                        cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
                       />
                       <Legend
                         wrapperStyle={{ fontSize: 11 }}

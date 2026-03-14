@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { ALL_EXCHANGES } from '@/lib/constants';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

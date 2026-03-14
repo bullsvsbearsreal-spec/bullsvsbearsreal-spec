@@ -2,7 +2,7 @@
   "functions": {
     "app/api/**/*": {
       "maxDuration": 30,
-      "regions": ["dxb1"]
+      "regions": ["bom1"]
     }
   },
   "crons": [

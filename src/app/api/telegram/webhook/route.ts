@@ -32,7 +32,7 @@ import type { TickerEntry, FundingEntry } from '@/lib/arbitrage-detector';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();

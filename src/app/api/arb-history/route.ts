@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 // In-memory cache (2-minute TTL)

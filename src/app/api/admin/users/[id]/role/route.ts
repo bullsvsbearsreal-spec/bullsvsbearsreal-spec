@@ -10,7 +10,7 @@ import { requireAdmin, auth } from '@/lib/auth';
 import { isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 const VALID_ROLES = ['admin', 'advisor', 'user'] as const;

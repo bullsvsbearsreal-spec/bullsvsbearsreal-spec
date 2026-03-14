@@ -6,7 +6,7 @@ import { spotPriceFetchers } from './exchanges';
 import { fetchAllCurrencyStatus } from '@/lib/currency-status';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 

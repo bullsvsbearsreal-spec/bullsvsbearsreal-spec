@@ -12,7 +12,7 @@ import { isDBConfigured } from '@/lib/db';
 import { getCollectorHealth } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 const ADMIN_API_KEY = (process.env.ADMIN_API_KEY || '').trim();

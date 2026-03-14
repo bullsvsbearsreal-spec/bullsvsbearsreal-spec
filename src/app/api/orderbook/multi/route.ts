@@ -22,7 +22,7 @@ import {
 } from '@/lib/execution-costs/venues';
 
 export const runtime = 'nodejs';
-export const preferredRegion = 'dxb1';
+export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 // Map exchange name (case-insensitive) → fetcher function
