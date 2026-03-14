@@ -9,20 +9,40 @@ type OIData = {
 };
 
 export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
-  // Binance — geo-blocked from Vercel dxb1 (451). Route through CF Worker proxy with Smart Placement.
+  // Binance — geo-blocked from some Vercel regions. Try direct → fapi1 → fapi2 → proxy fallback.
   // Two-step: ticker for prices, then individual OI (batched)
   {
     name: 'Binance',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      const tickerTarget = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
-      const tickerUrl = proxyUrl
-        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(tickerTarget)}`
-        : tickerTarget;
-      const tickerRes = await fetchFn(tickerUrl, {}, 12000);
-      if (!tickerRes.ok) return [];
-      const tickerData = await tickerRes.json();
-      if (!Array.isArray(tickerData)) return [];
+      const tickerTargets = [
+        'https://fapi.binance.com/fapi/v1/ticker/24hr',
+        'https://fapi1.binance.com/fapi/v1/ticker/24hr',
+        'https://fapi2.binance.com/fapi/v1/ticker/24hr',
+      ];
+      if (proxyUrl) {
+        tickerTargets.push(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(tickerTargets[0])}`);
+      }
+
+      // Find first working Binance domain
+      let tickerData: any[] = [];
+      let workingDomain = 'https://fapi.binance.com';
+      for (const url of tickerTargets) {
+        try {
+          const res = await fetchFn(url, {}, 10000);
+          if (!res.ok) continue;
+          const json = await res.json();
+          if (Array.isArray(json) && json.length > 0) {
+            tickerData = json;
+            // Extract domain for OI calls
+            const match = url.match(/^(https:\/\/[^/]+)/);
+            if (match) workingDomain = match[1];
+            break;
+          }
+        } catch { continue; }
+      }
+      if (tickerData.length === 0) return [];
+
       const topSymbols = tickerData
         .filter((t: any) => t.symbol?.endsWith('USDT') && isCryptoSymbol(t.symbol.replace('USDT', '')))
         .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
@@ -30,6 +50,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
 
       const BATCH_SIZE = 10;
       const results: OIData[] = [];
+      const isProxy = workingDomain.includes('proxy') || (proxyUrl && workingDomain === proxyUrl.replace(/\/$/, ''));
 
       for (let i = 0; i < topSymbols.length; i += BATCH_SIZE) {
         const batch = topSymbols.slice(i, i + BATCH_SIZE);
@@ -37,9 +58,9 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           batch.map(async (ticker: any) => {
             try {
               const oiTarget = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${ticker.symbol}`;
-              const oiUrl = proxyUrl
+              const oiUrl = isProxy && proxyUrl
                 ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(oiTarget)}`
-                : oiTarget;
+                : `${workingDomain}/fapi/v1/openInterest?symbol=${ticker.symbol}`;
               const oiRes = await fetchFn(oiUrl, {}, 5000);
               if (oiRes.ok) {
                 const oiData = await oiRes.json();
@@ -63,19 +84,30 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // Bybit — geo-blocked from Vercel dxb1 (403). Route through CF Worker proxy with Smart Placement.
+  // Bybit — geo-blocked from some Vercel regions. Try direct → .nl → proxy fallback.
   {
     name: 'Bybit',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      const targetUrl = 'https://api.bybit.com/v5/market/tickers?category=linear';
-      const url = proxyUrl
-        ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`
-        : targetUrl;
-      const res = await fetchFn(url, {}, 12000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      if (json.retCode !== 0) return [];
+      const urls = [
+        'https://api.bybit.com/v5/market/tickers?category=linear',
+        'https://api.bybit.nl/v5/market/tickers?category=linear',
+      ];
+      if (proxyUrl) {
+        urls.push(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(urls[0])}`);
+      }
+
+      let json: any = null;
+      for (const url of urls) {
+        try {
+          const res = await fetchFn(url, {}, 10000);
+          if (!res.ok) continue;
+          const parsed = await res.json();
+          if (parsed.retCode === 0 && parsed.result?.list?.length > 0) { json = parsed; break; }
+        } catch { continue; }
+      }
+      if (!json) return [];
+
       return json.result.list
         .filter((t: any) => t.symbol?.endsWith('USDT'))
         .map((ticker: any) => ({
