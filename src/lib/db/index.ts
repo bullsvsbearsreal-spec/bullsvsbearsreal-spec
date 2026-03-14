@@ -17,10 +17,11 @@ export function getSQL() {
   }
   if (!sql) {
     sql = postgres(DATABASE_URL, {
-      max: 1,                // single connection per serverless instance to avoid exhaustion
+      max: 3,                // small pool per serverless instance (PgBouncer handles global pooling)
       idle_timeout: 5,       // release idle connections after 5s
       connect_timeout: 10,   // 10s connection timeout
       max_lifetime: 60 * 2,  // recycle connections every 2 min
+      prepare: false,        // required for PgBouncer transaction mode
       ssl: 'require',
     });
   }
