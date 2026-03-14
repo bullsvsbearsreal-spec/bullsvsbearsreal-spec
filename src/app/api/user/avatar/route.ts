@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
     await db`UPDATE users SET image = ${imageUrl} WHERE id = ${session.user.id}`;
 
     return NextResponse.json({ image: imageUrl });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Avatar upload error:', err);
-    return NextResponse.json({ error: err?.message || 'Upload failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }
 
