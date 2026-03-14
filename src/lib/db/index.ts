@@ -17,9 +17,10 @@ export function getSQL() {
   }
   if (!sql) {
     sql = postgres(DATABASE_URL, {
-      max: 10,               // connection pool size
-      idle_timeout: 20,      // close idle connections after 20s
+      max: 3,                // keep pool small for serverless (each function gets its own pool)
+      idle_timeout: 10,      // release idle connections quickly
       connect_timeout: 10,   // 10s connection timeout
+      max_lifetime: 60 * 5,  // recycle connections every 5 min
       ssl: 'require',
     });
   }
