@@ -62,21 +62,40 @@ async function fetchYahooQuote(ticker: string): Promise<YahooQuote | null> {
   try {
     const res = await fetchWithTimeout(
       `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=5d&interval=1d`,
-      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; InfoHub/1.0)' } },
+      { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' } },
       6000,
     );
     if (!res.ok) return null;
     const json = await res.json();
-    const meta = json?.chart?.result?.[0]?.meta;
+    const result = json?.chart?.result?.[0];
+    const meta = result?.meta;
     if (!meta) return null;
 
-    const price = meta.regularMarketPrice || 0;
-    const prev = meta.chartPreviousClose || meta.previousClose || 0;
+    // On datacenter IPs, Yahoo's meta.regularMarketPrice can be 1-2 days stale.
+    // The last candle close from the chart data is always the most recent trading day,
+    // so prefer that and fall back to meta.regularMarketPrice.
+    const closes = result?.indicators?.quote?.[0]?.close as number[] | undefined;
+    const validCloses = Array.isArray(closes)
+      ? closes.filter((c: number | null) => c != null) as number[]
+      : [];
+    const lastClose = validCloses.length > 0 ? validCloses[validCloses.length - 1] : 0;
+    const prevClose = validCloses.length > 1 ? validCloses[validCloses.length - 2] : 0;
+    const metaPrice = meta.regularMarketPrice || 0;
+    const price = lastClose || metaPrice;
+    // For daily change: use the candle before last, or chartPreviousClose as fallback
+    const prev = prevClose || meta.chartPreviousClose || meta.previousClose || 0;
+
+    // Volume: prefer last candle volume, fall back to meta
+    const volumes = result?.indicators?.quote?.[0]?.volume as number[] | undefined;
+    const lastVolume = Array.isArray(volumes) && volumes.length > 0
+      ? volumes[volumes.length - 1] || 0
+      : 0;
+
     return {
       price,
       previousClose: prev,
       changePct: prev > 0 ? ((price - prev) / prev) * 100 : 0,
-      volume: meta.regularMarketVolume || 0,
+      volume: lastVolume || meta.regularMarketVolume || 0,
     };
   } catch {
     return null;
