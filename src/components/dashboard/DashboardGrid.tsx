@@ -35,6 +35,7 @@ const WIDGET_COMPONENTS: Record<WidgetType, React.LazyExoticComponent<React.Comp
   'fear-greed-chart': lazy(() => import('./widgets/FearGreedChartWidget')),
   altseason: lazy(() => import('./widgets/AltseasonWidget')),
   'stablecoin-flows': lazy(() => import('./widgets/StablecoinFlowsWidget')),
+  'economic-calendar': lazy(() => import('./widgets/EconomicCalendarWidget')),
 };
 
 function WidgetSkeleton() {

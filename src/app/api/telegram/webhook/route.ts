@@ -136,9 +136,13 @@ async function handleStart(chatId: number): Promise<void> {
     '/stablecoins — Stablecoin supply &amp; flows',
     '/oidelta — OI momentum (biggest changes)',
     '/longshort [BTC] — Binance long/short ratio',
+    '/news [BTC] — Latest crypto news',
+    '/calendar — Economic events calendar',
     '',
     '<b>Custom Alerts:</b>',
     '/alert add BTC price gt 100000',
+    '/alert add ETH liquidations gt 50000000',
+    '/alert add SOL volume gt 1000000000',
     '/alert list — Show your alerts',
     '/alert remove &lt;n&gt; — Remove alert by number',
     '/alert clear — Remove all alerts',
@@ -741,6 +745,13 @@ const METRIC_ALIASES: Record<string, string> = {
   change24h: 'change24h',
   oi: 'openInterest',
   funding: 'fundingRate',
+  volume: 'volume24h',
+  volume24h: 'volume24h',
+  vol: 'volume24h',
+  liquidations: 'liquidations24h',
+  liquidations24h: 'liquidations24h',
+  liqs: 'liquidations24h',
+  liq24h: 'liquidations24h',
 };
 const VALID_OPERATORS = new Set(['gt', 'lt']);
 
@@ -755,8 +766,14 @@ async function handleAlert(chatId: number, args: string[]): Promise<void> {
         '/alert remove &lt;n&gt; — Remove by number',
         '/alert clear — Remove all',
         '',
-        '<b>Metrics:</b> price, fundingRate, openInterest, change24h',
+        '<b>Metrics:</b> price, funding, oi, change24h, volume, liquidations',
         '<b>Operators:</b> gt (greater than), lt (less than)',
+        '',
+        '<b>Examples:</b>',
+        '/alert add BTC price gt 100000',
+        '/alert add ETH funding lt -0.01',
+        '/alert add BTC liquidations gt 50000000',
+        '/alert add SOL volume gt 1000000000',
       ].join('\n'),
     );
     return;
@@ -1684,6 +1701,113 @@ async function handleLongShort(chatId: number, args: string[], origin: string): 
 }
 
 // ---------------------------------------------------------------------------
+// /news — latest crypto news
+// ---------------------------------------------------------------------------
+
+async function handleNews(chatId: number, args: string[], origin: string): Promise<void> {
+  const coin = args.length > 0 ? args[0].toUpperCase() : null;
+
+  try {
+    const url = coin
+      ? `${origin}/api/news?limit=5&currency=${encodeURIComponent(coin)}`
+      : `${origin}/api/news?limit=5`;
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch news (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json = await res.json();
+    const articles: Array<{ title: string; url: string; source: string; sentiment?: string; currencies: string[]; publishedAt: number }> = json.articles || [];
+
+    if (articles.length === 0) {
+      await sendMessage(chatId, coin ? `No recent news for <b>${esc(coin)}</b>.` : 'No recent news available.');
+      return;
+    }
+
+    const lines = [
+      coin ? `<b>📰 News: ${coin}</b>` : '<b>📰 Latest News</b>',
+      '━━━━━━━━━━━━━━━━',
+      '',
+    ];
+
+    articles.slice(0, 5).forEach((a, i) => {
+      const sentEmoji = a.sentiment === 'bullish' ? '🟢' : a.sentiment === 'bearish' ? '🔴' : '⚪';
+      const title = a.title.length > 70 ? a.title.slice(0, 67) + '...' : a.title;
+      const coins = a.currencies.length > 0 ? ` [${a.currencies.slice(0, 3).join(', ')}]` : '';
+      const ago = Math.round((Date.now() - a.publishedAt) / 60000);
+      const timeStr = ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`;
+      lines.push(
+        `${i + 1}. ${sentEmoji} <b>${esc(title)}</b>${coins}`,
+        `   ${esc(a.source)} · ${timeStr} · <a href="${a.url}">Read</a>`,
+        '',
+      );
+    });
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: coin ? `cmd:news:${coin}` : 'cmd:news' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleNews error:', err);
+    await sendMessage(chatId, 'Error fetching news. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /calendar — upcoming economic events
+// ---------------------------------------------------------------------------
+
+async function handleCalendar(chatId: number, origin: string): Promise<void> {
+  try {
+    const res = await fetch(`${origin}/api/economic-calendar`, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      await sendMessage(chatId, `Failed to fetch calendar (HTTP ${res.status}).`);
+      return;
+    }
+
+    const json = await res.json();
+    const events: Array<{ name: string; date: string; time?: string; impact: string; category: string; country: string; forecast?: string; previous?: string }> = json.events || [];
+
+    // Filter to high/medium impact upcoming events
+    const now = new Date();
+    const upcoming = events
+      .filter(e => e.impact !== 'low' && new Date(e.date) >= new Date(now.toDateString()))
+      .slice(0, 8);
+
+    if (upcoming.length === 0) {
+      await sendMessage(chatId, 'No upcoming high-impact economic events.');
+      return;
+    }
+
+    const impactEmoji = (i: string) => i === 'high' ? '🔴' : i === 'medium' ? '🟡' : '⚪';
+
+    const lines = [
+      '<b>📅 Economic Calendar</b>',
+      '━━━━━━━━━━━━━━━━',
+      '',
+    ];
+
+    upcoming.forEach(e => {
+      const timeStr = e.time ? ` ${esc(e.time)}` : '';
+      const forecast = e.forecast ? ` (F: ${esc(e.forecast)}${e.previous ? `, P: ${esc(e.previous)}` : ''})` : '';
+      lines.push(
+        `${impactEmoji(e.impact)} <b>${esc(e.name)}</b>`,
+        `   ${esc(e.country)} · ${esc(e.date)}${timeStr}${forecast}`,
+        '',
+      );
+    });
+
+    await sendMessageWithKeyboard(chatId, lines.join('\n'), [
+      [{ text: '🔄 Refresh', callback_data: 'cmd:calendar' }],
+    ]);
+  } catch (err) {
+    console.error('[telegram] handleCalendar error:', err);
+    await sendMessage(chatId, 'Error fetching calendar. Please try again later.');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared formatting helpers
 // ---------------------------------------------------------------------------
 
@@ -1855,6 +1979,12 @@ export async function POST(request: NextRequest) {
         case 'longshort':
           await handleLongShort(cbChatId, cbArgs, cbOrigin);
           break;
+        case 'news':
+          await handleNews(cbChatId, cbArgs, cbOrigin);
+          break;
+        case 'calendar':
+          await handleCalendar(cbChatId, cbOrigin);
+          break;
         default:
           break;
       }
@@ -2008,6 +2138,14 @@ export async function POST(request: NextRequest) {
 
       case '/longshort':
         await handleLongShort(chatId, args, request.nextUrl.origin);
+        break;
+
+      case '/news':
+        await handleNews(chatId, args, request.nextUrl.origin);
+        break;
+
+      case '/calendar':
+        await handleCalendar(chatId, request.nextUrl.origin);
         break;
 
       case '/subscribe':

@@ -6,7 +6,7 @@
 const STORAGE_KEY = 'ih_alerts';
 const TRIGGERED_KEY = 'ih_alerts_triggered';
 
-export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h';
+export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h';
 export type AlertOperator = 'gt' | 'lt';
 
 export interface Alert {
@@ -35,6 +35,8 @@ export const METRIC_LABELS: Record<AlertMetric, string> = {
   fundingRate: 'Funding Rate (%)',
   openInterest: 'Open Interest ($)',
   change24h: '24h Change (%)',
+  volume24h: '24h Volume ($)',
+  liquidations24h: '24h Liquidations ($)',
 };
 
 function readAlerts(): Alert[] {

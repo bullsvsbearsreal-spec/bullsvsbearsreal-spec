@@ -12,17 +12,18 @@ interface ExchangeInfo {
 export default function ExchangeStatusWidget() {
   const [exchanges, setExchanges] = useState<ExchangeInfo[] | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    let retries = 0;
     const load = async () => {
       try {
         const res = await fetch('/api/funding?assetClass=crypto');
-        if (!res.ok) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data: { exchange: string }[] = json?.data || [];
 
-        // Count entries per exchange as a proxy for health
         const counts: Record<string, number> = {};
         for (const e of data) {
           if (!e.exchange) continue;
@@ -36,15 +37,35 @@ export default function ExchangeStatusWidget() {
         if (mounted) {
           setExchanges(sorted);
           setUpdatedAt(Date.now());
+          setError(false);
         }
-      } catch (err) { console.error('[ExchangeStatus] error:', err); }
+        retries = 0;
+      } catch (err) {
+        console.error('[ExchangeStatus] error:', err);
+        retries++;
+        if (retries >= 3 && mounted) setError(true);
+      }
     };
     load();
     const iv = setInterval(load, 60_000);
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
+  if (error && !exchanges) return (
+    <div className="text-center py-4">
+      <p className="text-xs text-neutral-500">Failed to load exchange status</p>
+      <button onClick={() => { setError(false); window.location.reload(); }} className="text-[10px] text-amber-500 hover:text-amber-400 mt-1">Retry</button>
+    </div>
+  );
+
   if (!exchanges) return <WidgetSkeleton variant="list" />;
+
+  if (exchanges.length === 0) return (
+    <div className="text-center py-4">
+      <p className="text-xs text-neutral-500">No exchange data available</p>
+      <p className="text-[10px] text-neutral-600 mt-0.5">Waiting for funding data</p>
+    </div>
+  );
 
   return (
     <div>

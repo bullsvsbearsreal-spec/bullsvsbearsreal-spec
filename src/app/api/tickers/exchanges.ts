@@ -996,4 +996,133 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
+  // BloFin — CEX tickers
+  {
+    name: 'BloFin',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://openapi.blofin.com/api/v1/market/tickers', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const data = json?.data;
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.instId?.endsWith('-USDT'))
+        .map((t: any) => {
+          const lastPrice = parseFloat(t.last) || 0;
+          const open = parseFloat(t.open24h) || 0;
+          const change = open > 0 ? ((lastPrice - open) / open) * 100 : 0;
+          return {
+            symbol: t.instId.replace('-USDT', ''),
+            exchange: 'BloFin',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: change,
+            changePercent24h: change,
+            high24h: parseFloat(t.high24h) || 0,
+            low24h: parseFloat(t.low24h) || 0,
+            volume24h: parseFloat(t.volCurrency24h) || 0,
+            quoteVolume24h: parseFloat(t.vol24h) || 0,
+          };
+        })
+        .filter((t: any) => t.lastPrice > 0);
+    },
+  },
+
+  // Backpack — DEX tickers (perps only)
+  {
+    name: 'Backpack',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.backpack.exchange/api/v1/tickers', {}, 10000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((t: any) => t.symbol?.endsWith('_USDC_PERP'))
+        .map((t: any) => {
+          const lastPrice = parseFloat(t.lastPrice) || 0;
+          const changePercent = parseFloat(t.priceChangePercent) * 100 || 0;
+          return {
+            symbol: t.symbol.replace('_USDC_PERP', ''),
+            exchange: 'Backpack',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: changePercent,
+            changePercent24h: changePercent,
+            high24h: parseFloat(t.high) || 0,
+            low24h: parseFloat(t.low) || 0,
+            volume24h: parseFloat(t.volume) || 0,
+            quoteVolume24h: parseFloat(t.quoteVolume) || 0,
+          };
+        })
+        .filter((t: any) => t.lastPrice > 0);
+    },
+  },
+
+  // Orderly — DEX tickers from futures endpoint
+  {
+    name: 'Orderly',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-evm.orderly.org/v1/public/futures', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const rows = json?.data?.rows;
+      if (!Array.isArray(rows)) return [];
+      return rows
+        .filter((t: any) => t.symbol?.startsWith('PERP_'))
+        .map((t: any) => {
+          let symbol = t.symbol.replace('PERP_', '').replace('_USDC', '');
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+          const lastPrice = parseFloat(t['24h_close']) || parseFloat(t.mark_price) || 0;
+          const open = parseFloat(t['24h_open']) || 0;
+          const change = open > 0 ? ((lastPrice - open) / open) * 100 : 0;
+          return {
+            symbol,
+            exchange: 'Orderly',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: change,
+            changePercent24h: change,
+            high24h: parseFloat(t['24h_high']) || 0,
+            low24h: parseFloat(t['24h_low']) || 0,
+            volume24h: parseFloat(t['24h_volume']) || 0,
+            quoteVolume24h: parseFloat(t['24h_amount']) || 0,
+          };
+        })
+        .filter((t: any) => t.lastPrice > 0);
+    },
+  },
+
+  // Paradex — StarkNet DEX tickers from markets/summary
+  {
+    name: 'Paradex',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.prod.paradex.trade/v1/markets/summary?market=ALL', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const results = json?.results;
+      if (!Array.isArray(results)) return [];
+      return results
+        .filter((t: any) => t.symbol?.endsWith('-USD-PERP'))
+        .map((t: any) => {
+          const symbol = t.symbol.replace('-USD-PERP', '');
+          const lastPrice = parseFloat(t.last_traded_price) || parseFloat(t.mark_price) || 0;
+          const changePercent = parseFloat(t.price_change_rate_24h) * 100 || 0;
+          return {
+            symbol,
+            exchange: 'Paradex',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: changePercent,
+            changePercent24h: changePercent,
+            high24h: 0,
+            low24h: 0,
+            volume24h: 0,
+            quoteVolume24h: parseFloat(t.volume_24h) || 0,
+          };
+        })
+        .filter((t: any) => t.lastPrice > 0);
+    },
+  },
+
 ];

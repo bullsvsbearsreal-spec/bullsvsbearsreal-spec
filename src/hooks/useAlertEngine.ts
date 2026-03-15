@@ -19,6 +19,8 @@ interface MarketData {
   change24h: number;
   fundingRate: number;
   openInterest: number;
+  volume24h: number;
+  liquidations24h: number;
 }
 
 async function fetchMarketData(): Promise<Map<string, MarketData>> {
@@ -39,7 +41,7 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
       (tickerRes.data as RawTicker[]).forEach((t) => {
         const sym = t.symbol;
         if (!map.has(sym)) {
-          map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
+          map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
         }
         const entry = map.get(sym)!;
         // Average price across exchanges using proper sum/count
@@ -78,7 +80,7 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
       });
       fundingSums.forEach((v, sym) => {
         if (!map.has(sym)) {
-          map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
+          map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
         }
         map.get(sym)!.fundingRate = v.count > 0 ? v.sum / v.count : 0;
       });
@@ -90,7 +92,7 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
       (oiRes.data as RawOI[]).forEach((o) => {
         const sym = o.symbol;
         if (!map.has(sym)) {
-          map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
+          map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
         }
         map.get(sym)!.openInterest += o.openInterestValue || 0;
       });
@@ -108,6 +110,8 @@ function getMetricValue(data: MarketData, metric: AlertMetric): number {
     case 'fundingRate': return data.fundingRate;
     case 'openInterest': return data.openInterest;
     case 'change24h': return data.change24h;
+    case 'volume24h': return data.volume24h;
+    case 'liquidations24h': return data.liquidations24h;
   }
 }
 

@@ -9,9 +9,11 @@ export interface MarketData {
   change24h: number;
   fundingRate: number;
   openInterest: number;
+  volume24h: number;
+  liquidations24h: number;
 }
 
-export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h';
+export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h';
 export type AlertOperator = 'gt' | 'lt';
 
 export interface Alert {
@@ -44,20 +46,21 @@ export async function fetchMarketDataServer(
 ): Promise<Map<string, MarketData>> {
   const map = new Map<string, MarketData>();
 
-  const [tickerRes, fundingRes, oiRes] = await Promise.all([
+  const [tickerRes, fundingRes, oiRes, liqRes] = await Promise.all([
     fetchJSON<{ data: any[] }>(`${origin}/api/tickers`),
     fetchJSON<{ data: any[] }>(`${origin}/api/funding`),
     fetchJSON<{ data: any[] }>(`${origin}/api/openinterest`),
+    fetchJSON<{ topSymbols: any[] }>(`${origin}/api/liquidation-heatmap?timeframe=24h`),
   ]);
 
-  // Tickers → price + change24h (proper averaging across exchanges)
+  // Tickers → price + change24h + volume (proper averaging across exchanges)
   if (tickerRes?.data) {
     const priceAccum = new Map<string, { sum: number; count: number }>();
     const changeAccum = new Map<string, { sum: number; count: number }>();
     for (const t of tickerRes.data) {
       const sym = t.symbol as string;
       if (!map.has(sym)) {
-        map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
+        map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
       }
       const entry = map.get(sym)!;
       if (t.lastPrice) {
@@ -75,6 +78,10 @@ export async function fetchMarketDataServer(
         acc.count++;
         changeAccum.set(sym, acc);
         entry.change24h = acc.sum / acc.count;
+      }
+      // Sum volume across exchanges
+      if (t.quoteVolume24h) {
+        entry.volume24h += t.quoteVolume24h;
       }
     }
   }
@@ -94,7 +101,7 @@ export async function fetchMarketDataServer(
     }
     sums.forEach((v, sym) => {
       if (!map.has(sym)) {
-        map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
+        map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
       }
       map.get(sym)!.fundingRate = v.count > 0 ? v.sum / v.count : 0;
     });
@@ -105,9 +112,20 @@ export async function fetchMarketDataServer(
     for (const o of oiRes.data) {
       const sym = o.symbol as string;
       if (!map.has(sym)) {
-        map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0 });
+        map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
       }
       map.get(sym)!.openInterest += o.openInterestValue || 0;
+    }
+  }
+
+  // Liquidations → 24h value per symbol
+  if (liqRes?.topSymbols) {
+    for (const l of liqRes.topSymbols) {
+      const sym = l.symbol as string;
+      if (!map.has(sym)) {
+        map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
+      }
+      map.get(sym)!.liquidations24h = l.value || 0;
     }
   }
 
@@ -120,6 +138,8 @@ export function getMetricValue(data: MarketData, metric: AlertMetric): number {
     case 'fundingRate': return data.fundingRate;
     case 'openInterest': return data.openInterest;
     case 'change24h': return data.change24h;
+    case 'volume24h': return data.volume24h;
+    case 'liquidations24h': return data.liquidations24h;
   }
 }
 

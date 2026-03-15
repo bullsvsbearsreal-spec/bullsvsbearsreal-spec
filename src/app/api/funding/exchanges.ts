@@ -1778,6 +1778,120 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
+  // BloFin — CEX with OKX-style API
+  {
+    name: 'BloFin',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://openapi.blofin.com/api/v1/market/funding-rate', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const data = json?.data;
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((item: any) => item.instId?.endsWith('-USDT') && item.fundingRate != null)
+        .map((item: any) => ({
+          symbol: item.instId.replace('-USDT', ''),
+          exchange: 'BloFin',
+          fundingRate: parseFloat(item.fundingRate) * 100,
+          fundingInterval: '8h' as const,
+          markPrice: 0,
+          indexPrice: 0,
+          nextFundingTime: parseInt(item.fundingTime) || Date.now() + 28800000,
+          type: 'cex' as const,
+        }))
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Backpack — Solana-based DEX, markPrices endpoint has funding for all perps
+  {
+    name: 'Backpack',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.backpack.exchange/api/v1/markPrices', {}, 10000);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((item: any) => item.symbol?.endsWith('_USDC_PERP') && item.fundingRate != null)
+        .map((item: any) => {
+          const symbol = item.symbol.replace('_USDC_PERP', '');
+          return {
+            symbol,
+            exchange: 'Backpack',
+            fundingRate: parseFloat(item.fundingRate) * 100,
+            fundingInterval: '1h' as const,
+            markPrice: parseFloat(item.markPrice) || 0,
+            indexPrice: parseFloat(item.indexPrice) || 0,
+            nextFundingTime: parseInt(item.nextFundingTimestamp) || Date.now() + 3600000,
+            type: 'dex' as const,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Orderly Network — multi-chain DEX, single endpoint has everything
+  {
+    name: 'Orderly',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-evm.orderly.org/v1/public/futures', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const rows = json?.data?.rows;
+      if (!Array.isArray(rows)) return [];
+      return rows
+        .filter((item: any) => item.symbol?.startsWith('PERP_') && item.last_funding_rate != null)
+        .map((item: any) => {
+          // PERP_BTC_USDC → BTC
+          let symbol = item.symbol.replace('PERP_', '').replace('_USDC', '');
+          // Normalize: 1000BONK → BONK, 1000PEPE → PEPE
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+          const fundingPeriod = 8; // default 8h
+          return {
+            symbol,
+            exchange: 'Orderly',
+            fundingRate: parseFloat(item.last_funding_rate) * 100,
+            predictedRate: item.est_funding_rate != null ? parseFloat(item.est_funding_rate) * 100 : undefined,
+            fundingInterval: `${fundingPeriod}h` as '8h',
+            markPrice: parseFloat(item.mark_price) || 0,
+            indexPrice: parseFloat(item.index_price) || 0,
+            nextFundingTime: parseInt(item.next_funding_time) || Date.now() + 28800000,
+            type: 'dex' as const,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
+  // Paradex — StarkNet DEX, single endpoint has funding + OI + tickers
+  {
+    name: 'Paradex',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.prod.paradex.trade/v1/markets/summary?market=ALL', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const results = json?.results;
+      if (!Array.isArray(results)) return [];
+      return results
+        .filter((item: any) => item.symbol?.endsWith('-USD-PERP') && item.funding_rate != null)
+        .map((item: any) => {
+          const symbol = item.symbol.replace('-USD-PERP', '');
+          return {
+            symbol,
+            exchange: 'Paradex',
+            fundingRate: parseFloat(item.funding_rate) * 100,
+            fundingInterval: '1h' as const,
+            markPrice: parseFloat(item.mark_price) || 0,
+            indexPrice: parseFloat(item.underlying_price) || 0,
+            nextFundingTime: Date.now() + 3600000,
+            type: 'dex' as const,
+          };
+        })
+        .filter((item: any) => !isNaN(item.fundingRate));
+    },
+  },
+
 ];
 
 // Paused exchanges (kept for reference):

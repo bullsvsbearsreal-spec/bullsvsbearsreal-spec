@@ -27,17 +27,23 @@ import {
 /* ─── Helpers ────────────────────────────────────────────────────── */
 
 function formatMetricValue(metric: AlertMetric, value: number): string {
+  const abs = Math.abs(value);
   switch (metric) {
     case 'price':
       return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
     case 'fundingRate':
       return `${value.toFixed(4)}%`;
     case 'openInterest':
-      if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-      if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+    case 'volume24h':
+    case 'liquidations24h':
+      if (abs >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+      if (abs >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+      if (abs >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
       return `$${value.toLocaleString()}`;
     case 'change24h':
       return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+    default:
+      return String(value);
   }
 }
 
@@ -246,7 +252,7 @@ export default function AlertsPage() {
           {showForm && (
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
               <h3 className="text-sm font-semibold text-white mb-3">Create Alert</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div>
                   <label className="text-xs text-neutral-500 block mb-1">Symbol</label>
                   <input
@@ -268,6 +274,8 @@ export default function AlertsPage() {
                     <option value="fundingRate">Funding Rate</option>
                     <option value="openInterest">Open Interest</option>
                     <option value="change24h">24h Change</option>
+                    <option value="volume24h">24h Volume</option>
+                    <option value="liquidations24h">24h Liquidations</option>
                   </select>
                 </div>
                 <div>

@@ -16,6 +16,7 @@ const PNG_EXCHANGES = new Set([
   'aevo', 'vertex', 'drift', 'gtrade', 'bitfinex', 'whitebit',
   'coinbase', 'coinex', 'aster', 'bitunix', 'lighter',
   'bitmex', 'gate', 'gate.io', 'edgex', 'variational', 'extended', 'nado',
+  'blofin', 'backpack', 'orderly', 'paradex',
 ]);
 
 // SVG fallbacks for exchanges without downloadable logos
@@ -85,6 +86,52 @@ function ExtendedLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
+// Paradex: purple/violet with "P" geometric mark
+function ParadexLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <rect rx="16" width="126" height="126" fill="#1A0530"/>
+      <path d="M48 35h25c12 0 22 10 22 22s-10 22-22 22H58v12H48V35zm10 34h15c7 0 12-5 12-12s-5-12-12-12H58v24z" fill="#8B5CF6"/>
+    </svg>
+  );
+}
+
+// BloFin: green with "B" shield mark
+function BloFinLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <rect rx="16" width="126" height="126" fill="#0D1117"/>
+      <circle cx="63" cy="63" r="35" fill="#00D084" opacity="0.2"/>
+      <text x="63" y="75" textAnchor="middle" fill="#00D084" fontSize="52" fontWeight="bold" fontFamily="Arial">B</text>
+    </svg>
+  );
+}
+
+// Backpack: red with backpack silhouette
+function BackpackLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <rect rx="16" width="126" height="126" fill="#1A1A2E"/>
+      <rect x="40" y="45" width="46" height="50" rx="8" fill="#E33E3F"/>
+      <rect x="48" y="35" width="30" height="18" rx="6" fill="none" stroke="#E33E3F" strokeWidth="5"/>
+      <rect x="50" y="60" width="26" height="12" rx="3" fill="#1A1A2E"/>
+    </svg>
+  );
+}
+
+// Orderly: purple with order-book-like bars
+function OrderlyLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
+  return (
+    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
+      <rect rx="16" width="126" height="126" fill="#0F0A1F"/>
+      <rect x="35" y="40" width="56" height="8" rx="2" fill="#A78BFA"/>
+      <rect x="35" y="55" width="42" height="8" rx="2" fill="#A78BFA" opacity="0.7"/>
+      <rect x="35" y="70" width="50" height="8" rx="2" fill="#A78BFA" opacity="0.5"/>
+      <rect x="35" y="85" width="36" height="8" rx="2" fill="#A78BFA" opacity="0.3"/>
+    </svg>
+  );
+}
+
 const svgFallbacks: Record<string, React.ComponentType<ExchangeLogoProps>> = {
   bitmex: BitMEXLogoSVG,
   gate: GateLogoSVG,
@@ -93,6 +140,10 @@ const svgFallbacks: Record<string, React.ComponentType<ExchangeLogoProps>> = {
   variational: VariationalLogoSVG,
   extended: ExtendedLogoSVG,
   nado: NadoLogoSVG,
+  blofin: BloFinLogoSVG,
+  backpack: BackpackLogoSVG,
+  orderly: OrderlyLogoSVG,
+  paradex: ParadexLogoSVG,
 };
 
 // Exchange brand colors for styling
@@ -128,6 +179,10 @@ export const exchangeColors: Record<string, string> = {
   edgex: '#38BDF8',
   variational: '#E879F9',
   nado: '#E4002B',
+  blofin: '#00D084',
+  backpack: '#E33E3F',
+  orderly: '#A78BFA',
+  paradex: '#8B5CF6',
 };
 
 // Backwards compatibility: keep the old named exports as well

@@ -410,8 +410,8 @@ function FooterInner() {
         </div>
 
         {/* ─── Disclaimer ─── */}
-        <div className="border-t border-white/[0.04] pt-4 mb-4">
-          <p className="text-[10px] text-neutral-700 leading-relaxed text-center">
+        <div className="border-t border-white/[0.06] pt-5 mb-5">
+          <p className="text-[10px] text-neutral-500 leading-relaxed text-center max-w-3xl mx-auto">
             InfoHub aggregates publicly available market data for informational and educational purposes only.
             Nothing on this site constitutes financial, investment, or trading advice.
             Data is sourced from third-party APIs and may be delayed, incomplete, or inaccurate.
@@ -420,29 +420,32 @@ function FooterInner() {
         </div>
 
         {/* ─── Bottom bar ─── */}
-        <div className="border-t border-white/[0.04] pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <span className="text-neutral-700 text-[10px]">
-              &copy; {new Date().getFullYear()} InfoHub
-            </span>
-            <span className="hidden sm:inline text-neutral-800 text-[10px]">&middot;</span>
-            <span className="hidden sm:inline text-neutral-700 text-[10px]">
+        <div className="border-t border-white/[0.06] pt-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Logo variant="icon" size="sm" />
+              <span className="text-neutral-500 text-xs font-medium">
+                &copy; {new Date().getFullYear()} InfoHub
+              </span>
+            </div>
+            <span className="hidden sm:inline text-neutral-700">&middot;</span>
+            <span className="hidden sm:inline text-neutral-600 text-[10px]">
               {ALL_EXCHANGES.length} exchanges &middot; Real-time data
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/terms" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
+          <div className="flex items-center gap-5">
+            <Link href="/terms" className="text-neutral-600 hover:text-neutral-300 text-[11px] transition-colors">
               Terms
             </Link>
-            <Link href="/privacy" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
+            <Link href="/privacy" className="text-neutral-600 hover:text-neutral-300 text-[11px] transition-colors">
               Privacy
             </Link>
-            <Link href="/faq" className="text-neutral-700 hover:text-neutral-400 text-[10px] transition-colors">
+            <Link href="/faq" className="text-neutral-600 hover:text-neutral-300 text-[11px] transition-colors">
               FAQ
             </Link>
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)] animate-pulse" />
-              <span className="text-neutral-600 text-[10px]">Operational</span>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-white/[0.06]">
+              <span className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]" />
+              <span className="text-green-500/80 text-[11px] font-medium">All Systems Operational</span>
             </div>
           </div>
         </div>

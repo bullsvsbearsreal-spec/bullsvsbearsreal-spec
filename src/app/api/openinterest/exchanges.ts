@@ -901,4 +901,144 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
   // Base chain deployment was sunset; migrated to Ethereum Mainnet CLOB
   // Re-enable when mainnet CLOB has a public data API
 
+  // BloFin — OI endpoint gives contracts, combine with tickers for USD value
+  {
+    name: 'BloFin',
+    fetcher: async (fetchFn) => {
+      const [oiRes, tickerRes] = await Promise.all([
+        fetchFn('https://openapi.blofin.com/api/v1/market/open-interest', {}, 10000),
+        fetchFn('https://openapi.blofin.com/api/v1/market/tickers', {}, 10000),
+      ]);
+      if (!oiRes.ok || !tickerRes.ok) return [];
+      const oiJson = await oiRes.json();
+      const tickerJson = await tickerRes.json();
+      const oiData = oiJson?.data;
+      const tickerData = tickerJson?.data;
+      if (!Array.isArray(oiData) || !Array.isArray(tickerData)) return [];
+
+      // Build price map from tickers
+      const priceMap: Record<string, number> = {};
+      for (const t of tickerData) {
+        if (t.instId) priceMap[t.instId] = parseFloat(t.last) || 0;
+      }
+
+      return oiData
+        .filter((item: any) => item.instId?.endsWith('-USDT'))
+        .map((item: any) => {
+          const symbol = item.instId.replace('-USDT', '');
+          const price = priceMap[item.instId] || 0;
+          const oiContracts = parseFloat(item.openInterest) || 0;
+          // openInterestCurrency is base currency amount
+          const oiBase = parseFloat(item.openInterestCurrency) || 0;
+          const oiValue = price > 0 ? oiBase * price : 0;
+          if (oiValue < 1000) return null;
+          return {
+            symbol,
+            exchange: 'BloFin',
+            openInterest: oiBase || oiContracts,
+            openInterestValue: oiValue,
+          };
+        })
+        .filter((item: any) => item != null);
+    },
+  },
+
+  // Backpack — bulk OI endpoint + tickers for prices
+  {
+    name: 'Backpack',
+    fetcher: async (fetchFn) => {
+      const [oiRes, tickerRes] = await Promise.all([
+        fetchFn('https://api.backpack.exchange/api/v1/openInterest', {}, 10000),
+        fetchFn('https://api.backpack.exchange/api/v1/tickers', {}, 10000),
+      ]);
+      if (!oiRes.ok || !tickerRes.ok) return [];
+      const oiData = await oiRes.json();
+      const tickerData = await tickerRes.json();
+      if (!Array.isArray(oiData) || !Array.isArray(tickerData)) return [];
+
+      // Build price map from tickers
+      const priceMap: Record<string, number> = {};
+      for (const t of tickerData) {
+        if (t.symbol?.endsWith('_USDC_PERP')) {
+          priceMap[t.symbol] = parseFloat(t.lastPrice) || 0;
+        }
+      }
+
+      return oiData
+        .filter((item: any) => item.symbol?.endsWith('_USDC_PERP'))
+        .map((item: any) => {
+          const symbol = item.symbol.replace('_USDC_PERP', '');
+          const oi = parseFloat(item.openInterest) || 0;
+          const price = priceMap[item.symbol] || 0;
+          const oiValue = oi * price;
+          if (oiValue < 1000) return null;
+          return {
+            symbol,
+            exchange: 'Backpack',
+            openInterest: oi,
+            openInterestValue: oiValue,
+          };
+        })
+        .filter((item: any) => item != null);
+    },
+  },
+
+  // Orderly — futures endpoint includes open_interest in base units
+  {
+    name: 'Orderly',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api-evm.orderly.org/v1/public/futures', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const rows = json?.data?.rows;
+      if (!Array.isArray(rows)) return [];
+      return rows
+        .filter((item: any) => item.symbol?.startsWith('PERP_'))
+        .map((item: any) => {
+          let symbol = item.symbol.replace('PERP_', '').replace('_USDC', '');
+          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+          const price = parseFloat(item.mark_price) || parseFloat(item.index_price) || 0;
+          const oi = parseFloat(item.open_interest) || 0;
+          const oiValue = oi * price;
+          if (oiValue < 1000) return null;
+          return {
+            symbol,
+            exchange: 'Orderly',
+            openInterest: oi,
+            openInterestValue: oiValue,
+          };
+        })
+        .filter((item: any) => item != null);
+    },
+  },
+
+  // Paradex — OI from markets/summary (base units, multiply by price for USD)
+  {
+    name: 'Paradex',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://api.prod.paradex.trade/v1/markets/summary?market=ALL', {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const results = json?.results;
+      if (!Array.isArray(results)) return [];
+      return results
+        .filter((item: any) => item.symbol?.endsWith('-USD-PERP'))
+        .map((item: any) => {
+          const symbol = item.symbol.replace('-USD-PERP', '');
+          const price = parseFloat(item.mark_price) || parseFloat(item.underlying_price) || 0;
+          const oi = parseFloat(item.open_interest) || 0;
+          const oiValue = oi * price;
+          if (oiValue < 1000) return null;
+          return {
+            symbol,
+            exchange: 'Paradex',
+            openInterest: oi,
+            openInterestValue: oiValue,
+          };
+        })
+        .filter((item: any) => item != null);
+    },
+  },
+
 ];

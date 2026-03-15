@@ -10,13 +10,15 @@ export default function BtcPriceWidget() {
   const [price, setPrice] = useState<number | null>(null);
   const [change, setChange] = useState<number | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    let retries = 0;
     const load = async () => {
       try {
         const res = await fetch('/api/tickers?symbols=BTC');
-        if (!res.ok) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data = Array.isArray(json) ? json : json?.data || [];
         const btc = Array.isArray(data) ? data.find((t: any) => t.symbol === 'BTC' || t.symbol === 'BTCUSDT') : null;
@@ -24,13 +26,26 @@ export default function BtcPriceWidget() {
           setPrice(btc.price || btc.lastPrice);
           setChange(btc.priceChangePercent24h ?? btc.change24h ?? null);
           setUpdatedAt(Date.now());
+          setError(false);
         }
-      } catch (err) { console.error('[BtcPrice] fetch error:', err); }
+        retries = 0;
+      } catch (err) {
+        console.error('[BtcPrice] fetch error:', err);
+        retries++;
+        if (retries >= 3 && mounted) setError(true);
+      }
     };
     load();
     const iv = setInterval(load, 30_000);
     return () => { mounted = false; clearInterval(iv); };
   }, []);
+
+  if (error && price === null) return (
+    <div className="text-center py-4">
+      <p className="text-xs text-neutral-500">Failed to load BTC price</p>
+      <button onClick={() => { setError(false); window.location.reload(); }} className="text-[10px] text-amber-500 hover:text-amber-400 mt-1">Retry</button>
+    </div>
+  );
 
   if (price === null) return <WidgetSkeleton variant="stat" />;
 

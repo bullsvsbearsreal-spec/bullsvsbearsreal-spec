@@ -14,13 +14,15 @@ interface Mover {
 export default function TopMoversWidget({ wide }: { wide?: boolean }) {
   const [movers, setMovers] = useState<{ gainers: Mover[]; losers: Mover[] } | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [error, setError] = useState(false);
+  const retriesRef = { current: 0 };
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
         const res = await fetch('/api/tickers');
-        if (!res.ok) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data = Array.isArray(json) ? json : json?.data || [];
         if (!Array.isArray(data) || !mounted) return;
@@ -39,12 +41,25 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
           losers: valid.slice(-limit).reverse(),
         });
         setUpdatedAt(Date.now());
-      } catch (err) { console.error('[TopMovers] fetch error:', err); }
+        if (mounted) setError(false);
+        retriesRef.current = 0;
+      } catch (err) {
+        console.error('[TopMovers] fetch error:', err);
+        retriesRef.current++;
+        if (retriesRef.current >= 3 && mounted) setError(true);
+      }
     };
     load();
     const iv = setInterval(load, 30_000);
     return () => { mounted = false; clearInterval(iv); };
   }, [wide]);
+
+  if (error && !movers) return (
+    <div className="text-center py-4">
+      <p className="text-xs text-neutral-500">Failed to load movers</p>
+      <button onClick={() => { setError(false); window.location.reload(); }} className="text-[10px] text-amber-500 hover:text-amber-400 mt-1">Retry</button>
+    </div>
+  );
 
   if (!movers) return <WidgetSkeleton variant="list" rows={3} />;
 

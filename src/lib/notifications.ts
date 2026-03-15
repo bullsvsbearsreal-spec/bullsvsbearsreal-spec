@@ -37,15 +37,24 @@ function formatMetricLabel(metric: string): string {
     case 'fundingRate': return 'Funding Rate';
     case 'openInterest': return 'Open Interest';
     case 'change24h': return '24h Change';
+    case 'volume24h': return '24h Volume';
+    case 'liquidations24h': return '24h Liquidations';
     default: return metric;
   }
 }
 
 function formatValue(metric: string, value: number): string {
+  const abs = Math.abs(value);
   switch (metric) {
     case 'price': return `$${value.toLocaleString(undefined, { maximumFractionDigits: 6 })}`;
     case 'fundingRate': return `${value.toFixed(4)}%`;
-    case 'openInterest': return `$${(value / 1e6).toFixed(2)}M`;
+    case 'openInterest':
+    case 'volume24h':
+    case 'liquidations24h':
+      if (abs >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+      if (abs >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+      if (abs >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
+      return `$${value.toFixed(2)}`;
     case 'change24h': return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
     default: return String(value);
   }
