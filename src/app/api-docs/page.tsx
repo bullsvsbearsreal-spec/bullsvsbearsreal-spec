@@ -13,10 +13,10 @@ const ENDPOINTS = [
 ];
 
 const FEATURES = [
-  { icon: Zap, title: 'Real-time Data', desc: 'Funding rates, OI, and arbitrage opportunities refreshed every 60 seconds across 30+ exchanges' },
+  { icon: Zap, title: 'Real-time Data', desc: 'Funding rates, OI, and arbitrage opportunities refreshed every 60 seconds across 34 exchanges' },
   { icon: Shield, title: 'Authenticated', desc: 'Secure API key authentication with per-key rate limiting and usage tracking' },
   { icon: Clock, title: 'Rate Limited', desc: 'Free tier: 100 req/min, 5,000/day. Pro tier: 500 req/min, 50,000/day' },
-  { icon: Database, title: '24+ Exchanges', desc: 'CEX and DEX coverage — Binance, Bybit, OKX, Hyperliquid, dYdX, GMX, and more' },
+  { icon: Database, title: '34 Exchanges', desc: 'CEX and DEX coverage — Binance, Bybit, OKX, Hyperliquid, dYdX, GMX, and more' },
 ];
 
 export default function ApiDocsPage() {
@@ -46,7 +46,7 @@ export default function ApiDocsPage() {
 
             <p className="text-neutral-500 text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-8">
               Programmatic access to funding rates, open interest, and arbitrage
-              opportunities across 30+ exchanges. Built for trading bots and dashboards.
+              opportunities across 34 exchanges. Built for trading bots and dashboards.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">

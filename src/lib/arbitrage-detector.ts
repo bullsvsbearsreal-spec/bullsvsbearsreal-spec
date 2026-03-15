@@ -5,12 +5,14 @@
  * arbitrage opportunities from pre-fetched ticker / funding data.
  */
 
+import { getArbRoundTripFee } from '@/lib/constants/exchanges';
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Round-trip taker fee assumption (maker+taker across two exchanges). */
-const ROUND_TRIP_FEE_PCT = 0.10;
+/** Fallback round-trip fee when per-exchange data is unavailable (%). */
+const DEFAULT_ROUND_TRIP_FEE_PCT = 0.10;
 
 /** Minimum 24h quote volume (USD) required on BOTH sides of a price arb. */
 const MIN_VOLUME_USD = 500_000;
@@ -42,6 +44,7 @@ export interface PriceArb {
   spreadPct: number;
   spreadUsd: number;
   netPct: number; // after round-trip fees
+  feePct: number; // actual round-trip fee used
   lowVolume: number;
   highVolume: number;
 }
@@ -156,7 +159,9 @@ export function detectPriceArbitrage(
     // Hard cap: anything above MAX_PRICE_SPREAD_PCT is not a real arb
     if (spreadPct > MAX_PRICE_SPREAD_PCT) return;
 
-    const netPct = spreadPct - ROUND_TRIP_FEE_PCT;
+    // Use actual per-exchange fees (getArbRoundTripFee already falls back to 0.10 per unknown exchange)
+    const feePct = getArbRoundTripFee(low.exchange, high.exchange);
+    const netPct = spreadPct - feePct;
 
     if (netPct < threshold) return;
 
@@ -169,6 +174,7 @@ export function detectPriceArbitrage(
       spreadPct,
       spreadUsd: high.lastPrice - low.lastPrice,
       netPct,
+      feePct,
       lowVolume: low.quoteVolume24h,
       highVolume: high.quoteVolume24h,
     });

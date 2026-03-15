@@ -187,14 +187,17 @@ export default function AlertsPage() {
   const saveNotificationPrefs = async (email: boolean, cooldown: number) => {
     setPrefsSaving(true);
     try {
-      await fetch('/api/user/data', {
+      const res = await fetch('/api/user/data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           notificationPrefs: { email, cooldownMinutes: cooldown },
         }),
       });
-    } catch {}
+      if (!res.ok) console.warn('Failed to save notification prefs:', res.status);
+    } catch (e) {
+      console.warn('Failed to save notification prefs:', e);
+    }
     setPrefsSaving(false);
   };
 
@@ -522,11 +525,26 @@ export default function AlertsPage() {
 
           {/* Info footer */}
           <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
-            <p className="text-neutral-500 text-xs leading-relaxed">
-              {session?.user
-                ? 'Your alerts are checked server-side every 5 minutes and will trigger even when InfoHub is closed. Email and Telegram notifications are delivered based on your settings above. Alerts also check locally every 60 seconds while the page is open.'
-                : 'Alerts check your conditions against live market data every 60 seconds while InfoHub is open. Sign in to enable server-side alerts that work 24/7 with email and Telegram notifications.'}
-            </p>
+            {session?.user ? (
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-green-500 text-xs mt-0.5">&#9679;</span>
+                  <p className="text-neutral-400 text-xs"><span className="text-neutral-300 font-medium">Server-side</span> — Checked every 5 min, triggers even when InfoHub is closed</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 text-xs mt-0.5">&#9679;</span>
+                  <p className="text-neutral-400 text-xs"><span className="text-neutral-300 font-medium">Client-side</span> — Checked every 60s while this page is open</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-500 text-xs mt-0.5">&#9679;</span>
+                  <p className="text-neutral-400 text-xs"><span className="text-neutral-300 font-medium">Delivery</span> — Email &amp; Telegram based on your notification settings</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-neutral-500 text-xs leading-relaxed">
+                Alerts check live market data every 60s while this page is open. <span className="text-hub-yellow">Sign in</span> for 24/7 server-side alerts with email &amp; Telegram delivery.
+              </p>
+            )}
           </div>
         </div>
       </main>

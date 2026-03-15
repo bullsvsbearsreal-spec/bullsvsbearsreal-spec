@@ -87,7 +87,7 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
           </div>
           <div>
             <h3 className="text-white font-semibold text-sm">Cross-Exchange Price Arbitrage</h3>
-            <p className="text-neutral-600 text-[10px]">{sorted.length} opportunities • min $500K volume per side • net of 0.10% round-trip fees</p>
+            <p className="text-neutral-600 text-[10px]">{sorted.length} opportunities • min $500K volume per side • net of per-exchange fees</p>
           </div>
         </div>
 
@@ -127,7 +127,7 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
         <div className="p-12 text-center">
           <ArrowRightLeft className="w-6 h-6 text-neutral-700 mx-auto mb-2" />
           <p className="text-neutral-600 text-sm">No price arbitrage opportunities found</p>
-          <p className="text-neutral-700 text-xs mt-1">Spread must exceed 0.10% round-trip fees with $500K+ volume on both sides</p>
+          <p className="text-neutral-700 text-xs mt-1">Spread must exceed per-exchange round-trip fees with $500K+ volume on both sides</p>
         </div>
       ) : (
         <>
@@ -232,8 +232,8 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
                               </div>
                               <div>
                                 <span className="text-neutral-600 block mb-1">Round-trip Fee</span>
-                                <span className="text-neutral-400 font-mono">0.10%</span>
-                                <span className="text-neutral-600 ml-1">(taker+maker)</span>
+                                <span className="text-neutral-400 font-mono">{arb.feePct.toFixed(2)}%</span>
+                                <span className="text-neutral-600 ml-1">(2× taker each side)</span>
                               </div>
                               <div>
                                 <span className="text-neutral-600 block mb-1">Profit per $10K</span>

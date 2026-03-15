@@ -28,6 +28,8 @@ interface NavLink {
   name: string;
   href: string;
   icon: LucideIcon;
+  desc?: string;
+  badge?: string;
 }
 
 interface NavGroup {
@@ -49,10 +51,10 @@ const navCategories: NavCategory[] = [
       {
         heading: 'Analysis',
         items: [
-          { name: 'Chart', href: '/chart', icon: LineChart },
-          { name: 'Screener', href: '/screener', icon: SlidersHorizontal },
-          { name: 'Options', href: '/options', icon: Shield },
-          { name: 'Basis', href: '/basis', icon: BarChart2 },
+          { name: 'Chart', href: '/chart', icon: LineChart, desc: 'TradingView charts' },
+          { name: 'Screener', href: '/screener', icon: SlidersHorizontal, desc: 'Filter & scan markets' },
+          { name: 'Options', href: '/options', icon: Shield, desc: 'Options flow & greeks' },
+          { name: 'Basis', href: '/basis', icon: BarChart2, desc: 'Spot-perp premium' },
           { name: 'Predictions', href: '/prediction-markets', icon: Eye },
           { name: 'Execution Costs', href: '/execution-costs', icon: Crosshair },
         ],
@@ -60,16 +62,16 @@ const navCategories: NavCategory[] = [
       {
         heading: 'Funding & OI',
         items: [
-          { name: 'Funding Rates', href: '/funding', icon: Percent },
+          { name: 'Funding Rates', href: '/funding', icon: Percent, desc: '34 exchanges live', badge: '34' },
           { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
-          { name: 'Open Interest', href: '/open-interest', icon: PieChart },
+          { name: 'Open Interest', href: '/open-interest', icon: PieChart, desc: 'Aggregated OI' },
           { name: 'OI Heatmap', href: '/oi-heatmap', icon: Grid3X3 },
         ],
       },
       {
         heading: 'Liquidations',
         items: [
-          { name: 'Liquidations', href: '/liquidations', icon: Zap },
+          { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time liqs' },
           { name: 'Liq Map', href: '/liquidation-map', icon: Crosshair },
           { name: 'Liq Heatmap', href: '/liquidation-heatmap', icon: Grid3X3 },
         ],
@@ -92,8 +94,8 @@ const navCategories: NavCategory[] = [
       {
         heading: 'Overview',
         items: [
-          { name: 'Top Movers', href: '/top-movers', icon: Rocket },
-          { name: 'Heatmap', href: '/market-heatmap', icon: Map },
+          { name: 'Top Movers', href: '/top-movers', icon: Rocket, desc: 'Biggest gainers & losers' },
+          { name: 'Heatmap', href: '/market-heatmap', icon: Map, desc: 'Crypto market map' },
           { name: 'Stock Heatmap', href: '/stock-heatmap', icon: Map },
           { name: 'Dominance', href: '/dominance', icon: Crown },
           { name: 'Market Cycle', href: '/market-cycle', icon: Activity },
@@ -103,7 +105,7 @@ const navCategories: NavCategory[] = [
       {
         heading: 'Institutional',
         items: [
-          { name: 'ETF Tracker', href: '/etf', icon: LineChart },
+          { name: 'ETF Tracker', href: '/etf', icon: LineChart, desc: 'BTC & ETH ETF flows' },
           { name: 'BTC Treasuries', href: '/bitcoin-treasuries', icon: Bitcoin },
           { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock },
           { name: 'Airdrops', href: '/airdrops', icon: Gift },
@@ -128,10 +130,10 @@ const navCategories: NavCategory[] = [
       {
         heading: '',
         items: [
-          { name: 'Fear & Greed', href: '/fear-greed', icon: Thermometer },
-          { name: 'Whale Alert', href: '/whale-alert', icon: Fish },
-          { name: 'HL Whales', href: '/hl-whales', icon: Eye },
-          { name: 'News', href: '/news', icon: Newspaper },
+          { name: 'Fear & Greed', href: '/fear-greed', icon: Thermometer, desc: 'Market sentiment index' },
+          { name: 'Whale Alert', href: '/whale-alert', icon: Fish, desc: 'Large transactions' },
+          { name: 'HL Whales', href: '/hl-whales', icon: Eye, desc: 'Hyperliquid top traders' },
+          { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news feed' },
         ],
       },
     ],
@@ -143,9 +145,9 @@ const navCategories: NavCategory[] = [
       {
         heading: '',
         items: [
-          { name: 'Watchlist', href: '/watchlist', icon: Star },
+          { name: 'Watchlist', href: '/watchlist', icon: Star, desc: 'Track your coins' },
           { name: 'Compare', href: '/compare', icon: GitCompare },
-          { name: 'Alerts', href: '/alerts', icon: Bell },
+          { name: 'Alerts', href: '/alerts', icon: Bell, desc: 'Price & funding alerts' },
           { name: 'Portfolio', href: '/portfolio', icon: Wallet },
           { name: 'Wallet Tracker', href: '/wallet-tracker', icon: SearchIcon },
         ],
@@ -281,21 +283,42 @@ export default function Header() {
   /* ------------------------------------------------------------------ */
 
   /** Render a single nav link */
-  const renderLink = (link: NavLink, onClick?: () => void) => (
-    <Link
-      key={link.href}
-      href={link.href}
-      onClick={onClick}
-      className={`flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
-        pathname === link.href
-          ? 'bg-hub-yellow text-black'
-          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
-      }`}
-    >
-      <link.icon className="w-3.5 h-3.5 flex-shrink-0" />
-      {link.name}
-    </Link>
-  );
+  const renderLink = (link: NavLink, onClick?: () => void) => {
+    const isActive = pathname === link.href;
+    return (
+      <Link
+        key={link.href}
+        href={link.href}
+        onClick={onClick}
+        className={`group flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+          isActive
+            ? 'bg-hub-yellow/10 text-hub-yellow'
+            : 'text-neutral-300 hover:text-white hover:bg-white/[0.05]'
+        }`}
+      >
+        <span className={`mt-0.5 flex items-center justify-center w-6 h-6 rounded-md flex-shrink-0 transition-colors ${
+          isActive
+            ? 'bg-hub-yellow/20 text-hub-yellow'
+            : 'bg-white/[0.05] text-neutral-500 group-hover:text-neutral-300 group-hover:bg-white/[0.08]'
+        }`}>
+          <link.icon className="w-3 h-3" />
+        </span>
+        <div className="flex flex-col gap-0 min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate leading-tight">{link.name}</span>
+            {link.badge && (
+              <span className="text-[8px] font-bold bg-hub-yellow/15 text-hub-yellow px-1 py-px rounded leading-none flex-shrink-0">{link.badge}</span>
+            )}
+          </div>
+          {link.desc && (
+            <span className={`text-[11px] font-normal leading-tight truncate ${
+              isActive ? 'text-hub-yellow/50' : 'text-neutral-600 group-hover:text-neutral-500'
+            }`}>{link.desc}</span>
+          )}
+        </div>
+      </Link>
+    );
+  };
 
   /** Desktop mega-menu dropdown panel */
   const renderDropdown = (cat: NavCategory) => {
@@ -304,8 +327,8 @@ export default function Header() {
     if (!isMega) {
       // Single-column simple dropdown
       return (
-        <div className="absolute top-full left-0 pt-1 z-50">
-          <div className="bg-hub-darker border border-white/[0.08] rounded-lg shadow-xl py-2 min-w-[180px]">
+        <div className="absolute top-full left-0 pt-1.5 z-50">
+          <div className="bg-[#0d0d0d] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/60 py-1.5 px-1.5 min-w-[220px]">
             {cat.columns[0].items.map((link) => renderLink(link, () => setOpenDropdown(null)))}
           </div>
         </div>
@@ -314,15 +337,16 @@ export default function Header() {
 
     // Multi-column mega menu
     return (
-      <div className="absolute top-full left-0 pt-1 z-50">
-        <div className="bg-hub-darker border border-white/[0.08] rounded-xl shadow-2xl p-4">
-          <div className="flex gap-6">
-            {cat.columns.map((group) => (
-              <div key={group.heading} className="min-w-[160px]">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 px-3 mb-1.5">
+      <div className="absolute top-full left-0 pt-1.5 z-50">
+        <div className="bg-[#0d0d0d] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/60 p-2">
+          <div className="flex">
+            {cat.columns.map((group, gi) => (
+              <div key={group.heading} className={`min-w-[185px] px-1 ${gi > 0 ? 'border-l border-white/[0.06]' : ''}`}>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 px-2.5 pb-1.5 pt-0.5 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-hub-yellow/40" />
                   {group.heading}
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-px">
                   {group.items.map((link) => renderLink(link, () => setOpenDropdown(null)))}
                 </div>
               </div>

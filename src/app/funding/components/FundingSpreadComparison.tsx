@@ -50,7 +50,7 @@ interface PriceGapStats {
 
 // ── Constants ──
 
-const POPULAR_SYMBOLS = ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP', 'PEPE', 'SUI', 'ARB', 'HYPE', 'WIF'];
+const POPULAR_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'SUI', 'PEPE', 'HYPE', 'LINK', 'AVAX'];
 const TIME_RANGES: TimeRange[] = ['1d', '3d', '7d', '30d'];
 const DAYS_MAP: Record<TimeRange, number> = { '1d': 1, '3d': 3, '7d': 7, '30d': 30 };
 

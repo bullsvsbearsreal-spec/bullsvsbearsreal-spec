@@ -6,7 +6,7 @@ const jsonLd = {
   '@type': 'WebApplication',
   name: 'InfoHub',
   url: 'https://info-hub.io',
-  description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 30+ crypto exchanges.',
+  description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 34 crypto exchanges.',
   applicationCategory: 'FinanceApplication',
   operatingSystem: 'Any',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },

@@ -499,7 +499,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         )}
 
         {/* Grade Filter Tabs */}
-        <div className="px-4 py-2 border-b border-white/[0.06] flex items-center gap-1.5">
+        <div className="px-4 py-2 border-b border-white/[0.06] flex items-center gap-1.5 flex-wrap">
           <span className="text-neutral-500 text-[10px] mr-1">Grade:</span>
           {(['all', 'A', 'B', 'C', 'D'] as const).map(g => {
             const count = g === 'all' ? enriched.length : gradeCounts[g];
@@ -516,6 +516,12 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
               </button>
             );
           })}
+          <span className="hidden sm:flex items-center gap-2 ml-auto text-[9px] text-neutral-600">
+            <span><span className="text-green-400 font-bold">A</span> High conviction</span>
+            <span><span className="text-blue-400 font-bold">B</span> Moderate</span>
+            <span><span className="text-amber-400 font-bold">C</span> Risky</span>
+            <span><span className="text-red-400 font-bold">D</span> Fees &gt; spread</span>
+          </span>
         </div>
 
         {/* Table — Desktop */}
@@ -778,7 +784,11 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
         </div>
 
         {arbitrageData.length === 0 && (
-          <div className="p-8 text-center text-neutral-600 text-sm">No arbitrage opportunities found.</div>
+          <div className="p-12 text-center">
+            <GitCompareArrows className="w-6 h-6 text-neutral-700 mx-auto mb-2" />
+            <p className="text-neutral-600 text-sm">No funding arbitrage opportunities found</p>
+            <p className="text-neutral-700 text-xs mt-1">Opportunities appear when the same asset has different funding rates across exchanges</p>
+          </div>
         )}
 
         <Pagination
