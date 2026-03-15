@@ -901,47 +901,6 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
   // Base chain deployment was sunset; migrated to Ethereum Mainnet CLOB
   // Re-enable when mainnet CLOB has a public data API
 
-  // BloFin — OI endpoint gives contracts, combine with tickers for USD value
-  {
-    name: 'BloFin',
-    fetcher: async (fetchFn) => {
-      const [oiRes, tickerRes] = await Promise.all([
-        fetchFn('https://openapi.blofin.com/api/v1/market/open-interest', {}, 10000),
-        fetchFn('https://openapi.blofin.com/api/v1/market/tickers', {}, 10000),
-      ]);
-      if (!oiRes.ok || !tickerRes.ok) return [];
-      const oiJson = await oiRes.json();
-      const tickerJson = await tickerRes.json();
-      const oiData = oiJson?.data;
-      const tickerData = tickerJson?.data;
-      if (!Array.isArray(oiData) || !Array.isArray(tickerData)) return [];
-
-      // Build price map from tickers
-      const priceMap: Record<string, number> = {};
-      for (const t of tickerData) {
-        if (t.instId) priceMap[t.instId] = parseFloat(t.last) || 0;
-      }
-
-      return oiData
-        .filter((item: any) => item.instId?.endsWith('-USDT'))
-        .map((item: any) => {
-          const symbol = item.instId.replace('-USDT', '');
-          const price = priceMap[item.instId] || 0;
-          const oiContracts = parseFloat(item.openInterest) || 0;
-          // openInterestCurrency is base currency amount
-          const oiBase = parseFloat(item.openInterestCurrency) || 0;
-          const oiValue = price > 0 ? oiBase * price : 0;
-          if (oiValue < 1000) return null;
-          return {
-            symbol,
-            exchange: 'BloFin',
-            openInterest: oiBase || oiContracts,
-            openInterestValue: oiValue,
-          };
-        })
-        .filter((item: any) => item != null);
-    },
-  },
 
   // Backpack — bulk OI endpoint + tickers for prices
   {

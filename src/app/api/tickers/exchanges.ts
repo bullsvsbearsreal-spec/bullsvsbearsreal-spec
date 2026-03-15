@@ -996,37 +996,6 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // BloFin — CEX tickers
-  {
-    name: 'BloFin',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://openapi.blofin.com/api/v1/market/tickers', {}, 10000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const data = json?.data;
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((t: any) => t.instId?.endsWith('-USDT'))
-        .map((t: any) => {
-          const lastPrice = parseFloat(t.last) || 0;
-          const open = parseFloat(t.open24h) || 0;
-          const change = open > 0 ? ((lastPrice - open) / open) * 100 : 0;
-          return {
-            symbol: t.instId.replace('-USDT', ''),
-            exchange: 'BloFin',
-            lastPrice,
-            price: lastPrice,
-            priceChangePercent24h: change,
-            changePercent24h: change,
-            high24h: parseFloat(t.high24h) || 0,
-            low24h: parseFloat(t.low24h) || 0,
-            volume24h: parseFloat(t.volCurrency24h) || 0,
-            quoteVolume24h: parseFloat(t.vol24h) || 0,
-          };
-        })
-        .filter((t: any) => t.lastPrice > 0);
-    },
-  },
 
   // Backpack — DEX tickers (perps only)
   {

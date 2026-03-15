@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'InfoHub — Real-Time Derivatives Data',
     short_name: 'InfoHub',
-    description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 34 exchanges.',
+    description: 'Real-time funding rates, open interest, liquidations, and arbitrage tools across 33 exchanges.',
     start_url: '/',
     display: 'standalone',
     background_color: '#0a0a0a',

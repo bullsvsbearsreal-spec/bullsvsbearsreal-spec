@@ -94,7 +94,7 @@ export default function DevelopersPage() {
           <span className="text-amber-400">API</span>
         </h1>
         <p className="text-gray-400 mb-8">
-          Access real-time funding rates, arbitrage opportunities, and open interest data across 34 exchanges.
+          Access real-time funding rates, arbitrage opportunities, and open interest data across 33 exchanges.
         </p>
 
         {/* Not signed in */}
@@ -253,7 +253,7 @@ console.log(data);`}
               </thead>
               <tbody className="text-gray-300">
                 {[
-                  ['GET', '/api/v1/funding', 'Real-time funding rates (34 exchanges)'],
+                  ['GET', '/api/v1/funding', 'Real-time funding rates (33 exchanges)'],
                   ['GET', '/api/v1/funding/history', 'Historical funding snapshots (7d)'],
                   ['GET', '/api/v1/arbitrage', 'Arb opportunities with grades'],
                   ['GET', '/api/v1/openinterest', 'Open interest across exchanges'],

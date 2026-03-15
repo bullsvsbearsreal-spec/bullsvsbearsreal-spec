@@ -1778,30 +1778,6 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // BloFin — CEX with OKX-style API
-  {
-    name: 'BloFin',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://openapi.blofin.com/api/v1/market/funding-rate', {}, 10000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const data = json?.data;
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((item: any) => item.instId?.endsWith('-USDT') && item.fundingRate != null)
-        .map((item: any) => ({
-          symbol: item.instId.replace('-USDT', ''),
-          exchange: 'BloFin',
-          fundingRate: parseFloat(item.fundingRate) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: 0,
-          indexPrice: 0,
-          nextFundingTime: parseInt(item.fundingTime) || Date.now() + 28800000,
-          type: 'cex' as const,
-        }))
-        .filter((item: any) => !isNaN(item.fundingRate));
-    },
-  },
 
   // Backpack — Solana-based DEX, markPrices endpoint has funding for all perps
   {

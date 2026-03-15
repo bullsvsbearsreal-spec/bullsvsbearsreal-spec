@@ -62,7 +62,7 @@ const navCategories: NavCategory[] = [
       {
         heading: 'Funding & OI',
         items: [
-          { name: 'Funding Rates', href: '/funding', icon: Percent, desc: '34 exchanges live', badge: '34' },
+          { name: 'Funding Rates', href: '/funding', icon: Percent, desc: '33 exchanges live', badge: '33' },
           { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
           { name: 'Open Interest', href: '/open-interest', icon: PieChart, desc: 'Aggregated OI' },
           { name: 'OI Heatmap', href: '/oi-heatmap', icon: Grid3X3 },

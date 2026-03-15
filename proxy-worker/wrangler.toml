@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 # Comma-separated list of allowed origin domains (for CORS)
 ALLOWED_ORIGINS = "https://info-hub.io,https://www.info-hub.io"
 # Comma-separated list of allowed target domains to proxy to
-ALLOWED_TARGETS = "www.bitmex.com,api.gateio.ws,openapi.blofin.com"
+ALLOWED_TARGETS = "www.bitmex.com,api.gateio.ws"
 
 # Remove the old Durable Object from the previous version
 [[migrations]]

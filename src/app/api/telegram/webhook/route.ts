@@ -104,7 +104,7 @@ async function handleStart(chatId: number): Promise<void> {
   const welcome = [
     '<b>Welcome to InfoHub Bot!</b>',
     '',
-    'Real-time crypto data from 34 exchanges.',
+    'Real-time crypto data from 33 exchanges.',
     '',
     '<b>Arbitrage:</b>',
     '/scan — Force immediate arb scan',

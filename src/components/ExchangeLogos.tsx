@@ -16,7 +16,7 @@ const PNG_EXCHANGES = new Set([
   'aevo', 'vertex', 'drift', 'gtrade', 'bitfinex', 'whitebit',
   'coinbase', 'coinex', 'aster', 'bitunix', 'lighter',
   'bitmex', 'gate', 'gate.io', 'edgex', 'variational', 'extended', 'nado',
-  'blofin', 'backpack', 'orderly', 'paradex',
+  'backpack', 'orderly', 'paradex',
 ]);
 
 // SVG fallbacks for exchanges without downloadable logos
@@ -96,17 +96,6 @@ function ParadexLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   );
 }
 
-// BloFin: green with "B" shield mark
-function BloFinLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
-  return (
-    <svg viewBox="0 0 126 126" width={size} height={size} className={className}>
-      <rect rx="16" width="126" height="126" fill="#0D1117"/>
-      <circle cx="63" cy="63" r="35" fill="#00D084" opacity="0.2"/>
-      <text x="63" y="75" textAnchor="middle" fill="#00D084" fontSize="52" fontWeight="bold" fontFamily="Arial">B</text>
-    </svg>
-  );
-}
-
 // Backpack: red with backpack silhouette
 function BackpackLogoSVG({ className = '', size = 24 }: ExchangeLogoProps) {
   return (
@@ -140,7 +129,6 @@ const svgFallbacks: Record<string, React.ComponentType<ExchangeLogoProps>> = {
   variational: VariationalLogoSVG,
   extended: ExtendedLogoSVG,
   nado: NadoLogoSVG,
-  blofin: BloFinLogoSVG,
   backpack: BackpackLogoSVG,
   orderly: OrderlyLogoSVG,
   paradex: ParadexLogoSVG,
@@ -179,7 +167,6 @@ export const exchangeColors: Record<string, string> = {
   edgex: '#38BDF8',
   variational: '#E879F9',
   nado: '#E4002B',
-  blofin: '#00D084',
   backpack: '#E33E3F',
   orderly: '#A78BFA',
   paradex: '#8B5CF6',
