@@ -1881,10 +1881,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol,
             exchange: 'Paradex',
             fundingRate: parseFloat(item.funding_rate) * 100,
-            fundingInterval: '1h' as const,
+            fundingInterval: '8h' as const,
             markPrice: parseFloat(item.mark_price) || 0,
             indexPrice: parseFloat(item.underlying_price) || 0,
-            nextFundingTime: Date.now() + 3600000,
+            nextFundingTime: 0,
             type: 'dex' as const,
           };
         })
