@@ -72,18 +72,29 @@ async function fetchYahooQuote(ticker: string): Promise<YahooQuote | null> {
     if (!meta) return null;
 
     // On datacenter IPs, Yahoo's meta.regularMarketPrice can be 1-2 days stale.
-    // The last candle close from the chart data is always the most recent trading day,
-    // so prefer that and fall back to meta.regularMarketPrice.
+    // The last candle close from the chart data is always the most recent trading day.
+    // Yahoo sometimes duplicates the last candle (same timestamp), so deduplicate by date.
+    const timestamps = result?.timestamp as number[] | undefined;
     const closes = result?.indicators?.quote?.[0]?.close as number[] | undefined;
-    const validCloses = Array.isArray(closes)
-      ? closes.filter((c: number | null) => c != null) as number[]
-      : [];
-    const lastClose = validCloses.length > 0 ? validCloses[validCloses.length - 1] : 0;
-    const prevClose = validCloses.length > 1 ? validCloses[validCloses.length - 2] : 0;
+    // Build unique daily closes (last value per date wins)
+    const dailyCloses: number[] = [];
+    if (Array.isArray(timestamps) && Array.isArray(closes)) {
+      const seen = new Set<string>();
+      // Walk backwards to get most recent value per date
+      for (let i = timestamps.length - 1; i >= 0; i--) {
+        const date = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
+        if (!seen.has(date) && closes[i] != null) {
+          seen.add(date);
+          dailyCloses.unshift(closes[i]);
+        }
+      }
+    }
     const metaPrice = meta.regularMarketPrice || 0;
-    const price = lastClose || metaPrice;
-    // For daily change: use the candle before last, or chartPreviousClose as fallback
-    const prev = prevClose || meta.chartPreviousClose || meta.previousClose || 0;
+    const price = dailyCloses.length > 0 ? dailyCloses[dailyCloses.length - 1] : metaPrice;
+    // For daily change: use the day before, or chartPreviousClose as fallback
+    const prev = dailyCloses.length > 1
+      ? dailyCloses[dailyCloses.length - 2]
+      : (meta.chartPreviousClose || meta.previousClose || 0);
 
     // Volume: prefer last candle volume, fall back to meta
     const volumes = result?.indicators?.quote?.[0]?.volume as number[] | undefined;
