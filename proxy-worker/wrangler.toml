@@ -1,0 +1,14 @@
+name = "infohub-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Comma-separated list of allowed origin domains (for CORS)
+ALLOWED_ORIGINS = "https://info-hub.io,https://www.info-hub.io"
+# Comma-separated list of allowed target domains to proxy to
+ALLOWED_TARGETS = "www.bitmex.com,api.gateio.ws,openapi.blofin.com"
+
+# Remove the old Durable Object from the previous version
+[[migrations]]
+tag = "v2"
+deleted_classes = ["ProxyDO"]
