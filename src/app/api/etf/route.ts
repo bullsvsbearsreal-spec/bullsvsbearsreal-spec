@@ -187,11 +187,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'type must be btc or eth' }, { status: 400 });
   }
 
-  const debug = searchParams.get('debug') === 'raw';
-
   const cacheKey = `etf_v2_${type}`;
   const cached = l1Cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < L1_TTL && !debug) {
+  if (cached && Date.now() - cached.timestamp < L1_TTL) {
     return NextResponse.json(cached.body, {
       headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
     });
@@ -227,29 +225,6 @@ export async function GET(request: NextRequest) {
   });
 
   const liveCount = enrichedFunds.filter((f) => f.price !== null).length;
-
-  // Debug mode: return raw Yahoo data for IBIT
-  if (debug) {
-    const debugRes = await fetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/IBIT?range=5d&interval=1d`,
-      { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' } },
-      6000,
-    );
-    const debugJson = debugRes.ok ? await debugRes.json() : null;
-    const r = debugJson?.chart?.result?.[0];
-    return NextResponse.json({
-      meta: r?.meta ? {
-        regularMarketPrice: r.meta.regularMarketPrice,
-        chartPreviousClose: r.meta.chartPreviousClose,
-        regularMarketVolume: r.meta.regularMarketVolume,
-        regularMarketTime: r.meta.regularMarketTime,
-      } : null,
-      closes: r?.indicators?.quote?.[0]?.close,
-      volumes: r?.indicators?.quote?.[0]?.volume,
-      timestamps: r?.timestamp?.map((t: number) => new Date(t * 1000).toISOString().split('T')[0]),
-      computedPrice: yahooQuotes[0],
-    });
-  }
 
   const body = {
     type,
