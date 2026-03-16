@@ -439,113 +439,234 @@ function OIByExpiryChart({
 
 /* ─── IV Smile Chart ─────────────────────────────────────────────── */
 
+/** Simple moving average to smooth jagged IV data */
+function smoothData(data: { x: number; y: number }[], windowSize: number): { x: number; y: number }[] {
+  if (data.length <= windowSize) return data;
+  const half = Math.floor(windowSize / 2);
+  return data.map((d, i) => {
+    const start = Math.max(0, i - half);
+    const end = Math.min(data.length - 1, i + half);
+    let sum = 0, count = 0;
+    for (let j = start; j <= end; j++) { sum += data[j].y; count++; }
+    return { x: d.x, y: sum / count };
+  });
+}
+
+/** Convert points to an SVG cubic bezier path for smooth curves */
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return '';
+  if (pts.length === 2) return `M${pts[0].x},${pts[0].y} L${pts[1].x},${pts[1].y}`;
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1];
+    const cur = pts[i];
+    const next = pts[Math.min(i + 1, pts.length - 1)];
+    const prevPrev = pts[Math.max(i - 2, 0)];
+    const cpx1 = prev.x + (cur.x - prevPrev.x) / 6;
+    const cpy1 = prev.y + (cur.y - prevPrev.y) / 6;
+    const cpx2 = cur.x - (next.x - prev.x) / 6;
+    const cpy2 = cur.y - (next.y - prev.y) / 6;
+    d += ` C${cpx1},${cpy1} ${cpx2},${cpy2} ${cur.x},${cur.y}`;
+  }
+  return d;
+}
+
 function IVSmileChart({
   points,
   spotPrice,
-  height = 220,
+  height = 240,
 }: {
   points: IVPoint[];
   spotPrice: number;
   height?: number;
 }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+
   if (points.length < 2) return null;
 
   const allIVs = points.flatMap((p) => [p.callIV, p.putIV].filter((v) => v > 0));
   if (allIVs.length === 0) return null;
 
-  const minIV = Math.min(...allIVs) * 0.9;
+  const minIV = Math.min(...allIVs) * 0.92;
   const maxIV = Math.max(...allIVs) * 1.05;
   const range = maxIV - minIV || 1;
 
   const width = 900;
-  const pad = { top: 16, bottom: 32, left: 44, right: 8 };
+  const pad = { top: 20, bottom: 36, left: 48, right: 12 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
 
   const scaleX = (i: number) => pad.left + (i / (points.length - 1)) * chartW;
   const scaleY = (val: number) => pad.top + (1 - (val - minIV) / range) * chartH;
 
-  const callPoints: string[] = points
-    .map((p, i) => (p.callIV > 0 ? `${scaleX(i)},${scaleY(p.callIV)}` : null))
-    .filter((v): v is string => v !== null);
-  const putPoints: string[] = points
-    .map((p, i) => (p.putIV > 0 ? `${scaleX(i)},${scaleY(p.putIV)}` : null))
-    .filter((v): v is string => v !== null);
+  // Build raw data points, then smooth with moving average
+  const SMOOTH_WINDOW = 5;
+  const rawCall = points.map((p, i) => ({ x: scaleX(i), y: p.callIV })).filter(d => d.y > 0);
+  const rawPut = points.map((p, i) => ({ x: scaleX(i), y: p.putIV })).filter(d => d.y > 0);
+  const smoothCall = smoothData(rawCall, SMOOTH_WINDOW).map(d => ({ x: d.x, y: scaleY(d.y) }));
+  const smoothPut = smoothData(rawPut, SMOOTH_WINDOW).map(d => ({ x: d.x, y: scaleY(d.y) }));
 
-  const yTicks = [0.25, 0.5, 0.75, 1].map((pct) => ({
+  const callPath = smoothPath(smoothCall);
+  const putPath = smoothPath(smoothPut);
+
+  // Area fill paths
+  const callArea = smoothCall.length > 1
+    ? `${callPath} L${smoothCall[smoothCall.length - 1].x},${pad.top + chartH} L${smoothCall[0].x},${pad.top + chartH} Z`
+    : '';
+  const putArea = smoothPut.length > 1
+    ? `${putPath} L${smoothPut[smoothPut.length - 1].x},${pad.top + chartH} L${smoothPut[0].x},${pad.top + chartH} Z`
+    : '';
+
+  // Spot price position
+  const spotIdx = points.findIndex((p) => p.strike >= spotPrice);
+  const spotX = spotIdx >= 0 ? scaleX(spotIdx) : -1;
+
+  // Y-axis ticks
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((pct) => ({
     value: minIV + pct * range,
     y: scaleY(minIV + pct * range),
   }));
 
+  // Hover: find nearest point
+  const hoveredPoint = hovered !== null ? points[hovered] : null;
+  const hoveredX = hovered !== null ? scaleX(hovered) : 0;
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-      {yTicks.map((tick) => (
-        <g key={tick.value}>
-          <line
-            x1={pad.left}
-            y1={tick.y}
-            x2={width - pad.right}
-            y2={tick.y}
-            stroke="rgba(255,255,255,0.04)"
-            strokeWidth={0.5}
-          />
-          <text x={pad.left - 6} y={tick.y + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.3)" fontFamily="monospace">
-            {tick.value.toFixed(0)}%
-          </text>
-        </g>
-      ))}
-      {(() => {
-        const step = Math.max(1, Math.floor(points.length / 10));
-        return points.map((p, i) => {
-          if (i % step !== 0 && i !== points.length - 1) return null;
-          return (
-            <text
-              key={p.strike}
-              x={scaleX(i)}
-              y={height - 8}
-              textAnchor="middle"
-              fontSize="8"
-              fill="rgba(255,255,255,0.3)"
-              fontFamily="monospace"
-            >
-              {p.strike >= 1000 ? `${(p.strike / 1000).toFixed(0)}K` : p.strike}
+    <div className="relative" onMouseLeave={() => setHovered(null)}>
+      {/* Tooltip */}
+      {hoveredPoint && hovered !== null && (
+        <div
+          className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-md"
+          style={{
+            left: `${(hoveredX / width) * 100}%`,
+            top: 0,
+            transform: `translateX(${hovered > points.length * 0.7 ? '-100%' : hovered < points.length * 0.3 ? '0%' : '-50%'})`,
+          }}
+        >
+          <p className="text-xs font-bold text-white font-mono mb-1.5">
+            Strike ${hoveredPoint.strike.toLocaleString()}
+          </p>
+          {hoveredPoint.callIV > 0 && (
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
+              <span className="text-neutral-400">Call IV</span>
+              <span className="text-green-400 font-mono font-medium ml-auto">{hoveredPoint.callIV.toFixed(1)}%</span>
+            </div>
+          )}
+          {hoveredPoint.putIV > 0 && (
+            <div className="flex items-center gap-2 text-[11px] mt-1">
+              <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
+              <span className="text-neutral-400">Put IV</span>
+              <span className="text-red-400 font-mono font-medium ml-auto">{hoveredPoint.putIV.toFixed(1)}%</span>
+            </div>
+          )}
+          {hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 && (
+            <div className="border-t border-white/[0.06] mt-2 pt-1.5 text-[10px] text-neutral-500 font-mono">
+              Skew: {(hoveredPoint.putIV - hoveredPoint.callIV).toFixed(1)}%
+            </div>
+          )}
+        </div>
+      )}
+
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+        {/* Grid + Y labels */}
+        {yTicks.map((tick) => (
+          <g key={tick.value}>
+            <line
+              x1={pad.left}
+              y1={tick.y}
+              x2={width - pad.right}
+              y2={tick.y}
+              stroke="rgba(255,255,255,0.04)"
+              strokeWidth={0.5}
+            />
+            <text x={pad.left - 8} y={tick.y + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.3)" fontFamily="monospace">
+              {tick.value.toFixed(0)}%
             </text>
-          );
-        });
-      })()}
-      {callPoints.length > 1 && (
-        <>
-          <polygon
-            points={`${callPoints[0].split(',')[0]},${pad.top + chartH} ${callPoints.join(' ')} ${callPoints[callPoints.length - 1].split(',')[0]},${pad.top + chartH}`}
-            fill="rgba(34,197,94,0.06)"
+          </g>
+        ))}
+
+        {/* X-axis labels */}
+        {(() => {
+          const step = Math.max(1, Math.floor(points.length / 10));
+          return points.map((p, i) => {
+            if (i % step !== 0 && i !== points.length - 1) return null;
+            const isSpot = i === spotIdx;
+            return (
+              <text
+                key={p.strike}
+                x={scaleX(i)}
+                y={height - 8}
+                textAnchor="middle"
+                fontSize="8"
+                fill={isSpot ? '#eab308' : 'rgba(255,255,255,0.3)'}
+                fontWeight={isSpot ? 'bold' : 'normal'}
+                fontFamily="monospace"
+              >
+                {p.strike >= 1000 ? `${(p.strike / 1000).toFixed(0)}K` : p.strike}
+              </text>
+            );
+          });
+        })()}
+
+        {/* Spot price vertical line */}
+        {spotX > 0 && (
+          <>
+            <line
+              x1={spotX} y1={pad.top} x2={spotX} y2={pad.top + chartH}
+              stroke="#eab308" strokeDasharray="4,3" strokeWidth={1} opacity={0.5}
+            />
+            <rect x={spotX - 16} y={pad.top - 14} width={32} height={12} rx={3} fill="#eab308" opacity={0.85} />
+            <text x={spotX} y={pad.top - 5} textAnchor="middle" fontSize="7" fill="#000" fontWeight="bold">SPOT</text>
+          </>
+        )}
+
+        {/* Call IV area + smooth line */}
+        {callArea && (
+          <path d={callArea} fill="rgba(34,197,94,0.08)" />
+        )}
+        {callPath && (
+          <path d={callPath} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
+        )}
+
+        {/* Put IV area + smooth line */}
+        {putArea && (
+          <path d={putArea} fill="rgba(239,68,68,0.08)" />
+        )}
+        {putPath && (
+          <path d={putPath} fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+        )}
+
+        {/* Hover crosshair + dots */}
+        {hovered !== null && hoveredPoint && (
+          <g>
+            <line
+              x1={hoveredX} y1={pad.top} x2={hoveredX} y2={pad.top + chartH}
+              stroke="rgba(255,255,255,0.15)" strokeWidth={1} strokeDasharray="2,2"
+            />
+            {hoveredPoint.callIV > 0 && (
+              <circle cx={hoveredX} cy={scaleY(hoveredPoint.callIV)} r={4} fill="#22c55e" stroke="#000" strokeWidth={1.5} />
+            )}
+            {hoveredPoint.putIV > 0 && (
+              <circle cx={hoveredX} cy={scaleY(hoveredPoint.putIV)} r={4} fill="#ef4444" stroke="#000" strokeWidth={1.5} />
+            )}
+          </g>
+        )}
+
+        {/* Invisible hover targets */}
+        {points.map((_, i) => (
+          <rect
+            key={i}
+            x={scaleX(i) - chartW / points.length / 2}
+            y={pad.top}
+            width={chartW / points.length}
+            height={chartH}
+            fill="transparent"
+            onMouseEnter={() => setHovered(i)}
           />
-          <polyline
-            points={callPoints.join(' ')}
-            fill="none"
-            stroke="#22c55e"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        </>
-      )}
-      {putPoints.length > 1 && (
-        <>
-          <polygon
-            points={`${putPoints[0].split(',')[0]},${pad.top + chartH} ${putPoints.join(' ')} ${putPoints[putPoints.length - 1].split(',')[0]},${pad.top + chartH}`}
-            fill="rgba(239,68,68,0.06)"
-          />
-          <polyline
-            points={putPoints.join(' ')}
-            fill="none"
-            stroke="#ef4444"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        </>
-      )}
-    </svg>
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -922,7 +1043,7 @@ export default function OptionsPage() {
               )}
 
               {/* Exchange Breakdown */}
-              {data.exchangeBreakdown && data.exchangeBreakdown.length > 1 && (
+              {data.exchangeBreakdown && data.exchangeBreakdown.filter(e => e.totalOI > 0).length > 1 && (
                 <Section>
                   <SectionHeader
                     icon={<Globe className="w-4 h-4 text-hub-yellow" />}
@@ -930,7 +1051,7 @@ export default function OptionsPage() {
                     subtitle="Click to filter charts"
                   />
                   <div className="space-y-2.5">
-                    {data.exchangeBreakdown.map((ex) => {
+                    {data.exchangeBreakdown.filter(e => e.totalOI > 0).map((ex) => {
                       const total = ex.totalOI || 1;
                       const callPct = (ex.callOI / total) * 100;
                       const isActive = activeExchange === ex.exchange;
