@@ -397,7 +397,7 @@ export default function BasisPage() {
 
   const rawData = fundingRates ?? [];
 
-  const MAX_BASIS_PCT = 50;
+  const MAX_BASIS_PCT = 10; // Filter entries with >10% basis (stale/incorrect prices on illiquid exchanges)
 
   const basisData: BasisEntry[] = useMemo(() => {
     return rawData
