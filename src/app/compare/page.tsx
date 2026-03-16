@@ -73,10 +73,10 @@ export default function ComparePage() {
         const ns = normalizeSymbol(t.symbol);
         if (ns !== sym) return;
         const vol = t.quoteVolume24h || 0;
-        // Skip entries with bogus data (0% change + extreme volume = stale/blocked exchange)
-        if (t.priceChangePercent24h === 0 && vol > 1e15) return;
         totalVol += vol;
-        if (vol > maxVol && Math.abs(t.priceChangePercent24h) < 500) {
+        // Skip entries with bad change data (0% = stale/blocked, >500% = outlier)
+        if (t.priceChangePercent24h === 0 || Math.abs(t.priceChangePercent24h) > 500) return;
+        if (vol > maxVol) {
           maxVol = vol; bestPrice = t.lastPrice; bestChange = t.priceChangePercent24h;
         }
       });
