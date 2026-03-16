@@ -495,33 +495,33 @@ export default function OptionsPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main className="max-w-[1400px] mx-auto px-3 sm:px-5 py-4">
         {/* Title */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-              <Target className="w-4 h-4 text-hub-yellow" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
+              <Target className="w-3.5 h-3.5 text-hub-yellow" />
             </div>
             <div>
-              <h1 className="heading-page">Options Data</h1>
-              <p className="text-neutral-500 text-sm mt-0.5 flex items-center gap-1.5">
+              <h1 className="text-base font-bold text-white tracking-tight">Options Data</h1>
+              <p className="text-neutral-600 text-[11px] mt-0.5 flex items-center gap-1.5">
                 Max pain, OI by strike, IV smile across {activeCount} exchanges
                 {data && !loading && (
-                  <span className="relative flex h-2 w-2">
+                  <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
                   </span>
                 )}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5 border border-white/[0.06]">
               {(['BTC', 'ETH', 'SOL'] as const).map((c) => (
                 <button
                   key={c}
                   onClick={() => setCurrency(c)}
-                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
                     currency === c
                       ? 'bg-hub-yellow text-black shadow-glow-sm'
                       : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
@@ -534,9 +534,9 @@ export default function OptionsPage() {
             <button
               onClick={fetchData}
               disabled={loading}
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <UpdatedAgo date={lastUpdate} />
           </div>
@@ -544,13 +544,13 @@ export default function OptionsPage() {
 
         {/* Loading */}
         {loading && !data && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl h-24 animate-pulse" />
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-lg h-20 animate-pulse" />
               ))}
             </div>
-            <div className="bg-hub-darker border border-white/[0.06] rounded-xl h-[300px] animate-pulse" />
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg h-[280px] animate-pulse" />
           </div>
         )}
 
@@ -566,20 +566,20 @@ export default function OptionsPage() {
         {data && (
           <>
             {/* Key Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
               {/* Max Pain */}
-              <div className="bg-hub-darker border border-hub-yellow/20 rounded-xl px-4 py-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Crosshair className="w-3.5 h-3.5 text-hub-yellow" />
-                  <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Max Pain</p>
+              <div className="bg-hub-darker border border-hub-yellow/20 rounded-lg px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Crosshair className="w-3 h-3 text-hub-yellow" />
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Max Pain</p>
                 </div>
-                <p className="text-xl font-bold text-hub-yellow font-mono">${(data.maxPain || 0).toLocaleString()}</p>
+                <p className="text-lg font-bold text-hub-yellow font-mono leading-none">${(data.maxPain || 0).toLocaleString()}</p>
                 <div
-                  className={`flex items-center gap-1 mt-0.5 text-xs ${
+                  className={`flex items-center gap-0.5 mt-1 text-[10px] ${
                     maxPainDistance >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}
                 >
-                  {maxPainDistance >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                  {maxPainDistance >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
                   <span className="font-mono">
                     {(maxPainDistance || 0) >= 0 ? '+' : ''}
                     {(maxPainDistance || 0).toFixed(1)}% from spot
@@ -588,53 +588,53 @@ export default function OptionsPage() {
               </div>
 
               {/* Put/Call Ratio */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
                   <ArrowLeftRight
-                    className={`w-3.5 h-3.5 ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}
+                    className={`w-3 h-3 ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}
                   />
-                  <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Put/Call Ratio</p>
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Put/Call Ratio</p>
                 </div>
                 <p
-                  className={`text-xl font-bold font-mono ${
+                  className={`text-lg font-bold font-mono leading-none ${
                     data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'
                   }`}
                 >
                   {(data.putCallRatio || 0).toFixed(2)}
                 </p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-[10px] text-neutral-500 mt-1">
                   {data.putCallRatio > 1 ? 'Bearish bias' : data.putCallRatio < 0.7 ? 'Bullish bias' : 'Neutral'}
                 </p>
               </div>
 
               {/* Total OI */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
-                  <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Total Options OI</p>
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <BarChart3 className="w-3 h-3 text-blue-400" />
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Total Options OI</p>
                 </div>
-                <p className="text-xl font-bold text-white font-mono">${formatCompact(data.totalOI)}</p>
-                <p className="text-xs text-neutral-500">{data.instrumentCount.toLocaleString()} instruments</p>
+                <p className="text-lg font-bold text-white font-mono leading-none">${formatCompact(data.totalOI)}</p>
+                <p className="text-[10px] text-neutral-500 mt-1">{data.instrumentCount.toLocaleString()} instruments</p>
               </div>
 
               {/* Spot Price */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="w-3.5 h-3.5 text-white" />
-                  <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Spot Price</p>
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <DollarSign className="w-3 h-3 text-white" />
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Spot Price</p>
                 </div>
-                <p className="text-xl font-bold text-white font-mono">{formatPrice(data.underlyingPrice)}</p>
-                <p className="text-xs text-neutral-500">{currency}/USD</p>
+                <p className="text-lg font-bold text-white font-mono leading-none">{formatPrice(data.underlyingPrice)}</p>
+                <p className="text-[10px] text-neutral-500 mt-1">{currency}/USD</p>
               </div>
             </div>
 
             {/* Exchange Tabs */}
-            <div className="flex flex-wrap gap-1 mb-4">
+            <div className="flex flex-wrap gap-1 mb-3">
               <button
                 onClick={() => setActiveExchange('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   activeExchange === 'all'
-                    ? 'bg-hub-yellow text-black shadow-glow-sm'
+                    ? 'bg-hub-yellow text-black font-bold'
                     : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
                 }`}
               >
@@ -644,9 +644,9 @@ export default function OptionsPage() {
                 <button
                   key={name}
                   onClick={() => setActiveExchange(name)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                     activeExchange === name
-                      ? 'bg-hub-yellow text-black shadow-glow-sm'
+                      ? 'bg-hub-yellow text-black font-bold'
                       : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
                   }`}
                 >
@@ -656,7 +656,7 @@ export default function OptionsPage() {
             </div>
 
             {/* Call/Put OI Split */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
                   <ArrowLeftRight className="w-4 h-4 text-purple-400" />
@@ -740,25 +740,25 @@ export default function OptionsPage() {
             </div>
 
             {/* OI by Strike */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
               <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2.5">
-                  <BarChart3 className="w-4 h-4 text-blue-400" />
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
                   <div>
-                    <h2 className="text-sm font-semibold text-white">
+                    <h2 className="text-xs font-semibold text-white">
                       Open Interest by Strike
                       {activeExchange !== 'all' && (
                         <span className="text-hub-yellow ml-1.5">— {activeExchange}</span>
                       )}
                     </h2>
-                    <p className="text-xs text-neutral-600">
+                    <p className="text-[10px] text-neutral-600">
                       Yellow dashed = spot price
                       {data.maxPain !== data.underlyingPrice && ' · Orange dashed = max pain'}
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="h-[280px] mt-2">
+              <div className="h-[260px] mt-1.5">
                 <OIByStrikeChart
                   strikes={filteredStrikes}
                   spotPrice={data.underlyingPrice}
@@ -782,15 +782,15 @@ export default function OptionsPage() {
             </div>
 
             {/* OI by Expiry + Exchange Breakdown — side by side on desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
               {/* OI by Expiry */}
               {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                  <div className="flex items-center gap-2.5 mb-1">
-                    <Calendar className="w-4 h-4 text-purple-400" />
+                <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="w-3.5 h-3.5 text-purple-400" />
                     <div>
-                      <h2 className="text-sm font-semibold text-white">OI by Expiry Date</h2>
-                      <p className="text-xs text-neutral-600">
+                      <h2 className="text-xs font-semibold text-white">OI by Expiry Date</h2>
+                      <p className="text-[10px] text-neutral-600">
                         {data.expiryBreakdown.length} upcoming expiries
                       </p>
                     </div>
@@ -811,10 +811,10 @@ export default function OptionsPage() {
 
               {/* Exchange Breakdown */}
               {data.exchangeBreakdown && data.exchangeBreakdown.length > 1 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <Globe className="w-4 h-4 text-hub-yellow" />
-                    <h2 className="text-sm font-semibold text-white">OI by Exchange</h2>
+                <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <Globe className="w-3.5 h-3.5 text-hub-yellow" />
+                    <h2 className="text-xs font-semibold text-white">OI by Exchange</h2>
                   </div>
                   <div className="space-y-3">
                     {data.exchangeBreakdown.map((ex) => {
@@ -865,12 +865,12 @@ export default function OptionsPage() {
 
             {/* IV Smile */}
             {data.ivSmile.length > 2 && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-2.5 mb-1">
-                  <Activity className="w-4 h-4 text-purple-400" />
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Activity className="w-3.5 h-3.5 text-purple-400" />
                   <div>
-                    <h2 className="text-sm font-semibold text-white">Implied Volatility Smile</h2>
-                    <p className="text-xs text-neutral-600">Mark IV across strike prices (70–130% of spot)</p>
+                    <h2 className="text-xs font-semibold text-white">Implied Volatility Smile</h2>
+                    <p className="text-[10px] text-neutral-600">Mark IV across strike prices (70–130% of spot)</p>
                   </div>
                 </div>
                 <div className="h-[200px] mt-2">
@@ -888,14 +888,14 @@ export default function OptionsPage() {
             )}
 
             {/* Options vs Futures OI Ratio + Max Pain by Expiry — side by side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
               {/* Options vs Futures OI */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <ArrowLeftRight className="w-4 h-4 text-cyan-400" />
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-400" />
                   <div>
-                    <h2 className="text-sm font-semibold text-white">Options OI Overview</h2>
-                    <p className="text-xs text-neutral-600">Call/Put distribution & market sentiment</p>
+                    <h2 className="text-xs font-semibold text-white">Options OI Overview</h2>
+                    <p className="text-[10px] text-neutral-600">Call/Put distribution & market sentiment</p>
                   </div>
                 </div>
                 {(() => {
@@ -954,12 +954,12 @@ export default function OptionsPage() {
 
               {/* Max Pain by Expiry */}
               {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <Crosshair className="w-4 h-4 text-orange-400" />
+                <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <Crosshair className="w-3.5 h-3.5 text-orange-400" />
                     <div>
-                      <h2 className="text-sm font-semibold text-white">Max Pain & Expiry Schedule</h2>
-                      <p className="text-xs text-neutral-600">Upcoming expiries with OI concentration</p>
+                      <h2 className="text-xs font-semibold text-white">Max Pain & Expiry Schedule</h2>
+                      <p className="text-[10px] text-neutral-600">Upcoming expiries with OI concentration</p>
                     </div>
                   </div>
                   <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
@@ -1011,9 +1011,9 @@ export default function OptionsPage() {
 
             {/* Exchange Health */}
             {data.health && data.health.length > 0 && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
-                <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Data Sources</h3>
-                <div className="flex flex-wrap gap-3">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
+                <h3 className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wider mb-2">Data Sources</h3>
+                <div className="flex flex-wrap gap-2">
                   {data.health.map((h) => (
                     <div
                       key={h.exchange}
@@ -1035,10 +1035,10 @@ export default function OptionsPage() {
             )}
 
             {/* Info footer */}
-            <div className="bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl p-4">
+            <div className="bg-hub-yellow/5 border border-hub-yellow/10 rounded-lg p-3">
               <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-neutral-400 space-y-1">
+                <Info className="w-3.5 h-3.5 text-hub-yellow mt-0.5 flex-shrink-0" />
+                <div className="text-[11px] text-neutral-400 space-y-1">
                   <p>
                     <strong className="text-neutral-300">Options Data</strong> aggregated across Deribit, Binance,
                     OKX, and Bybit. Click exchange tabs to filter by source.

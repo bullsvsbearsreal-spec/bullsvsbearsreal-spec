@@ -74,9 +74,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No options data available from any exchange' }, { status: 502 });
     }
 
-    // Determine underlying price (median across exchanges)
-    const prices = allInstruments.map(i => i.underlyingPrice).filter(p => p > 0).sort((a, b) => a - b);
-    const underlyingPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+    // Determine underlying price — prefer exchange with most data (usually Deribit)
+    // Avoids stale prices from exchanges with broken API (e.g. Binance returns 0)
+    const priceByExchange = new Map<string, number[]>();
+    allInstruments.forEach(i => {
+      if (i.underlyingPrice > 0) {
+        const arr = priceByExchange.get(i.exchange) || [];
+        arr.push(i.underlyingPrice);
+        priceByExchange.set(i.exchange, arr);
+      }
+    });
+    let underlyingPrice = 0;
+    let bestCount = 0;
+    priceByExchange.forEach((prices, _exchange) => {
+      if (prices.length > bestCount) {
+        bestCount = prices.length;
+        prices.sort((a, b) => a - b);
+        underlyingPrice = prices[Math.floor(prices.length / 2)];
+      }
+    });
+    // Fallback to global median if no per-exchange data
+    if (underlyingPrice === 0) {
+      const allPrices = allInstruments.map(i => i.underlyingPrice).filter(p => p > 0).sort((a, b) => a - b);
+      underlyingPrice = allPrices.length > 0 ? allPrices[Math.floor(allPrices.length / 2)] : 0;
+    }
 
     // Calculate per-strike OI (merged across all exchanges)
     const strikeOI = new Map<number, { callOI: number; putOI: number }>();
@@ -164,10 +185,12 @@ export async function GET(request: NextRequest) {
       else entry.putOI += opt.openInterestUsd;
       expiryMap.set(dateKey, entry);
     });
+    const now = Date.now();
     const expiryBreakdown = Array.from(expiryMap.entries())
       .map(([date, oi]) => ({ date, ...oi, totalOI: oi.callOI + oi.putOI }))
+      .filter(e => e.expiry > now && e.totalOI > 0) // Skip expired + zero OI
       .sort((a, b) => a.expiry - b.expiry)
-      .slice(0, 20); // Top 20 nearest expiries
+      .slice(0, 20); // Top 20 nearest future expiries
 
     // Per-exchange strike data (for exchange tab views)
     const exchangeStrikes: Record<string, Array<{ strike: number; callOI: number; putOI: number }>> = {};
