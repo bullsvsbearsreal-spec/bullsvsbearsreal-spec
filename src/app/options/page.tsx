@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
-import { formatCompact, formatPrice, formatUSD } from '@/lib/utils/format';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { formatCompact, formatPrice } from '@/lib/utils/format';
 import {
-  RefreshCw, Info, Target, Crosshair, ArrowLeftRight, BarChart3,
+  RefreshCw, Target, Crosshair, ArrowLeftRight, BarChart3,
   DollarSign, Activity, Globe, TrendingUp, TrendingDown, Calendar,
+  Shield, ChevronRight, Zap,
 } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -59,13 +61,61 @@ interface OptionsResponse {
   health?: Array<{ exchange: string; status: string; count: number; latency: number }>;
 }
 
+/* ─── Chart Legend ────────────────────────────────────────────────── */
+
+function Legend({ items }: { items: { color: string; label: string; type?: 'box' | 'line' }[] }) {
+  return (
+    <div className="flex items-center justify-center gap-5 pt-3 pb-1">
+      {items.map((item) => (
+        <div key={item.label} className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+          {item.type === 'line' ? (
+            <div className="w-4 h-[2px] rounded-full" style={{ background: item.color }} />
+          ) : (
+            <div className="w-2.5 h-2.5 rounded-[3px]" style={{ background: item.color }} />
+          )}
+          {item.label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Section wrapper ────────────────────────────────────────────── */
+
+function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-hub-darker border border-white/[0.06] rounded-2xl p-5 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ icon, title, subtitle, right }: {
+  icon: React.ReactNode; title: string; subtitle?: string; right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2.5">
+        <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center">
+          {icon}
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-white">{title}</h2>
+          {subtitle && <p className="text-[11px] text-neutral-500 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {right}
+    </div>
+  );
+}
+
 /* ─── OI by Strike Chart ──────────────────────────────────────────── */
 
 function OIByStrikeChart({
   strikes,
   spotPrice,
   maxPain,
-  height = 320,
+  height = 340,
 }: {
   strikes: StrikeData[];
   spotPrice: number;
@@ -81,7 +131,6 @@ function OIByStrikeChart({
       </div>
     );
 
-  // Filter to strikes with meaningful OI and cap count for readability
   const filtered = strikes.filter((s) => s.callOI + s.putOI > 0);
   const display = filtered.length > 80
     ? filtered.filter((_, i) => i % Math.ceil(filtered.length / 80) === 0)
@@ -90,7 +139,7 @@ function OIByStrikeChart({
   const totalOI = display.reduce((sum, s) => sum + s.callOI + s.putOI, 0) || 1;
   const maxOI = Math.max(...display.map((s) => Math.max(s.callOI, s.putOI)), 1);
   const width = 1200;
-  const pad = { top: 18, bottom: 32, left: 4, right: 4 };
+  const pad = { top: 24, bottom: 36, left: 4, right: 4 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const groupW = chartW / display.length;
@@ -103,38 +152,37 @@ function OIByStrikeChart({
 
   const hoveredStrike = hovered !== null ? display[hovered] : null;
   const tooltipX = hovered !== null ? pad.left + hovered * groupW + groupW / 2 : 0;
-
-  // Label step — show ~12-15 labels evenly
   const labelStep = Math.max(1, Math.floor(display.length / 14));
 
   return (
     <div className="relative" onMouseLeave={() => setHovered(null)}>
-      {/* Tooltip */}
       {hoveredStrike && hovered !== null && (
         <div
-          className="absolute z-20 pointer-events-none bg-black/90 border border-white/10 rounded-lg px-3 py-2 shadow-2xl backdrop-blur-sm"
+          className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-md"
           style={{
             left: `${(tooltipX / width) * 100}%`,
-            top: 4,
+            top: 0,
             transform: `translateX(${hovered > display.length * 0.7 ? '-100%' : hovered < display.length * 0.3 ? '0%' : '-50%'})`,
           }}
         >
-          <p className="text-[11px] font-bold text-white font-mono mb-1">
+          <p className="text-xs font-bold text-white font-mono mb-1.5">
             Strike ${hoveredStrike.strike.toLocaleString()}
           </p>
-          <div className="flex items-center gap-1.5 text-[10px]">
-            <span className="w-2 h-2 rounded-sm bg-green-500" />
-            <span className="text-green-400">Call OI:</span>
-            <span className="text-white font-mono">${formatCompact(hoveredStrike.callOI)}</span>
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
+            <span className="text-neutral-400">Call OI</span>
+            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredStrike.callOI)}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px]">
-            <span className="w-2 h-2 rounded-sm bg-red-500" />
-            <span className="text-red-400">Put OI:</span>
-            <span className="text-white font-mono">${formatCompact(hoveredStrike.putOI)}</span>
+          <div className="flex items-center gap-2 text-[11px] mt-1">
+            <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
+            <span className="text-neutral-400">Put OI</span>
+            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredStrike.putOI)}</span>
           </div>
-          <p className="text-[9px] text-neutral-500 mt-1 font-mono">
-            {(((hoveredStrike.callOI + hoveredStrike.putOI) / totalOI) * 100).toFixed(1)}% of total
-          </p>
+          <div className="border-t border-white/[0.06] mt-2 pt-1.5">
+            <p className="text-[10px] text-neutral-500 font-mono">
+              {(((hoveredStrike.callOI + hoveredStrike.putOI) / totalOI) * 100).toFixed(1)}% of total OI
+            </p>
+          </div>
         </div>
       )}
 
@@ -152,7 +200,7 @@ function OIByStrikeChart({
           />
         ))}
 
-        {/* Spot dashed line (rendered behind bars) */}
+        {/* Spot dashed line */}
         {spotIdx >= 0 && (
           <line
             x1={pad.left + spotIdx * groupW + groupW / 2}
@@ -166,7 +214,7 @@ function OIByStrikeChart({
           />
         )}
 
-        {/* Max Pain dashed line (rendered behind bars) */}
+        {/* Max Pain dashed line */}
         {maxPainIdx >= 0 && maxPainIdx !== spotIdx && (
           <line
             x1={pad.left + maxPainIdx * groupW + groupW / 2}
@@ -190,32 +238,27 @@ function OIByStrikeChart({
 
           return (
             <g key={s.strike} onMouseEnter={() => setHovered(i)}>
-              {/* Invisible hover target */}
               <rect x={x} y={pad.top} width={groupW} height={chartH} fill="transparent" />
-              {/* Call bar */}
               <rect
                 x={x + gap}
                 y={pad.top + chartH - callH}
                 width={barW}
                 height={Math.max(callH, 0.5)}
                 fill={isHovered ? '#22c55e' : '#22c55ecc'}
-                rx={1}
+                rx={1.5}
               />
-              {/* Put bar */}
               <rect
                 x={x + barW + gap * 2}
                 y={pad.top + chartH - putH}
                 width={barW}
                 height={Math.max(putH, 0.5)}
                 fill={isHovered ? '#ef4444' : '#ef4444cc'}
-                rx={1}
+                rx={1.5}
               />
-
-              {/* Strike label */}
               {(i % labelStep === 0 || isSpot || isMaxPain) && (
                 <text
                   x={x + groupW / 2}
-                  y={height - 6}
+                  y={height - 8}
                   textAnchor="middle"
                   fontSize="9"
                   fill={isSpot ? '#eab308' : isMaxPain ? '#f97316' : 'rgba(255,255,255,0.3)'}
@@ -229,32 +272,54 @@ function OIByStrikeChart({
           );
         })}
 
-        {/* Spot label at top */}
+        {/* Spot label */}
         {spotIdx >= 0 && (
-          <text
-            x={pad.left + spotIdx * groupW + groupW / 2}
-            y={pad.top - 4}
-            textAnchor="middle"
-            fontSize="8"
-            fill="#eab308"
-            fontWeight="bold"
-          >
-            {sameIdx ? 'SPOT / MAX PAIN' : 'SPOT'}
-          </text>
+          <g>
+            <rect
+              x={pad.left + spotIdx * groupW + groupW / 2 - (sameIdx ? 48 : 20)}
+              y={pad.top - 16}
+              width={sameIdx ? 96 : 40}
+              height={14}
+              rx={4}
+              fill="#eab308"
+              opacity={0.9}
+            />
+            <text
+              x={pad.left + spotIdx * groupW + groupW / 2}
+              y={pad.top - 6}
+              textAnchor="middle"
+              fontSize="8"
+              fill="#000"
+              fontWeight="bold"
+            >
+              {sameIdx ? 'SPOT / MAX PAIN' : 'SPOT'}
+            </text>
+          </g>
         )}
 
-        {/* Max Pain label at top */}
+        {/* Max Pain label */}
         {maxPainIdx >= 0 && maxPainIdx !== spotIdx && (
-          <text
-            x={pad.left + maxPainIdx * groupW + groupW / 2}
-            y={pad.top - 4}
-            textAnchor="middle"
-            fontSize="8"
-            fill="#f97316"
-            fontWeight="bold"
-          >
-            MAX PAIN
-          </text>
+          <g>
+            <rect
+              x={pad.left + maxPainIdx * groupW + groupW / 2 - 28}
+              y={pad.top - 16}
+              width={56}
+              height={14}
+              rx={4}
+              fill="#f97316"
+              opacity={0.9}
+            />
+            <text
+              x={pad.left + maxPainIdx * groupW + groupW / 2}
+              y={pad.top - 6}
+              textAnchor="middle"
+              fontSize="8"
+              fill="#000"
+              fontWeight="bold"
+            >
+              MAX PAIN
+            </text>
+          </g>
         )}
       </svg>
     </div>
@@ -265,76 +330,110 @@ function OIByStrikeChart({
 
 function OIByExpiryChart({
   entries,
-  height = 200,
+  height = 220,
 }: {
   entries: ExpiryEntry[];
   height?: number;
 }) {
+  const [hovered, setHovered] = useState<number | null>(null);
   if (entries.length === 0) return null;
 
   const maxOI = Math.max(...entries.map((e) => Math.max(e.callOI, e.putOI)), 1);
   const width = 900;
-  const pad = { top: 8, bottom: 40, left: 4, right: 4 };
+  const pad = { top: 12, bottom: 44, left: 4, right: 4 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const groupW = chartW / entries.length;
   const barW = groupW * 0.32;
   const gap = groupW * 0.1;
 
+  const hoveredEntry = hovered !== null ? entries[hovered] : null;
+  const tooltipX = hovered !== null ? pad.left + hovered * groupW + groupW / 2 : 0;
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-      {entries.map((e, i) => {
-        const x = pad.left + i * groupW;
-        const callH = (e.callOI / maxOI) * chartH;
-        const putH = (e.putOI / maxOI) * chartH;
+    <div className="relative" onMouseLeave={() => setHovered(null)}>
+      {hoveredEntry && hovered !== null && (
+        <div
+          className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-md"
+          style={{
+            left: `${(tooltipX / width) * 100}%`,
+            top: 0,
+            transform: `translateX(${hovered > entries.length * 0.7 ? '-100%' : hovered < entries.length * 0.3 ? '0%' : '-50%'})`,
+          }}
+        >
+          <p className="text-xs font-bold text-white font-mono mb-1.5">{hoveredEntry.date}</p>
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
+            <span className="text-neutral-400">Calls</span>
+            <span className="text-white font-mono ml-auto">${formatCompact(hoveredEntry.callOI)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] mt-1">
+            <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
+            <span className="text-neutral-400">Puts</span>
+            <span className="text-white font-mono ml-auto">${formatCompact(hoveredEntry.putOI)}</span>
+          </div>
+          {hoveredEntry.maxPain && (
+            <div className="border-t border-white/[0.06] mt-2 pt-1.5 text-[10px] text-orange-400 font-mono">
+              Max Pain: ${hoveredEntry.maxPain.toLocaleString()}
+            </div>
+          )}
+        </div>
+      )}
 
-        const d = new Date(e.expiry);
-        const label = `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+        {entries.map((e, i) => {
+          const x = pad.left + i * groupW;
+          const callH = (e.callOI / maxOI) * chartH;
+          const putH = (e.putOI / maxOI) * chartH;
+          const d = new Date(e.expiry);
+          const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const isHovered = i === hovered;
 
-        return (
-          <g key={e.date}>
-            <rect
-              x={x + gap}
-              y={pad.top + chartH - callH}
-              width={barW}
-              height={Math.max(callH, 0.5)}
-              fill="#22c55ecc"
-              rx={1}
-            />
-            <rect
-              x={x + barW + gap * 2}
-              y={pad.top + chartH - putH}
-              width={barW}
-              height={Math.max(putH, 0.5)}
-              fill="#ef4444cc"
-              rx={1}
-            />
-            {/* Total OI label on top */}
-            <text
-              x={x + groupW / 2}
-              y={pad.top + chartH - Math.max(callH, putH) - 4}
-              textAnchor="middle"
-              fontSize="6.5"
-              fill="rgba(255,255,255,0.3)"
-              fontFamily="monospace"
-            >
-              {formatCompact(e.totalOI)}
-            </text>
-            {/* Date label */}
-            <text
-              x={x + groupW / 2}
-              y={height - 10}
-              textAnchor="middle"
-              fontSize="7.5"
-              fill="rgba(255,255,255,0.3)"
-              fontFamily="monospace"
-            >
-              {label}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+          return (
+            <g key={e.date} onMouseEnter={() => setHovered(i)}>
+              <rect x={x} y={pad.top} width={groupW} height={chartH} fill="transparent" />
+              <rect
+                x={x + gap}
+                y={pad.top + chartH - callH}
+                width={barW}
+                height={Math.max(callH, 0.5)}
+                fill={isHovered ? '#22c55e' : '#22c55ecc'}
+                rx={2}
+              />
+              <rect
+                x={x + barW + gap * 2}
+                y={pad.top + chartH - putH}
+                width={barW}
+                height={Math.max(putH, 0.5)}
+                fill={isHovered ? '#ef4444' : '#ef4444cc'}
+                rx={2}
+              />
+              <text
+                x={x + groupW / 2}
+                y={pad.top + chartH - Math.max(callH, putH) - 6}
+                textAnchor="middle"
+                fontSize="7"
+                fill="rgba(255,255,255,0.3)"
+                fontFamily="monospace"
+              >
+                {formatCompact(e.totalOI)}
+              </text>
+              <text
+                x={x + groupW / 2}
+                y={height - 14}
+                textAnchor="middle"
+                fontSize="8"
+                fill={isHovered ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)'}
+                fontWeight={isHovered ? 'bold' : 'normal'}
+                fontFamily="monospace"
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -343,7 +442,7 @@ function OIByExpiryChart({
 function IVSmileChart({
   points,
   spotPrice,
-  height = 200,
+  height = 220,
 }: {
   points: IVPoint[];
   spotPrice: number;
@@ -359,7 +458,7 @@ function IVSmileChart({
   const range = maxIV - minIV || 1;
 
   const width = 900;
-  const pad = { top: 16, bottom: 28, left: 40, right: 8 };
+  const pad = { top: 16, bottom: 32, left: 44, right: 8 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
 
@@ -373,7 +472,6 @@ function IVSmileChart({
     .map((p, i) => (p.putIV > 0 ? `${scaleX(i)},${scaleY(p.putIV)}` : null))
     .filter((v): v is string => v !== null);
 
-  // Y-axis labels
   const yTicks = [0.25, 0.5, 0.75, 1].map((pct) => ({
     value: minIV + pct * range,
     y: scaleY(minIV + pct * range),
@@ -381,7 +479,6 @@ function IVSmileChart({
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-      {/* Grid + labels */}
       {yTicks.map((tick) => (
         <g key={tick.value}>
           <line
@@ -392,12 +489,11 @@ function IVSmileChart({
             stroke="rgba(255,255,255,0.04)"
             strokeWidth={0.5}
           />
-          <text x={pad.left - 4} y={tick.y + 3} textAnchor="end" fontSize="7" fill="rgba(255,255,255,0.25)" fontFamily="monospace">
+          <text x={pad.left - 6} y={tick.y + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.3)" fontFamily="monospace">
             {tick.value.toFixed(0)}%
           </text>
         </g>
       ))}
-      {/* X-axis strike labels */}
       {(() => {
         const step = Math.max(1, Math.floor(points.length / 10));
         return points.map((p, i) => {
@@ -406,10 +502,10 @@ function IVSmileChart({
             <text
               key={p.strike}
               x={scaleX(i)}
-              y={height - 6}
+              y={height - 8}
               textAnchor="middle"
-              fontSize="7"
-              fill="rgba(255,255,255,0.25)"
+              fontSize="8"
+              fill="rgba(255,255,255,0.3)"
               fontFamily="monospace"
             >
               {p.strike >= 1000 ? `${(p.strike / 1000).toFixed(0)}K` : p.strike}
@@ -417,41 +513,64 @@ function IVSmileChart({
           );
         });
       })()}
-      {/* Call IV area + line */}
       {callPoints.length > 1 && (
         <>
           <polygon
             points={`${callPoints[0].split(',')[0]},${pad.top + chartH} ${callPoints.join(' ')} ${callPoints[callPoints.length - 1].split(',')[0]},${pad.top + chartH}`}
-            fill="rgba(34,197,94,0.08)"
+            fill="rgba(34,197,94,0.06)"
           />
           <polyline
             points={callPoints.join(' ')}
             fill="none"
             stroke="#22c55e"
-            strokeWidth="2"
+            strokeWidth="2.5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
         </>
       )}
-      {/* Put IV area + line */}
       {putPoints.length > 1 && (
         <>
           <polygon
             points={`${putPoints[0].split(',')[0]},${pad.top + chartH} ${putPoints.join(' ')} ${putPoints[putPoints.length - 1].split(',')[0]},${pad.top + chartH}`}
-            fill="rgba(239,68,68,0.08)"
+            fill="rgba(239,68,68,0.06)"
           />
           <polyline
             points={putPoints.join(' ')}
             fill="none"
             stroke="#ef4444"
-            strokeWidth="2"
+            strokeWidth="2.5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
         </>
       )}
     </svg>
+  );
+}
+
+/* ─── Metric Card ────────────────────────────────────────────────── */
+
+function MetricCard({ icon, label, value, sub, accent, className = '' }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub?: React.ReactNode;
+  accent?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-2xl px-4 py-4 ${className}`}>
+      {accent && (
+        <div className="absolute inset-0 opacity-[0.04]" style={{ background: `radial-gradient(circle at top right, ${accent}, transparent 70%)` }} />
+      )}
+      <div className="flex items-center gap-2 mb-2">
+        {icon}
+        <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">{label}</span>
+      </div>
+      <p className="text-2xl font-bold text-white font-mono leading-none">{value}</p>
+      {sub && <div className="mt-2">{sub}</div>}
+    </div>
   );
 }
 
@@ -489,7 +608,6 @@ export default function OptionsPage() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  /* Derived data based on exchange filter */
   const filteredStrikes = useMemo(() => {
     if (!data) return [];
     if (activeExchange === 'all') return data.strikeData;
@@ -517,33 +635,30 @@ export default function OptionsPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-3 sm:px-5 py-4">
-        {/* Title */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-              <Target className="w-3.5 h-3.5 text-hub-yellow" />
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
+
+        {/* ─── Page Header ─── */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/5 flex items-center justify-center border border-hub-yellow/20">
+                <Target className="w-4.5 h-4.5 text-hub-yellow" />
+              </div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Options</h1>
             </div>
-            <div>
-              <h1 className="text-base font-bold text-white tracking-tight">Options Data</h1>
-              <p className="text-neutral-600 text-[11px] mt-0.5 flex items-center gap-1.5">
-                Max pain, OI by strike, IV smile across {activeCount} exchanges
-                {data && !loading && (
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-                  </span>
-                )}
-              </p>
-            </div>
+            <p className="text-neutral-500 text-sm ml-12">
+              Max pain, OI distribution & IV across {activeCount} exchanges
+            </p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5 border border-white/[0.06]">
+
+          <div className="flex items-center gap-2">
+            {/* Currency selector */}
+            <div className="flex bg-white/[0.04] rounded-xl p-1 gap-1 border border-white/[0.06]">
               {(['BTC', 'ETH', 'SOL'] as const).map((c) => (
                 <button
                   key={c}
                   onClick={() => setCurrency(c)}
-                  className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     currency === c
                       ? 'bg-hub-yellow text-black shadow-glow-sm'
                       : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
@@ -553,401 +668,359 @@ export default function OptionsPage() {
                 </button>
               ))}
             </div>
+
             <button
               onClick={fetchData}
               disabled={loading}
-              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <UpdatedAgo date={lastUpdate} />
           </div>
         </div>
 
-        {/* Loading */}
+        {/* ─── Loading skeleton ─── */}
         {loading && !data && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="space-y-4 animate-fade-in">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-lg h-20 animate-pulse" />
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-2xl h-24 animate-pulse" />
               ))}
             </div>
-            <div className="bg-hub-darker border border-white/[0.06] rounded-lg h-[280px] animate-pulse" />
+            <div className="bg-hub-darker border border-white/[0.06] rounded-2xl h-[340px] animate-pulse" />
           </div>
         )}
 
+        {/* ─── Error ─── */}
         {error && !data && (
-          <div className="text-center py-12 text-red-400">
-            <p>{error}</p>
-            <button onClick={fetchData} className="mt-3 text-sm text-hub-yellow hover:underline">
-              Retry
+          <div className="text-center py-16">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-5 h-5 text-red-400" />
+            </div>
+            <p className="text-red-400 text-sm mb-3">{error}</p>
+            <button onClick={fetchData} className="text-sm text-hub-yellow hover:underline font-medium">
+              Try again
             </button>
           </div>
         )}
 
         {data && (
-          <>
-            {/* Key Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-              {/* Max Pain — nearest expiry */}
+          <div className="space-y-4">
+
+            {/* ─── Key Metrics ─── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Max Pain */}
               {(() => {
                 const nearest = data.expiryBreakdown?.[0];
                 const mp = nearest?.maxPain || data.maxPain || 0;
                 const dist = data.underlyingPrice > 0 ? ((mp - data.underlyingPrice) / data.underlyingPrice * 100) : 0;
-                const label = nearest ? nearest.date.slice(5) : 'All';
+                const label = nearest ? nearest.date.slice(5) : 'Global';
                 return (
-                  <div className="relative overflow-hidden bg-gradient-to-br from-hub-yellow/[0.08] to-transparent border border-hub-yellow/20 rounded-xl px-3.5 py-3">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Crosshair className="w-3.5 h-3.5 text-hub-yellow" />
-                      <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Max Pain <span className="text-neutral-600">({label})</span></p>
-                    </div>
-                    <p className="text-xl font-bold text-hub-yellow font-mono leading-none">${mp.toLocaleString()}</p>
-                    <div className={`flex items-center gap-0.5 mt-1.5 text-[10px] ${dist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {dist >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                      <span className="font-mono">{dist >= 0 ? '+' : ''}{dist.toFixed(1)}% from spot</span>
-                    </div>
-                  </div>
+                  <MetricCard
+                    icon={<Crosshair className="w-4 h-4 text-hub-yellow" />}
+                    label={`Max Pain (${label})`}
+                    value={`$${mp.toLocaleString()}`}
+                    accent="#eab308"
+                    className="border-hub-yellow/15"
+                    sub={
+                      <div className={`flex items-center gap-1 text-xs ${dist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {dist >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        <span className="font-mono">{dist >= 0 ? '+' : ''}{dist.toFixed(1)}% from spot</span>
+                      </div>
+                    }
+                  />
                 );
               })()}
 
-              {/* Put/Call Ratio */}
-              <div className="relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-xl px-3.5 py-3">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <ArrowLeftRight
-                    className={`w-3.5 h-3.5 ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}
-                  />
-                  <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Put/Call Ratio</p>
-                </div>
-                <p
-                  className={`text-xl font-bold font-mono leading-none ${
-                    data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'
-                  }`}
-                >
-                  {(data.putCallRatio || 0).toFixed(2)}
-                </p>
-                <p className="text-[10px] text-neutral-500 mt-1.5">
-                  {data.putCallRatio > 1 ? 'Bearish bias' : data.putCallRatio < 0.7 ? 'Bullish bias' : 'Neutral'}
-                </p>
-              </div>
+              {/* P/C Ratio */}
+              <MetricCard
+                icon={<ArrowLeftRight className={`w-4 h-4 ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`} />}
+                label="Put/Call Ratio"
+                value={(data.putCallRatio || 0).toFixed(2)}
+                accent={data.putCallRatio > 1 ? '#ef4444' : '#22c55e'}
+                sub={
+                  <span className="text-xs text-neutral-500">
+                    {data.putCallRatio > 1 ? 'Bearish hedging' : data.putCallRatio < 0.7 ? 'Bullish bias' : 'Balanced'}
+                  </span>
+                }
+              />
 
               {/* Total OI */}
-              <div className="relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-xl px-3.5 py-3">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
-                  <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Total Options OI</p>
-                </div>
-                <p className="text-xl font-bold text-white font-mono leading-none">${formatCompact(data.totalOI)}</p>
-                <p className="text-[10px] text-neutral-500 mt-1.5">{data.instrumentCount.toLocaleString()} instruments</p>
-              </div>
+              <MetricCard
+                icon={<BarChart3 className="w-4 h-4 text-blue-400" />}
+                label="Total Options OI"
+                value={`$${formatCompact(data.totalOI)}`}
+                accent="#3b82f6"
+                sub={
+                  <span className="text-xs text-neutral-500">{data.instrumentCount.toLocaleString()} instruments</span>
+                }
+              />
 
               {/* Spot Price */}
-              <div className="relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-xl px-3.5 py-3">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-neutral-400" />
-                  <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Spot Price</p>
-                </div>
-                <p className="text-xl font-bold text-white font-mono leading-none">{formatPrice(data.underlyingPrice)}</p>
-                <p className="text-[10px] text-neutral-500 mt-1.5">{currency}/USD</p>
-              </div>
+              <MetricCard
+                icon={<DollarSign className="w-4 h-4 text-neutral-400" />}
+                label={`${currency} Spot`}
+                value={formatPrice(data.underlyingPrice)}
+                sub={
+                  <span className="text-xs text-neutral-500">Index price</span>
+                }
+              />
             </div>
 
-            {/* Exchange Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 mb-4">
+            {/* ─── Exchange filter tabs ─── */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
                 onClick={() => setActiveExchange('all')}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all border ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all border whitespace-nowrap ${
                   activeExchange === 'all'
                     ? 'bg-hub-yellow text-black font-bold border-hub-yellow shadow-glow-sm'
                     : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06] border-white/[0.06]'
                 }`}
               >
+                <Globe className="w-3.5 h-3.5" />
                 All Exchanges
               </button>
               {exchangeNames.map((name) => (
                 <button
                   key={name}
                   onClick={() => setActiveExchange(name)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all border ${
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all border whitespace-nowrap ${
                     activeExchange === name
                       ? 'bg-hub-yellow text-black font-bold border-hub-yellow shadow-glow-sm'
                       : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06] border-white/[0.06]'
                   }`}
                 >
+                  <ExchangeLogo exchange={name.toLowerCase()} size={14} />
                   {name}
                 </button>
               ))}
             </div>
 
-            {/* Call/Put OI Split */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <ArrowLeftRight className="w-4 h-4 text-purple-400" />
-                  <h2 className="text-[13px] font-semibold text-white">
-                    Call / Put Open Interest
-                    {activeExchange !== 'all' && (
-                      <span className="text-hub-yellow ml-1.5">— {activeExchange}</span>
-                    )}
-                  </h2>
-                </div>
-                <span className="text-xs text-neutral-500 font-mono">
-                  Total: ${formatCompact(filteredOI.totalOI)}
-                </span>
-              </div>
+            {/* ─── Call / Put Split ─── */}
+            <Section>
+              <SectionHeader
+                icon={<ArrowLeftRight className="w-4 h-4 text-purple-400" />}
+                title={`Call / Put Open Interest${activeExchange !== 'all' ? ` — ${activeExchange}` : ''}`}
+                right={<span className="text-xs text-neutral-500 font-mono">Total: ${formatCompact(filteredOI.totalOI)}</span>}
+              />
 
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-6">
                 {/* Donut */}
                 {(() => {
                   const total = filteredOI.totalOI || 1;
                   const callPct = (filteredOI.callOI / total) * 100;
-                  const r = 42;
+                  const r = 44;
                   const c = 2 * Math.PI * r;
                   const callDash = (callPct / 100) * c;
 
                   return (
-                    <svg width="110" height="110" viewBox="0 0 110 110" className="flex-shrink-0">
-                      <circle cx="55" cy="55" r={r} fill="none" stroke="#ef4444" strokeWidth="12" opacity="0.6" />
+                    <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
+                      <circle cx="60" cy="60" r={r} fill="none" stroke="#ef4444" strokeWidth="14" opacity="0.5" />
                       <circle
-                        cx="55"
-                        cy="55"
-                        r={r}
-                        fill="none"
-                        stroke="#22c55e"
-                        strokeWidth="12"
+                        cx="60" cy="60" r={r} fill="none"
+                        stroke="#22c55e" strokeWidth="14"
                         strokeDasharray={`${callDash} ${c - callDash}`}
                         strokeDashoffset={c / 4}
                         strokeLinecap="round"
-                        opacity="0.8"
-                        style={{ transform: 'rotate(-90deg)', transformOrigin: '55px 55px' }}
+                        opacity="0.75"
+                        style={{ transform: 'rotate(-90deg)', transformOrigin: '60px 60px' }}
                       />
-                      <text x="55" y="51" textAnchor="middle" fontSize="15" fontWeight="bold" fill="white">
+                      <text x="60" y="56" textAnchor="middle" fontSize="17" fontWeight="bold" fill="white" fontFamily="monospace">
                         {(data.putCallRatio || 0).toFixed(2)}
                       </text>
-                      <text x="55" y="66" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.35)">
+                      <text x="60" y="72" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.35)">
                         P/C Ratio
                       </text>
                     </svg>
                   );
                 })()}
 
-                {/* Bar + breakdown */}
-                <div className="flex-1">
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-green-400 font-medium">
-                      Calls — ${formatCompact(filteredOI.callOI)}
-                    </span>
-                    <span className="text-red-400 font-medium">
-                      Puts — ${formatCompact(filteredOI.putOI)}
-                    </span>
+                {/* Bar + labels */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between text-sm mb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded bg-green-500/70" />
+                      <span className="text-green-400 font-medium">Calls</span>
+                      <span className="text-white font-mono font-semibold">${formatCompact(filteredOI.callOI)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-mono font-semibold">${formatCompact(filteredOI.putOI)}</span>
+                      <span className="text-red-400 font-medium">Puts</span>
+                      <div className="w-3 h-3 rounded bg-red-500/70" />
+                    </div>
                   </div>
-                  <div className="h-5 rounded-full overflow-hidden flex bg-white/[0.04]">
+
+                  <div className="h-6 rounded-lg overflow-hidden flex bg-white/[0.04]">
                     <div
-                      className="h-full bg-green-500/70 transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-green-500/80 to-green-500/60 transition-all duration-500"
                       style={{ width: `${filteredOI.totalOI ? (filteredOI.callOI / filteredOI.totalOI) * 100 : 50}%` }}
                     />
                     <div
-                      className="h-full bg-red-500/70 transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-red-500/60 to-red-500/80 transition-all duration-500"
                       style={{ width: `${filteredOI.totalOI ? (filteredOI.putOI / filteredOI.totalOI) * 100 : 50}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-[10px] text-neutral-500 mt-1 font-mono">
-                    <span>
-                      {filteredOI.totalOI ? ((filteredOI.callOI / filteredOI.totalOI) * 100).toFixed(1) : '50.0'}%
-                    </span>
-                    <span className="text-neutral-600 italic font-sans">
-                      {data.putCallRatio > 1.2
-                        ? 'Elevated hedging — contrarian bullish'
-                        : data.putCallRatio < 0.6
-                        ? 'Strong call speculation — contrarian warning'
-                        : data.putCallRatio < 0.85
-                        ? 'Moderately bullish positioning'
-                        : 'Balanced market positioning'}
-                    </span>
-                    <span>
-                      {filteredOI.totalOI ? ((filteredOI.putOI / filteredOI.totalOI) * 100).toFixed(1) : '50.0'}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* OI by Strike */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
-                  <div>
-                    <h2 className="text-xs font-semibold text-white">
-                      Open Interest by Strike
-                      {activeExchange !== 'all' && (
-                        <span className="text-hub-yellow ml-1.5">— {activeExchange}</span>
-                      )}
-                    </h2>
-                    <p className="text-[10px] text-neutral-600">
-                      Yellow dashed = spot price · Orange dashed = max pain
-                    </p>
+                  <div className="flex justify-between text-xs text-neutral-500 mt-2 font-mono">
+                    <span>{filteredOI.totalOI ? ((filteredOI.callOI / filteredOI.totalOI) * 100).toFixed(1) : '50.0'}%</span>
+                    <span className="text-neutral-600 italic font-sans text-[11px]">
+                      {data.putCallRatio > 1.2
+                        ? 'Heavy hedging — contrarian bullish signal'
+                        : data.putCallRatio < 0.6
+                        ? 'Call speculation — contrarian caution'
+                        : data.putCallRatio < 0.85
+                        ? 'Moderately bullish'
+                        : 'Balanced positioning'}
+                    </span>
+                    <span>{filteredOI.totalOI ? ((filteredOI.putOI / filteredOI.totalOI) * 100).toFixed(1) : '50.0'}%</span>
                   </div>
                 </div>
               </div>
-              <div className="h-[300px] mt-1.5">
+            </Section>
+
+            {/* ─── OI by Strike ─── */}
+            <Section>
+              <SectionHeader
+                icon={<BarChart3 className="w-4 h-4 text-blue-400" />}
+                title={`Open Interest by Strike${activeExchange !== 'all' ? ` — ${activeExchange}` : ''}`}
+                subtitle="Hover bars for details"
+              />
+              <div className="h-[340px]">
                 <OIByStrikeChart
                   strikes={filteredStrikes}
                   spotPrice={data.underlyingPrice}
                   maxPain={data.expiryBreakdown?.[0]?.maxPain || data.maxPain}
                 />
               </div>
-              <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-sm bg-green-500/55" /> Calls
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-sm bg-red-500/55" /> Puts
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-0.5 bg-hub-yellow" /> Spot
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-0.5 bg-orange-500" /> Max Pain
-                </div>
-              </div>
-            </div>
+              <Legend items={[
+                { color: '#22c55e', label: 'Calls' },
+                { color: '#ef4444', label: 'Puts' },
+                { color: '#eab308', label: 'Spot Price', type: 'line' },
+                { color: '#f97316', label: 'Max Pain', type: 'line' },
+              ]} />
+            </Section>
 
-            {/* OI by Expiry + Exchange Breakdown — side by side on desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+            {/* ─── OI by Expiry + Exchange Breakdown ─── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* OI by Expiry */}
               {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-purple-400" />
-                    <div>
-                      <h2 className="text-xs font-semibold text-white">OI by Expiry Date</h2>
-                      <p className="text-[10px] text-neutral-600">
-                        {data.expiryBreakdown.length} upcoming expiries
-                      </p>
-                    </div>
-                  </div>
-                  <div className="h-[200px] mt-2">
+                <Section>
+                  <SectionHeader
+                    icon={<Calendar className="w-4 h-4 text-purple-400" />}
+                    title="OI by Expiry"
+                    subtitle={`${data.expiryBreakdown.length} upcoming expiries`}
+                  />
+                  <div className="h-[220px]">
                     <OIByExpiryChart entries={data.expiryBreakdown.slice(0, 12)} />
                   </div>
-                  <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm bg-green-500/50" /> Calls
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm bg-red-500/50" /> Puts
-                    </div>
-                  </div>
-                </div>
+                  <Legend items={[
+                    { color: '#22c55e', label: 'Calls' },
+                    { color: '#ef4444', label: 'Puts' },
+                  ]} />
+                </Section>
               )}
 
               {/* Exchange Breakdown */}
               {data.exchangeBreakdown && data.exchangeBreakdown.length > 1 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <Globe className="w-3.5 h-3.5 text-hub-yellow" />
-                    <h2 className="text-xs font-semibold text-white">OI by Exchange</h2>
-                  </div>
-                  <div className="space-y-3">
+                <Section>
+                  <SectionHeader
+                    icon={<Globe className="w-4 h-4 text-hub-yellow" />}
+                    title="OI by Exchange"
+                    subtitle="Click to filter charts"
+                  />
+                  <div className="space-y-2.5">
                     {data.exchangeBreakdown.map((ex) => {
                       const total = ex.totalOI || 1;
                       const callPct = (ex.callOI / total) * 100;
+                      const isActive = activeExchange === ex.exchange;
                       return (
-                        <div
+                        <button
                           key={ex.exchange}
-                          className={`rounded-xl px-3.5 py-3 transition-all cursor-pointer ${
-                            activeExchange === ex.exchange
-                              ? 'bg-hub-yellow/10 border border-hub-yellow/20 shadow-glow-sm'
-                              : 'bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08]'
+                          className={`w-full text-left rounded-xl px-4 py-3 transition-all border ${
+                            isActive
+                              ? 'bg-hub-yellow/[0.08] border-hub-yellow/25 shadow-glow-sm'
+                              : 'bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08]'
                           }`}
                           onClick={() => setActiveExchange(ex.exchange === activeExchange ? 'all' : ex.exchange)}
                         >
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm font-semibold text-white">{ex.exchange}</span>
-                            <span className="text-sm font-bold text-white font-mono">
-                              ${formatCompact(ex.totalOI)}
-                            </span>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={18} />
+                              <span className="text-sm font-semibold text-white">{ex.exchange}</span>
+                              <span className="text-[10px] text-neutral-600 bg-white/[0.04] px-1.5 py-0.5 rounded-md font-mono">
+                                {ex.share.toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-bold text-white font-mono">${formatCompact(ex.totalOI)}</span>
+                              <ChevronRight className={`w-3.5 h-3.5 text-neutral-600 transition-transform ${isActive ? 'rotate-90 text-hub-yellow' : ''}`} />
+                            </div>
                           </div>
-                          {/* Call/Put split bar */}
                           <div className="h-2 rounded-full overflow-hidden flex bg-white/[0.04]">
-                            <div
-                              className="h-full bg-green-500/60 transition-all"
-                              style={{ width: `${callPct}%` }}
-                            />
-                            <div
-                              className="h-full bg-red-500/60 transition-all"
-                              style={{ width: `${100 - callPct}%` }}
-                            />
+                            <div className="h-full bg-green-500/60 transition-all" style={{ width: `${callPct}%` }} />
+                            <div className="h-full bg-red-500/60 transition-all" style={{ width: `${100 - callPct}%` }} />
                           </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <span className="text-[10px] text-neutral-500">
-                              {ex.share.toFixed(1)}% share · {ex.instruments} instruments
-                            </span>
-                            <span className="text-[10px] text-neutral-500 font-mono">
-                              C:{callPct.toFixed(0)}% / P:{(100 - callPct).toFixed(0)}%
-                            </span>
+                          <div className="flex items-center justify-between mt-1.5 text-[10px] text-neutral-500">
+                            <span>{ex.instruments} instruments</span>
+                            <span className="font-mono">C:{callPct.toFixed(0)}% / P:{(100 - callPct).toFixed(0)}%</span>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
-                </div>
+                </Section>
               )}
             </div>
 
-            {/* IV Smile */}
+            {/* ─── IV Smile ─── */}
             {data.ivSmile.length > 2 && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Activity className="w-3.5 h-3.5 text-purple-400" />
-                  <div>
-                    <h2 className="text-xs font-semibold text-white">Implied Volatility Smile</h2>
-                    <p className="text-[10px] text-neutral-600">Mark IV across strike prices (70–130% of spot)</p>
-                  </div>
-                </div>
-                <div className="h-[200px] mt-2">
+              <Section>
+                <SectionHeader
+                  icon={<Activity className="w-4 h-4 text-purple-400" />}
+                  title="Implied Volatility Smile"
+                  subtitle="Mark IV across strike prices (70-130% of spot)"
+                />
+                <div className="h-[220px]">
                   <IVSmileChart points={data.ivSmile} spotPrice={data.underlyingPrice} />
                 </div>
-                <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-0.5 rounded-full bg-green-500" /> Call IV
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-0.5 rounded-full bg-red-500" /> Put IV
-                  </div>
-                </div>
-              </div>
+                <Legend items={[
+                  { color: '#22c55e', label: 'Call IV', type: 'line' },
+                  { color: '#ef4444', label: 'Put IV', type: 'line' },
+                ]} />
+              </Section>
             )}
 
-            {/* Max Pain by Expiry — full width */}
+            {/* ─── Max Pain by Expiry Table ─── */}
             {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <Crosshair className="w-3.5 h-3.5 text-orange-400" />
-                    <div>
-                      <h2 className="text-xs font-semibold text-white">Max Pain by Expiry</h2>
-                      <p className="text-[10px] text-neutral-600">{data.expiryBreakdown.length} upcoming expiries · spot ${formatPrice(data.underlyingPrice)}</p>
+              <Section>
+                <SectionHeader
+                  icon={<Crosshair className="w-4 h-4 text-orange-400" />}
+                  title="Max Pain by Expiry"
+                  subtitle={`Spot: ${formatPrice(data.underlyingPrice)}`}
+                  right={
+                    <div className="flex items-center gap-1.5 text-[11px] text-orange-400/70">
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                      Near expiry (&le;3d)
                     </div>
-                  </div>
-                  <div className="text-[10px] text-neutral-600">
-                    <span className="text-orange-400">&#9679;</span> near expiry (&le;3d)
-                  </div>
-                </div>
-                {/* Header row */}
-                <div className="grid grid-cols-[60px_1fr_70px_80px_60px] gap-2 px-3 py-1.5 text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">
-                  <span>Date</span>
-                  <span>Call / Put OI</span>
+                  }
+                />
+
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_2fr_1fr_1fr_80px] gap-3 px-4 py-2 text-[10px] text-neutral-500 uppercase tracking-wider font-semibold border-b border-white/[0.04]">
+                  <span>Expiry</span>
+                  <span>Call / Put Distribution</span>
                   <span className="text-right">Total OI</span>
                   <span className="text-right">Max Pain</span>
                   <span className="text-right">vs Spot</span>
                 </div>
-                <div className="space-y-1 max-h-[360px] overflow-y-auto">
+
+                <div className="max-h-[400px] overflow-y-auto">
                   {data.expiryBreakdown.slice(0, 15).map((exp) => {
                     const total = exp.totalOI || 1;
                     const callPct = (exp.callOI / total) * 100;
                     const expDate = new Date(exp.expiry);
-                    const nowDate = new Date();
-                    const daysUntil = Math.max(0, Math.ceil((expDate.getTime() - nowDate.getTime()) / 86400000));
+                    const daysUntil = Math.max(0, Math.ceil((expDate.getTime() - Date.now()) / 86400000));
                     const isNear = daysUntil <= 3;
                     const mpDist = data.underlyingPrice > 0 && exp.maxPain
                       ? ((exp.maxPain - data.underlyingPrice) / data.underlyingPrice * 100)
@@ -956,64 +1029,72 @@ export default function OptionsPage() {
                     return (
                       <div
                         key={exp.date}
-                        className={`grid grid-cols-[60px_1fr_70px_80px_60px] gap-2 items-center rounded-lg px-3 py-2 ${
-                          isNear ? 'bg-orange-500/5 border border-orange-500/10' : 'bg-white/[0.02]'
+                        className={`grid grid-cols-[1fr_2fr_1fr_1fr_80px] gap-3 items-center px-4 py-2.5 border-b border-white/[0.02] transition-colors hover:bg-white/[0.02] ${
+                          isNear ? 'bg-orange-500/[0.03]' : ''
                         }`}
                       >
                         <div>
-                          <p className={`text-[11px] font-mono font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
+                          <p className={`text-xs font-mono font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
                             {exp.date.slice(5)}
                           </p>
-                          <p className="text-[9px] text-neutral-600">
-                            {daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? '1d' : `${daysUntil}d`}
+                          <p className="text-[10px] text-neutral-600">
+                            {daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? '1 day' : `${daysUntil} days`}
                           </p>
                         </div>
+
                         <div>
-                          <div className="h-2.5 rounded-full overflow-hidden flex bg-white/[0.04]">
-                            <div className="h-full bg-green-500/50" style={{ width: `${callPct}%` }} />
-                            <div className="h-full bg-red-500/50" style={{ width: `${100 - callPct}%` }} />
+                          <div className="h-3 rounded-full overflow-hidden flex bg-white/[0.04]">
+                            <div className="h-full bg-green-500/50 transition-all" style={{ width: `${callPct}%` }} />
+                            <div className="h-full bg-red-500/50 transition-all" style={{ width: `${100 - callPct}%` }} />
                           </div>
-                          <div className="flex justify-between mt-0.5">
-                            <span className="text-[9px] text-green-400/60 font-mono">C:{callPct.toFixed(0)}%</span>
-                            <span className="text-[9px] text-red-400/60 font-mono">P:{(100 - callPct).toFixed(0)}%</span>
+                          <div className="flex justify-between mt-1">
+                            <span className="text-[10px] text-green-400/60 font-mono">C: {callPct.toFixed(0)}%</span>
+                            <span className="text-[10px] text-red-400/60 font-mono">P: {(100 - callPct).toFixed(0)}%</span>
                           </div>
                         </div>
-                        <p className="text-[11px] font-mono text-neutral-400 text-right">${formatCompact(exp.totalOI)}</p>
-                        <p className="text-[11px] font-mono text-orange-400 font-semibold text-right">
+
+                        <p className="text-xs font-mono text-neutral-300 text-right">${formatCompact(exp.totalOI)}</p>
+
+                        <p className="text-xs font-mono text-orange-400 font-semibold text-right">
                           ${exp.maxPain ? exp.maxPain.toLocaleString() : '—'}
                         </p>
-                        <p className={`text-[10px] font-mono text-right ${mpDist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+
+                        <p className={`text-xs font-mono text-right font-medium ${mpDist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {mpDist >= 0 ? '+' : ''}{mpDist.toFixed(1)}%
                         </p>
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              </Section>
             )}
 
-            {/* Exchange Health — inline */}
-            {data.health && data.health.length > 0 && (
-              <div className="flex flex-wrap items-center gap-3 mb-3 px-1">
-                <span className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Sources</span>
-                {data.health.map((h) => (
-                  <div key={h.exchange} className="flex items-center gap-1.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${h.status === 'ok' && h.count > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className="text-[10px] text-neutral-500">{h.exchange}</span>
-                    <span className="text-[9px] text-neutral-700 font-mono">{h.count > 0 ? `${h.count} · ${h.latency}ms` : '—'}</span>
+            {/* ─── Data Sources ─── */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-2">
+              {data.health && data.health.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+                    <Shield className="w-3 h-3" />
+                    <span className="font-medium">Data Sources</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  {data.health.map((h) => (
+                    <div key={h.exchange} className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${h.status === 'ok' && h.count > 0 ? 'bg-green-500' : 'bg-red-500/60'}`} />
+                      <ExchangeLogo exchange={h.exchange.toLowerCase()} size={12} />
+                      <span className="text-[11px] text-neutral-500">{h.exchange}</span>
+                      {h.count > 0 && (
+                        <span className="text-[10px] text-neutral-600 font-mono">{h.latency}ms</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            {/* Info footer */}
-            <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-3">
-              <div className="flex items-center gap-2 text-[10px] text-neutral-600">
-                <Info className="w-3 h-3 flex-shrink-0" />
-                <span>Aggregated across Deribit, Binance, OKX & Bybit · Max Pain = strike minimizing option holder profit · P/C &gt; 1 = bearish hedging · Updates every 60s</span>
-              </div>
+              <p className="text-[10px] text-neutral-600">
+                Max Pain = strike that minimizes total option holder profit · Updates every 60s
+              </p>
             </div>
-          </>
+          </div>
         )}
       </main>
       <Footer />
