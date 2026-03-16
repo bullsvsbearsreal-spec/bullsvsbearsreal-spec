@@ -93,12 +93,9 @@ function MetricCard({ icon, label, value, sub, accent, className = '' }: {
   );
 }
 
-/* ─── Basis Distribution Chart (SVG) ─────────────────────────────── */
+/* ─── Basis Distribution (inline bars) ────────────────────────────── */
 
 function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
-  const [hovered, setHovered] = useState<number | null>(null);
-
-  // Bucket basis values into ranges
   const buckets = useMemo(() => {
     const ranges = [
       { min: -Infinity, max: -1, label: '< -1%' },
@@ -110,7 +107,6 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
       { min: 0.5, max: 1, label: '+0.5% to +1%' },
       { min: 1, max: Infinity, label: '> +1%' },
     ];
-
     return ranges.map(r => ({
       ...r,
       count: data.filter(d => d.basis >= r.min && d.basis < r.max).length,
@@ -118,99 +114,38 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
   }, [data]);
 
   const maxCount = Math.max(...buckets.map(b => b.count), 1);
-
-  const width = 800;
-  const height = 180;
-  const pad = { top: 8, bottom: 28, left: 4, right: 4 };
-  const chartW = width - pad.left - pad.right;
-  const chartH = height - pad.top - pad.bottom;
-  const groupW = chartW / buckets.length;
-  const barW = groupW * 0.7;
-
-  const hoveredBucket = hovered !== null ? buckets[hovered] : null;
+  const total = data.length || 1;
 
   return (
-    <div className="relative" onMouseLeave={() => setHovered(null)}>
-      {hoveredBucket && hovered !== null && (
-        <div
-          className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-md"
-          style={{
-            left: `${((pad.left + hovered * groupW + groupW / 2) / width) * 100}%`,
-            top: 0,
-            transform: `translateX(${hovered > buckets.length * 0.7 ? '-100%' : hovered < buckets.length * 0.3 ? '0%' : '-50%'})`,
-          }}
-        >
-          <p className="text-xs font-bold text-white mb-1">{hoveredBucket.label}</p>
-          <p className="text-[11px] text-neutral-400">
-            <span className="text-white font-mono font-medium">{hoveredBucket.count}</span> entries ({((hoveredBucket.count / data.length) * 100).toFixed(1)}%)
-          </p>
-        </div>
-      )}
-
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-        {/* Grid lines */}
-        {[0.25, 0.5, 0.75, 1].map(pct => (
-          <line
-            key={pct}
-            x1={pad.left} y1={pad.top + chartH * (1 - pct)}
-            x2={width - pad.right} y2={pad.top + chartH * (1 - pct)}
-            stroke="rgba(255,255,255,0.04)" strokeWidth={0.5}
-          />
-        ))}
-
-        {/* Zero line */}
-        <line
-          x1={pad.left + 4 * groupW} y1={pad.top}
-          x2={pad.left + 4 * groupW} y2={pad.top + chartH}
-          stroke="rgba(255,255,255,0.08)" strokeWidth={1} strokeDasharray="3,3"
-        />
-
-        {buckets.map((b, i) => {
-          const x = pad.left + i * groupW + (groupW - barW) / 2;
-          const barH = (b.count / maxCount) * chartH;
-          const isNeg = i < 4;
-          const isHovered = i === hovered;
-          const color = isNeg ? '#ef4444' : '#22c55e';
-
-          return (
-            <g key={b.label} onMouseEnter={() => setHovered(i)}>
-              <rect x={pad.left + i * groupW} y={pad.top} width={groupW} height={chartH} fill="transparent" />
-              <rect
-                x={x}
-                y={pad.top + chartH - barH}
-                width={barW}
-                height={Math.max(barH, 1)}
-                fill={color}
-                opacity={isHovered ? 0.9 : 0.55}
-                rx={3}
+    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+      {buckets.map((b, i) => {
+        const pct = (b.count / total) * 100;
+        const barPct = (b.count / maxCount) * 100;
+        const isNeg = i < 4;
+        return (
+          <div key={b.label} className="group">
+            {/* Bar */}
+            <div className="h-16 flex items-end rounded-lg bg-white/[0.02] p-0.5">
+              <div
+                className={`w-full rounded-md transition-all group-hover:opacity-90 ${isNeg ? 'bg-red-500/50 group-hover:bg-red-500/70' : 'bg-green-500/50 group-hover:bg-green-500/70'}`}
+                style={{ height: `${Math.max(barPct, 3)}%` }}
               />
-              {b.count > 0 && (
-                <text
-                  x={x + barW / 2}
-                  y={pad.top + chartH - barH - 4}
-                  textAnchor="middle"
-                  fontSize="8"
-                  fill={isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.35)'}
-                  fontFamily="monospace"
-                  fontWeight={isHovered ? 'bold' : 'normal'}
-                >
-                  {b.count}
-                </text>
-              )}
-              <text
-                x={pad.left + i * groupW + groupW / 2}
-                y={height - 6}
-                textAnchor="middle"
-                fontSize="7"
-                fill={isHovered ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)'}
-                fontFamily="monospace"
-              >
-                {b.label.replace(' to ', '→')}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+            </div>
+            {/* Count */}
+            <p className="text-center text-[11px] font-mono font-semibold text-neutral-300 mt-1.5 group-hover:text-white transition-colors">
+              {b.count.toLocaleString()}
+            </p>
+            {/* Percentage */}
+            <p className="text-center text-[9px] font-mono text-neutral-500 group-hover:text-neutral-400">
+              {pct.toFixed(1)}%
+            </p>
+            {/* Label */}
+            <p className="text-center text-[9px] text-neutral-600 mt-0.5 leading-tight group-hover:text-neutral-400">
+              {b.label}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -741,9 +676,7 @@ export default function BasisPage() {
                 title="Basis Distribution"
                 subtitle="How basis values are spread across all pairs"
               />
-              <div className="h-[180px]">
-                <BasisDistributionChart data={basisData} />
-              </div>
+              <BasisDistributionChart data={basisData} />
             </Section>
 
             {/* ─── Exchange Breakdown + Table ─── */}
