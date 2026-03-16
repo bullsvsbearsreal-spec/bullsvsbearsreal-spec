@@ -469,24 +469,54 @@ export default function BasisPage() {
   const premiumCount = useMemo(() => basisData.filter(b => b.basis > 0).length, [basisData]);
   const discountCount = useMemo(() => basisData.filter(b => b.basis < 0).length, [basisData]);
 
-  const stats = useMemo(() => {
-    if (basisData.length === 0) return { avg: 0, highest: null as BasisEntry | null, deepest: null as BasisEntry | null, count: 0, median: 0 };
-    const avg = basisData.reduce((sum, b) => sum + b.basis, 0) / basisData.length;
-    const highest = basisData.reduce((max, b) => b.basis > max.basis ? b : max, basisData[0]);
-    const deepest = basisData.reduce((min, b) => b.basis < min.basis ? b : min, basisData[0]);
-    const uniqueSymbols = new Set(basisData.map(b => b.symbol)).size;
-    const sorted = [...basisData.map(b => b.basis)].sort((a, b) => a - b);
-    const median = sorted[Math.floor(sorted.length / 2)] || 0;
-    return { avg, highest, deepest, count: uniqueSymbols, median };
+  // Symbols that appear on 3+ exchanges = "established" (filters out single-exchange garbage data)
+  const establishedSymbols = useMemo(() => {
+    const symbolExchanges = new Map<string, Set<string>>();
+    basisData.forEach(b => {
+      if (!symbolExchanges.has(b.symbol)) symbolExchanges.set(b.symbol, new Set());
+      symbolExchanges.get(b.symbol)!.add(b.exchange);
+    });
+    return new Set(Array.from(symbolExchanges.entries()).filter(([, exs]) => exs.size >= 3).map(([s]) => s));
   }, [basisData]);
 
+  const establishedData = useMemo(() =>
+    basisData.filter(b => establishedSymbols.has(b.symbol)),
+    [basisData, establishedSymbols]
+  );
+
+  // Per-symbol avg basis (median across exchanges) for BTC/ETH
+  const symbolBasis = useMemo(() => {
+    const calc = (sym: string) => {
+      const entries = basisData.filter(b => b.symbol === sym);
+      if (entries.length === 0) return null;
+      const sorted = entries.map(e => e.basis).sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const avg = entries.reduce((s, e) => s + e.basis, 0) / entries.length;
+      return { median, avg, count: entries.length };
+    };
+    return { btc: calc('BTC'), eth: calc('ETH') };
+  }, [basisData]);
+
+  const stats = useMemo(() => {
+    if (establishedData.length === 0 && basisData.length === 0) return { avg: 0, highest: null as BasisEntry | null, deepest: null as BasisEntry | null, count: 0, median: 0 };
+    const source = establishedData.length > 0 ? establishedData : basisData;
+    const avg = source.reduce((sum, b) => sum + b.basis, 0) / source.length;
+    const highest = source.reduce((max, b) => b.basis > max.basis ? b : max, source[0]);
+    const deepest = source.reduce((min, b) => b.basis < min.basis ? b : min, source[0]);
+    const uniqueSymbols = new Set(basisData.map(b => b.symbol)).size;
+    const sorted = [...source.map(b => b.basis)].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] || 0;
+    return { avg, highest, deepest, count: uniqueSymbols, median };
+  }, [basisData, establishedData]);
+
+  // Top premiums/discounts: only established tokens (3+ exchanges)
   const topPremiums = useMemo(() =>
-    [...basisData].sort((a, b) => b.basis - a.basis).slice(0, 5),
-    [basisData]
+    [...establishedData].sort((a, b) => b.basis - a.basis).slice(0, 5),
+    [establishedData]
   );
   const topDiscounts = useMemo(() =>
-    [...basisData].sort((a, b) => a.basis - b.basis).slice(0, 5),
-    [basisData]
+    [...establishedData].sort((a, b) => a.basis - b.basis).slice(0, 5),
+    [establishedData]
   );
 
   const handleSort = (field: SortField) => {
@@ -580,53 +610,57 @@ export default function BasisPage() {
 
             {/* ─── Key Metrics ─── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* BTC Basis */}
               <MetricCard
-                icon={<BarChart3 className="w-4 h-4 text-hub-yellow" />}
-                label="Avg Basis"
+                icon={<DollarSign className="w-4 h-4 text-hub-yellow" />}
+                label="BTC Basis"
+                value={symbolBasis.btc ? formatBasis(symbolBasis.btc.median) : '—'}
+                accent="#eab308"
+                className="border-hub-yellow/15"
+                sub={symbolBasis.btc ? (
+                  <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                    <span>Avg: <span className={`font-mono ${symbolBasis.btc.avg > 0 ? 'text-green-400' : 'text-red-400'}`}>{formatBasis(symbolBasis.btc.avg)}</span></span>
+                    <span className="text-neutral-600">· {symbolBasis.btc.count} exchanges</span>
+                  </div>
+                ) : <span className="text-xs text-neutral-600">No BTC data</span>}
+              />
+
+              {/* ETH Basis */}
+              <MetricCard
+                icon={<Activity className="w-4 h-4 text-blue-400" />}
+                label="ETH Basis"
+                value={symbolBasis.eth ? formatBasis(symbolBasis.eth.median) : '—'}
+                accent="#3b82f6"
+                className="border-blue-500/15"
+                sub={symbolBasis.eth ? (
+                  <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                    <span>Avg: <span className={`font-mono ${symbolBasis.eth.avg > 0 ? 'text-green-400' : 'text-red-400'}`}>{formatBasis(symbolBasis.eth.avg)}</span></span>
+                    <span className="text-neutral-600">· {symbolBasis.eth.count} exchanges</span>
+                  </div>
+                ) : <span className="text-xs text-neutral-600">No ETH data</span>}
+              />
+
+              {/* Market Avg (established tokens only) */}
+              <MetricCard
+                icon={<BarChart3 className="w-4 h-4 text-purple-400" />}
+                label="Market Avg"
                 value={formatBasis(stats.avg)}
                 accent={stats.avg > 0 ? '#22c55e' : '#ef4444'}
                 className={stats.avg > 0 ? 'border-green-500/15' : 'border-red-500/15'}
                 sub={
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                    <span>Median:</span>
-                    <span className={`font-mono ${stats.median > 0 ? 'text-green-400' : stats.median < 0 ? 'text-red-400' : 'text-neutral-400'}`}>
-                      {formatBasis(stats.median)}
-                    </span>
+                    <span>Median: <span className={`font-mono ${stats.median > 0 ? 'text-green-400' : stats.median < 0 ? 'text-red-400' : 'text-neutral-400'}`}>{formatBasis(stats.median)}</span></span>
+                    <span className="text-neutral-600">· {establishedSymbols.size} tokens</span>
                   </div>
                 }
               />
 
+              {/* Coverage */}
               <MetricCard
-                icon={<TrendingUp className="w-4 h-4 text-green-400" />}
-                label="Highest Premium"
-                value={stats.highest ? formatBasis(stats.highest.basis) : '—'}
-                accent="#22c55e"
-                sub={stats.highest && (
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-neutral-400">{stats.highest.symbol}</span>
-                    <span className="text-neutral-600">{stats.highest.exchange}</span>
-                  </div>
-                )}
-              />
-
-              <MetricCard
-                icon={<TrendingDown className="w-4 h-4 text-red-400" />}
-                label="Deepest Discount"
-                value={stats.deepest ? formatBasis(stats.deepest.basis) : '—'}
-                accent="#ef4444"
-                sub={stats.deepest && (
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-neutral-400">{stats.deepest.symbol}</span>
-                    <span className="text-neutral-600">{stats.deepest.exchange}</span>
-                  </div>
-                )}
-              />
-
-              <MetricCard
-                icon={<Layers className="w-4 h-4 text-blue-400" />}
+                icon={<Layers className="w-4 h-4 text-green-400" />}
                 label="Coverage"
                 value={`${stats.count}`}
-                accent="#3b82f6"
+                accent="#22c55e"
                 sub={
                   <span className="text-xs text-neutral-500">
                     symbols across {exchanges.length} exchanges
@@ -685,7 +719,7 @@ export default function BasisPage() {
                 <SectionHeader
                   icon={<TrendingUp className="w-4 h-4 text-green-400" />}
                   title="Top Premiums"
-                  subtitle="Highest futures mark-up over spot"
+                  subtitle="Tokens listed on 3+ exchanges"
                 />
                 <TopBasisChart entries={topPremiums} direction="premium" />
               </Section>
@@ -694,7 +728,7 @@ export default function BasisPage() {
                 <SectionHeader
                   icon={<TrendingDown className="w-4 h-4 text-red-400" />}
                   title="Top Discounts"
-                  subtitle="Deepest futures discount to spot"
+                  subtitle="Tokens listed on 3+ exchanges"
                 />
                 <TopBasisChart entries={topDiscounts} direction="discount" />
               </Section>
