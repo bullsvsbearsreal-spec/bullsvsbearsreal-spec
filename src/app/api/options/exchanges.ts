@@ -26,6 +26,20 @@ export const optionsFetchers: OptionsExchangeFetcher[] = [
   {
     name: 'Deribit',
     fetcher: async (fetchFn, currency) => {
+      // Fetch index (spot) price — book summary has forward prices that vary by expiry
+      let underlyingPrice = 0;
+      try {
+        const indexRes = await fetchFn(
+          `https://www.deribit.com/api/v2/public/get_index_price?index_name=${currency.toLowerCase()}_usd`,
+          {},
+          5000,
+        );
+        if (indexRes.ok) {
+          const indexJson = await indexRes.json();
+          underlyingPrice = indexJson.result?.index_price || 0;
+        }
+      } catch { /* fallback below */ }
+
       const res = await fetchFn(
         `https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=${currency}&kind=option`,
         {},
@@ -36,7 +50,10 @@ export const optionsFetchers: OptionsExchangeFetcher[] = [
       const instruments: any[] = json.result || [];
       if (instruments.length === 0) return [];
 
-      const underlyingPrice = instruments[0]?.underlying_price || 0;
+      // Fallback to first instrument's underlying_price if index fetch failed
+      if (underlyingPrice === 0) {
+        underlyingPrice = instruments[0]?.underlying_price || 0;
+      }
 
       return instruments.map((inst: any) => {
         const parts = inst.instrument_name.split('-');
