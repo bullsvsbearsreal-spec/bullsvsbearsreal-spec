@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import { formatPrice, formatNumber, formatPercent, formatFundingRate, formatCompact } from '@/lib/utils/format';
 import {
@@ -104,16 +105,26 @@ export default function ScreenerPage() {
       const funding: any[] = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
       const oi: any[] = Array.isArray(oiRes?.data) ? oiRes.data : [];
 
-      // Build ticker map (aggregate by symbol)
-      const tickerMap = new Map<string, { price: number; change: number; vol: number; count: number }>();
+      // Build ticker map (aggregate by symbol, deduplicate volume by exchange)
+      const MAX_SANE_VOL = 100_000_000_000; // $100B cap per exchange entry
+      const tickerMap = new Map<string, { price: number; change: number; vol: number; count: number; volByExchange: Map<string, number> }>();
       tickers.forEach((t: any) => {
         const sym = t.symbol;
-        const cur = tickerMap.get(sym) || { price: 0, change: 0, vol: 0, count: 0 };
+        const cur = tickerMap.get(sym) || { price: 0, change: 0, vol: 0, count: 0, volByExchange: new Map() };
         cur.price += t.lastPrice || 0;
         cur.change = t.priceChangePercent24h ?? t.change24h ?? cur.change;
-        cur.vol += t.quoteVolume24h || 0;
+        // Deduplicate volume per exchange and cap inflated data
+        const rawVol = Number(t.quoteVolume24h) || 0;
+        if (rawVol > 0 && rawVol <= MAX_SANE_VOL) {
+          const existing = cur.volByExchange.get(t.exchange) || 0;
+          if (rawVol > existing) cur.volByExchange.set(t.exchange, rawVol);
+        }
         cur.count++;
         tickerMap.set(sym, cur);
+      });
+      // Compute deduped volume per symbol
+      tickerMap.forEach((v) => {
+        v.vol = Array.from(v.volByExchange.values()).reduce((sum, x) => sum + x, 0);
       });
 
       // Build funding map (average by symbol)
@@ -350,19 +361,36 @@ export default function ScreenerPage() {
         {/* Stats Bar */}
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
-            {[
-              { label: 'Symbols', value: stats.symbols.toString() },
-              { label: 'Total OI', value: formatNumber(stats.totalOI) },
-              { label: '24h Volume', value: formatNumber(stats.totalVol) },
-              { label: 'Avg Funding', value: formatFundingRate(stats.avgFunding), color: stats.avgFunding > 0 ? 'text-green-400' : stats.avgFunding < 0 ? 'text-red-400' : 'text-neutral-300' },
-              { label: 'Gainers', value: stats.gainers.toString(), color: 'text-green-400' },
-              { label: 'Losers', value: stats.losers.toString(), color: 'text-red-400' },
-            ].map((s) => (
-              <div key={s.label} className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2">
-                <div className="text-[10px] text-neutral-500">{s.label}</div>
-                <div className={`text-sm font-semibold ${s.color || 'text-white'}`}>{s.value}</div>
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Symbols</div>
+              <div className="text-sm font-bold text-white font-mono">{stats.symbols.toLocaleString()}</div>
+            </div>
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Total OI</div>
+              <div className="text-sm font-bold text-white font-mono">{formatNumber(stats.totalOI)}</div>
+            </div>
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider">24h Volume</div>
+              <div className="text-sm font-bold text-white font-mono">{formatNumber(stats.totalVol)}</div>
+            </div>
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Avg Funding</div>
+              <div className={`text-sm font-bold font-mono ${stats.avgFunding > 0 ? 'text-green-400' : stats.avgFunding < 0 ? 'text-red-400' : 'text-neutral-300'}`}>
+                {formatFundingRate(stats.avgFunding)}
               </div>
-            ))}
+            </div>
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                <TrendingUp className="w-2.5 h-2.5 text-green-500" /> Gainers
+              </div>
+              <div className="text-sm font-bold text-green-400 font-mono">{stats.gainers}</div>
+            </div>
+            <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                <TrendingDown className="w-2.5 h-2.5 text-red-500" /> Losers
+              </div>
+              <div className="text-sm font-bold text-red-400 font-mono">{stats.losers}</div>
+            </div>
           </div>
         )}
 
@@ -572,7 +600,10 @@ export default function ScreenerPage() {
                       </button>
                     </td>
                     <td className="px-3 py-2 font-semibold text-white">
-                      <Link href={`/symbol/${row.symbol}`} className="hover:text-hub-yellow transition-colors">{row.symbol}</Link>
+                      <Link href={`/symbol/${row.symbol}`} className="hover:text-hub-yellow transition-colors inline-flex items-center gap-1.5">
+                        <TokenIconSimple symbol={row.symbol} size={16} />
+                        {row.symbol}
+                      </Link>
                     </td>
                     <td className="px-3 py-2 text-right text-neutral-300 font-mono text-xs">{formatPrice(row.price)}</td>
                     <td className={`px-3 py-2 text-right font-mono text-xs ${row.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -626,7 +657,10 @@ export default function ScreenerPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-neutral-600 text-[11px] w-5">{rank}</span>
-                    <Link href={`/symbol/${row.symbol}`} className="text-white font-semibold text-sm hover:text-hub-yellow transition-colors">{row.symbol}</Link>
+                    <Link href={`/symbol/${row.symbol}`} className="text-white font-semibold text-sm hover:text-hub-yellow transition-colors inline-flex items-center gap-1.5">
+                      <TokenIconSimple symbol={row.symbol} size={16} />
+                      {row.symbol}
+                    </Link>
                     <span className={`font-mono text-xs font-semibold ${row.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatPercent(row.change24h)}
                     </span>
