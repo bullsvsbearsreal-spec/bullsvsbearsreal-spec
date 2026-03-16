@@ -39,6 +39,7 @@ interface ExpiryEntry {
   putOI: number;
   totalOI: number;
   expiry: number;
+  maxPain?: number;
 }
 
 interface OptionsResponse {
@@ -92,6 +93,7 @@ function OIByStrikeChart({
 
   const spotIdx = strikes.findIndex((s) => s.strike >= spotPrice);
   const maxPainIdx = strikes.findIndex((s) => s.strike >= maxPain);
+  const sameIdx = spotIdx === maxPainIdx;
 
   const hoveredStrike = hovered !== null ? strikes[hovered] : null;
   const tooltipX = hovered !== null ? pad.left + hovered * groupW + groupW / 2 : 0;
@@ -208,12 +210,12 @@ function OIByStrikeChart({
                     fill="#eab308"
                     fontWeight="bold"
                   >
-                    SPOT
+                    {sameIdx ? 'SPOT / MAX PAIN' : 'SPOT'}
                   </text>
                 </>
               )}
 
-              {/* Max Pain marker */}
+              {/* Max Pain marker — separate line when different from spot */}
               {isMaxPain && !isSpot && (
                 <>
                   <line
@@ -480,11 +482,6 @@ export default function OptionsPage() {
       : { callOI: 0, putOI: 0, totalOI: 0 };
   }, [data, activeExchange]);
 
-  const maxPainDistance = useMemo(() => {
-    if (!data || !data.underlyingPrice) return 0;
-    return ((data.maxPain - data.underlyingPrice) / data.underlyingPrice) * 100;
-  }, [data]);
-
   const exchangeNames = useMemo(() => {
     if (!data?.exchangeBreakdown) return [];
     return data.exchangeBreakdown.filter((e) => e.totalOI > 0).map((e) => e.exchange);
@@ -567,25 +564,26 @@ export default function OptionsPage() {
           <>
             {/* Key Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-              {/* Max Pain */}
-              <div className="bg-hub-darker border border-hub-yellow/20 rounded-lg px-3 py-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Crosshair className="w-3 h-3 text-hub-yellow" />
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Max Pain</p>
-                </div>
-                <p className="text-lg font-bold text-hub-yellow font-mono leading-none">${(data.maxPain || 0).toLocaleString()}</p>
-                <div
-                  className={`flex items-center gap-0.5 mt-1 text-[10px] ${
-                    maxPainDistance >= 0 ? 'text-green-400' : 'text-red-400'
-                  }`}
-                >
-                  {maxPainDistance >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                  <span className="font-mono">
-                    {(maxPainDistance || 0) >= 0 ? '+' : ''}
-                    {(maxPainDistance || 0).toFixed(1)}% from spot
-                  </span>
-                </div>
-              </div>
+              {/* Max Pain — nearest expiry */}
+              {(() => {
+                const nearest = data.expiryBreakdown?.[0];
+                const mp = nearest?.maxPain || data.maxPain || 0;
+                const dist = data.underlyingPrice > 0 ? ((mp - data.underlyingPrice) / data.underlyingPrice * 100) : 0;
+                const label = nearest ? nearest.date.slice(5) : 'All';
+                return (
+                  <div className="bg-hub-darker border border-hub-yellow/20 rounded-lg px-3 py-2.5">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Crosshair className="w-3 h-3 text-hub-yellow" />
+                      <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Max Pain <span className="text-neutral-700">({label})</span></p>
+                    </div>
+                    <p className="text-lg font-bold text-hub-yellow font-mono leading-none">${mp.toLocaleString()}</p>
+                    <div className={`flex items-center gap-0.5 mt-1 text-[10px] ${dist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {dist >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                      <span className="font-mono">{dist >= 0 ? '+' : ''}{dist.toFixed(1)}% from spot</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Put/Call Ratio */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
@@ -731,6 +729,15 @@ export default function OptionsPage() {
                     <span>
                       {filteredOI.totalOI ? ((filteredOI.callOI / filteredOI.totalOI) * 100).toFixed(1) : '50.0'}%
                     </span>
+                    <span className="text-neutral-600 italic font-sans">
+                      {data.putCallRatio > 1.2
+                        ? 'Elevated hedging — contrarian bullish'
+                        : data.putCallRatio < 0.6
+                        ? 'Strong call speculation — contrarian warning'
+                        : data.putCallRatio < 0.85
+                        ? 'Moderately bullish positioning'
+                        : 'Balanced market positioning'}
+                    </span>
                     <span>
                       {filteredOI.totalOI ? ((filteredOI.putOI / filteredOI.totalOI) * 100).toFixed(1) : '50.0'}%
                     </span>
@@ -752,8 +759,7 @@ export default function OptionsPage() {
                       )}
                     </h2>
                     <p className="text-[10px] text-neutral-600">
-                      Yellow dashed = spot price
-                      {data.maxPain !== data.underlyingPrice && ' · Orange dashed = max pain'}
+                      Yellow dashed = spot price · Orange dashed = max pain
                     </p>
                   </div>
                 </div>
@@ -887,127 +893,79 @@ export default function OptionsPage() {
               </div>
             )}
 
-            {/* Options vs Futures OI Ratio + Max Pain by Expiry — side by side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-              {/* Options vs Futures OI */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-400" />
-                  <div>
-                    <h2 className="text-xs font-semibold text-white">Options OI Overview</h2>
-                    <p className="text-[10px] text-neutral-600">Call/Put distribution & market sentiment</p>
-                  </div>
-                </div>
-                {(() => {
-                  const optionsOI = data.totalOI;
-                  // Estimate futures OI from the underlying's perpetual market
-                  // (In real usage, we'd fetch from /api/openinterest, but for now we show the ratio indicator)
-                  const optionsVal = optionsOI;
-                  const displayRatio = data.putCallRatio;
-                  const optionsFormatted = formatCompact(optionsOI);
-
-                  return (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Options OI</p>
-                          <p className="text-lg font-bold text-white font-mono">${optionsFormatted}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Instruments</p>
-                          <p className="text-lg font-bold text-white font-mono">{data.instrumentCount.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-neutral-500 mb-1.5">Call vs Put Distribution</p>
-                        <div className="h-8 rounded-lg overflow-hidden flex">
-                          <div
-                            className="h-full bg-green-500/50 flex items-center justify-center text-[10px] font-bold text-white"
-                            style={{ width: `${data.totalOI ? (data.totalCallOI / data.totalOI) * 100 : 50}%` }}
-                          >
-                            Calls {data.totalOI ? ((data.totalCallOI / data.totalOI) * 100).toFixed(0) : 50}%
-                          </div>
-                          <div
-                            className="h-full bg-red-500/50 flex items-center justify-center text-[10px] font-bold text-white"
-                            style={{ width: `${data.totalOI ? (data.totalPutOI / data.totalOI) * 100 : 50}%` }}
-                          >
-                            Puts {data.totalOI ? ((data.totalPutOI / data.totalOI) * 100).toFixed(0) : 50}%
-                          </div>
-                        </div>
-                      </div>
-                      <div className="bg-white/[0.02] rounded-lg p-3">
-                        <p className="text-[10px] text-neutral-500 mb-1">Market Interpretation</p>
-                        <p className="text-xs text-neutral-300">
-                          {displayRatio > 1.2
-                            ? 'High put/call ratio suggests elevated hedging or bearish positioning. Often seen near market bottoms as a contrarian indicator.'
-                            : displayRatio < 0.6
-                            ? 'Very low put/call ratio indicates strong bullish speculation. Can signal complacency — often a contrarian warning.'
-                            : displayRatio < 0.85
-                            ? 'Moderately bullish positioning. Calls dominate, suggesting upside expectations.'
-                            : 'Balanced market positioning. Neither calls nor puts dominate significantly.'}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Max Pain by Expiry */}
-              {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2.5">
+            {/* Max Pain by Expiry — full width */}
+            {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
                     <Crosshair className="w-3.5 h-3.5 text-orange-400" />
                     <div>
-                      <h2 className="text-xs font-semibold text-white">Max Pain & Expiry Schedule</h2>
-                      <p className="text-[10px] text-neutral-600">Upcoming expiries with OI concentration</p>
+                      <h2 className="text-xs font-semibold text-white">Max Pain by Expiry</h2>
+                      <p className="text-[10px] text-neutral-600">{data.expiryBreakdown.length} upcoming expiries · spot ${formatPrice(data.underlyingPrice)}</p>
                     </div>
                   </div>
-                  <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
-                    {data.expiryBreakdown.slice(0, 15).map((exp, idx) => {
-                      const total = exp.totalOI || 1;
-                      const callPct = (exp.callOI / total) * 100;
-                      const expDate = new Date(exp.expiry);
-                      const now = new Date();
-                      const daysUntil = Math.max(0, Math.ceil((expDate.getTime() - now.getTime()) / 86400000));
-                      const isNear = daysUntil <= 3;
-
-                      return (
-                        <div
-                          key={exp.date}
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 ${
-                            isNear ? 'bg-orange-500/5 border border-orange-500/10' : 'bg-white/[0.02]'
-                          }`}
-                        >
-                          <div className="w-16 text-right">
-                            <p className={`text-xs font-mono font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
-                              {exp.date.slice(5)}
-                            </p>
-                            <p className="text-[9px] text-neutral-600">
-                              {daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? '1 day' : `${daysUntil}d`}
-                            </p>
-                          </div>
-                          <div className="flex-1">
-                            <div className="h-3 rounded-full overflow-hidden flex bg-white/[0.04]">
-                              <div className="h-full bg-green-500/50" style={{ width: `${callPct}%` }} />
-                              <div className="h-full bg-red-500/50" style={{ width: `${100 - callPct}%` }} />
-                            </div>
-                          </div>
-                          <div className="text-right w-20">
-                            <p className="text-[10px] font-mono text-neutral-400">${formatCompact(exp.totalOI)}</p>
-                            <p className="text-[9px] text-neutral-600">
-                              C:{callPct.toFixed(0)}% P:{(100 - callPct).toFixed(0)}%
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-2 text-[10px] text-neutral-600 text-center">
-                    Highlighted expiries are within 3 days — expect increased volatility
+                  <div className="text-[10px] text-neutral-600">
+                    <span className="text-orange-400">&#9679;</span> near expiry (&le;3d)
                   </div>
                 </div>
-              )}
-            </div>
+                {/* Header row */}
+                <div className="grid grid-cols-[60px_1fr_70px_80px_60px] gap-2 px-3 py-1.5 text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">
+                  <span>Date</span>
+                  <span>Call / Put OI</span>
+                  <span className="text-right">Total OI</span>
+                  <span className="text-right">Max Pain</span>
+                  <span className="text-right">vs Spot</span>
+                </div>
+                <div className="space-y-1 max-h-[360px] overflow-y-auto">
+                  {data.expiryBreakdown.slice(0, 15).map((exp) => {
+                    const total = exp.totalOI || 1;
+                    const callPct = (exp.callOI / total) * 100;
+                    const expDate = new Date(exp.expiry);
+                    const nowDate = new Date();
+                    const daysUntil = Math.max(0, Math.ceil((expDate.getTime() - nowDate.getTime()) / 86400000));
+                    const isNear = daysUntil <= 3;
+                    const mpDist = data.underlyingPrice > 0 && exp.maxPain
+                      ? ((exp.maxPain - data.underlyingPrice) / data.underlyingPrice * 100)
+                      : 0;
+
+                    return (
+                      <div
+                        key={exp.date}
+                        className={`grid grid-cols-[60px_1fr_70px_80px_60px] gap-2 items-center rounded-lg px-3 py-2 ${
+                          isNear ? 'bg-orange-500/5 border border-orange-500/10' : 'bg-white/[0.02]'
+                        }`}
+                      >
+                        <div>
+                          <p className={`text-[11px] font-mono font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
+                            {exp.date.slice(5)}
+                          </p>
+                          <p className="text-[9px] text-neutral-600">
+                            {daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? '1d' : `${daysUntil}d`}
+                          </p>
+                        </div>
+                        <div>
+                          <div className="h-2.5 rounded-full overflow-hidden flex bg-white/[0.04]">
+                            <div className="h-full bg-green-500/50" style={{ width: `${callPct}%` }} />
+                            <div className="h-full bg-red-500/50" style={{ width: `${100 - callPct}%` }} />
+                          </div>
+                          <div className="flex justify-between mt-0.5">
+                            <span className="text-[9px] text-green-400/60 font-mono">C:{callPct.toFixed(0)}%</span>
+                            <span className="text-[9px] text-red-400/60 font-mono">P:{(100 - callPct).toFixed(0)}%</span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] font-mono text-neutral-400 text-right">${formatCompact(exp.totalOI)}</p>
+                        <p className="text-[11px] font-mono text-orange-400 font-semibold text-right">
+                          ${exp.maxPain ? exp.maxPain.toLocaleString() : '—'}
+                        </p>
+                        <p className={`text-[10px] font-mono text-right ${mpDist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {mpDist >= 0 ? '+' : ''}{mpDist.toFixed(1)}%
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Exchange Health */}
             {data.health && data.health.length > 0 && (

@@ -167,8 +167,9 @@ export async function GET(request: NextRequest) {
       exchangeOI[opt.exchange].instruments++;
     });
 
-    // OI grouped by expiry date
+    // OI grouped by expiry date + per-expiry max pain
     const expiryMap = new Map<string, { callOI: number; putOI: number; expiry: number }>();
+    const expiryStrikeOI = new Map<string, Map<number, { callOI: number; putOI: number }>>();
     allInstruments.forEach((opt) => {
       if (opt.expiryTimestamp <= 0) return;
       const dateKey = new Date(opt.expiryTimestamp).toISOString().split('T')[0];
@@ -176,13 +177,38 @@ export async function GET(request: NextRequest) {
       if (opt.optionType === 'call') entry.callOI += opt.openInterestUsd;
       else entry.putOI += opt.openInterestUsd;
       expiryMap.set(dateKey, entry);
+
+      // Per-expiry strike OI for max pain calc
+      if (!expiryStrikeOI.has(dateKey)) expiryStrikeOI.set(dateKey, new Map());
+      const strikeMap = expiryStrikeOI.get(dateKey)!;
+      const se = strikeMap.get(opt.strike) || { callOI: 0, putOI: 0 };
+      if (opt.optionType === 'call') se.callOI += opt.openInterestUsd;
+      else se.putOI += opt.openInterestUsd;
+      strikeMap.set(opt.strike, se);
     });
     const now = Date.now();
     const expiryBreakdown = Array.from(expiryMap.entries())
-      .map(([date, oi]) => ({ date, ...oi, totalOI: oi.callOI + oi.putOI }))
-      .filter(e => e.expiry > now && e.totalOI > 0) // Skip expired + zero OI
+      .map(([date, oi]) => {
+        // Compute max pain for this expiry
+        const strikeMap = expiryStrikeOI.get(date);
+        let expiryMaxPain = underlyingPrice;
+        if (strikeMap && strikeMap.size > 0) {
+          const exStrikes = Array.from(strikeMap.keys()).sort((a, b) => a - b);
+          let minLoss = Infinity;
+          exStrikes.forEach((testPrice) => {
+            let loss = 0;
+            strikeMap.forEach((soi, strike) => {
+              if (testPrice > strike) loss += soi.callOI * (testPrice - strike);
+              if (testPrice < strike) loss += soi.putOI * (strike - testPrice);
+            });
+            if (loss < minLoss) { minLoss = loss; expiryMaxPain = testPrice; }
+          });
+        }
+        return { date, ...oi, totalOI: oi.callOI + oi.putOI, maxPain: expiryMaxPain };
+      })
+      .filter(e => e.expiry > now && e.totalOI > 0)
       .sort((a, b) => a.expiry - b.expiry)
-      .slice(0, 20); // Top 20 nearest future expiries
+      .slice(0, 20);
 
     // Per-exchange strike data (for exchange tab views)
     const exchangeStrikes: Record<string, Array<{ strike: number; callOI: number; putOI: number }>> = {};
