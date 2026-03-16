@@ -59,13 +59,13 @@ interface OptionsResponse {
   health?: Array<{ exchange: string; status: string; count: number; latency: number }>;
 }
 
-/* ─── OI by Strike Chart (enhanced SVG) ──────────────────────────── */
+/* ─── OI by Strike Chart ──────────────────────────────────────────── */
 
 function OIByStrikeChart({
   strikes,
   spotPrice,
   maxPain,
-  height = 280,
+  height = 320,
 }: {
   strikes: StrikeData[];
   spotPrice: number;
@@ -81,45 +81,54 @@ function OIByStrikeChart({
       </div>
     );
 
-  const totalOI = strikes.reduce((sum, s) => sum + s.callOI + s.putOI, 0) || 1;
-  const maxOI = Math.max(...strikes.map((s) => Math.max(s.callOI, s.putOI)), 1);
-  const width = 900;
-  const pad = { top: 12, bottom: 36, left: 4, right: 4 };
+  // Filter to strikes with meaningful OI and cap count for readability
+  const filtered = strikes.filter((s) => s.callOI + s.putOI > 0);
+  const display = filtered.length > 80
+    ? filtered.filter((_, i) => i % Math.ceil(filtered.length / 80) === 0)
+    : filtered;
+
+  const totalOI = display.reduce((sum, s) => sum + s.callOI + s.putOI, 0) || 1;
+  const maxOI = Math.max(...display.map((s) => Math.max(s.callOI, s.putOI)), 1);
+  const width = 1200;
+  const pad = { top: 18, bottom: 32, left: 4, right: 4 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
-  const groupW = chartW / strikes.length;
-  const barW = groupW * 0.35;
-  const gap = groupW * 0.08;
+  const groupW = chartW / display.length;
+  const barW = groupW * 0.38;
+  const gap = groupW * 0.06;
 
-  const spotIdx = strikes.findIndex((s) => s.strike >= spotPrice);
-  const maxPainIdx = strikes.findIndex((s) => s.strike >= maxPain);
+  const spotIdx = display.findIndex((s) => s.strike >= spotPrice);
+  const maxPainIdx = display.findIndex((s) => s.strike >= maxPain);
   const sameIdx = spotIdx === maxPainIdx;
 
-  const hoveredStrike = hovered !== null ? strikes[hovered] : null;
+  const hoveredStrike = hovered !== null ? display[hovered] : null;
   const tooltipX = hovered !== null ? pad.left + hovered * groupW + groupW / 2 : 0;
+
+  // Label step — show ~12-15 labels evenly
+  const labelStep = Math.max(1, Math.floor(display.length / 14));
 
   return (
     <div className="relative" onMouseLeave={() => setHovered(null)}>
       {/* Tooltip */}
       {hoveredStrike && hovered !== null && (
         <div
-          className="absolute z-20 pointer-events-none bg-hub-darker border border-white/10 rounded-lg px-3 py-2 shadow-xl"
+          className="absolute z-20 pointer-events-none bg-black/90 border border-white/10 rounded-lg px-3 py-2 shadow-2xl backdrop-blur-sm"
           style={{
             left: `${(tooltipX / width) * 100}%`,
-            top: 0,
-            transform: `translateX(${hovered > strikes.length * 0.7 ? '-100%' : hovered < strikes.length * 0.3 ? '0%' : '-50%'})`,
+            top: 4,
+            transform: `translateX(${hovered > display.length * 0.7 ? '-100%' : hovered < display.length * 0.3 ? '0%' : '-50%'})`,
           }}
         >
           <p className="text-[11px] font-bold text-white font-mono mb-1">
             Strike ${hoveredStrike.strike.toLocaleString()}
           </p>
           <div className="flex items-center gap-1.5 text-[10px]">
-            <span className="w-2 h-2 rounded-sm bg-green-500/60" />
+            <span className="w-2 h-2 rounded-sm bg-green-500" />
             <span className="text-green-400">Call OI:</span>
             <span className="text-white font-mono">${formatCompact(hoveredStrike.callOI)}</span>
           </div>
           <div className="flex items-center gap-1.5 text-[10px]">
-            <span className="w-2 h-2 rounded-sm bg-red-500/60" />
+            <span className="w-2 h-2 rounded-sm bg-red-500" />
             <span className="text-red-400">Put OI:</span>
             <span className="text-white font-mono">${formatCompact(hoveredStrike.putOI)}</span>
           </div>
@@ -131,19 +140,47 @@ function OIByStrikeChart({
 
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
         {/* Grid lines */}
-        {[0.25, 0.5, 0.75].map((pct) => (
+        {[0.25, 0.5, 0.75, 1].map((pct) => (
           <line
             key={pct}
             x1={pad.left}
             y1={pad.top + chartH * (1 - pct)}
             x2={width - pad.right}
             y2={pad.top + chartH * (1 - pct)}
-            stroke="rgba(255,255,255,0.03)"
+            stroke="rgba(255,255,255,0.04)"
             strokeWidth={0.5}
           />
         ))}
 
-        {strikes.map((s, i) => {
+        {/* Spot dashed line (rendered behind bars) */}
+        {spotIdx >= 0 && (
+          <line
+            x1={pad.left + spotIdx * groupW + groupW / 2}
+            y1={pad.top}
+            x2={pad.left + spotIdx * groupW + groupW / 2}
+            y2={pad.top + chartH}
+            stroke="#eab308"
+            strokeDasharray="4,3"
+            strokeWidth={1.5}
+            opacity={0.7}
+          />
+        )}
+
+        {/* Max Pain dashed line (rendered behind bars) */}
+        {maxPainIdx >= 0 && maxPainIdx !== spotIdx && (
+          <line
+            x1={pad.left + maxPainIdx * groupW + groupW / 2}
+            y1={pad.top}
+            x2={pad.left + maxPainIdx * groupW + groupW / 2}
+            y2={pad.top + chartH}
+            stroke="#f97316"
+            strokeDasharray="3,4"
+            strokeWidth={1.5}
+            opacity={0.6}
+          />
+        )}
+
+        {display.map((s, i) => {
           const x = pad.left + i * groupW;
           const callH = (s.callOI / maxOI) * chartH;
           const putH = (s.putOI / maxOI) * chartH;
@@ -161,8 +198,8 @@ function OIByStrikeChart({
                 y={pad.top + chartH - callH}
                 width={barW}
                 height={Math.max(callH, 0.5)}
-                fill={isHovered ? 'rgba(34,197,94,0.85)' : 'rgba(34,197,94,0.55)'}
-                rx={1.5}
+                fill={isHovered ? '#22c55e' : '#22c55ecc'}
+                rx={1}
               />
               {/* Put bar */}
               <rect
@@ -170,79 +207,55 @@ function OIByStrikeChart({
                 y={pad.top + chartH - putH}
                 width={barW}
                 height={Math.max(putH, 0.5)}
-                fill={isHovered ? 'rgba(239,68,68,0.85)' : 'rgba(239,68,68,0.55)'}
-                rx={1.5}
+                fill={isHovered ? '#ef4444' : '#ef4444cc'}
+                rx={1}
               />
 
               {/* Strike label */}
-              {(i % Math.max(1, Math.floor(strikes.length / 15)) === 0 || isSpot || isMaxPain) && (
+              {(i % labelStep === 0 || isSpot || isMaxPain) && (
                 <text
                   x={x + groupW / 2}
                   y={height - 6}
                   textAnchor="middle"
-                  fontSize="8"
-                  fill={isSpot ? '#eab308' : isMaxPain ? '#f97316' : 'rgba(255,255,255,0.25)'}
+                  fontSize="9"
+                  fill={isSpot ? '#eab308' : isMaxPain ? '#f97316' : 'rgba(255,255,255,0.3)'}
                   fontWeight={isSpot || isMaxPain ? 'bold' : 'normal'}
                   fontFamily="monospace"
                 >
                   {s.strike >= 1000 ? `${(s.strike / 1000).toFixed(0)}K` : s.strike}
                 </text>
               )}
-
-              {/* Spot marker */}
-              {isSpot && (
-                <>
-                  <line
-                    x1={x + groupW / 2}
-                    y1={pad.top}
-                    x2={x + groupW / 2}
-                    y2={pad.top + chartH}
-                    stroke="#eab308"
-                    strokeDasharray="3,3"
-                    strokeWidth={1}
-                    opacity={0.6}
-                  />
-                  <text
-                    x={x + groupW / 2}
-                    y={pad.top - 2}
-                    textAnchor="middle"
-                    fontSize="7"
-                    fill="#eab308"
-                    fontWeight="bold"
-                  >
-                    {sameIdx ? 'SPOT / MAX PAIN' : 'SPOT'}
-                  </text>
-                </>
-              )}
-
-              {/* Max Pain marker — separate line when different from spot */}
-              {isMaxPain && !isSpot && (
-                <>
-                  <line
-                    x1={x + groupW / 2}
-                    y1={pad.top}
-                    x2={x + groupW / 2}
-                    y2={pad.top + chartH}
-                    stroke="#f97316"
-                    strokeDasharray="2,4"
-                    strokeWidth={1}
-                    opacity={0.5}
-                  />
-                  <text
-                    x={x + groupW / 2}
-                    y={pad.top - 2}
-                    textAnchor="middle"
-                    fontSize="7"
-                    fill="#f97316"
-                    fontWeight="bold"
-                  >
-                    MAX PAIN
-                  </text>
-                </>
-              )}
             </g>
           );
         })}
+
+        {/* Spot label at top */}
+        {spotIdx >= 0 && (
+          <text
+            x={pad.left + spotIdx * groupW + groupW / 2}
+            y={pad.top - 4}
+            textAnchor="middle"
+            fontSize="8"
+            fill="#eab308"
+            fontWeight="bold"
+          >
+            {sameIdx ? 'SPOT / MAX PAIN' : 'SPOT'}
+          </text>
+        )}
+
+        {/* Max Pain label at top */}
+        {maxPainIdx >= 0 && maxPainIdx !== spotIdx && (
+          <text
+            x={pad.left + maxPainIdx * groupW + groupW / 2}
+            y={pad.top - 4}
+            textAnchor="middle"
+            fontSize="8"
+            fill="#f97316"
+            fontWeight="bold"
+          >
+            MAX PAIN
+          </text>
+        )}
       </svg>
     </div>
   );
@@ -285,16 +298,16 @@ function OIByExpiryChart({
               y={pad.top + chartH - callH}
               width={barW}
               height={Math.max(callH, 0.5)}
-              fill="rgba(34,197,94,0.5)"
-              rx={1.5}
+              fill="#22c55ecc"
+              rx={1}
             />
             <rect
               x={x + barW + gap * 2}
               y={pad.top + chartH - putH}
               width={barW}
               height={Math.max(putH, 0.5)}
-              fill="rgba(239,68,68,0.5)"
-              rx={1.5}
+              fill="#ef4444cc"
+              rx={1}
             />
             {/* Total OI label on top */}
             <text
@@ -353,12 +366,12 @@ function IVSmileChart({
   const scaleX = (i: number) => pad.left + (i / (points.length - 1)) * chartW;
   const scaleY = (val: number) => pad.top + (1 - (val - minIV) / range) * chartH;
 
-  const callPoints = points
+  const callPoints: string[] = points
     .map((p, i) => (p.callIV > 0 ? `${scaleX(i)},${scaleY(p.callIV)}` : null))
-    .filter(Boolean);
-  const putPoints = points
+    .filter((v): v is string => v !== null);
+  const putPoints: string[] = points
     .map((p, i) => (p.putIV > 0 ? `${scaleX(i)},${scaleY(p.putIV)}` : null))
-    .filter(Boolean);
+    .filter((v): v is string => v !== null);
 
   // Y-axis labels
   const yTicks = [0.25, 0.5, 0.75, 1].map((pct) => ({
@@ -404,27 +417,39 @@ function IVSmileChart({
           );
         });
       })()}
-      {/* Call IV line */}
+      {/* Call IV area + line */}
       {callPoints.length > 1 && (
-        <polyline
-          points={callPoints.join(' ')}
-          fill="none"
-          stroke="#22c55e"
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <>
+          <polygon
+            points={`${callPoints[0].split(',')[0]},${pad.top + chartH} ${callPoints.join(' ')} ${callPoints[callPoints.length - 1].split(',')[0]},${pad.top + chartH}`}
+            fill="rgba(34,197,94,0.08)"
+          />
+          <polyline
+            points={callPoints.join(' ')}
+            fill="none"
+            stroke="#22c55e"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </>
       )}
-      {/* Put IV line */}
+      {/* Put IV area + line */}
       {putPoints.length > 1 && (
-        <polyline
-          points={putPoints.join(' ')}
-          fill="none"
-          stroke="#ef4444"
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <>
+          <polygon
+            points={`${putPoints[0].split(',')[0]},${pad.top + chartH} ${putPoints.join(' ')} ${putPoints[putPoints.length - 1].split(',')[0]},${pad.top + chartH}`}
+            fill="rgba(239,68,68,0.08)"
+          />
+          <polyline
+            points={putPoints.join(' ')}
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </>
       )}
     </svg>
   );
@@ -764,11 +789,11 @@ export default function OptionsPage() {
                   </div>
                 </div>
               </div>
-              <div className="h-[260px] mt-1.5">
+              <div className="h-[300px] mt-1.5">
                 <OIByStrikeChart
                   strikes={filteredStrikes}
                   spotPrice={data.underlyingPrice}
-                  maxPain={data.maxPain}
+                  maxPain={data.expiryBreakdown?.[0]?.maxPain || data.maxPain}
                 />
               </div>
               <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
