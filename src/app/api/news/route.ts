@@ -99,7 +99,7 @@ function setCache(key: string, data: any): void {
 
 async function fetchCryptoCompare(currency?: string): Promise<UnifiedNewsArticle[]> {
   try {
-    const params = new URLSearchParams({ lang: 'EN', sortOrder: 'popular' });
+    const params = new URLSearchParams({ lang: 'EN', sortOrder: 'latest' });
     if (currency) params.set('categories', currency.toUpperCase());
     const res = await fetch(`https://min-api.cryptocompare.com/data/v2/news/?${params}`, {
       signal: AbortSignal.timeout(8000),

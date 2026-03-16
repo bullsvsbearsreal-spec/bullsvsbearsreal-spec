@@ -66,9 +66,9 @@ export default function ComparePage() {
 
   const coinData = useMemo((): CoinData[] => {
     return selected.map(sym => {
-      // Tickers
+      // Tickers — use highest-volume exchange for price/change
       let bestPrice = 0, bestChange = 0, totalVol = 0;
-      let maxVol = 0;
+      let maxVol = -1;
       tickers.forEach(t => {
         const ns = normalizeSymbol(t.symbol);
         if (ns !== sym) return;
@@ -76,6 +76,8 @@ export default function ComparePage() {
         totalVol += vol;
         if (vol > maxVol) { maxVol = vol; bestPrice = t.lastPrice; bestChange = t.priceChangePercent24h; }
       });
+      // Filter out bad change data (>500% is likely an error)
+      if (Math.abs(bestChange) > 500) bestChange = 0;
 
       // Funding by exchange
       const fundingByExchange: { exchange: string; rate: number }[] = [];

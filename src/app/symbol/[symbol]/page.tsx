@@ -95,30 +95,45 @@ export default function SymbolPage() {
       if (klinesRes?.candles) setCandles(klinesRes.candles);
 
       if (tickerRes?.data) {
-        interface RawTicker { symbol: string; exchange: string; lastPrice?: number; volume24h?: number; priceChangePercent24h?: number; change24h?: number }
-        setTickers(
-          (tickerRes.data as RawTicker[])
-            .filter((t) => t.symbol === symbol)
-            .map((t) => ({
-              exchange: t.exchange,
-              lastPrice: t.lastPrice || 0,
-              volume24h: t.volume24h || 0,
-              change24h: t.priceChangePercent24h ?? t.change24h ?? 0,
-            })),
-        );
+        interface RawTicker { symbol: string; exchange: string; lastPrice?: number; volume24h?: number; quoteVolume24h?: number; priceChangePercent24h?: number; change24h?: number }
+        const raw = (tickerRes.data as RawTicker[])
+          .filter((t) => t.symbol === symbol)
+          .map((t) => ({
+            exchange: t.exchange,
+            lastPrice: t.lastPrice || 0,
+            volume24h: t.quoteVolume24h || t.volume24h || 0,
+            change24h: t.priceChangePercent24h ?? t.change24h ?? 0,
+          }))
+          // Filter out bad data: >500% change is almost certainly an error
+          .filter((t) => Math.abs(t.change24h) < 500);
+        // Deduplicate by exchange — keep highest volume entry per exchange
+        const byExchange = new Map<string, typeof raw[0]>();
+        for (const t of raw) {
+          const existing = byExchange.get(t.exchange);
+          if (!existing || t.volume24h > existing.volume24h) {
+            byExchange.set(t.exchange, t);
+          }
+        }
+        setTickers(Array.from(byExchange.values()));
       }
 
       if (fundingRes?.data) {
-        interface RawFunding { symbol: string; exchange: string; rate?: number; fundingRate?: number; interval?: string }
-        setFunding(
-          (fundingRes.data as RawFunding[])
-            .filter((f) => f.symbol === symbol)
-            .map((f) => ({
-              exchange: f.exchange,
-              rate: f.rate ?? f.fundingRate ?? 0,
-              interval: f.interval,
-            })),
-        );
+        interface RawFunding { symbol: string; exchange: string; rate?: number; fundingRate?: number; interval?: string; fundingInterval?: string }
+        const rawFunding = (fundingRes.data as RawFunding[])
+          .filter((f) => f.symbol === symbol)
+          .map((f) => ({
+            exchange: f.exchange,
+            rate: f.rate ?? f.fundingRate ?? 0,
+            interval: f.interval || f.fundingInterval,
+          }));
+        // Deduplicate by exchange — keep first entry (some exchanges have multiple contract types)
+        const seenExchanges = new Set<string>();
+        const dedupedFunding = rawFunding.filter((f) => {
+          if (seenExchanges.has(f.exchange)) return false;
+          seenExchanges.add(f.exchange);
+          return true;
+        });
+        setFunding(dedupedFunding);
       }
 
       if (oiRes?.data) {

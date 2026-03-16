@@ -124,7 +124,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(cachedData, { headers: cacheHeaders });
   } catch (error) {
     console.error('Top movers CMC error:', error);
-    if (cachedData) return NextResponse.json(cachedData);
+    if (isHeatmap && allCoinsCache) {
+      return NextResponse.json({ coins: allCoinsCache });
+    }
+    if (cachedData) {
+      if (isHeatmap) {
+        // cachedData exists but allCoinsCache doesn't — reconstruct from gainers+losers
+        return NextResponse.json({ coins: [...(cachedData.gainers || []), ...(cachedData.losers || [])] });
+      }
+      return NextResponse.json(cachedData);
+    }
+    if (isHeatmap) return NextResponse.json({ coins: [] });
     return NextResponse.json({ gainers: [], losers: [] });
   }
 }
