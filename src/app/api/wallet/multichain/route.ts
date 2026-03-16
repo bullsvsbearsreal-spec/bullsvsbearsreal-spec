@@ -94,8 +94,6 @@ interface ChainSummary {
   totalValueUsd: number;
 }
 
-const MIN_MARKET_CAP = 500_000;
-
 async function fetchChainSummary(chain: ChainDef, address: string, ethPrice: number): Promise<ChainSummary | null> {
   try {
     // Fetch native balance + token list in parallel via Blockscout V2
@@ -139,9 +137,8 @@ async function fetchChainSummary(chain: ChainDef, address: string, ethPrice: num
 
       if (tokensData.items) {
         for (const item of tokensData.items) {
-          const mcap = parseFloat(item.token.circulating_market_cap || '0');
           const rate = parseFloat(item.token.exchange_rate || '0');
-          if (mcap < MIN_MARKET_CAP || rate <= 0) continue;
+          if (rate <= 0) continue;
 
           const decimals = parseInt(item.token.decimals) || 18;
           const balance = Number(BigInt(item.value || '0')) / Math.pow(10, decimals);

@@ -138,24 +138,40 @@ interface BlockscoutTokenItem {
   value: string;
 }
 
-const MIN_MARKET_CAP = 500_000; // Filter out spam tokens below $500K mcap
+interface BlockscoutTokenResponse {
+  items?: BlockscoutTokenItem[];
+  next_page_params?: Record<string, string | number> | null;
+}
 
 async function fetchTokenBalancesViaBlockscout(address: string) {
   try {
-    const res = await fetch(
-      `https://eth.blockscout.com/api/v2/addresses/${address}/tokens?type=ERC-20`,
-      { signal: AbortSignal.timeout(15000) },
-    );
+    // Fetch all pages of token balances (Blockscout paginates at 50 items)
+    const allItems: BlockscoutTokenItem[] = [];
+    let url = `https://eth.blockscout.com/api/v2/addresses/${address}/tokens?type=ERC-20`;
+    const maxPages = 10; // Safety limit
 
-    if (!res.ok) return [];
-    const json = await res.json() as { items?: BlockscoutTokenItem[] };
-    if (!json.items || !Array.isArray(json.items)) return [];
+    for (let page = 0; page < maxPages; page++) {
+      const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) break;
 
-    return json.items
+      const json = await res.json() as BlockscoutTokenResponse;
+      if (!json.items || !Array.isArray(json.items)) break;
+      allItems.push(...json.items);
+
+      // Follow pagination
+      if (!json.next_page_params) break;
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(json.next_page_params)) {
+        params.set(k, String(v));
+      }
+      url = `https://eth.blockscout.com/api/v2/addresses/${address}/tokens?type=ERC-20&${params.toString()}`;
+    }
+
+    return allItems
       .filter((item) => {
-        const mcap = parseFloat(item.token.circulating_market_cap || '0');
         const rate = parseFloat(item.token.exchange_rate || '0');
-        return mcap > MIN_MARKET_CAP && rate > 0;
+        // Must have a price to compute USD value
+        return rate > 0;
       })
       .map((item) => {
         const decimals = parseInt(item.token.decimals) || 18;
@@ -172,9 +188,14 @@ async function fetchTokenBalancesViaBlockscout(address: string) {
           tokenPrice: price,
         };
       })
-      .filter((t) => t.balance > 0 && t.balanceUsd > 1) // Remove dust
+      .filter((t) => {
+        if (t.balance <= 0 || t.balanceUsd < 0.50) return false;
+        // Spam filter: huge token counts with micro prices are airdrop spam
+        if (t.balance > 1e6 && t.tokenPrice < 0.01) return false;
+        return true;
+      })
       .sort((a, b) => (b.balanceUsd || 0) - (a.balanceUsd || 0))
-      .slice(0, 100);
+      .slice(0, 500);
   } catch {
     return [];
   }
