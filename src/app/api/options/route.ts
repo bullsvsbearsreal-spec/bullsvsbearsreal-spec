@@ -74,26 +74,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No options data available from any exchange' }, { status: 502 });
     }
 
-    // Determine underlying price — prefer exchange with most data (usually Deribit)
-    // Avoids stale prices from exchanges with broken API (e.g. Binance returns 0)
-    const priceByExchange = new Map<string, number[]>();
-    allInstruments.forEach(i => {
-      if (i.underlyingPrice > 0) {
-        const arr = priceByExchange.get(i.exchange) || [];
-        arr.push(i.underlyingPrice);
-        priceByExchange.set(i.exchange, arr);
-      }
-    });
+    // Determine underlying price — prefer Deribit (dominant options exchange, 90% OI share,
+    // returns native underlying_price from book summary). Other exchanges fetch spot price
+    // separately which can be stale or geo-blocked.
     let underlyingPrice = 0;
-    let bestCount = 0;
-    priceByExchange.forEach((prices, _exchange) => {
-      if (prices.length > bestCount) {
-        bestCount = prices.length;
-        prices.sort((a, b) => a - b);
-        underlyingPrice = prices[Math.floor(prices.length / 2)];
-      }
-    });
-    // Fallback to global median if no per-exchange data
+    const deribitPrices = allInstruments
+      .filter(i => i.exchange === 'Deribit' && i.underlyingPrice > 0)
+      .map(i => i.underlyingPrice);
+    if (deribitPrices.length > 0) {
+      deribitPrices.sort((a, b) => a - b);
+      underlyingPrice = deribitPrices[Math.floor(deribitPrices.length / 2)];
+    }
+    // Fallback: median across all exchanges if Deribit unavailable
     if (underlyingPrice === 0) {
       const allPrices = allInstruments.map(i => i.underlyingPrice).filter(p => p > 0).sort((a, b) => a - b);
       underlyingPrice = allPrices.length > 0 ? allPrices[Math.floor(allPrices.length / 2)] : 0;
