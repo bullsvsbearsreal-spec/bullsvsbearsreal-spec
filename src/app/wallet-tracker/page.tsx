@@ -9,6 +9,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApi } from '@/hooks/useSWRApi';
 import { formatRelativeTime, formatUSD, formatPrice } from '@/lib/utils/format';
+import { FAMOUS_WALLETS, WALLET_CATEGORIES, getQuickAddWallets, type FamousWallet, type WalletCategory } from '@/lib/constants/famous-wallets';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -111,12 +112,7 @@ const CHAIN_CONFIG = {
   },
 } as const;
 
-const PRESET_WALLETS = [
-  { label: 'Vitalik', address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045', chain: 'eth' as const },
-  { label: 'Binance Hot', address: '0x28C6c06298d514Db089934071355E5743bf21d60', chain: 'eth' as const },
-  { label: 'BTC Genesis', address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', chain: 'btc' as const },
-  { label: 'SOL Whale', address: 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', chain: 'sol' as const },
-];
+const QUICK_ADD_WALLETS = getQuickAddWallets(6);
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -199,6 +195,23 @@ export default function WalletTrackerPage() {
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [inputError, setInputError] = useState('');
   const [activeTab, setActiveTab] = useState<'tokens' | 'transactions' | 'positions'>('tokens');
+  const [featuredCategory, setFeaturedCategory] = useState<WalletCategory | 'all'>('all');
+  const [featuredSearch, setFeaturedSearch] = useState('');
+
+  const filteredFamousWallets = useMemo(() => {
+    let list = FAMOUS_WALLETS;
+    if (featuredCategory !== 'all') list = list.filter((w) => w.category === featuredCategory);
+    if (featuredSearch.trim()) {
+      const q = featuredSearch.toLowerCase();
+      list = list.filter((w) =>
+        w.label.toLowerCase().includes(q) ||
+        w.address.toLowerCase().includes(q) ||
+        w.description?.toLowerCase().includes(q) ||
+        w.category.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [featuredCategory, featuredSearch]);
 
   // Hydrate saved wallets from localStorage
   useEffect(() => {
@@ -374,7 +387,7 @@ export default function WalletTrackerPage() {
     setInputError('');
   };
 
-  const handlePreset = (preset: typeof PRESET_WALLETS[number]) => {
+  const handlePreset = (preset: { label: string; address: string; chain: 'eth' | 'btc' | 'sol' }) => {
     setAddressInput(preset.address);
     setActiveAddress(preset.address);
     setActiveChain(preset.chain);
@@ -490,7 +503,7 @@ export default function WalletTrackerPage() {
             {/* Quick-add presets */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-neutral-600 text-xs">Quick add:</span>
-              {PRESET_WALLETS.map((pw) => (
+              {QUICK_ADD_WALLETS.map((pw) => (
                 <button
                   key={pw.address}
                   onClick={() => handlePreset(pw)}
@@ -537,27 +550,78 @@ export default function WalletTrackerPage() {
           </div>
         )}
 
-        {/* ---------- empty state -------------------------------------- */}
+        {/* ---------- Featured Wallets (empty state) -------------------- */}
         {!activeAddress && (
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
-            <Wallet className="w-10 h-10 text-neutral-700 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-neutral-300 mb-2">
-              Enter a wallet address to track
-            </h2>
-            <p className="text-neutral-600 text-sm mb-6 max-w-md mx-auto">
-              Paste an Ethereum, Bitcoin, or Solana address above to view portfolio value, token holdings, and transactions.
-            </p>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              {PRESET_WALLETS.map((pw) => (
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-white">Featured Wallets</h2>
+              <span className="text-[11px] text-neutral-500">{FAMOUS_WALLETS.length} wallets</span>
+            </div>
+
+            {/* Category filter pills */}
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              <button
+                onClick={() => setFeaturedCategory('all')}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  featuredCategory === 'all'
+                    ? 'bg-hub-yellow text-black'
+                    : 'bg-white/[0.06] text-neutral-400 hover:bg-white/[0.1] hover:text-white'
+                }`}
+              >
+                All
+              </button>
+              {(Object.entries(WALLET_CATEGORIES) as [WalletCategory, { label: string }][]).map(([key, val]) => (
                 <button
-                  key={pw.address}
-                  onClick={() => handlePreset(pw)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-white/[0.06] hover:bg-white/[0.1] text-neutral-400 hover:text-white transition-colors"
+                  key={key}
+                  onClick={() => setFeaturedCategory(key)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                    featuredCategory === key
+                      ? 'bg-hub-yellow text-black'
+                      : 'bg-white/[0.06] text-neutral-400 hover:bg-white/[0.1] hover:text-white'
+                  }`}
                 >
-                  {pw.label}
+                  {val.label}
                 </button>
               ))}
             </div>
+
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search wallets..."
+              value={featuredSearch}
+              onChange={(e) => setFeaturedSearch(e.target.value)}
+              className="w-full sm:w-72 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40 mb-4"
+            />
+
+            {/* Wallet grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredFamousWallets.map((w) => (
+                <button
+                  key={w.address}
+                  onClick={() => handlePreset(w)}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.04] hover:border-white/[0.08] transition-colors text-left group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ChainBadge chain={w.chain} />
+                      <span className="text-sm font-medium text-white truncate">{w.label}</span>
+                    </div>
+                    {w.description && (
+                      <p className="text-[11px] text-neutral-500 mb-1">{w.description}</p>
+                    )}
+                    <p className="text-[10px] font-mono text-neutral-600 truncate">{w.address}</p>
+                  </div>
+                  <span className="text-[10px] text-neutral-600 group-hover:text-hub-yellow transition-colors whitespace-nowrap mt-0.5">
+                    Track &rarr;
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {filteredFamousWallets.length === 0 && (
+              <p className="text-sm text-neutral-500 text-center py-6">No wallets match your search.</p>
+            )}
           </div>
         )}
 

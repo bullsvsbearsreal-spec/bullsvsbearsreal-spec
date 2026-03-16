@@ -138,6 +138,15 @@ export async function GET(request: NextRequest) {
     const totalBuyVol = processed.filter((t: any) => t.isBuy).reduce((s: number, t: any) => s + t.price * t.qty, 0);
     const totalSellVol = processed.filter((t: any) => !t.isBuy).reduce((s: number, t: any) => s + t.price * t.qty, 0);
 
+    // Recent individual trades (newest first)
+    const recentTrades = processed.slice(-50).reverse().map((t: any) => ({
+      time: t.time,
+      price: t.price,
+      qty: t.qty,
+      isBuy: t.isBuy,
+      usdValue: t.price * t.qty,
+    }));
+
     return NextResponse.json({
       symbol,
       pair,
@@ -146,6 +155,7 @@ export async function GET(request: NextRequest) {
       totalSellVol,
       netDelta: totalBuyVol - totalSellVol,
       buckets,
+      recentTrades,
       source: tradeSource,
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },

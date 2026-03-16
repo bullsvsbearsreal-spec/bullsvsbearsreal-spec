@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/useTheme';
 import type { Time } from 'lightweight-charts';
 
 const LightweightChart = dynamic(() => import('@/components/charts/LightweightChart'), { ssr: false });
+const PriceSpreadChart = dynamic(() => import('@/components/charts/PriceSpreadChart'), { ssr: false });
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -312,6 +313,11 @@ export default function SymbolPage() {
               </div>
             )}
           </div>
+
+          {/* Price spread across exchanges */}
+          {tickers.length >= 2 && (
+            <PriceSpreadChart tickers={tickers} symbol={symbol} />
+          )}
 
           {/* Two-column: Funding + OI by exchange */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

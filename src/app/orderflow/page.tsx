@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import MultiDepthChart from './components/MultiDepthChart';
 import ExchangeDepthTable from './components/ExchangeDepthTable';
+import TapeView from './components/TapeView';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -71,12 +72,13 @@ interface OrderbookData {
   source?: string;
 }
 
-type ViewTab = 'depth' | 'comparison' | 'orderbook';
+type ViewTab = 'depth' | 'comparison' | 'orderbook' | 'tape';
 
 const VIEW_TABS: { key: ViewTab; label: string; icon: React.ReactNode }[] = [
   { key: 'depth', label: 'Depth Chart', icon: <BarChart3 className="w-3.5 h-3.5" /> },
   { key: 'comparison', label: 'Exchange Comparison', icon: <Table2 className="w-3.5 h-3.5" /> },
   { key: 'orderbook', label: 'Order Book', icon: <BookOpen className="w-3.5 h-3.5" /> },
+  { key: 'tape', label: 'Tape', icon: <Activity className="w-3.5 h-3.5" /> },
 ];
 
 const SYMBOLS = [
@@ -120,7 +122,7 @@ export default function OrderflowPage() {
       return res.json();
     },
     refreshInterval: 5000,
-    enabled: activeTab !== 'orderbook',
+    enabled: activeTab === 'depth' || activeTab === 'comparison',
   });
 
   // Single-exchange orderbook (for Order Book tab)
@@ -169,8 +171,8 @@ export default function OrderflowPage() {
       )
     : 0;
 
-  const isLoading = activeTab === 'orderbook' ? obLoading : multiLoading;
-  const lastUpdate = activeTab === 'orderbook' ? null : multiLastUpdate;
+  const isLoading = activeTab === 'orderbook' ? obLoading : activeTab === 'tape' ? false : multiLoading;
+  const lastUpdate = activeTab === 'orderbook' || activeTab === 'tape' ? null : multiLastUpdate;
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -448,6 +450,10 @@ export default function OrderflowPage() {
               </>
             )}
           </>
+        )}
+
+        {activeTab === 'tape' && (
+          <TapeView symbol={symbol} />
         )}
 
         {/* Info footer */}
