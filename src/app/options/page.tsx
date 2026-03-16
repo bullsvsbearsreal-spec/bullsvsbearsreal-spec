@@ -588,7 +588,7 @@ export default function OptionsPage() {
         {data && (
           <>
             {/* Key Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
               {/* Max Pain — nearest expiry */}
               {(() => {
                 const nearest = data.expiryBreakdown?.[0];
@@ -596,13 +596,13 @@ export default function OptionsPage() {
                 const dist = data.underlyingPrice > 0 ? ((mp - data.underlyingPrice) / data.underlyingPrice * 100) : 0;
                 const label = nearest ? nearest.date.slice(5) : 'All';
                 return (
-                  <div className="bg-hub-darker border border-hub-yellow/20 rounded-lg px-3 py-2.5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Crosshair className="w-3 h-3 text-hub-yellow" />
-                      <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Max Pain <span className="text-neutral-700">({label})</span></p>
+                  <div className="relative overflow-hidden bg-gradient-to-br from-hub-yellow/[0.08] to-transparent border border-hub-yellow/20 rounded-xl px-3.5 py-3">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Crosshair className="w-3.5 h-3.5 text-hub-yellow" />
+                      <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Max Pain <span className="text-neutral-600">({label})</span></p>
                     </div>
-                    <p className="text-lg font-bold text-hub-yellow font-mono leading-none">${mp.toLocaleString()}</p>
-                    <div className={`flex items-center gap-0.5 mt-1 text-[10px] ${dist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className="text-xl font-bold text-hub-yellow font-mono leading-none">${mp.toLocaleString()}</p>
+                    <div className={`flex items-center gap-0.5 mt-1.5 text-[10px] ${dist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {dist >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
                       <span className="font-mono">{dist >= 0 ? '+' : ''}{dist.toFixed(1)}% from spot</span>
                     </div>
@@ -611,54 +611,54 @@ export default function OptionsPage() {
               })()}
 
               {/* Put/Call Ratio */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
+              <div className="relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-xl px-3.5 py-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
                   <ArrowLeftRight
-                    className={`w-3 h-3 ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}
+                    className={`w-3.5 h-3.5 ${data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}
                   />
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Put/Call Ratio</p>
+                  <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Put/Call Ratio</p>
                 </div>
                 <p
-                  className={`text-lg font-bold font-mono leading-none ${
+                  className={`text-xl font-bold font-mono leading-none ${
                     data.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'
                   }`}
                 >
                   {(data.putCallRatio || 0).toFixed(2)}
                 </p>
-                <p className="text-[10px] text-neutral-500 mt-1">
+                <p className="text-[10px] text-neutral-500 mt-1.5">
                   {data.putCallRatio > 1 ? 'Bearish bias' : data.putCallRatio < 0.7 ? 'Bullish bias' : 'Neutral'}
                 </p>
               </div>
 
               {/* Total OI */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <BarChart3 className="w-3 h-3 text-blue-400" />
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Total Options OI</p>
+              <div className="relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-xl px-3.5 py-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+                  <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Total Options OI</p>
                 </div>
-                <p className="text-lg font-bold text-white font-mono leading-none">${formatCompact(data.totalOI)}</p>
-                <p className="text-[10px] text-neutral-500 mt-1">{data.instrumentCount.toLocaleString()} instruments</p>
+                <p className="text-xl font-bold text-white font-mono leading-none">${formatCompact(data.totalOI)}</p>
+                <p className="text-[10px] text-neutral-500 mt-1.5">{data.instrumentCount.toLocaleString()} instruments</p>
               </div>
 
               {/* Spot Price */}
-              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <DollarSign className="w-3 h-3 text-white" />
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Spot Price</p>
+              <div className="relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-xl px-3.5 py-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-neutral-400" />
+                  <p className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold">Spot Price</p>
                 </div>
-                <p className="text-lg font-bold text-white font-mono leading-none">{formatPrice(data.underlyingPrice)}</p>
-                <p className="text-[10px] text-neutral-500 mt-1">{currency}/USD</p>
+                <p className="text-xl font-bold text-white font-mono leading-none">{formatPrice(data.underlyingPrice)}</p>
+                <p className="text-[10px] text-neutral-500 mt-1.5">{currency}/USD</p>
               </div>
             </div>
 
             {/* Exchange Tabs */}
-            <div className="flex flex-wrap gap-1 mb-3">
+            <div className="flex flex-wrap items-center gap-1.5 mb-4">
               <button
                 onClick={() => setActiveExchange('all')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all border ${
                   activeExchange === 'all'
-                    ? 'bg-hub-yellow text-black font-bold'
-                    : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
+                    ? 'bg-hub-yellow text-black font-bold border-hub-yellow shadow-glow-sm'
+                    : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06] border-white/[0.06]'
                 }`}
               >
                 All Exchanges
@@ -667,10 +667,10 @@ export default function OptionsPage() {
                 <button
                   key={name}
                   onClick={() => setActiveExchange(name)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all border ${
                     activeExchange === name
-                      ? 'bg-hub-yellow text-black font-bold'
-                      : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
+                      ? 'bg-hub-yellow text-black font-bold border-hub-yellow shadow-glow-sm'
+                      : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06] border-white/[0.06]'
                   }`}
                 >
                   {name}
@@ -679,11 +679,11 @@ export default function OptionsPage() {
             </div>
 
             {/* Call/Put OI Split */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
                   <ArrowLeftRight className="w-4 h-4 text-purple-400" />
-                  <h2 className="text-sm font-semibold text-white">
+                  <h2 className="text-[13px] font-semibold text-white">
                     Call / Put Open Interest
                     {activeExchange !== 'all' && (
                       <span className="text-hub-yellow ml-1.5">— {activeExchange}</span>
@@ -772,7 +772,7 @@ export default function OptionsPage() {
             </div>
 
             {/* OI by Strike */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
@@ -816,7 +816,7 @@ export default function OptionsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
               {/* OI by Expiry */}
               {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Calendar className="w-3.5 h-3.5 text-purple-400" />
                     <div>
@@ -842,7 +842,7 @@ export default function OptionsPage() {
 
               {/* Exchange Breakdown */}
               {data.exchangeBreakdown && data.exchangeBreakdown.length > 1 && (
-                <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3">
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2.5">
                     <Globe className="w-3.5 h-3.5 text-hub-yellow" />
                     <h2 className="text-xs font-semibold text-white">OI by Exchange</h2>
@@ -854,10 +854,10 @@ export default function OptionsPage() {
                       return (
                         <div
                           key={ex.exchange}
-                          className={`rounded-lg px-3 py-2.5 transition-colors cursor-pointer ${
+                          className={`rounded-xl px-3.5 py-3 transition-all cursor-pointer ${
                             activeExchange === ex.exchange
-                              ? 'bg-hub-yellow/10 border border-hub-yellow/20'
-                              : 'bg-white/[0.02] border border-transparent hover:bg-white/[0.04]'
+                              ? 'bg-hub-yellow/10 border border-hub-yellow/20 shadow-glow-sm'
+                              : 'bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08]'
                           }`}
                           onClick={() => setActiveExchange(ex.exchange === activeExchange ? 'all' : ex.exchange)}
                         >
@@ -896,7 +896,7 @@ export default function OptionsPage() {
 
             {/* IV Smile */}
             {data.ivSmile.length > 2 && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="w-3.5 h-3.5 text-purple-400" />
                   <div>
@@ -920,7 +920,7 @@ export default function OptionsPage() {
 
             {/* Max Pain by Expiry — full width */}
             {data.expiryBreakdown && data.expiryBreakdown.length > 0 && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-3">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
                     <Crosshair className="w-3.5 h-3.5 text-orange-400" />
@@ -992,50 +992,25 @@ export default function OptionsPage() {
               </div>
             )}
 
-            {/* Exchange Health */}
+            {/* Exchange Health — inline */}
             {data.health && data.health.length > 0 && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-3 mb-3">
-                <h3 className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wider mb-2">Data Sources</h3>
-                <div className="flex flex-wrap gap-2">
-                  {data.health.map((h) => (
-                    <div
-                      key={h.exchange}
-                      className="flex items-center gap-2 bg-white/[0.02] rounded-lg px-3 py-1.5"
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          h.status === 'ok' && h.count > 0 ? 'bg-green-500' : 'bg-red-500'
-                        }`}
-                      />
-                      <span className="text-xs text-neutral-400">{h.exchange}</span>
-                      <span className="text-[10px] text-neutral-600 font-mono">
-                        {h.count > 0 ? `${h.count} · ${h.latency}ms` : 'unavailable'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex flex-wrap items-center gap-3 mb-3 px-1">
+                <span className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">Sources</span>
+                {data.health.map((h) => (
+                  <div key={h.exchange} className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${h.status === 'ok' && h.count > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span className="text-[10px] text-neutral-500">{h.exchange}</span>
+                    <span className="text-[9px] text-neutral-700 font-mono">{h.count > 0 ? `${h.count} · ${h.latency}ms` : '—'}</span>
+                  </div>
+                ))}
               </div>
             )}
 
             {/* Info footer */}
-            <div className="bg-hub-yellow/5 border border-hub-yellow/10 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-hub-yellow mt-0.5 flex-shrink-0" />
-                <div className="text-[11px] text-neutral-400 space-y-1">
-                  <p>
-                    <strong className="text-neutral-300">Options Data</strong> aggregated across Deribit, Binance,
-                    OKX, and Bybit. Click exchange tabs to filter by source.
-                  </p>
-                  <p>
-                    <strong>Max Pain:</strong> The strike price where option holders lose the most money at
-                    expiry. Price tends to gravitate toward max pain near expiration.
-                  </p>
-                  <p>
-                    <strong>Put/Call Ratio:</strong> Above 1 = more puts (bearish hedging). Below 1 = more
-                    calls (bullish speculation). Below 0.7 = strongly bullish.
-                  </p>
-                  <p>Updates every 60 seconds.</p>
-                </div>
+            <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-3">
+              <div className="flex items-center gap-2 text-[10px] text-neutral-600">
+                <Info className="w-3 h-3 flex-shrink-0" />
+                <span>Aggregated across Deribit, Binance, OKX & Bybit · Max Pain = strike minimizing option holder profit · P/C &gt; 1 = bearish hedging · Updates every 60s</span>
               </div>
             </div>
           </>
