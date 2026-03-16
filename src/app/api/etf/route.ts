@@ -119,7 +119,7 @@ async function fetchLeadHistory(
   try {
     const res = await fetchWithTimeout(
       `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=3mo&interval=1d`,
-      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; InfoHub/1.0)' } },
+      { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' } },
       8000,
     );
     if (!res.ok) return [];

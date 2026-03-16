@@ -122,13 +122,13 @@ export default function SymbolPage() {
       }
 
       if (oiRes?.data) {
-        interface RawOI { symbol: string; exchange: string; openInterest?: number }
+        interface RawOI { symbol: string; exchange: string; openInterest?: number; openInterestValue?: number }
         setOI(
           (oiRes.data as RawOI[])
             .filter((o) => o.symbol === symbol)
             .map((o) => ({
               exchange: o.exchange,
-              openInterest: o.openInterest || 0,
+              openInterest: o.openInterestValue || o.openInterest || 0,
             })),
         );
       }
