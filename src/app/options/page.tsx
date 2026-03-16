@@ -704,18 +704,35 @@ export default function OptionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [activeExchange, setActiveExchange] = useState<string>('all');
+  const [liveSpot, setLiveSpot] = useState<number>(0);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/options?currency=${currency}`);
+      const [res, tickerRes] = await Promise.all([
+        fetch(`/api/options?currency=${currency}`),
+        fetch('/api/tickers').then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setData(json);
       setLastUpdate(new Date());
       setActiveExchange('all');
+      // Use live spot price from tickers API (more accurate than Deribit index)
+      if (tickerRes) {
+        const tickers = Array.isArray(tickerRes) ? tickerRes : tickerRes.data ?? [];
+        let bestPrice = 0, bestVol = 0;
+        for (const t of tickers) {
+          const sym = (t.symbol || '').replace(/(USDT|USD|USDC|PERP|SWAP)$/i, '');
+          if (sym === currency) {
+            const vol = Number(t.quoteVolume24h) || 0;
+            if (vol > bestVol) { bestPrice = t.lastPrice || 0; bestVol = vol; }
+          }
+        }
+        if (bestPrice > 0) setLiveSpot(bestPrice);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -835,7 +852,8 @@ export default function OptionsPage() {
               {(() => {
                 const nearest = data.expiryBreakdown?.[0];
                 const mp = nearest?.maxPain || data.maxPain || 0;
-                const dist = data.underlyingPrice > 0 ? ((mp - data.underlyingPrice) / data.underlyingPrice * 100) : 0;
+                const spot = liveSpot || data.underlyingPrice;
+                const dist = spot > 0 ? ((mp - spot) / spot * 100) : 0;
                 const label = nearest ? nearest.date.slice(5) : 'Global';
                 return (
                   <MetricCard
@@ -882,9 +900,9 @@ export default function OptionsPage() {
               <MetricCard
                 icon={<DollarSign className="w-4 h-4 text-neutral-400" />}
                 label={`${currency} Spot`}
-                value={formatPrice(data.underlyingPrice)}
+                value={formatPrice(liveSpot || data.underlyingPrice)}
                 sub={
-                  <span className="text-xs text-neutral-500">Index price</span>
+                  <span className="text-xs text-neutral-500">Live spot price</span>
                 }
               />
             </div>
@@ -1118,7 +1136,7 @@ export default function OptionsPage() {
                 <SectionHeader
                   icon={<Crosshair className="w-4 h-4 text-orange-400" />}
                   title="Max Pain by Expiry"
-                  subtitle={`Spot: ${formatPrice(data.underlyingPrice)}`}
+                  subtitle={`Spot: ${formatPrice(liveSpot || data.underlyingPrice)}`}
                   right={
                     <div className="flex items-center gap-1.5 text-[11px] text-orange-400/70">
                       <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
@@ -1143,8 +1161,9 @@ export default function OptionsPage() {
                     const expDate = new Date(exp.expiry);
                     const daysUntil = Math.max(0, Math.ceil((expDate.getTime() - Date.now()) / 86400000));
                     const isNear = daysUntil <= 3;
-                    const mpDist = data.underlyingPrice > 0 && exp.maxPain
-                      ? ((exp.maxPain - data.underlyingPrice) / data.underlyingPrice * 100)
+                    const tableSpot = liveSpot || data.underlyingPrice;
+                    const mpDist = tableSpot > 0 && exp.maxPain
+                      ? ((exp.maxPain - tableSpot) / tableSpot * 100)
                       : 0;
 
                     return (
