@@ -325,18 +325,18 @@ export default function ChartPage() {
   return (
     <div className="h-screen w-screen bg-black flex flex-col overflow-hidden">
       {/* ─── Header ─────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-white/[0.06] bg-black/80 backdrop-blur-sm relative z-20">
-        <div className="flex items-center px-3 py-2 gap-2">
+      <div className="flex-shrink-0 border-b border-white/[0.08] bg-[#060606] relative z-20">
+        <div className="flex items-center px-2 sm:px-3 py-1.5 gap-1.5 sm:gap-2">
           {/* Logo + back */}
           <Link
             href="/"
-            className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mr-1 flex-shrink-0"
+            className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors flex-shrink-0"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <Logo variant="full" size="xs" />
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="hidden md:block"><Logo variant="full" size="xs" /></span>
           </Link>
 
-          <div className="w-px h-6 bg-white/[0.06] flex-shrink-0" />
+          <div className="w-px h-5 bg-white/[0.06] flex-shrink-0" />
 
           {/* Asset class tabs */}
           <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -344,7 +344,7 @@ export default function ChartPage() {
               <button
                 key={tab.id}
                 onClick={() => switchAssetClass(tab.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
                   assetClass === tab.id
                     ? 'bg-hub-yellow/15 text-hub-yellow'
                     : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
@@ -356,26 +356,26 @@ export default function ChartPage() {
             ))}
           </div>
 
-          <div className="w-px h-6 bg-white/[0.06] flex-shrink-0" />
+          <div className="w-px h-5 bg-white/[0.06] flex-shrink-0" />
 
           {/* Symbol selector */}
           <div ref={symbolRef} className="relative flex-shrink-0">
             <button
               onClick={() => setSymbolOpen(!symbolOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors"
             >
               {assetClass === 'crypto' && (
-                <TokenIconSimple symbol={displayLabel} size={18} />
+                <TokenIconSimple symbol={displayLabel} size={16} />
               )}
-              <span className="text-sm font-bold text-white">
+              <span className="text-[13px] font-bold text-white">
                 {displayLabel}
-                {displayPair && <span className="text-neutral-500 font-normal">{displayPair}</span>}
+                {displayPair && <span className="text-neutral-500 font-normal text-xs">{displayPair}</span>}
               </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3 h-3 text-neutral-500 transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {symbolOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 w-80 bg-[#111] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden animate-scale-in">
+              <div className="absolute top-full left-0 mt-1 z-50 w-72 sm:w-80 bg-[#0a0a0a] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden animate-scale-in">
                 {/* Search */}
                 <div className="relative px-3 py-2 border-b border-white/[0.06]">
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
@@ -385,7 +385,7 @@ export default function ChartPage() {
                     placeholder={`Search ${currentTab.label.toLowerCase()}...`}
                     value={symbolQuery}
                     onChange={e => setSymbolQuery(e.target.value)}
-                    className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/[0.12]"
+                    className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30"
                   />
                   {symbolQuery && (
                     <button
@@ -436,16 +436,16 @@ export default function ChartPage() {
                     <button
                       key={sym.tvSymbol}
                       onClick={() => selectSymbol(sym)}
-                      className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2.5 ${
+                      className={`w-full text-left px-3 py-1.5 transition-colors flex items-center gap-2 ${
                         sym.tvSymbol === tvSymbol
                           ? 'bg-hub-yellow/10'
                           : 'hover:bg-white/[0.04]'
                       }`}
                     >
                       {assetClass === 'crypto' && sym.icon ? (
-                        <TokenIconSimple symbol={sym.icon} size={20} />
+                        <TokenIconSimple symbol={sym.icon} size={18} />
                       ) : assetClass !== 'crypto' ? (
-                        <div className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${
+                        <div className={`w-[18px] h-[18px] rounded flex items-center justify-center text-[7px] font-bold flex-shrink-0 ${
                           assetClass === 'stocks' ? 'bg-blue-500/15 text-blue-400' :
                           assetClass === 'forex' ? 'bg-emerald-500/15 text-emerald-400' :
                           assetClass === 'commodities' ? 'bg-amber-500/15 text-amber-400' :
@@ -455,7 +455,7 @@ export default function ChartPage() {
                         </div>
                       ) : null}
                       <div className="flex-1 min-w-0">
-                        <span className={`text-sm font-medium ${
+                        <span className={`text-[13px] font-medium ${
                           sym.tvSymbol === tvSymbol ? 'text-hub-yellow' : 'text-white'
                         }`}>
                           {sym.label}
@@ -472,7 +472,7 @@ export default function ChartPage() {
                 </div>
 
                 {/* Hint */}
-                <div className="px-3 py-2 border-t border-white/[0.04] text-center">
+                <div className="px-3 py-1.5 border-t border-white/[0.04] text-center">
                   <span className="text-[10px] text-neutral-600">
                     Or use TradingView&apos;s built-in search in the chart toolbar
                   </span>
@@ -484,15 +484,15 @@ export default function ChartPage() {
           <div className="flex-1" />
 
           {/* Timeframe buttons */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             {TIMEFRAMES.map(tf => (
               <button
                 key={tf.value}
                 onClick={() => setInterval_(tf.value)}
-                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors flex-shrink-0 ${
+                className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors flex-shrink-0 ${
                   interval === tf.value
-                    ? 'bg-hub-yellow text-black'
-                    : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                    ? 'bg-hub-yellow text-black font-bold'
+                    : 'text-neutral-500 hover:text-white hover:bg-white/[0.06]'
                 }`}
                 title={`Shortcut: ${tf.key}`}
               >
@@ -504,18 +504,21 @@ export default function ChartPage() {
       </div>
 
       {/* ─── Quick symbol bar ───────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-white/[0.04] bg-black/60">
-        <div className="flex items-center gap-1 px-3 py-1.5 overflow-x-auto scrollbar-none">
-          {currentTab.pinned.slice(0, 12).map(sym => (
+      <div className="flex-shrink-0 border-b border-white/[0.04] bg-black/40">
+        <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 overflow-x-auto scrollbar-none">
+          {currentTab.pinned.slice(0, 14).map(sym => (
             <button
               key={sym.tvSymbol}
               onClick={() => selectSymbol(sym)}
-              className={`flex-shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+              className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
                 sym.tvSymbol === tvSymbol
-                  ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/20'
-                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-hub-yellow/15 text-hub-yellow'
+                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
               }`}
             >
+              {assetClass === 'crypto' && sym.icon && (
+                <TokenIconSimple symbol={sym.icon} size={12} />
+              )}
               {sym.label}
             </button>
           ))}
@@ -524,7 +527,7 @@ export default function ChartPage() {
 
       {/* ─── TradingView Chart + Metrics Panel ─────────────────────── */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-1 relative" style={{ minHeight: '300px' }}>
+        <div className="flex-1 relative" style={{ minHeight: '250px' }}>
           <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
         </div>
         {assetClass === 'crypto' && (
