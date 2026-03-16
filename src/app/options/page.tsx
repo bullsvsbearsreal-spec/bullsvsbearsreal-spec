@@ -330,7 +330,7 @@ function OIByStrikeChart({
 
 function OIByExpiryChart({
   entries,
-  height = 220,
+  height = 240,
 }: {
   entries: ExpiryEntry[];
   height?: number;
@@ -339,16 +339,22 @@ function OIByExpiryChart({
   if (entries.length === 0) return null;
 
   const maxOI = Math.max(...entries.map((e) => Math.max(e.callOI, e.putOI)), 1);
+  const totalOI = entries.reduce((s, e) => s + e.totalOI, 0) || 1;
   const width = 900;
-  const pad = { top: 12, bottom: 44, left: 4, right: 4 };
+  const pad = { top: 16, bottom: 50, left: 4, right: 4 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
-  const groupW = chartW / entries.length;
-  const barW = groupW * 0.32;
-  const gap = groupW * 0.1;
+  // Cap group width so bars aren't too spread out with few entries
+  const maxGroupW = 120;
+  const rawGroupW = chartW / entries.length;
+  const groupW = Math.min(rawGroupW, maxGroupW);
+  const totalW = groupW * entries.length;
+  const offsetX = pad.left + (chartW - totalW) / 2; // Center bars
+  const barW = groupW * 0.36;
+  const gap = groupW * 0.07;
 
   const hoveredEntry = hovered !== null ? entries[hovered] : null;
-  const tooltipX = hovered !== null ? pad.left + hovered * groupW + groupW / 2 : 0;
+  const tooltipX = hovered !== null ? offsetX + hovered * groupW + groupW / 2 : 0;
 
   return (
     <div className="relative" onMouseLeave={() => setHovered(null)}>
@@ -365,69 +371,130 @@ function OIByExpiryChart({
           <div className="flex items-center gap-2 text-[11px]">
             <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
             <span className="text-neutral-400">Calls</span>
-            <span className="text-white font-mono ml-auto">${formatCompact(hoveredEntry.callOI)}</span>
+            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredEntry.callOI)}</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] mt-1">
             <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
             <span className="text-neutral-400">Puts</span>
-            <span className="text-white font-mono ml-auto">${formatCompact(hoveredEntry.putOI)}</span>
+            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredEntry.putOI)}</span>
           </div>
-          {hoveredEntry.maxPain && (
-            <div className="border-t border-white/[0.06] mt-2 pt-1.5 text-[10px] text-orange-400 font-mono">
-              Max Pain: ${hoveredEntry.maxPain.toLocaleString()}
-            </div>
-          )}
+          <div className="border-t border-white/[0.06] mt-2 pt-1.5 flex flex-col gap-0.5">
+            <span className="text-[10px] text-neutral-500 font-mono">
+              {((hoveredEntry.totalOI / totalOI) * 100).toFixed(1)}% of total OI
+            </span>
+            {hoveredEntry.maxPain && (
+              <span className="text-[10px] text-orange-400 font-mono">
+                Max Pain: ${hoveredEntry.maxPain.toLocaleString()}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+        {/* Grid lines */}
+        {[0.25, 0.5, 0.75, 1].map((pct) => (
+          <line
+            key={pct}
+            x1={pad.left}
+            y1={pad.top + chartH * (1 - pct)}
+            x2={width - pad.right}
+            y2={pad.top + chartH * (1 - pct)}
+            stroke="rgba(255,255,255,0.03)"
+            strokeWidth={0.5}
+          />
+        ))}
+
         {entries.map((e, i) => {
-          const x = pad.left + i * groupW;
+          const x = offsetX + i * groupW;
           const callH = (e.callOI / maxOI) * chartH;
           const putH = (e.putOI / maxOI) * chartH;
           const d = new Date(e.expiry);
           const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const year = d.getFullYear().toString().slice(2);
           const isHovered = i === hovered;
+          const pct = ((e.totalOI / totalOI) * 100);
 
           return (
             <g key={e.date} onMouseEnter={() => setHovered(i)}>
-              <rect x={x} y={pad.top} width={groupW} height={chartH} fill="transparent" />
+              {/* Hover highlight background */}
+              {isHovered && (
+                <rect
+                  x={x + 1}
+                  y={pad.top}
+                  width={groupW - 2}
+                  height={chartH}
+                  fill="rgba(255,255,255,0.02)"
+                  rx={4}
+                />
+              )}
+              <rect x={x} y={pad.top} width={groupW} height={chartH + 40} fill="transparent" />
+
+              {/* Call bar */}
               <rect
-                x={x + gap}
+                x={x + (groupW / 2) - barW - gap / 2}
                 y={pad.top + chartH - callH}
                 width={barW}
-                height={Math.max(callH, 0.5)}
+                height={Math.max(callH, 1)}
                 fill={isHovered ? '#22c55e' : '#22c55ecc'}
-                rx={2}
+                rx={3}
               />
+              {/* Put bar */}
               <rect
-                x={x + barW + gap * 2}
+                x={x + (groupW / 2) + gap / 2}
                 y={pad.top + chartH - putH}
                 width={barW}
-                height={Math.max(putH, 0.5)}
+                height={Math.max(putH, 1)}
                 fill={isHovered ? '#ef4444' : '#ef4444cc'}
-                rx={2}
+                rx={3}
               />
+
+              {/* Total OI + % label above bars */}
               <text
                 x={x + groupW / 2}
-                y={pad.top + chartH - Math.max(callH, putH) - 6}
+                y={pad.top + chartH - Math.max(callH, putH) - 8}
                 textAnchor="middle"
-                fontSize="7"
-                fill="rgba(255,255,255,0.3)"
+                fontSize="7.5"
+                fill={isHovered ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)'}
                 fontFamily="monospace"
+                fontWeight={isHovered ? 'bold' : 'normal'}
               >
                 {formatCompact(e.totalOI)}
               </text>
+              {isHovered && (
+                <text
+                  x={x + groupW / 2}
+                  y={pad.top + chartH - Math.max(callH, putH) - 18}
+                  textAnchor="middle"
+                  fontSize="7"
+                  fill="rgba(255,255,255,0.35)"
+                  fontFamily="monospace"
+                >
+                  {pct.toFixed(0)}%
+                </text>
+              )}
+
+              {/* Date label */}
               <text
                 x={x + groupW / 2}
-                y={height - 14}
+                y={height - 22}
                 textAnchor="middle"
-                fontSize="8"
-                fill={isHovered ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)'}
+                fontSize="9"
+                fill={isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.35)'}
                 fontWeight={isHovered ? 'bold' : 'normal'}
                 fontFamily="monospace"
               >
                 {label}
+              </text>
+              <text
+                x={x + groupW / 2}
+                y={height - 10}
+                textAnchor="middle"
+                fontSize="7.5"
+                fill="rgba(255,255,255,0.15)"
+                fontFamily="monospace"
+              >
+                '{year}
               </text>
             </g>
           );
