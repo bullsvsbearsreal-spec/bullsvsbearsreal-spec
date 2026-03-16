@@ -1499,47 +1499,26 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // edgeX — tries direct fetch first, falls back to PROXY_URL. Hourly funding settlement.
+  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout. Hourly funding settlement.
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const proxyUrl = process.env.PROXY_URL;
-      const proxy = proxyUrl ? proxyUrl.replace(/\/$/, '') : '';
-
-      // Helper: try direct first, fall back to proxy
-      const edgeFetch = async (url: string, timeout = 8000): Promise<Response | null> => {
-        try {
-          const direct = await fetchFn(url, {}, timeout);
-          if (direct.ok) return direct;
-        } catch { /* direct failed, try proxy */ }
-        if (!proxy) return null;
-        try {
-          const proxied = await fetchFn(`${proxy}/?url=${encodeURIComponent(url)}`, {}, timeout);
-          if (proxied.ok) return proxied;
-        } catch { /* proxy also failed */ }
-        return null;
-      };
-
-      // Step 1: Fetch contract metadata to get contractIds
-      const metaTarget = 'https://pro.edgex.exchange/api/v1/public/meta/getMetaData';
-      const metaRes = await edgeFetch(metaTarget, 10000);
-      if (!metaRes) return [];
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 10000);
+      if (!metaRes.ok) return [];
       const metaData = await metaRes.json();
       const contracts = metaData?.data?.contractList || [];
       const active = contracts.filter((c: any) => c.enableTrade);
       if (active.length === 0) return [];
 
-      // Step 2: Fetch tickers in parallel batches (each has funding rate + mark price)
       const batchSize = 10;
       const results: FundingData[] = [];
       for (let i = 0; i < active.length; i += batchSize) {
         const batch = active.slice(i, i + batchSize);
-        const tickerPromises = batch.map((c: any) => {
-          const tickerTarget = `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`;
-          return edgeFetch(tickerTarget)
-            .then(r => r ? r.json() : null)
-            .catch(() => null);
-        });
+        const tickerPromises = batch.map((c: any) =>
+          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 8000)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+        );
         const tickerResults = await Promise.all(tickerPromises);
 
         for (let j = 0; j < batch.length; j++) {
@@ -1550,8 +1529,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
           if (!symbol || !isCryptoSymbol(symbol)) continue;
 
-          const fundingRate = parseFloat(ticker.fundingRate || ticker.funding_rate || '0') * 100;
-          const markPrice = parseFloat(ticker.oraclePrice || ticker.markPrice || ticker.mark_price || '0');
+          const fundingRate = parseFloat(ticker.fundingRate || '0') * 100;
+          const markPrice = parseFloat(ticker.oraclePrice || ticker.markPrice || '0');
           if (!markPrice || markPrice <= 0) continue;
 
           results.push({
@@ -1559,7 +1538,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             exchange: 'edgeX',
             fundingRate,
             markPrice,
-            indexPrice: parseFloat(ticker.indexPrice || ticker.index_price || '0') || markPrice,
+            indexPrice: parseFloat(ticker.indexPrice || '0') || markPrice,
             nextFundingTime: parseInt(ticker.nextFundingTime || '0') || (Date.now() + 3600000),
             fundingInterval: '1h',
             type: 'dex',

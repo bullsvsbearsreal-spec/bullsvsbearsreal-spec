@@ -51,6 +51,7 @@ if (_rawProxyUrl && !PROXY_URL) {
 const PROXIED_DOMAINS = new Set([
   'www.bitmex.com',
   'api.gateio.ws',
+  'pro.edgex.exchange',
 ]);
 
 /** Rewrite a URL through the proxy if the domain is blocked and proxy is configured */

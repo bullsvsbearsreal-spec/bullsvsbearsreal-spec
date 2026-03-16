@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star } from 'lucide-react';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3 } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApi } from '@/hooks/useSWRApi';
@@ -223,6 +223,22 @@ export default function WalletTrackerPage() {
   const isWalletSaved = useCallback((address: string) => {
     return savedWallets.some((w) => w.address.toLowerCase() === address.toLowerCase());
   }, [savedWallets]);
+
+  // Resolve wallet label from saved wallets or famous wallets
+  const activeWalletLabel = useMemo(() => {
+    if (!activeAddress) return null;
+    const addrLower = activeAddress.toLowerCase();
+    const saved = savedWallets.find((w) => w.address.toLowerCase() === addrLower);
+    if (saved?.label) return saved.label;
+    const famous = FAMOUS_WALLETS.find((w) => w.address.toLowerCase() === addrLower);
+    return famous?.label ?? null;
+  }, [activeAddress, savedWallets]);
+
+  const activeWalletDescription = useMemo(() => {
+    if (!activeAddress) return null;
+    const famous = FAMOUS_WALLETS.find((w) => w.address.toLowerCase() === activeAddress.toLowerCase());
+    return famous?.description ?? null;
+  }, [activeAddress]);
 
   // Hydrate saved wallets from localStorage
   useEffect(() => {
@@ -721,137 +737,210 @@ export default function WalletTrackerPage() {
                 </div>
               </div>
             ) : walletData ? (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6 relative overflow-hidden">
-                {/* Accent gradient top line */}
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl relative overflow-hidden">
+                {/* Chain-colored accent line */}
                 <div
-                  className="absolute top-0 left-0 right-0 h-px"
+                  className="absolute top-0 left-0 right-0 h-[2px]"
                   style={{
-                    background: `linear-gradient(to right, transparent, ${CHAIN_CONFIG[activeChain].color}60, transparent)`,
+                    background: `linear-gradient(to right, ${CHAIN_CONFIG[activeChain].color}00, ${CHAIN_CONFIG[activeChain].color}80, ${CHAIN_CONFIG[activeChain].color}00)`,
                   }}
                 />
 
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  {/* Left: value */}
-                  <div className="min-w-0">
-                    {/* Address row */}
-                    <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <ChainBadge chain={activeChain} />
-                      <span className="text-neutral-500 text-sm font-mono truncate max-w-[280px]">
-                        {truncateAddress(activeAddress, 8)}
-                      </span>
-                      <button
-                        onClick={() => handleCopy(activeAddress)}
-                        className="p-1 text-neutral-600 hover:text-neutral-400 transition-colors"
-                        title="Copy address"
-                      >
-                        {copiedHash === activeAddress ? (
-                          <Check className="w-3.5 h-3.5 text-green-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                      <a
-                        href={getExplorerAddressUrl(activeChain, activeAddress)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 text-neutral-600 hover:text-neutral-400 transition-colors"
-                        title="View on explorer"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-
-                    {/* Total portfolio value */}
-                    <div className="text-4xl sm:text-5xl font-bold text-white font-mono tabular-nums leading-tight">
-                      {totalPortfolioUSD > 0
-                        ? `$${totalPortfolioUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : balanceUSD !== null
-                          ? `$${balanceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : '--'
-                      }
-                    </div>
-
-                    {/* Native balance */}
-                    <div className="flex items-center gap-3 mt-2 text-neutral-400 text-sm">
-                      <span className="font-mono">
-                        {walletData.balance} {CHAIN_CONFIG[activeChain].symbol}
-                      </span>
-                      {balanceUSD !== null && enrichedTokens.length > 0 && (
-                        <span className="text-neutral-600">
-                          (${balanceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })})
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Unrealized PnL from DEX positions */}
-                    {positionsData && positionsData.positions.length > 0 && (() => {
-                      const totalPnl = positionsData.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
-                      return (
-                        <div className={`mt-1.5 text-xs font-mono ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          Unrealized PnL: {totalPnl >= 0 ? '+' : ''}{formatUSD(totalPnl)}
+                {/* Main content */}
+                <div className="p-5 sm:p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Left: identity + value */}
+                    <div className="min-w-0 flex-1">
+                      {/* Wallet name + chain */}
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold border border-white/[0.08] flex-shrink-0"
+                          style={{
+                            backgroundColor: `${CHAIN_CONFIG[activeChain].color}15`,
+                            color: CHAIN_CONFIG[activeChain].color,
+                          }}
+                        >
+                          {CHAIN_CONFIG[activeChain].symbol.charAt(0)}
                         </div>
-                      );
-                    })()}
+                        <div className="min-w-0">
+                          {activeWalletLabel ? (
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-white font-semibold text-base truncate">{activeWalletLabel}</h2>
+                              <ChainBadge chain={activeChain} />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <ChainBadge chain={activeChain} />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-neutral-500 text-xs font-mono truncate max-w-[240px]">
+                              {truncateAddress(activeAddress, 8)}
+                            </span>
+                            <button
+                              onClick={() => handleCopy(activeAddress)}
+                              className="p-0.5 text-neutral-600 hover:text-neutral-400 transition-colors"
+                              title="Copy address"
+                            >
+                              {copiedHash === activeAddress ? (
+                                <Check className="w-3 h-3 text-green-400" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                            <a
+                              href={getExplorerAddressUrl(activeChain, activeAddress)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-0.5 text-neutral-600 hover:text-neutral-400 transition-colors"
+                              title="View on explorer"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Description if famous wallet */}
+                      {activeWalletDescription && (
+                        <p className="text-neutral-600 text-xs ml-[46px] -mt-0.5 mb-2">{activeWalletDescription}</p>
+                      )}
+
+                      {/* Total portfolio value */}
+                      <div className="ml-[46px] mt-3">
+                        <div className="text-[11px] uppercase tracking-wider text-neutral-500 mb-1">Total Value</div>
+                        <div className="text-3xl sm:text-4xl font-bold text-white font-mono tabular-nums leading-none">
+                          {totalPortfolioUSD > 0
+                            ? `$${totalPortfolioUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : balanceUSD !== null
+                              ? `$${balanceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : '--'
+                          }
+                        </div>
+
+                        {/* Unrealized PnL */}
+                        {positionsData && positionsData.positions.length > 0 && (() => {
+                          const totalPnl = positionsData.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
+                          return (
+                            <div className={`mt-1 text-xs font-mono ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              PnL: {totalPnl >= 0 ? '+' : ''}{formatUSD(totalPnl)}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Right: refresh */}
+                    <button
+                      onClick={() => refreshWallet()}
+                      className="p-2 rounded-lg text-neutral-600 hover:text-white hover:bg-white/[0.06] transition-colors flex-shrink-0"
+                      title="Refresh wallet"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${walletLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stat cards row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-white/[0.06]">
+                  {/* Native balance */}
+                  <div className="px-4 py-3 border-r border-white/[0.06]">
+                    <div className="text-[10px] uppercase tracking-wider text-neutral-600 mb-1 flex items-center gap-1">
+                      <CircleDollarSign className="w-3 h-3" />
+                      {CHAIN_CONFIG[activeChain].symbol} Balance
+                    </div>
+                    <div className="text-sm font-mono text-neutral-300 truncate">
+                      {walletData.balance}
+                    </div>
+                    {balanceUSD !== null && (
+                      <div className="text-[11px] font-mono text-neutral-600">
+                        ${balanceUSD.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right: badges + chain icon */}
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {enrichedTokens.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] text-neutral-400 text-xs">
-                        <Coins className="w-3.5 h-3.5" />
-                        {enrichedTokens.length} token{enrichedTokens.length !== 1 ? 's' : ''}
-                      </div>
-                    )}
-                    {walletData.transactions.length > 0 && (
-                      <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] text-neutral-400 text-xs">
-                        {walletData.transactions.length} txs
-                      </div>
-                    )}
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold border border-white/[0.1]"
-                      style={{
-                        backgroundColor: `${CHAIN_CONFIG[activeChain].color}20`,
-                        color: CHAIN_CONFIG[activeChain].color,
-                        boxShadow: `0 4px 12px ${CHAIN_CONFIG[activeChain].color}20`,
-                      }}
-                    >
-                      {CHAIN_CONFIG[activeChain].symbol.charAt(0)}
+                  {/* Token count */}
+                  <div className="px-4 py-3 sm:border-r border-white/[0.06]">
+                    <div className="text-[10px] uppercase tracking-wider text-neutral-600 mb-1 flex items-center gap-1">
+                      <Coins className="w-3 h-3" />
+                      Tokens
                     </div>
+                    <div className="text-sm font-mono text-neutral-300">
+                      {enrichedTokens.length}
+                    </div>
+                    {totalTokenUSD > 0 && (
+                      <div className="text-[11px] font-mono text-neutral-600">
+                        ${totalTokenUSD.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transaction count */}
+                  <div className="px-4 py-3 border-r border-white/[0.06] border-t sm:border-t-0">
+                    <div className="text-[10px] uppercase tracking-wider text-neutral-600 mb-1 flex items-center gap-1">
+                      <ArrowRightLeft className="w-3 h-3" />
+                      Transactions
+                    </div>
+                    <div className="text-sm font-mono text-neutral-300">
+                      {walletData.transactions.length}
+                    </div>
+                  </div>
+
+                  {/* Positions / chain */}
+                  <div className="px-4 py-3 border-t sm:border-t-0">
+                    <div className="text-[10px] uppercase tracking-wider text-neutral-600 mb-1 flex items-center gap-1">
+                      <BarChart3 className="w-3 h-3" />
+                      {activeChain === 'eth' ? 'Positions' : 'Chain'}
+                    </div>
+                    <div className="text-sm font-mono text-neutral-300">
+                      {activeChain === 'eth'
+                        ? (positionsData?.positions.length ?? (positionsLoading ? '...' : '0'))
+                        : CHAIN_CONFIG[activeChain].name
+                      }
+                    </div>
+                    {positionsData && positionsData.accountValue > 0 && (
+                      <div className="text-[11px] font-mono text-neutral-600">
+                        ${positionsData.accountValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             ) : null}
 
             {/* ========== TAB BAR ======================================== */}
-            <div className="flex items-center bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+            <div className="flex items-center gap-1 p-1 bg-hub-darker border border-white/[0.06] rounded-xl">
               {([
                 'tokens' as const,
                 'transactions' as const,
                 ...(activeChain === 'eth' ? ['positions' as const] : []),
-              ]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
-                    activeTab === tab ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
-                  }`}
-                >
-                  {tab === 'tokens' && <Coins className="w-4 h-4" />}
-                  {tab === 'transactions' && <ArrowUpRight className="w-4 h-4" />}
-                  {tab === 'positions' && <TrendingUp className="w-4 h-4" />}
-                  {tab === 'tokens' ? 'Tokens' : tab === 'transactions' ? 'Transactions' : 'Positions'}
-                  {tab === 'tokens' && enrichedTokens.length > 0 && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{enrichedTokens.length}</span>
-                  )}
-                  {tab === 'transactions' && walletData && walletData.transactions.length > 0 && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{walletData.transactions.length}</span>
-                  )}
-                  {tab === 'positions' && positionsData && positionsData.positions.length > 0 && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-neutral-400">{positionsData.positions.length}</span>
-                  )}
-                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hub-yellow" />}
-                </button>
-              ))}
+              ]).map((tab) => {
+                const isActive = activeTab === tab;
+                const count = tab === 'tokens' ? enrichedTokens.length
+                  : tab === 'transactions' ? (walletData?.transactions.length ?? 0)
+                  : (positionsData?.positions.length ?? 0);
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-all rounded-lg ${
+                      isActive
+                        ? 'bg-white/[0.08] text-white shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]'
+                    }`}
+                  >
+                    {tab === 'tokens' && <Coins className="w-3.5 h-3.5" />}
+                    {tab === 'transactions' && <ArrowRightLeft className="w-3.5 h-3.5" />}
+                    {tab === 'positions' && <TrendingUp className="w-3.5 h-3.5" />}
+                    {tab === 'tokens' ? 'Tokens' : tab === 'transactions' ? 'Transactions' : 'Positions'}
+                    {count > 0 && (
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                        isActive ? 'bg-white/[0.1] text-neutral-300' : 'bg-white/[0.04] text-neutral-600'
+                      }`}>{count}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* ========== TOKEN HOLDINGS TABLE =========================== */}
@@ -947,8 +1036,14 @@ export default function WalletTrackerPage() {
                 </div>
               </div>
             ) : walletData ? (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center text-neutral-600 text-sm">
-                No tokens found for this wallet
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-10 text-center">
+                <Coins className="w-8 h-8 text-neutral-700 mx-auto mb-3" />
+                <p className="text-neutral-500 text-sm font-medium">
+                  {activeChain === 'btc' ? 'Bitcoin wallets don\u2019t hold ERC-20 tokens' : 'No tokens found for this wallet'}
+                </p>
+                <p className="text-neutral-700 text-xs mt-1">
+                  {activeChain === 'btc' ? 'Switch to the Transactions tab to see activity' : 'This wallet may only hold the native asset'}
+                </p>
               </div>
             ) : null}
             </>)}
@@ -972,7 +1067,11 @@ export default function WalletTrackerPage() {
                   </div>
                 </div>
               ) : walletData && (!walletData.transactions || walletData.transactions.length === 0) ? (
-                <div className="p-8 text-center text-neutral-600 text-sm">No transactions found</div>
+                <div className="p-10 text-center">
+                  <ArrowRightLeft className="w-8 h-8 text-neutral-700 mx-auto mb-3" />
+                  <p className="text-neutral-500 text-sm font-medium">No transactions found</p>
+                  <p className="text-neutral-700 text-xs mt-1">Recent activity will appear here</p>
+                </div>
               ) : walletData ? (
                 <>
                   {/* Desktop table header */}

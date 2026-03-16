@@ -676,29 +676,12 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // edgeX — tries direct fetch first, falls back to PROXY_URL
+  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const proxyUrl = process.env.PROXY_URL;
-      const proxy = proxyUrl ? proxyUrl.replace(/\/$/, '') : '';
-
-      const edgeFetch = async (url: string, timeout = 8000): Promise<Response | null> => {
-        try {
-          const direct = await fetchFn(url, {}, timeout);
-          if (direct.ok) return direct;
-        } catch { /* direct failed */ }
-        if (!proxy) return null;
-        try {
-          const proxied = await fetchFn(`${proxy}/?url=${encodeURIComponent(url)}`, {}, timeout);
-          if (proxied.ok) return proxied;
-        } catch { /* proxy also failed */ }
-        return null;
-      };
-
-      const metaTarget = 'https://pro.edgex.exchange/api/v1/public/meta/getMetaData';
-      const metaRes = await edgeFetch(metaTarget, 10000);
-      if (!metaRes) return [];
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 10000);
+      if (!metaRes.ok) return [];
       const metaData = await metaRes.json();
       const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
       if (contracts.length === 0) return [];
@@ -707,12 +690,11 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       const results: OIData[] = [];
       for (let i = 0; i < contracts.length; i += batchSize) {
         const batch = contracts.slice(i, i + batchSize);
-        const promises = batch.map((c: any) => {
-          const target = `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`;
-          return edgeFetch(target)
-            .then(r => r ? r.json() : null)
-            .catch(() => null);
-        });
+        const promises = batch.map((c: any) =>
+          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 8000)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+        );
         const tickerResults = await Promise.all(promises);
 
         for (let j = 0; j < batch.length; j++) {
@@ -723,9 +705,9 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
           if (!symbol || !isCryptoSymbol(symbol)) continue;
 
-          const price = parseFloat(ticker.oraclePrice || ticker.markPrice || ticker.mark_price || '0');
-          const oiContracts = parseFloat(ticker.openInterest || ticker.open_interest || '0');
-          const oiValue = parseFloat(ticker.openInterestValue || ticker.open_interest_value || '0') || (oiContracts * price);
+          const price = parseFloat(ticker.oraclePrice || ticker.markPrice || '0');
+          const oiContracts = parseFloat(ticker.openInterest || '0');
+          const oiValue = oiContracts * price;
           if (oiValue <= 0) continue;
 
           results.push({
