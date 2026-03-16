@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3 } from 'lucide-react';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3, Globe } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApi } from '@/hooks/useSWRApi';
@@ -79,6 +79,18 @@ interface PositionsData {
   accountValue: number;
   totalMarginUsed: number;
   positions: DexPosition[];
+}
+
+interface MultichainSummary {
+  id: string;
+  name: string;
+  symbol: string;
+  color: string;
+  nativeBalance: number;
+  nativeValueUsd: number;
+  tokenCount: number;
+  tokenValueUsd: number;
+  totalValueUsd: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -321,6 +333,31 @@ export default function WalletTrackerPage() {
     refreshInterval: 60_000,
   });
 
+  /* ---- fetch multichain portfolio (EVM addresses only) --------------- */
+  const isEvmAddress = activeAddress && /^0x[a-fA-F0-9]{40}$/i.test(activeAddress);
+
+  const multichainFetcher = useCallback(async () => {
+    if (!activeAddress || !isEvmAddress) return null;
+    const res = await fetch(`/api/wallet/multichain?address=${encodeURIComponent(activeAddress)}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json.chains as MultichainSummary[];
+  }, [activeAddress, isEvmAddress]);
+
+  const {
+    data: multichainData,
+    isLoading: multichainLoading,
+  } = useApi<MultichainSummary[] | null>({
+    key: isEvmAddress ? `wallet-multichain-${activeAddress}` : null,
+    fetcher: multichainFetcher,
+    refreshInterval: 300_000, // 5 min
+  });
+
+  const multichainTotal = useMemo(() => {
+    if (!multichainData) return 0;
+    return multichainData.reduce((sum, c) => sum + c.totalValueUsd, 0);
+  }, [multichainData]);
+
   /* ---- derived values ---------------------------------------------- */
   const balanceUSD = useMemo(() => {
     if (!walletData || !activeChain) return null;
@@ -341,8 +378,8 @@ export default function WalletTrackerPage() {
       const sym = token.symbol.toUpperCase();
       // Skip tokens matching native symbol (already counted in native balance)
       if (sym === nativeSymbol) continue;
-      // Spam filters: absurd balances, suspicious names
-      if (token.balance > 1e12) continue;
+      // Spam filters: absurd balances (airdrop dust attacks)
+      if (token.balance > 1e11) continue;  // >100B tokens is always spam
       if (token.balance <= 0) continue;
 
       const existing = deduped.get(sym);
@@ -365,6 +402,9 @@ export default function WalletTrackerPage() {
         return { ...token, price, usdValue };
       })
       .filter((token) => {
+        // Airdrop spam: huge supply + micro price = inflated fake value
+        // e.g. 30B MOODENG at $0.000005 = $166K, 700K KNCL at $0.14 = $98K
+        if (token.balance > 1e6 && token.price !== null && token.price < 0.01) return false;
         // Keep all tokens with a known price
         if (token.usdValue !== null) return true;
         // Hide unpriced tokens with suspiciously high balances (airdrop spam)
@@ -907,6 +947,78 @@ export default function WalletTrackerPage() {
                 </div>
               </div>
             ) : null}
+
+            {/* ========== MULTICHAIN PORTFOLIO ============================ */}
+            {isEvmAddress && (multichainLoading || (multichainData && multichainData.length > 1)) && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-hub-yellow" />
+                    Multichain Portfolio
+                    {multichainData && (
+                      <span className="text-neutral-500 font-normal text-xs">
+                        | {multichainData.length} Chain{multichainData.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </h3>
+                  {multichainTotal > 0 && (
+                    <span className="text-neutral-400 text-xs font-mono">
+                      ${multichainTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  )}
+                </div>
+
+                {multichainLoading && !multichainData ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-white/[0.04] p-px">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="bg-hub-darker p-3 animate-pulse">
+                        <div className="h-4 w-24 bg-white/[0.06] rounded mb-2" />
+                        <div className="h-6 w-16 bg-white/[0.06] rounded mb-1" />
+                        <div className="h-3 w-12 bg-white/[0.06] rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : multichainData && multichainData.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {multichainData.map((chain) => {
+                      const pct = multichainTotal > 0
+                        ? ((chain.totalValueUsd / multichainTotal) * 100)
+                        : 0;
+                      return (
+                        <div
+                          key={chain.id}
+                          className="px-3.5 py-3 border-r border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
+                        >
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: chain.color }}
+                            />
+                            <span className="text-xs font-medium text-neutral-300 truncate">
+                              {chain.name}
+                            </span>
+                            {chain.tokenCount > 0 && (
+                              <span className="text-[10px] text-neutral-600">
+                                ({chain.tokenCount})
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm font-mono font-semibold text-white">
+                            ${chain.totalValueUsd >= 1000
+                              ? chain.totalValueUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                              : chain.totalValueUsd.toFixed(2)
+                            }
+                          </div>
+                          <div className="text-[10px] text-neutral-600 font-mono">
+                            {pct >= 1 ? `${pct.toFixed(0)}%` : '<1%'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            )}
 
             {/* ========== TAB BAR ======================================== */}
             <div className="flex items-center gap-1 p-1 bg-hub-darker border border-white/[0.06] rounded-xl">
