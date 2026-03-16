@@ -402,9 +402,8 @@ export default function WalletTrackerPage() {
         return { ...token, price, usdValue };
       })
       .filter((token) => {
-        // Airdrop spam: huge supply + micro price = inflated fake value
-        // e.g. 30B MOODENG at $0.000005 = $166K, 700K KNCL at $0.14 = $98K
-        if (token.balance > 1e6 && token.price !== null && token.price < 0.01) return false;
+        // Spam filter: only extreme airdrops (billions of tokens at sub-penny prices)
+        if (token.balance > 1e9 && token.price !== null && token.price < 0.0001) return false;
         // Keep all tokens with a known price
         if (token.usdValue !== null) return true;
         // Hide unpriced tokens with suspiciously high balances (airdrop spam)

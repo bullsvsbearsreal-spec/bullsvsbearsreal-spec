@@ -190,8 +190,8 @@ async function fetchTokenBalancesViaBlockscout(address: string) {
       })
       .filter((t) => {
         if (t.balance <= 0 || t.balanceUsd < 0.50) return false;
-        // Spam filter: huge token counts with micro prices are airdrop spam
-        if (t.balance > 1e6 && t.tokenPrice < 0.01) return false;
+        // Spam filter: only catch extreme airdrop spam (billions of tokens at sub-penny prices)
+        if (t.balance > 1e9 && t.tokenPrice < 0.0001) return false;
         return true;
       })
       .sort((a, b) => (b.balanceUsd || 0) - (a.balanceUsd || 0))

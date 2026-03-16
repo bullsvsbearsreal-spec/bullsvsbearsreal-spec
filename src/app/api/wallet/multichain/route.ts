@@ -144,8 +144,8 @@ async function fetchChainSummary(chain: ChainDef, address: string, ethPrice: num
           const balance = Number(BigInt(item.value || '0')) / Math.pow(10, decimals);
           if (balance <= 0) continue;
 
-          // Spam filter: huge supply + micro price
-          if (balance > 1e6 && rate < 0.01) continue;
+          // Spam filter: only extreme airdrops (billions at sub-penny)
+          if (balance > 1e9 && rate < 0.0001) continue;
 
           const usd = balance * rate;
           if (usd < 1) continue; // dust
