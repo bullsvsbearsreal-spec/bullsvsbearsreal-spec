@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp } from 'lucide-react';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApi } from '@/hooks/useSWRApi';
@@ -197,6 +197,13 @@ export default function WalletTrackerPage() {
   const [activeTab, setActiveTab] = useState<'tokens' | 'transactions' | 'positions'>('tokens');
   const [featuredCategory, setFeaturedCategory] = useState<WalletCategory | 'all'>('all');
   const [featuredSearch, setFeaturedSearch] = useState('');
+  const [showFeatured, setShowFeatured] = useState(true);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: FAMOUS_WALLETS.length };
+    for (const w of FAMOUS_WALLETS) counts[w.category] = (counts[w.category] || 0) + 1;
+    return counts;
+  }, []);
 
   const filteredFamousWallets = useMemo(() => {
     let list = FAMOUS_WALLETS;
@@ -212,6 +219,10 @@ export default function WalletTrackerPage() {
     }
     return list;
   }, [featuredCategory, featuredSearch]);
+
+  const isWalletSaved = useCallback((address: string) => {
+    return savedWallets.some((w) => w.address.toLowerCase() === address.toLowerCase());
+  }, [savedWallets]);
 
   // Hydrate saved wallets from localStorage
   useEffect(() => {
@@ -550,77 +561,145 @@ export default function WalletTrackerPage() {
           </div>
         )}
 
-        {/* ---------- Featured Wallets (empty state) -------------------- */}
-        {!activeAddress && (
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-white">Featured Wallets</h2>
-              <span className="text-[11px] text-neutral-500">{FAMOUS_WALLETS.length} wallets</span>
-            </div>
+        {/* ---------- Featured Wallets -------------------------------- */}
+        {(!activeAddress || showFeatured) && (
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+            {/* Header — clickable to collapse when wallet is active */}
+            <button
+              onClick={() => activeAddress && setShowFeatured(!showFeatured)}
+              className={`w-full flex items-center justify-between px-5 py-4 ${activeAddress ? 'cursor-pointer hover:bg-white/[0.02]' : 'cursor-default'} transition-colors`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Star className="w-4 h-4 text-hub-yellow" />
+                <h2 className="text-sm font-semibold text-white">Featured Wallets</h2>
+                <span className="text-[11px] text-neutral-600 bg-white/[0.04] px-2 py-0.5 rounded-full">
+                  {filteredFamousWallets.length}
+                </span>
+              </div>
+              {activeAddress && (
+                <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${showFeatured ? '' : '-rotate-90'}`} />
+              )}
+            </button>
 
-            {/* Category filter pills */}
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              <button
-                onClick={() => setFeaturedCategory('all')}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  featuredCategory === 'all'
-                    ? 'bg-hub-yellow text-black'
-                    : 'bg-white/[0.06] text-neutral-400 hover:bg-white/[0.1] hover:text-white'
-                }`}
-              >
-                All
-              </button>
-              {(Object.entries(WALLET_CATEGORIES) as [WalletCategory, { label: string }][]).map(([key, val]) => (
-                <button
-                  key={key}
-                  onClick={() => setFeaturedCategory(key)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                    featuredCategory === key
-                      ? 'bg-hub-yellow text-black'
-                      : 'bg-white/[0.06] text-neutral-400 hover:bg-white/[0.1] hover:text-white'
-                  }`}
-                >
-                  {val.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search wallets..."
-              value={featuredSearch}
-              onChange={(e) => setFeaturedSearch(e.target.value)}
-              className="w-full sm:w-72 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40 mb-4"
-            />
-
-            {/* Wallet grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredFamousWallets.map((w) => (
-                <button
-                  key={w.address}
-                  onClick={() => handlePreset(w)}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.04] hover:border-white/[0.08] transition-colors text-left group"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ChainBadge chain={w.chain} />
-                      <span className="text-sm font-medium text-white truncate">{w.label}</span>
-                    </div>
-                    {w.description && (
-                      <p className="text-[11px] text-neutral-500 mb-1">{w.description}</p>
-                    )}
-                    <p className="text-[10px] font-mono text-neutral-600 truncate">{w.address}</p>
+            {/* Collapsible content */}
+            {showFeatured && (
+              <div className="px-5 pb-5">
+                {/* Filter row: categories + search */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                  <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                    <button
+                      onClick={() => setFeaturedCategory('all')}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                        featuredCategory === 'all'
+                          ? 'bg-hub-yellow text-black shadow-sm shadow-hub-yellow/20'
+                          : 'bg-white/[0.06] text-neutral-400 hover:bg-white/[0.1] hover:text-white'
+                      }`}
+                    >
+                      All <span className="opacity-60">{categoryCounts.all}</span>
+                    </button>
+                    {(Object.entries(WALLET_CATEGORIES) as [WalletCategory, { label: string }][]).map(([key, val]) => (
+                      <button
+                        key={key}
+                        onClick={() => setFeaturedCategory(key)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                          featuredCategory === key
+                            ? 'bg-hub-yellow text-black shadow-sm shadow-hub-yellow/20'
+                            : 'bg-white/[0.06] text-neutral-400 hover:bg-white/[0.1] hover:text-white'
+                        }`}
+                      >
+                        {val.label} <span className="opacity-60">{categoryCounts[key] || 0}</span>
+                      </button>
+                    ))}
                   </div>
-                  <span className="text-[10px] text-neutral-600 group-hover:text-hub-yellow transition-colors whitespace-nowrap mt-0.5">
-                    Track &rarr;
-                  </span>
-                </button>
-              ))}
-            </div>
 
-            {filteredFamousWallets.length === 0 && (
-              <p className="text-sm text-neutral-500 text-center py-6">No wallets match your search.</p>
+                  {/* Search with icon */}
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
+                    <input
+                      type="text"
+                      placeholder="Search by name, chain, or address..."
+                      value={featuredSearch}
+                      onChange={(e) => setFeaturedSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+                    />
+                    {featuredSearch && (
+                      <button
+                        onClick={() => setFeaturedSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-600 hover:text-neutral-400"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Wallet grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {filteredFamousWallets.map((w) => {
+                    const chainColor = CHAIN_CONFIG[w.chain].color;
+                    const saved = isWalletSaved(w.address);
+                    const isActive = activeAddress.toLowerCase() === w.address.toLowerCase();
+                    return (
+                      <button
+                        key={w.address}
+                        onClick={() => handlePreset(w)}
+                        className={`relative flex items-start gap-3 p-3.5 rounded-xl text-left group transition-all duration-200 border ${
+                          isActive
+                            ? 'bg-hub-yellow/[0.08] border-hub-yellow/30 shadow-sm shadow-hub-yellow/10'
+                            : saved
+                              ? 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06]'
+                              : 'bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.05] hover:border-white/[0.08]'
+                        }`}
+                      >
+                        {/* Chain color accent */}
+                        <div
+                          className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full"
+                          style={{ backgroundColor: chainColor }}
+                        />
+
+                        <div className="flex-1 min-w-0 pl-1.5">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[13px] font-semibold text-white truncate">{w.label}</span>
+                            <ChainBadge chain={w.chain} />
+                            {saved && !isActive && (
+                              <span className="text-[9px] text-neutral-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full">saved</span>
+                            )}
+                          </div>
+                          {w.description && (
+                            <p className="text-[11px] text-neutral-500 mb-1.5 leading-relaxed">{w.description}</p>
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[10px] font-mono text-neutral-600 truncate">{truncateAddress(w.address, 8)}</p>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCopy(w.address); }}
+                              className="p-0.5 text-neutral-700 hover:text-neutral-400 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Copy address"
+                            >
+                              {copiedHash === w.address ? (
+                                <Check className="w-3 h-3 text-green-400" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <span className={`text-[11px] font-medium whitespace-nowrap mt-0.5 transition-colors ${
+                          isActive
+                            ? 'text-hub-yellow'
+                            : 'text-neutral-700 group-hover:text-hub-yellow'
+                        }`}>
+                          {isActive ? 'Active' : 'Track →'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {filteredFamousWallets.length === 0 && (
+                  <p className="text-sm text-neutral-500 text-center py-8">No wallets match your search.</p>
+                )}
+              </div>
             )}
           </div>
         )}
