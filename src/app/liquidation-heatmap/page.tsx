@@ -494,7 +494,7 @@ export default function LiquidationHeatmapPage() {
 
   const { data, isLoading, isRefreshing, lastUpdate, refresh, error } =
     useApi<LiquidationHeatmapResponse>({
-      key: 'liquidation-heatmap',
+      key: `liquidation-heatmap-${symbol}-${timeframe}`,
       fetcher,
       refreshInterval: refreshMs,
     });
