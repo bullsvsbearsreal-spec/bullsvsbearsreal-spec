@@ -175,11 +175,18 @@ export default function ScreenerPage() {
         const oiChange24h = deltaMap.get(symbol) || 0;
         const { label: sentiment, color: sentimentColor } = deriveSentiment(change24h, oiChange24h, avgFunding);
 
+        // Cap volume for symbols with absurd vol/OI ratio (gTrade non-crypto inflate volume)
+        const totalOI = o?.total || 0;
+        let vol = t.vol;
+        if (totalOI > 0 && vol > 500 * totalOI) {
+          vol = Math.min(vol, 10 * totalOI);
+        }
+
         merged.push({
           symbol,
           price: t.price / t.count,
           change24h,
-          volume24h: t.vol,
+          volume24h: vol,
           avgFunding,
           fundingExchanges: f?.count || 0,
           totalOI: o?.total || 0,

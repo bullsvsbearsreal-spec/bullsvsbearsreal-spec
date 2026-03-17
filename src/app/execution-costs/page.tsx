@@ -240,13 +240,18 @@ function ExecutionCostsInner() {
               </div>
             )}
 
-            {/* Unavailable venues (collapsed) */}
+            {/* Unavailable venues — compact note */}
             {unavailableVenues.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-                {unavailableVenues.map(v => (
-                  <VenueCard key={v.exchange} venue={v} rank={99} asset={asset} />
+              <p className="text-xs text-neutral-600">
+                Not available for {asset}:{' '}
+                {unavailableVenues.map((v, i) => (
+                  <span key={v.exchange}>
+                    <span className="text-neutral-500">{v.exchange}</span>
+                    {v.error && <span className="text-neutral-700"> ({v.error})</span>}
+                    {i < unavailableVenues.length - 1 && ', '}
+                  </span>
                 ))}
-              </div>
+              </p>
             )}
 
             {/* Cost breakdown table */}
