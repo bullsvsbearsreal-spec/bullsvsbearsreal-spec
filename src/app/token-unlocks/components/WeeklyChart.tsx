@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TokenUnlock, formatUnlockValue } from '@/lib/api/tokenunlocks';
 
 const BAR_COLORS = ['#facc15', '#f59e0b', '#eab308', '#d97706', '#ca8a04', '#b45309', '#a16207', '#92400e'];
@@ -37,43 +36,43 @@ export default function WeeklyChart({ unlocks }: { unlocks: TokenUnlock[] }) {
         <h3 className="text-sm font-semibold text-white">Upcoming Unlock Value by Week</h3>
         <span className="text-[10px] text-neutral-600">Next 8 weeks</span>
       </div>
-      <div className="h-[140px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barCategoryGap="20%">
-            <XAxis
-              dataKey="label"
-              tick={{ fill: '#737373', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fill: '#525252', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v: number) => {
-                if (v >= 1e9) return `$${(v / 1e9).toFixed(0)}B`;
-                if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
-                if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
-                return `$${v}`;
-              }}
-              width={60}
-            />
-            <Tooltip
-              cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-              contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
-              labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}
-              formatter={(value: number, _name: string, props: { payload?: { count: number } }) => [
-                `${formatUnlockValue(value)} (${props.payload?.count ?? 0} unlocks)`,
-                'Value',
-              ]}
-            />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {data.map((entry, i) => (
-                <Cell key={i} fill={entry.value > 0 ? BAR_COLORS[i % BAR_COLORS.length] : '#262626'} fillOpacity={entry.value / maxVal * 0.6 + 0.4} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="grid grid-cols-8 gap-1.5 items-end">
+        {data.map((week, i) => {
+          const barPct = (week.value / maxVal) * 100;
+          return (
+            <div key={week.label} className="group text-center">
+              {/* Value label */}
+              <p className="text-[10px] font-mono font-semibold text-neutral-400 mb-1 group-hover:text-white transition-colors truncate">
+                {week.value >= 1e9 ? `$${(week.value / 1e9).toFixed(1)}B`
+                  : week.value >= 1e6 ? `$${(week.value / 1e6).toFixed(0)}M`
+                  : week.value >= 1e3 ? `$${(week.value / 1e3).toFixed(0)}K`
+                  : week.value > 0 ? `$${week.value.toFixed(0)}`
+                  : '--'}
+              </p>
+              {/* Bar */}
+              <div className="h-24 flex items-end">
+                <div
+                  className="w-full rounded-t transition-all group-hover:opacity-90"
+                  style={{
+                    height: `${Math.max(barPct, week.value > 0 ? 6 : 2)}%`,
+                    backgroundColor: week.value > 0 ? BAR_COLORS[i % BAR_COLORS.length] : '#262626',
+                    opacity: week.value > 0 ? (week.value / maxVal) * 0.5 + 0.5 : 0.3,
+                  }}
+                />
+              </div>
+              {/* Count badge */}
+              {week.count > 0 && (
+                <p className="text-[9px] text-neutral-500 mt-0.5 group-hover:text-neutral-300">
+                  {week.count} unlock{week.count !== 1 ? 's' : ''}
+                </p>
+              )}
+              {/* Week label */}
+              <p className="text-[9px] text-neutral-600 mt-0.5 leading-tight truncate group-hover:text-neutral-400">
+                {week.label}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

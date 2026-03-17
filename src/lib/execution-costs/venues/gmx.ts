@@ -16,25 +16,64 @@ export async function fetchGMXParams(asset: string, fetchFn: typeof fetch): Prom
     if (!res.ok) return null;
     const data = await res.json();
 
-    interface RawGMXMarket { name?: string; marketToken?: string; indexTokenPrice?: { max?: string; min?: string }; longOpenInterest?: string; shortOpenInterest?: string; openInterestLong?: string; openInterestShort?: string; fundingRateLong?: string; fundingRateShort?: string; borrowRateLong?: string; borrowRateShort?: string; positionImpactExponent?: string; positionImpactExponentFactor?: string; positionImpactPositiveFactor?: string; positionImpactNegativeFactor?: string; positionImpactFactorPositive?: string; positionImpactFactorNegative?: string }
-    // GMX API now nests markets in data.markets[] (was flat object)
+    interface RawGMXMarket {
+      name?: string; marketToken?: string;
+      // Current API field names (2026+)
+      openInterestLong?: string; openInterestShort?: string;
+      // Legacy field names
+      longOpenInterest?: string; shortOpenInterest?: string;
+      // Price fields (current API no longer provides indexTokenPrice)
+      indexTokenPrice?: { max?: string; min?: string };
+      // Impact factors (may be absent in newer API versions)
+      positionImpactExponentFactor?: string;
+      positionImpactFactorPositive?: string; positionImpactFactorNegative?: string;
+      positionImpactPositiveFactor?: string; positionImpactNegativeFactor?: string;
+    }
+
     const rawMarkets = Array.isArray(data.markets) ? data.markets : Object.values(data);
     const markets = rawMarkets as RawGMXMarket[];
-    const market = markets.find((m) => {
+
+    // Find all markets matching the asset, pick the one with highest OI
+    const matching = markets.filter((m) => {
       const sym = (m.name || '').split('/')[0].replace(/\.v\d+$/i, '').toUpperCase();
       return sym === asset;
     });
-    if (!market) return null;
+    if (matching.length === 0) return null;
 
     const parse30 = (v: string | undefined) => v ? Number(BigInt(v)) / 1e30 : 0;
 
+    // Pick market with highest total OI (multiple collateral pools exist)
+    const market = matching.reduce((best, m) => {
+      const oi = parse30(m.openInterestLong || m.longOpenInterest) + parse30(m.openInterestShort || m.shortOpenInterest);
+      const bestOi = parse30(best.openInterestLong || best.longOpenInterest) + parse30(best.openInterestShort || best.shortOpenInterest);
+      return oi > bestOi ? m : best;
+    });
+
+    const longOiUsd = parse30(market.openInterestLong || market.longOpenInterest);
+    const shortOiUsd = parse30(market.openInterestShort || market.shortOpenInterest);
+
+    // Price: try indexTokenPrice (legacy), fallback to 0 (caller should use external price)
+    let midPrice = parse30(market.indexTokenPrice?.max || market.indexTokenPrice?.min);
+
+    // If no price from GMX, fetch from CoinGecko as fallback
+    if (midPrice <= 0) {
+      try {
+        const cgId = asset === 'BTC' ? 'bitcoin' : asset === 'ETH' ? 'ethereum' : asset === 'SOL' ? 'solana' : asset.toLowerCase();
+        const priceRes = await fetchFn(`https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd`, { signal: AbortSignal.timeout(4000) });
+        if (priceRes.ok) {
+          const priceData = await priceRes.json();
+          midPrice = priceData[cgId]?.usd || 0;
+        }
+      } catch { /* fallback price stays 0 */ }
+    }
+
     return {
       marketToken: market.marketToken || '',
-      midPrice: parse30(market.indexTokenPrice?.max || market.indexTokenPrice?.min),
-      longOiUsd: parse30(market.longOpenInterest),
-      shortOiUsd: parse30(market.shortOpenInterest),
-      positionImpactFactorPositive: parse30(market.positionImpactFactorPositive),
-      positionImpactFactorNegative: parse30(market.positionImpactFactorNegative),
+      midPrice,
+      longOiUsd,
+      shortOiUsd,
+      positionImpactFactorPositive: parse30(market.positionImpactFactorPositive || market.positionImpactPositiveFactor),
+      positionImpactFactorNegative: parse30(market.positionImpactFactorNegative || market.positionImpactNegativeFactor),
       positionImpactExponentFactor: parse30(market.positionImpactExponentFactor),
     };
   } catch { return null; }

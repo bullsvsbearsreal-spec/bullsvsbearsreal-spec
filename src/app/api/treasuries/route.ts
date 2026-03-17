@@ -29,28 +29,28 @@ interface HolderEntry {
 
 /* --- Static holder data (approximate, updated periodically) --------------- */
 // Source: public filings, blockchain data, media reports
-// Last verified: 2026-02-15
-const DATA_AS_OF = '2026-02-15';
+// Last verified: 2026-03-17
+const DATA_AS_OF = '2026-03-17';
 
 const HOLDERS: HolderEntry[] = [
-  { name: 'BlackRock IBIT ETF', ticker: 'IBIT', type: 'etf', btcHoldings: 570_000 },
-  { name: 'MicroStrategy', ticker: 'MSTR', type: 'company', btcHoldings: 450_000 },
-  { name: 'Fidelity FBTC', ticker: 'FBTC', type: 'etf', btcHoldings: 200_000 },
-  { name: 'Grayscale GBTC', ticker: 'GBTC', type: 'etf', btcHoldings: 200_000 },
-  { name: 'US Government', ticker: null, type: 'government', btcHoldings: 200_000, country: 'US' },
+  { name: 'BlackRock IBIT ETF', ticker: 'IBIT', type: 'etf', btcHoldings: 582_000 },
+  { name: 'MicroStrategy', ticker: 'MSTR', type: 'company', btcHoldings: 499_000 },
+  { name: 'Fidelity FBTC', ticker: 'FBTC', type: 'etf', btcHoldings: 205_000 },
+  { name: 'US Government', ticker: null, type: 'government', btcHoldings: 198_000, country: 'US' },
+  { name: 'Grayscale GBTC', ticker: 'GBTC', type: 'etf', btcHoldings: 195_000 },
   { name: 'Chinese Government', ticker: null, type: 'government', btcHoldings: 190_000, country: 'CN' },
   { name: 'Block.one', ticker: null, type: 'company', btcHoldings: 140_000 },
-  { name: 'Tether', ticker: null, type: 'company', btcHoldings: 83_000 },
+  { name: 'Tether', ticker: null, type: 'company', btcHoldings: 92_000 },
   { name: 'UK Government', ticker: null, type: 'government', btcHoldings: 61_000, country: 'GB' },
-  { name: 'Marathon Digital', ticker: 'MARA', type: 'miner', btcHoldings: 45_000 },
-  { name: 'Riot Platforms', ticker: 'RIOT', type: 'miner', btcHoldings: 18_000 },
-  { name: 'Tesla', ticker: 'TSLA', type: 'company', btcHoldings: 10_000 },
-  { name: 'Hut 8 Mining', ticker: 'HUT', type: 'miner', btcHoldings: 10_000 },
-  { name: 'CleanSpark', ticker: 'CLSK', type: 'miner', btcHoldings: 10_000 },
+  { name: 'Marathon Digital', ticker: 'MARA', type: 'miner', btcHoldings: 48_000 },
+  { name: 'Riot Platforms', ticker: 'RIOT', type: 'miner', btcHoldings: 19_000 },
+  { name: 'Hut 8 Mining', ticker: 'HUT', type: 'miner', btcHoldings: 12_000 },
+  { name: 'CleanSpark', ticker: 'CLSK', type: 'miner', btcHoldings: 11_000 },
+  { name: 'Tesla', ticker: 'TSLA', type: 'company', btcHoldings: 11_000 },
   { name: 'Coinbase', ticker: 'COIN', type: 'company', btcHoldings: 9_500 },
   { name: 'Galaxy Digital', ticker: 'GLXY', type: 'company', btcHoldings: 8_000 },
-  { name: 'El Salvador', ticker: null, type: 'government', btcHoldings: 6_000, country: 'SV' },
-  { name: 'Bitdeer', ticker: 'BTDR', type: 'miner', btcHoldings: 1_000 },
+  { name: 'El Salvador', ticker: null, type: 'government', btcHoldings: 6_100, country: 'SV' },
+  { name: 'Bitdeer', ticker: 'BTDR', type: 'miner', btcHoldings: 1_100 },
 ];
 
 /* --- BTC price fetch ------------------------------------------------------ */
