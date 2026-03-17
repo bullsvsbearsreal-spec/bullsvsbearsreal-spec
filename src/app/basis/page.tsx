@@ -117,30 +117,23 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
   const total = data.length || 1;
 
   return (
-    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+    <div className="grid grid-cols-8 gap-1 items-end">
       {buckets.map((b, i) => {
         const pct = (b.count / total) * 100;
         const barPct = (b.count / maxCount) * 100;
         const isNeg = i < 4;
         return (
-          <div key={b.label} className="group">
-            {/* Bar */}
-            <div className="h-16 flex items-end rounded-lg bg-white/[0.02] p-0.5">
-              <div
-                className={`w-full rounded-md transition-all group-hover:opacity-90 ${isNeg ? 'bg-red-500/50 group-hover:bg-red-500/70' : 'bg-green-500/50 group-hover:bg-green-500/70'}`}
-                style={{ height: `${Math.max(barPct, 3)}%` }}
-              />
-            </div>
-            {/* Count */}
-            <p className="text-center text-[11px] font-mono font-semibold text-neutral-300 mt-1.5 group-hover:text-white transition-colors">
+          <div key={b.label} className="group text-center">
+            <p className="text-[10px] font-mono font-semibold text-neutral-400 mb-0.5 group-hover:text-white transition-colors">
               {b.count.toLocaleString()}
             </p>
-            {/* Percentage */}
-            <p className="text-center text-[9px] font-mono text-neutral-500 group-hover:text-neutral-400">
-              {pct.toFixed(1)}%
-            </p>
-            {/* Label */}
-            <p className="text-center text-[9px] text-neutral-600 mt-0.5 leading-tight group-hover:text-neutral-400">
+            <div className="h-10 flex items-end">
+              <div
+                className={`w-full rounded transition-all group-hover:opacity-90 ${isNeg ? 'bg-red-500/60 group-hover:bg-red-500/80' : 'bg-emerald-500/60 group-hover:bg-emerald-500/80'}`}
+                style={{ height: `${Math.max(barPct, 4)}%` }}
+              />
+            </div>
+            <p className="text-[9px] text-neutral-500 mt-1 leading-tight truncate group-hover:text-neutral-300">
               {b.label}
             </p>
           </div>
