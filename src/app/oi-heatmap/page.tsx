@@ -115,18 +115,18 @@ function squarify(
 // ---------------------------------------------------------------------------
 
 function getOIChangeColor(change: number | null): string {
-  if (change === null || change === undefined || isNaN(change)) return 'rgba(80, 80, 80, 0.6)';
-  if (change >= 20) return 'rgba(34, 197, 94, 0.9)';
-  if (change >= 10) return 'rgba(34, 197, 94, 0.75)';
-  if (change >= 5) return 'rgba(34, 197, 94, 0.6)';
-  if (change >= 2) return 'rgba(34, 197, 94, 0.4)';
-  if (change >= 0.5) return 'rgba(34, 197, 94, 0.25)';
-  if (change > -0.5) return 'rgba(80, 80, 80, 0.5)';
-  if (change > -2) return 'rgba(239, 68, 68, 0.25)';
-  if (change > -5) return 'rgba(239, 68, 68, 0.4)';
-  if (change > -10) return 'rgba(239, 68, 68, 0.6)';
-  if (change > -20) return 'rgba(239, 68, 68, 0.75)';
-  return 'rgba(239, 68, 68, 0.9)';
+  if (change === null || change === undefined || isNaN(change)) return 'rgba(100, 100, 110, 0.7)';
+  if (change >= 20) return 'rgba(34, 197, 94, 0.95)';
+  if (change >= 10) return 'rgba(34, 197, 94, 0.8)';
+  if (change >= 5) return 'rgba(34, 197, 94, 0.65)';
+  if (change >= 2) return 'rgba(34, 197, 94, 0.5)';
+  if (change >= 0.5) return 'rgba(34, 197, 94, 0.35)';
+  if (change > -0.5) return 'rgba(100, 100, 110, 0.65)';
+  if (change > -2) return 'rgba(239, 68, 68, 0.35)';
+  if (change > -5) return 'rgba(239, 68, 68, 0.5)';
+  if (change > -10) return 'rgba(239, 68, 68, 0.65)';
+  if (change > -20) return 'rgba(239, 68, 68, 0.8)';
+  return 'rgba(239, 68, 68, 0.95)';
 }
 
 function getOIChangeBorder(change: number | null): string {
