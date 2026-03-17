@@ -48,10 +48,12 @@ export default function LiquidationTopBar({
         </div>
 
         {/* Right: Timeframe pills + Sound toggle */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" role="tablist" aria-label="Timeframe">
           {TIMEFRAMES.map((tf) => (
             <button
               key={tf}
+              role="tab"
+              aria-selected={timeframe === tf}
               onClick={() => onTimeframeChange(tf)}
               className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-colors ${
                 timeframe === tf

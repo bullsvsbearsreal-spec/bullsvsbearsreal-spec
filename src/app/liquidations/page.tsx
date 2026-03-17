@@ -8,6 +8,7 @@ import LiquidationTreemap from './components/LiquidationTreemap';
 import LiquidationFeed from './components/LiquidationFeed';
 import LiquidationBottomBar from './components/LiquidationBottomBar';
 import { isLiqCryptoSymbol, normalizeLiqSymbol } from '@/lib/liquidation-parsers';
+import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import dynamic from 'next/dynamic';
 
 const LiquidationChart = dynamic(
@@ -53,9 +54,24 @@ interface TreemapItem {
 // DEX exchanges for CEX/DEX filtering
 const DEX_EXCHANGES = new Set(['gTrade', 'dYdX', 'Hyperliquid', 'GMX', 'Drift', 'Aevo', 'Lighter']);
 
+// All 11 WebSocket-supported exchanges
+const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX', 'HTX', 'gTrade', 'dYdX', 'Bitfinex'];
 
 // ─── SWR Fetcher ────────────────────────────────────
 const fetcher = (url: string) => fetch(url).then(r => r.json());
+
+// Convert WS Liquidation to FeedItem
+function liqToFeedItem(liq: Liquidation): FeedItem {
+  return {
+    symbol: normalizeLiqSymbol(liq.symbol),
+    exchange: liq.exchange,
+    side: liq.side,
+    price: liq.price,
+    quantity: liq.quantity,
+    valueUsd: liq.value,
+    ts: liq.timestamp,
+  };
+}
 
 // ─── Page Component ─────────────────────────────────
 export default function LiquidationsPage() {
@@ -68,27 +84,31 @@ export default function LiquidationsPage() {
 
   const hours = TIMEFRAME_HOURS[timeframe];
 
-  // ─── Data Fetching ──────────────────────────────
-  // Feed data (polls every 5s)
-  const feedKey = `/api/history/liquidations?mode=feed&hours=${hours}&limit=1000`;
-  const { data: feedRaw, isLoading: feedLoading } = useSWR(feedKey, fetcher, {
-    refreshInterval: 5000,
-    revalidateOnFocus: false,
+  // ─── Real-time WebSocket Feed (9 exchanges) ─────
+  const { liquidations: wsLiqs, connections } = useMultiExchangeLiquidations({
+    exchanges: WS_EXCHANGES,
+    minValue: 1000, // $1K minimum to reduce noise
+    maxItems: 500,
+    persistKey: 'ih-liq-page',
+    persistTtlMs: hours * 3600000,
   });
 
-  // Treemap data (polls every 10s)
+  // ─── DB-backed Data (historical aggregation) ─────
+  // Treemap data (polls every 10s) — DB is authoritative for historical aggregation
   const treemapKey = `/api/history/liquidations?mode=treemap&hours=${hours}&limit=30`;
   const { data: treemapRaw, isLoading: treemapLoading } = useSWR(treemapKey, fetcher, {
     refreshInterval: 10000,
     revalidateOnFocus: false,
   });
 
+  // ─── Merge WS liquidations into feed ─────────────
   const allFeedItems: FeedItem[] = useMemo(() => {
-    const raw: FeedItem[] = feedRaw?.data ?? [];
-    return raw
-      .map(i => ({ ...i, symbol: normalizeLiqSymbol(i.symbol) }))
+    const wsItems = wsLiqs
+      .map(liqToFeedItem)
       .filter(i => isLiqCryptoSymbol(i.symbol));
-  }, [feedRaw]);
+    // Sort by timestamp descending (newest first)
+    return wsItems.sort((a, b) => b.ts - a.ts);
+  }, [wsLiqs]);
 
   // Normalize + merge treemap symbols (e.g. BTCUSD-SWAP → BTC)
   const treemapItems: TreemapItem[] = useMemo(() => {
@@ -130,6 +150,9 @@ export default function LiquidationsPage() {
     return { longValue, shortValue, total: longValue + shortValue, count };
   }, [treemapItems]);
 
+  // Connection status
+  const connectedCount = connections.filter(c => c.connected).length;
+
   // ─── Render ─────────────────────────────────────
   return (
     <div className="h-screen flex flex-col bg-hub-black overflow-hidden">
@@ -143,6 +166,19 @@ export default function LiquidationsPage() {
         soundEnabled={soundEnabled}
         onSoundToggle={() => setSoundEnabled(s => !s)}
       />
+
+      {/* Connection status indicator */}
+      {connections.length > 0 && (
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.01] border-b border-white/[0.04]">
+          <div className={`w-1.5 h-1.5 rounded-full ${connectedCount > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+          <span className="text-[10px] text-neutral-500">
+            {connectedCount}/{connections.length} exchanges connected
+          </span>
+          <span className="text-[10px] text-neutral-700 ml-1">
+            ({connections.filter(c => c.connected).map(c => c.exchange).join(', ')})
+          </span>
+        </div>
+      )}
 
       {/* Main content grid */}
       <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[55%_45%] gap-2 px-3 py-2 overflow-y-auto md:overflow-hidden">
@@ -166,11 +202,11 @@ export default function LiquidationsPage() {
           </div>
         </div>
 
-        {/* Right column: Live feed */}
+        {/* Right column: Live feed (now powered by 9-exchange WebSocket) */}
         <div className="min-h-[400px] md:min-h-0 md:h-full">
           <LiquidationFeed
             data={feedItems}
-            isLoading={feedLoading}
+            isLoading={allFeedItems.length === 0 && connectedCount === 0}
             sideFilter={sideFilter}
             onSideFilterChange={setSideFilter}
           />

@@ -44,9 +44,9 @@ function formatUsd(v: number): string {
 }
 
 function formatPrice(p: number): string {
-  if (p >= 1000) return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (p >= 1) return p.toFixed(4);
-  return p.toFixed(6);
+  if (p >= 1000) return '$' + p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (p >= 1) return '$' + p.toFixed(4);
+  return '$' + p.toFixed(6);
 }
 
 function slippageColor(bps: number): string {

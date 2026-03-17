@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { formatUSD } from '@/lib/utils/format';
 
 interface SlippageVenue {
@@ -45,6 +45,25 @@ function formatSlippage(v: number): string {
 }
 
 export default function SlippageHeatmap({ data, loading }: Props) {
+  const [tooltip, setTooltip] = useState<{ bid: number; ask: number; x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  const handleCellEnter = useCallback((e: React.MouseEvent<HTMLTableCellElement>, slip: { bid: number; ask: number }) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const cellRect = e.currentTarget.getBoundingClientRect();
+    setTooltip({
+      bid: slip.bid,
+      ask: slip.ask,
+      x: cellRect.left - rect.left + cellRect.width / 2,
+      y: cellRect.top - rect.top,
+    });
+  }, []);
+
+  const handleCellLeave = useCallback(() => setTooltip(null), []);
+
   const sorted = useMemo(() => {
     if (!data?.venues) return [];
     return [...data.venues]
@@ -75,14 +94,38 @@ export default function SlippageHeatmap({ data, loading }: Props) {
 
   const sizes = data.depthSizes;
 
+  const clampedTooltip = (() => {
+    if (!tooltip || !containerRef.current) return { left: 0, top: 0 };
+    const containerW = containerRef.current.offsetWidth;
+    const tooltipW = tooltipRef.current?.offsetWidth ?? 140;
+    const tooltipH = tooltipRef.current?.offsetHeight ?? 50;
+    return {
+      left: Math.max(8, Math.min(tooltip.x - tooltipW / 2, containerW - tooltipW - 8)),
+      top: Math.max(0, tooltip.y - tooltipH - 6),
+    };
+  })();
+
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4" ref={containerRef}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-white">Slippage Heatmap — {data.symbol}</h3>
         <span className="text-[10px] text-neutral-600">Bid / Ask slippage at order size</span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="relative">
+      {tooltip && (
+        <div
+          ref={tooltipRef}
+          className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-lg px-3 py-2 shadow-2xl backdrop-blur-md"
+          style={{ left: `${clampedTooltip.left}px`, top: `${clampedTooltip.top}px` }}
+        >
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="text-green-400 font-mono font-semibold">Bid: {formatSlippage(tooltip.bid)}</span>
+            <span className="text-red-400 font-mono font-semibold">Ask: {formatSlippage(tooltip.ask)}</span>
+          </div>
+        </div>
+      )}
+      <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
@@ -97,7 +140,7 @@ export default function SlippageHeatmap({ data, loading }: Props) {
           </thead>
           <tbody>
             {sorted.map(venue => (
-              <tr key={venue.exchange} className="group hover:bg-white/[0.02]">
+              <tr key={venue.exchange} role="row" className="group hover:bg-white/[0.02]">
                 <td className="py-1.5 pr-3 font-medium text-white text-[11px]">{venue.exchange}</td>
                 <td className="py-1.5 px-2 text-right">
                   <div className="flex flex-col items-end gap-[1px]">
@@ -113,7 +156,8 @@ export default function SlippageHeatmap({ data, loading }: Props) {
                     <td
                       key={size}
                       className="py-1.5 px-1"
-                      title={`Bid: ${formatSlippage(slip.bid)} | Ask: ${formatSlippage(slip.ask)}`}
+                      onMouseEnter={(e) => handleCellEnter(e, slip)}
+                      onMouseLeave={handleCellLeave}
                     >
                       <div
                         className="rounded-md px-2 py-1.5 text-center transition-colors"
@@ -135,6 +179,9 @@ export default function SlippageHeatmap({ data, loading }: Props) {
             ))}
           </tbody>
         </table>
+      </div>
+      {/* Right fade to indicate horizontal scrollability */}
+      <div className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none bg-gradient-to-l from-[#0a0a0a] to-transparent md:hidden" />
       </div>
 
       <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/[0.04]">

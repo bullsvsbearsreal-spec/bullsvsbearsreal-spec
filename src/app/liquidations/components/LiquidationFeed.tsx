@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { Zap, Loader2 } from 'lucide-react';
 import LiquidationFeedRow from './LiquidationFeedRow';
 
@@ -33,6 +33,13 @@ export default function LiquidationFeed({
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevLatestTs = useRef(0);
 
+  // Tick counter to force timestamp re-renders every 10s
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 10_000);
+    return () => clearInterval(id);
+  }, []);
+
   // Filter data by side
   const filteredData = useMemo(() => {
     if (sideFilter === 'all') return data;
@@ -64,10 +71,12 @@ export default function LiquidationFeed({
         </div>
 
         {/* Side filter pills */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" role="tablist" aria-label="Side filter">
           {SIDE_OPTIONS.map((opt) => (
             <button
               key={opt}
+              role="tab"
+              aria-selected={sideFilter === opt}
               onClick={() => onSideFilterChange(opt)}
               className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
                 sideFilter === opt
@@ -103,6 +112,7 @@ export default function LiquidationFeed({
               exchange={item.exchange}
               timestamp={item.ts}
               isNew={idx === 0 && hasNewItems}
+              tick={tick}
             />
           ))
         )}

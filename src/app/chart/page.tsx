@@ -294,7 +294,7 @@ export default function ChartPage() {
   /* ─── Keyboard shortcuts for timeframes ────────────────────────────── */
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement).isContentEditable) return;
       const idx = parseInt(e.key) - 1;
       if (idx >= 0 && idx < TIMEFRAMES.length) {
         setInterval_(TIMEFRAMES[idx].value);
@@ -330,6 +330,7 @@ export default function ChartPage() {
           {/* Logo + back */}
           <Link
             href="/"
+            aria-label="Back to home"
             className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors flex-shrink-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -339,15 +340,17 @@ export default function ChartPage() {
           <div className="w-px h-5 bg-white/[0.06] flex-shrink-0" />
 
           {/* Asset class tabs */}
-          <div className="flex items-center gap-0.5 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0" role="tablist" aria-label="Asset class">
             {ASSET_TABS.map(tab => (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={assetClass === tab.id}
                 onClick={() => switchAssetClass(tab.id)}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
                   assetClass === tab.id
-                    ? 'bg-hub-yellow/15 text-hub-yellow'
-                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                    ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/25'
+                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04] border border-transparent'
                 }`}
               >
                 {tab.icon}
@@ -362,7 +365,8 @@ export default function ChartPage() {
           <div ref={symbolRef} className="relative flex-shrink-0">
             <button
               onClick={() => setSymbolOpen(!symbolOpen)}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors"
+              aria-expanded={symbolOpen}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors focus:ring-2 focus:ring-hub-yellow/30"
             >
               {assetClass === 'crypto' && (
                 <TokenIconSimple symbol={displayLabel} size={16} />
@@ -382,10 +386,11 @@ export default function ChartPage() {
                   <input
                     ref={searchInputRef}
                     type="text"
+                    aria-label="Search symbols"
                     placeholder={`Search ${currentTab.label.toLowerCase()}...`}
                     value={symbolQuery}
                     onChange={e => setSymbolQuery(e.target.value)}
-                    className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30"
+                    className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30 focus-visible:ring-2 focus-visible:ring-hub-yellow/50"
                   />
                   {symbolQuery && (
                     <button
@@ -403,7 +408,7 @@ export default function ChartPage() {
                     <button
                       key={tab.id}
                       onClick={() => {
-                        setAssetClass(tab.id);
+                        switchAssetClass(tab.id);
                         setSymbolQuery('');
                       }}
                       className={`flex-shrink-0 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
@@ -418,7 +423,7 @@ export default function ChartPage() {
                 </div>
 
                 {/* Symbol list */}
-                <div className="max-h-72 overflow-y-auto py-1 scrollbar-thin">
+                <div className="max-h-[60vh] overflow-y-auto py-1 scrollbar-thin" role="listbox">
                   {filteredSymbols.length === 0 && (
                     <div className="px-4 py-3 text-xs text-neutral-500 text-center">
                       No symbols found. Use TradingView search in the chart for more.
@@ -484,7 +489,7 @@ export default function ChartPage() {
           <div className="flex-1" />
 
           {/* Timeframe buttons */}
-          <div className="flex items-center gap-0.5 flex-shrink-0">
+          <div className="flex items-center flex-wrap gap-0.5 flex-shrink-0">
             {TIMEFRAMES.map(tf => (
               <button
                 key={tf.value}
@@ -505,10 +510,12 @@ export default function ChartPage() {
 
       {/* ─── Quick symbol bar ───────────────────────────────────────── */}
       <div className="flex-shrink-0 border-b border-white/[0.04] bg-black/40">
-        <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 overflow-x-auto scrollbar-none" role="tablist" aria-label="Quick symbols">
           {currentTab.pinned.slice(0, 14).map(sym => (
             <button
               key={sym.tvSymbol}
+              role="tab"
+              aria-selected={sym.tvSymbol === tvSymbol}
               onClick={() => selectSymbol(sym)}
               className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
                 sym.tvSymbol === tvSymbol

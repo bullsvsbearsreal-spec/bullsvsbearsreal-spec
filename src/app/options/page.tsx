@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
@@ -123,11 +123,13 @@ function OIByStrikeChart({
   height?: number;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   if (strikes.length === 0)
     return (
       <div className="flex items-center justify-center h-[200px] text-neutral-600 text-sm">
-        No strike data available
+        No strike data available for this symbol
       </div>
     );
 
@@ -154,15 +156,23 @@ function OIByStrikeChart({
   const tooltipX = hovered !== null ? pad.left + hovered * groupW + groupW / 2 : 0;
   const labelStep = Math.max(1, Math.floor(display.length / 14));
 
+  const clampedLeft = (() => {
+    if (hovered === null || !containerRef.current) return 0;
+    const containerW = containerRef.current.offsetWidth;
+    const tooltipW = tooltipRef.current?.offsetWidth ?? 180;
+    const rawLeft = (tooltipX / width) * containerW;
+    return Math.max(8, Math.min(rawLeft - tooltipW / 2, containerW - tooltipW - 8));
+  })();
+
   return (
-    <div className="relative" onMouseLeave={() => setHovered(null)}>
+    <div className="relative" ref={containerRef} onMouseLeave={() => setHovered(null)}>
       {hoveredStrike && hovered !== null && (
         <div
+          ref={tooltipRef}
           className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-md"
           style={{
-            left: `${(tooltipX / width) * 100}%`,
+            left: `${clampedLeft}px`,
             top: 0,
-            transform: `translateX(${hovered > display.length * 0.7 ? '-100%' : hovered < display.length * 0.3 ? '0%' : '-50%'})`,
           }}
         >
           <p className="text-xs font-bold text-white font-mono mb-1.5">
@@ -186,7 +196,7 @@ function OIByStrikeChart({
         </div>
       )}
 
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Open interest by strike price chart">
         {/* Grid lines */}
         {[0.25, 0.5, 0.75, 1].map((pct) => (
           <line
@@ -244,7 +254,7 @@ function OIByStrikeChart({
                 y={pad.top + chartH - callH}
                 width={barW}
                 height={Math.max(callH, 0.5)}
-                fill={isHovered ? '#22c55e' : '#22c55ecc'}
+                fill={isHovered ? '#22c55e' : '#22c55e'}
                 rx={1.5}
               />
               <rect
@@ -252,7 +262,7 @@ function OIByStrikeChart({
                 y={pad.top + chartH - putH}
                 width={barW}
                 height={Math.max(putH, 0.5)}
-                fill={isHovered ? '#ef4444' : '#ef4444cc'}
+                fill={isHovered ? '#ef4444' : '#ef4444'}
                 rx={1.5}
               />
               {(i % labelStep === 0 || isSpot || isMaxPain) && (
@@ -275,6 +285,7 @@ function OIByStrikeChart({
         {/* Spot label */}
         {spotIdx >= 0 && (
           <g>
+            <title>{sameIdx ? 'Spot price and max pain strike' : 'Spot price strike'}</title>
             <rect
               x={pad.left + spotIdx * groupW + groupW / 2 - (sameIdx ? 48 : 20)}
               y={pad.top - 16}
@@ -300,6 +311,7 @@ function OIByStrikeChart({
         {/* Max Pain label */}
         {maxPainIdx >= 0 && maxPainIdx !== spotIdx && (
           <g>
+            <title>Max pain strike</title>
             <rect
               x={pad.left + maxPainIdx * groupW + groupW / 2 - 28}
               y={pad.top - 16}
@@ -336,6 +348,8 @@ function OIByExpiryChart({
   height?: number;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   if (entries.length === 0) return null;
 
   const maxOI = Math.max(...entries.map((e) => Math.max(e.callOI, e.putOI)), 1);
@@ -356,15 +370,23 @@ function OIByExpiryChart({
   const hoveredEntry = hovered !== null ? entries[hovered] : null;
   const tooltipX = hovered !== null ? offsetX + hovered * groupW + groupW / 2 : 0;
 
+  const clampedLeft = (() => {
+    if (hovered === null || !containerRef.current) return 0;
+    const containerW = containerRef.current.offsetWidth;
+    const tooltipW = tooltipRef.current?.offsetWidth ?? 180;
+    const rawLeft = (tooltipX / width) * containerW;
+    return Math.max(8, Math.min(rawLeft - tooltipW / 2, containerW - tooltipW - 8));
+  })();
+
   return (
-    <div className="relative" onMouseLeave={() => setHovered(null)}>
+    <div className="relative" ref={containerRef} onMouseLeave={() => setHovered(null)}>
       {hoveredEntry && hovered !== null && (
         <div
+          ref={tooltipRef}
           className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-md"
           style={{
-            left: `${(tooltipX / width) * 100}%`,
+            left: `${clampedLeft}px`,
             top: 0,
-            transform: `translateX(${hovered > entries.length * 0.7 ? '-100%' : hovered < entries.length * 0.3 ? '0%' : '-50%'})`,
           }}
         >
           <p className="text-xs font-bold text-white font-mono mb-1.5">{hoveredEntry.date}</p>
@@ -391,7 +413,7 @@ function OIByExpiryChart({
         </div>
       )}
 
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Open interest by expiry date chart">
         {/* Grid lines */}
         {[0.25, 0.5, 0.75, 1].map((pct) => (
           <line
@@ -436,7 +458,7 @@ function OIByExpiryChart({
                 y={pad.top + chartH - callH}
                 width={barW}
                 height={Math.max(callH, 1)}
-                fill={isHovered ? '#22c55e' : '#22c55ecc'}
+                fill={isHovered ? '#22c55e' : '#22c55e'}
                 rx={3}
               />
               {/* Put bar */}
@@ -445,7 +467,7 @@ function OIByExpiryChart({
                 y={pad.top + chartH - putH}
                 width={barW}
                 height={Math.max(putH, 1)}
-                fill={isHovered ? '#ef4444' : '#ef4444cc'}
+                fill={isHovered ? '#ef4444' : '#ef4444'}
                 rx={3}
               />
 
@@ -548,6 +570,8 @@ function IVSmileChart({
   height?: number;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   if (points.length < 2) return null;
 
@@ -598,16 +622,24 @@ function IVSmileChart({
   const hoveredPoint = hovered !== null ? points[hovered] : null;
   const hoveredX = hovered !== null ? scaleX(hovered) : 0;
 
+  const ivClampedLeft = (() => {
+    if (hovered === null || !containerRef.current) return 0;
+    const containerW = containerRef.current.offsetWidth;
+    const tooltipW = tooltipRef.current?.offsetWidth ?? 180;
+    const rawLeft = (hoveredX / width) * containerW;
+    return Math.max(8, Math.min(rawLeft - tooltipW / 2, containerW - tooltipW - 8));
+  })();
+
   return (
-    <div className="relative" onMouseLeave={() => setHovered(null)}>
+    <div className="relative" ref={containerRef} onMouseLeave={() => setHovered(null)}>
       {/* Tooltip */}
       {hoveredPoint && hovered !== null && (
         <div
+          ref={tooltipRef}
           className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-md"
           style={{
-            left: `${(hoveredX / width) * 100}%`,
+            left: `${ivClampedLeft}px`,
             top: 0,
-            transform: `translateX(${hovered > points.length * 0.7 ? '-100%' : hovered < points.length * 0.3 ? '0%' : '-50%'})`,
           }}
         >
           <p className="text-xs font-bold text-white font-mono mb-1.5">
@@ -635,7 +667,7 @@ function IVSmileChart({
         </div>
       )}
 
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Implied volatility smile chart">
         {/* Grid + Y labels */}
         {yTicks.map((tick) => (
           <g key={tick.value}>
@@ -1021,7 +1053,7 @@ export default function OptionsPage() {
                   const callDash = (callPct / 100) * c;
 
                   return (
-                    <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
+                    <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0" role="img" aria-label="Put/Call ratio donut chart">
                       <circle cx="60" cy="60" r={r} fill="none" stroke="#ef4444" strokeWidth="14" opacity="0.5" />
                       <circle
                         cx="60" cy="60" r={r} fill="none"

@@ -84,6 +84,14 @@ export const HTX_LIQ_SYMBOLS = [
 ];
 
 // WebSocket URLs for each exchange
+// Top dYdX v4 markets for per-market trade subscription (filter for type=Liquidated)
+export const DYDX_LIQ_MARKETS = [
+  'BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'DOGE-USD',
+  'AVAX-USD', 'LINK-USD', 'ADA-USD', 'DOT-USD', 'NEAR-USD',
+  'ARB-USD', 'OP-USD', 'SUI-USD', 'APT-USD', 'INJ-USD',
+  'PEPE-USD', 'WIF-USD', 'SEI-USD', 'TIA-USD', 'FIL-USD',
+];
+
 export const EXCHANGE_WS_URLS: Record<string, string> = {
   Binance: 'wss://fstream.binance.com/ws/!forceOrder@arr',
   Bybit: 'wss://stream.bybit.com/v5/public/linear',
@@ -94,6 +102,8 @@ export const EXCHANGE_WS_URLS: Record<string, string> = {
   BingX: 'wss://open-api-ws.bingx.com/market',
   HTX: 'wss://api.hbdm.com/linear-swap-ws',
   gTrade: 'wss://backend-arbitrum.gains.trade',
+  dYdX: 'wss://indexer.dydx.trade/v4/ws',
+  Bitfinex: 'wss://api-pub.bitfinex.com/ws/2',
 };
 
 // Returns the JSON-stringified subscription messages to send after connecting
@@ -135,6 +145,20 @@ export function getSubscriptionMessages(exchange: string): string[] {
         sub: `public.${sym}.liquidation_orders`,
         id: `htx-${i}`,
       }));
+    case 'dYdX':
+      // Subscribe to trades for top markets, filter for type=Liquidated in parser
+      return DYDX_LIQ_MARKETS.map(market => JSON.stringify({
+        type: 'subscribe',
+        channel: 'v4_trades',
+        id: market,
+        batched: false,
+      }));
+    case 'Bitfinex':
+      return [JSON.stringify({
+        event: 'subscribe',
+        channel: 'status',
+        key: 'liq:global',
+      })];
     default:
       // Binance, gTrade: no subscription needed
       return [];
@@ -417,4 +441,72 @@ export function parseGTradeLiq(data: any): Liquidation | null {
     exchange: 'gTrade',
     timestamp: trade.closeTimestamp ? parseInt(trade.closeTimestamp, 10) : Date.now(),
   };
+}
+
+export function parseDydxLiq(data: any): Liquidation | null {
+  // dYdX v4 trades channel: { type: "channel_data", channel: "v4_trades", id: "BTC-USD", contents: { trades: [...] } }
+  if (data.type !== 'channel_data' || data.channel !== 'v4_trades') return null;
+  const trades = data.contents?.trades;
+  if (!Array.isArray(trades) || trades.length === 0) return null;
+
+  // Only process liquidation trades
+  for (const t of trades) {
+    if (t.type !== 'Liquidated' && t.type !== 'Deleveraged') continue;
+    const market = data.id || ''; // "BTC-USD"
+    const symbol = market.split('-')[0];
+    if (!symbol) continue;
+    const price = parseFloat(t.price || '0');
+    const size = parseFloat(t.size || '0');
+    if (price <= 0 || size <= 0) continue;
+    return {
+      id: `dydx-${t.id || Date.now()}-${Date.now()}`,
+      symbol,
+      side: t.side === 'BUY' ? 'short' : 'long',
+      price,
+      quantity: size,
+      value: price * size,
+      exchange: 'dYdX',
+      timestamp: t.createdAt ? new Date(t.createdAt).getTime() : Date.now(),
+    };
+  }
+  return null;
+}
+
+export function parseBitfinexLiq(data: any): Liquidation | null {
+  // Bitfinex status channel: [CHAN_ID, [[...], [...], ...]] or [CHAN_ID, [...]
+  // Heartbeats: [CHAN_ID, "hb"]
+  if (!Array.isArray(data) || data.length < 2) return null;
+  if (data[1] === 'hb') return null; // heartbeat
+
+  const payload = data[1];
+  if (!Array.isArray(payload)) return null;
+
+  // Can be a snapshot (array of arrays) or single update
+  const items = Array.isArray(payload[0]) ? payload : [payload];
+
+  for (const item of items) {
+    // item format: ["pos", POS_ID, TIME_MS, null, SYMBOL, AMOUNT, BASE_PRICE, null, IS_MATCH, IS_MARKET_SOLD, null, LIQ_PRICE]
+    if (item[0] !== 'pos') continue;
+    const rawSymbol = String(item[4] || '');
+    // Bitfinex uses "tBTCUSD" format — strip leading 't' and trailing 'USD'/'UST'
+    const symbol = rawSymbol.replace(/^t/, '').replace(/USD$/, '').replace(/UST$/, '').replace(/F0$/, '');
+    if (!symbol || !isLiqCryptoSymbol(symbol)) continue;
+
+    const amount = parseFloat(item[5] || '0'); // negative = short position liquidated
+    const price = parseFloat(item[11] || item[6] || '0'); // liq price or entry price
+    if (price <= 0) continue;
+
+    const absAmount = Math.abs(amount);
+    return {
+      id: `bfx-${item[1]}-${item[2] || Date.now()}`,
+      symbol,
+      side: amount > 0 ? 'long' : 'short',
+      price,
+      quantity: absAmount,
+      value: price * absAmount,
+      exchange: 'Bitfinex',
+      timestamp: typeof item[2] === 'number' ? item[2] : Date.now(),
+    };
+  }
+  return null;
 }

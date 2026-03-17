@@ -34,7 +34,7 @@ export default function AssetSelector({ value, onChange }: Props) {
           <div className="p-2 border-b border-white/[0.06]">
             <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.04]">
               <Search className="w-3.5 h-3.5 text-neutral-500" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="bg-transparent text-sm text-white outline-none w-full" autoFocus />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." aria-label="Search assets" className="bg-transparent text-sm text-white outline-none w-full" autoFocus />
             </div>
           </div>
           {filtered.map(asset => (

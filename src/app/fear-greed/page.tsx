@@ -53,7 +53,7 @@ function GaugeCircle({ value, size = 200 }: { value: number; size?: number }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90" role="img" aria-label="Fear and Greed index gauge">
         {/* Background circle */}
         <circle
           cx={center}

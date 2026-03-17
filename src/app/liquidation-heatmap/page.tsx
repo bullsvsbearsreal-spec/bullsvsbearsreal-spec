@@ -173,8 +173,8 @@ function HeatmapVisualization({
         <div
           className="absolute z-20 pointer-events-none bg-hub-darker border border-white/10 rounded-lg px-3 py-2 shadow-xl"
           style={{
-            left: Math.min(tooltip.x, containerWidth - 170),
-            top: Math.max(tooltip.y - 80, 4),
+            left: Math.max(4, Math.min(tooltip.x + 8, containerWidth - 180)),
+            top: Math.max(4, Math.min(tooltip.y - 80, containerWidth > 0 ? 500 : 4)),
           }}
         >
           <p className="text-[11px] font-semibold text-white mb-0.5">{tooltip.time}</p>

@@ -186,7 +186,7 @@ export default function OpenInterestPage() {
           return (
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
               <h3 className="text-white font-semibold text-sm mb-3">OI Distribution by Exchange</h3>
-              <svg width="100%" height={chartHeight} viewBox={`0 0 700 ${chartHeight}`} preserveAspectRatio="xMinYMid meet" className="overflow-visible">
+              <svg width="100%" height={chartHeight} viewBox={`0 0 700 ${chartHeight}`} preserveAspectRatio="xMinYMid meet" className="overflow-visible" role="img" aria-label="Open interest distribution by exchange">
                 {top8.map(([exchange, value], i) => {
                   const pct = totalOI > 0 ? (value / totalOI) * 100 : 0;
                   const barW = maxVal > 0 ? (value / maxVal) * (700 - labelWidth - valueWidth - 16) : 0;
@@ -224,12 +224,14 @@ export default function OpenInterestPage() {
         })()}
 
         {/* OI History Chart */}
-        <OIHistoryChart symbol="BTC" />
+        <OIHistoryChart symbol={searchTerm.toUpperCase() || 'BTC'} />
 
         {/* View Toggle & Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <div className="flex rounded-md overflow-hidden bg-white/[0.04]">
+          <div className="flex rounded-md overflow-hidden bg-white/[0.04]" role="tablist" aria-label="View mode">
             <button
+              role="tab"
+              aria-selected={viewMode === 'all'}
               onClick={() => setViewMode('all')}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === 'all' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'
@@ -238,6 +240,8 @@ export default function OpenInterestPage() {
               All Data
             </button>
             <button
+              role="tab"
+              aria-selected={viewMode === 'aggregated'}
               onClick={() => setViewMode('aggregated')}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === 'aggregated' ? 'bg-hub-yellow text-black' : 'text-neutral-500 hover:text-white'

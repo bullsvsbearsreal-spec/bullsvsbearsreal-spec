@@ -62,8 +62,8 @@ async function fetchBinanceTopTraderLS(symbol: string, period: string, limit: nu
   );
   if (!data) return null;
   return data.map((d: any) => ({
-    longRatio: parseFloat(d.longAccount) * 100,
-    shortRatio: parseFloat(d.shortAccount) * 100,
+    longRatio: parseFloat(d.longPosition ?? d.longAccount) * 100,
+    shortRatio: parseFloat(d.shortPosition ?? d.shortAccount) * 100,
     longShortRatio: parseFloat(d.longShortRatio),
     timestamp: d.timestamp,
   }));

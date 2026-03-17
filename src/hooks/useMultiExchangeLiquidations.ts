@@ -12,6 +12,8 @@ import {
   parseBingxLiq,
   parseHTXLiq,
   parseGTradeLiq,
+  parseDydxLiq,
+  parseBitfinexLiq,
   decompressGzip,
   EXCHANGE_WS_URLS,
   getSubscriptionMessages,
@@ -128,8 +130,15 @@ function createExchangeWS(
             ws.send('ping');
           }
         }, 25000);
+      } else if (exchange === 'Bitfinex') {
+        pingTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ event: 'ping', cid: Date.now() }));
+          }
+        }, 25000);
       }
       // HTX ping is handled via pong response to server-sent pings (in onmessage)
+      // dYdX uses standard WebSocket ping frames, no custom ping needed
     };
 
     // HTX sends gzip-compressed binary data — need special binaryType
@@ -208,11 +217,15 @@ function createExchangeWS(
         if (event.data === 'pong' || event.data === '{"event":"pong"}' || event.data === 'Pong') return;
         const data = JSON.parse(event.data);
         // Skip subscription confirmations, pong, and test results
-        if (data.event === 'subscribe' || data.op === 'pong' || data.ret_msg === 'pong' || data.success !== undefined) return;
+        if (data.event === 'subscribe' || data.event === 'pong' || data.op === 'pong' || data.ret_msg === 'pong' || data.success !== undefined) return;
         // Skip Deribit JSON-RPC responses (subscription confirmations & test results)
         if (data.id !== undefined && data.result !== undefined) return;
         // Skip MEXC pong
         if (data.channel === 'pong' || data.data === 'pong') return;
+        // Skip dYdX subscription confirmations
+        if (data.type === 'subscribed' || data.type === 'connected') return;
+        // Skip Bitfinex info/subscription events (object with "event" key)
+        if (data.event === 'info' || data.event === 'subscribed') return;
 
         let liq: Liquidation | null = null;
         switch (exchange) {
@@ -223,6 +236,8 @@ function createExchangeWS(
           case 'Deribit': liq = parseDeribitLiq(data); break;
           case 'MEXC': liq = parseMexcLiq(data); break;
           case 'BingX': liq = parseBingxLiq(data); break;
+          case 'dYdX': liq = parseDydxLiq(data); break;
+          case 'Bitfinex': liq = parseBitfinexLiq(data); break;
         }
         if (liq && liq.value > 0) {
           onMessage(liq);

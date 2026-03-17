@@ -204,10 +204,12 @@ export default function OrderflowPage() {
         </div>
 
         {/* Symbol selector */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-4" role="tablist" aria-label="Symbol">
           {SYMBOLS.map((s) => (
             <button
               key={s}
+              role="tab"
+              aria-selected={symbol === s}
               onClick={() => setSymbol(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 symbol === s
@@ -221,10 +223,12 @@ export default function OrderflowPage() {
         </div>
 
         {/* Tab bar */}
-        <div className="flex items-center gap-1 mb-6 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1 mb-6 overflow-x-auto scrollbar-none" role="tablist" aria-label="View">
           {VIEW_TABS.map(tab => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.key

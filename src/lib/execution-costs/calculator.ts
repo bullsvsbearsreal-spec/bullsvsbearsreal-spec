@@ -94,9 +94,9 @@ export async function calculateAllVenueCosts(
     }
   }
 
-  // gTrade (AMM formula)
+  // gTrade (AMM formula) — use dynamic fee from chain when available
   if (gtradeParams && gtradeParams.midPrice > 0) {
-    const fee = EXCHANGE_FEES['gTrade']?.taker ?? 0.05;
+    const fee = gtradeParams.baseFeeP > 0 ? gtradeParams.baseFeeP : (EXCHANGE_FEES['gTrade']?.taker ?? 0.05);
     const gtCost = computeGTradeCost(gtradeParams, orderSizeUsd, direction);
     results.push({
       exchange: 'gTrade', available: true, fee, spread: 0,

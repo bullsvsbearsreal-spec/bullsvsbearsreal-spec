@@ -534,7 +534,10 @@ export default function LiquidationMapPage() {
             <div className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-red-400 font-mono">{longPct.toFixed(1)}% Long Liq</span>
-                <span className="text-[10px] text-neutral-600">Estimated Long / Short Liq Split</span>
+                <span className="text-[10px] text-neutral-600 flex items-center gap-1">
+                  Estimated Long / Short Liq Split
+                  <span className="px-1.5 py-0.5 rounded bg-hub-yellow/10 text-hub-yellow text-[9px] font-semibold uppercase tracking-wider">Estimated</span>
+                </span>
                 <span className="text-xs text-green-400 font-mono">{(100 - longPct).toFixed(1)}% Short Liq</span>
               </div>
               <div className="flex h-2 rounded-full overflow-hidden bg-white/[0.04]">

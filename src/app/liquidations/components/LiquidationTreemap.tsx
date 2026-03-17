@@ -87,7 +87,7 @@ export default function LiquidationTreemap({
       </div>
 
       {/* Body */}
-      <div className="p-2">
+      <div className="p-2" role="grid" aria-label="Liquidation heatmap tiles">
         {/* Top 3 large tiles */}
         {topItems.length > 0 && (
           <div className="grid grid-cols-3 gap-1.5 mb-1.5">
@@ -101,7 +101,7 @@ export default function LiquidationTreemap({
                 <button
                   key={item.symbol}
                   onClick={() => onSymbolClick?.(item.symbol)}
-                  className={`${colors} h-24 rounded-lg p-2.5 flex flex-col justify-between hover:brightness-110 transition-all text-left`}
+                  className={`${colors} h-24 rounded-lg p-2.5 flex flex-col justify-between hover:brightness-110 focus-visible:ring-2 focus-visible:ring-hub-yellow/60 focus-visible:outline-none transition-all text-left`}
                 >
                   <div className="flex items-center gap-1.5">
                     <TokenIconSimple symbol={item.symbol} size={16} />
@@ -143,7 +143,7 @@ export default function LiquidationTreemap({
                 <button
                   key={item.symbol}
                   onClick={() => onSymbolClick?.(item.symbol)}
-                  className={`${colors} h-14 rounded-lg p-2 flex flex-col justify-between hover:brightness-110 transition-all text-left`}
+                  className={`${colors} h-14 rounded-lg p-2 flex flex-col justify-between hover:brightness-110 focus-visible:ring-2 focus-visible:ring-hub-yellow/60 focus-visible:outline-none transition-all text-left`}
                 >
                   <div className="flex items-center gap-1">
                     <TokenIconSimple symbol={item.symbol} size={12} />

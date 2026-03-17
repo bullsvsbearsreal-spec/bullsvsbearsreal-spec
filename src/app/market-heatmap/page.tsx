@@ -300,8 +300,8 @@ export default function MarketHeatmapPage() {
               <div
                 className="fixed z-50 pointer-events-none bg-hub-gray border border-white/[0.1] rounded-lg p-3 shadow-xl"
                 style={{
-                  left: tooltipPos.x + 12,
-                  top: tooltipPos.y + 12,
+                  left: Math.max(8, Math.min(tooltipPos.x + 12, window.innerWidth - 220)),
+                  top: Math.max(8, Math.min(tooltipPos.y + 12, window.innerHeight - 120)),
                 }}
               >
                 <div className="flex items-center gap-2 mb-1.5">

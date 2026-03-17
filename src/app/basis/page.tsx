@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Pagination from '@/components/Pagination';
@@ -117,7 +117,8 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
   const total = data.length || 1;
 
   return (
-    <div className="grid grid-cols-8 gap-1 items-end">
+    <div className="overflow-x-auto -mx-1 px-1">
+    <div className="grid grid-cols-8 gap-1 items-end min-w-[480px]">
       {buckets.map((b, i) => {
         const pct = (b.count / total) * 100;
         const barPct = (b.count / maxCount) * 100;
@@ -129,9 +130,15 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
             </p>
             <div className="h-10 flex items-end">
               <div
-                className={`w-full rounded transition-all group-hover:opacity-90 ${isNeg ? 'bg-red-500/60 group-hover:bg-red-500/80' : 'bg-emerald-500/60 group-hover:bg-emerald-500/80'}`}
+                className={`w-full rounded transition-all group-hover:opacity-90 relative flex items-center justify-center ${isNeg ? 'bg-red-500/60 group-hover:bg-red-500/80' : 'bg-emerald-500/60 group-hover:bg-emerald-500/80'}`}
                 style={{ height: `${Math.max(barPct, 4)}%` }}
-              />
+              >
+                {barPct > 15 && (
+                  <span className="text-[9px] font-bold text-white/70 leading-none select-none">
+                    {isNeg ? '\u2212' : '+'}
+                  </span>
+                )}
+              </div>
             </div>
             <p className="text-[9px] text-neutral-500 mt-1 leading-tight truncate group-hover:text-neutral-300">
               {b.label}
@@ -140,6 +147,7 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
         );
       })}
     </div>
+    </div>
   );
 }
 
@@ -147,6 +155,8 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
 
 function TopBasisChart({ entries, direction }: { entries: BasisEntry[]; direction: 'premium' | 'discount' }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   if (entries.length === 0) return null;
 
   const maxAbs = Math.max(...entries.map(e => Math.abs(e.basis)), 0.01);
@@ -158,8 +168,49 @@ function TopBasisChart({ entries, direction }: { entries: BasisEntry[]; directio
 
   const isGreen = direction === 'premium';
 
+  const hoveredEntry = hovered !== null ? entries[hovered] : null;
+  const tooltipSvgX = hovered !== null ? pad.left + (Math.abs(entries[hovered].basis) / maxAbs) * chartW + 8 : 0;
+  const tooltipSvgY = hovered !== null ? 4 + hovered * 36 : 0;
+
+  const clampedLeft = (() => {
+    if (hovered === null || !containerRef.current) return 0;
+    const containerW = containerRef.current.offsetWidth;
+    const tooltipW = tooltipRef.current?.offsetWidth ?? 160;
+    const rawLeft = (tooltipSvgX / width) * containerW;
+    return Math.max(8, Math.min(rawLeft, containerW - tooltipW - 8));
+  })();
+
+  const clampedTop = (() => {
+    if (hovered === null || !containerRef.current) return 0;
+    const containerH = containerRef.current.offsetHeight;
+    const tooltipH = tooltipRef.current?.offsetHeight ?? 60;
+    const rawTop = (tooltipSvgY / height) * containerH;
+    return Math.max(0, Math.min(rawTop, containerH - tooltipH));
+  })();
+
   return (
-    <div className="relative" onMouseLeave={() => setHovered(null)}>
+    <div className="relative" ref={containerRef} onMouseLeave={() => setHovered(null)}>
+      {hoveredEntry && hovered !== null && (
+        <div
+          ref={tooltipRef}
+          className="absolute z-20 pointer-events-none bg-[#1a1a2e]/95 border border-white/10 rounded-xl px-3 py-2 shadow-2xl backdrop-blur-md"
+          style={{
+            left: `${clampedLeft}px`,
+            top: `${clampedTop}px`,
+          }}
+        >
+          <p className="text-[11px] font-bold text-white font-mono">{hoveredEntry.symbol}</p>
+          <p className="text-[10px] text-neutral-400">{hoveredEntry.exchange}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`text-[11px] font-mono font-bold ${isGreen ? 'text-green-400' : 'text-red-400'}`}>
+              {formatBasis(hoveredEntry.basis)}
+            </span>
+            <span className="text-[10px] text-neutral-500">
+              {formatFundingRate(hoveredEntry.fundingRate)}/h
+            </span>
+          </div>
+        </div>
+      )}
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
         {entries.map((e, i) => {
           const y = 4 + i * 36;
@@ -615,7 +666,7 @@ export default function BasisPage() {
                   const premDash = (premPct / 100) * c;
 
                   return (
-                    <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
+                    <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0" role="img" aria-label="Basis premium/discount ratio">
                       <circle cx="60" cy="60" r={r} fill="none" stroke="#ef4444" strokeWidth="14" opacity="0.5" />
                       <circle
                         cx="60" cy="60" r={r} fill="none"
@@ -676,7 +727,7 @@ export default function BasisPage() {
             <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
 
               {/* Exchange sidebar */}
-              <Section className="lg:sticky lg:top-4 lg:self-start">
+              <Section className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
                 <SectionHeader
                   icon={<Globe className="w-4 h-4 text-hub-yellow" />}
                   title="By Exchange"
@@ -745,6 +796,7 @@ export default function BasisPage() {
                     <input
                       type="text"
                       placeholder="Search symbol..."
+                      aria-label="Search symbols by name"
                       value={searchTerm}
                       onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                       className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-xl text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/40 transition-colors"
@@ -772,8 +824,11 @@ export default function BasisPage() {
                           ]).map(col => (
                             <th
                               key={col.field}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleSort(col.field)}
-                              className={`${col.align === 'right' ? 'text-right' : 'text-left'} px-4 py-3 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors ${sortField === col.field ? 'text-hub-yellow' : 'text-neutral-500'}`}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(col.field); } }}
+                              className={`${col.align === 'right' ? 'text-right' : 'text-left'} px-4 py-3 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-hub-yellow/20 ${sortField === col.field ? 'text-hub-yellow' : 'text-neutral-500'}`}
                             >
                               {col.label}
                               <SortIcon field={col.field} />
@@ -859,8 +914,8 @@ export default function BasisPage() {
             </div>
 
             {/* Info box */}
-            <div className="p-4 rounded-2xl bg-hub-yellow/5 border border-hub-yellow/10">
-              <p className="text-neutral-500 text-xs leading-relaxed flex items-start gap-2.5">
+            <div className="p-4 rounded-2xl bg-hub-yellow/5 border border-hub-yellow/10 border-l-2 border-l-hub-yellow/40">
+              <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
                 <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
                 <span>
                   <span className="text-success font-medium">Positive basis (premium)</span> = futures trading above spot; traders are bullish.{' '}

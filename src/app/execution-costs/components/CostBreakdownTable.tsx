@@ -25,7 +25,7 @@ export default function CostBreakdownTable({ venues, asset }: Props) {
   });
 
   const th = (label: string, key: SortKey) => (
-    <th key={key} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-neutral-300 select-none" onClick={() => handleSort(key)}>
+    <th key={key} role="button" tabIndex={0} aria-label={`Sort by ${label}`} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-neutral-300 select-none focus:outline-none focus:ring-2 focus:ring-hub-yellow/20" onClick={() => handleSort(key)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(key); } }}>
       <span className="flex items-center gap-1">{label}<ArrowUpDown className="w-3 h-3" /></span>
     </th>
   );
@@ -34,8 +34,8 @@ export default function CostBreakdownTable({ venues, asset }: Props) {
   const fmtUsd = (v: number) => v === Infinity ? '\u221E' : formatUSD(v, 1);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto scrollbar-thin rounded-xl border border-white/[0.06]">
+      <table className="w-full text-sm min-w-[700px]">
         <thead className="bg-white/[0.02]">
           <tr>
             <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 w-8">#</th>

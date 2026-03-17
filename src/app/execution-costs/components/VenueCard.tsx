@@ -2,7 +2,7 @@
 import { VenueCost } from '@/lib/execution-costs/types';
 import { EXCHANGE_BADGE_COLORS, getExchangeTradeUrl } from '@/lib/constants/exchanges';
 import { formatUSD } from '@/lib/utils/format';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, AlertTriangle } from 'lucide-react';
 
 interface Props { venue: VenueCost; rank: number; asset: string; }
 
@@ -12,11 +12,14 @@ export default function VenueCard({ venue, rank, asset }: Props) {
 
   if (!venue.available) {
     return (
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] px-4 py-3 opacity-50">
+      <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] px-4 py-3 opacity-60 grayscale">
         <div className="flex items-center gap-2 mb-2">
           <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor}`}>{venue.exchange}</span>
         </div>
-        <p className="text-neutral-600 text-xs">{venue.error || 'Unavailable'}</p>
+        <div className="flex items-center gap-1.5 text-neutral-600 text-xs">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          <p>{venue.error || 'Unavailable'}</p>
+        </div>
       </div>
     );
   }
@@ -43,7 +46,7 @@ export default function VenueCard({ venue, rank, asset }: Props) {
         )}
       </div>
       {tradeUrl && (
-        <a href={tradeUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-hub-yellow/10 text-hub-yellow text-xs font-medium hover:bg-hub-yellow/20 transition-colors">
+        <a href={tradeUrl} target="_blank" rel="noopener noreferrer" aria-label={`Trade on ${venue.exchange} (opens in new tab)`} className="mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-hub-yellow/10 text-hub-yellow text-xs font-medium hover:bg-hub-yellow/20 transition-colors">
           Trade Now <ExternalLink className="w-3 h-3" />
         </a>
       )}

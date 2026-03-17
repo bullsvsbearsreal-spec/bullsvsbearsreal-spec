@@ -467,10 +467,13 @@ export default function OIHeatmapPage() {
                         y={showOI ? cy - detailFontSize * 0.6 : cy}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fill="white"
+                        fill="#ffffff"
                         fontWeight="700"
                         fontSize={symbolFontSize}
-                        style={{ pointerEvents: 'none' }}
+                        style={{ pointerEvents: 'none', textShadow: '0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5)' }}
+                        stroke="rgba(0,0,0,0.3)"
+                        strokeWidth={symbolFontSize * 0.04}
+                        paintOrder="stroke"
                       >
                         {rect.item.symbol}
                       </text>
@@ -481,9 +484,12 @@ export default function OIHeatmapPage() {
                         y={cy + symbolFontSize * 0.45}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fill="rgba(255,255,255,0.7)"
+                        fill="rgba(255,255,255,0.85)"
                         fontSize={detailFontSize}
-                        style={{ pointerEvents: 'none' }}
+                        style={{ pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}
+                        stroke="rgba(0,0,0,0.25)"
+                        strokeWidth={detailFontSize * 0.03}
+                        paintOrder="stroke"
                       >
                         {formatCompact(rect.item.totalOI)}
                       </text>
@@ -496,14 +502,17 @@ export default function OIHeatmapPage() {
                         dominantBaseline="central"
                         fill={
                           rect.item.change24h >= 0.5
-                            ? 'rgba(134, 239, 172, 0.9)'
+                            ? 'rgba(134, 239, 172, 1)'
                             : rect.item.change24h <= -0.5
-                              ? 'rgba(252, 165, 165, 0.9)'
-                              : 'rgba(200, 200, 200, 0.7)'
+                              ? 'rgba(252, 165, 165, 1)'
+                              : 'rgba(220, 220, 220, 0.9)'
                         }
                         fontSize={detailFontSize}
                         fontWeight="500"
-                        style={{ pointerEvents: 'none' }}
+                        style={{ pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}
+                        stroke="rgba(0,0,0,0.25)"
+                        strokeWidth={detailFontSize * 0.03}
+                        paintOrder="stroke"
                       >
                         {rect.item.change24h >= 0 ? '+' : ''}
                         {rect.item.change24h.toFixed(1)}%
@@ -519,8 +528,8 @@ export default function OIHeatmapPage() {
               <div
                 className="fixed z-50 pointer-events-none bg-[#121216] border border-white/[0.1] rounded-lg p-3 shadow-xl"
                 style={{
-                  left: tooltipPos.x + 14,
-                  top: tooltipPos.y + 14,
+                  left: Math.max(8, Math.min(tooltipPos.x + 14, window.innerWidth - 220)),
+                  top: Math.max(8, Math.min(tooltipPos.y + 14, window.innerHeight - 120)),
                 }}
               >
                 <div className="flex items-center gap-2 mb-1.5">

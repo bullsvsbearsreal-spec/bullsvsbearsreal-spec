@@ -295,8 +295,8 @@ export default function FundingHeatmapPage() {
             <div
               className="fixed z-50 pointer-events-none bg-hub-darker border border-white/[0.1] rounded-lg px-3 py-2 shadow-xl text-xs"
               style={{
-                top: Math.min(hoveredCell.y, window.innerHeight - 80),
-                left: Math.min(hoveredCell.x, window.innerWidth - 160),
+                top: Math.max(8, Math.min(hoveredCell.y + 12, window.innerHeight - 90)),
+                left: Math.max(8, Math.min(hoveredCell.x + 12, window.innerWidth - 180)),
               }}
             >
               <p className="font-semibold text-white">{hoveredCell.symbol}</p>

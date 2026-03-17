@@ -12,6 +12,7 @@ interface FeedRowProps {
   exchange: string;
   timestamp: number;
   isNew?: boolean;
+  tick?: number;
 }
 
 function getValueColor(value: number): string {

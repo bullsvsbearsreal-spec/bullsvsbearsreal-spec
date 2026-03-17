@@ -31,7 +31,7 @@ export default function LiquidationBottomBar({
             <span className="hidden sm:inline">Long</span>
             <span className="sm:hidden"> L</span>
           </span>
-          <div className="h-2 rounded-full overflow-hidden bg-white/[0.06] flex-1 flex min-w-0">
+          <div className="h-2 rounded-full overflow-hidden bg-white/[0.06] flex-1 flex min-w-0" role="meter" aria-label="Long vs Short ratio" aria-valuenow={Math.round(longPct)} aria-valuemin={0} aria-valuemax={100}>
             <div
               className="bg-red-500/80 transition-all duration-700 rounded-l-full"
               style={{ width: `${longPct}%` }}
@@ -53,12 +53,14 @@ export default function LiquidationBottomBar({
         <div className="h-4 w-px bg-white/[0.06] shrink-0" />
 
         {/* Right: Exchange filter chips */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0" role="tablist" aria-label="Exchange type filter">
           {FILTERS.map((f) => {
             const isActive = exchangeFilter === f.key;
             return (
               <button
                 key={f.key}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => onExchangeFilterChange(f.key)}
                 className={`px-1.5 sm:px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase transition-colors ${
                   isActive

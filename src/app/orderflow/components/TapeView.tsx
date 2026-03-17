@@ -54,9 +54,9 @@ function formatTimeSec(ts: number): string {
 }
 
 function formatPrice(price: number): string {
-  if (price >= 1000) return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (price >= 1) return price.toFixed(4);
-  return price.toFixed(6);
+  if (price >= 1000) return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (price >= 1) return '$' + price.toFixed(4);
+  return '$' + price.toFixed(6);
 }
 
 /* ─── Component ──────────────────────────────────────────────────── */
