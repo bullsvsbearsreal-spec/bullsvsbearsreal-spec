@@ -54,8 +54,8 @@ interface TreemapItem {
 // DEX exchanges for CEX/DEX filtering
 const DEX_EXCHANGES = new Set(['gTrade', 'dYdX', 'Hyperliquid', 'GMX', 'Drift', 'Aevo', 'Lighter']);
 
-// All 11 WebSocket-supported exchanges
-const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX', 'HTX', 'gTrade', 'dYdX', 'Bitfinex'];
+// All 8 WebSocket-supported exchanges (BingX/MEXC/HTX removed — no public liquidation WS)
+const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'gTrade', 'dYdX', 'Bitfinex'];
 
 // ─── SWR Fetcher ────────────────────────────────────
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -84,7 +84,7 @@ export default function LiquidationsPage() {
 
   const hours = TIMEFRAME_HOURS[timeframe];
 
-  // ─── Real-time WebSocket Feed (9 exchanges) ─────
+  // ─── Real-time WebSocket Feed (8 exchanges) ─────
   const { liquidations: wsLiqs, connections } = useMultiExchangeLiquidations({
     exchanges: WS_EXCHANGES,
     minValue: 1000, // $1K minimum to reduce noise
@@ -202,7 +202,7 @@ export default function LiquidationsPage() {
           </div>
         </div>
 
-        {/* Right column: Live feed (now powered by 9-exchange WebSocket) */}
+        {/* Right column: Live feed (8-exchange WebSocket) */}
         <div className="min-h-[400px] md:min-h-0 md:h-full">
           <LiquidationFeed
             data={feedItems}

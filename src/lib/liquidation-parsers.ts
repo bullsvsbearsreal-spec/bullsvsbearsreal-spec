@@ -72,16 +72,7 @@ export const BYBIT_SYMBOLS = [
   'SUIUSDT', 'PEPEUSDT', 'WIFUSDT', 'SEIUSDT', 'TIAUSDT',
 ];
 
-// Top symbols for BingX (per-symbol subscription required)
-export const BINGX_SYMBOLS = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT'];
-
-// Top symbols for HTX linear swap liquidation feed
-export const HTX_LIQ_SYMBOLS = [
-  'BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT',
-  'BNB-USDT', 'ADA-USDT', 'AVAX-USDT', 'LINK-USDT', 'DOT-USDT',
-  'LTC-USDT', 'UNI-USDT', 'APT-USDT', 'ARB-USDT', 'OP-USDT',
-  'SUI-USDT', 'PEPE-USDT', 'WIF-USDT', 'INJ-USDT', 'NEAR-USDT',
-];
+// Note: BingX, MEXC, HTX removed — no public liquidation WS streams available (verified Mar 2026)
 
 // WebSocket URLs for each exchange
 // Top dYdX v4 markets for per-market trade subscription (filter for type=Liquidated)
@@ -98,10 +89,7 @@ export const EXCHANGE_WS_URLS: Record<string, string> = {
   OKX: 'wss://ws.okx.com:8443/ws/v5/public',
   Bitget: 'wss://ws.bitget.com/v2/ws/public',
   Deribit: 'wss://www.deribit.com/ws/api/v2',
-  MEXC: 'wss://contract.mexc.com/edge',
-  BingX: 'wss://open-api-ws.bingx.com/market',
-  HTX: 'wss://api.hbdm.com/linear-swap-ws',
-  gTrade: 'wss://backend-arbitrum.gains.trade',
+  gTrade: 'wss://backend-arbitrum.gains.trade/socket.io/?EIO=4&transport=websocket',
   dYdX: 'wss://indexer.dydx.trade/v4/ws',
   Bitfinex: 'wss://api-pub.bitfinex.com/ws/2',
 };
@@ -110,7 +98,8 @@ export const EXCHANGE_WS_URLS: Record<string, string> = {
 export function getSubscriptionMessages(exchange: string): string[] {
   switch (exchange) {
     case 'Bybit': {
-      const args = BYBIT_SYMBOLS.map(s => `liquidation.${s}`);
+      // allLiquidation topic replaced deprecated liquidation topic (2025)
+      const args = BYBIT_SYMBOLS.map(s => `allLiquidation.${s}`);
       return [JSON.stringify({ op: 'subscribe', args })];
     }
     case 'OKX':
@@ -124,27 +113,15 @@ export function getSubscriptionMessages(exchange: string): string[] {
         args: [{ instType: 'USDT-FUTURES', channel: 'liquidation', instId: 'default' }],
       })];
     case 'Deribit':
+      // .raw channels require auth; use trades.*.100ms and filter for liquidation in parser
       return [
         JSON.stringify({
           jsonrpc: '2.0',
           id: 1,
           method: 'public/subscribe',
-          params: { channels: ['liquidations.BTC-PERPETUAL.raw', 'liquidations.ETH-PERPETUAL.raw', 'liquidations.SOL-PERPETUAL.raw'] },
+          params: { channels: ['trades.BTC-PERPETUAL.100ms', 'trades.ETH-PERPETUAL.100ms', 'trades.SOL_USDC-PERPETUAL.100ms'] },
         }),
       ];
-    case 'MEXC':
-      return [JSON.stringify({ method: 'sub.liquidation.order', param: {} })];
-    case 'BingX':
-      return BINGX_SYMBOLS.map((sym, i) => JSON.stringify({
-        id: `bingx-${i}`,
-        reqType: 'sub',
-        dataType: `${sym}@forceOrder`,
-      }));
-    case 'HTX':
-      return HTX_LIQ_SYMBOLS.map((sym, i) => JSON.stringify({
-        sub: `public.${sym}.liquidation_orders`,
-        id: `htx-${i}`,
-      }));
     case 'dYdX':
       // Subscribe to trades for top markets, filter for type=Liquidated in parser
       return DYDX_LIQ_MARKETS.map(market => JSON.stringify({
@@ -203,20 +180,23 @@ export function parseBinanceLiq(data: any): Liquidation | null {
 }
 
 export function parseBybitLiq(data: any): Liquidation | null {
-  if (!data.topic?.startsWith('liquidation.')) return null;
+  // allLiquidation.{symbol} topic (replaced deprecated liquidation.{symbol})
+  if (!data.topic?.startsWith('allLiquidation.') && !data.topic?.startsWith('liquidation.')) return null;
   const d = data.data;
   if (!d) return null;
-  const price = parseFloat(d.price);
-  const size = parseFloat(d.size);
+  const price = parseFloat(d.price || d.p || '0');
+  const size = parseFloat(d.size || d.v || '0');
+  const symbol = (d.symbol || d.s || '').replace('USDT', '').replace('USDC', '');
+  if (!symbol || price <= 0 || size <= 0) return null;
   return {
-    id: `byb-${d.symbol}-${d.updatedTime}`,
-    symbol: d.symbol.replace('USDT', '').replace('USDC', ''),
-    side: d.side === 'Buy' ? 'short' : 'long',
+    id: `byb-${symbol}-${d.updatedTime || d.T || Date.now()}`,
+    symbol,
+    side: (d.side === 'Buy' || d.S === 'Buy') ? 'short' : 'long',
     price,
     quantity: size,
     value: price * size,
     exchange: 'Bybit',
-    timestamp: d.updatedTime,
+    timestamp: d.updatedTime || d.T || Date.now(),
   };
 }
 
@@ -296,7 +276,7 @@ export function parseDeribitLiq(data: any): Liquidation | null {
   if (channel.startsWith('trades.') && rawData) {
     const trades = Array.isArray(rawData) ? rawData : [rawData];
     for (const d of trades) {
-      if (!d.liquidation) continue; // skip non-liquidation trades
+      if (!d.liquidation || d.liquidation === 'none') continue; // skip non-liquidation trades
       const instrument = d.instrument_name || '';
       const symbol = instrument.split('-')[0];
       if (!symbol) return null;

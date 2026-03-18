@@ -8,13 +8,9 @@ import {
   parseOKXLiq,
   parseBitgetLiq,
   parseDeribitLiq,
-  parseMexcLiq,
-  parseBingxLiq,
-  parseHTXLiq,
   parseGTradeLiq,
   parseDydxLiq,
   parseBitfinexLiq,
-  decompressGzip,
   EXCHANGE_WS_URLS,
   getSubscriptionMessages,
 } from '@/lib/liquidation-parsers';
@@ -111,18 +107,6 @@ function createExchangeWS(
             ws.send(JSON.stringify({ jsonrpc: '2.0', id: 9999, method: 'public/test', params: {} }));
           }
         }, 25000);
-      } else if (exchange === 'MEXC') {
-        pingTimer = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ method: 'ping' }));
-          }
-        }, 20000);
-      } else if (exchange === 'BingX') {
-        pingTimer = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send('Ping');
-          }
-        }, 20000);
       } else if (exchange === 'gTrade') {
         // gTrade needs periodic text 'ping' every 25 seconds
         pingTimer = setInterval(() => {
@@ -137,50 +121,11 @@ function createExchangeWS(
           }
         }, 25000);
       }
-      // HTX ping is handled via pong response to server-sent pings (in onmessage)
       // dYdX uses standard WebSocket ping frames, no custom ping needed
     };
 
-    // HTX sends gzip-compressed binary data — need special binaryType
-    if (exchange === 'HTX') {
-      ws.binaryType = 'arraybuffer';
-    }
-
     ws.onmessage = (event) => {
       try {
-        // --- HTX: binary gzip decompression ---
-        if (exchange === 'HTX') {
-          const rawData = event.data;
-          if (rawData instanceof ArrayBuffer) {
-            decompressGzip(rawData).then((text) => {
-              try {
-                const data = JSON.parse(text);
-                // Handle heartbeat ping -> respond with pong
-                if (data.ping) {
-                  ws?.send(JSON.stringify({ pong: data.ping }));
-                  return;
-                }
-                // Skip subscription confirmations
-                if (data.subbed || data.status === 'ok') return;
-                const liq = parseHTXLiq(data);
-                if (liq && liq.value > 0) {
-                  onMessage(liq);
-                }
-              } catch { /* ignore parse errors */ }
-            }).catch(() => { /* ignore decompression errors */ });
-            return;
-          }
-          // Fallback: if somehow text data
-          const data = JSON.parse(typeof rawData === 'string' ? rawData : new TextDecoder().decode(rawData));
-          if (data.ping) {
-            ws?.send(JSON.stringify({ pong: data.ping }));
-            return;
-          }
-          const liq = parseHTXLiq(data);
-          if (liq && liq.value > 0) onMessage(liq);
-          return;
-        }
-
         // --- gTrade: Socket.IO-style framing ---
         if (exchange === 'gTrade') {
           const rawStr = typeof event.data === 'string' ? event.data : '';
@@ -220,8 +165,6 @@ function createExchangeWS(
         if (data.event === 'subscribe' || data.event === 'pong' || data.op === 'pong' || data.ret_msg === 'pong' || data.success !== undefined) return;
         // Skip Deribit JSON-RPC responses (subscription confirmations & test results)
         if (data.id !== undefined && data.result !== undefined) return;
-        // Skip MEXC pong
-        if (data.channel === 'pong' || data.data === 'pong') return;
         // Skip dYdX subscription confirmations
         if (data.type === 'subscribed' || data.type === 'connected') return;
         // Skip Bitfinex info/subscription events (object with "event" key)
@@ -234,8 +177,6 @@ function createExchangeWS(
           case 'OKX': liq = parseOKXLiq(data); break;
           case 'Bitget': liq = parseBitgetLiq(data); break;
           case 'Deribit': liq = parseDeribitLiq(data); break;
-          case 'MEXC': liq = parseMexcLiq(data); break;
-          case 'BingX': liq = parseBingxLiq(data); break;
           case 'dYdX': liq = parseDydxLiq(data); break;
           case 'Bitfinex': liq = parseBitfinexLiq(data); break;
         }
