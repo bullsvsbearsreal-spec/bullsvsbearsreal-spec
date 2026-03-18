@@ -11,6 +11,8 @@ import {
   parseGTradeLiq,
   parseDydxLiq,
   parseBitfinexLiq,
+  parseHTXLiq,
+  decompressGzip,
   EXCHANGE_WS_URLS,
   getSubscriptionMessages,
 } from '@/lib/liquidation-parsers';
@@ -124,7 +126,7 @@ function createExchangeWS(
       // dYdX uses standard WebSocket ping frames, no custom ping needed
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       try {
         // --- gTrade: Socket.IO-style framing ---
         if (exchange === 'gTrade') {
@@ -157,6 +159,27 @@ function createExchangeWS(
           return;
         }
 
+        // --- HTX: gzip-compressed binary messages ---
+        if (exchange === 'HTX') {
+          if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
+            const buf = event.data instanceof Blob
+              ? await event.data.arrayBuffer()
+              : event.data;
+            const text = await decompressGzip(buf);
+            const htxData = JSON.parse(text);
+            // HTX sends ping as { "ping": <ts> }, respond with pong
+            if (htxData.ping) {
+              ws?.send(JSON.stringify({ pong: htxData.ping }));
+              return;
+            }
+            // Skip subscription confirmations
+            if (htxData.subbed || htxData.status) return;
+            const liq = parseHTXLiq(htxData);
+            if (liq && liq.value > 0) onMessage(liq);
+          }
+          return;
+        }
+
         // --- All other exchanges: plain JSON ---
         // Handle pong responses (text-based)
         if (event.data === 'pong' || event.data === '{"event":"pong"}' || event.data === 'Pong') return;
@@ -177,6 +200,7 @@ function createExchangeWS(
           case 'OKX': liq = parseOKXLiq(data); break;
           case 'Bitget': liq = parseBitgetLiq(data); break;
           case 'Deribit': liq = parseDeribitLiq(data); break;
+          case 'HTX': liq = parseHTXLiq(data); break;
           case 'dYdX': liq = parseDydxLiq(data); break;
           case 'Bitfinex': liq = parseBitfinexLiq(data); break;
         }

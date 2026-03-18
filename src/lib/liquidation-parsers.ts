@@ -72,7 +72,8 @@ export const BYBIT_SYMBOLS = [
   'SUIUSDT', 'PEPEUSDT', 'WIFUSDT', 'SEIUSDT', 'TIAUSDT',
 ];
 
-// Note: BingX, MEXC, HTX removed — no public liquidation WS streams available (verified Mar 2026)
+// Note: BingX, MEXC removed — no public liquidation WS streams available (verified Mar 2026)
+// HTX has public liquidation_orders channel per-symbol (re-added Mar 2026)
 
 // WebSocket URLs for each exchange
 // Top dYdX v4 markets for per-market trade subscription (filter for type=Liquidated)
@@ -89,6 +90,7 @@ export const EXCHANGE_WS_URLS: Record<string, string> = {
   OKX: 'wss://ws.okx.com:8443/ws/v5/public',
   Bitget: 'wss://ws.bitget.com/v2/ws/public',
   Deribit: 'wss://www.deribit.com/ws/api/v2',
+  HTX: 'wss://api.hbdm.com/linear-swap-notification',
   gTrade: 'wss://backend-arbitrum.gains.trade/socket.io/?EIO=4&transport=websocket',
   dYdX: 'wss://indexer.dydx.trade/v4/ws',
   Bitfinex: 'wss://api-pub.bitfinex.com/ws/2',
@@ -122,6 +124,16 @@ export function getSubscriptionMessages(exchange: string): string[] {
           params: { channels: ['trades.BTC-PERPETUAL.100ms', 'trades.ETH-PERPETUAL.100ms', 'trades.SOL_USDC-PERPETUAL.100ms'] },
         }),
       ];
+    case 'HTX': {
+      // HTX per-symbol liquidation_orders channel (public, no auth)
+      const htxSymbols = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT',
+        'BNB-USDT', 'ADA-USDT', 'AVAX-USDT', 'DOT-USDT', 'LINK-USDT',
+        'LTC-USDT', 'UNI-USDT', 'APT-USDT', 'ARB-USDT', 'OP-USDT'];
+      return htxSymbols.map(sym => JSON.stringify({
+        sub: `public.${sym}.liquidation_orders`,
+        id: `htx-liq-${sym}`,
+      }));
+    }
     case 'dYdX':
       // Subscribe to trades for top markets, filter for type=Liquidated in parser
       return DYDX_LIQ_MARKETS.map(market => JSON.stringify({
