@@ -169,12 +169,17 @@ export default function FearGreedPage() {
         {error && (
           <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            {error}
+            Unable to load sentiment data — the index provider may be temporarily unavailable.
           </div>
         )}
 
         {isLoading ? (
           <>
+            {/* Loading indicator */}
+            <div className="flex items-center justify-center gap-3 py-3 mb-4">
+              <RefreshCw className="w-4 h-4 text-hub-yellow animate-spin" />
+              <span className="text-neutral-400 text-sm">Loading sentiment data from Alternative.me...</span>
+            </div>
             {/* Skeleton: Gauge + Stats */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
               {/* Gauge skeleton */}

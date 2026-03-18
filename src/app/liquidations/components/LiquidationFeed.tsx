@@ -95,12 +95,14 @@ export default function LiquidationFeed({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full py-12 gap-3">
             <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
-            <span className="text-xs text-neutral-600">Loading liquidations...</span>
+            <span className="text-xs text-neutral-600">Connecting to live feeds...</span>
+            <span className="text-[10px] text-neutral-700">Streaming from 9 exchanges in real-time</span>
           </div>
         ) : filteredData.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-12 gap-3">
             <Zap className="w-5 h-5 text-neutral-700" />
-            <span className="text-xs text-neutral-600">No liquidations in this timeframe</span>
+            <span className="text-xs text-neutral-500">No recent liquidations — market conditions are calm</span>
+            <span className="text-[10px] text-neutral-700">Live feed from 9 exchanges. Liquidations appear here in real-time.</span>
           </div>
         ) : (
           filteredData.map((item, idx) => (
