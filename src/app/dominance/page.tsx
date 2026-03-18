@@ -202,6 +202,7 @@ export default function DominancePage() {
                   <p className="text-lg font-bold text-white font-mono">
                     {data.totalVolume24h != null ? `$${formatCompact(data.totalVolume24h)}` : '-'}
                   </p>
+                  <span className="text-neutral-700 text-[8px]">Global spot+deriv · CoinGecko</span>
                 </div>
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">

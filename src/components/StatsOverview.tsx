@@ -68,7 +68,7 @@ export default function StatsOverview() {
       iconBg: 'bg-blue-400/10',
       href: '/open-interest',
       isBigNumber: true,
-      subtitle: 'Raw sum · may include duplicates',
+      subtitle: '28 exchanges aggregated',
     },
     {
       label: 'Top Gainer',

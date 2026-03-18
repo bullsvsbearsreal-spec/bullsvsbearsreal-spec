@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
     await initDB();
 
     const origin = request.nextUrl.origin;
-    const [fundingRes, oiRes, liqHeatmapRes] = await Promise.all([
+    const [fundingRes, oiRes] = await Promise.all([
       fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) }),
       fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(25000) }),
-      fetch(`${origin}/api/liquidation-heatmap?symbol=BTC&timeframe=24h`, { signal: AbortSignal.timeout(15000) }).catch(() => null),
+      // Liquidation heatmap fetch removed — ingestion handled by /api/cron/ingest-liquidations
     ]);
 
     let fundingInserted = 0;
@@ -108,60 +108,11 @@ export async function GET(request: NextRequest) {
       oiInserted = await saveOISnapshot(oiEntries);
     }
 
-    // Process liquidations from heatmap API (BTC + ETH + SOL)
-    if (liqHeatmapRes && liqHeatmapRes.ok) {
-      try {
-        const liqJson = await liqHeatmapRes.json();
-        const recentEvents: any[] = liqJson?.summary?.recentEvents || [];
-        const symbol = liqJson?.symbol || 'BTC';
-
-        if (recentEvents.length > 0) {
-          const liqEntries = recentEvents
-            .filter((e: any) => e.volume > 0 && e.price > 0)
-            .map((e: any) => ({
-              symbol,
-              exchange: e.exchange || 'Unknown',
-              side: (e.side || 'long') as 'long' | 'short',
-              price: e.price,
-              quantity: e.volume / e.price,
-              valueUsd: e.volume,
-              timestamp: e.time,
-            }));
-          liqInserted += await saveLiquidationSnapshot(liqEntries);
-        }
-      } catch (liqErr) {
-        console.error('Liquidation snapshot error:', liqErr);
-      }
-    }
-
-    // Also fetch ETH + SOL liquidations
-    for (const sym of ['ETH', 'SOL']) {
-      try {
-        const res = await fetch(`${origin}/api/liquidation-heatmap?symbol=${sym}&timeframe=24h`, {
-          signal: AbortSignal.timeout(10000),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const events: any[] = json?.summary?.recentEvents || [];
-          if (events.length > 0) {
-            const entries = events
-              .filter((e: any) => e.volume > 0 && e.price > 0)
-              .map((e: any) => ({
-                symbol: sym,
-                exchange: e.exchange || 'Unknown',
-                side: (e.side || 'long') as 'long' | 'short',
-                price: e.price,
-                quantity: e.volume / e.price,
-                valueUsd: e.volume,
-                timestamp: e.time,
-              }));
-            liqInserted += await saveLiquidationSnapshot(entries);
-          }
-        }
-      } catch {
-        // non-critical, continue
-      }
-    }
+    // NOTE: Liquidation ingestion is handled SOLELY by /api/cron/ingest-liquidations (runs every 1m).
+    // Previously this snapshot cron also re-inserted 24h of heatmap events every hour, causing
+    // ~6x duplicate entries in the DB (events re-inserted with slight timestamp variations
+    // bypassing the ON CONFLICT dedup). This inflated totals to $917M vs Coinglass's $141M.
+    // Removed 2026-03-18 to fix the overcount. See ingest-liquidations for the sole insertion path.
 
     // Prune old data every run — keep 7 days max to stay within DB limits
     const pruned = await pruneOldData(7);

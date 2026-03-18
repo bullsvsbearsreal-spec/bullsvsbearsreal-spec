@@ -393,17 +393,22 @@ export async function fetchMarketStats(): Promise<{
     getGlobalData(),
   ]);
 
-  // Use CoinGecko/CMC global volume (spot + derivatives, whole market)
-  // Falls back to server-computed derivatives volume, then client-side dedup sum
-  const globalVolume = globalData?.total_volume?.usd;
+  // Use our own derivatives volume from connected exchanges (not CoinGecko's global spot+deriv)
+  // This matches what /screener shows and avoids inflated global numbers
   const serverVol = getServerTotalVolume();
-  const totalVolume = globalVolume || serverVol || tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
+  const localVolume = tickers.reduce((sum, t) => {
+    // Skip Gate.io + BitMEX (CloudFlare-blocked, report broken volumes)
+    const ex = ((t.exchange as string) || '').toLowerCase();
+    if (ex.includes('gate') || ex.includes('bitmex')) return sum;
+    return sum + (t.quoteVolume24h || 0);
+  }, 0);
+  const totalVolume = serverVol || localVolume;
 
-  // Use CoinGecko global derivatives OI (sum across all exchanges) as primary,
-  // fall back to our own per-exchange OI aggregation
-  const globalOI = globalData?.total_derivatives_oi;
+  // Use our own per-exchange OI aggregation (not CoinGecko's global derivatives OI)
+  // CoinGecko's total_derivatives_oi (~$144B) is ~2x our aggregated data (~$71B)
+  // and contradicts our /open-interest page — use local for cross-page consistency
   const localOI = oiData.reduce((sum, o) => sum + (o.openInterestValue || 0), 0);
-  const totalOI = globalOI && globalOI > 0 ? globalOI : localOI;
+  const totalOI = localOI;
 
   // Get BTC dominance from CoinGecko global data (more accurate)
   const btcDominance = globalData?.market_cap_percentage?.btc || 54.2;
