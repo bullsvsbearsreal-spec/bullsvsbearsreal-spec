@@ -8,6 +8,7 @@ import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
 import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import { formatPrice, formatNumber, formatPercent, formatFundingRate, formatCompact } from '@/lib/utils/format';
 import {
@@ -359,7 +360,7 @@ export default function ScreenerPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={17} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}

@@ -7,6 +7,8 @@ import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
+import StaleIndicator from '@/components/StaleIndicator';
 import {
   RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle,
   Search, Info, Layers, BarChart3, Activity, Globe, ChevronRight,
@@ -549,7 +551,8 @@ export default function BasisPage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={exchanges.length} lastUpdated={lastUpdate} />
+            <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
           </div>
         </div>
 

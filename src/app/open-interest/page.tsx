@@ -12,6 +12,7 @@ import { getExchangeBadgeColor } from '@/lib/constants';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatUSD } from '@/lib/utils/format';
 import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
 import WatchlistStar from '@/components/WatchlistStar';
 import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import ShowMoreToggle from '@/components/ShowMoreToggle';
@@ -142,7 +143,7 @@ export default function OpenInterestPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={exchanges.length} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}

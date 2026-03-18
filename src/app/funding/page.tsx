@@ -6,6 +6,8 @@ import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetc
 import { detectPriceArbitrage, type PriceArb } from '@/lib/arbitrage-detector';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
+import StaleIndicator from '@/components/StaleIndicator';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ALL_EXCHANGES, DEX_EXCHANGES, isExchangeDex, getCategoriesForAssetClass } from '@/lib/constants';
 import type { AssetClass } from '@/lib/constants';
@@ -409,7 +411,8 @@ export default function FundingPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
+            <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
             <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — real-time data from ${ALL_EXCHANGES.length} exchanges`} />
             <button
               onClick={fetchData}

@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
 import WatchlistStar from '@/components/WatchlistStar';
 import ShowMoreToggle from '@/components/ShowMoreToggle';
 import MobileCard from '@/components/MobileCard';
@@ -186,7 +187,7 @@ export default function TopMoversPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['CoinMarketCap']} />
             <button
               onClick={fetchData}
               disabled={loading}
