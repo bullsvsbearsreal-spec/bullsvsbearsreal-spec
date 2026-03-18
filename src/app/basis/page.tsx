@@ -559,6 +559,10 @@ export default function BasisPage() {
         {/* ─── Loading skeleton ─── */}
         {loading && basisData.length === 0 && (
           <div className="space-y-4 animate-fade-in">
+            <div className="flex items-center justify-center gap-3 py-4">
+              <RefreshCw className="w-4 h-4 text-hub-yellow animate-spin" />
+              <span className="text-neutral-400 text-sm">Calculating basis across {exchanges.length || 17} exchanges...</span>
+            </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[1, 2, 3, 4].map(i => (
                 <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-2xl h-24 animate-pulse" />
@@ -574,7 +578,8 @@ export default function BasisPage() {
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4">
               <Zap className="w-5 h-5 text-red-400" />
             </div>
-            <p className="text-red-400 text-sm mb-3">{error}</p>
+            <p className="text-red-400 text-sm mb-1">Unable to load basis data</p>
+            <p className="text-neutral-600 text-xs mb-3">This usually resolves on its own — exchange APIs may be temporarily slow.</p>
             <button onClick={fetchData} className="text-sm text-hub-yellow hover:underline font-medium">
               Try again
             </button>
@@ -846,7 +851,9 @@ export default function BasisPage() {
                         {pageItems.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="text-center py-12 text-neutral-500 text-sm">
-                              {searchTerm ? 'No matching entries.' : 'No entries for selected filters.'}
+                              {searchTerm
+                                ? 'No symbols match — try a different search'
+                                : 'No basis data for this filter — try broadening your criteria'}
                             </td>
                           </tr>
                         ) : (

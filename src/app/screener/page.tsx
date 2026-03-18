@@ -203,7 +203,7 @@ export default function ScreenerPage() {
       setRows(merged);
       setLastUpdate(new Date());
     } catch (err) {
-      setError('Failed to fetch screener data.');
+      setError('Unable to fetch screener data — check your connection or try again shortly.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -356,7 +356,9 @@ export default function ScreenerPage() {
           <div>
             <h1 className="heading-page">Screener</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Filter {rows.length} symbols by funding, OI, volume, and price action
+              {loading && rows.length === 0
+                ? 'Scanning symbols across 17 exchanges...'
+                : `Filter ${rows.length} symbols by funding, OI, volume, and price action`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -663,7 +665,11 @@ export default function ScreenerPage() {
                     <div className="flex flex-col items-center gap-2">
                       <Search className="w-5 h-5 text-neutral-600" />
                       <span className="text-neutral-500 text-sm">
-                        {conditions.length > 0 ? 'No symbols match your filter conditions.' : 'No data available.'}
+                        {search
+                          ? 'No symbols match — try a different search'
+                          : conditions.length > 0
+                          ? 'No symbols match your filters — try adjusting criteria'
+                          : 'No data available.'}
                       </span>
                     </div>
                   </td>
@@ -739,7 +745,11 @@ export default function ScreenerPage() {
               <div className="flex flex-col items-center gap-2">
                 <Search className="w-5 h-5 text-neutral-600" />
                 <span className="text-neutral-500 text-sm">
-                  {conditions.length > 0 ? 'No symbols match your filter conditions.' : 'No data available.'}
+                  {search
+                    ? 'No symbols match — try a different search'
+                    : conditions.length > 0
+                    ? 'No symbols match your filters — try adjusting criteria'
+                    : 'No data available.'}
                 </span>
               </div>
             </div>

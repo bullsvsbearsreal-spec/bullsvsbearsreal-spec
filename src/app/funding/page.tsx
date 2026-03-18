@@ -15,6 +15,7 @@ import { isValidNumber } from '@/lib/utils/format';
 import { useApi } from '@/hooks/useSWRApi';
 import FundingStats from './components/FundingStats';
 import WeightedFundingIndex from './components/WeightedFundingIndex';
+import DexCexComparison from './components/DexCexComparison';
 import dynamic from 'next/dynamic';
 const FundingHeatmapView = dynamic(() => import('./components/FundingHeatmapView'), { ssr: false });
 const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrageView'), { ssr: false });
@@ -464,15 +465,27 @@ export default function FundingPage() {
         {/* OI-Weighted Market Funding Sentiment */}
         {fundingRates.length > 0 && (
           <div className="mb-5">
-            <div className="max-w-[300px]">
-              <WeightedFundingIndex
-                fundingRates={fundingRates.map(fr => ({
-                  symbol: fr.symbol,
-                  exchange: fr.exchange,
-                  rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod),
-                  openInterest: oiMap.get(`${fr.symbol}|${fr.exchange}`),
-                }))}
-              />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="w-full sm:max-w-[300px]">
+                <WeightedFundingIndex
+                  fundingRates={fundingRates.map(fr => ({
+                    symbol: fr.symbol,
+                    exchange: fr.exchange,
+                    rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod),
+                    openInterest: oiMap.get(`${fr.symbol}|${fr.exchange}`),
+                  }))}
+                />
+              </div>
+              <div className="w-full sm:max-w-[380px]">
+                <DexCexComparison
+                  fundingRates={fundingRates.map(fr => ({
+                    symbol: fr.symbol,
+                    exchange: fr.exchange,
+                    rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod),
+                  }))}
+                  dexExchanges={DEX_EXCHANGES}
+                />
+              </div>
             </div>
           </div>
         )}

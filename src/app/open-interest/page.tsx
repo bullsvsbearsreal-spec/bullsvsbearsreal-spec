@@ -21,7 +21,7 @@ import dynamic from 'next/dynamic';
 
 const OIHistoryChart = dynamic(() => import('./components/OIHistoryChart'), { ssr: false });
 
-type SortField = 'symbol' | 'openInterestValue' | 'exchange';
+type SortField = 'symbol' | 'openInterestValue' | 'exchange' | 'change1h' | 'change4h' | 'change24h';
 type SortOrder = 'asc' | 'desc';
 
 interface OIDelta {
@@ -65,7 +65,7 @@ export default function OpenInterestPage() {
       }
       setLastUpdate(new Date());
     } catch (err) {
-      setError('Failed to fetch open interest data. Please try again.');
+      setError('Unable to reach exchange APIs — check your connection or try again shortly.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -104,6 +104,16 @@ export default function OpenInterestPage() {
         case 'exchange':
           comparison = a.exchange.localeCompare(b.exchange);
           break;
+        case 'change1h':
+        case 'change4h':
+        case 'change24h': {
+          const dA = oiDeltas.get(a.symbol);
+          const dB = oiDeltas.get(b.symbol);
+          const vA = dA?.[sortField] ?? -Infinity;
+          const vB = dB?.[sortField] ?? -Infinity;
+          comparison = vA - vB;
+          break;
+        }
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -111,13 +121,48 @@ export default function OpenInterestPage() {
   // Aggregated by symbol, sorted
   const aggregatedSorted = Array.from(symbolAggregated.entries())
     .filter(([symbol]) => !searchTerm || symbol.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => b[1] - a[1]);
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'symbol':
+          comparison = a[0].localeCompare(b[0]);
+          break;
+        case 'change1h':
+        case 'change4h':
+        case 'change24h': {
+          const dA = oiDeltas.get(a[0]);
+          const dB = oiDeltas.get(b[0]);
+          const vA = dA?.[sortField] ?? -Infinity;
+          const vB = dB?.[sortField] ?? -Infinity;
+          comparison = vA - vB;
+          break;
+        }
+        default:
+          comparison = a[1] - b[1];
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
   const AGGREGATED_DEFAULT = 20;
   const displayedAggregated = expanded ? aggregatedSorted : aggregatedSorted.slice(0, AGGREGATED_DEFAULT);
 
   // Calculate total OI
   const totalOI = openInterest.reduce((sum, oi) => sum + oi.openInterestValue, 0);
+
+  // Compute biggest OI movers (24h) from deltas
+  const oiMovers = (() => {
+    if (oiDeltas.size === 0) return { gainers: [] as { symbol: string; change: number }[], losers: [] as { symbol: string; change: number }[] };
+    const withChange: { symbol: string; change: number }[] = [];
+    oiDeltas.forEach((d, symbol) => {
+      if (d.change24h != null) withChange.push({ symbol, change: d.change24h });
+    });
+    withChange.sort((a, b) => b.change - a.change);
+    return {
+      gainers: withChange.filter(m => m.change > 0).slice(0, 5),
+      losers: withChange.filter(m => m.change < 0).slice(-5).reverse(),
+    };
+  })();
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -170,6 +215,52 @@ export default function OpenInterestPage() {
             <div className="text-lg font-bold text-white font-mono mt-0.5">{exchanges.length}</div>
           </div>
         </div>
+
+        {/* Biggest OI Movers (24h) */}
+        {(oiMovers.gainers.length > 0 || oiMovers.losers.length > 0) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+            {oiMovers.gainers.length > 0 && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <TrendingUp className="w-3 h-3 text-green-400" />
+                  <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Biggest OI Increase 24h</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {oiMovers.gainers.map(m => (
+                    <Link
+                      key={m.symbol}
+                      href={`/symbol/${m.symbol}`}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-colors"
+                    >
+                      <span className="text-white text-[10px] font-medium">{m.symbol}</span>
+                      <span className="text-green-400 text-[10px] font-medium font-mono">+{m.change.toFixed(1)}%</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            {oiMovers.losers.length > 0 && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <TrendingDown className="w-3 h-3 text-red-400" />
+                  <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Biggest OI Decrease 24h</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {oiMovers.losers.map(m => (
+                    <Link
+                      key={m.symbol}
+                      href={`/symbol/${m.symbol}`}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                    >
+                      <span className="text-white text-[10px] font-medium">{m.symbol}</span>
+                      <span className="text-red-400 text-[10px] font-medium font-mono">{m.change.toFixed(1)}%</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* OI Distribution Bar Chart */}
         {(() => {
@@ -287,7 +378,10 @@ export default function OpenInterestPage() {
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8">
             <div className="flex items-center justify-center gap-3">
               <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
-              <span className="text-white">Loading open interest from all exchanges...</span>
+              <div className="flex flex-col">
+                <span className="text-white">Aggregating OI from {exchanges.length || 17} exchanges...</span>
+                <span className="text-neutral-600 text-xs mt-1">Fetching open interest data and historical deltas</span>
+              </div>
             </div>
           </div>
         ) : viewMode === 'aggregated' ? (
@@ -325,10 +419,42 @@ export default function OpenInterestPage() {
                   <tr className="border-b border-white/[0.06]">
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Rank</th>
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Symbol</th>
-                    <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Total OI Value</th>
-                    <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">1h Δ</th>
-                    <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">4h Δ</th>
-                    <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">24h Δ</th>
+                    <th
+                      className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('openInterestValue')}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        Total OI Value
+                        <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('change1h')}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        1h Δ
+                        <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('change4h')}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        4h Δ
+                        <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('change24h')}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        24h Δ
+                        <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
                     <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">% of Total</th>
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Distribution</th>
                   </tr>
@@ -424,6 +550,33 @@ export default function OpenInterestPage() {
                         <ArrowUpDown className="w-4 h-4" />
                       </div>
                     </th>
+                    <th
+                      className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('change1h')}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        1h Δ
+                        <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('change4h')}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        4h Δ
+                        <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('change24h')}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        24h Δ
+                        <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -454,6 +607,21 @@ export default function OpenInterestPage() {
                       <td className="px-4 py-2 text-right">
                         <span className="text-white font-mono font-semibold">{formatUSD(oi.openInterestValue)}</span>
                       </td>
+                      {(() => {
+                        const delta = oiDeltas.get(oi.symbol);
+                        const fmtDelta = (v: number | null | undefined) => {
+                          if (v == null) return <span className="text-neutral-700">—</span>;
+                          const color = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-neutral-500';
+                          return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+                        };
+                        return (
+                          <>
+                            <td className="px-4 py-2 text-right text-xs">{fmtDelta(delta?.change1h)}</td>
+                            <td className="px-4 py-2 text-right text-xs">{fmtDelta(delta?.change4h)}</td>
+                            <td className="px-4 py-2 text-right text-xs">{fmtDelta(delta?.change24h)}</td>
+                          </>
+                        );
+                      })()}
                     </tr>
                   ))}
                 </tbody>
@@ -489,8 +657,10 @@ export default function OpenInterestPage() {
             )}
 
             {filteredAndSorted.length === 0 && !loading && (
-              <div className="p-8 text-center text-neutral-500">
-                No open interest data found matching your criteria.
+              <div className="p-8 text-center">
+                <span className="text-neutral-500">
+                  {searchTerm ? 'No symbols match — try a different search' : 'No open interest data for this filter — try broadening your criteria'}
+                </span>
               </div>
             )}
           </div>
