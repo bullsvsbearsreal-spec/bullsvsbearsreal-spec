@@ -13,6 +13,7 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatUSD } from '@/lib/utils/format';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import WatchlistStar from '@/components/WatchlistStar';
+import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import ShowMoreToggle from '@/components/ShowMoreToggle';
 import MobileCard from '@/components/MobileCard';
 import dynamic from 'next/dynamic';
@@ -31,6 +32,7 @@ interface OIDelta {
 }
 
 export default function OpenInterestPage() {
+  const authLimit = useAuthLimit(20);
   const [openInterest, setOpenInterest] = useState<OpenInterestData[]>([]);
   const [oiDeltas, setOiDeltas] = useState<Map<string, OIDelta>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -424,7 +426,7 @@ export default function OpenInterestPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAndSorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((oi, index) => (
+                  {(authLimit ? filteredAndSorted.slice(0, authLimit) : filteredAndSorted).slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((oi, index) => (
                     <tr
                       key={`${oi.symbol}-${oi.exchange}-${index}`}
                       className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
@@ -492,6 +494,9 @@ export default function OpenInterestPage() {
             )}
           </div>
         )}
+
+        {/* Auth gate */}
+        <SoftAuthGate freeLimit={20} totalCount={filteredAndSorted.length} dataLabel="pairs" />
 
         {/* Legend */}
         <div className="mt-6 text-sm text-neutral-600">

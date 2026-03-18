@@ -13,6 +13,7 @@ import {
   Zap, DollarSign, ArrowLeftRight,
 } from 'lucide-react';
 import { formatPrice, formatFundingRate } from '@/lib/utils/format';
+import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import { useApi } from '@/hooks/useSWRApi';
 import { fetchAllFundingRates } from '@/lib/api/aggregator';
 
@@ -356,6 +357,7 @@ function ExchangeBasisCard({ exchange, entries, isActive, onClick }: {
 /* ─── Main Page ──────────────────────────────────────────────────── */
 
 export default function BasisPage() {
+  const authLimit = useAuthLimit(20);
   const [sortField, setSortField] = useState<SortField>('basis');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -440,10 +442,11 @@ export default function BasisPage() {
       });
   }, [basisData, exchangeFilter, searchTerm, basisTab, sortField, sortOrder]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / ROWS_PER_PAGE));
+  const gatedData = authLimit ? filteredAndSorted.slice(0, authLimit) : filteredAndSorted;
+  const totalPages = Math.max(1, Math.ceil(gatedData.length / ROWS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIdx = (safeCurrentPage - 1) * ROWS_PER_PAGE;
-  const pageItems = filteredAndSorted.slice(startIdx, startIdx + ROWS_PER_PAGE);
+  const pageItems = gatedData.slice(startIdx, startIdx + ROWS_PER_PAGE);
 
   const premiumCount = useMemo(() => basisData.filter(b => b.basis > 0).length, [basisData]);
   const discountCount = useMemo(() => basisData.filter(b => b.basis < 0).length, [basisData]);
@@ -927,6 +930,8 @@ export default function BasisPage() {
             </div>
           </div>
         )}
+
+        <SoftAuthGate freeLimit={20} totalCount={filteredAndSorted.length} dataLabel="pairs" />
       </main>
       <Footer />
     </div>

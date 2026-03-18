@@ -8,6 +8,7 @@ import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import UpdatedAgo from '@/components/UpdatedAgo';
+import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import { formatPrice, formatNumber, formatPercent, formatFundingRate, formatCompact } from '@/lib/utils/format';
 import {
   type FilterCondition,
@@ -62,6 +63,7 @@ function deriveSentiment(change24h: number, oiChange: number, funding: number): 
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function ScreenerPage() {
+  const authLimit = useAuthLimit(20);
   const [rows, setRows] = useState<ScreenerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -260,11 +262,15 @@ export default function ScreenerPage() {
     return result;
   }, [rows, search, conditions, sortField, sortDir]);
 
-  const paged = useMemo(() => {
-    return filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  }, [filtered, page]);
+  const gatedFiltered = useMemo(() => {
+    return authLimit ? filtered.slice(0, authLimit) : filtered;
+  }, [filtered, authLimit]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = useMemo(() => {
+    return gatedFiltered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  }, [gatedFiltered, page]);
+
+  const totalPages = Math.ceil(gatedFiltered.length / PAGE_SIZE);
 
   /* ─── Handlers ────────────────────────────────────────────────── */
 
@@ -761,6 +767,9 @@ export default function ScreenerPage() {
             </button>
           </div>
         )}
+
+        {/* Auth gate for unauthenticated users */}
+        <SoftAuthGate freeLimit={20} totalCount={filtered.length} dataLabel="symbols" />
 
         {/* Info Footer */}
         <div className="mt-6 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3">

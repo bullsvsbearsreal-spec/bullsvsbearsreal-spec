@@ -10,6 +10,7 @@ import UpdatedAgo from '@/components/UpdatedAgo';
 import WatchlistStar from '@/components/WatchlistStar';
 import ShowMoreToggle from '@/components/ShowMoreToggle';
 import MobileCard from '@/components/MobileCard';
+import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import { RefreshCw, Search, ChevronDown, ChevronUp, TrendingUp, TrendingDown, BarChart3, Coins, Info } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -50,6 +51,7 @@ const fmtPrice = (p: number) => {
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function TopMoversPage() {
+  const authLimit = useAuthLimit(20);
   const [coins, setCoins] = useState<Coin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,12 +131,14 @@ export default function TopMoversPage() {
     return result;
   }, [coins, tab, search, sortField, sortDir]);
 
+  const gatedFiltered = authLimit ? filtered.slice(0, authLimit) : filtered;
+
   // Pagination — progressive disclosure: show DEFAULT_ROWS initially, full pagination when expanded
   const effectivePageSize = showAll ? ROWS_PER_PAGE : DEFAULT_ROWS;
-  const totalPages = showAll ? Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE)) : 1;
+  const totalPages = showAll ? Math.max(1, Math.ceil(gatedFiltered.length / ROWS_PER_PAGE)) : 1;
   const safeCurrentPage = showAll ? Math.min(currentPage, totalPages) : 1;
   const startIdx = showAll ? (safeCurrentPage - 1) * ROWS_PER_PAGE : 0;
-  const pageItems = filtered.slice(startIdx, startIdx + effectivePageSize);
+  const pageItems = gatedFiltered.slice(startIdx, startIdx + effectivePageSize);
 
   // Tab counts
   const gainersCount = useMemo(() => coins.filter(c => (c.change24h ?? 0) > 0).length, [coins]);
@@ -415,7 +419,7 @@ export default function TopMoversPage() {
               <Pagination
                 currentPage={safeCurrentPage}
                 totalPages={totalPages}
-                totalItems={filtered.length}
+                totalItems={gatedFiltered.length}
                 rowsPerPage={ROWS_PER_PAGE}
                 onPageChange={setCurrentPage}
                 label="coins"
@@ -434,6 +438,8 @@ export default function TopMoversPage() {
             </span>
           </p>
         </div>
+
+        <SoftAuthGate freeLimit={20} totalCount={filtered.length} dataLabel="coins" />
       </main>
       <Footer />
     </div>
