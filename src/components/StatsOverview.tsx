@@ -57,6 +57,7 @@ export default function StatsOverview() {
       iconColor: 'text-hub-yellow',
       iconBg: 'bg-hub-yellow/10',
       href: '/screener',
+      isBigNumber: true,
     },
     {
       label: 'Open Interest',
@@ -65,12 +66,14 @@ export default function StatsOverview() {
       iconColor: 'text-blue-400',
       iconBg: 'bg-blue-400/10',
       href: '/open-interest',
+      isBigNumber: true,
     },
     {
       label: 'Top Gainer',
       value: stats.topGainer.symbol !== '-' ? stats.topGainer.symbol : null,
       sub: stats.topGainer.symbol !== '-' ? `${stats.topGainer.change >= 0 ? '+' : ''}${stats.topGainer.change.toFixed(1)}%` : null,
-      subColor: 'text-green-400',
+      subColor: 'delta-badge-up',
+      isExtremeSub: stats.topGainer.change >= 15,
       icon: TrendingUp,
       iconColor: 'text-green-400',
       iconBg: 'bg-green-500/10',
@@ -80,7 +83,8 @@ export default function StatsOverview() {
       label: 'Top Loser',
       value: stats.topLoser.symbol !== '-' ? stats.topLoser.symbol : null,
       sub: stats.topLoser.symbol !== '-' ? `${stats.topLoser.change.toFixed(1)}%` : null,
-      subColor: 'text-red-400',
+      subColor: 'delta-badge-down',
+      isExtremeSub: Math.abs(stats.topLoser.change) >= 15,
       icon: TrendingDown,
       iconColor: 'text-red-400',
       iconBg: 'bg-red-500/10',
@@ -88,7 +92,7 @@ export default function StatsOverview() {
     },
     {
       label: 'Markets',
-      value: stats.activeMarkets > 0 ? stats.activeMarkets.toString() : null,
+      value: stats.activeMarkets > 0 ? stats.activeMarkets.toLocaleString() : null,
       icon: Layers,
       iconColor: 'text-purple-400',
       iconBg: 'bg-purple-400/10',
@@ -109,11 +113,19 @@ export default function StatsOverview() {
           <div className="flex items-baseline gap-1.5">
             {item.value !== null ? (
               <>
-                <span className="text-sm font-bold font-mono tabular-nums text-white">
+                <span className={`font-bold font-mono tabular-nums text-white ${
+                  item.isBigNumber ? 'text-lg tracking-tight' : 'text-sm'
+                }`}>
                   {item.value}
                 </span>
                 {item.sub && (
-                  <span className={`text-[10px] font-mono font-semibold ${item.subColor}`}>{item.sub}</span>
+                  <span className={`delta-badge ${
+                    item.isExtremeSub
+                      ? (item.subColor === 'delta-badge-up' ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                      : item.subColor
+                  } text-[10px]`}>
+                    {item.sub}
+                  </span>
                 )}
               </>
             ) : skeleton}

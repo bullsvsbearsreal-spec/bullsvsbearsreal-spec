@@ -235,10 +235,10 @@ function FooterInner() {
       {/* Top accent line */}
       <div className="accent-line absolute top-0 left-0 right-0" />
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 pb-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-4 pb-6">
 
         {/* ─── Live Stats Banner (Coinglass-style) ─── */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-white/[0.04] scrollbar-hide">
+        <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 border-b border-white/[0.04] scrollbar-hide">
           <div className="flex items-center gap-1.5 mr-2 flex-shrink-0">
             <Radio className="w-3 h-3 text-green-500 animate-pulse" />
             <span className="text-neutral-500 text-[10px] font-medium uppercase tracking-wider">Live</span>
@@ -256,7 +256,11 @@ function FooterInner() {
                   {stats?.btcPrice ? `$${stats.btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '--'}
                 </span>
                 {stats?.btcChange !== undefined && stats.btcChange !== 0 && (
-                  <span className={`text-[10px] font-mono font-medium ${stats.btcChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`delta-badge text-[9px] ${
+                    Math.abs(stats.btcChange) >= 5
+                      ? (stats.btcChange >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                      : (stats.btcChange >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                  }`}>
                     {stats.btcChange >= 0 ? '+' : ''}{stats.btcChange.toFixed(2)}%
                   </span>
                 )}
@@ -326,7 +330,7 @@ function FooterInner() {
             ) : stats?.topGainer ? (
               <>
                 <span className="text-white text-[11px] font-semibold font-mono">{stats.topGainer.symbol}</span>
-                <span className="text-green-400 text-[10px] font-mono font-medium">+{stats.topGainer.change24h.toFixed(1)}%</span>
+                <span className={`delta-badge text-[9px] ${stats.topGainer.change24h >= 15 ? 'delta-badge-extreme-up' : 'delta-badge-up'}`}>+{stats.topGainer.change24h.toFixed(1)}%</span>
               </>
             ) : (
               <span className="text-white text-[11px] font-semibold font-mono">--</span>
@@ -348,7 +352,7 @@ function FooterInner() {
         </div>
 
         {/* ─── Brand row ─── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Logo variant="icon" size="sm" />
@@ -382,7 +386,7 @@ function FooterInner() {
         </div>
 
         {/* ─── Link columns ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-5">
           {footerSections.map((section) => (
             <div key={section.heading}>
               <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -410,7 +414,7 @@ function FooterInner() {
         </div>
 
         {/* ─── Disclaimer ─── */}
-        <div className="border-t border-white/[0.06] pt-5 mb-5">
+        <div className="border-t border-white/[0.06] pt-3 mb-3">
           <p className="text-[10px] text-neutral-500 leading-relaxed text-center max-w-3xl mx-auto">
             InfoHub aggregates publicly available market data for informational and educational purposes only.
             Nothing on this site constitutes financial, investment, or trading advice.
@@ -420,7 +424,7 @@ function FooterInner() {
         </div>
 
         {/* ─── Bottom bar ─── */}
-        <div className="border-t border-white/[0.06] pt-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="border-t border-white/[0.06] pt-3 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Logo variant="icon" size="sm" />

@@ -270,18 +270,13 @@ export default function ETFPage() {
                   <>
                     <p className="text-xl font-bold text-white font-mono">${stats.leadFund.price.toFixed(2)}</p>
                     {stats.leadFund.change24h !== null && (
-                      <div className={`flex items-center gap-1 mt-0.5 ${
-                        stats.leadFund.change24h >= 0 ? 'text-green-400' : 'text-red-400'
+                      <span className={`delta-badge text-[11px] mt-1 ${
+                        Math.abs(stats.leadFund.change24h) >= 5
+                          ? (stats.leadFund.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                          : (stats.leadFund.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
                       }`}>
-                        {stats.leadFund.change24h >= 0 ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3" />
-                        )}
-                        <span className="text-xs font-medium font-mono">
-                          {formatPercent(stats.leadFund.change24h)}
-                        </span>
-                      </div>
+                        {formatPercent(stats.leadFund.change24h)}
+                      </span>
                     )}
                   </>
                 ) : (
@@ -455,16 +450,11 @@ export default function ETFPage() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               {fund.change24h !== null ? (
-                                <span
-                                  className={`inline-flex items-center gap-1 font-mono text-sm font-medium ${
-                                    fund.change24h >= 0 ? 'text-green-400' : 'text-red-400'
-                                  }`}
-                                >
-                                  {fund.change24h >= 0 ? (
-                                    <TrendingUp className="w-3 h-3" />
-                                  ) : (
-                                    <TrendingDown className="w-3 h-3" />
-                                  )}
+                                <span className={`delta-badge text-[11px] ${
+                                  Math.abs(fund.change24h) >= 5
+                                    ? (fund.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                                    : (fund.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                                }`}>
                                   {formatPercent(fund.change24h)}
                                 </span>
                               ) : (

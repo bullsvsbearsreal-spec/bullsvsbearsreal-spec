@@ -214,9 +214,13 @@ export default function TopMoversPage() {
                 <BarChart3 className="w-3 h-3 text-neutral-500" />
                 <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Average Change</span>
               </div>
-              <div className={`text-lg font-semibold font-mono tabular-nums ${stats.avgChange >= 0 ? 'text-success' : 'text-danger'}`}>
+              <span className={`delta-badge text-sm ${
+                Math.abs(stats.avgChange) >= 5
+                  ? (stats.avgChange >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                  : (stats.avgChange >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+              }`}>
                 {stats.avgChange >= 0 ? '+' : ''}{stats.avgChange.toFixed(2)}%
-              </div>
+              </span>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="flex items-center gap-1.5 mb-0.5">
@@ -225,7 +229,7 @@ export default function TopMoversPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-lg font-semibold text-white">{stats.best.symbol}</span>
-                <span className="text-xs font-mono tabular-nums text-success">
+                <span className={`delta-badge text-[11px] ${(stats.best.change24h ?? 0) >= 15 ? 'delta-badge-extreme-up' : 'delta-badge-up'}`}>
                   +{(stats.best.change24h ?? 0).toFixed(2)}%
                 </span>
               </div>
@@ -237,7 +241,7 @@ export default function TopMoversPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-lg font-semibold text-white">{stats.worst.symbol}</span>
-                <span className="text-xs font-mono tabular-nums text-danger">
+                <span className={`delta-badge text-[11px] ${Math.abs(stats.worst.change24h ?? 0) >= 15 ? 'delta-badge-extreme-down' : 'delta-badge-down'}`}>
                   {(stats.worst.change24h ?? 0).toFixed(2)}%
                 </span>
               </div>
@@ -327,11 +331,15 @@ export default function TopMoversPage() {
                     { label: 'Price', value: <span className="text-neutral-300">{fmtPrice(coin.price)}</span> },
                     {
                       label: '24h Change',
-                      value: (
-                        <span className={(coin.change24h ?? 0) >= 0 ? 'text-success' : 'text-danger'}>
-                          {coin.change24h != null ? `${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toFixed(2)}%` : '—'}
+                      value: coin.change24h != null ? (
+                        <span className={`delta-badge text-[10px] ${
+                          Math.abs(coin.change24h) >= 15
+                            ? (coin.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                            : (coin.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                        }`}>
+                          {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
                         </span>
-                      ),
+                      ) : <span className="text-neutral-600">—</span>,
                     },
                     { label: 'Market Cap', value: <span className="text-neutral-400">{fmt(coin.marketCap)}</span> },
                     { label: 'Volume 24h', value: <span className="text-neutral-400">{fmt(coin.volume24h)}</span> },
@@ -341,7 +349,7 @@ export default function TopMoversPage() {
             </div>
 
             {/* Desktop Table (md and above) */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto scrollbar-accent">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
@@ -392,10 +400,16 @@ export default function TopMoversPage() {
                       <td className="px-3 py-2 text-right text-neutral-300 font-mono tabular-nums text-xs">
                         {fmtPrice(coin.price)}
                       </td>
-                      <td className={`px-3 py-2 text-right font-mono tabular-nums text-xs font-medium ${
-                        (coin.change24h ?? 0) >= 0 ? 'text-success' : 'text-danger'
-                      }`}>
-                        {coin.change24h != null ? `${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toFixed(2)}%` : '—'}
+                      <td className="px-3 py-2 text-right">
+                        {coin.change24h != null ? (
+                          <span className={`delta-badge text-[11px] ${
+                            Math.abs(coin.change24h) >= 15
+                              ? (coin.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                              : (coin.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                          }`}>
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                          </span>
+                        ) : <span className="text-neutral-600 font-mono text-xs">—</span>}
                       </td>
                       <td className="px-3 py-2 text-right text-neutral-400 font-mono tabular-nums text-xs">
                         {fmt(coin.marketCap)}

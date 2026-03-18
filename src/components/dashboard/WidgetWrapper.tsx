@@ -17,6 +17,7 @@ interface WidgetWrapperProps {
   onRemove: () => void;
   onToggleSize?: () => void;
   canExpand?: boolean;
+  isLoading?: boolean;
   children: React.ReactNode;
 }
 
@@ -48,6 +49,7 @@ export default function WidgetWrapper({
   onRemove,
   onToggleSize,
   canExpand,
+  isLoading,
   children,
 }: WidgetWrapperProps) {
   const iconEl = getIcon(icon);
@@ -88,9 +90,9 @@ export default function WidgetWrapper({
             </span>
           )}
           <span className="text-xs font-medium text-neutral-400 truncate">{title}</span>
-          {/* Live dot for real-time widgets */}
+          {/* Live heartbeat dot for real-time widgets */}
           {widgetType && LIVE_TYPES.has(widgetType) && (
-            <span className="live-dot ml-0.5 flex-shrink-0" />
+            <span className="heartbeat-dot ml-0.5 flex-shrink-0" style={{ width: 6, height: 6 }} />
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -119,10 +121,19 @@ export default function WidgetWrapper({
           </button>
         </div>
       </div>
-      {/* Content — collapsible on mobile */}
+      {/* Content — collapsible on mobile, with skeleton support */}
       {!collapsed && (
         <div className="p-3">
-          {children}
+          {isLoading ? (
+            <div className="space-y-2">
+              <div className="skeleton h-8 w-3/4" />
+              <div className="skeleton h-6 w-1/2" />
+              <div className="skeleton h-6 w-5/6" />
+              <div className="skeleton h-6 w-2/3" />
+            </div>
+          ) : (
+            children
+          )}
         </div>
       )}
     </div>

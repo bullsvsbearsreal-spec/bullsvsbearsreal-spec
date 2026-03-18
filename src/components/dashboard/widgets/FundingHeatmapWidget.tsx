@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
@@ -11,9 +11,31 @@ interface FundingRate {
   fundingRate: number;
 }
 
+/** Map funding rate to intensity class */
+function getIntensityClass(rate: number): string {
+  if (rate > 0.1) return 'heatmap-extreme-pos';
+  if (rate > 0.05) return 'heatmap-hot-pos';
+  if (rate > 0.01) return 'heatmap-mild-pos';
+  if (rate < -0.1) return 'heatmap-extreme-neg';
+  if (rate < -0.05) return 'heatmap-hot-neg';
+  if (rate < -0.01) return 'heatmap-mild-neg';
+  return 'heatmap-neutral';
+}
+
+/** Trader slang for heatmap tooltip */
+function getHeatmapSlang(rate: number): string {
+  if (rate > 0.1) return ' — Longs paying heavy premium';
+  if (rate < -0.1) return ' — Shorts paying through the nose';
+  if (rate > 0.05) return ' — Bullish pressure building';
+  if (rate < -0.05) return ' — Bears in control';
+  return '';
+}
+
 export default function FundingHeatmapWidget() {
   const [rates, setRates] = useState<FundingRate[] | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [justUpdated, setJustUpdated] = useState(false);
+  const fetchCount = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -26,6 +48,12 @@ export default function FundingHeatmapWidget() {
         if (mounted) {
           setRates(items.slice(0, 20));
           setUpdatedAt(Date.now());
+          // Flash micro-glow on refresh (skip first load)
+          if (fetchCount.current > 0) {
+            setJustUpdated(true);
+            setTimeout(() => setJustUpdated(false), 1000);
+          }
+          fetchCount.current++;
         }
       } catch (err) { console.error('[FundingHeatmap] fetch error:', err); }
     };
@@ -45,35 +73,33 @@ export default function FundingHeatmapWidget() {
     );
   }
 
-  // Mini heatmap: show as colored tiles
   return (
-    <div>
-      <div className="flex flex-wrap gap-1 mb-2">
+    <div className={justUpdated ? 'data-updated' : ''}>
+      <div className="flex flex-wrap gap-1.5 mb-3">
         {rates.slice(0, 18).map((r, i) => {
-          const rate = r.fundingRate; // already a percentage from the API
-          const color = rate > 0.05
-            ? 'bg-green-500/40 text-green-300'
-            : rate > 0.01
-              ? 'bg-green-500/20 text-green-400/70'
-              : rate < -0.05
-                ? 'bg-red-500/40 text-red-300'
-                : rate < -0.01
-                  ? 'bg-red-500/20 text-red-400/70'
-                  : 'bg-white/[0.04] text-neutral-500';
+          const rate = r.fundingRate;
+          const intensityClass = getIntensityClass(rate);
+          const slang = getHeatmapSlang(rate);
+          const isExtreme = Math.abs(rate) > 0.05;
 
           return (
             <div
               key={`${r.symbol}-${r.exchange}-${i}`}
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${color}`}
-              title={`${r.symbol} ${r.exchange}: ${rate.toFixed(4)}%`}
+              className={`heatmap-tile ${intensityClass}`}
+              title={`${r.symbol} ${r.exchange}: ${rate >= 0 ? '+' : ''}${rate.toFixed(4)}%${slang}`}
             >
-              {r.symbol?.replace(/USDT$/, '').slice(0, 5)}
+              <span className="heatmap-tile-symbol">
+                {r.symbol?.replace(/USDT$/, '').slice(0, 5)}
+              </span>
+              <span className={`heatmap-tile-value ${isExtreme ? 'font-black' : ''}`}>
+                {rate >= 0 ? '+' : ''}{rate.toFixed(3)}%
+              </span>
             </div>
           );
         })}
       </div>
       <div className="flex items-center justify-between">
-        <Link href="/funding-heatmap" className="text-[10px] text-hub-yellow hover:underline">
+        <Link href="/funding-heatmap" className="text-[10px] text-hub-yellow hover:underline font-medium">
           View full heatmap
         </Link>
         <UpdatedAgo ts={updatedAt} />

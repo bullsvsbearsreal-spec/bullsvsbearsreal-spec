@@ -34,6 +34,17 @@
   --hub-accent-dark: #FF8C00;
   --hub-accent-secondary: #FF6B00;
 
+  /* ── PH×Coinglass: Intensity colors ── */
+  --rekt-mild: #ef4444;
+  --rekt-hot: #ff1744;
+  --rekt-nuclear: #d50000;
+  --pump-mild: #22c55e;
+  --pump-hot: #00e676;
+  --pump-nuclear: #00ff88;
+  --highlight-hot: #ff6ec7;
+  --highlight-purple: #b388ff;
+  --highlight-neon: #e040fb;
+
   color-scheme: dark;
 }
 
@@ -437,6 +448,270 @@ body {
     background: linear-gradient(135deg, var(--hub-accent-light), var(--hub-accent), var(--hub-accent-secondary));
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
+
+  /* ═══ PH×Coinglass: Dopamine system ═══ */
+
+  /* --- Mega numbers (PH view-count energy) --- */
+  .mega-number {
+    font-family: var(--font-mono);
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .mega-number-unit {
+    font-size: 1rem;
+    font-weight: 600;
+    opacity: 0.6;
+    vertical-align: super;
+  }
+
+  /* --- Delta badges (Coinglass-style ±% pills) --- */
+  .delta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .delta-badge-up {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+  .delta-badge-down {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+  .delta-badge-extreme-up {
+    background: rgba(0, 230, 118, 0.2);
+    color: var(--pump-hot);
+    box-shadow: 0 0 8px rgba(0, 230, 118, 0.2);
+  }
+  .delta-badge-extreme-down {
+    background: rgba(255, 23, 68, 0.2);
+    color: var(--rekt-hot);
+    box-shadow: 0 0 8px rgba(255, 23, 68, 0.2);
+  }
+
+  /* --- Intensity text (funding/liq extremes) --- */
+  .text-rekt-nuclear {
+    color: var(--rekt-nuclear);
+    text-shadow: 0 0 6px rgba(213, 0, 0, 0.5);
+  }
+  .text-rekt-hot {
+    color: var(--rekt-hot);
+    text-shadow: 0 0 4px rgba(255, 23, 68, 0.3);
+  }
+  .text-pump-nuclear {
+    color: var(--pump-nuclear);
+    text-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
+  }
+  .text-pump-hot {
+    color: var(--pump-hot);
+    text-shadow: 0 0 4px rgba(0, 230, 118, 0.3);
+  }
+
+  /* --- Extreme value gradient text --- */
+  .text-extreme-gradient {
+    background: linear-gradient(135deg, var(--highlight-hot), var(--highlight-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900;
+  }
+
+  /* --- Extreme badge (PH "HD"/"NEW" energy) --- */
+  .badge-extreme {
+    background: var(--highlight-neon);
+    color: #000;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+  }
+
+  /* --- Card sentiment tinting --- */
+  .card-bullish {
+    background: linear-gradient(135deg, var(--hub-darker) 0%, rgba(34, 197, 94, 0.05) 100%);
+    border-left: 3px solid #22c55e;
+  }
+  .card-bearish {
+    background: linear-gradient(135deg, var(--hub-darker) 0%, rgba(239, 68, 68, 0.05) 100%);
+    border-left: 3px solid #ef4444;
+  }
+  .card-extreme {
+    background: linear-gradient(135deg, var(--hub-darker) 0%, rgba(255, 110, 199, 0.06) 100%);
+    border-left: 3px solid var(--highlight-hot);
+  }
+
+  /* --- Heartbeat live dot --- */
+  .heartbeat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: heartbeat 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .heartbeat-dot-stale {
+    background: #f59e0b;
+    animation: none;
+  }
+  .heartbeat-dot-dead {
+    background: #ef4444;
+    animation: none;
+  }
+
+  /* --- Micro-glow on data updates --- */
+  .data-updated {
+    animation: micro-glow 1s ease-out;
+  }
+  .value-updated {
+    animation: value-flash 0.8s ease-out;
+  }
+
+  /* --- Rekt tape (liquidation slide-in) --- */
+  .rekt-tape-entry {
+    animation: slide-in-rekt 0.4s ease-out;
+    border-left: 3px solid transparent;
+  }
+  .rekt-tape-long {
+    border-left-color: #ef4444;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 0%, transparent 40%);
+  }
+  .rekt-tape-short {
+    border-left-color: #22c55e;
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.08) 0%, transparent 40%);
+  }
+  .rekt-tape-whale {
+    border-left-color: var(--highlight-hot);
+    background: linear-gradient(90deg, rgba(255, 110, 199, 0.1) 0%, transparent 40%);
+  }
+  .rekt-amount {
+    font-family: var(--font-mono);
+    font-weight: 900;
+    font-size: 1.1rem;
+  }
+
+  /* --- Ranked list (PH thumbnail energy) --- */
+  .ranked-list .rank-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .ranked-list .rank-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .rank-number {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: rgba(255, 165, 0, 0.5);
+    min-width: 18px;
+    text-align: center;
+  }
+  .rank-number-top {
+    color: #ffa500;
+    font-size: 1rem;
+  }
+  .ranked-list .rank-row:first-child {
+    background: rgba(255, 165, 0, 0.05);
+    border-left: 3px solid #ffa500;
+  }
+
+  /* --- Heatmap tiles (bigger, bolder) --- */
+  .heatmap-tile {
+    min-width: 72px;
+    min-height: 50px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    gap: 1px;
+  }
+  .heatmap-tile:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+    z-index: 2;
+  }
+  .heatmap-tile-symbol {
+    font-size: 0.6rem;
+    font-weight: 700;
+    opacity: 0.85;
+  }
+  .heatmap-tile-value {
+    font-size: 0.75rem;
+    font-weight: 900;
+  }
+  .heatmap-extreme-neg { background: #b71c1c; color: #ffcdd2; }
+  .heatmap-hot-neg { background: rgba(211, 47, 47, 0.7); color: #ffcdd2; }
+  .heatmap-mild-neg { background: rgba(198, 40, 40, 0.4); color: #ef9a9a; }
+  .heatmap-neutral { background: rgba(255, 255, 255, 0.06); color: #999; }
+  .heatmap-mild-pos { background: rgba(46, 125, 50, 0.4); color: #a5d6a7; }
+  .heatmap-hot-pos { background: rgba(56, 142, 60, 0.7); color: #c8e6c9; }
+  .heatmap-extreme-pos { background: #1b5e20; color: #c8e6c9; }
+
+  /* --- Section divider (accent gradient) --- */
+  .section-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 165, 0, 0.2), transparent);
+    margin: 1.5rem 0;
+  }
+
+  /* --- Trader tooltip --- */
+  .trader-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+    border: 1px solid rgba(255, 165, 0, 0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    color: #e5e5e5;
+    max-width: 220px;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .has-tooltip:hover .trader-tooltip {
+    opacity: 1;
+  }
+  .tooltip-slang {
+    color: var(--highlight-hot);
+    font-style: italic;
+    font-weight: 600;
+  }
+
+  /* --- Stale widget border --- */
+  .widget-stale {
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+
+  /* --- Hero collapse for returning visitors --- */
+  .hero-collapsed {
+    max-height: 0;
+    overflow: hidden;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
 }
 
 /* ═══ Light Theme — Visual Overrides ═══ */
@@ -687,6 +962,7 @@ body {
 /* Ticker */
 @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 .animate-ticker { animation: ticker 30s linear infinite; }
+.animate-ticker:hover { animation-play-state: paused; }
 
 /* Pulse animations (for live indicators) */
 .pulse-success { animation: pulse-s 2s ease-in-out infinite; }
@@ -703,6 +979,60 @@ body {
   0% { opacity: 0; transform: translateY(16px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+
+/* PH×Coinglass: Dopamine animations */
+@keyframes heartbeat {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+@keyframes micro-glow {
+  0% { box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.3); }
+  100% { box-shadow: 0 0 0 2px transparent; }
+}
+@keyframes value-flash {
+  0% { background: rgba(255, 165, 0, 0.15); border-radius: 4px; }
+  100% { background: transparent; }
+}
+@keyframes flash-red {
+  0% { background-color: rgba(255, 23, 68, 0.2); }
+  100% { background-color: transparent; }
+}
+@keyframes slide-in-rekt {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-glow-rekt {
+  0%, 100% { text-shadow: 0 0 8px rgba(255, 23, 68, 0.4); }
+  50% { text-shadow: 0 0 20px rgba(255, 23, 68, 0.7); }
+}
+.animate-flash-red { animation: flash-red 0.6s ease-out; }
+.animate-flash-green { animation: flash-green 0.6s ease-out; }
+
+/* ═══ PH×Coinglass: Mobile-first responsive ═══ */
+@media (max-width: 640px) {
+  .mega-number { font-size: 1.75rem; }
+  .heatmap-tile { min-width: 64px; min-height: 44px; }
+  .rekt-amount { font-size: 0.9rem; }
+  .rank-row, .data-row-premium { min-height: 44px; }
+  .top-stats-bar-items { flex-wrap: wrap; gap: 4px; }
+  .top-stats-bar .stat-value { font-size: 0.9rem; }
+}
+
+/* Ultrawide screens — wider container */
+@media (min-width: 1920px) {
+  .max-w-\[1400px\] { max-width: 1600px; }
+}
+
+/* Scrollbar accent tinting for data areas */
+.scrollbar-accent::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-accent::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 4px; }
+.scrollbar-accent::-webkit-scrollbar-thumb {
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.scrollbar-accent::-webkit-scrollbar-thumb:hover { background: rgba(255, 165, 0, 0.35); border: 2px solid transparent; background-clip: padding-box; }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

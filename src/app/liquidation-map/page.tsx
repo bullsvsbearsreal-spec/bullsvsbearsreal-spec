@@ -567,7 +567,7 @@ export default function LiquidationMapPage() {
                   </p>
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto scrollbar-accent">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/[0.06]">

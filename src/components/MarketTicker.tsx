@@ -61,6 +61,7 @@ export default function MarketTicker() {
         >
           {duplicatedTickers.map((ticker, index) => {
             const isPositive = (ticker.change ?? 0) >= 0;
+            const isExtreme = Math.abs(ticker.change ?? 0) >= 10;
             return (
               <div
                 key={index}
@@ -69,7 +70,11 @@ export default function MarketTicker() {
                 <TokenIconSimple symbol={ticker.symbol} size={16} />
                 <span className="text-neutral-400 font-medium text-xs">{ticker.symbol}</span>
                 <span className="text-neutral-500 font-mono text-xs">{formatPrice(ticker.price)}</span>
-                <span className={`text-xs font-mono tabular-nums ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`delta-badge text-[10px] ${
+                  isExtreme
+                    ? (isPositive ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                    : (isPositive ? 'delta-badge-up' : 'delta-badge-down')
+                }`}>
                   {isPositive ? '+' : ''}{(ticker.change ?? 0).toFixed(2)}%
                 </span>
               </div>

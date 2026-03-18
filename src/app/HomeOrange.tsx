@@ -35,6 +35,17 @@ export default function HomeOrange() {
   const [exchangeHealth, setExchangeHealth] = useState<ExchangeHealthInfo[]>([]);
   const [activeExchangeCount, setActiveExchangeCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [heroCollapsed, setHeroCollapsed] = useState(false);
+
+  // Collapse hero for returning visitors
+  useEffect(() => {
+    const visited = localStorage.getItem('infohub-visited');
+    if (visited) {
+      setHeroCollapsed(true);
+    } else {
+      localStorage.setItem('infohub-visited', 'true');
+    }
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -83,12 +94,12 @@ export default function HomeOrange() {
     : dexExchanges.length;
 
   const quickLinks = [
-    { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates' },
-    { name: 'Open Interest', href: '/open-interest', icon: BarChart3, desc: 'Position sizing' },
-    { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time rekt' },
-    { name: 'Screener', href: '/screener', icon: TrendingUp, desc: 'Market scanner' },
-    { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange' },
-    { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news' },
+    { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
+    { name: 'Open Interest', href: '/open-interest', icon: BarChart3, desc: 'Position sizing', color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' },
+    { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time rekt', color: '#ff1744', bg: 'rgba(255,23,68,0.08)' },
+    { name: 'Screener', href: '/screener', icon: TrendingUp, desc: 'Market scanner', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
+    { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange', color: '#ffa500', bg: 'rgba(255,165,0,0.08)' },
+    { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
   ];
 
   return (
@@ -99,31 +110,33 @@ export default function HomeOrange() {
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
-        {/* ═══ Hero Section ═══ */}
-        <section className="relative pt-8 pb-6 mb-2">
+        {/* ═══ Hero Section (collapses for returning visitors) ═══ */}
+        <section className={`relative ${heroCollapsed ? 'pt-3 pb-2 mb-1' : 'pt-8 pb-6 mb-2'}`}>
           <div className="absolute inset-0 hero-mesh pointer-events-none" aria-hidden="true" />
 
           <div className="relative">
-            {/* Title area */}
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                    <span className="text-white">info</span><span className="bg-gradient-to-r from-hub-yellow-light via-hub-yellow to-hub-orange bg-clip-text text-transparent">hub</span>
-                  </h1>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
-                    <span className="live-dot" />
-                    <span className="text-green-400 text-[10px] font-semibold uppercase tracking-wider">Live</span>
+            {/* Title area — compact for returning visitors */}
+            {!heroCollapsed && (
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                      <span className="text-white">info</span><span className="bg-gradient-to-r from-hub-yellow-light via-hub-yellow to-hub-orange bg-clip-text text-transparent">hub</span>
+                    </h1>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+                      <span className="live-dot" />
+                      <span className="text-green-400 text-[10px] font-semibold uppercase tracking-wider">Live</span>
+                    </div>
                   </div>
+                  <p className="text-neutral-500 text-sm max-w-md">
+                    Real-time derivatives intelligence across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span>. Funding, OI, liquidations & more.
+                  </p>
                 </div>
-                <p className="text-neutral-500 text-sm max-w-md">
-                  Real-time derivatives intelligence across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span>. Funding, OI, liquidations & more.
-                </p>
               </div>
-            </div>
+            )}
 
             {/* Search bar — elevated */}
-            <div className="max-w-xl mb-6">
+            <div className={`max-w-xl ${heroCollapsed ? 'mb-3' : 'mb-6'}`}>
               <CoinSearch
                 onSelect={handleCoinSelect}
                 placeholder="Search any coin for events, unlocks & news..."
@@ -140,10 +153,11 @@ export default function HomeOrange() {
                   href={link.href}
                   className="group flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow-dark/30 hover:bg-hub-yellow/[0.04] hover:shadow-[0_0_16px_rgba(255,140,0,0.08)] transition-all duration-200"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-hub-yellow/10 flex items-center justify-center transition-colors">
-                    <link.icon className="w-4 h-4 text-neutral-500 group-hover:text-hub-yellow transition-colors" />
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-all" style={{ background: link.bg }}>
+                    <link.icon className="w-4.5 h-4.5 transition-colors" style={{ color: link.color }} />
                   </div>
-                  <span className="text-neutral-400 group-hover:text-white text-[11px] font-medium transition-colors">{link.name}</span>
+                  <span className="text-neutral-300 group-hover:text-white text-[11px] font-semibold transition-colors">{link.name}</span>
+                  <span className="text-neutral-600 text-[9px] -mt-1 hidden sm:block">{link.desc}</span>
                 </Link>
               ))}
             </div>
@@ -154,12 +168,14 @@ export default function HomeOrange() {
         <div className="accent-line mb-6" />
 
         {/* ═══ Stats Overview ═══ */}
-        <section className="mb-6 stagger">
+        <section id="stats" className="mb-6 stagger scroll-mt-16">
           <StatsOverview />
         </section>
 
+        <div className="section-divider" />
+
         {/* ═══ Trading Signals Row ═══ */}
-        <section className="mb-6">
+        <section id="signals" className="mb-6 scroll-mt-16">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Trading Signals</span>
@@ -172,8 +188,10 @@ export default function HomeOrange() {
           </div>
         </section>
 
+        <div className="section-divider" />
+
         {/* ═══ Data Feeds Row ═══ */}
-        <section className="mb-6">
+        <section id="feeds" className="mb-6 scroll-mt-16">
           <div className="flex items-center gap-2 mb-3">
             <Activity className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Data Feeds</span>
@@ -203,33 +221,47 @@ export default function HomeOrange() {
                 </div>
               ) : (
                 <>
-                  <div className="space-y-0.5">
-                    {topFunding.map((item, index) => (
-                      <div
-                        key={`${item.symbol}-${item.exchange}-${index}`}
-                        className="data-row-premium flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-neutral-700 text-[10px] font-mono w-3">{index + 1}</span>
+                  <div className="ranked-list space-y-0.5">
+                    {topFunding.map((item, index) => {
+                      const isExtreme = Math.abs(item.fundingRate) > 0.05;
+                      const slang = item.fundingRate > 0.1
+                        ? 'Funding printing — top signal?'
+                        : item.fundingRate < -0.1
+                          ? 'Funding apocalypse'
+                          : item.fundingRate > 0.05
+                            ? 'Longs paying premium'
+                            : item.fundingRate < -0.05
+                              ? 'Shorts paying through the nose'
+                              : null;
+
+                      return (
+                        <div
+                          key={`${item.symbol}-${item.exchange}-${index}`}
+                          className="rank-row"
+                        >
+                          <span className={`rank-number ${index < 3 ? 'rank-number-top' : ''}`}>{index + 1}</span>
                           <TokenIconSimple symbol={item.symbol} size={18} />
-                          <div className="flex flex-col">
+                          <div className="flex flex-col flex-1 min-w-0">
                             <span className="text-white font-medium text-xs">{item.symbol}</span>
                             <span className="text-neutral-600 text-[9px] leading-none">{item.exchange}</span>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-5 rounded-md px-1.5 flex items-center ${
-                            item.fundingRate >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
-                          }`}>
-                            <span className={`font-mono font-bold text-[11px] tabular-nums ${
-                              item.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'
+                          <div className="relative has-tooltip">
+                            <span className={`delta-badge ${
+                              isExtreme
+                                ? (item.fundingRate >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                                : (item.fundingRate >= 0 ? 'delta-badge-up' : 'delta-badge-down')
                             }`}>
                               {item.fundingRate >= 0 ? '+' : ''}{item.fundingRate.toFixed(4)}%
                             </span>
+                            {slang && (
+                              <span className="trader-tooltip">
+                                <span className="tooltip-slang">{slang}</span>
+                              </span>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {!isAuthed && (
                     <Link href="/signup" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
@@ -298,21 +330,29 @@ export default function HomeOrange() {
           </div>
         </section>
 
+        <div className="section-divider" />
+
         {/* ═══ Market Pulse — Fear & Greed + Liquidation ═══ */}
-        <section className="mb-6">
+        <section id="pulse" className="mb-6 scroll-mt-16">
           <div className="flex items-center gap-2 mb-3">
             <Radio className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Market Pulse</span>
             <div className="flex-1 h-px bg-white/[0.04]" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger">
-            <FearGreedIndex />
-            <LiquidationHeatmap />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 stagger">
+            <div className="md:col-span-3">
+              <FearGreedIndex />
+            </div>
+            <div className="md:col-span-2">
+              <LiquidationHeatmap />
+            </div>
           </div>
         </section>
 
+        <div className="section-divider" />
+
         {/* ═══ Exchange Status ═══ */}
-        <section className="mb-10">
+        <section id="infra" className="mb-10 scroll-mt-16">
           <div className="flex items-center gap-2 mb-3">
             <Globe className="w-3.5 h-3.5 text-hub-yellow" />
             <span className="section-label">Infrastructure</span>
@@ -459,6 +499,26 @@ export default function HomeOrange() {
         </section>
 
       </main>
+
+      {/* Quick-jump floating pills */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 hidden sm:flex gap-1.5 px-2 py-1.5 bg-hub-dark/90 backdrop-blur-md border border-white/[0.08] rounded-full shadow-2xl">
+        {[
+          { id: 'stats', label: 'Stats' },
+          { id: 'signals', label: 'Signals' },
+          { id: 'feeds', label: 'Feeds' },
+          { id: 'pulse', label: 'Pulse' },
+          { id: 'infra', label: 'Infra' },
+        ].map((pill) => (
+          <a
+            key={pill.id}
+            href={`#${pill.id}`}
+            className="px-3 py-1 text-[11px] font-semibold rounded-full text-neutral-500 hover:text-hub-yellow hover:bg-hub-yellow/10 transition-all"
+          >
+            {pill.label}
+          </a>
+        ))}
+      </div>
+
       <Footer />
     </div>
   );

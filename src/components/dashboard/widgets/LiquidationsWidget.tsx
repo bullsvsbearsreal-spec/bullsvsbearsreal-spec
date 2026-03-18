@@ -14,10 +14,22 @@ interface Liq {
   time?: number;
 }
 
+const WHALE_THRESHOLD = 500_000; // $500K = whale
+
+/** Trader slang for big liqs */
+function getRektSlang(val: number, isLong: boolean): string | null {
+  if (val < 100_000) return null;
+  if (val >= 1_000_000) return isLong ? 'Whale long obliterated' : 'Massive short squeeze';
+  if (val >= WHALE_THRESHOLD) return isLong ? 'Big long got rekt' : 'Short getting squeezed';
+  return isLong ? 'Longs catching strays' : 'Shorts in trouble';
+}
+
 export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
   const [liqs, setLiqs] = useState<Liq[] | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
-  const prevFirstTs = useRef<number>(0);
+  const prevCount = useRef(0);
+  const [justUpdated, setJustUpdated] = useState(false);
+  const fetchCount = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -26,7 +38,6 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
         const res = await fetch('/api/liquidations?symbol=BTC&limit=10');
         if (!res.ok) return;
         const json = await res.json();
-        // API returns { symbol, exchange, data: [...], meta: {...} }
         const rawItems = json?.data || [];
         const symbol = json?.symbol || 'BTC';
         const items: Liq[] = rawItems.map((d: any) => ({
@@ -40,6 +51,13 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
         if (mounted) {
           setLiqs(items.slice(0, wide ? 8 : 5));
           setUpdatedAt(Date.now());
+          // Flash micro-glow on refresh (skip first load)
+          if (fetchCount.current > 0) {
+            setJustUpdated(true);
+            setTimeout(() => setJustUpdated(false), 1000);
+          }
+          fetchCount.current++;
+          prevCount.current = items.length;
         }
       } catch (err) { console.error('[Liquidations] fetch error:', err); }
     };
@@ -63,25 +81,59 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
   }
 
   return (
-    <div>
-      <div className="space-y-1.5">
+    <div className={justUpdated ? 'data-updated' : ''}>
+      <div className="space-y-1">
       {liqs.map((l, i) => {
         const val = l.usdValue || (l.quantity * l.price);
         const isLong = l.side?.toLowerCase() === 'buy' || l.side?.toLowerCase() === 'long';
+        const isWhale = val >= WHALE_THRESHOLD;
+        const slang = getRektSlang(val, isLong);
+
+        // Determine rekt tape class
+        const tapeClass = isWhale
+          ? 'rekt-tape-whale'
+          : isLong
+            ? 'rekt-tape-long'
+            : 'rekt-tape-short';
+
         return (
-          <div key={i} className="flex items-center justify-between text-xs py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${isLong ? 'bg-green-400' : 'bg-red-400'}`} />
-              <span className="text-neutral-300">{l.symbol?.replace(/USDT$/, '')}</span>
+          <div
+            key={i}
+            className={`rekt-tape-entry ${tapeClass} flex items-center justify-between text-xs py-1.5 px-2 rounded-md hover:bg-white/[0.04] transition-colors relative has-tooltip`}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                isLong ? 'bg-red-400' : 'bg-green-400'
+              } ${isWhale ? 'animate-pulse' : ''}`} />
+              <span className="text-neutral-300 font-medium">{l.symbol?.replace(/USDT$/, '')}</span>
+              <span className={`text-[9px] font-semibold uppercase ${isLong ? 'text-red-400/60' : 'text-green-400/60'}`}>
+                {isLong ? 'LONG' : 'SHORT'}
+              </span>
+              {isWhale && (
+                <span className="badge-extreme">WHALE</span>
+              )}
             </div>
-            <span className="text-neutral-500 font-mono">
-              ${val >= 1000 ? `${(val / 1000).toFixed(1)}K` : val.toFixed(0)}
+            <span className={`font-mono font-bold ${
+              isWhale ? 'text-base' : 'text-sm'
+            } ${
+              isWhale ? 'text-highlight-hot' : isLong ? 'text-red-400' : 'text-green-400'
+            }`} style={isWhale ? { color: 'var(--highlight-hot)' } : undefined}>
+              ${val >= 1_000_000
+                ? `${(val / 1_000_000).toFixed(2)}M`
+                : val >= 1000
+                  ? `${(val / 1000).toFixed(1)}K`
+                  : val.toFixed(0)}
             </span>
+            {slang && (
+              <span className="trader-tooltip">
+                <span className="tooltip-slang">{slang}</span>
+              </span>
+            )}
           </div>
         );
       })}
       </div>
-      <div className="text-right mt-1"><UpdatedAgo ts={updatedAt} /></div>
+      <div className="text-right mt-1.5"><UpdatedAgo ts={updatedAt} /></div>
     </div>
   );
 }

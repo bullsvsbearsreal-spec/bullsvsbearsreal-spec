@@ -962,10 +962,9 @@ export default function OptionsPage() {
                     accent="#eab308"
                     className="border-hub-yellow/15"
                     sub={
-                      <div className={`flex items-center gap-1 text-xs ${dist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {dist >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                        <span className="font-mono">{dist >= 0 ? '+' : ''}{dist.toFixed(1)}% from spot</span>
-                      </div>
+                      <span className={`delta-badge text-[10px] ${dist >= 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
+                        {dist >= 0 ? '+' : ''}{dist.toFixed(1)}% from spot
+                      </span>
                     }
                   />
                 );
@@ -1298,9 +1297,9 @@ export default function OptionsPage() {
                           ${exp.maxPain ? exp.maxPain.toLocaleString() : '—'}
                         </p>
 
-                        <p className={`text-xs font-mono text-right font-medium ${mpDist >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <span className={`delta-badge text-[9px] ${mpDist >= 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
                           {mpDist >= 0 ? '+' : ''}{mpDist.toFixed(1)}%
-                        </p>
+                        </span>
                       </div>
                     );
                   })}

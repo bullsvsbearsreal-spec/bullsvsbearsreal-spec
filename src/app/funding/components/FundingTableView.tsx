@@ -54,7 +54,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
 
   return (
     <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollbar-accent">
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.06]">

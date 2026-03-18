@@ -11,7 +11,16 @@ interface StatCardProps {
   subtitle?: string;
 }
 
+/** Determine if a % change is "extreme" (>10% or < -10%) */
+function isExtreme(change?: string): boolean {
+  if (!change) return false;
+  const num = parseFloat(change.replace(/[^-.\d]/g, ''));
+  return !isNaN(num) && Math.abs(num) >= 10;
+}
+
 export default function StatCard({ title, value, change, changePositive, icon: Icon, subtitle }: StatCardProps) {
+  const extreme = isExtreme(change);
+
   return (
     <div className="glass-card rounded-2xl p-5 hover-lift group transition-all duration-300 relative overflow-hidden">
       {/* Top accent gradient line */}
@@ -19,15 +28,21 @@ export default function StatCard({ title, value, change, changePositive, icon: I
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-hub-gray-text text-sm font-medium mb-2">{title}</p>
-          <p className="text-2xl md:text-3xl font-bold text-white stat-value tracking-tight">{value}</p>
+          <p className="text-2xl md:text-3xl font-bold text-white stat-value tracking-tight font-mono">{value}</p>
           {change && (
-            <div className={`flex items-center gap-1 mt-2 ${changePositive ? 'text-success' : 'text-danger'}`}>
-              {changePositive ? (
-                <TrendingUp className="w-4 h-4" />
-              ) : (
-                <TrendingDown className="w-4 h-4" />
-              )}
-              <span className="text-sm font-semibold">{change}</span>
+            <div className="mt-2">
+              <span className={`delta-badge ${
+                extreme
+                  ? (changePositive ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                  : (changePositive ? 'delta-badge-up' : 'delta-badge-down')
+              }`}>
+                {changePositive ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : (
+                  <TrendingDown className="w-3 h-3" />
+                )}
+                {change}
+              </span>
             </div>
           )}
           {subtitle && (

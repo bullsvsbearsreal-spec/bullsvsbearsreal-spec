@@ -339,7 +339,7 @@ function ExchangeBasisCard({ exchange, entries, isActive, onClick }: {
           <span className="text-white text-xs font-semibold">{exchange}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-mono font-bold ${avg > 0 ? 'text-success' : avg < 0 ? 'text-danger' : 'text-neutral-400'}`}>
+          <span className={`delta-badge text-[11px] ${avg > 0 ? 'delta-badge-up' : avg < 0 ? 'delta-badge-down' : ''}`}>
             {formatBasis(avg)}
           </span>
           <ChevronRight className={`w-3 h-3 transition-transform ${isActive ? 'rotate-90 text-hub-yellow' : 'text-neutral-600'}`} />
@@ -609,7 +609,7 @@ export default function BasisPage() {
                 className="border-hub-yellow/15"
                 sub={symbolBasis.btc ? (
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                    <span>Avg: <span className={`font-mono ${symbolBasis.btc.avg > 0 ? 'text-green-400' : 'text-red-400'}`}>{formatBasis(symbolBasis.btc.avg)}</span></span>
+                    <span>Avg: <span className={`delta-badge text-[10px] ${symbolBasis.btc.avg > 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>{formatBasis(symbolBasis.btc.avg)}</span></span>
                     <span className="text-neutral-600">· {symbolBasis.btc.count} exchanges</span>
                   </div>
                 ) : <span className="text-xs text-neutral-600">No BTC data</span>}
@@ -624,7 +624,7 @@ export default function BasisPage() {
                 className="border-blue-500/15"
                 sub={symbolBasis.eth ? (
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                    <span>Avg: <span className={`font-mono ${symbolBasis.eth.avg > 0 ? 'text-green-400' : 'text-red-400'}`}>{formatBasis(symbolBasis.eth.avg)}</span></span>
+                    <span>Avg: <span className={`delta-badge text-[10px] ${symbolBasis.eth.avg > 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>{formatBasis(symbolBasis.eth.avg)}</span></span>
                     <span className="text-neutral-600">· {symbolBasis.eth.count} exchanges</span>
                   </div>
                 ) : <span className="text-xs text-neutral-600">No ETH data</span>}
@@ -639,7 +639,7 @@ export default function BasisPage() {
                 className={stats.avg > 0 ? 'border-green-500/15' : 'border-red-500/15'}
                 sub={
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                    <span>Median: <span className={`font-mono ${stats.median > 0 ? 'text-green-400' : stats.median < 0 ? 'text-red-400' : 'text-neutral-400'}`}>{formatBasis(stats.median)}</span></span>
+                    <span>Median: <span className={`delta-badge text-[10px] ${stats.median > 0 ? 'delta-badge-up' : stats.median < 0 ? 'delta-badge-down' : ''}`}>{formatBasis(stats.median)}</span></span>
                     <span className="text-neutral-600">· {establishedSymbols.size} tokens</span>
                   </div>
                 }
@@ -898,8 +898,8 @@ export default function BasisPage() {
                                 )}
                               </td>
                               <td className="px-4 py-2.5 text-right">
-                                <span className={`font-mono tabular-nums text-xs ${
-                                  entry.fundingRate > 0 ? 'text-success' : entry.fundingRate < 0 ? 'text-danger' : 'text-neutral-500'
+                                <span className={`delta-badge text-[10px] ${
+                                  entry.fundingRate > 0 ? 'delta-badge-up' : entry.fundingRate < 0 ? 'delta-badge-down' : ''
                                 }`}>
                                   {formatFundingRate(entry.fundingRate)}
                                 </span>

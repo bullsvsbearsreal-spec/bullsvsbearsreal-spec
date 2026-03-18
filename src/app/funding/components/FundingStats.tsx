@@ -11,9 +11,28 @@ interface FundingStatsProps {
   fundingPeriod: FundingPeriod;
 }
 
+/** Trader slang for extreme funding */
+function getFundingSlang(rate: number, type: 'highest' | 'lowest'): string | null {
+  const abs = Math.abs(rate);
+  if (abs < 0.05) return null;
+  if (type === 'highest') {
+    if (abs >= 0.5) return 'Funding printing money';
+    if (abs >= 0.1) return 'Longs paying heavy premium';
+    return 'Bullish pressure building';
+  } else {
+    if (abs >= 0.5) return 'Funding apocalypse';
+    if (abs >= 0.1) return 'Shorts paying through the nose';
+    return 'Bears squeezing hard';
+  }
+}
+
 export default function FundingStats({ fundingRates, avgRate, highestRate, lowestRate, fundingPeriod }: FundingStatsProps) {
   const normDisplay = (fr: FundingRateData) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
   const periodLabel = PERIOD_LABELS[fundingPeriod];
+  const highestNorm = highestRate ? normDisplay(highestRate) : 0;
+  const lowestNorm = lowestRate ? normDisplay(lowestRate) : 0;
+  const highSlang = getFundingSlang(highestNorm, 'highest');
+  const lowSlang = getFundingSlang(lowestNorm, 'lowest');
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
@@ -25,7 +44,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
             <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-[0.1em]">Pairs</span>
             <BarChart3 className="w-3.5 h-3.5 text-hub-yellow/40" />
           </div>
-          <div className="text-xl font-bold text-white font-mono tracking-tight">{fundingRates.length.toLocaleString()}</div>
+          <div className="text-2xl font-black text-white font-mono tracking-tight">{fundingRates.length.toLocaleString()}</div>
         </div>
       </div>
 
@@ -37,7 +56,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
             <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-[0.1em]">Avg Rate /{periodLabel}</span>
             <Activity className="w-3.5 h-3.5 text-neutral-600" />
           </div>
-          <div className={`text-xl font-bold font-mono tracking-tight ${getRateColor(avgRate)}`}>
+          <div className={`text-2xl font-black font-mono tracking-tight ${getRateColor(avgRate)}`}>
             {formatRateAdaptive(avgRate)}
           </div>
         </div>
@@ -52,11 +71,20 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
             <TrendingUp className="w-3.5 h-3.5 text-emerald-500/40" />
           </div>
           {highestRate && (
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold text-emerald-400 font-mono tracking-tight">{formatRateAdaptive(normDisplay(highestRate))}</span>
-              <span className="text-emerald-400/50 text-[11px] font-medium">{highestRate.symbol}</span>
-              <ExchangeLogo exchange={highestRate.exchange.toLowerCase()} size={14} />
-            </div>
+            <>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-black font-mono tracking-tight ${
+                  Math.abs(highestNorm) >= 0.1 ? 'text-pump-hot' : 'text-emerald-400'
+                }`} style={Math.abs(highestNorm) >= 0.1 ? { textShadow: '0 0 6px rgba(0, 230, 118, 0.3)' } : undefined}>
+                  {formatRateAdaptive(highestNorm)}
+                </span>
+                <span className="text-emerald-400/50 text-[11px] font-medium">{highestRate.symbol}</span>
+                <ExchangeLogo exchange={highestRate.exchange.toLowerCase()} size={14} />
+              </div>
+              {highSlang && (
+                <p className="text-[9px] mt-1 italic" style={{ color: 'var(--highlight-hot)', opacity: 0.6 }}>{highSlang}</p>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -70,11 +98,20 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
             <TrendingDown className="w-3.5 h-3.5 text-rose-500/40" />
           </div>
           {lowestRate && (
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold text-rose-400 font-mono tracking-tight">{formatRateAdaptive(normDisplay(lowestRate))}</span>
-              <span className="text-rose-400/50 text-[11px] font-medium">{lowestRate.symbol}</span>
-              <ExchangeLogo exchange={lowestRate.exchange.toLowerCase()} size={14} />
-            </div>
+            <>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-black font-mono tracking-tight ${
+                  Math.abs(lowestNorm) >= 0.1 ? 'text-rekt-hot' : 'text-rose-400'
+                }`} style={Math.abs(lowestNorm) >= 0.1 ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
+                  {formatRateAdaptive(lowestNorm)}
+                </span>
+                <span className="text-rose-400/50 text-[11px] font-medium">{lowestRate.symbol}</span>
+                <ExchangeLogo exchange={lowestRate.exchange.toLowerCase()} size={14} />
+              </div>
+              {lowSlang && (
+                <p className="text-[9px] mt-1 italic" style={{ color: 'var(--highlight-hot)', opacity: 0.6 }}>{lowSlang}</p>
+              )}
+            </>
           )}
         </div>
       </div>

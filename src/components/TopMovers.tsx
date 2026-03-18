@@ -16,6 +16,21 @@ interface CMCMover {
   volume24h: number;
 }
 
+/** Get trader slang tooltip for extreme moves */
+function getTraderSlang(change: number, view: 'gainers' | 'losers'): string | null {
+  const abs = Math.abs(change);
+  if (abs < 15) return null;
+  if (view === 'gainers') {
+    if (abs >= 50) return 'Absolutely sending it';
+    if (abs >= 30) return 'Shorts getting liquidated';
+    return 'Degens pumping hard';
+  } else {
+    if (abs >= 50) return 'Total capitulation';
+    if (abs >= 30) return 'Getting absolutely rekt';
+    return 'Longs in shambles';
+  }
+}
+
 export default function TopMovers() {
   const [gainers, setGainers] = useState<CMCMover[]>([]);
   const [losers, setLosers] = useState<CMCMover[]>([]);
@@ -79,32 +94,41 @@ export default function TopMovers() {
           ))}
         </div>
       ) : (
-        <div className="space-y-1">
-          {items.slice(0, 5).map((item, index) => (
-            <div
-              key={item.symbol}
-              className="data-row-premium flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-neutral-700 text-[10px] font-mono w-3">{index + 1}</span>
+        <div className="ranked-list space-y-0.5">
+          {items.slice(0, 5).map((item, index) => {
+            const isExtreme = Math.abs(item.change24h) >= 15;
+            const slang = getTraderSlang(item.change24h, view);
+            return (
+              <div
+                key={item.symbol}
+                className={`rank-row ${index === 0 ? '' : ''}`}
+              >
+                <span className={`rank-number ${index < 3 ? 'rank-number-top' : ''}`}>
+                  {index + 1}
+                </span>
                 <TokenIconSimple symbol={item.symbol} size={20} cmcId={item.cmcId} />
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-1 min-w-0">
                   <span className="text-white font-medium text-xs">{item.symbol}</span>
                   <span className="text-neutral-600 text-[9px] leading-none">{formatPrice(item.price)}</span>
                 </div>
+                <div className="relative has-tooltip">
+                  <span className={`delta-badge ${
+                    isExtreme
+                      ? (item.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                      : (item.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                  }`}>
+                    {item.change24h >= 0 ? '+' : ''}
+                    {item.change24h.toFixed(2)}%
+                  </span>
+                  {slang && (
+                    <span className="trader-tooltip">
+                      <span className="tooltip-slang">{slang}</span>
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className={`h-5 rounded-md px-1.5 flex items-center ${
-                item.change24h >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
-              }`}>
-                <span className={`font-mono font-bold text-[11px] tabular-nums ${
-                  item.change24h >= 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {item.change24h >= 0 ? '+' : ''}
-                  {item.change24h.toFixed(2)}%
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

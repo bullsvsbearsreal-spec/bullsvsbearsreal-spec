@@ -208,7 +208,11 @@ export default function SymbolPage() {
                 <p className="text-sm text-neutral-500">
                   {avgPrice > 0 ? formatPrice(avgPrice) : '-'}{' '}
                   {avgChange !== 0 && (
-                    <span className={avgChange >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    <span className={`delta-badge text-[11px] ${
+                      Math.abs(avgChange) >= 10
+                        ? (avgChange >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                        : (avgChange >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                    }`}>
                       {avgChange >= 0 ? '+' : ''}{avgChange.toFixed(2)}%
                     </span>
                   )}
@@ -244,10 +248,14 @@ export default function SymbolPage() {
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">24h Change</p>
-              <p className={`text-lg font-bold flex items-center gap-1 ${avgChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {avgChange >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              <span className={`delta-badge text-sm ${
+                Math.abs(avgChange) >= 10
+                  ? (avgChange >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                  : (avgChange >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+              }`}>
+                {avgChange >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                 {avgChange >= 0 ? '+' : ''}{avgChange.toFixed(2)}%
-              </p>
+              </span>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Volume 24h</p>

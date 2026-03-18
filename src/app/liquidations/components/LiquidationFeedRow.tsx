@@ -15,9 +15,11 @@ interface FeedRowProps {
   tick?: number;
 }
 
+const WHALE_THRESHOLD = 500_000;
+
 function getValueColor(value: number): string {
-  if (value >= 1_000_000) return 'text-purple-400';
-  if (value >= 500_000) return 'text-red-400';
+  if (value >= 1_000_000) return 'text-extreme-gradient';
+  if (value >= WHALE_THRESHOLD) return 'text-rekt-hot';
   if (value >= 100_000) return 'text-orange-400';
   if (value >= 10_000) return 'text-yellow-400';
   return 'text-neutral-300';
@@ -40,16 +42,24 @@ function LiquidationFeedRowInner({
   isNew,
 }: FeedRowProps) {
   const isLong = side === 'long';
+  const isWhale = value >= WHALE_THRESHOLD;
+
+  // Determine rekt tape class
+  const tapeClass = isWhale
+    ? 'rekt-tape-whale'
+    : isLong
+      ? 'rekt-tape-long'
+      : 'rekt-tape-short';
 
   return (
     <div
-      className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors ${
-        isNew ? 'animate-fade-in bg-hub-yellow/[0.04]' : ''
+      className={`rekt-tape-entry ${tapeClass} flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors ${
+        isNew ? 'bg-hub-yellow/[0.04]' : ''
       }`}
     >
       {/* Side dot */}
       <span
-        className={`shrink-0 rounded-full ${isLong ? 'bg-red-500' : 'bg-green-500'}`}
+        className={`shrink-0 rounded-full ${isLong ? 'bg-red-500' : 'bg-green-500'} ${isWhale ? 'animate-pulse' : ''}`}
         style={{ width: 6, height: 6 }}
       />
 
@@ -59,10 +69,15 @@ function LiquidationFeedRowInner({
         <span className="text-white text-xs font-mono truncate">{symbol}</span>
       </div>
 
-      {/* Value */}
-      <span className={`flex-1 text-xs font-mono font-semibold text-right ${getValueColor(value)}`}>
+      {/* Value — upgraded with intensity */}
+      <span className={`flex-1 text-xs font-mono font-bold text-right ${getValueColor(value)}`}>
         {formatLiqValue(value)}
       </span>
+
+      {/* Whale badge */}
+      {isWhale && (
+        <span className="badge-extreme text-[7px] py-0 px-1 shrink-0">WHALE</span>
+      )}
 
       {/* Side label */}
       <span

@@ -37,45 +37,51 @@ export default function OIChangeWidget() {
           <button onClick={() => loadData()} className="text-hub-yellow text-xs hover:underline">Retry</button>
         </div>
       ) : (
-        <div className="space-y-1">
-          {(oiData ?? []).slice(0, 5).map((item, index) => (
-            <div
-              key={`${item.symbol}-${item.exchange}`}
-              className="data-row-premium flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-neutral-700 text-[10px] font-mono w-3">{index + 1}</span>
+        <div className="ranked-list space-y-0.5">
+          {(oiData ?? []).slice(0, 5).map((item, index) => {
+            const isExtremeChange = (item.pct1h != null && Math.abs(item.pct1h) >= 10) ||
+                                    (item.pct24h != null && Math.abs(item.pct24h) >= 15);
+            return (
+              <div
+                key={`${item.symbol}-${item.exchange}`}
+                className="rank-row"
+              >
+                <span className={`rank-number ${index < 3 ? 'rank-number-top' : ''}`}>{index + 1}</span>
                 <WatchlistStar symbol={item.symbol} />
                 <TokenIconSimple symbol={item.symbol} size={20} />
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-1 min-w-0">
                   <span className="text-white font-medium text-xs">{item.symbol}</span>
                   <span className="text-neutral-600 text-[9px] leading-none">{item.exchange}</span>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="text-white font-mono font-bold text-xs tabular-nums">
-                  {formatUSD(item.openInterestValue)}
+                <div className="text-right">
+                  <div className="text-white font-mono font-bold text-sm tabular-nums tracking-tight">
+                    {formatUSD(item.openInterestValue)}
+                  </div>
+                  <div className="flex items-center gap-1.5 justify-end">
+                    {item.pct1h != null && (
+                      <span className={`delta-badge text-[9px] ${
+                        Math.abs(item.pct1h) >= 10
+                          ? (item.pct1h > 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                          : (item.pct1h > 0 ? 'delta-badge-up' : item.pct1h < 0 ? 'delta-badge-down' : 'bg-white/5 text-neutral-600')
+                      }`}>
+                        {item.pct1h > 0 ? '+' : ''}{item.pct1h.toFixed(1)}%
+                      </span>
+                    )}
+                    {item.pct24h != null && (
+                      <span className={`text-[9px] font-mono tabular-nums ${item.pct24h > 0 ? 'text-green-400/60' : item.pct24h < 0 ? 'text-red-400/60' : 'text-neutral-600'}`}>
+                        24h {item.pct24h > 0 ? '+' : ''}{item.pct24h.toFixed(1)}%
+                      </span>
+                    )}
+                    {item.pct1h == null && item.pct24h == null && (
+                      <span className="text-neutral-600 text-[9px] font-mono tabular-nums">
+                        {item.openInterest.toLocaleString(undefined, { maximumFractionDigits: 0 })} contracts
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 justify-end">
-                  {item.pct1h != null && (
-                    <span className={`text-[9px] font-mono tabular-nums ${item.pct1h > 0 ? 'text-green-400' : item.pct1h < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
-                      {item.pct1h > 0 ? '+' : ''}{item.pct1h.toFixed(1)}%
-                    </span>
-                  )}
-                  {item.pct24h != null && (
-                    <span className={`text-[9px] font-mono tabular-nums ${item.pct24h > 0 ? 'text-green-400' : item.pct24h < 0 ? 'text-red-400' : 'text-neutral-600'}`}>
-                      24h {item.pct24h > 0 ? '+' : ''}{item.pct24h.toFixed(1)}%
-                    </span>
-                  )}
-                  {item.pct1h == null && item.pct24h == null && (
-                    <span className="text-neutral-600 text-[9px] font-mono tabular-nums">
-                      {item.openInterest.toLocaleString(undefined, { maximumFractionDigits: 0 })} contracts
-                    </span>
-                  )}
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

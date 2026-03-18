@@ -207,16 +207,14 @@ export default function LongShortPage() {
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">Trend</div>
-              <div className="flex items-center gap-1">
-                {trend >= 0 ? (
-                  <TrendingUp className="w-4 h-4 text-green-400" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-red-400" />
-                )}
-                <span className={`text-lg font-bold font-mono ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {trend >= 0 ? '+' : ''}{trend.toFixed(2)}%
-                </span>
-              </div>
+              <span className={`delta-badge text-sm ${
+                Math.abs(trend) >= 5
+                  ? (trend >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                  : (trend >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+              }`}>
+                {trend >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                {trend >= 0 ? '+' : ''}{trend.toFixed(2)}%
+              </span>
             </div>
           </div>
         )}

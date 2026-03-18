@@ -294,25 +294,25 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
               {whale.allTimePnl != null && (
                 <div className={`${whale.allTimePnl >= 0 ? 'bg-green-500/5' : 'bg-red-500/5'} rounded-lg px-3 py-2`}>
                   <span className="text-neutral-600 text-[10px] uppercase tracking-wider">All-Time PnL</span>
-                  <div className={`font-mono text-sm font-bold mt-0.5 ${whale.allTimePnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`delta-badge text-xs mt-0.5 ${whale.allTimePnl >= 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
                     {fmtPnl(whale.allTimePnl)}
-                  </div>
+                  </span>
                 </div>
               )}
               {whale.dayPnl != null && (
                 <div className={`${whale.dayPnl >= 0 ? 'bg-green-500/5' : 'bg-red-500/5'} rounded-lg px-3 py-2`}>
                   <span className="text-neutral-600 text-[10px] uppercase tracking-wider">24h PnL</span>
-                  <div className={`font-mono text-sm font-bold mt-0.5 ${whale.dayPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`delta-badge text-xs mt-0.5 ${whale.dayPnl >= 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
                     {fmtPnl(whale.dayPnl)}
-                  </div>
+                  </span>
                 </div>
               )}
               {whale.weekPnl != null && (
                 <div className={`${whale.weekPnl >= 0 ? 'bg-green-500/5' : 'bg-red-500/5'} rounded-lg px-3 py-2`}>
                   <span className="text-neutral-600 text-[10px] uppercase tracking-wider">7d PnL</span>
-                  <div className={`font-mono text-sm font-bold mt-0.5 ${whale.weekPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`delta-badge text-xs mt-0.5 ${whale.weekPnl >= 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
                     {fmtPnl(whale.weekPnl)}
-                  </div>
+                  </span>
                 </div>
               )}
               {whale.volume != null && whale.volume > 0 && (
@@ -556,9 +556,13 @@ export default function HLWhalesPage() {
                 {stats.totalPnl >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 Total uPnL
               </span>
-              <div className={`text-lg font-bold font-mono mt-0.5 ${stats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`delta-badge text-sm mt-0.5 ${
+                Math.abs(stats.totalPnl) >= 1000000
+                  ? (stats.totalPnl >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                  : (stats.totalPnl >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+              }`}>
                 {fmtPnl(stats.totalPnl)}
-              </div>
+              </span>
             </div>
           </div>
         ) : null}

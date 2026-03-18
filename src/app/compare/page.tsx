@@ -228,7 +228,11 @@ export default function ComparePage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-600 text-xs">24h Change</span>
-                      <span className={`font-mono text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className={`delta-badge text-[11px] ${
+                        Math.abs(coin.change24h) >= 10
+                          ? (coin.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                          : (coin.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                      }`}>
                         {formatPercent(coin.change24h)}
                       </span>
                     </div>
@@ -242,7 +246,11 @@ export default function ComparePage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-600 text-xs">Avg Funding</span>
-                      <span className={`font-mono text-sm ${coin.avgFunding >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className={`delta-badge text-[11px] ${
+                        Math.abs(coin.avgFunding) >= 0.05
+                          ? (coin.avgFunding >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                          : (coin.avgFunding >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                      }`}>
                         {formatFundingRate(coin.avgFunding)}
                       </span>
                     </div>
@@ -258,7 +266,7 @@ export default function ComparePage() {
                             <ExchangeLogo exchange={f.exchange.toLowerCase()} size={12} />
                             <span className="text-neutral-400 text-[11px]">{f.exchange}</span>
                           </div>
-                          <span className={`font-mono text-[11px] ${f.rate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          <span className={`delta-badge text-[10px] ${f.rate >= 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
                             {f.rate >= 0 ? '+' : ''}{f.rate.toFixed(4)}%
                           </span>
                         </div>
@@ -357,14 +365,14 @@ export default function ComparePage() {
                               className="absolute top-0 bottom-0 left-1/2 bg-green-500/60 rounded-r-full flex items-center justify-end pr-1"
                               style={{ width: `${Math.max(pct, 2)}%` }}
                             >
-                              <span className="text-[9px] font-mono text-green-200 font-bold">+{coin.avgFunding.toFixed(4)}%</span>
+                              <span className="text-[9px] font-mono font-bold" style={{ color: 'var(--pump-hot)' }}>+{coin.avgFunding.toFixed(4)}%</span>
                             </div>
                           ) : (
                             <div
                               className="absolute top-0 bottom-0 bg-red-500/60 rounded-l-full flex items-center pl-1"
                               style={{ width: `${Math.max(pct, 2)}%`, right: '50%' }}
                             >
-                              <span className="text-[9px] font-mono text-red-200 font-bold">{coin.avgFunding.toFixed(4)}%</span>
+                              <span className="text-[9px] font-mono font-bold" style={{ color: 'var(--rekt-hot)' }}>  {coin.avgFunding.toFixed(4)}%</span>
                             </div>
                           )}
                         </div>

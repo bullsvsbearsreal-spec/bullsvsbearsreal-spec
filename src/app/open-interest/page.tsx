@@ -200,19 +200,19 @@ export default function OpenInterestPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards — PH-scale numbers */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Total OI</span>
-            <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(totalOI)}</div>
+            <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Total OI</span>
+            <div className="text-xl font-black text-white font-mono mt-0.5 tracking-tight">{formatUSD(totalOI)}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Symbols</span>
-            <div className="text-lg font-bold text-white font-mono mt-0.5">{symbolAggregated.size}</div>
+            <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Symbols</span>
+            <div className="text-xl font-black text-white font-mono mt-0.5 tracking-tight">{symbolAggregated.size.toLocaleString()}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-            <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Exchanges</span>
-            <div className="text-lg font-bold text-white font-mono mt-0.5">{exchanges.length}</div>
+            <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Exchanges</span>
+            <div className="text-xl font-black text-white font-mono mt-0.5 tracking-tight">{exchanges.length}</div>
           </div>
         </div>
 
@@ -226,16 +226,21 @@ export default function OpenInterestPage() {
                   <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Biggest OI Increase 24h</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {oiMovers.gainers.map(m => (
-                    <Link
-                      key={m.symbol}
-                      href={`/symbol/${m.symbol}`}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-colors"
-                    >
-                      <span className="text-white text-[10px] font-medium">{m.symbol}</span>
-                      <span className="text-green-400 text-[10px] font-medium font-mono">+{m.change.toFixed(1)}%</span>
-                    </Link>
-                  ))}
+                  {oiMovers.gainers.map(m => {
+                    const isExtreme = m.change >= 20;
+                    return (
+                      <Link
+                        key={m.symbol}
+                        href={`/symbol/${m.symbol}`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-colors"
+                      >
+                        <span className="text-white text-[10px] font-medium">{m.symbol}</span>
+                        <span className={`delta-badge text-[10px] ${isExtreme ? 'delta-badge-extreme-up' : 'delta-badge-up'}`}>
+                          +{m.change.toFixed(1)}%
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -246,16 +251,21 @@ export default function OpenInterestPage() {
                   <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Biggest OI Decrease 24h</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {oiMovers.losers.map(m => (
-                    <Link
-                      key={m.symbol}
-                      href={`/symbol/${m.symbol}`}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                    >
-                      <span className="text-white text-[10px] font-medium">{m.symbol}</span>
-                      <span className="text-red-400 text-[10px] font-medium font-mono">{m.change.toFixed(1)}%</span>
-                    </Link>
-                  ))}
+                  {oiMovers.losers.map(m => {
+                    const isExtreme = Math.abs(m.change) >= 20;
+                    return (
+                      <Link
+                        key={m.symbol}
+                        href={`/symbol/${m.symbol}`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                      >
+                        <span className="text-white text-[10px] font-medium">{m.symbol}</span>
+                        <span className={`delta-badge text-[10px] ${isExtreme ? 'delta-badge-extreme-down' : 'delta-badge-down'}`}>
+                          {m.change.toFixed(1)}%
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -413,7 +423,7 @@ export default function OpenInterestPage() {
               })}
             </div>
             {/* Desktop table (md and above) */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto scrollbar-accent">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/[0.06]">

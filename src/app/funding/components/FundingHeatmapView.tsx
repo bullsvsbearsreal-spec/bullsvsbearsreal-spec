@@ -766,11 +766,11 @@ export default function FundingHeatmapView({
       {mode === 'grid' && (
         <>
           {/* Top scrollbar — synced with table */}
-          <div ref={topScrollRef} className="overflow-x-auto heatmap-scroll" style={{ marginTop: -1 }}>
+          <div ref={topScrollRef} className="overflow-x-auto heatmap-scroll scrollbar-accent" style={{ marginTop: -1 }}>
             <div style={{ width: scrollWidth, height: 1 }} />
           </div>
           <div className="relative">
-          <div ref={tableScrollRef} className="overflow-x-auto heatmap-scroll">
+          <div ref={tableScrollRef} className="overflow-x-auto heatmap-scroll scrollbar-accent">
             <table style={{ borderCollapse: 'separate', borderSpacing: SPACING_MAP[gridSpacing], tableLayout: 'fixed', width: 145 + visibleExchanges.length * 81 }}>
               <thead>
                 <tr>

@@ -10,6 +10,15 @@ interface RatioData {
   shortRatio: number;
 }
 
+/** Trader slang for extreme L/S skew */
+function getLSSlang(longRatio: number): string | null {
+  if (longRatio >= 75) return 'Longs absolutely loaded — squeeze incoming?';
+  if (longRatio >= 65) return 'Heavy long bias';
+  if (longRatio <= 25) return 'Shorts piling in — pump fuel?';
+  if (longRatio <= 35) return 'Bears in control';
+  return null;
+}
+
 export default function LongShortRatio() {
   const { data: ratios, isLoading: loading } = useApi<RatioData[]>({
     key: 'longShortRatios',
@@ -48,18 +57,25 @@ export default function LongShortRatio() {
         <div className="space-y-2">
           {(ratios ?? []).map((item) => {
             const isLongDominant = item.longRatio > item.shortRatio;
+            const isExtreme = item.longRatio >= 65 || item.longRatio <= 35;
+            const slang = getLSSlang(item.longRatio);
             return (
-              <div key={item.symbol} className="px-2.5 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
+              <div
+                key={item.symbol}
+                className={`relative px-2.5 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors ${
+                  isExtreme ? (isLongDominant ? 'card-bullish' : 'card-bearish') : ''
+                } ${slang ? 'has-tooltip' : ''}`}
+              >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <TokenIconSimple symbol={item.symbol} size={18} />
                     <span className="text-white font-medium text-xs">{item.symbol}</span>
                   </div>
-                  <div className={`h-4 rounded px-1.5 flex items-center text-[9px] font-bold uppercase tracking-wide ${
-                    isLongDominant ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                  }`}>
+                  <span className={`delta-badge ${
+                    isLongDominant ? 'delta-badge-up' : 'delta-badge-down'
+                  } text-[9px] uppercase tracking-wide`}>
                     {isLongDominant ? 'Bullish' : 'Bearish'}
-                  </div>
+                  </span>
                 </div>
 
                 <div className="flex h-1.5 rounded-full overflow-hidden bg-white/[0.04]">
@@ -74,9 +90,19 @@ export default function LongShortRatio() {
                 </div>
 
                 <div className="flex justify-between mt-1 text-[10px] font-mono">
-                  <span className="text-green-400 font-semibold">{item.longRatio.toFixed(1)}%</span>
-                  <span className="text-red-400 font-semibold">{item.shortRatio.toFixed(1)}%</span>
+                  <span className={`font-semibold ${isExtreme && isLongDominant ? 'text-pump-hot' : 'text-green-400'}`}>
+                    {item.longRatio.toFixed(1)}%
+                  </span>
+                  <span className={`font-semibold ${isExtreme && !isLongDominant ? 'text-rekt-hot' : 'text-red-400'}`}>
+                    {item.shortRatio.toFixed(1)}%
+                  </span>
                 </div>
+
+                {slang && (
+                  <span className="trader-tooltip">
+                    <span className="tooltip-slang">{slang}</span>
+                  </span>
+                )}
               </div>
             );
           })}

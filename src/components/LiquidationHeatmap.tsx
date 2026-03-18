@@ -7,6 +7,18 @@ import { useMultiExchangeLiquidations } from '@/hooks/useMultiExchangeLiquidatio
 
 const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX', 'HTX', 'gTrade'];
 
+/** Trader slang based on total liq volume */
+function getLiqSlang(totalValue: number, longPct: number): string | null {
+  if (totalValue >= 100_000_000) return 'Absolute carnage across the board';
+  if (totalValue >= 50_000_000) return 'Heavy liquidation cascade';
+  if (totalValue >= 10_000_000) {
+    if (longPct >= 70) return 'Longs getting wrecked';
+    if (longPct <= 30) return 'Short squeeze in progress';
+    return 'Both sides taking damage';
+  }
+  return null;
+}
+
 export default function LiquidationHeatmap() {
   const { connections, stats, aggregated } = useMultiExchangeLiquidations({
     exchanges: EXCHANGES,
@@ -21,6 +33,8 @@ export default function LiquidationHeatmap() {
 
   const totalValue = stats.longValue + stats.shortValue;
   const longPct = totalValue > 0 ? (stats.longValue / totalValue) * 100 : 50;
+  const isHeavyLiq = totalValue >= 10_000_000;
+  const slang = getLiqSlang(totalValue, longPct);
 
   const sortedLiqs = useMemo(() => {
     return Array.from(aggregated.values())
@@ -31,7 +45,7 @@ export default function LiquidationHeatmap() {
   const maxValue = Math.max(...sortedLiqs.map(l => l.totalValue), 1);
 
   return (
-    <div className="card-premium p-4">
+    <div className={`card-premium p-4 h-full ${isHeavyLiq ? 'card-bearish' : ''}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
@@ -60,11 +74,15 @@ export default function LiquidationHeatmap() {
         </div>
       </div>
 
-      {/* Stats row */}
+      {/* Stats row — upgraded with intensity */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="bg-white/[0.03] rounded-lg px-3 py-2 text-center border border-white/[0.04]">
           <div className="text-[10px] text-neutral-500 mb-0.5 font-medium">Total Rekt</div>
-          <div className="text-sm font-bold text-white font-mono tabular-nums">{formatLiqValue(totalValue)}</div>
+          <div className={`font-bold font-mono tabular-nums ${
+            isHeavyLiq ? 'text-base text-rekt-hot' : 'text-sm text-white'
+          }`} style={isHeavyLiq ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
+            {formatLiqValue(totalValue)}
+          </div>
         </div>
         <div className="bg-red-500/[0.04] rounded-lg px-3 py-2 text-center border border-red-500/10">
           <div className="text-[10px] text-neutral-500 mb-0.5 font-medium">Longs</div>
@@ -76,6 +94,11 @@ export default function LiquidationHeatmap() {
         </div>
       </div>
 
+      {/* Trader slang */}
+      {slang && (
+        <p className="text-[10px] mb-2 italic text-center" style={{ color: 'var(--highlight-hot)', opacity: 0.7 }}>{slang}</p>
+      )}
+
       {/* Long/Short ratio bar */}
       {totalValue > 0 && (
         <div className="mb-3">
@@ -84,8 +107,8 @@ export default function LiquidationHeatmap() {
             <div className="bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500 rounded-r-full" style={{ width: `${100 - longPct}%` }} />
           </div>
           <div className="flex justify-between mt-1 text-[9px] font-mono">
-            <span className="text-red-400">{longPct.toFixed(0)}% Long</span>
-            <span className="text-green-400">{(100 - longPct).toFixed(0)}% Short</span>
+            <span className="text-red-400 font-semibold">{longPct.toFixed(0)}% Long</span>
+            <span className="text-green-400 font-semibold">{(100 - longPct).toFixed(0)}% Short</span>
           </div>
         </div>
       )}
@@ -101,11 +124,12 @@ export default function LiquidationHeatmap() {
             const isLongDominant = liq.longValue > liq.shortValue;
             const intensity = Math.min((liq.totalValue / maxValue) * 100, 100);
             const sizeClass = index < 3 ? 'h-20' : index < 6 ? 'h-16' : 'h-14';
+            const isWhale = liq.totalValue >= 1_000_000;
 
             return (
               <div
                 key={liq.symbol}
-                className={`${sizeClass} rounded-lg px-2.5 py-2 flex flex-col justify-between relative overflow-hidden transition-all duration-300`}
+                className={`${sizeClass} rounded-lg px-2.5 py-2 flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:scale-[1.03] cursor-pointer`}
                 style={{
                   background: isLongDominant
                     ? `rgba(239, 68, 68, ${0.08 + (intensity / 100) * 0.25})`
@@ -115,8 +139,13 @@ export default function LiquidationHeatmap() {
                     : `rgba(34, 197, 94, ${0.1 + (intensity / 100) * 0.2})`}`
                 }}
               >
-                <span className="text-white font-bold text-xs relative z-10">{liq.symbol}</span>
-                <span className="text-white/80 text-[10px] font-mono font-semibold relative z-10">
+                <div className="flex items-center gap-1 relative z-10">
+                  <span className="text-white font-bold text-xs">{liq.symbol}</span>
+                  {isWhale && <span className="badge-extreme text-[7px] py-0 px-1">WHALE</span>}
+                </div>
+                <span className={`relative z-10 font-mono font-bold ${
+                  index < 3 ? 'text-sm' : 'text-[10px]'
+                } ${isLongDominant ? 'text-red-300' : 'text-green-300'}`}>
                   {formatLiqValue(liq.totalValue)}
                 </span>
               </div>

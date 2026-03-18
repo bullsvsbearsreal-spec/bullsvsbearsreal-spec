@@ -76,6 +76,7 @@ export default function MarketIndices() {
         <div className="space-y-1">
           {indices.map((index) => {
             const isPositive = index.change >= 0;
+            const isExtreme = Math.abs(index.change) >= 10;
             return (
               <div
                 key={index.name}
@@ -83,20 +84,18 @@ export default function MarketIndices() {
               >
                 <span className="text-neutral-400 text-xs">{index.name}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-white font-mono font-semibold text-xs tabular-nums">{index.value}</span>
-                  <div className={`flex items-center gap-0.5 h-5 rounded-md px-1.5 ${
-                    isPositive ? 'bg-green-500/10' : 'bg-red-500/10'
+                  <span className="text-white font-mono font-bold text-xs tabular-nums">{index.value}</span>
+                  <span className={`delta-badge text-[10px] ${
+                    isExtreme
+                      ? (isPositive ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                      : (isPositive ? 'delta-badge-up' : 'delta-badge-down')
                   }`}>
                     {isPositive
-                      ? <TrendingUp className="w-2.5 h-2.5 text-green-400" />
-                      : <TrendingDown className="w-2.5 h-2.5 text-red-400" />
+                      ? <TrendingUp className="w-2.5 h-2.5" />
+                      : <TrendingDown className="w-2.5 h-2.5" />
                     }
-                    <span className={`text-[10px] font-mono font-semibold ${
-                      isPositive ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {isPositive ? '+' : ''}{index.change.toFixed(2)}%
-                    </span>
-                  </div>
+                    {isPositive ? '+' : ''}{index.change.toFixed(2)}%
+                  </span>
                 </div>
               </div>
             );

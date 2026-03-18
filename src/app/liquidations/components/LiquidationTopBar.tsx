@@ -15,6 +15,18 @@ interface LiquidationTopBarProps {
 
 const TIMEFRAMES: Timeframe[] = ['4h', '8h', '12h', '24h'];
 
+/** Trader slang based on rekt volume */
+function getRektSlang(total: number, longPct: number): string | null {
+  if (total >= 500_000_000) return 'Total bloodbath';
+  if (total >= 100_000_000) return 'Absolute carnage';
+  if (total >= 50_000_000) {
+    if (longPct >= 70) return 'Longs getting destroyed';
+    if (longPct <= 30) return 'Massive short squeeze';
+    return 'Both sides rekt';
+  }
+  return null;
+}
+
 export default function LiquidationTopBar({
   stats,
   timeframe,
@@ -22,8 +34,10 @@ export default function LiquidationTopBar({
   soundEnabled,
   onSoundToggle,
 }: LiquidationTopBarProps) {
-  const longPct = stats.total > 0 ? ((stats.longValue / stats.total) * 100).toFixed(1) : '0.0';
-  const shortPct = stats.total > 0 ? ((stats.shortValue / stats.total) * 100).toFixed(1) : '0.0';
+  const longPct = stats.total > 0 ? (stats.longValue / stats.total) * 100 : 0;
+  const shortPct = 100 - longPct;
+  const isHeavy = stats.total >= 50_000_000;
+  const slang = getRektSlang(stats.total, longPct);
 
   return (
     <div className="px-4 py-2 border-b border-white/[0.06] bg-white/[0.01] flex-shrink-0">
@@ -32,19 +46,30 @@ export default function LiquidationTopBar({
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-hub-yellow" />
           <span className="text-white font-bold text-base tracking-tight">Liquidations</span>
+          <span className="heartbeat-dot" style={{ width: 6, height: 6 }} />
         </div>
 
-        {/* Center: Inline stats */}
+        {/* Center: Inline stats — upgraded with intensity */}
         <div className="hidden md:flex items-center gap-1.5 text-xs font-mono">
-          <span className="text-white font-semibold">{formatLiqValue(stats.total)}</span>
+          <span className={`font-black ${isHeavy ? 'text-base text-rekt-hot' : 'text-sm text-white'}`}
+            style={isHeavy ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
+            {formatLiqValue(stats.total)}
+          </span>
           <span className="text-neutral-600">total</span>
           <span className="text-neutral-700">|</span>
-          <span className="text-neutral-300">{stats.count.toLocaleString()}</span>
+          <span className="text-neutral-300 font-bold">{stats.count.toLocaleString()}</span>
           <span className="text-neutral-600">liqs</span>
           <span className="text-neutral-700">|</span>
-          <span className="text-red-400">L {longPct}%</span>
+          <span className={`delta-badge ${longPct >= 60 ? 'delta-badge-extreme-down' : 'delta-badge-down'} text-[10px]`}>
+            L {longPct.toFixed(1)}%
+          </span>
           <span className="text-neutral-700">/</span>
-          <span className="text-green-400">S {shortPct}%</span>
+          <span className={`delta-badge ${shortPct >= 60 ? 'delta-badge-extreme-up' : 'delta-badge-up'} text-[10px]`}>
+            S {shortPct.toFixed(1)}%
+          </span>
+          {slang && (
+            <span className="text-[9px] italic ml-1" style={{ color: 'var(--highlight-hot)', opacity: 0.7 }}>{slang}</span>
+          )}
         </div>
 
         {/* Right: Timeframe pills + Sound toggle */}
@@ -84,14 +109,14 @@ export default function LiquidationTopBar({
 
       {/* Mobile stats row */}
       <div className="flex md:hidden items-center gap-1.5 text-[10px] font-mono mt-1">
-        <span className="text-white font-semibold">{formatLiqValue(stats.total)}</span>
+        <span className={`font-bold ${isHeavy ? 'text-rekt-hot' : 'text-white'}`}>{formatLiqValue(stats.total)}</span>
         <span className="text-neutral-600">|</span>
-        <span className="text-neutral-300">{stats.count.toLocaleString()}</span>
+        <span className="text-neutral-300 font-bold">{stats.count.toLocaleString()}</span>
         <span className="text-neutral-600">liqs</span>
         <span className="text-neutral-600">|</span>
-        <span className="text-red-400">L {longPct}%</span>
+        <span className="text-red-400">L {longPct.toFixed(1)}%</span>
         <span className="text-neutral-700">/</span>
-        <span className="text-green-400">S {shortPct}%</span>
+        <span className="text-green-400">S {shortPct.toFixed(1)}%</span>
       </div>
     </div>
   );

@@ -10,15 +10,22 @@ interface FearGreedEntry {
 }
 
 const ZONES = [
-  { max: 20, label: 'Extreme Fear', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  { max: 40, label: 'Fear', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  { max: 60, label: 'Neutral', color: '#FFA500', bg: 'rgba(255,165,0,0.12)' },
-  { max: 80, label: 'Greed', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
-  { max: 100, label: 'Extreme Greed', color: '#16a34a', bg: 'rgba(22,163,74,0.12)' },
+  { max: 20, label: 'Extreme Fear', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', slang: 'Blood in the streets' },
+  { max: 40, label: 'Fear', color: '#f97316', bg: 'rgba(249,115,22,0.12)', slang: 'Weak hands shaking' },
+  { max: 60, label: 'Neutral', color: '#FFA500', bg: 'rgba(255,165,0,0.12)', slang: 'Waiting for a move' },
+  { max: 80, label: 'Greed', color: '#22c55e', bg: 'rgba(34,197,94,0.12)', slang: 'Degens feeling brave' },
+  { max: 100, label: 'Extreme Greed', color: '#16a34a', bg: 'rgba(22,163,74,0.12)', slang: 'Peak euphoria — top signal?' },
 ] as const;
 
 function getZone(val: number) {
   return ZONES.find((z) => val <= z.max) || ZONES[4];
+}
+
+/** Card sentiment class based on fear/greed value */
+function getSentimentClass(val: number): string {
+  if (val <= 25) return 'card-bearish';
+  if (val >= 75) return 'card-bullish';
+  return '';
 }
 
 export default function FearGreedIndex() {
@@ -50,10 +57,12 @@ export default function FearGreedIndex() {
   const displayValue = current?.value ?? 50;
   const zone = getZone(displayValue);
   const rotation = (displayValue / 100) * 180 - 90;
+  const sentimentClass = getSentimentClass(displayValue);
 
   // Yesterday's value and change
   const yesterday = history.length > 1 ? history[1] : null;
   const change = yesterday ? displayValue - yesterday.value : null;
+  const isExtremeChange = change !== null && Math.abs(change) >= 15;
 
   // Sparkline data (reversed so oldest is left)
   const sparkData = useMemo(() => {
@@ -76,7 +85,7 @@ export default function FearGreedIndex() {
   }, [history]);
 
   return (
-    <div className="card-premium p-3 h-full">
+    <div className={`card-premium p-3 h-full ${sentimentClass}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -181,28 +190,40 @@ export default function FearGreedIndex() {
             )}
             <span className="text-neutral-600 text-xs font-mono">/100</span>
           </div>
-          <div
-            className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-            style={{ color: zone.color, background: zone.bg }}
-          >
-            {zone.label}
+          <div className="flex items-center justify-center gap-1.5 mt-0.5">
+            <div
+              className="text-[11px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+              style={{ color: zone.color, background: zone.bg }}
+            >
+              {zone.label}
+            </div>
           </div>
+          {/* Trader slang */}
+          {!loading && (
+            <p className="text-[10px] mt-1 italic" style={{ color: 'var(--highlight-hot)', opacity: 0.7 }}>
+              {zone.slang}
+            </p>
+          )}
         </div>
 
-        {/* Change from yesterday */}
+        {/* Change from yesterday — now with delta badge */}
         {change !== null && !loading && (
-          <div className="flex items-center gap-1 mt-1.5 text-[11px]">
-            {change > 0 ? (
-              <TrendingUp className="w-3 h-3 text-green-400" />
-            ) : change < 0 ? (
-              <TrendingDown className="w-3 h-3 text-red-400" />
-            ) : (
-              <Minus className="w-3 h-3 text-neutral-500" />
-            )}
-            <span className={change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-neutral-500'}>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className={`delta-badge ${
+              isExtremeChange
+                ? (change > 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                : (change > 0 ? 'delta-badge-up' : change < 0 ? 'delta-badge-down' : 'bg-white/5 text-neutral-500')
+            }`}>
+              {change > 0 ? (
+                <TrendingUp className="w-3 h-3" />
+              ) : change < 0 ? (
+                <TrendingDown className="w-3 h-3" />
+              ) : (
+                <Minus className="w-3 h-3" />
+              )}
               {change > 0 ? '+' : ''}{change}
             </span>
-            <span className="text-neutral-600">from yesterday</span>
+            <span className="text-neutral-600 text-[10px]">from yesterday</span>
           </div>
         )}
 

@@ -564,7 +564,7 @@ export default function ScreenerPage() {
         </div>
 
         {/* Table (desktop) */}
-        <div className="overflow-x-auto rounded-xl border border-white/[0.06] hidden md:block">
+        <div className="overflow-x-auto scrollbar-accent rounded-xl border border-white/[0.06] hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-white/[0.02] border-b border-white/[0.06]">
@@ -629,8 +629,14 @@ export default function ScreenerPage() {
                       </Link>
                     </td>
                     <td className="px-3 py-2 text-right text-neutral-300 font-mono text-xs">{formatPrice(row.price)}</td>
-                    <td className={`px-3 py-2 text-right font-mono text-xs ${row.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatPercent(row.change24h)}
+                    <td className="px-3 py-2 text-right">
+                      <span className={`delta-badge text-[11px] ${
+                        Math.abs(row.change24h) >= 10
+                          ? (row.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                          : (row.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                      }`}>
+                        {formatPercent(row.change24h)}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-right text-neutral-400 font-mono text-xs">{formatNumber(row.volume24h)}</td>
                     <td className={`px-3 py-2 text-right font-mono text-xs ${
@@ -641,10 +647,16 @@ export default function ScreenerPage() {
                     <td className="px-3 py-2 text-right text-neutral-400 font-mono text-xs">
                       {row.totalOI > 0 ? formatNumber(row.totalOI) : '—'}
                     </td>
-                    <td className={`px-3 py-2 text-right font-mono text-xs ${
-                      row.oiChange24h > 0 ? 'text-green-400' : row.oiChange24h < 0 ? 'text-red-400' : 'text-neutral-600'
-                    }`}>
-                      {row.oiChange24h !== 0 ? `${row.oiChange24h > 0 ? '+' : ''}${row.oiChange24h.toFixed(1)}%` : '—'}
+                    <td className="px-3 py-2 text-right">
+                      {row.oiChange24h !== 0 ? (
+                        <span className={`delta-badge text-[10px] ${
+                          Math.abs(row.oiChange24h) >= 15
+                            ? (row.oiChange24h > 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                            : (row.oiChange24h > 0 ? 'delta-badge-up' : row.oiChange24h < 0 ? 'delta-badge-down' : '')
+                        }`}>
+                          {row.oiChange24h > 0 ? '+' : ''}{row.oiChange24h.toFixed(1)}%
+                        </span>
+                      ) : <span className="text-neutral-600 font-mono text-xs">—</span>}
                     </td>
                     <td className="px-3 py-2 text-right text-neutral-600 text-[11px]">
                       {row.fundingExchanges > 0 ? `${row.fundingExchanges}F` : ''}
@@ -693,7 +705,11 @@ export default function ScreenerPage() {
                       <TokenIconSimple symbol={row.symbol} size={16} />
                       {row.symbol}
                     </Link>
-                    <span className={`font-mono text-xs font-semibold ${row.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <span className={`delta-badge text-[10px] ${
+                      Math.abs(row.change24h) >= 10
+                        ? (row.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
+                        : (row.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                    }`}>
                       {formatPercent(row.change24h)}
                     </span>
                   </div>
@@ -732,7 +748,7 @@ export default function ScreenerPage() {
                     {row.sentiment}
                   </span>
                   {row.oiChange24h !== 0 && (
-                    <span className={`text-[10px] font-mono ${row.oiChange24h > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <span className={`delta-badge text-[9px] ${row.oiChange24h > 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
                       OI {row.oiChange24h > 0 ? '+' : ''}{row.oiChange24h.toFixed(1)}%
                     </span>
                   )}
