@@ -24,7 +24,7 @@ interface ChartRow {
   [exchange: string]: number;
 }
 
-type TimeRange = '7d' | '30d';
+type TimeRange = '1h' | '4h' | '1d' | '7d' | '30d';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -70,10 +70,26 @@ function formatOI(val: number): string {
   return `$${val.toFixed(0)}`;
 }
 
+const TIME_RANGE_DAYS: Record<TimeRange, number> = {
+  '1h': 0.04,
+  '4h': 0.17,
+  '1d': 1,
+  '7d': 7,
+  '30d': 30,
+};
+
+const TIME_RANGE_LABELS: Record<TimeRange, string> = {
+  '1h': '1H',
+  '4h': '4H',
+  '1d': '1D',
+  '7d': '7D',
+  '30d': '30D',
+};
+
 function formatDateAxis(ts: number, range: TimeRange): string {
   const d = new Date(ts);
-  if (range === '7d') {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (range === '1h' || range === '4h' || range === '1d') {
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
@@ -147,7 +163,7 @@ export default function OIHistoryChart({ symbol }: OIHistoryChartProps) {
     setLoading(true);
     setError(null);
     try {
-      const days = timeRange === '30d' ? 30 : 7;
+      const days = TIME_RANGE_DAYS[timeRange];
       const res = await fetch(`/api/history/oi-multi?symbol=${encodeURIComponent(symbol)}&days=${days}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -248,7 +264,7 @@ export default function OIHistoryChart({ symbol }: OIHistoryChartProps) {
 
         {/* Time range toggle */}
         <div className="flex gap-1">
-          {(['7d', '30d'] as TimeRange[]).map((range) => (
+          {(['1h', '4h', '1d', '7d', '30d'] as TimeRange[]).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
@@ -258,7 +274,7 @@ export default function OIHistoryChart({ symbol }: OIHistoryChartProps) {
                   : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
-              {range}
+              {TIME_RANGE_LABELS[range]}
             </button>
           ))}
         </div>

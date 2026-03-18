@@ -9,7 +9,23 @@ import {
 
 // ── Types ──
 
-type TimeRange = '7d' | '30d';
+type TimeRange = '1h' | '4h' | '1d' | '7d' | '30d';
+
+const TIME_RANGE_DAYS: Record<TimeRange, number> = {
+  '1h': 0.04,
+  '4h': 0.17,
+  '1d': 1,
+  '7d': 7,
+  '30d': 30,
+};
+
+const TIME_RANGE_LABELS: Record<TimeRange, string> = {
+  '1h': '1H',
+  '4h': '4H',
+  '1d': '1D',
+  '7d': '7D',
+  '30d': '30D',
+};
 
 interface BulkFundingResponse {
   symbols: string[];
@@ -53,10 +69,11 @@ function CustomTooltip({ active, payload, label }: any) {
       }}
     >
       <p className="text-neutral-400 mb-1.5 font-medium">
-        {new Date(label).toLocaleDateString(undefined, {
+        {new Date(label).toLocaleString(undefined, {
           month: 'short',
           day: 'numeric',
-          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
         })}
       </p>
       <div className="flex flex-col gap-1">
@@ -97,7 +114,7 @@ export default function FundingHistoryChart() {
   const [rawData, setRawData] = useState<BulkFundingResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasFetched, setHasFetched] = useState<Record<TimeRange, boolean>>({ '7d': false, '30d': false });
+  const [hasFetched, setHasFetched] = useState<Record<TimeRange, boolean>>({ '1h': false, '4h': false, '1d': false, '7d': false, '30d': false });
 
   // Fetch data when section opens or time range changes
   const fetchData = useCallback(async (days: number) => {
@@ -123,7 +140,7 @@ export default function FundingHistoryChart() {
 
   useEffect(() => {
     if (!isOpen) return;
-    const days = timeRange === '7d' ? 7 : 30;
+    const days = TIME_RANGE_DAYS[timeRange];
     // Re-fetch if we haven't fetched this range yet, or if switching ranges
     if (!hasFetched[timeRange]) {
       fetchData(days);
@@ -198,7 +215,7 @@ export default function FundingHistoryChart() {
               Average funding rate per symbol over time
             </p>
             <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
-              {(['7d', '30d'] as TimeRange[]).map(range => (
+              {(['1h', '4h', '1d', '7d', '30d'] as TimeRange[]).map(range => (
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
@@ -208,7 +225,7 @@ export default function FundingHistoryChart() {
                       : 'text-neutral-600 hover:text-white'
                   }`}
                 >
-                  {range}
+                  {TIME_RANGE_LABELS[range]}
                 </button>
               ))}
             </div>
@@ -229,8 +246,7 @@ export default function FundingHistoryChart() {
               <button
                 onClick={() => {
                   setHasFetched(prev => ({ ...prev, [timeRange]: false }));
-                  const days = timeRange === '7d' ? 7 : 30;
-                  fetchData(days);
+                  fetchData(TIME_RANGE_DAYS[timeRange]);
                   setHasFetched(prev => ({ ...prev, [timeRange]: true }));
                 }}
                 className="mt-2 text-xs text-hub-yellow hover:underline"
@@ -264,14 +280,16 @@ export default function FundingHistoryChart() {
                 />
                 <XAxis
                   dataKey="time"
-                  tickFormatter={(t: number) =>
-                    new Date(t).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                  }
+                  tickFormatter={(t: number) => {
+                    const d = new Date(t);
+                    if (timeRange === '1h' || timeRange === '4h' || timeRange === '1d') {
+                      return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+                    }
+                    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  }}
                   stroke="transparent"
                   tick={{ fill: '#737373', fontSize: 11 }}
+                  minTickGap={40}
                 />
                 <YAxis
                   tickFormatter={(v: number) =>

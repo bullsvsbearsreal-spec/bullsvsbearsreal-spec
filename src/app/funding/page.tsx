@@ -14,6 +14,7 @@ import type { AssetClass } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { useApi } from '@/hooks/useSWRApi';
 import FundingStats from './components/FundingStats';
+import WeightedFundingIndex from './components/WeightedFundingIndex';
 import dynamic from 'next/dynamic';
 const FundingHeatmapView = dynamic(() => import('./components/FundingHeatmapView'), { ssr: false });
 const FundingArbitrageView = dynamic(() => import('./components/FundingArbitrageView'), { ssr: false });
@@ -21,6 +22,7 @@ const PriceArbitrageView = dynamic(() => import('./components/PriceArbitrageView
 const FundingSpreadComparison = dynamic(() => import('./components/FundingSpreadComparison'), { ssr: false });
 
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
+const CorrelationMatrix = dynamic(() => import('./components/CorrelationMatrix'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
@@ -459,8 +461,35 @@ export default function FundingPage() {
           fundingPeriod={fundingPeriod}
         />
 
+        {/* OI-Weighted Market Funding Sentiment */}
+        {fundingRates.length > 0 && (
+          <div className="mb-5">
+            <div className="max-w-[300px]">
+              <WeightedFundingIndex
+                fundingRates={fundingRates.map(fr => ({
+                  symbol: fr.symbol,
+                  exchange: fr.exchange,
+                  rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod),
+                  openInterest: oiMap.get(`${fr.symbol}|${fr.exchange}`),
+                }))}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Historical Chart */}
         <FundingHistoryChart />
+
+        {/* Correlation Matrix */}
+        {assetClass === 'crypto' && fundingRates.length > 0 && (
+          <CorrelationMatrix
+            fundingRates={fundingRates.map(fr => ({
+              symbol: fr.symbol,
+              exchange: fr.exchange,
+              rate: fr.fundingRate,
+            }))}
+          />
+        )}
 
         {/* Controls */}
         <div className="flex flex-col lg:flex-row gap-3 mb-5">
