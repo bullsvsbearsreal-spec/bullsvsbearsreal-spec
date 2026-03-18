@@ -182,7 +182,10 @@ export function parseBinanceLiq(data: any): Liquidation | null {
 export function parseBybitLiq(data: any): Liquidation | null {
   // allLiquidation.{symbol} topic (replaced deprecated liquidation.{symbol})
   if (!data.topic?.startsWith('allLiquidation.') && !data.topic?.startsWith('liquidation.')) return null;
-  const d = data.data;
+  // allLiquidation sends data as array, old liquidation sent as object
+  const raw = data.data;
+  if (!raw) return null;
+  const d = Array.isArray(raw) ? raw[0] : raw;
   if (!d) return null;
   const price = parseFloat(d.price || d.p || '0');
   const size = parseFloat(d.size || d.v || '0');
