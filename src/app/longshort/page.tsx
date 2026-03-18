@@ -271,7 +271,7 @@ export default function LongShortPage() {
                     return (
                       <tr key={sym} className="border-b border-white/[0.04]">
                         <td className="px-4 py-2.5 font-medium text-white">{label}</td>
-                        <td colSpan={4} className="px-4 py-2.5 text-neutral-600">Loading...</td>
+                        <td colSpan={4} className="px-4 py-2.5 text-neutral-600">Waiting for long/short ratio data...</td>
                       </tr>
                     );
                   }

@@ -59,7 +59,7 @@ function LiquidationChart({
             <span className="text-neutral-500">Loading liquidation map...</span>
           </div>
         ) : (
-          <span className="text-neutral-600">No data available</span>
+          <span className="text-neutral-600">No liquidation levels mapped yet — waiting for data</span>
         )}
       </div>
     );

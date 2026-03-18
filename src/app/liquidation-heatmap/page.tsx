@@ -378,7 +378,7 @@ function RecentLiquidationsTable({ events }: { events: LiquidationEvent[] }) {
   if (events.length === 0) {
     return (
       <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6 text-center text-neutral-600 text-sm">
-        No recent liquidation events
+        Market calm — no recent liquidation events
       </div>
     );
   }

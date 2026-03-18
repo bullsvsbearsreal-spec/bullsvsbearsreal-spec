@@ -94,6 +94,19 @@ const PUBLIC_PAGES = new Set([
   '/api-docs',
   '/guides',
   '/trailer',
+  // Core data pages — public for SEO + growth (soft auth gates limit rows)
+  '/funding',
+  '/open-interest',
+  '/liquidations',
+  '/options',
+  '/basis',
+  '/screener',
+  '/fear-greed',
+  '/dominance',
+  '/top-movers',
+  '/market-heatmap',
+  '/longshort',
+  '/execution-costs',
 ]);
 
 // Prefixes that are always public (static assets, next internals)

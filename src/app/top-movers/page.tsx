@@ -310,7 +310,7 @@ export default function TopMoversPage() {
             <div className="md:hidden space-y-2 p-3">
               {pageItems.length === 0 ? (
                 <p className="text-center py-8 text-neutral-500 text-sm">
-                  {search ? 'No coins match your search.' : 'No data available.'}
+                  {search ? 'No coins match your search.' : 'Markets flat — no significant movers right now'}
                 </p>
               ) : pageItems.map((coin, idx) => (
                 <MobileCard
@@ -367,7 +367,7 @@ export default function TopMoversPage() {
                   {pageItems.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="text-center py-12 text-neutral-500 text-sm">
-                        {search ? 'No coins match your search.' : 'No data available.'}
+                        {search ? 'No coins match your search.' : 'Markets flat — no significant movers right now'}
                       </td>
                     </tr>
                   ) : pageItems.map((coin, idx) => (

@@ -15,6 +15,19 @@ const PUBLIC_ROUTES = new Set([
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  // Core data pages — public with soft auth gates
+  '/funding',
+  '/open-interest',
+  '/liquidations',
+  '/options',
+  '/basis',
+  '/screener',
+  '/fear-greed',
+  '/dominance',
+  '/top-movers',
+  '/market-heatmap',
+  '/longshort',
+  '/execution-costs',
 ]);
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
