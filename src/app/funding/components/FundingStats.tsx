@@ -45,6 +45,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
             <BarChart3 className="w-3.5 h-3.5 text-hub-yellow/40" />
           </div>
           <div className="text-2xl font-black text-white font-mono tracking-tight">{fundingRates.length.toLocaleString()}</div>
+          <span className="text-neutral-600 text-[9px] mt-1 block" title="Count of exchange × symbol combinations, not unique symbols">Exchange-pair combos</span>
         </div>
       </div>
 
@@ -59,6 +60,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
           <div className={`text-2xl font-black font-mono tracking-tight ${getRateColor(avgRate)}`}>
             {formatRateAdaptive(avgRate)}
           </div>
+          <span className="text-neutral-600 text-[9px] mt-1 block" title="Simple average across all exchange-pair combos — not weighted by open interest">Unweighted avg · all pairs</span>
         </div>
       </div>
 

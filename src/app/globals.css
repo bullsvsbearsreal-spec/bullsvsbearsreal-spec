@@ -1018,6 +1018,41 @@ body {
   .top-stats-bar .stat-value { font-size: 0.9rem; }
 }
 
+/* Data unavailable / empty state */
+.data-unavailable {
+  color: #666;
+  font-style: italic;
+  font-size: 0.75rem;
+  font-family: var(--font-sans);
+}
+.data-unavailable::before { content: '⚠ '; font-style: normal; }
+
+/* Source attribution tooltip */
+.source-tooltip {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.15);
+}
+.source-tooltip::after {
+  content: attr(data-source);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 165, 0, 0.15);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.65rem;
+  color: #ccc;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 50;
+}
+.source-tooltip:hover::after { opacity: 1; }
+
 /* Ultrawide screens — wider container */
 @media (min-width: 1920px) {
   .max-w-\[1400px\] { max-width: 1600px; }

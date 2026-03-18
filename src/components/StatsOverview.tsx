@@ -58,6 +58,7 @@ export default function StatsOverview() {
       iconBg: 'bg-hub-yellow/10',
       href: '/screener',
       isBigNumber: true,
+      subtitle: 'Perp · 17 exchanges',
     },
     {
       label: 'Open Interest',
@@ -67,6 +68,7 @@ export default function StatsOverview() {
       iconBg: 'bg-blue-400/10',
       href: '/open-interest',
       isBigNumber: true,
+      subtitle: 'Raw sum · may include duplicates',
     },
     {
       label: 'Top Gainer',
@@ -130,6 +132,9 @@ export default function StatsOverview() {
               </>
             ) : skeleton}
           </div>
+          {'subtitle' in item && item.subtitle && (
+            <span className="text-neutral-600 text-[8px] mt-0.5 block">{item.subtitle}</span>
+          )}
         </Link>
       ))}
     </div>

@@ -411,6 +411,7 @@ export default function FundingPage() {
               }
               </span>
               {' '}<span className="text-neutral-700">({activeDexCount > 0 ? activeDexCount : DEX_EXCHANGES.size} DEX)</span>
+              {' '}<a href="https://www.coinglass.com/FundingRate" target="_blank" rel="noopener noreferrer" className="text-neutral-700 hover:text-neutral-500 text-[10px] transition-colors">Cross-check ↗</a>
             </p>
           </div>
           <div className="flex items-center gap-2">

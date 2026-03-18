@@ -185,6 +185,7 @@ export default function OpenInterestPage() {
             <h1 className="heading-page">Open Interest</h1>
             <p className="text-neutral-600 text-xs mt-0.5">
               Aggregate OI across {exchanges.length} exchanges
+              {' '}<a href="https://www.coinglass.com/pro/futures/OpenInterest" target="_blank" rel="noopener noreferrer" className="text-neutral-700 hover:text-neutral-500 text-[10px] transition-colors">Cross-check ↗</a>
             </p>
           </div>
           <div className="flex items-center gap-2">

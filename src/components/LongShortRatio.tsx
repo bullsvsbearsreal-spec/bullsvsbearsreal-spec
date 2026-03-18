@@ -44,7 +44,7 @@ export default function LongShortRatio() {
           </div>
           <h3 className="text-white font-semibold text-sm">Long/Short Ratio</h3>
         </div>
-        <span className="text-neutral-600 text-[10px]">Top traders</span>
+        <span className="text-neutral-600 text-[10px]" title="Binance Global Long/Short Account Ratio — counts accounts, not position size">Binance · Accounts</span>
       </div>
 
       {loading ? (

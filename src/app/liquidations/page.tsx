@@ -177,6 +177,9 @@ export default function LiquidationsPage() {
           <span className="text-[10px] text-neutral-700 ml-1">
             ({connections.filter(c => c.connected).map(c => c.exchange).join(', ')})
           </span>
+          <span className="text-[10px] text-neutral-700 ml-auto" title="Liquidation data only from WebSocket-connected exchanges. Total may differ from aggregators with broader coverage.">
+            Partial coverage · verify independently
+          </span>
         </div>
       )}
 
