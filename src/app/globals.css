@@ -1059,6 +1059,10 @@ body {
 }
 
 /* Scrollbar accent tinting for data areas */
+/* Chat widget clearance — prevent floating widget from hiding last table row */
+main { padding-bottom: 56px; }
+@media (max-width: 640px) { main { padding-bottom: 48px; } }
+
 .scrollbar-accent::-webkit-scrollbar { width: 8px; height: 8px; }
 .scrollbar-accent::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 4px; }
 .scrollbar-accent::-webkit-scrollbar-thumb {

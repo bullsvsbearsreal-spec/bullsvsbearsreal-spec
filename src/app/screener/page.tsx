@@ -43,18 +43,33 @@ type SortField = 'symbol' | 'price' | 'change24h' | 'volume24h' | 'avgFunding' |
 /* ─── Sentiment Engine ──────────────────────────────────────────── */
 
 function deriveSentiment(change24h: number, oiChange: number, funding: number): { label: string; color: string } {
-  // Price up + OI up = fresh longs piling in
-  if (change24h > 1 && oiChange > 3) return { label: 'FRESH LONGS', color: 'text-green-400 bg-green-500/10' };
-  // Price down + OI up = new shorts stacking
-  if (change24h < -1 && oiChange > 3) return { label: 'FRESH SHORTS', color: 'text-red-400 bg-red-500/10' };
-  // Price up + OI down = short squeeze unwind
-  if (change24h > 1 && oiChange < -3) return { label: 'SQUEEZE', color: 'text-emerald-400 bg-emerald-500/10' };
-  // Price down + OI down = longs getting flushed
-  if (change24h < -1 && oiChange < -3) return { label: 'FLUSHING', color: 'text-orange-400 bg-orange-500/10' };
-  // Strong funding + rising OI = crowded trade
-  if (funding > 0.03 && oiChange > 5) return { label: 'CROWDED', color: 'text-yellow-400 bg-yellow-500/10' };
+  const hasOiData = oiChange !== 0;
+
+  // When OI change data is available, use full signal matrix
+  if (hasOiData) {
+    // Price up + OI up = fresh longs piling in
+    if (change24h > 1 && oiChange > 3) return { label: 'FRESH LONGS', color: 'text-green-400 bg-green-500/10' };
+    // Price down + OI up = new shorts stacking
+    if (change24h < -1 && oiChange > 3) return { label: 'FRESH SHORTS', color: 'text-red-400 bg-red-500/10' };
+    // Price up + OI down = short squeeze unwind
+    if (change24h > 1 && oiChange < -3) return { label: 'SQUEEZE', color: 'text-emerald-400 bg-emerald-500/10' };
+    // Price down + OI down = longs getting flushed
+    if (change24h < -1 && oiChange < -3) return { label: 'FLUSHING', color: 'text-orange-400 bg-orange-500/10' };
+    // Strong funding + rising OI = crowded trade
+    if (funding > 0.03 && oiChange > 5) return { label: 'CROWDED', color: 'text-yellow-400 bg-yellow-500/10' };
+  }
+
+  // Signals that work without OI data (funding + price only)
   // Strong negative funding = panic selling
   if (funding < -0.03) return { label: 'PANIC', color: 'text-purple-400 bg-purple-500/10' };
+  // Extremely strong positive funding = overheated longs
+  if (funding > 0.05) return { label: 'CROWDED', color: 'text-yellow-400 bg-yellow-500/10' };
+  // Strong moves with funding confirmation
+  if (change24h > 5 && funding > 0) return { label: 'PUMPING', color: 'text-green-400 bg-green-500/10' };
+  if (change24h < -5 && funding < 0) return { label: 'DUMPING', color: 'text-red-400 bg-red-500/10' };
+  // Moderate directional
+  if (change24h > 5) return { label: 'BULLISH', color: 'text-green-400/80 bg-green-500/8' };
+  if (change24h < -5) return { label: 'BEARISH', color: 'text-red-400/80 bg-red-500/8' };
   // Mild directional
   if (change24h > 2) return { label: 'BID', color: 'text-green-400/70 bg-green-500/5' };
   if (change24h < -2) return { label: 'OFFERED', color: 'text-red-400/70 bg-red-500/5' };
@@ -388,8 +403,9 @@ export default function ScreenerPage() {
               <div className="text-sm font-bold text-white font-mono">{formatNumber(stats.totalOI)}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wider">24h Volume</div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Combined Volume</div>
               <div className="text-sm font-bold text-white font-mono">{formatNumber(stats.totalVol)}</div>
+              <div className="text-[8px] text-neutral-600 mt-0.5">Sum across all exchange-pairs</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Avg Funding</div>

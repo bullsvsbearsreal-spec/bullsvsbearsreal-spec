@@ -118,6 +118,14 @@ export default function LiquidationTopBar({
         <span className="text-neutral-700">/</span>
         <span className="text-green-400">S {shortPct.toFixed(1)}%</span>
       </div>
+
+      {/* Low-data recovery notice */}
+      {stats.total > 0 && stats.total < 100_000 && stats.count < 50 && (
+        <div className="mt-1.5 text-[9px] text-neutral-600 bg-neutral-900/50 rounded px-2 py-1 flex items-center gap-1">
+          <span className="text-amber-600">ⓘ</span>
+          <span>Data pipeline recently optimized — totals may appear lower than usual while accumulating</span>
+        </div>
+      )}
     </div>
   );
 }

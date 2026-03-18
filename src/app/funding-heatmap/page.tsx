@@ -97,7 +97,12 @@ export default function FundingHeatmapPage() {
     Object.values(data.data).forEach((points) => {
       points.forEach((p) => daySet.add(p.day));
     });
-    const sorted = Array.from(daySet).sort();
+    // Sort chronologically — API may return "Thu Mar 13" or "2025-03-13"
+    const sorted = Array.from(daySet).sort((a, b) => {
+      const da = new Date(a.includes('-') ? a + 'T00:00:00' : a);
+      const db = new Date(b.includes('-') ? b + 'T00:00:00' : b);
+      return da.getTime() - db.getTime();
+    });
     return sorted;
   }, [data]);
 
