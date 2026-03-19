@@ -27,8 +27,15 @@ export async function GET(request: NextRequest) {
 
   // L1: In-memory
   if (cachedData && Date.now() - cacheTime < CACHE_TTL) {
-    if (isHeatmap && allCoinsCache) {
-      return NextResponse.json({ coins: allCoinsCache });
+    if (isHeatmap) {
+      if (allCoinsCache) {
+        return NextResponse.json({ coins: allCoinsCache });
+      }
+      // Reconstruct heatmap from gainers+losers if allCoinsCache missing
+      const combined = [...(cachedData.gainers || []), ...(cachedData.losers || [])];
+      if (combined.length > 0) {
+        return NextResponse.json({ coins: combined });
+      }
     }
     return NextResponse.json(cachedData);
   }
