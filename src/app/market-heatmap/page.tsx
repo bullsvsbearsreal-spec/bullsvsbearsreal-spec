@@ -132,8 +132,10 @@ export default function MarketHeatmapPage() {
   });
 
   const coins = useMemo(() => {
-    if (!data?.coins) return [];
-    return data.coins
+    const d = data as any;
+    const raw: typeof data extends { coins: infer C } ? C : any[] = d?.coins || [...(d?.gainers || []), ...(d?.losers || [])];
+    if (!raw || raw.length === 0) return [];
+    return (raw as any[])
       .filter(c => c.marketCap > 0 && c.change24h != null)
       .sort((a, b) => b.marketCap - a.marketCap)
       .slice(0, count);

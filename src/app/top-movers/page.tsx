@@ -75,7 +75,9 @@ export default function TopMoversPage() {
       const res = await fetch('/api/top-movers?mode=heatmap');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      setCoins(json.coins || []);
+      // Handle both response formats: { coins: [...] } or { gainers: [...], losers: [...] }
+      const coins = json.coins || [...(json.gainers || []), ...(json.losers || [])];
+      setCoins(coins);
       setLastUpdate(new Date());
     } catch (err) {
       setError('Failed to fetch top movers data.');

@@ -71,6 +71,7 @@ export default function ComparisonCharts({ oiChartData, fundingForSymbol, select
       {/* OI Bar Chart */}
       <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
         <div className="text-sm font-medium text-neutral-400 mb-3">Total Open Interest by Exchange</div>
+        <div style={{ overflowY: 'auto', maxHeight: 500 }}>
         <ResponsiveContainer width="100%" height={Math.max(300, oiChartData.length * 36)}>
           <BarChart data={oiChartData} layout="vertical" margin={{ left: 80, right: 20 }}>
             <XAxis type="number" tickFormatter={formatUSD} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
@@ -83,6 +84,7 @@ export default function ComparisonCharts({ oiChartData, fundingForSymbol, select
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Funding Rate per symbol */}
