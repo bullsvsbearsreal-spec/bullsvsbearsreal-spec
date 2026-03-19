@@ -157,17 +157,22 @@ export default function WeightedFundingIndex({ fundingRates }: WeightedFundingIn
         </div>
 
         {/* Large weighted rate */}
-        <div className="flex items-baseline gap-2">
-          <span className={`text-3xl font-black font-mono tracking-tight ${rateColor}`}
+        <div className="flex items-baseline gap-3">
+          <span className={`text-4xl font-black font-mono tracking-tighter ${rateColor}`}
             style={isExtreme ? { textShadow: isPositive ? '0 0 12px rgba(0, 230, 118, 0.3)' : '0 0 12px rgba(255, 23, 68, 0.3)' } : undefined}>
             {formatted}
           </span>
-          {moodEmoji && <span className="text-lg">{moodEmoji}</span>}
+          <div className="flex flex-col">
+            {moodEmoji && <span className="text-xl leading-none">{moodEmoji}</span>}
+            <span className={`text-sm font-bold ${rateColor} leading-tight`}>
+              {isNeutral ? 'Neutral' : isPositive ? 'Bullish' : 'Bearish'}
+            </span>
+          </div>
         </div>
 
         {/* Market mood with icon */}
-        <div className="flex items-center gap-2 mt-1.5">
-          <MoodIcon className={`w-3.5 h-3.5 ${rateColor}`} />
+        <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <MoodIcon className={`w-4 h-4 ${rateColor}`} />
           <span className={`text-xs font-semibold ${rateColor}`}>{moodSlang}</span>
         </div>
 
@@ -190,10 +195,10 @@ export default function WeightedFundingIndex({ fundingRates }: WeightedFundingIn
         </div>
 
         {/* Distribution chart */}
-        <div className="mt-3 h-[56px]">
+        <div className="mt-3 h-[80px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={distribution} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-              <XAxis dataKey="label" hide />
+            <BarChart data={distribution} margin={{ top: 2, right: 0, left: 0, bottom: 16 }}>
+              <XAxis dataKey="label" tick={{ fill: '#525252', fontSize: 8 }} axisLine={false} tickLine={false} interval={0} angle={0} />
               <YAxis hide />
               <Tooltip
                 cursor={false}

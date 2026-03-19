@@ -175,7 +175,7 @@ export default function FundingHeatmapView({
   const gridSpacing = fundingPrefs?.gridSpacing ?? 'normal';
   const fontSize = fundingPrefs?.fontSize ?? 'medium';
   const showPredicted = fundingPrefs?.showPredicted ?? false;
-  const showLongShort = fundingPrefs?.showLongShort ?? true;
+  const showLongShort = fundingPrefs?.showLongShort ?? false;
   const showAccumulated = fundingPrefs?.showAccumulated ?? true;
   const [mode, setMode] = useState<HeatmapMode>('grid');
   const [showSettings, setShowSettings] = useState(false);
