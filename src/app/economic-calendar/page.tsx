@@ -91,6 +91,62 @@ const COUNTRY_LABELS: Record<string, string> = {
   Global: 'Global',
 };
 
+const COUNTRY_FLAGS: Record<string, string> = {
+  US: '🇺🇸', EU: '🇪🇺', GB: '🇬🇧', JP: '🇯🇵', CN: '🇨🇳', AU: '🇦🇺',
+  CA: '🇨🇦', CH: '🇨🇭', NZ: '🇳🇿', DE: '🇩🇪', FR: '🇫🇷', KR: '🇰🇷',
+  Global: '🌐',
+};
+
+/** Match event name to a visual emoji icon */
+function getEventIcon(name: string, category: string): string {
+  const n = name.toLowerCase();
+  // Fed / Central banks
+  if (n.includes('fomc') || n.includes('fed ') || n.includes('federal reserve')) return '🏛️';
+  if (n.includes('boj') || n.includes('bank of japan')) return '🏯';
+  if (n.includes('boe') || n.includes('bank of england')) return '🏰';
+  if (n.includes('ecb') || n.includes('european central')) return '🏦';
+  if (n.includes('rba') || n.includes('reserve bank')) return '🏦';
+  // Inflation / CPI
+  if (n.includes('cpi') || n.includes('inflation') || n.includes('consumer price')) return '📈';
+  // Jobs
+  if (n.includes('nonfarm') || n.includes('non-farm') || n.includes('payroll') || n.includes('employment')) return '👷';
+  if (n.includes('jobless') || n.includes('unemployment') || n.includes('claims')) return '📋';
+  // GDP
+  if (n.includes('gdp')) return '💰';
+  // Trade / Tariffs
+  if (n.includes('tariff') || n.includes('trade balance')) return '🚢';
+  // Housing
+  if (n.includes('housing') || n.includes('home') || n.includes('mortgage') || n.includes('building permit')) return '🏠';
+  // Retail / Consumer
+  if (n.includes('retail') || n.includes('consumer') || n.includes('spending')) return '🛒';
+  // Manufacturing / Industrial
+  if (n.includes('pmi') || n.includes('manufacturing') || n.includes('industrial') || n.includes('factory')) return '🏭';
+  // Oil / Energy
+  if (n.includes('oil') || n.includes('crude') || n.includes('opec') || n.includes('energy')) return '🛢️';
+  // Crypto specific
+  if (n.includes('bitcoin') || n.includes('btc') || n.includes('crypto') || n.includes('etf')) return '₿';
+  if (n.includes('token') || n.includes('unlock')) return '🔓';
+  // Interest rates
+  if (n.includes('rate') || n.includes('interest')) return '📊';
+  // Speech / testimony
+  if (n.includes('speech') || n.includes('testimony') || n.includes('press conference') || n.includes('speaks')) return '🎤';
+  // Earnings
+  if (n.includes('earning') || n.includes('revenue')) return '📑';
+  // Category fallbacks
+  switch (category) {
+    case 'central_bank': return '🏛️';
+    case 'inflation': return '📈';
+    case 'employment': return '👷';
+    case 'gdp': return '💰';
+    case 'crypto': return '₿';
+    case 'trade': return '🚢';
+    case 'housing': return '🏠';
+    case 'consumer': return '🛒';
+    case 'manufacturing': return '🏭';
+    default: return '📅';
+  }
+}
+
 const CATEGORY_OPTIONS = Object.entries(EVENT_CATEGORIES).map(
   ([key, val]) => ({
     value: key as EconomicEvent['category'],
@@ -353,10 +409,16 @@ export default function EconomicCalendarPage() {
                     const cat = EVENT_CATEGORIES[event.category];
                     return (
                       <div key={event.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02]">
-                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: IMPACT_COLORS[event.impact] }} />
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
+                          style={{ background: IMPACT_COLORS[event.impact] + '15', border: `1px solid ${IMPACT_COLORS[event.impact]}30` }}>
+                          {getEventIcon(event.name, event.category)}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <span className="text-white font-semibold text-sm">{event.name}</span>
-                          {event.time && <span className="text-neutral-500 text-xs ml-2">{event.time}</span>}
+                          <div className="flex items-center gap-1.5">
+                            {COUNTRY_FLAGS[event.country] && <span className="text-sm">{COUNTRY_FLAGS[event.country]}</span>}
+                            <span className="text-white font-semibold text-sm">{event.name}</span>
+                            {event.time && <span className="text-neutral-500 text-xs ml-1">{event.time}</span>}
+                          </div>
                           <p className="text-neutral-600 text-xs truncate">{event.description}</p>
                         </div>
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0" style={{ backgroundColor: cat.color + '20', color: cat.color }}>
@@ -841,14 +903,10 @@ export default function EconomicCalendarPage() {
                       return (
                         <div key={event.id} className="p-3 hover:bg-white/[0.02]">
                           <div className="flex items-start gap-2">
-                            <span
-                              className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                              style={{
-                                backgroundColor: IMPACT_COLORS[event.impact],
-                              }}
-                            />
+                            <span className="text-sm flex-shrink-0 mt-0.5">{getEventIcon(event.name, event.category)}</span>
                             <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-white truncate">
+                              <div className="text-xs font-medium text-white truncate flex items-center gap-1">
+                                {COUNTRY_FLAGS[event.country] && <span className="text-[10px]">{COUNTRY_FLAGS[event.country]}</span>}
                                 {event.name}
                               </div>
                               <div className="flex items-center gap-2 mt-0.5">
@@ -971,17 +1029,20 @@ function EventCard({
       } ${isToday ? 'border-l-2 border-l-hub-yellow' : ''}`}
     >
       <div className="flex items-start gap-3">
-        {/* Impact indicator */}
+        {/* Event icon + impact ring */}
         <div className="flex flex-col items-center gap-1 pt-0.5">
-          <span
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: IMPACT_COLORS[event.impact] }}
-          />
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
+            style={{ background: IMPACT_COLORS[event.impact] + '15', border: `1px solid ${IMPACT_COLORS[event.impact]}30` }}>
+            {getEventIcon(event.name, event.category)}
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
+            {COUNTRY_FLAGS[event.country] && (
+              <span className="text-sm" title={event.country}>{COUNTRY_FLAGS[event.country]}</span>
+            )}
             <span className="text-sm font-semibold text-white">
               {event.name}
             </span>
