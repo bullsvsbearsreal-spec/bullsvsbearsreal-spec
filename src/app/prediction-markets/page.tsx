@@ -7,6 +7,7 @@ import ShareButton from '@/components/ShareButton';
 import { useApi } from '@/hooks/useSWRApi';
 import { fetchPredictionMarkets } from '@/lib/api/aggregator';
 import { RefreshCw, AlertTriangle, Crosshair, Search, Info } from 'lucide-react';
+import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import StatsCards from './components/StatsCards';
 import ArbitrageView from './components/ArbitrageView';
 import BrowseView from './components/BrowseView';
@@ -23,6 +24,7 @@ export default function PredictionMarketsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('arbitrage');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const authLimit = useAuthLimit(5); // Show 5 arb rows for guests
 
   const fetcher = useCallback(() => fetchPredictionMarkets(), []);
 
@@ -32,8 +34,13 @@ export default function PredictionMarketsPage() {
     refreshInterval: 60000,
   });
 
-  const arbitrage = Array.isArray(data?.arbitrage) ? data.arbitrage : [];
-  const markets = data?.markets ?? { polymarket: [], kalshi: [] };
+  const allArbitrage = Array.isArray(data?.arbitrage) ? data.arbitrage : [];
+  const arbitrage = authLimit ? allArbitrage.slice(0, authLimit) : allArbitrage;
+  const allMarkets = data?.markets ?? { polymarket: [], kalshi: [] };
+  const markets = authLimit ? {
+    polymarket: allMarkets.polymarket.slice(0, 10),
+    kalshi: allMarkets.kalshi.slice(0, 10),
+  } : allMarkets;
   const meta = data?.meta;
 
   const totalMarkets = meta
@@ -187,6 +194,14 @@ export default function PredictionMarketsPage() {
                 markets={markets}
                 searchTerm={searchTerm}
                 categoryFilter={categoryFilter}
+              />
+            )}
+
+            {authLimit && (
+              <SoftAuthGate
+                freeLimit={viewMode === 'arbitrage' ? 5 : 10}
+                totalCount={viewMode === 'arbitrage' ? allArbitrage.length : (allMarkets.polymarket.length + allMarkets.kalshi.length)}
+                dataLabel={viewMode === 'arbitrage' ? 'arb opportunities' : 'markets'}
               />
             )}
           </>
