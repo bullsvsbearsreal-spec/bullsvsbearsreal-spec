@@ -1,9 +1,10 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Link from 'next/link';
 import {
   BookOpen, TrendingUp, BarChart3,
   Zap, ArrowLeftRight, Shield, PieChart, Bell,
-  ChevronRight, Clock, Coffee, Pencil,
+  ChevronRight, Clock, Coffee, Pencil, CheckCircle2,
   MessageCircle, Activity, Layers, Database, Globe,
 } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
@@ -17,7 +18,8 @@ const upcomingGuides = [
     icon: ArrowLeftRight,
     tag: 'Strategy',
     difficulty: 'Intermediate',
-    eta: 'First up',
+    eta: 'Published',
+    href: '/guides/funding-rate-arbitrage',
   },
   {
     title: 'Reading Open Interest Like a Pro',
@@ -166,10 +168,16 @@ export default function GuidesPage() {
             </div>
 
             <div className="space-y-3">
-              {upcomingGuides.map((guide) => (
-                <div
+              {upcomingGuides.map((guide) => {
+                const Wrapper = (guide as any).href ? Link : 'div';
+                const wrapperProps = (guide as any).href ? { href: (guide as any).href } : {};
+                return (
+                <Wrapper
                   key={guide.title}
-                  className="group relative bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 transition-all duration-200 hover:border-hub-yellow/15 hover:bg-white/[0.03] hover:shadow-[0_0_20px_rgba(255,223,0,0.03)]"
+                  {...wrapperProps as any}
+                  className={`group relative block bg-white/[0.02] border rounded-xl p-5 transition-all duration-200 hover:border-hub-yellow/15 hover:bg-white/[0.03] hover:shadow-[0_0_20px_rgba(255,223,0,0.03)] ${
+                    (guide as any).href ? 'border-hub-yellow/10 cursor-pointer' : 'border-white/[0.06]'
+                  }`}
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}
@@ -199,12 +207,21 @@ export default function GuidesPage() {
 
                     {/* ETA badge */}
                     <div className="flex items-center gap-1.5 text-neutral-600 flex-shrink-0">
-                      <Clock className="w-3 h-3" />
-                      <span className="text-[10px] font-medium whitespace-nowrap">{guide.eta}</span>
+                      {guide.eta === 'Published' ? (
+                        <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-md border border-green-500/20 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Read now
+                        </span>
+                      ) : (
+                        <>
+                          <Clock className="w-3 h-3" />
+                          <span className="text-[10px] font-medium whitespace-nowrap">{guide.eta}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                </Wrapper>
+                );
+              })}
             </div>
           </div>
 
