@@ -94,6 +94,12 @@ const footerSections: { heading: string; links: FooterLink[] }[] = [
 
 /* ─── Live stat helpers ─────────────────────────────────────────── */
 
+interface CoinPrice {
+  symbol: string;
+  price: number;
+  change: number;
+}
+
 interface LiveStats {
   btcPrice: number;
   btcChange: number;
@@ -103,6 +109,8 @@ interface LiveStats {
   fearGreed: { value: number; classification: string } | null;
   longShort: { longRatio: number; shortRatio: number } | null;
   topGainer: { symbol: string; change24h: number } | null;
+  topCoins: CoinPrice[];
+  lastUpdated: number;
 }
 
 
@@ -225,6 +233,16 @@ function FooterInner() {
           ? { symbol: gainers[0].symbol, change24h: gainers[0].change24h }
           : null;
 
+        // Top coins by volume (real prices from tickers)
+        const TOP_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'SUI', 'LINK'];
+        const topCoins: CoinPrice[] = TOP_COINS
+          .filter(sym => bestBySymbol[sym])
+          .map(sym => ({
+            symbol: sym,
+            price: bestBySymbol[sym].price,
+            change: bestBySymbol[sym].change,
+          }));
+
         setStats({
           btcPrice,
           btcChange,
@@ -234,6 +252,8 @@ function FooterInner() {
           fearGreed,
           longShort,
           topGainer,
+          topCoins,
+          lastUpdated: Date.now(),
         });
       } catch {
         // silently fail — stats are supplementary
@@ -243,7 +263,7 @@ function FooterInner() {
     }
 
     fetchStats();
-    const interval = setInterval(fetchStats, 120_000);
+    const interval = setInterval(fetchStats, 45_000); // Refresh every 45s for live feel
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
@@ -254,87 +274,94 @@ function FooterInner() {
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-4 pb-6">
 
-        {/* ─── Live Stats Banner (Coinglass-style) ─── */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 border-b border-white/[0.04] scrollbar-hide">
-          <div className="flex items-center gap-1.5 mr-2 flex-shrink-0">
-            <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-            <span className="text-neutral-500 text-[10px] font-medium uppercase tracking-wider">Live</span>
-          </div>
-
-          {/* BTC Price with 24h change */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
-            <Bitcoin className="w-3.5 h-3.5 text-[#F7931A] flex-shrink-0" />
-            <span className="text-neutral-600 text-[10px] whitespace-nowrap">BTC</span>
+        {/* ─── Live Prices + Market Stats ─── */}
+        <div className="pb-3 mb-4 border-b border-white/[0.04]">
+          {/* Row 1: Live coin prices */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide mb-2">
+            <div className="flex items-center gap-1.5 mr-1 flex-shrink-0">
+              <Radio className="w-3 h-3 text-green-500 animate-pulse" />
+              <span className="text-neutral-500 text-[9px] font-medium uppercase tracking-wider">Prices</span>
+            </div>
             {loading ? (
-              <span className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />
-            ) : (
-              <>
-                <span className="text-white text-[11px] font-semibold font-mono whitespace-nowrap">
-                  {stats?.btcPrice ? `$${stats.btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '--'}
-                </span>
-                {stats?.btcChange !== undefined && stats.btcChange !== 0 && (
-                  <span className={`delta-badge text-[9px] ${
-                    Math.abs(stats.btcChange) >= 5
-                      ? (stats.btcChange >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
-                      : (stats.btcChange >= 0 ? 'delta-badge-up' : 'delta-badge-down')
-                  }`}>
-                    {stats.btcChange >= 0 ? '+' : ''}{stats.btcChange.toFixed(2)}%
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+                  <div className="w-3.5 h-3.5 rounded-full bg-white/[0.06] animate-pulse" />
+                  <div className="h-3 w-20 bg-white/[0.04] rounded animate-pulse" />
+                </div>
+              ))
+            ) : stats?.topCoins?.map(coin => {
+              const isUp = coin.change >= 0;
+              const fmtPrice = coin.price >= 1000
+                ? `$${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                : coin.price >= 1
+                ? `$${coin.price.toFixed(2)}`
+                : `$${coin.price.toFixed(4)}`;
+              return (
+                <div key={coin.symbol} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+                  <span className="text-white text-[10px] font-semibold">{coin.symbol}</span>
+                  <span className="text-neutral-300 text-[10px] font-mono">{fmtPrice}</span>
+                  <span className={`text-[9px] font-mono font-semibold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                    {isUp ? '+' : ''}{coin.change.toFixed(2)}%
                   </span>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* 24h Volume */}
-          <StatPill
-            icon={BarChart2}
-            label="24h Vol"
-            value={stats?.volume24h ? formatNumber(stats.volume24h) : '--'}
-            loading={loading}
-            color="#3B82F6"
-          />
-
-          {/* Open Interest */}
-          <StatPill
-            icon={Layers}
-            label="Open Interest"
-            value={stats?.totalOI ? formatNumber(stats.totalOI) : '--'}
-            loading={loading}
-            color="#8B5CF6"
-          />
-
-          {/* Fear & Greed */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
-            <Thermometer className="w-3 h-3 flex-shrink-0" style={{ color: stats?.fearGreed ? getFearGreedColor(stats.fearGreed.value) : '#666' }} />
-            <span className="text-neutral-600 text-[10px] whitespace-nowrap">Fear/Greed</span>
-            {loading ? (
-              <span className="h-3 w-10 bg-white/[0.06] rounded animate-pulse" />
-            ) : stats?.fearGreed ? (
-              <>
-                <span className="text-white text-[11px] font-semibold font-mono">{stats.fearGreed.value}</span>
-                <span className="text-[10px] font-medium" style={{ color: getFearGreedColor(stats.fearGreed.value) }}>
-                  {stats.fearGreed.classification}
-                </span>
-              </>
-            ) : (
-              <span className="text-white text-[11px] font-semibold font-mono">--</span>
-            )}
-          </div>
-
-          {/* Long/Short Ratio */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
-            <ArrowLeftRight className="w-3 h-3 text-hub-yellow/70 flex-shrink-0" />
-            <span className="text-neutral-600 text-[10px] whitespace-nowrap">L/S</span>
-            {loading ? (
-              <span className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />
-            ) : stats?.longShort ? (
-              <span className="text-[11px] font-semibold font-mono whitespace-nowrap">
-                <span className="text-green-400">{stats.longShort.longRatio.toFixed(1)}%</span>
-                <span className="text-neutral-600 mx-0.5">/</span>
-                <span className="text-red-400">{stats.longShort.shortRatio.toFixed(1)}%</span>
+                </div>
+              );
+            })}
+            {stats?.lastUpdated && (
+              <span className="text-neutral-700 text-[9px] flex-shrink-0 ml-auto font-mono">
+                {Math.round((Date.now() - stats.lastUpdated) / 1000)}s ago
               </span>
-            ) : (
-              <span className="text-white text-[11px] font-semibold font-mono">--</span>
+            )}
+          </div>
+
+          {/* Row 2: Market stats */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            <StatPill
+              icon={BarChart2}
+              label="24h Vol"
+              value={stats?.volume24h ? formatNumber(stats.volume24h) : '--'}
+              loading={loading}
+              color="#3B82F6"
+            />
+            <StatPill
+              icon={Layers}
+              label="Open Interest"
+              value={stats?.totalOI ? formatNumber(stats.totalOI) : '--'}
+              loading={loading}
+              color="#8B5CF6"
+            />
+
+            {/* Fear & Greed */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+              <Thermometer className="w-3 h-3 flex-shrink-0" style={{ color: stats?.fearGreed ? getFearGreedColor(stats.fearGreed.value) : '#666' }} />
+              <span className="text-neutral-600 text-[10px] whitespace-nowrap">Fear/Greed</span>
+              {loading ? (
+                <span className="h-3 w-10 bg-white/[0.06] rounded animate-pulse" />
+              ) : stats?.fearGreed ? (
+                <>
+                  <span className="text-white text-[11px] font-semibold font-mono">{stats.fearGreed.value}</span>
+                  <span className="text-[10px] font-medium" style={{ color: getFearGreedColor(stats.fearGreed.value) }}>
+                    {stats.fearGreed.classification}
+                  </span>
+                </>
+              ) : (
+                <span className="text-white text-[11px] font-semibold font-mono">--</span>
+              )}
+            </div>
+
+            {/* Long/Short Ratio */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex-shrink-0">
+              <ArrowLeftRight className="w-3 h-3 text-hub-yellow/70 flex-shrink-0" />
+              <span className="text-neutral-600 text-[10px] whitespace-nowrap">L/S</span>
+              {loading ? (
+                <span className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />
+              ) : stats?.longShort ? (
+                <span className="text-[11px] font-semibold font-mono whitespace-nowrap">
+                  <span className="text-green-400">{stats.longShort.longRatio.toFixed(1)}%</span>
+                  <span className="text-neutral-600 mx-0.5">/</span>
+                  <span className="text-red-400">{stats.longShort.shortRatio.toFixed(1)}%</span>
+                </span>
+              ) : (
+                <span className="text-white text-[11px] font-semibold font-mono">--</span>
             )}
           </div>
 
@@ -365,6 +392,7 @@ function FooterInner() {
             <Building2 className="w-3 h-3 text-hub-yellow/70" />
             <span className="text-neutral-600 text-[10px]">Exchanges</span>
             <span className="text-white text-[11px] font-semibold font-mono">{ALL_EXCHANGES.length}</span>
+          </div>
           </div>
         </div>
 
