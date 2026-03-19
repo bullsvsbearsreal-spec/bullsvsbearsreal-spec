@@ -40,6 +40,20 @@ export const CURATED_MAPPINGS: MarketMapping[] = [
   { label: 'Inflation CPI', category: 'Economics', polymarketMatch: '\\bcpi\\b|consumer.*price.*index', kalshiMatch: 'CPIYOY|\\bCPI\\b' },
   { label: 'Average tariff rate', category: 'Economics', polymarketMatch: 'average.*tariff', kalshiMatch: 'KXAVGTARIFF|average.*tariff' },
   { label: 'Trump Fed chair', category: 'Economics', polymarketMatch: 'trump.*(?:fed.*chair|nominate.*fed)', kalshiMatch: 'KXPRESNOMFEDCHAIR|fed.*chair.*nomin' },
+
+  // Broader crypto matches — catch different price thresholds
+  { label: 'BTC above $75K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*\\$?75', kalshiMatch: 'KXBTC.*75|bitcoin.*above.*75' },
+  { label: 'BTC above $100K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*\\$?100', kalshiMatch: 'KXBTC.*100|bitcoin.*above.*(?:99|100)' },
+  { label: 'BTC below $60K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:below|dip|fall).*\\$?6[05]', kalshiMatch: 'KXBTCMINY.*60|bitcoin.*below.*60' },
+  { label: 'BTC below $50K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:below|dip|fall).*\\$?50', kalshiMatch: 'KXBTCMINY.*50|bitcoin.*below.*50' },
+  { label: 'ETH above $5000', category: 'Crypto', polymarketMatch: 'ethereum.*(?:above|reach).*5.?000', kalshiMatch: 'KXETH.*5000|ethereum.*above.*5000' },
+  { label: 'SOL above $500', category: 'Crypto', polymarketMatch: 'solana.*(?:above|reach).*500', kalshiMatch: 'KXSOL.*500|solana.*above.*500' },
+
+  // Geopolitics — Iran, Ukraine, China
+  { label: 'Iran regime change', category: 'Geopolitics', polymarketMatch: 'iran.*(?:regime|fall|collapse|overthrow)', kalshiMatch: 'iran.*(?:regime|fall|collapse)' },
+  { label: 'Iran Strait of Hormuz', category: 'Geopolitics', polymarketMatch: 'iran.*(?:hormuz|strait)', kalshiMatch: 'iran.*(?:hormuz|strait)' },
+  { label: 'US strike Iran', category: 'Geopolitics', polymarketMatch: '(?:us|united states|america).*strike.*iran|iran.*(?:strike|attack).*(?:us|united)', kalshiMatch: 'KXUSIRAN|(?:us|united).*strike.*iran' },
+  { label: 'Ukraine ceasefire', category: 'Geopolitics', polymarketMatch: 'ukraine.*ceasefire|ceasefire.*ukraine', kalshiMatch: 'KXUKRAINECEASE|ukraine.*ceasefire' },
 ];
 
 const STOP_WORDS = new Set([

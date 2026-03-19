@@ -222,8 +222,8 @@ function matchPair(
     }
   }
 
-  // Pass 2: Keyword fuzzy matching (strict)
-  const SIMILARITY_THRESHOLD = 0.5;
+  // Pass 2: Keyword fuzzy matching (relaxed to catch more cross-platform arbs)
+  const SIMILARITY_THRESHOLD = 0.35;
   for (const mA of marketsA) {
     if (usedA.has(mA.id)) continue;
     const kwA = extractKeywords(mA.question);
