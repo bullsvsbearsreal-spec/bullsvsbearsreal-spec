@@ -194,9 +194,10 @@ export function middleware(request: NextRequest) {
 
   // ── Waitlist gate: redirect ALL unauthenticated page requests to /waitlist ──
   // Existing signed-in users keep full access. Everyone else sees the waitlist.
-  const isWaitlistExempt = pathname === '/waitlist' || pathname === '/login' || pathname === '/signup'
-    || pathname === '/forgot-password' || pathname === '/reset-password'
-    || pathname === '/terms' || pathname === '/privacy'
+  // Login stays accessible (existing users need to sign in to get their cookie)
+  // Signup redirects to waitlist (no new accounts during waitlist period)
+  const isWaitlistExempt = pathname === '/waitlist'
+    || pathname === '/login' || pathname === '/forgot-password' || pathname === '/reset-password'
     || pathname.startsWith('/api/') || pathname.startsWith('/_next/')
     || pathname.startsWith('/exchanges/') || pathname.startsWith('/icons/')
     || pathname === '/favicon.ico' || pathname === '/robots.txt' || pathname === '/sitemap.xml'

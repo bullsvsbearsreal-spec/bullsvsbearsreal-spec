@@ -113,9 +113,9 @@ export default function WaitlistPage() {
           </div>
           <Link
             href="/login"
-            className="text-sm text-neutral-400 hover:text-white transition-colors"
+            className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors"
           >
-            Sign In
+            Existing users
           </Link>
         </div>
       </nav>
