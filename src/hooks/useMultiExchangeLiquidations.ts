@@ -423,10 +423,39 @@ export function useMultiExchangeLiquidations({
     }
   }, [persistKey]);
 
+  // ─── DB persistence bridge: batch WS events → POST to /api/liquidations/ingest
+  const dbBufferRef = useRef<Liquidation[]>([]);
+  const dbFlushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const flushToDb = useCallback(() => {
+    const buffer = dbBufferRef.current;
+    if (buffer.length === 0) return;
+    // Take up to 50 events and clear buffer
+    const batch = buffer.splice(0, 50);
+    const events = batch.map(liq => ({
+      symbol: liq.symbol,
+      exchange: liq.exchange,
+      side: liq.side,
+      price: liq.price,
+      quantity: liq.quantity,
+      value: liq.value,
+      timestamp: liq.timestamp,
+    }));
+    // Fire-and-forget — don't block the UI
+    fetch('/api/liquidations/ingest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events }),
+    }).catch(() => { /* silently fail — DB persistence is best-effort */ });
+  }, []);
+
   useEffect(() => {
     // Initialize connections status
     setConnections(stableExchanges.map(ex => ({ exchange: ex, connected: false, eventCount: 0 })));
     const eventCounts: Record<string, number> = {};
+
+    // Start DB flush interval (every 10s)
+    dbFlushTimerRef.current = setInterval(flushToDb, 10000);
 
     const wsHandles = stableExchanges.map(exchange => {
       eventCounts[exchange] = 0;
@@ -438,6 +467,10 @@ export function useMultiExchangeLiquidations({
             prev.map(c => c.exchange === exchange ? { ...c, eventCount: eventCounts[exchange], lastEventAt: Date.now() } : c),
           );
           handleLiquidation(liq);
+          // Buffer for DB persistence (only events > $500)
+          if (liq.value >= 500) {
+            dbBufferRef.current.push(liq);
+          }
         },
         (connected, error) => {
           setConnections(prev =>
@@ -449,13 +482,16 @@ export function useMultiExchangeLiquidations({
 
     return () => {
       wsHandles.forEach(h => h.close());
+      // Flush remaining events before unmount
+      flushToDb();
+      if (dbFlushTimerRef.current) clearInterval(dbFlushTimerRef.current);
       // Clear any pending save timer on unmount
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
     };
-  }, [stableExchanges, handleLiquidation]);
+  }, [stableExchanges, handleLiquidation, flushToDb]);
 
   const clearAll = useCallback(() => {
     setLiquidations([]);
