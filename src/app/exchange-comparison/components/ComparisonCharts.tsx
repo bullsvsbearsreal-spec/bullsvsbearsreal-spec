@@ -71,13 +71,13 @@ export default function ComparisonCharts({ oiChartData, fundingForSymbol, select
       {/* OI Bar Chart */}
       <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
         <div className="text-sm font-medium text-neutral-400 mb-3">Total Open Interest by Exchange</div>
-        <div style={{ overflowY: 'auto', maxHeight: 500 }}>
-        <ResponsiveContainer width="100%" height={Math.max(300, oiChartData.length * 36)}>
-          <BarChart data={oiChartData} layout="vertical" margin={{ left: 80, right: 20 }}>
-            <XAxis type="number" tickFormatter={formatUSD} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
-            <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={75} />
+        <div style={{ overflowY: 'auto', maxHeight: 600 }}>
+        <ResponsiveContainer width="100%" height={Math.max(300, oiChartData.length * 32)}>
+          <BarChart data={oiChartData} layout="vertical" margin={{ left: 90, right: 80 }}>
+            <XAxis type="number" scale="log" domain={['auto', 'auto']} tickFormatter={formatUSD} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
+            <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={85} />
             <Tooltip content={<OITooltip />} />
-            <Bar dataKey="totalOI" radius={[0, 4, 4, 0]} barSize={20}>
+            <Bar dataKey="totalOI" radius={[0, 4, 4, 0]} barSize={18} label={{ position: 'right', formatter: formatUSD, fill: '#737373', fontSize: 10 }}>
               {oiChartData.map((_, i) => (
                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
               ))}
