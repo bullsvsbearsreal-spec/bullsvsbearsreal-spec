@@ -116,7 +116,7 @@ export async function fetchAllFundingRates(assetClass: AssetClassFilter = 'crypt
     // Use the server-side API route to avoid CORS issues
     const url = assetClass === 'crypto'
       ? '/api/funding'
-      : `/api/funding?assetClass=${assetClass}`;
+      : `/api/funding?assetClass=${encodeURIComponent(assetClass)}`;
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error('Failed to fetch funding rates');

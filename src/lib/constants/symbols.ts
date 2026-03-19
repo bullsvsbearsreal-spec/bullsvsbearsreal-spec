@@ -1,7 +1,7 @@
 import { LayoutGrid, Crown, Gem, Dog, Layers, Coins, Bot, Gamepad2, Rocket, ChevronDown, Landmark, Cpu, BarChart3, DollarSign, Flame, Pickaxe } from 'lucide-react';
 
 // Asset class type
-export type AssetClass = 'crypto' | 'stocks' | 'forex' | 'commodities';
+export type AssetClass = 'all' | 'crypto' | 'stocks' | 'forex' | 'commodities';
 
 // Priority symbols for sorting (crypto)
 export const PRIORITY_SYMBOLS: string[] = [
@@ -124,6 +124,17 @@ export function getCategoriesForAssetClass(assetClass: AssetClass): {
   prioritySymbols: string[];
 } {
   switch (assetClass) {
+    case 'all':
+      return {
+        categories: {
+          ...CATEGORIES,
+          stocks: { name: 'Stocks', symbols: [], dynamic: 'stocks' },
+          forex: { name: 'Forex', symbols: [], dynamic: 'forex' },
+          commodities: { name: 'Commodities', symbols: [], dynamic: 'commodities' },
+        },
+        icons: { ...CATEGORY_ICONS, stocks: BarChart3, forex: DollarSign, commodities: Flame },
+        prioritySymbols: [...PRIORITY_SYMBOLS, ...STOCK_PRIORITY_SYMBOLS, ...FOREX_PRIORITY_SYMBOLS, ...COMMODITY_PRIORITY_SYMBOLS],
+      };
     case 'stocks':
       return { categories: STOCK_CATEGORIES, icons: STOCK_CATEGORY_ICONS, prioritySymbols: STOCK_PRIORITY_SYMBOLS };
     case 'forex':

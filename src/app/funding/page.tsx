@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchArbHistory, type AssetClassFilter } from '@/lib/api/aggregator';
 import { detectPriceArbitrage, type PriceArb } from '@/lib/arbitrage-detector';
-import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon, Layers } from 'lucide-react';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import DataFreshness from '@/components/DataFreshness';
 import StaleIndicator from '@/components/StaleIndicator';
@@ -36,6 +36,7 @@ type VenueFilter = 'all' | 'cex' | 'dex';
 type MarginFilter = 'linear' | 'inverse' | 'all';
 
 const ASSET_CLASS_TABS: { key: AssetClass; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: 'all', label: 'All', icon: Layers },
   { key: 'crypto', label: 'Crypto', icon: TrendingUp },
   { key: 'stocks', label: 'Stocks', icon: BarChart3 },
   { key: 'forex', label: 'Forex', icon: DollarSign },
@@ -43,6 +44,7 @@ const ASSET_CLASS_TABS: { key: AssetClass; label: string; icon: React.ComponentT
 ];
 
 const ASSET_CLASS_SUBTITLES: Record<AssetClass, string> = {
+  all: 'Real-time perpetual funding — all asset classes',
   crypto: 'Real-time perpetual funding',
   stocks: 'Real-time stock perp funding',
   forex: 'Real-time forex perp funding',
@@ -56,7 +58,7 @@ export default function FundingPage() {
   const [showExchangeSelector, setShowExchangeSelector] = useState(false);
   const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
   const [marginFilter, setMarginFilter] = useState<MarginFilter>('linear');
-  const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
+  const [assetClass, setAssetClass] = useState<AssetClass>('all');
   const [fundingPeriod, setFundingPeriod] = useState<FundingPeriod>('8h');
   const exchangeSelectorRef = useRef<HTMLDivElement>(null);
   const { prefs: fundingPrefs, updatePrefs: updateFundingPrefs } = useFundingPrefs();

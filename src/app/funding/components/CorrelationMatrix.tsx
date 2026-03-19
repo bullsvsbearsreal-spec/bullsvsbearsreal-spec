@@ -130,11 +130,19 @@ export default function CorrelationMatrix({ fundingRates }: CorrelationMatrixPro
             <Info className="w-3.5 h-3.5" />
           </button>
           {showInfo && (
-            <div className="absolute left-0 top-full mt-1.5 z-30 w-64 p-3 rounded-lg bg-[#1a1a1a] border border-white/[0.08] shadow-xl text-[11px] text-neutral-400 leading-relaxed">
-              Pearson correlation of funding rates across shared exchanges.
-              Values near <span className="text-emerald-400">+1</span> mean rates move together;
-              near <span className="text-red-400">-1</span> means they move oppositely.
-              Requires at least {MIN_SHARED_EXCHANGES} shared exchanges.
+            <div className="absolute left-0 top-full mt-1.5 z-30 w-80 p-3.5 rounded-lg bg-[#1a1a1a] border border-white/[0.08] shadow-xl text-[11px] text-neutral-400 leading-relaxed">
+              <p className="font-semibold text-white text-xs mb-2">How to read this matrix</p>
+              <p className="mb-2">
+                Each cell shows how closely two assets&apos; <span className="text-hub-yellow">funding rates</span> move together across exchanges.
+              </p>
+              <ul className="space-y-1.5 mb-2">
+                <li><span className="text-emerald-400 font-bold">+1.0 (green)</span> = rates move in the same direction — when one goes up, the other does too</li>
+                <li><span className="text-neutral-500 font-bold">0.0 (grey)</span> = no relationship — rates move independently</li>
+                <li><span className="text-red-400 font-bold">-1.0 (red)</span> = rates move opposite — when one goes up, the other goes down</li>
+              </ul>
+              <p className="text-neutral-500 text-[10px]">
+                <span className="font-semibold">Trading use:</span> High correlation → they get funded similarly. Negative correlation → potential funding arb (long one, short the other). Requires {MIN_SHARED_EXCHANGES}+ shared exchanges.
+              </p>
             </div>
           )}
         </div>
