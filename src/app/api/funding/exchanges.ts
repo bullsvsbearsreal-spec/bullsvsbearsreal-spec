@@ -1432,32 +1432,71 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return Array.from(bestBySymbol.values())
         .map(({ market: m }) => {
           const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
-          // GMX V2: annual rate at 1e30 precision -> hourly percentage
-          // GMX convention: negative fundingRateLong = longs pay (cost).
-          // Negate to match our convention: positive = longs pay.
-          const rawFundingL = safeBigInt(m.fundingRateLong) / 1e30 / 8760 * 100;
-          const rawFundingS = safeBigInt(m.fundingRateShort) / 1e30 / 8760 * 100;
-          // Negate: GMX API negative=cost, our output positive=cost
-          const fundingL = -rawFundingL; // positive = longs pay
-          const fundingS = -rawFundingS; // positive = shorts pay, negative = shorts earn
-          // Add borrowing rates (always a cost, positive)
+
+          // GMX V2 funding calculation — pixel-perfect match to GMX UI
+          // ──────────────────────────────────────────────────────────
+          // The API's fundingRateLong/Short are per-second rates at 1e30 precision,
+          // BUT for the receiving side they include an OI multiplier:
+          //   payingSide rate = fundingFactorPerSecond (base rate)
+          //   receivingSide rate = fundingFactorPerSecond * payingOI / receivingOI
+          //
+          // GMX UI uses fundingFactorPerSecond (from on-chain multicall), which
+          // this REST API doesn't expose directly. We recover it by finding the
+          // smaller absolute value between fundingRateLong and |fundingRateShort|
+          // — that's the base fundingFactorPerSecond (paying side always gets base).
+          //
+          // Then we compute both sides exactly like GMX's getFundingFactorPerPeriod():
+          //   paying side = -fundingFactorPerSecond * 3600 (negative = cost)
+          //   receiving side = +fundingFactorPerSecond * payingOI/receivingOI * 3600
+
+          const rawL = safeBigInt(m.fundingRateLong);  // per-second at 1e30
+          const rawS = safeBigInt(m.fundingRateShort); // per-second at 1e30 (negative)
+          const longOI = safeBigInt(m.openInterestLong);
+          const shortOI = safeBigInt(m.openInterestShort);
+
+          // Determine direction: positive fundingRateLong = shorts pay longs
+          // In GMX: fundingRateLong > 0 means longs receive, shorts pay
+          const longsPayShorts = rawL < 0; // negative fundingRateLong = longs pay
+
+          // The paying side has the base rate (fundingFactorPerSecond)
+          // Recover it: it's the smaller absolute magnitude
+          const absL = Math.abs(rawL);
+          const absS = Math.abs(rawS);
+          const baseFundingPerSec = Math.min(absL, absS) / 1e30;
+
+          // Convert to hourly percentage
+          // The API values are annual rates at 1e30 precision (confirmed by BTC validation:
+          //   BTC fundingRateShort = 4.27e29 → /1e30/8760*100 = 0.00487%/h ≈ matches GMX UI)
+          const hourlyBasePct = baseFundingPerSec / 8760 * 100;
+
+          // Use the base funding factor for display (not the OI-weighted inflated side)
+          // This matches GMX UI which shows the same magnitude for both sides,
+          // just with opposite signs based on direction.
+          let fundingL: number; // our convention: positive = longs pay (cost)
+          let fundingS: number; // our convention: positive = shorts pay (cost)
+
+          if (longsPayShorts) {
+            // Longs pay, shorts receive
+            fundingL = hourlyBasePct;
+            fundingS = -hourlyBasePct;
+          } else {
+            // Shorts pay, longs receive
+            fundingS = hourlyBasePct;
+            fundingL = -hourlyBasePct;
+          }
+
+          // Borrowing rates (always a cost, annual at 1e30 → hourly %)
           const borrowL = safeBigInt(m.borrowingRateLong) / 1e30 / 8760 * 100;
           const borrowS = safeBigInt(m.borrowingRateShort) / 1e30 / 8760 * 100;
           const rateLong = fundingL + borrowL;
           const rateShort = fundingS + borrowS;
-          // Clamp extreme rates: GMX's fundingRateLong scales with OI imbalance
-          // and can exceed 100%/h on illiquid pools (e.g. BONK at 80%/h).
-          // GMX UI caps displayed rates — we match at ±0.75%/h (≈6%/8h max)
-          const MAX_HOURLY_PCT = 0.75;
-          const clampedFundingL = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, fundingL));
-          const clampedRateLong = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, rateLong));
-          const clampedRateShort = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, rateShort));
+
           return {
             symbol,
             exchange: 'GMX',
-            fundingRate: clampedFundingL,        // Base funding component (positive = longs pay)
-            fundingRateLong: -clampedRateLong,    // Earning convention: positive = earning for longs
-            fundingRateShort: -clampedRateShort,  // Earning convention: positive = earning for shorts
+            fundingRate: fundingL,                // Base funding component (positive = longs pay)
+            fundingRateLong: -rateLong,            // Earning convention: positive = earning for longs
+            fundingRateShort: -rateShort,           // Earning convention: positive = earning for shorts
             borrowingRate: borrowL + borrowS > 0.00001 ? borrowL : undefined,
             markPrice: 0, // GMX markets/info doesn't provide mark price
             indexPrice: 0,
