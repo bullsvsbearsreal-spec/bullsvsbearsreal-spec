@@ -468,7 +468,7 @@ export function useMultiExchangeLiquidations({
           );
           handleLiquidation(liq);
           // Buffer for DB persistence (only events > $500)
-          if (liq.value >= 500) {
+          if (liq.value >= 100) {
             dbBufferRef.current.push(liq);
           }
         },

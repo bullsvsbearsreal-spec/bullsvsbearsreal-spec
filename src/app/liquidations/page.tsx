@@ -87,7 +87,7 @@ export default function LiquidationsPage() {
   // ─── Real-time WebSocket Feed (8 exchanges) ─────
   const { liquidations: wsLiqs, connections } = useMultiExchangeLiquidations({
     exchanges: WS_EXCHANGES,
-    minValue: 500, // $500 minimum — lower to catch more exchange events
+    minValue: 100, // $100 minimum — show all meaningful liqs from every exchange
     maxItems: 1000,
     persistKey: 'ih-liq-page',
     persistTtlMs: hours * 3600000,
