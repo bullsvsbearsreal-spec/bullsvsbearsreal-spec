@@ -1445,9 +1445,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const borrowS = safeBigInt(m.borrowingRateShort) / 1e30 / 8760 * 100;
           const rateLong = fundingL + borrowL;
           const rateShort = fundingS + borrowS;
-          // Clamp extreme rates: GMX AMM can produce 100%+/h on illiquid pools (e.g. BONK)
-          // Cap at ±5%/h to prevent one pool from dominating averages/leaderboards
-          const MAX_HOURLY_PCT = 5;
+          // Clamp extreme rates: GMX's fundingRateLong scales with OI imbalance
+          // and can exceed 100%/h on illiquid pools (e.g. BONK at 80%/h).
+          // GMX UI caps displayed rates — we match at ±0.75%/h (≈6%/8h max)
+          const MAX_HOURLY_PCT = 0.75;
           const clampedFundingL = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, fundingL));
           const clampedRateLong = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, rateLong));
           const clampedRateShort = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, rateShort));
