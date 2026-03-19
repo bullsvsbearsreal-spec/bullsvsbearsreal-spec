@@ -172,7 +172,11 @@ export default function EconomicCalendarPage() {
     }
     // "month" filter or default
     if (selectedDate) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      // Use local date string (not UTC) to match API date format
+      const y = selectedDate.getFullYear();
+      const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const d = String(selectedDate.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${d}`;
       return filteredEvents.filter((e) => e.date === dateStr);
     }
     return filteredEvents;
@@ -201,8 +205,8 @@ export default function EconomicCalendarPage() {
       (e) => e.impact === 'high'
     ).length;
 
-    // Find next major event from today
-    const todayStr = today.toISOString().split('T')[0];
+    // Find next major event from today (use local date, not UTC)
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const upcoming = allEvents
       .filter((e) => e.date >= todayStr && e.impact === 'high')
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -217,7 +221,7 @@ export default function EconomicCalendarPage() {
   /* ---------- Upcoming events (next 5) --------------------------- */
 
   const upcomingEvents = useMemo(() => {
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     return allEvents
       .filter((e) => e.date >= todayStr)
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -287,7 +291,7 @@ export default function EconomicCalendarPage() {
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
             <h1 className="heading-page">
               Economic Calendar
@@ -322,7 +326,7 @@ export default function EconomicCalendarPage() {
 
         {/* TODAY'S EVENTS banner — impossible to miss FOMC etc. */}
         {(() => {
-          const todayStr = today.toISOString().split('T')[0];
+          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
           const todayEvents = allEvents.filter(e => e.date === todayStr);
           const todayHigh = todayEvents.filter(e => e.impact === 'high');
           if (todayEvents.length === 0) return null;
@@ -372,14 +376,14 @@ export default function EconomicCalendarPage() {
         })()}
 
         {/* Stats cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <span className="text-neutral-600 text-sm">Events This Week</span>
             <div className="text-lg font-bold font-mono text-white mt-1">
               {stats.weekEvents}
             </div>
           </div>
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-5">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
             <span className="text-red-400 text-sm">
               High Impact This Month
             </span>
@@ -387,13 +391,13 @@ export default function EconomicCalendarPage() {
               {stats.highImpactMonth}
             </div>
           </div>
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <span className="text-neutral-600 text-sm">Total Events</span>
             <div className="text-lg font-bold font-mono text-white mt-1">
               {filteredEvents.length}
             </div>
           </div>
-          <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-5">
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
             <span className="text-purple-400 text-sm">Next Major Event</span>
             {stats.nextMajor ? (
               <>
@@ -417,7 +421,7 @@ export default function EconomicCalendarPage() {
         </div>
 
         {/* Search + Country row */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
@@ -462,7 +466,7 @@ export default function EconomicCalendarPage() {
         </div>
 
         {/* Controls row */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-3 mb-4">
           {/* View toggle */}
           <div className="flex rounded-xl overflow-hidden bg-white/[0.02] border border-white/[0.06]">
             <button
