@@ -748,17 +748,8 @@ export default function EconomicCalendarPage() {
               {/* Calendar view */}
               {viewMode === 'calendar' && (
                 <>
-                {/* Seasonal banner */}
-                <div className={`bg-gradient-to-r ${seasonTheme.gradient} border rounded-xl px-4 py-3 flex items-center gap-3 mb-3`} style={{ borderColor: seasonTheme.borderColor }}>
-                  <span className="text-2xl">{seasonTheme.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-white text-sm font-semibold">{seasonTheme.label} {viewMonth.getFullYear()}</span>
-                    <p className="text-neutral-500 text-[10px] mt-0.5">{seasonTheme.facts[viewMonth.getMonth() % seasonTheme.facts.length]}</p>
-                  </div>
-                </div>
-
-                <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
-                  {/* Month navigation */}
+                <div className={`bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6 bg-gradient-to-b ${seasonTheme.gradient}`}>
+                  {/* Month navigation with seasonal decoration */}
                   <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
                     <button
                       onClick={goToPrevMonth}
@@ -769,9 +760,13 @@ export default function EconomicCalendarPage() {
                     </button>
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{seasonTheme.emoji}</span>
-                      <h2 className="text-white font-semibold text-lg">
-                        {getMonthName(viewMonth)}
-                      </h2>
+                      <div className="text-center">
+                        <h2 className="text-white font-semibold text-lg">
+                          {getMonthName(viewMonth)}
+                        </h2>
+                        <span className="text-[10px] text-neutral-500">{seasonTheme.label} · {seasonTheme.facts[viewMonth.getMonth() % seasonTheme.facts.length]}</span>
+                      </div>
+                      <span className="text-xl">{seasonTheme.emoji}</span>
                       <button
                         onClick={goToToday}
                         className="px-2 py-0.5 rounded text-xs font-medium bg-hub-yellow/20 text-hub-yellow hover:bg-hub-yellow/30 transition-colors"
