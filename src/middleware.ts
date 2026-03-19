@@ -192,11 +192,18 @@ function handleV1Route(request: NextRequest): NextResponse {
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // ── Auth wall: redirect unauthenticated users to login ──
-  if (!isPublicPath(pathname) && !hasSessionCookie(request)) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('callbackUrl', pathname + search);
-    return NextResponse.redirect(loginUrl);
+  // ── Waitlist gate: redirect ALL unauthenticated page requests to /waitlist ──
+  // Existing signed-in users keep full access. Everyone else sees the waitlist.
+  const isWaitlistExempt = pathname === '/waitlist' || pathname === '/login' || pathname === '/signup'
+    || pathname === '/forgot-password' || pathname === '/reset-password'
+    || pathname === '/terms' || pathname === '/privacy'
+    || pathname.startsWith('/api/') || pathname.startsWith('/_next/')
+    || pathname.startsWith('/exchanges/') || pathname.startsWith('/icons/')
+    || pathname === '/favicon.ico' || pathname === '/robots.txt' || pathname === '/sitemap.xml'
+    || pathname.endsWith('.png') || pathname.endsWith('.svg') || pathname.endsWith('.ico');
+
+  if (!isWaitlistExempt && !hasSessionCookie(request)) {
+    return NextResponse.redirect(new URL('/waitlist', request.url));
   }
 
   // Only rate-limit API routes
