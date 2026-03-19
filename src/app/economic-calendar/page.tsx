@@ -107,7 +107,7 @@ export default function EconomicCalendarPage() {
   const [viewMonth, setViewMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(today);
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('month');
   const [impactFilters, setImpactFilters] = useState<
@@ -319,6 +319,57 @@ export default function EconomicCalendarPage() {
             </button>
           </div>
         </div>
+
+        {/* TODAY'S EVENTS banner — impossible to miss FOMC etc. */}
+        {(() => {
+          const todayStr = today.toISOString().split('T')[0];
+          const todayEvents = allEvents.filter(e => e.date === todayStr);
+          const todayHigh = todayEvents.filter(e => e.impact === 'high');
+          if (todayEvents.length === 0) return null;
+          return (
+            <div className={`rounded-xl overflow-hidden mb-6 border ${todayHigh.length > 0 ? 'border-red-500/30 bg-red-500/5' : 'border-hub-yellow/20 bg-hub-yellow/5'}`}>
+              <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${todayHigh.length > 0 ? 'bg-red-500' : 'bg-hub-yellow'}`} />
+                <span className={`text-sm font-bold ${todayHigh.length > 0 ? 'text-red-400' : 'text-hub-yellow'}`}>
+                  Today — {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''}
+                  {todayHigh.length > 0 && ` (${todayHigh.length} high impact)`}
+                </span>
+                <span className="text-neutral-600 text-xs ml-auto">
+                  {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                </span>
+              </div>
+              <div className="divide-y divide-white/[0.04]">
+                {todayEvents
+                  .sort((a, b) => {
+                    // High impact first
+                    const impactOrder = { high: 0, medium: 1, low: 2 };
+                    return (impactOrder[a.impact] ?? 2) - (impactOrder[b.impact] ?? 2);
+                  })
+                  .map(event => {
+                    const cat = EVENT_CATEGORIES[event.category];
+                    return (
+                      <div key={event.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02]">
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: IMPACT_COLORS[event.impact] }} />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-white font-semibold text-sm">{event.name}</span>
+                          {event.time && <span className="text-neutral-500 text-xs ml-2">{event.time}</span>}
+                          <p className="text-neutral-600 text-xs truncate">{event.description}</p>
+                        </div>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0" style={{ backgroundColor: cat.color + '20', color: cat.color }}>
+                          {cat.label}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded flex-shrink-0 ${
+                          event.impact === 'high' ? 'bg-red-500/15 text-red-400' : event.impact === 'medium' ? 'bg-yellow-500/15 text-yellow-400' : 'bg-neutral-500/15 text-neutral-400'
+                        }`}>
+                          {event.impact}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -680,21 +731,20 @@ export default function EconomicCalendarPage() {
                               </span>
                             )}
                           </div>
-                          {/* First event name preview */}
-                          {dayEvents.length > 0 && (
-                            <div
-                              className={`text-[10px] mt-0.5 truncate ${
-                                hasHigh
-                                  ? 'text-red-400'
-                                  : 'text-neutral-600'
-                              }`}
-                            >
-                              {dayEvents[0].name.replace(
-                                /^(US |EU )/,
-                                ''
-                              )}
+                          {/* High-impact event names — show prominently */}
+                          {hasHigh ? (
+                            <div className="hidden sm:block space-y-0.5 mt-0.5">
+                              {dayEvents.filter(e => e.impact === 'high').slice(0, 2).map(evt => (
+                                <div key={evt.id} className="text-[9px] text-red-400 font-semibold truncate leading-tight">
+                                  {evt.name.replace(/^(US |EU )/, '')}
+                                </div>
+                              ))}
                             </div>
-                          )}
+                          ) : dayEvents.length > 0 ? (
+                            <div className="hidden sm:block text-[10px] mt-0.5 truncate text-neutral-600">
+                              {dayEvents[0].name.replace(/^(US |EU )/, '')}
+                            </div>
+                          ) : null}
                         </button>
                       );
                     })}
