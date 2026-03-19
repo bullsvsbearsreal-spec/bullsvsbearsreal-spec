@@ -9,12 +9,20 @@ export interface MarketMapping {
 // Keep regexes TIGHT — false positives are worse than missed matches.
 // Only add mappings when both platforms have genuinely the SAME question.
 export const CURATED_MAPPINGS: MarketMapping[] = [
-  // Crypto — only match identical thresholds
-  { label: 'BTC above $150K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach).*\\$?150', kalshiMatch: 'KXBTCMAXY.*150|bitcoin.*above.*150' },
-  { label: 'BTC above $200K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach).*\\$?200', kalshiMatch: 'KXBTC.*200|bitcoin.*above.*200' },
-  { label: 'ETH above $2500', category: 'Crypto', polymarketMatch: 'ethereum.*(?:above|reach).*2.?500', kalshiMatch: 'KXETHMAXMON.*2500|ETH.*above.*2500' },
-  { label: 'ETH below $1500', category: 'Crypto', polymarketMatch: 'ethereum.*below.*1.?500', kalshiMatch: 'KXETHMINY.*1500' },
-  { label: 'ETH below $1000', category: 'Crypto', polymarketMatch: 'ethereum.*below.*1.?000', kalshiMatch: 'KXETHMINY.*1000' },
+  // Crypto — BTC price targets (match Polymarket "reach/dip" vs Kalshi "above/below")
+  { label: 'BTC above $100K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*(?:\\$?100,?000|\\$?100k)', kalshiMatch: 'KXBTCMAXY.*99999|bitcoin.*above.*99' },
+  { label: 'BTC above $200K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*(?:\\$?200,?000|\\$?200k)', kalshiMatch: 'KXBTC.*200|bitcoin.*above.*200' },
+  { label: 'BTC above $150K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*(?:\\$?150,?000|\\$?150k)', kalshiMatch: 'KXBTCMAXY.*150|bitcoin.*above.*150' },
+  { label: 'BTC reach $75K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:reach|hit).*(?:\\$?75,?000|\\$?75k)', kalshiMatch: 'KXBTCMAXY.*75|bitcoin.*above.*75' },
+  { label: 'BTC dip to $65K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:dip|fall|below|drop).*(?:\\$?65,?000|\\$?65k)', kalshiMatch: 'KXBTCMINY.*60|bitcoin.*below.*6[05]' },
+  { label: 'BTC below $60K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:dip|fall|below|drop).*(?:\\$?60,?000|\\$?60k)', kalshiMatch: 'KXBTCMINY.*60000|bitcoin.*below.*60' },
+  { label: 'BTC below $50K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:dip|fall|below|drop).*(?:\\$?50,?000|\\$?50k)', kalshiMatch: 'KXBTCMINY.*50000|bitcoin.*below.*50' },
+  { label: 'BTC below $40K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:dip|fall|below|drop).*(?:\\$?40,?000|\\$?40k)', kalshiMatch: 'KXBTCMINY.*40000|bitcoin.*below.*40' },
+  // ETH
+  { label: 'ETH reach $2200', category: 'Crypto', polymarketMatch: 'ethereum.*(?:reach|hit|above).*(?:\\$?2,?200|\\$?2\\.?2k)', kalshiMatch: 'KXETHMAXMON.*2250|ethereum.*above.*2[12]' },
+  { label: 'ETH below $1500', category: 'Crypto', polymarketMatch: 'ethereum.*(?:below|dip|fall).*(?:\\$?1,?500|\\$?1\\.?5k)', kalshiMatch: 'KXETHMINY.*1500|ethereum.*below.*1500' },
+  { label: 'ETH below $1000', category: 'Crypto', polymarketMatch: 'ethereum.*(?:below|dip|fall).*(?:\\$?1,?000|\\$?1k)', kalshiMatch: 'KXETHMINY.*1000|ethereum.*below.*1000' },
+  { label: 'ETH below $1750', category: 'Crypto', polymarketMatch: 'ethereum.*(?:below|dip|fall).*(?:\\$?1,?750)', kalshiMatch: 'KXETHMINY.*1750|ethereum.*below.*1750' },
 
   // Politics
   { label: 'Government shutdown', category: 'Politics', polymarketMatch: 'government.*shutdown', kalshiMatch: 'GOVSHUT|government.*shutdown' },
@@ -49,11 +57,12 @@ export const CURATED_MAPPINGS: MarketMapping[] = [
   { label: 'ETH above $5000', category: 'Crypto', polymarketMatch: 'ethereum.*(?:above|reach).*5.?000', kalshiMatch: 'KXETH.*5000|ethereum.*above.*5000' },
   { label: 'SOL above $500', category: 'Crypto', polymarketMatch: 'solana.*(?:above|reach).*500', kalshiMatch: 'KXSOL.*500|solana.*above.*500' },
 
-  // Geopolitics — Iran, Ukraine, China
-  { label: 'Iran regime change', category: 'Geopolitics', polymarketMatch: 'iran.*(?:regime|fall|collapse|overthrow)', kalshiMatch: 'iran.*(?:regime|fall|collapse)' },
-  { label: 'Iran Strait of Hormuz', category: 'Geopolitics', polymarketMatch: 'iran.*(?:hormuz|strait)', kalshiMatch: 'iran.*(?:hormuz|strait)' },
-  { label: 'US strike Iran', category: 'Geopolitics', polymarketMatch: '(?:us|united states|america).*strike.*iran|iran.*(?:strike|attack).*(?:us|united)', kalshiMatch: 'KXUSIRAN|(?:us|united).*strike.*iran' },
-  { label: 'Ukraine ceasefire', category: 'Geopolitics', polymarketMatch: 'ukraine.*ceasefire|ceasefire.*ukraine', kalshiMatch: 'KXUKRAINECEASE|ukraine.*ceasefire' },
+  // Geopolitics — Iran (active in March 2026)
+  { label: 'Iran regime fall', category: 'Geopolitics', polymarketMatch: 'iranian.*regime.*fall|regime.*fall.*iran', kalshiMatch: 'iran.*regime|regime.*iran|KXIRANREGIME' },
+  { label: 'Iran Strait of Hormuz', category: 'Geopolitics', polymarketMatch: 'iran.*(?:hormuz|strait)|strait.*hormuz', kalshiMatch: 'iran.*(?:hormuz|strait)|KXIRANHORMUZ' },
+  { label: 'US-Iran nuclear deal', category: 'Geopolitics', polymarketMatch: '(?:us|u\\.s\\.).*iran.*(?:deal|agreement|nuclear|ceasefire)|iran.*ceasefire', kalshiMatch: 'KXUSAIRANAGREEMENT|us.*agree.*iran.*nuclear' },
+  { label: 'US invade/enter Iran', category: 'Geopolitics', polymarketMatch: '(?:us|u\\.s\\.).*(?:enter|invade|forces).*iran|invade.*iran', kalshiMatch: 'us.*(?:enter|invade|forces).*iran|KXUSIRAN' },
+  { label: 'Iran supreme leader', category: 'Geopolitics', polymarketMatch: '(?:supreme.*leader|successor.*khamenei|next.*leader).*iran|iran.*(?:supreme.*leader|successor)', kalshiMatch: '(?:supreme.*leader|successor|khamenei)|KXIRANLEADER' },
 
   // Sports — FIFA 2026 World Cup winners
   { label: 'Brazil win FIFA 2026', category: 'Sports', polymarketMatch: 'brazil.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*brazil', kalshiMatch: 'brazil.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*brazil' },

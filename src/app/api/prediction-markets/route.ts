@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // ─── Polymarket ──────────────────────────────────────────────
 async function fetchPolymarket(): Promise<PredictionMarket[]> {
   const res = await fetchWithTimeout(
-    'https://gamma-api.polymarket.com/markets?limit=200&active=true&closed=false&order=volume24hr&ascending=false',
+    'https://gamma-api.polymarket.com/markets?limit=500&active=true&closed=false&order=volume24hr&ascending=false',
     {},
     15000
   );
@@ -78,6 +78,9 @@ const KALSHI_SERIES = [
   // Tech / Science
   'KXOPENAIPROFIT', 'KXDEEPSEEKR2RELEASE', 'AITURING', 'KXAIOPEN',
   'KXCOMPBANCHINESEAI', 'KXANTITRUSTOAIMSFT', 'GOOGLECEOCHANGE', 'APPLEAI',
+  // Iran / Geopolitics
+  'KXUSAIRANAGREEMENT', 'KXIRANREGIME', 'KXIRANHORMUZ', 'KXUSIRAN',
+  'KXIRANLEADER', 'KXUKRAINECEASE', 'KXIRANSTRIKE',
   // Events
   'KXNEWPOPE', 'KXELONMARS',
   // Financials
@@ -232,8 +235,8 @@ function matchPair(
     }
   }
 
-  // Pass 2: Keyword fuzzy matching (lowered threshold to catch more cross-platform arbs)
-  const SIMILARITY_THRESHOLD = 0.25;
+  // Pass 2: Keyword fuzzy matching (relaxed threshold + number tolerance)
+  const SIMILARITY_THRESHOLD = 0.22;
   for (const mA of marketsA) {
     if (usedA.has(mA.id)) continue;
     const kwA = extractKeywords(mA.question);
@@ -254,18 +257,23 @@ function matchPair(
       if (hasConflictingPolarity(mA.question, mB.question)) continue;
 
       // Reject mismatched numerical thresholds (e.g. "$15K" vs "$60K")
+      // But allow 20% tolerance (e.g. $65K vs $60K are close enough)
       const numsA = extractNumbers(mA.question);
       const numsB = extractNumbers(mB.question);
       if (numsA.length > 0 && numsB.length > 0) {
         const hasNumMatch = numsA.some(a => numsB.some(b => {
           const max = Math.max(a, b);
-          return max > 0 && Math.min(a, b) / max > 0.8;
+          return max > 0 && Math.min(a, b) / max > 0.7; // 30% tolerance
         }));
         if (!hasNumMatch) continue;
       }
 
-      if (score > bestScore) {
-        bestScore = score;
+      // Boost score if categories match
+      const catBoost = mA.category.toLowerCase() === mB.category.toLowerCase() ? 0.05 : 0;
+      const finalScore = score + catBoost;
+
+      if (finalScore > bestScore) {
+        bestScore = finalScore;
         bestMatch = mB;
       }
     }
