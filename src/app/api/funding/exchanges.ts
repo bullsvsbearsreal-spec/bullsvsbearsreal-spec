@@ -1845,9 +1845,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => {
           // PERP_BTC_USDC → BTC
           let symbol = item.symbol.replace('PERP_', '').replace('_USDC', '');
-          // Normalize: 1000BONK → BONK, 1000PEPE → PEPE
-          if (symbol.startsWith('1000')) symbol = symbol.slice(4);
+          // Normalize: 1000000BONK → BONK, 1000PEPE → PEPE
+          // Check longest prefix first (1000000 before 1000)
           if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
+          else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
           const fundingPeriod = 8; // default 8h
           return {
             symbol,
