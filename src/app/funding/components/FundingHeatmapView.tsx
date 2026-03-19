@@ -924,16 +924,16 @@ export default function FundingHeatmapView({
                         const showPred = predicted !== undefined && rate !== undefined && (showPredicted || isCross);
                         const inner = hasLS ? (
                           <>
-                            <span className="flex flex-col items-center gap-[2px] leading-none">
-                              <span className={`${fs.ls} font-mono tabular-nums font-semibold`} style={{ color: rateToColors(ls.long, gridClamp).text }}>
-                                <span className="text-white/25 text-[9px]">L</span> {formatRateAdaptive(ls.long)}
+                            <span className="flex flex-col items-center gap-[1px] leading-none">
+                              <span className={`${fs.ls} font-mono tabular-nums font-bold`} style={{ color: rateToColors(ls.long, gridClamp).text }}>
+                                <span className="text-white/20 text-[7px] mr-[1px]">L</span>{formatRateAdaptive(ls.long)}
                               </span>
-                              <span className={`${fs.ls} font-mono tabular-nums font-semibold`} style={{ color: rateToColors(ls.short, gridClamp).text }}>
-                                <span className="text-white/25 text-[9px]">S</span> {formatRateAdaptive(ls.short)}
+                              <span className={`${fs.ls} font-mono tabular-nums font-bold`} style={{ color: rateToColors(ls.short, gridClamp).text }}>
+                                <span className="text-white/20 text-[7px] mr-[1px]">S</span>{formatRateAdaptive(ls.short)}
                               </span>
                               {showPred && (
-                                <span className={`${fs.sub} font-mono tabular-nums`} style={{ color: rateToColors(predicted, gridClamp).text, opacity: 0.7 }}>
-                                  P {formatRateAdaptive(predicted)}
+                                <span className={`${fs.sub} font-mono tabular-nums`} style={{ color: rateToColors(predicted, gridClamp).text, opacity: 0.6 }}>
+                                  <span className="text-white/15 text-[7px] mr-[1px]">P</span>{formatRateAdaptive(predicted)}
                                 </span>
                               )}
                             </span>
