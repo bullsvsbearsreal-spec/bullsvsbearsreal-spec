@@ -155,7 +155,7 @@ export default function WaitlistPage() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <span className="text-xl font-black">info<span className="text-hub-yellow">hub</span></span>
+          <span className="text-xl font-black">Info<span className="bg-gradient-to-br from-[#FFB800] via-[#FF8C00] to-[#E06600] text-black px-1.5 py-0.5 rounded ml-[1px]">Hub</span></span>
           <div className="flex items-center gap-3">
             <a href="https://x.com/info_hub69" target="_blank" rel="noopener noreferrer" className="text-neutral-700 hover:text-hub-yellow transition-colors" aria-label="X/Twitter">
               <Twitter className="w-3.5 h-3.5" />
@@ -418,7 +418,7 @@ export default function WaitlistPage() {
       <footer className="py-8 px-4 sm:px-6 border-t border-white/[0.04]">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold">info<span className="text-hub-yellow">hub</span></span>
+            <span className="text-sm font-bold">Info<span className="bg-gradient-to-br from-[#FFB800] via-[#FF8C00] to-[#E06600] text-black px-1.5 py-0.5 rounded ml-[1px]">Hub</span></span>
             <span className="text-neutral-700 text-xs">&copy; {new Date().getFullYear()}</span>
             <span className="text-neutral-800">|</span>
             <span className="text-neutral-700 text-[10px]">Real-time crypto derivatives intelligence</span>

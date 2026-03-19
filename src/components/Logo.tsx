@@ -11,11 +11,11 @@ interface LogoProps {
 
 export default function Logo({ variant = 'full', size = 'md', className = '', animated = false }: LogoProps) {
   const sizeMap = {
-    xs: { icon: 22, text: 12, hub: 12, gap: 1, badge: { px: 3, py: 1, rx: 3 } },
-    sm: { icon: 28, text: 14, hub: 14, gap: 1, badge: { px: 4, py: 2, rx: 4 } },
-    md: { icon: 34, text: 17, hub: 17, gap: 2, badge: { px: 5, py: 2.5, rx: 5 } },
-    lg: { icon: 44, text: 22, hub: 22, gap: 2, badge: { px: 6, py: 3, rx: 6 } },
-    xl: { icon: 56, text: 28, hub: 28, gap: 3, badge: { px: 8, py: 4, rx: 7 } },
+    xs: { icon: 22, text: 11, badge: { px: 3, py: 1, rx: 3 } },
+    sm: { icon: 28, text: 13, badge: { px: 4, py: 2, rx: 4 } },
+    md: { icon: 34, text: 15, badge: { px: 5, py: 3, rx: 5 } },
+    lg: { icon: 44, text: 20, badge: { px: 6, py: 3, rx: 6 } },
+    xl: { icon: 56, text: 26, badge: { px: 8, py: 4, rx: 7 } },
   };
 
   const d = sizeMap[size];
@@ -37,30 +37,22 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
   return (
     <div className={`flex items-center ${className} ${animated ? 'hover:scale-[1.02] transition-transform duration-200' : ''}`}>
       <span
-        className="font-black tracking-tight"
+        className="font-black tracking-tight text-white"
+        style={{ fontSize: d.text, lineHeight: 1 }}
+      >
+        Info
+      </span>
+      <span
+        className="font-black tracking-tight text-black rounded-[4px] ml-[1px]"
         style={{
           fontSize: d.text,
           lineHeight: 1,
-          color: '#ffffff',
-          letterSpacing: '-0.02em',
+          background: 'linear-gradient(135deg, #FFB800, #FF8C00, #E06600)',
+          padding: `${d.badge.py}px ${d.badge.px}px`,
+          borderRadius: d.badge.rx,
         }}
       >
-        info
-      </span>
-      <span
-        className="font-black tracking-tight"
-        style={{
-          fontSize: d.hub,
-          lineHeight: 1,
-          marginLeft: d.gap,
-          letterSpacing: '-0.02em',
-          background: 'linear-gradient(135deg, #FFD700, #FFA500, #FF8C00)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-        }}
-      >
-        hub
+        Hub
       </span>
     </div>
   );
