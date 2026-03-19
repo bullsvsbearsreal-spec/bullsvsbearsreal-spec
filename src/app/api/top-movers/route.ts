@@ -124,12 +124,48 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(cachedData, { headers: cacheHeaders });
   } catch (error) {
     console.error('Top movers CMC error:', error);
+
+    // Fallback: try CoinGecko if CMC fails
+    try {
+      const cgRes = await fetch(
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=200&page=1&sparkline=false&price_change_percentage=24h',
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (cgRes.ok) {
+        const cgData: any[] = await cgRes.json();
+        const coins = cgData
+          .filter((c: any) => c.price_change_percentage_24h_in_currency != null || c.price_change_percentage_24h != null)
+          .map((c: any) => ({
+            symbol: (c.symbol || '').toUpperCase(),
+            name: c.name,
+            slug: c.id,
+            cmcId: 0,
+            price: c.current_price || 0,
+            change24h: c.price_change_percentage_24h || 0,
+            marketCap: c.market_cap || 0,
+            volume24h: c.total_volume || 0,
+          }))
+          .filter((c: any) => /^[A-Z0-9]+$/.test(c.symbol) && Math.abs(c.change24h) <= 500);
+
+        const sorted = [...coins].sort((a: any, b: any) => b.change24h - a.change24h);
+        cachedData = { gainers: sorted.slice(0, 10), losers: sorted.slice(-10).reverse() };
+        allCoinsCache = sorted;
+        cacheTime = Date.now();
+
+        const headers = { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' };
+        if (isHeatmap) return NextResponse.json({ coins: sorted }, { headers });
+        return NextResponse.json(cachedData, { headers });
+      }
+    } catch (cgErr) {
+      console.error('Top movers CoinGecko fallback also failed:', cgErr);
+    }
+
+    // Final fallback: use cached data if available
     if (isHeatmap && allCoinsCache) {
       return NextResponse.json({ coins: allCoinsCache });
     }
     if (cachedData) {
       if (isHeatmap) {
-        // cachedData exists but allCoinsCache doesn't — reconstruct from gainers+losers
         return NextResponse.json({ coins: [...(cachedData.gainers || []), ...(cachedData.losers || [])] });
       }
       return NextResponse.json(cachedData);

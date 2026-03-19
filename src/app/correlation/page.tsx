@@ -164,10 +164,11 @@ export default function CorrelationPage() {
     }
   }, [data]);
 
-  // Slice symbols to selected count
+  // Slice symbols to selected count, filter out non-crypto (commodities/forex)
+  const NON_CRYPTO_CORR = new Set(['XAU', 'XAG', 'XAUT', 'PAXG', 'XPT', 'XPD', 'EUR', 'GBP', 'JPY', 'USOIL', 'UKOIL', 'CL']);
   const symbols = useMemo(() => {
     if (!data?.symbols) return [];
-    return data.symbols.slice(0, count);
+    return data.symbols.filter((s: any) => !NON_CRYPTO_CORR.has(s.symbol?.toUpperCase())).slice(0, count);
   }, [data, count]);
 
   // Compute correlation matrix
