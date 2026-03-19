@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const email = body.email.trim().toLowerCase();
-    const name = body.name?.trim() || null;
+    const email = body.email.trim().toLowerCase().slice(0, 254);
+    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 100) : null;
 
     if (!isValidEmail(email)) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
