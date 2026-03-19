@@ -88,7 +88,7 @@ const FAQS = [
   },
   {
     q: 'How much will it cost?',
-    a: 'Core features like funding rates, OI, and liquidations will be accessible to everyone. Premium plans will unlock historical data, API access, custom alerts, and advanced analysis tools. Pricing will be competitive and designed for individual traders, not institutions. Early waitlist members get priority access and the best early pricing.',
+    a: 'We\'ll have a free tier with real-time funding rates, OI, and liquidations. Premium unlocks historical data, API access, custom alerts, advanced screeners, and priority support. We\'re pricing it for individual traders, not hedge funds. Waitlist members will be the first to see pricing and get early access deals.',
   },
   {
     q: 'Which exchanges do you cover?',

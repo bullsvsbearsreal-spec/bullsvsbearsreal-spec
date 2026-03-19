@@ -161,7 +161,7 @@ export default function BrandPage() {
             {/* Wordmark Logo */}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
               <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
-                <img src="/infohub-wordmark.png" alt="InfoHub Wordmark" className="h-16 object-contain" />
+                <Logo variant="full" size="xl" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
