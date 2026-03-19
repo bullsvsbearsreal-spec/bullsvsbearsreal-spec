@@ -13,7 +13,7 @@ interface TickerItem {
 }
 
 export default function MarketTicker() {
-  const [isScrolling, setIsScrolling] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const { data: tickers, isLoading } = useTickers();
 
   const tickerData = useMemo<TickerItem[]>(() => {
@@ -71,12 +71,12 @@ export default function MarketTicker() {
     <div className="border-b border-white/[0.04] bg-black overflow-hidden">
       <div
         className="relative py-2"
-        onMouseEnter={() => setIsScrolling(false)}
-        onMouseLeave={() => setIsScrolling(true)}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
       >
         <div
-          className={`flex items-center gap-8 ${isScrolling ? 'animate-ticker' : ''}`}
-          style={{ width: 'fit-content' }}
+          className="flex items-center gap-8 animate-ticker"
+          style={{ width: 'fit-content', ...(isPaused ? { animationPlayState: 'paused' } : {}) }}
         >
           {duplicatedTickers.map((ticker, index) => {
             const isPositive = (ticker.change ?? 0) >= 0;
