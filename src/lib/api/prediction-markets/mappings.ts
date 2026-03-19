@@ -23,6 +23,16 @@ export const CURATED_MAPPINGS: MarketMapping[] = [
   { label: 'ETH below $1500', category: 'Crypto', polymarketMatch: 'ethereum.*(?:below|dip|fall).*(?:\\$?1,?500|\\$?1\\.?5k)', kalshiMatch: 'KXETHMINY.*1500|ethereum.*below.*1500' },
   { label: 'ETH below $1000', category: 'Crypto', polymarketMatch: 'ethereum.*(?:below|dip|fall).*(?:\\$?1,?000|\\$?1k)', kalshiMatch: 'KXETHMINY.*1000|ethereum.*below.*1000' },
   { label: 'ETH below $1750', category: 'Crypto', polymarketMatch: 'ethereum.*(?:below|dip|fall).*(?:\\$?1,?750)', kalshiMatch: 'KXETHMINY.*1750|ethereum.*below.*1750' },
+  { label: 'ETH below $1250', category: 'Crypto', polymarketMatch: 'ethereum.*(?:below|dip|fall).*(?:\\$?1,?250)', kalshiMatch: 'KXETHMINY.*1250|ethereum.*below.*1250' },
+  // BTC — more specific targets that Polymarket currently has
+  { label: 'BTC dip to $55K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:dip|fall|below).*(?:\\$?55,?000|\\$?55k)', kalshiMatch: 'KXBTCMINY.*55000|bitcoin.*below.*55' },
+  { label: 'BTC dip to $60K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:dip|fall|below).*(?:\\$?60,?000|\\$?60k)', kalshiMatch: 'KXBTCMINY.*60000|bitcoin.*below.*60' },
+  { label: 'BTC reach $80K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:reach|hit|above).*(?:\\$?80,?000|\\$?80k)', kalshiMatch: 'KXBTCMAXY.*80|bitcoin.*above.*8[0-9]' },
+  { label: 'BTC above $70K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|price).*(?:\\$?70,?000|\\$?70k)', kalshiMatch: 'KXBTCMAXY.*70|bitcoin.*above.*7[0-9]' },
+  { label: 'BTC above $110K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*(?:\\$?110,?000|\\$?110k)', kalshiMatch: 'KXBTCMAXY.*109999|bitcoin.*above.*109' },
+  { label: 'BTC above $120K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*(?:\\$?120,?000|\\$?120k)', kalshiMatch: 'KXBTCMAXY.*119999|bitcoin.*above.*119' },
+  { label: 'BTC above $130K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*(?:\\$?130,?000|\\$?130k)', kalshiMatch: 'KXBTCMAXY.*129999|bitcoin.*above.*129' },
+  { label: 'BTC above $140K', category: 'Crypto', polymarketMatch: 'bitcoin.*(?:above|reach|hit).*(?:\\$?140,?000|\\$?140k)', kalshiMatch: 'KXBTCMAXY.*139999|bitcoin.*above.*139' },
 
   // Politics
   { label: 'Government shutdown', category: 'Politics', polymarketMatch: 'government.*shutdown', kalshiMatch: 'GOVSHUT|government.*shutdown' },
@@ -63,6 +73,12 @@ export const CURATED_MAPPINGS: MarketMapping[] = [
   { label: 'US-Iran nuclear deal', category: 'Geopolitics', polymarketMatch: '(?:us|u\\.s\\.).*iran.*(?:deal|agreement|nuclear|ceasefire)|iran.*ceasefire', kalshiMatch: 'KXUSAIRANAGREEMENT|us.*agree.*iran.*nuclear' },
   { label: 'US invade/enter Iran', category: 'Geopolitics', polymarketMatch: '(?:us|u\\.s\\.).*(?:enter|invade|forces).*iran|invade.*iran', kalshiMatch: 'us.*(?:enter|invade|forces).*iran|KXUSIRAN' },
   { label: 'Iran supreme leader', category: 'Geopolitics', polymarketMatch: '(?:supreme.*leader|successor.*khamenei|next.*leader).*iran|iran.*(?:supreme.*leader|successor)', kalshiMatch: '(?:supreme.*leader|successor|khamenei)|KXIRANLEADER' },
+  { label: 'Iran regime fall', category: 'Geopolitics', polymarketMatch: 'iranian.*regime.*fall|regime.*fall.*(?:march|april|june|before)', kalshiMatch: 'iran.*regime|KXIRANREGIME' },
+  { label: 'US-Iran ceasefire', category: 'Geopolitics', polymarketMatch: '(?:us|u\\.s\\.).*iran.*ceasefire|iran.*ceasefire', kalshiMatch: 'KXUSAIRANAGREEMENT|us.*iran.*(?:ceasefire|deal)' },
+  // Inflation / CPI
+  { label: 'Annual inflation CPI', category: 'Economics', polymarketMatch: 'annual.*inflation|inflation.*(?:increase|rise|cpi)', kalshiMatch: 'CPIYOY|cpi.*annual|inflation' },
+  // Trump / politics
+  { label: 'Trump Greenland', category: 'Politics', polymarketMatch: 'trump.*greenland|greenland.*trump', kalshiMatch: 'trump.*greenland|KXTGREENLAND' },
 
   // Sports — FIFA 2026 World Cup winners
   { label: 'Brazil win FIFA 2026', category: 'Sports', polymarketMatch: 'brazil.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*brazil', kalshiMatch: 'brazil.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*brazil' },
