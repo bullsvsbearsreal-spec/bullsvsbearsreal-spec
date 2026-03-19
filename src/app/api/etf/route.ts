@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 /* ─── Cache ─────────────────────────────────────────────────────────── */
 
 const l1Cache = new Map<string, { body: any; timestamp: number }>();
-const L1_TTL = 5 * 60 * 1000; // 5 minutes
+const L1_TTL = 2 * 60 * 1000; // 2 minutes — ETF prices should feel live during market hours
 
 /* ─── Static fund metadata ──────────────────────────────────────────── */
 
@@ -90,7 +90,14 @@ async function fetchYahooQuote(ticker: string): Promise<YahooQuote | null> {
       }
     }
     const metaPrice = meta.regularMarketPrice || 0;
-    const price = dailyCloses.length > 0 ? dailyCloses[dailyCloses.length - 1] : metaPrice;
+    const chartPrice = dailyCloses.length > 0 ? dailyCloses[dailyCloses.length - 1] : 0;
+    // Use whichever is more recent: meta.regularMarketPrice (real-time during market hours)
+    // or the last chart candle close (end-of-day). During market hours, meta is fresher.
+    // If they differ significantly (>0.5%), prefer meta as it updates in real-time.
+    const priceDiffPct = chartPrice > 0 && metaPrice > 0
+      ? Math.abs(metaPrice - chartPrice) / chartPrice * 100
+      : 0;
+    const price = metaPrice > 0 && (priceDiffPct > 0.5 || chartPrice === 0) ? metaPrice : (chartPrice || metaPrice);
     // For daily change: use the day before, or chartPreviousClose as fallback
     const prev = dailyCloses.length > 1
       ? dailyCloses[dailyCloses.length - 2]
