@@ -87,8 +87,8 @@ export default function LiquidationsPage() {
   // ─── Real-time WebSocket Feed (8 exchanges) ─────
   const { liquidations: wsLiqs, connections } = useMultiExchangeLiquidations({
     exchanges: WS_EXCHANGES,
-    minValue: 1000, // $1K minimum to reduce noise
-    maxItems: 500,
+    minValue: 500, // $500 minimum — lower to catch more exchange events
+    maxItems: 1000,
     persistKey: 'ih-liq-page',
     persistTtlMs: hours * 3600000,
   });
@@ -167,17 +167,29 @@ export default function LiquidationsPage() {
         onSoundToggle={() => setSoundEnabled(s => !s)}
       />
 
-      {/* Connection status indicator */}
+      {/* Connection status indicator — per-exchange dots */}
       {connections.length > 0 && (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.01] border-b border-white/[0.04]">
-          <div className={`w-1.5 h-1.5 rounded-full ${connectedCount > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-          <span className="text-[10px] text-neutral-500">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.01] border-b border-white/[0.04] overflow-x-auto scrollbar-hide">
+          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${connectedCount > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+          <span className="text-[10px] text-neutral-500 flex-shrink-0">
             {connectedCount}/{connections.length} exchanges connected
           </span>
-          <span className="text-[10px] text-neutral-700 ml-1">
-            ({connections.filter(c => c.connected).map(c => c.exchange).join(', ')})
-          </span>
-          <span className="text-[10px] text-neutral-700 ml-auto" title="Liquidation data only from WebSocket-connected exchanges. Total may differ from aggregators with broader coverage.">
+          <div className="flex items-center gap-1.5 ml-1">
+            {connections.map(c => (
+              <span
+                key={c.exchange}
+                className={`text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 font-medium ${
+                  c.connected
+                    ? 'bg-green-500/10 text-green-400'
+                    : 'bg-red-500/10 text-red-400'
+                }`}
+                title={c.error || (c.connected ? 'Connected' : 'Disconnected')}
+              >
+                {c.exchange}
+              </span>
+            ))}
+          </div>
+          <span className="text-[10px] text-neutral-700 ml-auto flex-shrink-0" title="Liquidation data from WebSocket-connected exchanges. Some exchanges send events infrequently during calm markets.">
             Partial coverage · verify independently
           </span>
         </div>
