@@ -743,9 +743,14 @@ export default function FundingPage() {
         )}
 
         {loading && fundingRates.length === 0 ? (
-          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-12 text-center">
-            <RefreshCw className="w-5 h-5 text-hub-yellow animate-spin mx-auto mb-2" />
-            <span className="text-neutral-500 text-sm">Loading {assetClass} funding rates...</span>
+          <div className="space-y-2 animate-pulse">
+            <div className="flex items-center gap-2 mb-3">
+              <RefreshCw className="w-4 h-4 text-hub-yellow animate-spin" />
+              <span className="text-neutral-500 text-sm">Loading {assetClass} funding rates...</span>
+            </div>
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="h-12 bg-white/[0.03] rounded-lg" style={{ opacity: 1 - i * 0.12 }} />
+            ))}
           </div>
         ) : fundingRates.length === 0 && !loading ? (
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-12 text-center">

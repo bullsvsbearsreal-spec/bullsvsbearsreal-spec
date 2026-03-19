@@ -54,7 +54,7 @@ const MULTI_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', '
 
 export default function LongShortPage() {
   const [symbol, setSymbol] = useState('BTCUSDT');
-  const [period, setPeriod] = useState<Period>('5m');
+  const [period, setPeriod] = useState<Period>('1h');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Main chart data

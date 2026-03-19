@@ -53,13 +53,17 @@ export default function LSChart({ chartData, symbolLabel, period }: { chartData:
         <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
           <defs>
             <linearGradient id="longGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity={0.05} />
+              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.5} />
+              <stop offset="100%" stopColor="#22c55e" stopOpacity={0.08} />
             </linearGradient>
             <linearGradient id="shortGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
+              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.5} />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity={0.08} />
             </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
           </defs>
           <XAxis
             dataKey="timestamp"
@@ -82,18 +86,20 @@ export default function LSChart({ chartData, symbolLabel, period }: { chartData:
             dataKey="longRatio"
             stroke="#22c55e"
             fill="url(#longGrad)"
-            strokeWidth={2}
+            strokeWidth={2.5}
             dot={false}
             animationDuration={300}
+            filter="url(#glow)"
           />
           <Area
             type="monotone"
             dataKey="shortRatio"
             stroke="#ef4444"
             fill="url(#shortGrad)"
-            strokeWidth={2}
+            strokeWidth={2.5}
             dot={false}
             animationDuration={300}
+            filter="url(#glow)"
           />
         </AreaChart>
       </ResponsiveContainer>

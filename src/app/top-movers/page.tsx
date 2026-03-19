@@ -312,6 +312,20 @@ export default function TopMoversPage() {
           </div>
         )}
 
+        {/* Empty state — CMC API may be unavailable */}
+        {!loading && !error && coins.length === 0 && (
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-8 text-center">
+            <p className="text-neutral-400 text-sm mb-2">Market data temporarily unavailable</p>
+            <p className="text-neutral-600 text-xs mb-4">CoinMarketCap API may be rate-limited. Data refreshes automatically every 30 minutes.</p>
+            <button
+              onClick={fetchData}
+              className="px-4 py-2 bg-hub-yellow text-black rounded-lg text-xs font-medium hover:bg-hub-yellow/90 transition-colors"
+            >
+              Retry Now
+            </button>
+          </div>
+        )}
+
         {/* Data Table */}
         {coins.length > 0 && (
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
