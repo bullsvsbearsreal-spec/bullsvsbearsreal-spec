@@ -31,6 +31,8 @@ export interface ConnectionStatus {
   exchange: string;
   connected: boolean;
   error?: string;
+  eventCount?: number;
+  lastEventAt?: number;
 }
 
 export interface LiquidationStats {
@@ -207,8 +209,11 @@ function createExchangeWS(
         if (liq && liq.value > 0) {
           onMessage(liq);
         }
-      } catch {
-        // Ignore parse errors
+      } catch (err) {
+        // Log parse errors in dev for debugging (production builds strip console.debug)
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[Liq WS] ${exchange} parse error:`, err);
+        }
       }
     };
 
@@ -420,12 +425,20 @@ export function useMultiExchangeLiquidations({
 
   useEffect(() => {
     // Initialize connections status
-    setConnections(stableExchanges.map(ex => ({ exchange: ex, connected: false })));
+    setConnections(stableExchanges.map(ex => ({ exchange: ex, connected: false, eventCount: 0 })));
+    const eventCounts: Record<string, number> = {};
 
     const wsHandles = stableExchanges.map(exchange => {
+      eventCounts[exchange] = 0;
       return createExchangeWS(
         exchange,
-        handleLiquidation,
+        (liq) => {
+          eventCounts[exchange]++;
+          setConnections(prev =>
+            prev.map(c => c.exchange === exchange ? { ...c, eventCount: eventCounts[exchange], lastEventAt: Date.now() } : c),
+          );
+          handleLiquidation(liq);
+        },
         (connected, error) => {
           setConnections(prev =>
             prev.map(c => c.exchange === exchange ? { ...c, connected, error } : c),

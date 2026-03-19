@@ -180,12 +180,14 @@ export default function LiquidationsPage() {
                 key={c.exchange}
                 className={`text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 font-medium ${
                   c.connected
-                    ? 'bg-green-500/10 text-green-400'
+                    ? (c.eventCount ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/10 text-yellow-400')
                     : 'bg-red-500/10 text-red-400'
                 }`}
-                title={c.error || (c.connected ? 'Connected' : 'Disconnected')}
+                title={c.error || (c.connected
+                  ? `Connected · ${c.eventCount || 0} events${c.lastEventAt ? ` · last ${Math.round((Date.now() - c.lastEventAt) / 1000)}s ago` : ''}`
+                  : 'Disconnected')}
               >
-                {c.exchange}
+                {c.exchange}{c.eventCount ? ` ${c.eventCount}` : ''}
               </span>
             ))}
           </div>
