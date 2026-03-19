@@ -64,7 +64,7 @@ const KALSHI_SERIES = [
   // Crypto (yearly targets — high volume)
   'KXBTCMAXY', 'KXBTCMINY', 'KXBTC2026200', 'KXETHMAXMON', 'KXETHMINY',
   'KXETHFLIP', 'KXBCH', 'KXDJTCHAIN', 'KXTEXASBTC', 'KXETHE', 'KXETHETF',
-  'KXCRYPTODAY1',
+  'KXCRYPTODAY1', 'KXSOL', 'KXRP', 'KXDOGE', 'KXADA',
   // Economics
   'KXFED', 'KXRATECUTCOUNT', 'CPIYOY', 'KXAVGTARIFF', 'KXGDPYEAR',
   'KXACPICORE-', 'FXEURO', 'KXGASD', 'KXFEDDISSENT', 'KXFEDEMPLOYEES',
@@ -82,6 +82,16 @@ const KALSHI_SERIES = [
   'KXNEWPOPE', 'KXELONMARS',
   // Financials
   'KXOAIANTH', 'KXRAMPBREX', 'KXDEELRIP',
+  // Sports — FIFA World Cup 2026
+  'KXFIFAWC', 'KXWCWINNER', 'KXFIFAWINNER', 'FIFAWC',
+  // Sports — NBA 2026
+  'KXNBACHAMP', 'KXNBA', 'NBACHAMP',
+  // Sports — F1 2026
+  'KXF1WDC', 'KXF1', 'F1WDC',
+  // Sports — esports
+  'KXLPL', 'KXLOL',
+  // Crypto FDV / launches
+  'KXMETAMASK', 'KXPREDICTFUN', 'KXSTANDX', 'KXBASED',
 ];
 
 async function fetchKalshi(): Promise<PredictionMarket[]> {
@@ -222,8 +232,8 @@ function matchPair(
     }
   }
 
-  // Pass 2: Keyword fuzzy matching (relaxed to catch more cross-platform arbs)
-  const SIMILARITY_THRESHOLD = 0.35;
+  // Pass 2: Keyword fuzzy matching (lowered threshold to catch more cross-platform arbs)
+  const SIMILARITY_THRESHOLD = 0.25;
   for (const mA of marketsA) {
     if (usedA.has(mA.id)) continue;
     const kwA = extractKeywords(mA.question);

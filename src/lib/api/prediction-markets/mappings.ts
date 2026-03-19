@@ -54,6 +54,49 @@ export const CURATED_MAPPINGS: MarketMapping[] = [
   { label: 'Iran Strait of Hormuz', category: 'Geopolitics', polymarketMatch: 'iran.*(?:hormuz|strait)', kalshiMatch: 'iran.*(?:hormuz|strait)' },
   { label: 'US strike Iran', category: 'Geopolitics', polymarketMatch: '(?:us|united states|america).*strike.*iran|iran.*(?:strike|attack).*(?:us|united)', kalshiMatch: 'KXUSIRAN|(?:us|united).*strike.*iran' },
   { label: 'Ukraine ceasefire', category: 'Geopolitics', polymarketMatch: 'ukraine.*ceasefire|ceasefire.*ukraine', kalshiMatch: 'KXUKRAINECEASE|ukraine.*ceasefire' },
+
+  // Sports — FIFA 2026 World Cup winners
+  { label: 'Brazil win FIFA 2026', category: 'Sports', polymarketMatch: 'brazil.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*brazil', kalshiMatch: 'brazil.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*brazil' },
+  { label: 'Germany win FIFA 2026', category: 'Sports', polymarketMatch: 'germany.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*germany', kalshiMatch: 'germany.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*germany' },
+  { label: 'Argentina win FIFA 2026', category: 'Sports', polymarketMatch: 'argentina.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*argentina', kalshiMatch: 'argentina.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*argentina' },
+  { label: 'Spain win FIFA 2026', category: 'Sports', polymarketMatch: 'spain.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*spain', kalshiMatch: 'spain.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*spain' },
+  { label: 'France win FIFA 2026', category: 'Sports', polymarketMatch: 'france.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*france', kalshiMatch: 'france.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*france' },
+  { label: 'England win FIFA 2026', category: 'Sports', polymarketMatch: 'england.*(?:win|2026.*(?:fifa|world.?cup))|(?:fifa|world.?cup).*2026.*england', kalshiMatch: 'england.*(?:win|world.?cup|fifa)|(?:fifa|world.?cup).*england' },
+
+  // Sports — NBA
+  { label: 'NBA Champion 2026', category: 'Sports', polymarketMatch: '(?:nba|basketball).*(?:champion|finals).*2026|2026.*nba.*champion', kalshiMatch: '(?:nba|basketball).*champion' },
+  { label: 'Celtics win NBA 2026', category: 'Sports', polymarketMatch: 'celtics.*(?:win|nba|champion|finals)', kalshiMatch: 'celtics.*(?:win|nba|champion)' },
+  { label: 'Thunder win NBA 2026', category: 'Sports', polymarketMatch: 'thunder.*(?:win|nba|champion|finals)', kalshiMatch: 'thunder.*(?:win|nba|champion)' },
+  { label: 'Rockets win NBA 2026', category: 'Sports', polymarketMatch: 'rockets.*(?:win|nba|champion|finals)|houston.*(?:win|nba|finals)', kalshiMatch: 'rockets.*(?:win|nba|champion)|houston.*(?:nba|champion)' },
+
+  // Sports — F1
+  { label: 'F1 Champion 2026', category: 'Sports', polymarketMatch: '(?:f1|formula.?1).*(?:champion|driver).*2026|2026.*(?:f1|formula).*champion', kalshiMatch: '(?:f1|formula.?1).*(?:champion|driver)' },
+  { label: 'Verstappen F1 2026', category: 'Sports', polymarketMatch: 'verstappen.*(?:2026|champion|f1)', kalshiMatch: 'verstappen.*(?:champion|f1)' },
+  { label: 'Hülkenberg F1 2026', category: 'Sports', polymarketMatch: 'h(?:ü|u)lkenberg|hulkenberg', kalshiMatch: 'h(?:ü|u)lkenberg|hulkenberg' },
+
+  // Sports — LoL esports
+  { label: 'LPL 2026 Winner', category: 'Sports', polymarketMatch: 'lpl.*(?:2026|season|winner)', kalshiMatch: 'lpl.*(?:2026|season|winner)' },
+
+  // Fed interest rates — broader
+  { label: 'Fed rate cut April', category: 'Economics', polymarketMatch: 'fed.*(?:cut|decrease|lower).*(?:april|may|march)', kalshiMatch: 'KXFED|fed.*(?:cut|rate|decrease)' },
+  { label: 'Fed rate decision March', category: 'Economics', polymarketMatch: 'fed.*(?:rate|funds|interest).*march|march.*fed.*(?:cut|hike)', kalshiMatch: 'KXFED.*MAR|fed.*march' },
+  { label: 'Fed rate decision June', category: 'Economics', polymarketMatch: 'fed.*(?:rate|funds|interest).*june|june.*fed.*(?:cut|hike)', kalshiMatch: 'KXFED.*JUN|fed.*june' },
+  { label: 'Number of rate cuts 2026', category: 'Economics', polymarketMatch: '(?:rate.?cut|cut.*rate).*(?:2026|year|end)', kalshiMatch: 'KXRATECUTCOUNT|rate.*cut.*count' },
+
+  // Crypto token launches / FDV
+  { label: 'Metamask FDV', category: 'Crypto', polymarketMatch: 'metamask.*(?:fdv|launch|valuation)', kalshiMatch: 'metamask.*(?:fdv|launch|valuation)' },
+  { label: 'Predict.fun FDV', category: 'Crypto', polymarketMatch: 'predict\\.?fun.*(?:fdv|launch|valuation)', kalshiMatch: 'predict.*fun.*(?:fdv|launch|valuation)' },
+  { label: 'StandX FDV', category: 'Crypto', polymarketMatch: 'standx.*(?:fdv|launch|valuation)', kalshiMatch: 'standx.*(?:fdv|launch|valuation)' },
+  { label: 'Based FDV', category: 'Crypto', polymarketMatch: '\\bbased\\b.*(?:fdv|launch|valuation)', kalshiMatch: '\\bbased\\b.*(?:fdv|launch|valuation)' },
+
+  // SOL / XRP thresholds
+  { label: 'SOL above $200', category: 'Crypto', polymarketMatch: 'solana.*(?:above|reach).*200|sol.*(?:above|hit).*200', kalshiMatch: 'KXSOL.*200|solana.*above.*200' },
+  { label: 'SOL above $300', category: 'Crypto', polymarketMatch: 'solana.*(?:above|reach).*300|sol.*(?:above|hit).*300', kalshiMatch: 'KXSOL.*300|solana.*above.*300' },
+  { label: 'XRP above $5', category: 'Crypto', polymarketMatch: 'xrp.*(?:above|reach).*\\$?5', kalshiMatch: 'KXRP|xrp.*above.*5' },
+  { label: 'DOGE above $1', category: 'Crypto', polymarketMatch: 'doge.*(?:above|reach).*\\$?1', kalshiMatch: 'doge.*above.*1' },
+
+  // Gas prices
+  { label: 'US gas price', category: 'Economics', polymarketMatch: 'gas.*price|gasoline', kalshiMatch: 'KXGASD|gas.*price' },
 ];
 
 const STOP_WORDS = new Set([

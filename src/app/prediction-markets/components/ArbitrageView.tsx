@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, ExternalLink, GitCompareArrows } from 'lucide-react';
+import { ExternalLink, GitCompareArrows, Star, ArrowUpDown } from 'lucide-react';
 import Pagination from '@/app/funding/components/Pagination';
 import type { PredictionArbitrage, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
@@ -11,36 +11,38 @@ interface ArbitrageViewProps {
   categoryFilter: string;
 }
 
-type SortKey = 'spread' | 'question' | 'category' | 'priceA' | 'priceB';
+type SortKey = 'spread' | 'profit';
 
-const ROWS_PER_PAGE = 30;
+const ROWS_PER_PAGE = 20;
 
-const PLATFORM_LABELS: Record<PredictionPlatform, string> = {
-  polymarket: 'Polymarket',
-  kalshi: 'Kalshi',
+const PLATFORM_COLORS: Record<PredictionPlatform, { bg: string; text: string; icon: string }> = {
+  polymarket: { bg: 'bg-blue-500/10', text: 'text-blue-400', icon: '🔵' },
+  kalshi: { bg: 'bg-red-500/10', text: 'text-red-400', icon: '🔴' },
 };
 
-const PLATFORM_COLORS: Record<PredictionPlatform, string> = {
-  polymarket: 'text-purple-400',
-  kalshi: 'text-blue-400',
-};
-
-function pct(v: number): string {
-  return `${(v * 100).toFixed(1)}%`;
+function cents(v: number): string {
+  const c = Math.round(v * 100);
+  if (c >= 100) return '$1';
+  return `${c}¢`;
 }
 
-function vol(v: number): string {
-  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
-  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
-  if (v === 0) return '-';
-  return `$${v.toFixed(0)}`;
+function profitPerThousand(spreadPct: number): string {
+  const profit = (spreadPct / 100) * 1000;
+  return `$${profit.toFixed(2)}`;
 }
 
 export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }: ArbitrageViewProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spread');
-  const [sortAsc, setSortAsc] = useState(false);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  const toggleFav = (id: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     let data = arbitrage;
@@ -56,258 +58,172 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      let cmp = 0;
-      switch (sortKey) {
-        case 'spread': cmp = a.spreadPercent - b.spreadPercent; break;
-        case 'question': cmp = a.question.localeCompare(b.question); break;
-        case 'category': cmp = a.category.localeCompare(b.category); break;
-        case 'priceA': cmp = a.platformA.yesPrice - b.platformA.yesPrice; break;
-        case 'priceB': cmp = a.platformB.yesPrice - b.platformB.yesPrice; break;
-      }
-      return sortAsc ? cmp : -cmp;
+      // Favorites first
+      const aFav = favorites.has(a.id) ? 1 : 0;
+      const bFav = favorites.has(b.id) ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return b.spreadPercent - a.spreadPercent;
     });
-  }, [filtered, sortKey, sortAsc]);
+  }, [filtered, favorites, sortKey]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / ROWS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIdx = (safeCurrentPage - 1) * ROWS_PER_PAGE;
   const pageData = sorted.slice(startIdx, startIdx + ROWS_PER_PAGE);
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(false); }
-  };
-
-  const SortIcon = ({ k }: { k: SortKey }) => {
-    if (sortKey !== k) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
-    return sortAsc ? <ArrowUp className="w-3 h-3 text-hub-yellow" /> : <ArrowDown className="w-3 h-3 text-hub-yellow" />;
-  };
-
   return (
-    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/[0.06]">
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center flex-shrink-0">
             <GitCompareArrows className="w-3.5 h-3.5 text-purple-400" />
           </div>
           <div>
             <h3 className="text-white font-semibold text-sm">Arbitrage Opportunities</h3>
-            <p className="text-neutral-600 text-xs">
-              Same events priced differently across platforms
-            </p>
+            <p className="text-neutral-600 text-xs">Same events priced differently across platforms</p>
           </div>
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-neutral-600">
+          <span>Profit based on $1,000 position</span>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/[0.06]">
-              <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 w-8">#</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white min-w-[200px]" onClick={() => handleSort('question')}>
-                <div className="flex items-center gap-1">Event <SortIcon k="question" /></div>
-              </th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('category')}>
-                <div className="flex items-center gap-1">Category <SortIcon k="category" /></div>
-              </th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Platforms</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('priceA')}>
-                <div className="flex items-center gap-1 justify-end">Price A <SortIcon k="priceA" /></div>
-              </th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('priceB')}>
-                <div className="flex items-center gap-1 justify-end">Price B <SortIcon k="priceB" /></div>
-              </th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('spread')}>
-                <div className="flex items-center gap-1 justify-end">Spread <SortIcon k="spread" /></div>
-              </th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Match</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageData.map((item, index) => {
-              const isExpanded = expandedRow === item.id;
-              const labelA = PLATFORM_LABELS[item.platformA.platform];
-              const labelB = PLATFORM_LABELS[item.platformB.platform];
-              const colorA = PLATFORM_COLORS[item.platformA.platform];
-              const colorB = PLATFORM_COLORS[item.platformB.platform];
-              const cheaper = item.platformA.yesPrice < item.platformB.yesPrice ? labelA : labelB;
+      {/* Cards */}
+      <div className="space-y-2">
+        {pageData.map((item, index) => {
+          const rank = startIdx + index + 1;
+          const isFav = favorites.has(item.id);
+          const colA = PLATFORM_COLORS[item.platformA.platform];
+          const colB = PLATFORM_COLORS[item.platformB.platform];
+          const profit = profitPerThousand(item.spreadPercent);
 
-              return (
-                <>
-                  <tr
-                    key={item.id}
-                    className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer"
-                    onClick={() => setExpandedRow(isExpanded ? null : item.id)}
+          const spreadColor = item.spreadPercent >= 5 ? 'text-hub-yellow'
+            : item.spreadPercent >= 2 ? 'text-green-400'
+            : item.spreadPercent >= 1 ? 'text-emerald-400'
+            : 'text-neutral-400';
+
+          const spreadGlow = item.spreadPercent >= 5
+            ? { textShadow: '0 0 8px rgba(255, 165, 0, 0.4)' }
+            : item.spreadPercent >= 2
+            ? { textShadow: '0 0 6px rgba(34, 197, 94, 0.3)' }
+            : undefined;
+
+          return (
+            <div
+              key={item.id}
+              className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-colors"
+            >
+              <div className="flex items-stretch">
+                {/* Left: Rank + Star */}
+                <div className="flex flex-col items-center justify-center w-14 flex-shrink-0 border-r border-white/[0.04] py-2">
+                  <button
+                    onClick={() => toggleFav(item.id)}
+                    className={`mb-1 transition-colors ${isFav ? 'text-hub-yellow' : 'text-neutral-700 hover:text-neutral-500'}`}
                   >
-                    <td className="px-3 py-2 text-neutral-600 text-xs font-mono">
-                      <div className="flex items-center gap-1">
-                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                        {startIdx + index + 1}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="text-white text-sm leading-tight line-clamp-2">{item.question}</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/[0.06] text-neutral-400">
-                        {item.category}
+                    <Star className="w-3.5 h-3.5" fill={isFav ? 'currentColor' : 'none'} />
+                  </button>
+                  <span className="text-neutral-600 text-[10px] font-mono font-bold">#{rank}</span>
+                  <span className={`text-[8px] font-bold mt-0.5 px-1.5 rounded ${
+                    item.matchType === 'curated'
+                      ? 'bg-hub-yellow/15 text-hub-yellow'
+                      : 'bg-blue-500/15 text-blue-400'
+                  }`}>
+                    {item.matchType === 'curated' ? 'C' : 'A'}
+                  </span>
+                </div>
+
+                {/* Middle: Platform rows */}
+                <div className="flex-1 min-w-0 py-2 px-3">
+                  {/* Platform A row */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] flex-shrink-0 ${colA.bg}`}>
+                      {colA.icon}
+                    </span>
+                    <a
+                      href={item.urlA}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white text-[12px] font-medium truncate hover:text-hub-yellow transition-colors flex items-center gap-1 min-w-0"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <span className="truncate">{item.platformA.question}</span>
+                      <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 text-neutral-600" />
+                    </a>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                      <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
+                        Y {cents(item.platformA.yesPrice)}
                       </span>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1 text-[10px]">
-                        <span className={colorA}>{labelA}</span>
-                        <span className="text-neutral-600">vs</span>
-                        <span className={colorB}>{labelB}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span className={`font-mono text-sm font-semibold ${item.platformA.yesPrice < item.platformB.yesPrice ? 'text-green-400' : 'text-white'}`}>
-                          {pct(item.platformA.yesPrice)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span className={`font-mono text-sm font-semibold ${item.platformB.yesPrice < item.platformA.yesPrice ? 'text-green-400' : 'text-white'}`}>
-                          {pct(item.platformB.yesPrice)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {item.spreadPercent >= 5 ? (
-                        <span className="h-5 rounded-md px-1.5 inline-flex items-center bg-hub-yellow/10">
-                          <span className="font-mono text-sm font-bold text-hub-yellow">
-                            {item.spreadPercent.toFixed(1)}%
-                          </span>
-                        </span>
-                      ) : (
-                        <span className={`font-mono text-sm font-bold ${item.spreadPercent >= 2 ? 'text-green-400' : 'text-neutral-400'}`}>
-                          {item.spreadPercent.toFixed(1)}%
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none ${
-                        item.matchType === 'curated'
-                          ? 'bg-hub-yellow/20 text-hub-yellow'
-                          : 'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {item.matchType === 'curated' ? 'CURATED' : 'AUTO'}
+                      <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
+                        N {cents(item.platformA.noPrice)}
                       </span>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
 
-                  {/* Expanded row */}
-                  {isExpanded && (
-                    <tr key={`${item.id}-detail`} className="bg-white/[0.01]">
-                      <td colSpan={8} className="px-6 py-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <PlatformDetail market={item.platformA} url={item.urlA} />
-                          <PlatformDetail market={item.platformB} url={item.urlB} />
-                        </div>
+                  {/* Platform B row */}
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] flex-shrink-0 ${colB.bg}`}>
+                      {colB.icon}
+                    </span>
+                    <a
+                      href={item.urlB}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white text-[12px] font-medium truncate hover:text-hub-yellow transition-colors flex items-center gap-1 min-w-0"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <span className="truncate">{item.platformB.question}</span>
+                      <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 text-neutral-600" />
+                    </a>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                      <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
+                        Y {cents(item.platformB.yesPrice)}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
+                        N {cents(item.platformB.noPrice)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                        <div className="mt-3 flex items-center gap-2">
-                          <span className="text-[11px] text-neutral-500">Strategy:</span>
-                          <span className="text-[11px] text-green-400 font-medium">
-                            Buy YES on {cheaper} ({pct(Math.min(item.platformA.yesPrice, item.platformB.yesPrice))})
-                          </span>
-                        </div>
-
-                        <div className="mt-2">
-                          <p className="text-[11px] text-neutral-600 leading-relaxed">
-                            <span className={`font-medium ${colorA}`}>{labelA}:</span> {item.platformA.question}
-                          </p>
-                          <p className="text-[11px] text-neutral-600 leading-relaxed">
-                            <span className={`font-medium ${colorB}`}>{labelB}:</span> {item.platformB.question}
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              );
-            })}
-          </tbody>
-        </table>
+                {/* Right: Spread + Profit */}
+                <div className="flex flex-col items-end justify-center w-24 flex-shrink-0 border-l border-white/[0.04] px-3 py-2"
+                  style={{ background: item.spreadPercent >= 2 ? 'rgba(34,197,94,0.03)' : undefined }}>
+                  <span className={`text-lg font-black font-mono ${spreadColor}`} style={spreadGlow}>
+                    {item.spreadPercent.toFixed(2)}%
+                  </span>
+                  <span className="text-[8px] text-neutral-600 uppercase tracking-wider font-semibold">Spread</span>
+                  <span className="text-sm font-bold font-mono text-white mt-1">{profit}</span>
+                  <span className="text-[8px] text-neutral-600 uppercase tracking-wider font-semibold">Profit</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {filtered.length === 0 && (
-        <div className="p-8 text-center text-neutral-600 text-sm">
-          No arbitrage opportunities found{searchTerm ? ` for "${searchTerm}"` : ''}.
+        <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-12 text-center">
+          <GitCompareArrows className="w-6 h-6 text-neutral-700 mx-auto mb-2" />
+          <p className="text-neutral-600 text-sm">
+            No arbitrage opportunities found{searchTerm ? ` for "${searchTerm}"` : ''}.
+          </p>
+          <p className="text-neutral-700 text-xs mt-1">
+            Cross-platform matches appear when the same event is listed on both Polymarket and Kalshi with different pricing.
+          </p>
         </div>
       )}
 
-      <Pagination
-        currentPage={safeCurrentPage}
-        totalPages={totalPages}
-        totalItems={sorted.length}
-        rowsPerPage={ROWS_PER_PAGE}
-        onPageChange={setCurrentPage}
-        label="opportunities"
-      />
-    </div>
-  );
-}
-
-function PlatformDetail({ market, url }: { market: PredictionArbitrage['platformA']; url: string }) {
-  const label = PLATFORM_LABELS[market.platform];
-  const color = PLATFORM_COLORS[market.platform];
-
-  return (
-    <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-      <div className="flex items-center justify-between mb-2">
-        <span className={`text-xs font-semibold ${color}`}>{label}</span>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-hub-yellow text-[10px] flex items-center gap-1 hover:underline"
-          onClick={e => e.stopPropagation()}
-        >
-          Open <ExternalLink className="w-3 h-3" />
-        </a>
-      </div>
-      <div className="space-y-1 text-xs">
-        <div className="flex justify-between">
-          <span className="text-neutral-500">YES</span>
-          <span className="text-white font-mono">{pct(market.yesPrice)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-neutral-500">NO</span>
-          <span className="text-white font-mono">{pct(market.noPrice)}</span>
-        </div>
-        {market.volume24h > 0 && (
-          <div className="flex justify-between">
-            <span className="text-neutral-500">24h Volume</span>
-            <span className="text-neutral-300 font-mono">{vol(market.volume24h)}</span>
-          </div>
-        )}
-        {market.totalVolume > 0 && (
-          <div className="flex justify-between">
-            <span className="text-neutral-500">Total Volume</span>
-            <span className="text-neutral-300 font-mono">{vol(market.totalVolume)}</span>
-          </div>
-        )}
-        {market.liquidity > 0 && (
-          <div className="flex justify-between">
-            <span className="text-neutral-500">Liquidity</span>
-            <span className="text-neutral-300 font-mono">{vol(market.liquidity)}</span>
-          </div>
-        )}
-        {market.openInterest > 0 && (
-          <div className="flex justify-between">
-            <span className="text-neutral-500">Open Interest</span>
-            <span className="text-neutral-300 font-mono">{vol(market.openInterest)}</span>
-          </div>
-        )}
-        {market.endDate && (
-          <div className="flex justify-between">
-            <span className="text-neutral-500">Expires</span>
-            <span className="text-neutral-300">{new Date(market.endDate).toLocaleDateString()}</span>
-          </div>
-        )}
-      </div>
+      {sorted.length > ROWS_PER_PAGE && (
+        <Pagination
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          totalItems={sorted.length}
+          rowsPerPage={ROWS_PER_PAGE}
+          onPageChange={setCurrentPage}
+          label="opportunities"
+        />
+      )}
     </div>
   );
 }
