@@ -21,7 +21,7 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [venueFilter, setVenueFilter] = useState<'all' | 'cex-cex' | 'cex-dex'>('all');
+  const [venueFilter, setVenueFilter] = useState<'all' | 'cex-cex' | 'cex-dex' | 'dex-dex'>('all');
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -44,8 +44,9 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
       items = items.filter(a => {
         const lowDex = isExchangeDex(a.lowExchange);
         const highDex = isExchangeDex(a.highExchange);
-        const isCexDex = lowDex !== highDex;
-        return venueFilter === 'cex-dex' ? isCexDex : !isCexDex;
+        if (venueFilter === 'dex-dex') return lowDex && highDex;
+        if (venueFilter === 'cex-dex') return lowDex !== highDex;
+        return !lowDex && !highDex; // cex-cex
       });
     }
     return items;
@@ -106,7 +107,7 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
 
         {/* Venue filter */}
         <div className="flex rounded-lg overflow-hidden ring-1 ring-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
-          {(['all', 'cex-cex', 'cex-dex'] as const).map(v => (
+          {(['all', 'cex-cex', 'cex-dex', 'dex-dex'] as const).map(v => (
             <button
               key={v}
               onClick={() => { setVenueFilter(v); setCurrentPage(1); }}
@@ -116,7 +117,7 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
                   : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
               }`}
             >
-              {v === 'all' ? 'All' : v === 'cex-cex' ? 'CEX↔CEX' : 'CEX↔DEX'}
+              {v === 'all' ? 'All' : v === 'cex-cex' ? 'CEX↔CEX' : v === 'cex-dex' ? 'CEX↔DEX' : 'DEX↔DEX'}
             </button>
           ))}
         </div>
