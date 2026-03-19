@@ -154,6 +154,74 @@ const CATEGORY_OPTIONS = Object.entries(EVENT_CATEGORIES).map(
   })
 );
 
+/** Seasonal theming based on month */
+function getSeasonTheme(month: number): {
+  emoji: string;
+  label: string;
+  gradient: string;
+  borderColor: string;
+  facts: string[];
+} {
+  // month is 0-indexed (Jan=0)
+  if (month >= 2 && month <= 4) {
+    // Spring: March, April, May
+    const springEmoji = month === 2 ? '🌷' : month === 3 ? '🌸' : '🌻';
+    return {
+      emoji: springEmoji,
+      label: month === 2 ? 'Early Spring' : month === 3 ? 'Spring' : 'Late Spring',
+      gradient: 'from-emerald-500/5 via-transparent to-pink-500/5',
+      borderColor: 'rgba(16, 185, 129, 0.15)',
+      facts: [
+        '🌱 Spring markets often rally — "Sell in May" starts building',
+        '📊 Q1 earnings season kicks off',
+        '🏛️ FOMC typically holds 2 meetings this quarter',
+      ],
+    };
+  }
+  if (month >= 5 && month <= 7) {
+    // Summer: June, July, August
+    return {
+      emoji: '☀️',
+      label: month === 5 ? 'Early Summer' : month === 6 ? 'Summer' : 'Late Summer',
+      gradient: 'from-yellow-500/5 via-transparent to-orange-500/5',
+      borderColor: 'rgba(245, 158, 11, 0.15)',
+      facts: [
+        '🏖️ Lower trading volume — summer doldrums',
+        '📈 Jackson Hole symposium in August',
+        '💼 Mid-year portfolio rebalancing',
+      ],
+    };
+  }
+  if (month >= 8 && month <= 10) {
+    // Autumn: September, October, November
+    const autumnEmoji = month === 8 ? '🍂' : month === 9 ? '🎃' : '🍁';
+    return {
+      emoji: autumnEmoji,
+      label: month === 8 ? 'Early Autumn' : month === 9 ? 'Autumn' : 'Late Autumn',
+      gradient: 'from-orange-500/5 via-transparent to-red-500/5',
+      borderColor: 'rgba(249, 115, 22, 0.15)',
+      facts: [
+        '📉 September historically weakest month for stocks',
+        '🗳️ Election years amplify October volatility',
+        '📊 Q3 earnings season',
+      ],
+    };
+  }
+  // Winter: December, January, February
+  const winterEmoji = month === 11 ? '❄️' : month === 0 ? '⛄' : '🌨️';
+  return {
+    emoji: winterEmoji,
+    label: month === 11 ? 'Winter' : month === 0 ? 'Deep Winter' : 'Late Winter',
+    gradient: 'from-blue-500/5 via-transparent to-cyan-500/5',
+    borderColor: 'rgba(59, 130, 246, 0.15)',
+    facts: [
+      '🎄 Santa Rally often lifts markets in December',
+      '📅 Tax-loss harvesting season',
+      '🔮 New year outlooks & analyst predictions',
+    ],
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -176,6 +244,7 @@ export default function EconomicCalendarPage() {
   const [countryFilter, setCountryFilter] = useState<string>('All');
 
   const monthKey = useMemo(() => formatMonthKey(viewMonth), [viewMonth]);
+  const seasonTheme = useMemo(() => getSeasonTheme(viewMonth.getMonth()), [viewMonth]);
 
   /* ---------- Fetch events for current month ---------------------- */
 
@@ -678,6 +747,16 @@ export default function EconomicCalendarPage() {
             <div>
               {/* Calendar view */}
               {viewMode === 'calendar' && (
+                <>
+                {/* Seasonal banner */}
+                <div className={`bg-gradient-to-r ${seasonTheme.gradient} border rounded-xl px-4 py-3 flex items-center gap-3 mb-3`} style={{ borderColor: seasonTheme.borderColor }}>
+                  <span className="text-2xl">{seasonTheme.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-white text-sm font-semibold">{seasonTheme.label} {viewMonth.getFullYear()}</span>
+                    <p className="text-neutral-500 text-[10px] mt-0.5">{seasonTheme.facts[viewMonth.getMonth() % seasonTheme.facts.length]}</p>
+                  </div>
+                </div>
+
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                   {/* Month navigation */}
                   <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
@@ -689,6 +768,7 @@ export default function EconomicCalendarPage() {
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                     <div className="flex items-center gap-3">
+                      <span className="text-xl">{seasonTheme.emoji}</span>
                       <h2 className="text-white font-semibold text-lg">
                         {getMonthName(viewMonth)}
                       </h2>
@@ -740,7 +820,7 @@ export default function EconomicCalendarPage() {
                         viewMonth.getMonth(),
                         day
                       );
-                      const dateStr = cellDate.toISOString().split('T')[0];
+                      const dateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(cellDate.getDate()).padStart(2, '0')}`;
                       const dayEvents = eventsByDate[dateStr] ?? [];
                       const isToday = isSameDay(cellDate, today);
                       const isSelected =
@@ -816,6 +896,7 @@ export default function EconomicCalendarPage() {
                     })}
                   </div>
                 </div>
+                </>
               )}
 
               {/* Event list */}
