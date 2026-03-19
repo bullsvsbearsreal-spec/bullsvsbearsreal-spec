@@ -170,20 +170,37 @@ function FooterInner() {
         let totalVolume = 0;
         const pairSet = new Set<string>();
 
+        // Deduplicate volume: keep highest-volume entry per symbol (across exchanges)
+        const bestBySymbol: Record<string, { vol: number; price: number; change: number }> = {};
         for (const t of tickers) {
           const sym = (t.symbol || '').toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '');
-          // ONLY use quoteVolume24h (USD-denominated) — never volume24h (base units)
-          // Skip Gate.io + BitMEX entirely — CloudFlare-blocked, report volumes in satoshis
           const ex = ((t.exchange as string) || '').toLowerCase();
           const qVol = Number(t.quoteVolume24h) || 0;
           const isBrokenExchange = ex.includes('gate') || ex.includes('bitmex');
-          if (qVol > 0 && !isBrokenExchange) totalVolume += qVol;
           pairSet.add(`${sym}-${t.exchange}`);
+
+          // Track best per symbol for deduped volume
+          if (qVol > 0 && !isBrokenExchange) {
+            const existing = bestBySymbol[sym];
+            if (!existing || qVol > existing.vol) {
+              bestBySymbol[sym] = {
+                vol: qVol,
+                price: t.lastPrice ?? t.price ?? 0,
+                change: t.priceChangePercent24h ?? t.changePercent24h ?? 0,
+              };
+            }
+          }
+
+          // BTC price — highest quote-volume BTC entry
           if (sym === 'BTC' && qVol > btcVol) {
             btcPrice = t.lastPrice ?? t.price ?? 0;
             btcChange = t.priceChangePercent24h ?? t.changePercent24h ?? 0;
             btcVol = qVol;
           }
+        }
+        // Sum deduped volume (one entry per symbol)
+        for (const entry of Object.values(bestBySymbol)) {
+          totalVolume += entry.vol;
         }
 
         // Total OI

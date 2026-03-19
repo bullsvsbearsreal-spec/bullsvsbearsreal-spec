@@ -18,11 +18,30 @@ export default function MarketTicker() {
 
   const tickerData = useMemo<TickerItem[]>(() => {
     if (!tickers) return [];
+
+    // Non-crypto symbols to exclude (stocks, forex, commodities from gTrade/DEX)
+    const NON_CRYPTO = new Set([
+      'XAU', 'XAG', 'XAUT', 'PAXG', 'GOLD', 'SILVER',
+      'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'SEK', 'NOK', 'SGD', 'HKD', 'CNH', 'MXN', 'ZAR', 'TRY', 'INR', 'BRL',
+      'AAPL', 'GOOG', 'GOOGL', 'MSFT', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD', 'NFLX', 'COIN', 'MSTR', 'GME', 'AMC', 'SPY', 'QQQ', 'DIA', 'IWM',
+      'ALPACA', 'COPPER', 'NATGAS', 'OIL', 'BRENT', 'WTI', 'WHEAT', 'CORN', 'COFFEE', 'SUGAR', 'COTTON',
+    ]);
+
     return tickers
-      .filter((t: TickerData) => t.priceChangePercent24h != null && t.priceChangePercent24h !== 0)
+      .filter((t: TickerData) => {
+        if (t.priceChangePercent24h == null || t.priceChangePercent24h === 0) return false;
+        const sym = (t.symbol || '').toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP|-|_|\/)/g, '');
+        // Exclude non-crypto
+        if (NON_CRYPTO.has(sym)) return false;
+        // Exclude obviously bad data (>200% daily change)
+        if (Math.abs(safeNumber(t.priceChangePercent24h)) > 200) return false;
+        // Exclude zero-price entries
+        if (!t.lastPrice || safeNumber(t.lastPrice) <= 0) return false;
+        return true;
+      })
       .slice(0, 40)
       .map((t: TickerData) => ({
-        symbol: (t.symbol || '').replace('USDT', '').replace('USD', ''),
+        symbol: (t.symbol || '').replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, ''),
         price: safeNumber(t.lastPrice),
         change: safeNumber(t.priceChangePercent24h),
       }));
