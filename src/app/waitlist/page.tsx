@@ -88,7 +88,7 @@ const FAQS = [
   },
   {
     q: 'How much will it cost?',
-    a: 'We\'ll launch with a generous free tier covering core features like funding rates, OI, and liquidation feeds. Premium plans with advanced tools, historical data, API access, and custom alerts will be available at competitive pricing.',
+    a: 'Core features like funding rates, OI, and liquidations will be accessible to everyone. Premium plans will unlock historical data, API access, custom alerts, and advanced analysis tools. Pricing will be competitive and designed for individual traders, not institutions. Early waitlist members get priority access and the best early pricing.',
   },
   {
     q: 'Which exchanges do you cover?',
@@ -155,7 +155,7 @@ export default function WaitlistPage() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <span className="text-xl font-black">Info<span className="text-hub-yellow">Hub</span></span>
+          <span className="text-xl font-black">info<span className="text-hub-yellow">hub</span></span>
           <div className="flex items-center gap-3">
             <a href="https://x.com/info_hub69" target="_blank" rel="noopener noreferrer" className="text-neutral-700 hover:text-hub-yellow transition-colors" aria-label="X/Twitter">
               <Twitter className="w-3.5 h-3.5" />
@@ -418,7 +418,7 @@ export default function WaitlistPage() {
       <footer className="py-8 px-4 sm:px-6 border-t border-white/[0.04]">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold">Info<span className="text-hub-yellow">Hub</span></span>
+            <span className="text-sm font-bold">info<span className="text-hub-yellow">hub</span></span>
             <span className="text-neutral-700 text-xs">&copy; {new Date().getFullYear()}</span>
             <span className="text-neutral-800">|</span>
             <span className="text-neutral-700 text-[10px]">Real-time crypto derivatives intelligence</span>
