@@ -640,13 +640,11 @@ export default function FundingPage() {
               </button>
 
               {showExchangeSelector && (
-                <div className="absolute right-0 top-full mt-2 z-50 rounded-2xl shadow-2xl shadow-black/90 min-w-[460px] overflow-hidden" style={{ background: 'linear-gradient(180deg, #141414 0%, #0c0c0c 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="absolute right-0 top-full mt-2 z-50 rounded-2xl shadow-2xl shadow-black/90 min-w-[480px] overflow-hidden" style={{ background: 'linear-gradient(180deg, #141414 0%, #0c0c0c 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(255,165,0,0.04) 0%, transparent 60%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="flex items-center justify-between px-4 py-2.5" style={{ background: 'linear-gradient(135deg, rgba(255,165,0,0.04) 0%, transparent 60%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-                        <Settings2 className="w-3.5 h-3.5 text-hub-yellow" />
-                      </div>
+                      <Settings2 className="w-3.5 h-3.5 text-hub-yellow/60" />
                       <span className="text-white font-semibold text-[13px]">Exchanges</span>
                       <span className="text-[10px] text-neutral-500 font-mono bg-white/[0.04] px-1.5 py-0.5 rounded">{selectedExchanges.size}/{ALL_EXCHANGES.length}</span>
                     </div>
@@ -655,37 +653,37 @@ export default function FundingPage() {
                     </button>
                   </div>
 
-                  <div className="p-3 max-h-[70vh] overflow-y-auto">
+                  <div className="p-3 max-h-[70vh] overflow-y-auto scrollbar-accent">
                     {/* CEX Section */}
                     <div className="mb-2">
-                      <div className="flex items-center gap-2 px-1 mb-2">
-                        <span className="text-[10px] font-bold text-hub-yellow/60 uppercase tracking-[0.12em]">Centralized</span>
-                        <span className="text-[9px] font-mono text-neutral-600 bg-white/[0.03] px-1.5 py-0.5 rounded">{cexExchanges.length}</span>
+                      <div className="flex items-center gap-2 px-1 mb-1.5">
+                        <span className="text-[10px] font-bold text-hub-yellow/60 uppercase tracking-[0.12em]">CEX</span>
+                        <span className="text-[9px] font-mono text-neutral-600">{cexExchanges.length}</span>
                         <span className="flex-1 h-px bg-white/[0.04]" />
                         <button onClick={() => selectOnlySection('cex')} className="text-[9px] font-semibold text-neutral-600 hover:text-hub-yellow/70 transition-colors px-1.5 py-0.5 rounded hover:bg-hub-yellow/5">Only</button>
                         <button onClick={() => toggleSectionExchanges('cex')} className="text-[9px] font-semibold text-neutral-600 hover:text-hub-yellow/70 transition-colors px-1.5 py-0.5 rounded hover:bg-hub-yellow/5">
                           {cexExchanges.every(e => selectedExchanges.has(e)) ? 'None' : 'All'}
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
                         {ALL_EXCHANGES.filter(e => !isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (
                             <button
                               key={exchange}
                               onClick={() => toggleExchange(exchange)}
-                              className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150 text-xs ${
+                              className={`group flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 text-[11px] ${
                                 active
-                                  ? 'bg-white/[0.06] text-white ring-1 ring-white/[0.08]'
+                                  ? 'bg-white/[0.06] text-white'
                                   : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.03]'
                               }`}
                             >
-                              <div className={`w-4 h-4 rounded-[5px] flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
-                                active ? 'bg-hub-yellow shadow-[0_0_6px_rgba(255,165,0,0.3)]' : 'bg-white/[0.04] ring-1 ring-white/[0.08] group-hover:ring-white/[0.15]'
+                              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                active ? 'bg-hub-yellow' : 'bg-white/[0.04] ring-1 ring-white/[0.08]'
                               }`}>
-                                {active && <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />}
+                                {active && <Check className="w-2 h-2 text-black" strokeWidth={3} />}
                               </div>
-                              <ExchangeLogo exchange={exchange.toLowerCase()} size={15} />
+                              <ExchangeLogo exchange={exchange.toLowerCase()} size={13} />
                               <span className="font-medium truncate">{exchange}</span>
                             </button>
                           );
@@ -694,35 +692,35 @@ export default function FundingPage() {
                     </div>
 
                     {/* DEX Section */}
-                    <div className="mt-3">
-                      <div className="flex items-center gap-2 px-1 mb-2">
-                        <span className="text-[10px] font-bold text-purple-400/70 uppercase tracking-[0.12em]">Decentralized</span>
-                        <span className="text-[9px] font-mono text-neutral-600 bg-purple-500/[0.06] px-1.5 py-0.5 rounded text-purple-400/60">{dexExchanges.length}</span>
+                    <div className="mt-2">
+                      <div className="flex items-center gap-2 px-1 mb-1.5">
+                        <span className="text-[10px] font-bold text-purple-400/70 uppercase tracking-[0.12em]">DEX</span>
+                        <span className="text-[9px] font-mono text-purple-400/50">{dexExchanges.length}</span>
                         <span className="flex-1 h-px bg-purple-500/[0.08]" />
                         <button onClick={() => selectOnlySection('dex')} className="text-[9px] font-semibold text-neutral-600 hover:text-purple-400/70 transition-colors px-1.5 py-0.5 rounded hover:bg-purple-500/5">Only</button>
                         <button onClick={() => toggleSectionExchanges('dex')} className="text-[9px] font-semibold text-neutral-600 hover:text-purple-400/70 transition-colors px-1.5 py-0.5 rounded hover:bg-purple-500/5">
                           {dexExchanges.every(e => selectedExchanges.has(e)) ? 'None' : 'All'}
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
                         {ALL_EXCHANGES.filter(e => isExchangeDex(e)).map((exchange) => {
                           const active = selectedExchanges.has(exchange);
                           return (
                             <button
                               key={exchange}
                               onClick={() => toggleExchange(exchange)}
-                              className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150 text-xs ${
+                              className={`group flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 text-[11px] ${
                                 active
-                                  ? 'bg-purple-500/[0.08] text-white ring-1 ring-purple-500/20'
+                                  ? 'bg-purple-500/[0.08] text-white'
                                   : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.03]'
                               }`}
                             >
-                              <div className={`w-4 h-4 rounded-[5px] flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
-                                active ? 'bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.3)]' : 'bg-white/[0.04] ring-1 ring-white/[0.08] group-hover:ring-white/[0.15]'
+                              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                active ? 'bg-purple-500' : 'bg-white/[0.04] ring-1 ring-white/[0.08]'
                               }`}>
-                                {active && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                                {active && <Check className="w-2 h-2 text-white" strokeWidth={3} />}
                               </div>
-                              <ExchangeLogo exchange={exchange.toLowerCase()} size={15} />
+                              <ExchangeLogo exchange={exchange.toLowerCase()} size={13} />
                               <span className="font-medium truncate">{exchange}</span>
                             </button>
                           );
