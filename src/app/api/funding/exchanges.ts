@@ -1445,12 +1445,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const borrowS = safeBigInt(m.borrowingRateShort) / 1e30 / 8760 * 100;
           const rateLong = fundingL + borrowL;
           const rateShort = fundingS + borrowS;
+          // Clamp extreme rates: GMX AMM can produce 100%+/h on illiquid pools (e.g. BONK)
+          // Cap at ±5%/h to prevent one pool from dominating averages/leaderboards
+          const MAX_HOURLY_PCT = 5;
+          const clampedFundingL = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, fundingL));
+          const clampedRateLong = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, rateLong));
+          const clampedRateShort = Math.max(-MAX_HOURLY_PCT, Math.min(MAX_HOURLY_PCT, rateShort));
           return {
             symbol,
             exchange: 'GMX',
-            fundingRate: fundingL,        // Base funding component (positive = longs pay)
-            fundingRateLong: -rateLong,    // Earning convention: positive = earning for longs
-            fundingRateShort: -rateShort,  // Earning convention: positive = earning for shorts
+            fundingRate: clampedFundingL,        // Base funding component (positive = longs pay)
+            fundingRateLong: -clampedRateLong,    // Earning convention: positive = earning for longs
+            fundingRateShort: -clampedRateShort,  // Earning convention: positive = earning for shorts
             borrowingRate: borrowL + borrowS > 0.00001 ? borrowL : undefined,
             markPrice: 0, // GMX markets/info doesn't provide mark price
             indexPrice: 0,
