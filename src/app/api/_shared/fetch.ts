@@ -47,11 +47,13 @@ if (_rawProxyUrl && !PROXY_URL) {
   console.warn('[proxy] PROXY_URL ignored — must start with https://');
 }
 
-/** Domains that need proxying due to CloudFlare datacenter IP blocks */
+/** Domains that need proxying due to CloudFlare datacenter IP blocks or stale responses */
 const PROXIED_DOMAINS = new Set([
   'www.bitmex.com',
   'api.gateio.ws',
   'pro.edgex.exchange',
+  'query1.finance.yahoo.com',
+  'query2.finance.yahoo.com',
 ]);
 
 /** Rewrite a URL through the proxy if the domain is blocked and proxy is configured */
