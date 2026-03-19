@@ -24,15 +24,21 @@ export default function MarketTicker() {
       'XAU', 'XAG', 'XAUT', 'PAXG', 'GOLD', 'SILVER',
       'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'SEK', 'NOK', 'SGD', 'HKD', 'CNH', 'MXN', 'ZAR', 'TRY', 'INR', 'BRL',
       'AAPL', 'GOOG', 'GOOGL', 'MSFT', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD', 'NFLX', 'COIN', 'MSTR', 'GME', 'AMC', 'SPY', 'QQQ', 'DIA', 'IWM',
-      'ALPACA', 'COPPER', 'NATGAS', 'OIL', 'BRENT', 'WTI', 'WHEAT', 'CORN', 'COFFEE', 'SUGAR', 'COTTON',
+      'COPPER', 'NATGAS', 'OIL', 'BRENT', 'WTI', 'WHEAT', 'CORN', 'COFFEE', 'SUGAR', 'COTTON',
+      'USOIL', 'UKOIL', 'CL',
     ]);
+    // Also filter out Kraken EUR/GBP pairs and other non-USD denominated pairs
+    const NON_USD_SUFFIXES = /(?:EUR|GBP|JPY|AUD|CAD|CHF)$/i;
 
     return tickers
       .filter((t: TickerData) => {
         if (t.priceChangePercent24h == null || t.priceChangePercent24h === 0) return false;
-        const sym = (t.symbol || '').toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP|-|_|\/)/g, '');
+        const rawSym = (t.symbol || '').toUpperCase();
+        const sym = rawSym.replace(/(USDT|USD|USDC|BUSD|PERP|SWAP|-|_|\/)/g, '');
         // Exclude non-crypto
         if (NON_CRYPTO.has(sym)) return false;
+        // Exclude non-USD denominated pairs (XBTEUR, ETHGBP, etc.)
+        if (NON_USD_SUFFIXES.test(rawSym)) return false;
         // Exclude obviously bad data (>200% daily change)
         if (Math.abs(safeNumber(t.priceChangePercent24h)) > 200) return false;
         // Exclude zero-price entries

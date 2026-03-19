@@ -13,7 +13,8 @@ const NON_CRYPTO_SYMBOLS = new Set([
   'SPY', 'SPX', 'QQQ', 'IWM', 'DIA', 'ARKK', 'NAS100', 'SPX500', 'URNM', 'SIREN',
   // Commodities
   'XAU', 'XAG', 'XPT', 'XPD', 'GOLD', 'SILVER', 'COPPER', 'XCU', 'HG',
-  'WTI', 'BRENT', 'NATGAS', 'UKOIL', 'USOIL',
+  'WTI', 'BRENT', 'NATGAS', 'UKOIL', 'USOIL', 'CL', 'NG', 'SI', 'GC',
+  'WHEAT', 'CORN', 'COFFEE', 'SUGAR', 'COTTON', 'COCOA', 'SOYBEAN',
   // Forex bases (gTrade pair.from for forex)
   'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD',
   'SEK', 'NOK', 'PLN', 'CZK', 'HUF', 'TRY', 'ZAR',
