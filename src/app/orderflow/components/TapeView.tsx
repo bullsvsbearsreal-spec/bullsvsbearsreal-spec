@@ -1,7 +1,9 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApi } from '@/hooks/useSWRApi';
+import { useRealtimeTrades, type RealtimeTrade } from '@/hooks/useRealtimeTrades';
+import { Wifi, WifiOff } from 'lucide-react';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -62,6 +64,9 @@ function formatPrice(price: number): string {
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function TapeView({ symbol }: { symbol: string }) {
+  const [liveMode, setLiveMode] = useState(false);
+
+  // REST polling mode (default)
   const { data, isLoading } = useApi<AggTradesResponse>({
     key: `tape-${symbol}`,
     fetcher: async () => {
@@ -70,39 +75,61 @@ export default function TapeView({ symbol }: { symbol: string }) {
       return res.json();
     },
     refreshInterval: 5000,
+    enabled: !liveMode,
   });
+
+  // WebSocket real-time mode
+  const rt = useRealtimeTrades(liveMode ? symbol : '');
 
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (feedRef.current) feedRef.current.scrollTop = 0;
-  }, [data?.recentTrades]);
+  }, [liveMode ? rt.trades : data?.recentTrades]);
 
-  if (isLoading && !data) {
+  // Derive display data from either mode
+  const isLiveLoading = liveMode && !rt.connected && rt.trades.length === 0;
+  const isRestLoading = !liveMode && isLoading && !data;
+
+  if (isLiveLoading || isRestLoading) {
     return (
       <div className="flex items-center justify-center h-60 text-neutral-500 text-sm">
-        Loading trade data...
+        {liveMode ? 'Connecting to Binance WebSocket...' : 'Loading trade data...'}
       </div>
     );
   }
 
-  if (!data || !data.buckets?.length) {
+  if (!liveMode && (!data || !data.buckets?.length)) {
     return (
-      <div className="flex items-center justify-center h-60 text-neutral-500 text-sm">
-        No trade data available for {symbol}
+      <div className="space-y-4">
+        <LiveToggle liveMode={liveMode} setLiveMode={setLiveMode} connected={rt.connected} />
+        <div className="flex items-center justify-center h-60 text-neutral-500 text-sm">
+          No trade data available for {symbol}
+        </div>
       </div>
     );
   }
 
-  const { totalBuyVol, totalSellVol, netDelta, tradeCount, buckets, recentTrades, source } = data;
-  const timeSpanMin = buckets.length > 1
-    ? (buckets[buckets.length - 1].time - buckets[0].time) / 60000
-    : 1;
-  const tradeSpeed = Math.round(tradeCount / Math.max(timeSpanMin, 1));
+  // Stats
+  const totalBuyVol = liveMode ? rt.stats.buyVolume : data!.totalBuyVol;
+  const totalSellVol = liveMode ? rt.stats.sellVolume : data!.totalSellVol;
+  const netDelta = liveMode ? rt.stats.netDelta : data!.netDelta;
+  const tradeCount = liveMode ? rt.stats.tradeCount : data!.tradeCount;
+  const tradeSpeed = liveMode ? rt.stats.tradeSpeed : (() => {
+    const buckets = data!.buckets;
+    const spanMin = buckets.length > 1 ? (buckets[buckets.length - 1].time - buckets[0].time) / 60000 : 1;
+    return Math.round(data!.tradeCount / Math.max(spanMin, 1));
+  })();
+  const source = liveMode ? `Binance WS${rt.connected ? '' : ' (reconnecting...)'}` : data!.source;
+  const buckets = liveMode ? [] : data!.buckets;
+  const recentTrades: RecentTrade[] = liveMode
+    ? rt.trades.map((t: RealtimeTrade) => ({ time: t.time, price: t.price, qty: t.qty, isBuy: t.isBuy, usdValue: t.quoteQty }))
+    : data!.recentTrades;
 
   return (
     <div className="space-y-4">
-      {/* Stats row */}
+      {/* Live toggle + Stats row */}
+      <LiveToggle liveMode={liveMode} setLiveMode={setLiveMode} connected={rt.connected} />
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <StatCard label="Buy Volume" value={formatUSD(totalBuyVol)} color="text-green-400" />
         <StatCard label="Sell Volume" value={formatUSD(totalSellVol)} color="text-red-400" />
@@ -110,6 +137,12 @@ export default function TapeView({ symbol }: { symbol: string }) {
         <StatCard label="Trade Speed" value={`${tradeSpeed}/min`} color="text-white" />
         <StatCard label="Source" value={source} color="text-hub-yellow" />
       </div>
+      {liveMode && (
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="Big Buys (>$50K)" value={String(rt.stats.bigBuys)} color="text-green-400" />
+          <StatCard label="Big Sells (>$50K)" value={String(rt.stats.bigSells)} color="text-red-400" />
+        </div>
+      )}
 
       {/* Delta bars + CVD line */}
       <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4">
@@ -207,6 +240,32 @@ export default function TapeView({ symbol }: { symbol: string }) {
             </table>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function LiveToggle({
+  liveMode, setLiveMode, connected,
+}: { liveMode: boolean; setLiveMode: (v: boolean) => void; connected: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => setLiveMode(!liveMode)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          liveMode
+            ? 'bg-green-500/15 text-green-400 border border-green-500/20'
+            : 'bg-white/[0.04] text-neutral-400 hover:text-white border border-white/[0.06]'
+        }`}
+      >
+        {liveMode ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+        {liveMode ? 'Live' : 'Polling'}
+      </button>
+      {liveMode && (
+        <span className="flex items-center gap-1 text-[10px] text-neutral-500">
+          <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
+          {connected ? 'Connected' : 'Connecting...'}
+        </span>
       )}
     </div>
   );
