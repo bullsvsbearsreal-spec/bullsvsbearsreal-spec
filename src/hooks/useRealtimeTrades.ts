@@ -20,10 +20,21 @@ export interface TradeStats {
   sellVolume: number;
   netDelta: number;
   tradeCount: number;
-  tradeSpeed: number; // per minute
+  tradeSpeed: number; // per second
   bigBuys: number;    // >$50K
   bigSells: number;
 }
+
+/** Time windows for stats aggregation */
+export type StatsWindow = 'live' | '5m' | '15m' | '1h' | 'all';
+
+export const STATS_WINDOWS: { key: StatsWindow; label: string; ms: number }[] = [
+  { key: 'live', label: 'Live', ms: 60_000 },      // ~1 min rolling
+  { key: '5m',   label: '5m',   ms: 5 * 60_000 },
+  { key: '15m',  label: '15m',  ms: 15 * 60_000 },
+  { key: '1h',   label: '1h',   ms: 60 * 60_000 },
+  { key: 'all',  label: 'All',  ms: Infinity },
+];
 
 interface BinanceAggTrade {
   e: string;   // event type
@@ -35,9 +46,9 @@ interface BinanceAggTrade {
   T: number;   // trade time
 }
 
-const MAX_TRADES = 200;
+const MAX_DISPLAY_TRADES = 200;
+const MAX_STATS_TRADES = 10_000; // Keep more for longer windows
 const BIG_TRADE_USD = 50_000;
-const STATS_WINDOW_MS = 5 * 60_000; // 5 minutes for rolling stats
 
 export function useRealtimeTrades(symbol: string) {
   const [trades, setTrades] = useState<RealtimeTrade[]>([]);
@@ -45,15 +56,25 @@ export function useRealtimeTrades(symbol: string) {
     buyVolume: 0, sellVolume: 0, netDelta: 0, tradeCount: 0, tradeSpeed: 0, bigBuys: 0, bigSells: 0,
   });
   const [connected, setConnected] = useState(false);
+  const [statsWindow, setStatsWindow] = useState<StatsWindow>('5m');
   const wsRef = useRef<WebSocket | null>(null);
-  const tradesRef = useRef<RealtimeTrade[]>([]);
+  const allTradesRef = useRef<RealtimeTrade[]>([]);
+  const statsWindowRef = useRef<StatsWindow>('5m');
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keep ref in sync for the timer callback
+  useEffect(() => { statsWindowRef.current = statsWindow; }, [statsWindow]);
 
   const computeStats = useCallback(() => {
     const now = Date.now();
-    const window = tradesRef.current.filter(t => now - t.time < STATS_WINDOW_MS);
+    const windowDef = STATS_WINDOWS.find(w => w.key === statsWindowRef.current) ?? STATS_WINDOWS[1];
+    const windowMs = windowDef.ms;
+    const filtered = windowMs === Infinity
+      ? allTradesRef.current
+      : allTradesRef.current.filter(t => now - t.time < windowMs);
+
     let buyVol = 0, sellVol = 0, bigBuys = 0, bigSells = 0;
-    for (const t of window) {
+    for (const t of filtered) {
       if (t.isBuy) {
         buyVol += t.quoteQty;
         if (t.quoteQty >= BIG_TRADE_USD) bigBuys++;
@@ -62,13 +83,16 @@ export function useRealtimeTrades(symbol: string) {
         if (t.quoteQty >= BIG_TRADE_USD) bigSells++;
       }
     }
-    const spanMin = Math.max((now - (window[window.length - 1]?.time || now)) / 60_000, 1);
+
+    const oldest = filtered.length > 0 ? filtered[filtered.length - 1].time : now;
+    const spanSec = Math.max((now - oldest) / 1000, 1);
+
     setStats({
       buyVolume: buyVol,
       sellVolume: sellVol,
       netDelta: buyVol - sellVol,
-      tradeCount: window.length,
-      tradeSpeed: Math.round(window.length / spanMin),
+      tradeCount: filtered.length,
+      tradeSpeed: Math.round(filtered.length / spanSec),
       bigBuys,
       bigSells,
     });
@@ -81,7 +105,7 @@ export function useRealtimeTrades(symbol: string) {
     const url = `wss://fstream.binance.com/ws/${pair.toLowerCase()}@aggTrade`;
 
     // Reset state on symbol change
-    tradesRef.current = [];
+    allTradesRef.current = [];
     setTrades([]);
     setStats({ buyVolume: 0, sellVolume: 0, netDelta: 0, tradeCount: 0, tradeSpeed: 0, bigBuys: 0, bigSells: 0 });
 
@@ -107,8 +131,8 @@ export function useRealtimeTrades(symbol: string) {
             isBuy: !msg.m, // m=true means seller initiated
           };
 
-          tradesRef.current = [trade, ...tradesRef.current].slice(0, MAX_TRADES);
-          setTrades(prev => [trade, ...prev].slice(0, MAX_TRADES));
+          allTradesRef.current = [trade, ...allTradesRef.current].slice(0, MAX_STATS_TRADES);
+          setTrades(prev => [trade, ...prev].slice(0, MAX_DISPLAY_TRADES));
         } catch { /* skip malformed */ }
       };
 
@@ -135,5 +159,5 @@ export function useRealtimeTrades(symbol: string) {
     };
   }, [symbol, computeStats]);
 
-  return { trades, stats, connected };
+  return { trades, stats, connected, statsWindow, setStatsWindow };
 }

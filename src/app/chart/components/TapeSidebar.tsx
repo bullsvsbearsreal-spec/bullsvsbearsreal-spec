@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Activity, Wifi, WifiOff, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useRealtimeTrades, RealtimeTrade } from '@/hooks/useRealtimeTrades';
+import { useRealtimeTrades, RealtimeTrade, STATS_WINDOWS, type StatsWindow } from '@/hooks/useRealtimeTrades';
 import { useSound } from '@/hooks/useSound';
 import { formatUSD } from '@/lib/utils/format';
 
@@ -36,7 +36,7 @@ const TradeRow = React.memo(function TradeRow({ trade }: { trade: RealtimeTrade 
 
 export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarProps) {
   // Pass bare symbol — useRealtimeTrades appends USDT internally
-  const { trades, stats, connected } = useRealtimeTrades(visible ? symbol : '');
+  const { trades, stats, connected, statsWindow, setStatsWindow } = useRealtimeTrades(visible ? symbol : '');
   const { playAlert } = useSound();
   const prevBigCountRef = useRef(0);
 
@@ -72,6 +72,7 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
             <div className="flex items-center gap-1.5">
               <Activity className="w-3 h-3 text-hub-yellow" />
               <span className="text-[10px] font-semibold text-neutral-300">Live Tape</span>
+              <span className="text-[8px] px-1 py-[1px] rounded bg-[#F0B90B]/10 text-[#F0B90B] font-medium">Binance</span>
             </div>
             <div className="flex items-center gap-1" aria-live="polite">
               {connected ? (
@@ -83,6 +84,25 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
                 </>
               )}
             </div>
+          </div>
+
+          {/* Time window tabs */}
+          <div className="flex items-center gap-[2px] px-1.5 py-1 border-b border-white/[0.04]" role="tablist" aria-label="Stats time window">
+            {STATS_WINDOWS.map(w => (
+              <button
+                key={w.key}
+                role="tab"
+                aria-selected={statsWindow === w.key}
+                onClick={() => setStatsWindow(w.key)}
+                className={`flex-1 px-1 py-[2px] rounded text-[8px] font-semibold transition-colors ${
+                  statsWindow === w.key
+                    ? 'bg-hub-yellow/15 text-hub-yellow'
+                    : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.04]'
+                }`}
+              >
+                {w.label}
+              </button>
+            ))}
           </div>
 
           {/* Stats bar */}
