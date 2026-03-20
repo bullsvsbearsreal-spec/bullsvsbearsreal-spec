@@ -364,37 +364,73 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
           {showDetail && (
             <div className="mt-1 flex flex-col lg:flex-row gap-2.5">
               {/* Per-exchange funding bars */}
-              {metrics.perExchangeFunding.length > 0 && (
-                <div className="flex-1 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider mb-1.5">Funding by Exchange</p>
-                  <div className="space-y-[3px]">
-                    {metrics.perExchangeFunding.map(f => {
-                      const maxAbs = Math.max(...metrics.perExchangeFunding.map(x => Math.abs(x.fundingRate)), 0.001);
-                      const pct = Math.min(Math.abs(f.fundingRate) / maxAbs * 100, 100);
-                      return (
-                        <div key={f.exchange} className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-neutral-500 w-[70px] truncate text-right flex-shrink-0">
-                            {f.exchange}
-                          </span>
-                          <div className="flex-1 h-[10px] bg-white/[0.03] rounded-sm overflow-hidden relative">
-                            <div
-                              className={`absolute top-0 h-full rounded-sm transition-all ${
-                                f.fundingRate >= 0 ? 'bg-green-500/40 left-1/2' : 'bg-red-500/40 right-1/2'
-                              }`}
-                              style={{ width: `${pct / 2}%` }}
-                            />
-                            {/* Center line */}
-                            <div className="absolute left-1/2 top-0 w-px h-full bg-white/[0.1]" />
+              {metrics.perExchangeFunding.length > 0 && (() => {
+                const sorted = [...metrics.perExchangeFunding].sort((a, b) => b.fundingRate - a.fundingRate);
+                const positiveCount = sorted.filter(f => f.fundingRate >= 0).length;
+                const negativeCount = sorted.filter(f => f.fundingRate < 0).length;
+                const maxAbs = Math.max(...sorted.map(x => Math.abs(x.fundingRate)), 0.001);
+                return (
+                  <div className="flex-1 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Funding by Exchange</p>
+                      <div className="flex items-center gap-2 text-[8px] font-mono">
+                        <span className="text-green-400/70">{positiveCount} long pay</span>
+                        <span className="text-neutral-700">|</span>
+                        <span className="text-red-400/70">{negativeCount} short pay</span>
+                      </div>
+                    </div>
+                    <div className="space-y-[2px]">
+                      {sorted.map((f, i) => {
+                        const pct = Math.min(Math.abs(f.fundingRate) / maxAbs * 100, 100);
+                        const isPositive = f.fundingRate >= 0;
+                        const isExtreme = Math.abs(f.fundingRate) >= 0.01;
+                        const isTop = i === 0;
+                        const isBottom = i === sorted.length - 1;
+                        return (
+                          <div
+                            key={f.exchange}
+                            className={`flex items-center gap-1.5 py-[2px] px-1 rounded-sm transition-colors ${
+                              (isTop || isBottom) ? 'bg-white/[0.02]' : ''
+                            }`}
+                          >
+                            <span className={`text-[9px] w-[68px] truncate text-right flex-shrink-0 ${
+                              isExtreme ? 'text-neutral-300 font-medium' : 'text-neutral-500'
+                            }`}>
+                              {f.exchange}
+                            </span>
+                            <div className="flex-1 h-[8px] rounded-[2px] overflow-hidden relative bg-white/[0.03]">
+                              <div
+                                className={`absolute top-0 h-full rounded-[2px] transition-all duration-500 ${
+                                  isPositive
+                                    ? isExtreme ? 'bg-green-400/50' : 'bg-green-500/30'
+                                    : isExtreme ? 'bg-red-400/50' : 'bg-red-500/30'
+                                }`}
+                                style={{ width: `${pct}%`, left: 0 }}
+                              />
+                            </div>
+                            <span className={`text-[9px] font-mono w-[58px] text-right flex-shrink-0 font-medium ${
+                              isPositive
+                                ? isExtreme ? 'text-green-400' : 'text-green-400/70'
+                                : isExtreme ? 'text-red-400' : 'text-red-400/70'
+                            }`}>
+                              {isPositive ? '+' : ''}{f.fundingRate.toFixed(4)}%
+                            </span>
                           </div>
-                          <span className={`text-[9px] font-mono w-[55px] text-right flex-shrink-0 ${fundingColor(f.fundingRate)}`}>
-                            {f.fundingRate >= 0 ? '+' : ''}{f.fundingRate.toFixed(4)}%
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                    {/* Average line */}
+                    {metrics.avgFunding !== null && (
+                      <div className="mt-1.5 pt-1.5 border-t border-white/[0.04] flex items-center justify-between">
+                        <span className="text-[8px] text-neutral-600">AVG across {sorted.length} exchanges</span>
+                        <span className={`text-[9px] font-mono font-bold ${fundingColor(metrics.avgFunding)}`}>
+                          {metrics.avgFunding >= 0 ? '+' : ''}{metrics.avgFunding.toFixed(4)}%
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Recent liquidations */}
               <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
