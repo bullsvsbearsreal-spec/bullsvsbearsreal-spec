@@ -208,7 +208,10 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
             {symbol}
           </span>
           {metrics.exchangeCount > 0 && (
-            <span className="text-[10px] text-neutral-600">
+            <span
+              className="text-[10px] text-neutral-600 cursor-help"
+              title={`${metrics.exchangeCount} funding rate entries from 30 exchanges. Some exchanges report multiple contract types per symbol.`}
+            >
               {metrics.exchangeCount}x
             </span>
           )}
