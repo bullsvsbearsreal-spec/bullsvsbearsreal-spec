@@ -110,8 +110,8 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     enabled: open,
   });
 
-  // Real-time liquidation WebSocket feed (Binance + OKX, in-memory only)
-  const { stats: liqStats, connected: liqConnected, liqWindow, setLiqWindow, getFilteredLiqs } = useRealtimeLiquidations(open ? symbol : '');
+  // Real-time liquidation WebSocket feed (Binance + OKX, all symbols, in-memory only)
+  const { stats: liqStats, connected: liqConnected, liqWindow, setLiqWindow, getFilteredLiqs } = useRealtimeLiquidations(open);
 
   const [showDetail, setShowDetail] = useState(false);
 
@@ -492,20 +492,18 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                         </div>
                       ) : (
                         <div className="space-y-[2px]">
-                          {filtered.slice(0, 12).map((liq, i) => {
+                          {filtered.slice(0, 15).map((liq, i) => {
                             const isBig = liq.value >= 100_000;
                             return (
-                              <div key={`${liq.time}-${i}`} className={`flex items-center gap-1.5 text-[9px] font-mono ${isBig ? 'bg-white/[0.02]' : ''}`}>
-                                <span className={`w-[32px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
-                                  {liq.side === 'long' ? 'LONG' : 'SHORT'}
+                              <div key={`${liq.time}-${i}`} className={`flex items-center gap-1 text-[9px] font-mono ${isBig ? 'bg-white/[0.02]' : ''}`}>
+                                <span className={`w-[28px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
+                                  {liq.side === 'long' ? 'L' : 'S'}
                                 </span>
-                                <span className="text-neutral-500 text-[8px] w-[48px] truncate">{liq.exchange}</span>
-                                <span className={`font-bold flex-1 ${isBig ? 'text-hub-yellow' : 'text-neutral-300'}`}>
+                                <span className="text-neutral-400 text-[8px] w-[32px] truncate font-semibold">{liq.symbol}</span>
+                                <span className={`font-bold flex-1 text-right ${isBig ? 'text-hub-yellow' : 'text-neutral-300'}`}>
                                   ${liq.value >= 1e6 ? `${(liq.value / 1e6).toFixed(1)}M` : liq.value >= 1000 ? `${(liq.value / 1000).toFixed(1)}K` : liq.value.toFixed(0)}
                                 </span>
-                                <span className="text-neutral-600 text-[8px]">
-                                  {new Date(liq.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                </span>
+                                <span className="text-neutral-600 text-[8px] w-[36px] truncate text-right">{liq.exchange}</span>
                               </div>
                             );
                           })}

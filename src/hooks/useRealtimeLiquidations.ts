@@ -4,11 +4,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Lightweight real-time liquidation stream for the chart page.
- * Connects to Binance + OKX WebSockets, filters by symbol, in-memory only.
+ * Connects to Binance + OKX WebSockets, shows ALL liquidations (global feed).
+ * In-memory only — clears on refresh.
  */
 
 export interface RealtimeLiq {
   time: number;
+  symbol: string;
   side: 'long' | 'short';
   value: number;
   price: number;
@@ -35,6 +37,7 @@ export const LIQ_WINDOWS: { key: LiqWindow; label: string; ms: number }[] = [
 ];
 
 const MAX_LIQS = 500;
+const MIN_VALUE = 100; // Skip tiny liquidations under $100
 const RECONNECT_DELAY = 3000;
 
 /** Normalize symbol: "BTCUSDT" → "BTC", "BTC-USDT-SWAP" → "BTC" */
@@ -46,7 +49,7 @@ function normalizeSymbol(raw: string): string {
     .toUpperCase();
 }
 
-export function useRealtimeLiquidations(symbol: string) {
+export function useRealtimeLiquidations(enabled: boolean) {
   const [liqs, setLiqs] = useState<RealtimeLiq[]>([]);
   const [stats, setStats] = useState<LiqStats>({ count: 0, totalValue: 0, longCount: 0, shortCount: 0, longValue: 0, shortValue: 0 });
   const [connected, setConnected] = useState({ binance: false, okx: false });
@@ -55,7 +58,6 @@ export function useRealtimeLiquidations(symbol: string) {
   const allLiqsRef = useRef<RealtimeLiq[]>([]);
   const windowRef = useRef<LiqWindow>('5m');
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const sym = symbol.toUpperCase();
 
   useEffect(() => { windowRef.current = liqWindow; }, [liqWindow]);
 
@@ -98,9 +100,9 @@ export function useRealtimeLiquidations(symbol: string) {
   }, [liqs, liqWindow]);
 
   useEffect(() => {
-    if (!sym) return;
+    if (!enabled) return;
 
-    // Reset on symbol change
+    // Reset
     allLiqsRef.current = [];
     setLiqs([]);
     setStats({ count: 0, totalValue: 0, longCount: 0, shortCount: 0, longValue: 0, shortValue: 0 });
@@ -108,6 +110,7 @@ export function useRealtimeLiquidations(symbol: string) {
     let destroyed = false;
 
     // ── Binance: wss://fstream.binance.com/ws/!forceOrder@arr ──
+    // Streams ALL liquidations across all symbols
     let binWs: WebSocket | null = null;
     let binReconnect: ReturnType<typeof setTimeout> | null = null;
 
@@ -121,14 +124,15 @@ export function useRealtimeLiquidations(symbol: string) {
           const data = JSON.parse(event.data);
           if (data.e !== 'forceOrder') return;
           const o = data.o;
-          const tradeSym = normalizeSymbol(o.s || '');
-          if (tradeSym !== sym) return;
           const price = parseFloat(o.p);
           const qty = parseFloat(o.q);
+          const value = price * qty;
+          if (value < MIN_VALUE) return;
           addLiq({
             time: o.T || Date.now(),
+            symbol: normalizeSymbol(o.s || ''),
             side: o.S === 'BUY' ? 'short' : 'long',
-            value: price * qty,
+            value,
             price,
             exchange: 'Binance',
           });
@@ -167,14 +171,15 @@ export function useRealtimeLiquidations(symbol: string) {
           if (data.event) return; // subscription confirm
           if (data.data && Array.isArray(data.data)) {
             for (const item of data.data) {
-              const tradeSym = normalizeSymbol(item.instId || '');
-              if (tradeSym !== sym) return;
               const px = parseFloat(item.bkPx || '0');
               const sz = parseFloat(item.sz || '0');
+              const value = px * sz;
+              if (value < MIN_VALUE) return;
               addLiq({
                 time: parseInt(item.ts || '0') || Date.now(),
+                symbol: normalizeSymbol(item.instId || ''),
                 side: item.side === 'buy' ? 'short' : 'long',
-                value: px * sz,
+                value,
                 price: px,
                 exchange: 'OKX',
               });
@@ -205,7 +210,7 @@ export function useRealtimeLiquidations(symbol: string) {
       if (okxPing) clearInterval(okxPing);
       if (statsTimerRef.current) clearInterval(statsTimerRef.current);
     };
-  }, [sym, addLiq, computeStats]);
+  }, [enabled, addLiq, computeStats]);
 
   return { liqs, stats, connected, liqWindow, setLiqWindow, getFilteredLiqs };
 }
