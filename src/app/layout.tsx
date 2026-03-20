@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 // const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { ALL_EXCHANGES } from '@/lib/constants'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' })
@@ -104,6 +105,7 @@ export default function RootLayout({
           {/* <ChatWidget /> */}
           <AlertEngine />
           <Analytics />
+          <SpeedInsights />
         </Providers>
       </body>
     </html>

@@ -59,7 +59,7 @@ module.exports = {
         'ticker': 'ticker 30s linear infinite',
         'mesh': 'meshPulse 8s ease-in-out infinite',
         'glow-line': 'glowLine 3s ease-in-out infinite',
-        'enter': 'enterUp 0.5s ease-out both',
+        'enter': 'enterUp 0.3s ease-out both',
       },
       keyframes: {
         shimmer: {

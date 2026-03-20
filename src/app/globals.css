@@ -241,7 +241,7 @@ body {
   .progress-fill {
     @apply h-full rounded-full;
     background: linear-gradient(90deg, var(--hub-accent), var(--hub-accent-secondary));
-    transition: width 0.6s ease;
+    transition: width 0.3s ease-out;
   }
 
   /* --- Skeleton --- */
@@ -333,25 +333,25 @@ body {
 
   /* Stagger children entrance */
   .stagger > * {
-    animation: enterUp 0.4s ease-out both;
+    animation: enterUp 0.3s ease-out both;
   }
   .stagger > *:nth-child(1) { animation-delay: 0ms; }
-  .stagger > *:nth-child(2) { animation-delay: 50ms; }
-  .stagger > *:nth-child(3) { animation-delay: 100ms; }
-  .stagger > *:nth-child(4) { animation-delay: 150ms; }
-  .stagger > *:nth-child(5) { animation-delay: 200ms; }
-  .stagger > *:nth-child(6) { animation-delay: 250ms; }
-  .stagger > *:nth-child(7) { animation-delay: 300ms; }
-  .stagger > *:nth-child(8) { animation-delay: 350ms; }
-  .stagger > *:nth-child(9) { animation-delay: 400ms; }
-  .stagger > *:nth-child(10) { animation-delay: 450ms; }
-  .stagger > *:nth-child(11) { animation-delay: 500ms; }
-  .stagger > *:nth-child(12) { animation-delay: 550ms; }
-  .stagger > *:nth-child(13) { animation-delay: 600ms; }
-  .stagger > *:nth-child(14) { animation-delay: 650ms; }
-  .stagger > *:nth-child(15) { animation-delay: 700ms; }
-  .stagger > *:nth-child(16) { animation-delay: 750ms; }
-  .stagger > *:nth-child(17) { animation-delay: 800ms; }
+  .stagger > *:nth-child(2) { animation-delay: 30ms; }
+  .stagger > *:nth-child(3) { animation-delay: 60ms; }
+  .stagger > *:nth-child(4) { animation-delay: 90ms; }
+  .stagger > *:nth-child(5) { animation-delay: 120ms; }
+  .stagger > *:nth-child(6) { animation-delay: 150ms; }
+  .stagger > *:nth-child(7) { animation-delay: 180ms; }
+  .stagger > *:nth-child(8) { animation-delay: 210ms; }
+  .stagger > *:nth-child(9) { animation-delay: 240ms; }
+  .stagger > *:nth-child(10) { animation-delay: 270ms; }
+  .stagger > *:nth-child(11) { animation-delay: 300ms; }
+  .stagger > *:nth-child(12) { animation-delay: 330ms; }
+  .stagger > *:nth-child(13) { animation-delay: 360ms; }
+  .stagger > *:nth-child(14) { animation-delay: 390ms; }
+  .stagger > *:nth-child(15) { animation-delay: 420ms; }
+  .stagger > *:nth-child(16) { animation-delay: 450ms; }
+  .stagger > *:nth-child(17) { animation-delay: 480ms; }
 
   /* Accent line */
   .accent-line {
