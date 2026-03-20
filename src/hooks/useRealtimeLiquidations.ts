@@ -133,7 +133,7 @@ export function useRealtimeLiquidations(enabled: boolean) {
     const pollHistory = async () => {
       if (destroyed) return;
       try {
-        const res = await fetch('/api/history/liquidations?mode=feed&hours=1&limit=50');
+        const res = await fetch('/api/history/liquidations?mode=feed&hours=1&limit=50&exchange=Binance');
         if (!res.ok) return;
         const json = await res.json();
         const items: RealtimeLiq[] = (json.data || []).map((d: any) => ({
