@@ -512,9 +512,11 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                     </div>
 
                     {/* Session note */}
-                    <p className="text-[8px] text-neutral-500 text-center mt-1.5 pt-1 border-t border-white/[0.04]">
-                      Session data only, clears on refresh
-                    </p>
+                    <div className="flex-shrink-0 mt-1.5 pt-1.5 border-t border-white/[0.06]">
+                      <p className="text-[9px] text-neutral-500 text-center leading-tight">
+                        Session data only, clears on refresh
+                      </p>
+                    </div>
                   </div>
                 );
               })()}
