@@ -116,7 +116,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
   }>({
     key: `chart-liqs-${symbol}`,
     fetcher: async () => {
-      const res = await fetch(`/api/liquidations?symbol=${symbol.toUpperCase()}&limit=10`);
+      const res = await fetch(`/api/liquidations?symbol=${symbol.toUpperCase()}&limit=100`);
       if (!res.ok) throw new Error('liq fetch failed');
       return res.json();
     },
@@ -125,6 +125,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
   });
 
   const [showDetail, setShowDetail] = useState(false);
+  const [liqWindow, setLiqWindow] = useState<'1h' | '4h' | '12h' | '24h'>('1h');
 
   const metrics = useMemo(() => {
     const sym = symbol.toUpperCase();
@@ -439,38 +440,91 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
               })()}
 
               {/* Recent liquidations */}
-              <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-hub-yellow" />
-                    <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Recent Liquidations</p>
+              {(() => {
+                const LIQ_WINDOWS = [
+                  { key: '1h' as const, label: '1H', ms: 60 * 60_000 },
+                  { key: '4h' as const, label: '4H', ms: 4 * 60 * 60_000 },
+                  { key: '12h' as const, label: '12H', ms: 12 * 60 * 60_000 },
+                  { key: '24h' as const, label: '24H', ms: 24 * 60 * 60_000 },
+                ];
+                const windowMs = LIQ_WINDOWS.find(w => w.key === liqWindow)?.ms ?? 60 * 60_000;
+                const now = Date.now();
+                const allLiqs = liqData?.data ?? [];
+                const filtered = allLiqs.filter(l => now - l.timestamp < windowMs);
+                const totalLiqValue = filtered.reduce((sum, l) => sum + (l.value || l.size * l.price), 0);
+                const longCount = filtered.filter(l => l.side === 'long').length;
+                const shortCount = filtered.filter(l => l.side === 'short').length;
+
+                return (
+                  <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-hub-yellow" />
+                        <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Liquidations</p>
+                      </div>
+                      <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">OKX</span>
+                    </div>
+
+                    {/* Time window tabs */}
+                    <div className="flex items-center gap-[2px] mb-1.5" role="tablist" aria-label="Liquidation time window">
+                      {LIQ_WINDOWS.map(w => (
+                        <button
+                          key={w.key}
+                          role="tab"
+                          aria-selected={liqWindow === w.key}
+                          onClick={() => setLiqWindow(w.key)}
+                          className={`flex-1 px-1 py-[2px] rounded text-[8px] font-semibold transition-colors ${
+                            liqWindow === w.key
+                              ? 'bg-hub-yellow/15 text-hub-yellow'
+                              : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          {w.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Summary stats */}
+                    {filtered.length > 0 && (
+                      <div className="flex items-center justify-between mb-1.5 px-0.5">
+                        <span className="text-[8px] text-neutral-500 font-mono">
+                          {filtered.length} liqs | ${totalLiqValue >= 1e6 ? `${(totalLiqValue / 1e6).toFixed(1)}M` : totalLiqValue >= 1000 ? `${(totalLiqValue / 1000).toFixed(0)}K` : totalLiqValue.toFixed(0)} total
+                        </span>
+                        <span className="text-[8px] font-mono">
+                          <span className="text-red-400/70">{longCount}L</span>
+                          {' '}
+                          <span className="text-green-400/70">{shortCount}S</span>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Liq list */}
+                    {filtered.length === 0 ? (
+                      <p className="text-[9px] text-neutral-600 text-center py-2">No liquidations in this window</p>
+                    ) : (
+                      <div className="space-y-[2px]">
+                        {filtered.slice(0, 12).map((liq, i) => {
+                          const usdVal = liq.value || (liq.size * liq.price);
+                          const isBig = usdVal >= 100_000;
+                          return (
+                            <div key={i} className={`flex items-center gap-1.5 text-[9px] font-mono ${isBig ? 'bg-white/[0.02]' : ''}`}>
+                              <span className={`w-[32px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
+                                {liq.side === 'long' ? 'LONG' : 'SHORT'}
+                              </span>
+                              <span className={`font-bold flex-1 ${isBig ? 'text-hub-yellow' : 'text-white'}`}>
+                                ${usdVal >= 1e6 ? `${(usdVal / 1e6).toFixed(1)}M` : usdVal >= 1000 ? `${(usdVal / 1000).toFixed(1)}K` : usdVal.toFixed(0)}
+                              </span>
+                              <span className="text-neutral-600 text-[8px]">
+                                {new Date(liq.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">OKX</span>
-                </div>
-                {(!liqData?.data || liqData.data.length === 0) ? (
-                  <p className="text-[9px] text-neutral-600 text-center py-2">No recent liquidations</p>
-                ) : (
-                  <div className="space-y-[2px]">
-                    {liqData.data.slice(0, 8).map((liq, i) => {
-                      const usdVal = liq.value || (liq.size * liq.price);
-                      return (
-                        <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
-                          <span className={`w-[32px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
-                            {liq.side === 'long' ? 'LONG' : 'SHORT'}
-                          </span>
-                          <span className="text-neutral-500 flex-1 truncate">{liqData.exchange}</span>
-                          <span className="text-white font-bold">
-                            ${usdVal >= 1e6 ? `${(usdVal / 1e6).toFixed(1)}M` : usdVal >= 1000 ? `${(usdVal / 1000).toFixed(1)}K` : usdVal.toFixed(0)}
-                          </span>
-                          <span className="text-neutral-600 text-[8px]">
-                            {new Date(liq.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
           )}
         </div>
