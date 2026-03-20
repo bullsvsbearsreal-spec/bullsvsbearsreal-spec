@@ -165,7 +165,7 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
           {/* Session note */}
           <div className="flex-shrink-0 px-2 py-1 border-t border-white/[0.04]">
             <p className="text-[7px] text-neutral-700 text-center leading-tight">
-              In-memory only — resets on page reload
+              Session data only — not stored, clears on refresh
             </p>
           </div>
         </aside>
