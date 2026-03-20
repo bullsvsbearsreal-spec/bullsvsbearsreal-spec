@@ -193,10 +193,6 @@ function handleV1Route(request: NextRequest): NextResponse {
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // /signup redirects to login (no separate signup flow)
-  if (pathname === '/signup') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
 
   // Only rate-limit API routes
   if (!pathname.startsWith('/api/')) return NextResponse.next();
