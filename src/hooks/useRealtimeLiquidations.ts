@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
- * Lightweight real-time liquidation stream for the chart page.
- * Connects to Binance + OKX WebSockets, shows ALL liquidations (global feed).
+ * Real-time liquidation stream for the chart page.
+ * - Binance WebSocket (real-time, all symbols)
+ * - REST API poll from DB every 15s (backfills recent history)
  * In-memory only — clears on refresh.
  */
 
@@ -37,10 +38,11 @@ export const LIQ_WINDOWS: { key: LiqWindow; label: string; ms: number }[] = [
 ];
 
 const MAX_LIQS = 500;
-const MIN_VALUE = 100; // Skip tiny liquidations under $100
+const MIN_VALUE = 100;
 const RECONNECT_DELAY = 3000;
+const POLL_INTERVAL = 15_000;
 
-/** Normalize symbol: "BTCUSDT" → "BTC", "BTC-USDT-SWAP" → "BTC" */
+/** Normalize symbol: "BTCUSDT" → "BTC" */
 function normalizeSymbol(raw: string): string {
   return raw
     .replace(/USD[_]?[A-Z]*$/i, '')
@@ -52,18 +54,45 @@ function normalizeSymbol(raw: string): string {
 export function useRealtimeLiquidations(enabled: boolean) {
   const [liqs, setLiqs] = useState<RealtimeLiq[]>([]);
   const [stats, setStats] = useState<LiqStats>({ count: 0, totalValue: 0, longCount: 0, shortCount: 0, longValue: 0, shortValue: 0 });
-  const [connected, setConnected] = useState({ binance: false, okx: false });
+  const [connected, setConnected] = useState(false);
   const [liqWindow, setLiqWindow] = useState<LiqWindow>('5m');
 
   const allLiqsRef = useRef<RealtimeLiq[]>([]);
+  const seenIdsRef = useRef<Set<string>>(new Set());
   const windowRef = useRef<LiqWindow>('5m');
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { windowRef.current = liqWindow; }, [liqWindow]);
 
   const addLiq = useCallback((liq: RealtimeLiq) => {
+    const key = `${liq.exchange}-${liq.time}-${liq.value.toFixed(0)}-${liq.side}`;
+    if (seenIdsRef.current.has(key)) return;
+    seenIdsRef.current.add(key);
+    if (seenIdsRef.current.size > 2000) {
+      const arr = Array.from(seenIdsRef.current);
+      seenIdsRef.current = new Set(arr.slice(-1000));
+    }
     allLiqsRef.current = [liq, ...allLiqsRef.current].slice(0, MAX_LIQS);
     setLiqs(prev => [liq, ...prev].slice(0, MAX_LIQS));
+  }, []);
+
+  const addMany = useCallback((newLiqs: RealtimeLiq[]) => {
+    const unique: RealtimeLiq[] = [];
+    for (const liq of newLiqs) {
+      const key = `${liq.exchange}-${liq.time}-${liq.value.toFixed(0)}-${liq.side}`;
+      if (seenIdsRef.current.has(key)) continue;
+      seenIdsRef.current.add(key);
+      unique.push(liq);
+    }
+    if (unique.length === 0) return;
+    if (seenIdsRef.current.size > 2000) {
+      const arr = Array.from(seenIdsRef.current);
+      seenIdsRef.current = new Set(arr.slice(-1000));
+    }
+    allLiqsRef.current = [...unique, ...allLiqsRef.current]
+      .sort((a, b) => b.time - a.time)
+      .slice(0, MAX_LIQS);
+    setLiqs(allLiqsRef.current);
   }, []);
 
   const computeStats = useCallback(() => {
@@ -80,18 +109,9 @@ export function useRealtimeLiquidations(enabled: boolean) {
       if (l.side === 'long') { longCount++; longValue += l.value; }
       else { shortCount++; shortValue += l.value; }
     }
-
-    setStats({
-      count: filtered.length,
-      totalValue,
-      longCount,
-      shortCount,
-      longValue,
-      shortValue,
-    });
+    setStats({ count: filtered.length, totalValue, longCount, shortCount, longValue, shortValue });
   }, []);
 
-  // Get filtered liqs for display based on current window
   const getFilteredLiqs = useCallback(() => {
     const now = Date.now();
     const windowDef = LIQ_WINDOWS.find(w => w.key === liqWindow) ?? LIQ_WINDOWS[1];
@@ -102,23 +122,43 @@ export function useRealtimeLiquidations(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
 
-    // Reset
     allLiqsRef.current = [];
+    seenIdsRef.current = new Set();
     setLiqs([]);
     setStats({ count: 0, totalValue: 0, longCount: 0, shortCount: 0, longValue: 0, shortValue: 0 });
 
     let destroyed = false;
 
-    // ── Binance: wss://fstream.binance.com/ws/!forceOrder@arr ──
-    // Streams ALL liquidations across all symbols
+    // ── REST API poll: seed + backfill from DB ──
+    const pollHistory = async () => {
+      if (destroyed) return;
+      try {
+        const res = await fetch('/api/history/liquidations?mode=feed&hours=1&limit=50');
+        if (!res.ok) return;
+        const json = await res.json();
+        const items: RealtimeLiq[] = (json.data || []).map((d: any) => ({
+          time: d.ts,
+          symbol: d.symbol,
+          side: d.side as 'long' | 'short',
+          value: d.valueUsd,
+          price: d.price,
+          exchange: d.exchange,
+        })).filter((l: RealtimeLiq) => l.value >= MIN_VALUE);
+        addMany(items);
+      } catch { /* skip */ }
+    };
+
+    pollHistory();
+    const pollTimer = setInterval(pollHistory, POLL_INTERVAL);
+
+    // ── Binance WebSocket: real-time ──
     let binWs: WebSocket | null = null;
     let binReconnect: ReturnType<typeof setTimeout> | null = null;
 
     const connectBinance = () => {
       if (destroyed) return;
       binWs = new WebSocket('wss://fstream.binance.com/ws/!forceOrder@arr');
-
-      binWs.onopen = () => setConnected(c => ({ ...c, binance: true }));
+      binWs.onopen = () => setConnected(true);
       binWs.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -139,78 +179,23 @@ export function useRealtimeLiquidations(enabled: boolean) {
         } catch { /* skip */ }
       };
       binWs.onclose = () => {
-        setConnected(c => ({ ...c, binance: false }));
+        setConnected(false);
         if (!destroyed) binReconnect = setTimeout(connectBinance, RECONNECT_DELAY);
       };
       binWs.onerror = () => binWs?.close();
     };
 
-    // ── OKX: wss://ws.okx.com:8443/ws/v5/public ──
-    let okxWs: WebSocket | null = null;
-    let okxReconnect: ReturnType<typeof setTimeout> | null = null;
-    let okxPing: ReturnType<typeof setInterval> | null = null;
-
-    const connectOKX = () => {
-      if (destroyed) return;
-      okxWs = new WebSocket('wss://ws.okx.com:8443/ws/v5/public');
-
-      okxWs.onopen = () => {
-        setConnected(c => ({ ...c, okx: true }));
-        okxWs?.send(JSON.stringify({
-          op: 'subscribe',
-          args: [{ channel: 'liquidation-orders', instType: 'SWAP' }],
-        }));
-        okxPing = setInterval(() => {
-          if (okxWs?.readyState === WebSocket.OPEN) okxWs.send('ping');
-        }, 25000);
-      };
-      okxWs.onmessage = (event) => {
-        try {
-          if (event.data === 'pong') return;
-          const data = JSON.parse(event.data);
-          if (data.event) return; // subscription confirm
-          if (data.data && Array.isArray(data.data)) {
-            for (const item of data.data) {
-              const px = parseFloat(item.bkPx || '0');
-              const sz = parseFloat(item.sz || '0');
-              const value = px * sz;
-              if (value < MIN_VALUE) continue;
-              addLiq({
-                time: parseInt(item.ts || '0') || Date.now(),
-                symbol: normalizeSymbol(item.instId || ''),
-                side: item.side === 'buy' ? 'short' : 'long',
-                value,
-                price: px,
-                exchange: 'OKX',
-              });
-            }
-          }
-        } catch { /* skip */ }
-      };
-      okxWs.onclose = () => {
-        setConnected(c => ({ ...c, okx: false }));
-        if (okxPing) clearInterval(okxPing);
-        if (!destroyed) okxReconnect = setTimeout(connectOKX, RECONNECT_DELAY);
-      };
-      okxWs.onerror = () => okxWs?.close();
-    };
-
     connectBinance();
-    connectOKX();
-
-    // Compute stats every 2s
     statsTimerRef.current = setInterval(computeStats, 2000);
 
     return () => {
       destroyed = true;
+      clearInterval(pollTimer);
       if (binWs) { binWs.onclose = null; binWs.close(); }
-      if (okxWs) { okxWs.onclose = null; okxWs.close(); }
       if (binReconnect) clearTimeout(binReconnect);
-      if (okxReconnect) clearTimeout(okxReconnect);
-      if (okxPing) clearInterval(okxPing);
       if (statsTimerRef.current) clearInterval(statsTimerRef.current);
     };
-  }, [enabled, addLiq, computeStats]);
+  }, [enabled, addLiq, addMany, computeStats]);
 
   return { liqs, stats, connected, liqWindow, setLiqWindow, getFilteredLiqs };
 }

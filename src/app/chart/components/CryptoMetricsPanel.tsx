@@ -110,7 +110,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     enabled: open,
   });
 
-  // Real-time liquidation WebSocket feed (Binance + OKX, all symbols, in-memory only)
+  // Real-time liquidation feed (Binance WebSocket + DB backfill, in-memory only)
   const { stats: liqStats, connected: liqConnected, liqWindow, setLiqWindow, getFilteredLiqs } = useRealtimeLiquidations(open);
 
   const [showDetail, setShowDetail] = useState(false);
@@ -429,7 +429,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
               {/* Real-time liquidations (Binance + OKX WebSocket) */}
               {(() => {
                 const filtered = getFilteredLiqs();
-                const anyConnected = liqConnected.binance || liqConnected.okx;
+                const anyConnected = liqConnected;
 
                 return (
                   <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2 flex flex-col">
@@ -440,7 +440,6 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-[8px] px-1 py-[1px] rounded bg-[#F0B90B]/10 text-[#F0B90B] font-medium">Binance</span>
-                        <span className="text-[8px] px-1 py-[1px] rounded bg-[#00C853]/10 text-[#00C853] font-medium">OKX</span>
                         {anyConnected ? (
                           <Wifi className="w-2.5 h-2.5 text-green-400" />
                         ) : (
@@ -448,6 +447,11 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                         )}
                       </div>
                     </div>
+
+                    {/* Session note */}
+                    <p className="text-[8px] text-neutral-500 text-center mb-1.5">
+                      Session data only, clears on refresh
+                    </p>
 
                     {/* Time window tabs */}
                     <div className="flex items-center gap-[2px] mb-1.5" role="tablist" aria-label="Liquidation time window">
@@ -511,12 +515,6 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                       )}
                     </div>
 
-                    {/* Session note */}
-                    <div className="flex-shrink-0 mt-1.5 pt-1.5 border-t border-white/[0.06]">
-                      <p className="text-[9px] text-neutral-500 text-center leading-tight">
-                        Session data only, clears on refresh
-                      </p>
-                    </div>
                   </div>
                 );
               })()}
