@@ -191,11 +191,11 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
         value: p.rate,
       }))
       .sort((a, b) => (a.time as number) - (b.time as number));
-    return [{ type: 'line' as const, data: lineData, options: { color: '#eab308', lineWidth: 1.5 } }];
+    return [{ type: 'line' as const, data: lineData, options: { color: '#eab308', lineWidth: 1.5, priceFormat: { type: 'price', precision: 4, minMove: 0.0001 } } }];
   }, [historyData]);
 
   return (
-    <section className="border-t border-white/[0.08] bg-[#060606] flex-shrink-0" aria-label={`${symbol} metrics`}>
+    <section className="border-t border-white/[0.08] bg-[#060606] flex-shrink-0 relative z-10" aria-label={`${symbol} metrics`}>
       {/* Toggle bar — shows key stats inline even when collapsed */}
       <button
         onClick={onToggle}
@@ -246,7 +246,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
       </button>
 
       {open && (
-        <div className="px-3 pb-2.5">
+        <div className="px-3 pb-2.5 max-h-[45vh] overflow-y-auto scrollbar-thin">
           {/* Metrics + chart side by side on wide screens */}
           <div className="flex flex-col lg:flex-row gap-2.5">
             {/* Metric cards */}

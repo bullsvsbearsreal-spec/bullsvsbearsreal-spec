@@ -651,8 +651,8 @@ function ChartPageInner() {
 
       {/* ─── TradingView Chart + Tape Sidebar + Metrics Panel ────── */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-1 flex min-h-0 relative" style={{ minHeight: '250px' }}>
-          <div className="flex-1 relative">
+        <div className="flex-1 flex min-h-0 relative z-0" style={{ minHeight: '250px' }}>
+          <div className="flex-1 relative overflow-hidden">
             <ChartErrorBoundary name="TradingView Chart" minHeight="250px">
               <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
             </ChartErrorBoundary>
