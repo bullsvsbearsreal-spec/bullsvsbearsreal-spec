@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     const exchange = searchParams.get('exchange') || undefined;
     const sideParam = searchParams.get('side');
     const validSide = sideParam === 'long' || sideParam === 'short' ? sideParam : undefined;
-    const data = await getLiquidationFeedFiltered(hours, feedLimit, exchange, validSide);
+    const data = await getLiquidationFeedFiltered(hours, feedLimit, exchange, validSide, symbol || undefined);
     return NextResponse.json({ mode: 'feed', hours, data, count: data.length }, {
       headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
     });

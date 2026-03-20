@@ -109,14 +109,15 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     enabled: open,
   });
 
-  // Liquidation feed for this symbol (OKX REST API)
+  // Liquidation feed for this symbol (multi-exchange from DB)
   const { data: liqData } = useApi<{
-    exchange: string;
-    data: Array<{ side: string; size: number; price: number; value: number; timestamp: number }>;
+    mode: string;
+    data: Array<{ symbol: string; exchange: string; side: string; price: number; quantity: number; valueUsd: number; ts: number }>;
+    count: number;
   }>({
     key: `chart-liqs-${symbol}`,
     fetcher: async () => {
-      const res = await fetch(`/api/liquidations?symbol=${symbol.toUpperCase()}&limit=100`);
+      const res = await fetch(`/api/history/liquidations?mode=feed&symbol=${symbol.toUpperCase()}&hours=24&limit=100`);
       if (!res.ok) throw new Error('liq fetch failed');
       return res.json();
     },
@@ -450,10 +451,12 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                 const windowMs = LIQ_WINDOWS.find(w => w.key === liqWindow)?.ms ?? 60 * 60_000;
                 const now = Date.now();
                 const allLiqs = liqData?.data ?? [];
-                const filtered = allLiqs.filter(l => now - l.timestamp < windowMs);
-                const totalLiqValue = filtered.reduce((sum, l) => sum + (l.value || l.size * l.price), 0);
+                const filtered = allLiqs.filter(l => now - l.ts < windowMs);
+                const totalLiqValue = filtered.reduce((sum, l) => sum + (l.valueUsd || 0), 0);
                 const longCount = filtered.filter(l => l.side === 'long').length;
                 const shortCount = filtered.filter(l => l.side === 'short').length;
+                const exchangeSet = new Set(filtered.map(l => l.exchange));
+                const exchangeNames = Array.from(exchangeSet).sort();
 
                 return (
                   <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
@@ -462,7 +465,9 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                         <Zap className="w-3 h-3 text-hub-yellow" />
                         <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Liquidations</p>
                       </div>
-                      <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">OKX</span>
+                      <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">
+                        {exchangeNames.length > 0 ? exchangeNames.slice(0, 3).join(', ') + (exchangeNames.length > 3 ? ` +${exchangeNames.length - 3}` : '') : 'All'}
+                      </span>
                     </div>
 
                     {/* Time window tabs */}
@@ -504,18 +509,19 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                     ) : (
                       <div className="space-y-[2px]">
                         {filtered.slice(0, 12).map((liq, i) => {
-                          const usdVal = liq.value || (liq.size * liq.price);
+                          const usdVal = liq.valueUsd || 0;
                           const isBig = usdVal >= 100_000;
                           return (
                             <div key={i} className={`flex items-center gap-1.5 text-[9px] font-mono ${isBig ? 'bg-white/[0.02]' : ''}`}>
                               <span className={`w-[32px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
                                 {liq.side === 'long' ? 'LONG' : 'SHORT'}
                               </span>
-                              <span className={`font-bold flex-1 ${isBig ? 'text-hub-yellow' : 'text-white'}`}>
+                              <span className="text-neutral-500 text-[8px] w-[48px] truncate">{liq.exchange}</span>
+                              <span className={`font-bold flex-1 ${isBig ? 'text-hub-yellow' : 'text-neutral-300'}`}>
                                 ${usdVal >= 1e6 ? `${(usdVal / 1e6).toFixed(1)}M` : usdVal >= 1000 ? `${(usdVal / 1000).toFixed(1)}K` : usdVal.toFixed(0)}
                               </span>
                               <span className="text-neutral-600 text-[8px]">
-                                {new Date(liq.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(liq.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                           );

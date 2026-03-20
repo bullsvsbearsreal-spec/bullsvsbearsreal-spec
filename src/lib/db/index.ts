@@ -659,6 +659,7 @@ export async function getLiquidationFeedFiltered(
   limit: number = 200,
   exchange?: string,
   side?: 'long' | 'short',
+  symbol?: string,
 ): Promise<Array<{
   symbol: string;
   exchange: string;
@@ -678,6 +679,7 @@ export async function getLiquidationFeedFiltered(
       WHERE ts > NOW() - ${intervalStr}::interval
         ${exchange ? sql`AND exchange = ${exchange}` : sql``}
         ${side ? sql`AND side = ${side}` : sql``}
+        ${symbol ? sql`AND symbol = ${symbol}` : sql``}
       ORDER BY ts DESC
       LIMIT ${limit}
     `;
