@@ -23,7 +23,7 @@ export default defineConfig({
     },
     {
       name: 'e2e',
-      testMatch: /e2e\.spec\.ts/,
+      testMatch: /e2e(\/|\\).*\.spec\.ts$|e2e\.spec\.ts$/,
       use: {
         baseURL: BASE_URL,
         viewport: { width: 1280, height: 800 },

@@ -97,8 +97,9 @@ describe('Binance OI fetcher', () => {
     expect(data[0].symbol).toBe('BTC');
   });
 
-  it('routes through PROXY_URL when set', async () => {
+  it('routes through PROXY_URL when direct domains fail', async () => {
     process.env.PROXY_URL = 'https://proxy.example.com/';
+    // Only proxy.example.com returns data; direct fapi domains return 404
     const fetchFn = makeFetchFn({
       'proxy.example.com': [
         { symbol: 'BTCUSDT', quoteVolume: '5000000000', lastPrice: '67500' },
@@ -106,9 +107,11 @@ describe('Binance OI fetcher', () => {
     });
 
     await fetcher(fetchFn);
-    const calledUrl = fetchFn.mock.calls[0][0] as string;
-    expect(calledUrl).toContain('proxy.example.com');
-    expect(calledUrl).toContain(encodeURIComponent('https://fapi.binance.com'));
+    // Proxy is the fallback (4th attempt after 3 direct domains fail)
+    const allUrls = fetchFn.mock.calls.map((c: any) => c[0] as string);
+    const proxyCall = allUrls.find((u: string) => u.includes('proxy.example.com'));
+    expect(proxyCall).toBeDefined();
+    expect(proxyCall).toContain(encodeURIComponent('https://fapi.binance.com'));
   });
 });
 

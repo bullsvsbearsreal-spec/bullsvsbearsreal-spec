@@ -746,14 +746,14 @@ export default function FundingPage() {
         </div>
 
         {error && (
-          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
+          <div role="alert" className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">
             <AlertTriangle className="w-4 h-4" />
             {error}
           </div>
         )}
 
         {loading && fundingRates.length === 0 ? (
-          <div className="space-y-2 animate-pulse">
+          <div className="space-y-2 animate-pulse" aria-live="polite" aria-busy="true">
             <div className="flex items-center gap-2 mb-3">
               <RefreshCw className="w-4 h-4 text-hub-yellow animate-spin" />
               <span className="text-neutral-500 text-sm">Loading {assetClass} funding rates...</span>

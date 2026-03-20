@@ -45,6 +45,15 @@ next-env.d.ts
 # Claude
 .claude/
 
+# One-off scripts and temp files
+scripts/
+tmp_*.json
+hl_lb.json
+cookies.txt
+nul
+*.tmp.check
+C:*
+
 .vercel
 
 .env*.local

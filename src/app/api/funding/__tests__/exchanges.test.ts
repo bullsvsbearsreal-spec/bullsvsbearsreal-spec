@@ -557,10 +557,11 @@ describe('GMX fetcher', () => {
     expect(results[0].fundingInterval).toBe('1h');
     expect(results[0].type).toBe('dex');
 
-    // fundingRate = -(rawFundingL) where rawFundingL = safeBigInt(annualRate) / 1e30 / 8760 * 100
-    // safeBigInt(-5e28) = -5e28, / 1e30 = -0.05, / 8760 ≈ -5.707e-6, * 100 ≈ -5.707e-4
-    // fundingL = -(-5.707e-4) = 5.707e-4 ≈ 0.000571%
-    const expectedFundingRate = 0.05 / 8760 * 100; // ≈ 0.000571%
+    // GMX uses min(|fundingRateLong|, |fundingRateShort|) as base rate
+    // |fundingRateLong| = 5e28, |fundingRateShort| = 3e28 → base = 3e28
+    // hourlyBasePct = 3e28 / 1e30 / 8760 * 100 = 0.03 / 8760 * 100 ≈ 0.000342%
+    // rawL < 0 → longs pay → fundingL = +hourlyBasePct
+    const expectedFundingRate = 0.03 / 8760 * 100; // ≈ 0.000342%
     expect(results[0].fundingRate).toBeCloseTo(expectedFundingRate, 6);
   });
 
@@ -580,8 +581,8 @@ describe('GMX fetcher', () => {
         {
           name: 'BTC/USD [WBTC-USDT]',
           isListed: true,
-          fundingRateLong: '100000000000000000000000000000', // 1e29
-          fundingRateShort: '0',
+          fundingRateLong: '100000000000000000000000000000',  // 1e29 (positive = shorts pay longs)
+          fundingRateShort: '-200000000000000000000000000000', // -2e29 (OI-weighted receiving side)
           borrowingRateLong: '0',
           borrowingRateShort: '0',
           openInterestLong: BigInt('5000000000000000000000000000000000').toString(),  // 5e33 — higher
@@ -596,9 +597,9 @@ describe('GMX fetcher', () => {
     // Only one BTC entry (the one with higher OI)
     const btcEntries = results.filter((r: any) => r.symbol === 'BTC');
     expect(btcEntries).toHaveLength(1);
-    // The higher OI pool has fundingRateLong = 1e29
-    // rawFundingL = 1e29 / 1e30 / 8760 * 100 = 0.1 / 8760 * 100 ≈ 0.001142%
-    // fundingL = -rawFundingL ≈ -0.001142% (shorts pay)
+    // Higher OI pool: fundingRateLong = 1e29, fundingRateShort = -2e29
+    // min(|1e29|, |-2e29|) = 1e29 → base = 1e29 / 1e30 / 8760 * 100 ≈ 0.001142%
+    // rawL > 0 → shorts pay → fundingS = +hourlyBasePct, fundingL = -hourlyBasePct
     expect(btcEntries[0].fundingRate).toBeCloseTo(-(0.1 / 8760 * 100), 6);
   });
 

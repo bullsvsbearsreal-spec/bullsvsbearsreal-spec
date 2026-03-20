@@ -71,14 +71,16 @@ describe('formatPrice', () => {
     expect(result).toMatch(/^\$\d\.\d{4}e[+-]\d+$/);
   });
 
-  it('formats zero (falls through to scientific — known quirk)', () => {
-    // 0 is not >= any positive threshold, so it hits toExponential
+  it('formats zero as $0.0000e+0 (below all thresholds)', () => {
+    // abs(0) = 0, not >= any positive threshold, hits toExponential
     expect(formatPrice(0)).toBe('$0.0000e+0');
   });
 
-  it('handles negative prices (falls through to scientific — known quirk)', () => {
-    // Negative values are not >= any positive threshold, so they hit toExponential
-    expect(formatPrice(-5)).toBe('$-5.0000e+0');
+  it('handles negative prices with sign prefix', () => {
+    // abs(-5) = 5, which is >= 1, so formatted as -$5.00
+    expect(formatPrice(-5)).toBe('-$5.00');
+    expect(formatPrice(-0.05)).toBe('-$0.0500');
+    expect(formatPrice(-65432)).toMatch(/^-\$65,?432$/);
   });
 });
 
