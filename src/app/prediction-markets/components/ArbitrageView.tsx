@@ -18,6 +18,7 @@ const ROWS_PER_PAGE = 20;
 const PLATFORM_COLORS: Record<PredictionPlatform, { bg: string; text: string; icon: string }> = {
   polymarket: { bg: 'bg-blue-500/10', text: 'text-blue-400', icon: '🔵' },
   kalshi: { bg: 'bg-red-500/10', text: 'text-red-400', icon: '🔴' },
+  manifold: { bg: 'bg-green-500/10', text: 'text-green-400', icon: '🟢' },
 };
 
 function cents(v: number): string {
@@ -26,9 +27,23 @@ function cents(v: number): string {
   return `${c}¢`;
 }
 
+function pct(v: number): string {
+  return `${(v * 100).toFixed(1)}%`;
+}
+
 function profitPerThousand(spreadPct: number): string {
   const profit = (spreadPct / 100) * 1000;
   return `$${profit.toFixed(2)}`;
+}
+
+/** Overround = YES + NO prices. >100% means the platform takes a vig. */
+function overround(yes: number, no: number): number {
+  return (yes + no) * 100;
+}
+
+/** Consensus implied probability = average YES across both platforms */
+function consensus(a: number, b: number): number {
+  return ((a + b) / 2) * 100;
 }
 
 function formatVolume(v: number): string {
@@ -205,12 +220,27 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
                     </div>
                   </div>
 
-                  {/* Info row: volume + end date + direction */}
-                  <div className="flex items-center gap-3 mt-1.5 pt-1.5 border-t border-white/[0.03]">
+                  {/* Info row: volume, liquidity, OI, end date, direction */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 pt-1.5 border-t border-white/[0.03]">
                     {(item.platformA.volume24h > 0 || item.platformB.volume24h > 0) && (
                       <span className="flex items-center gap-1 text-[9px] text-neutral-600">
                         <DollarSign className="w-2.5 h-2.5" />
-                        Vol: {formatVolume(item.platformA.volume24h)} / {formatVolume(item.platformB.volume24h)}
+                        24h: {formatVolume(item.platformA.volume24h)} / {formatVolume(item.platformB.volume24h)}
+                      </span>
+                    )}
+                    {(item.platformA.totalVolume > 0 || item.platformB.totalVolume > 0) && (
+                      <span className="text-[9px] text-neutral-600">
+                        Total: {formatVolume(item.platformA.totalVolume)} / {formatVolume(item.platformB.totalVolume)}
+                      </span>
+                    )}
+                    {(item.platformA.liquidity > 0 || item.platformB.liquidity > 0) && (
+                      <span className="text-[9px] text-neutral-600">
+                        Liq: {item.platformA.liquidity > 0 ? formatVolume(item.platformA.liquidity) : '-'} / {item.platformB.liquidity > 0 ? formatVolume(item.platformB.liquidity) : '-'}
+                      </span>
+                    )}
+                    {(item.platformA.openInterest > 0 || item.platformB.openInterest > 0) && (
+                      <span className="text-[9px] text-neutral-600">
+                        OI: {item.platformA.openInterest > 0 ? formatVolume(item.platformA.openInterest) : '-'} / {item.platformB.openInterest > 0 ? formatVolume(item.platformB.openInterest) : '-'}
                       </span>
                     )}
                     {(() => {
@@ -226,7 +256,25 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
                         </span>
                       );
                     })()}
-                    <span className="text-[9px] text-neutral-600 ml-auto">
+                  </div>
+
+                  {/* Trade signal row: consensus, overround, action */}
+                  <div className="flex items-center gap-3 mt-1 text-[9px]">
+                    <span className="text-neutral-500">
+                      Consensus: <span className="text-white font-mono font-semibold">{consensus(item.platformA.yesPrice, item.platformB.yesPrice).toFixed(1)}%</span> YES
+                    </span>
+                    {(() => {
+                      const vigA = overround(item.platformA.yesPrice, item.platformA.noPrice);
+                      const vigB = overround(item.platformB.yesPrice, item.platformB.noPrice);
+                      const hasVig = vigA > 101 || vigB > 101;
+                      if (!hasVig) return null;
+                      return (
+                        <span className="text-neutral-600">
+                          Vig: {vigA > 101 ? `${item.platformA.platform} ${vigA.toFixed(1)}%` : ''}{vigA > 101 && vigB > 101 ? ' / ' : ''}{vigB > 101 ? `${item.platformB.platform} ${vigB.toFixed(1)}%` : ''}
+                        </span>
+                      );
+                    })()}
+                    <span className="text-hub-yellow font-semibold ml-auto">
                       {item.direction.replace('buy-', 'Buy ').replace('-yes', ' YES').replace('-no', ' NO')}
                     </span>
                   </div>

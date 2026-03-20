@@ -657,8 +657,8 @@ export async function fetchPredictionMarkets(): Promise<import('./prediction-mar
   } catch {
     return {
       arbitrage: [],
-      markets: { polymarket: [], kalshi: [] },
-      meta: { counts: { polymarket: 0, kalshi: 0 }, matchedCount: 0, timestamp: Date.now() },
+      markets: { polymarket: [], kalshi: [], manifold: [] },
+      meta: { counts: { polymarket: 0, kalshi: 0, manifold: 0 }, matchedCount: 0, timestamp: Date.now() },
     };
   }
 }

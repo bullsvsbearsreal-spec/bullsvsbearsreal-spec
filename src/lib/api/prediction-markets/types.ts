@@ -1,5 +1,5 @@
 // Supported prediction market platforms
-export type PredictionPlatform = 'polymarket' | 'kalshi';
+export type PredictionPlatform = 'polymarket' | 'kalshi' | 'manifold';
 
 // Normalized prediction market from any platform
 export interface PredictionMarket {

@@ -18,6 +18,7 @@ type ViewMode = 'arbitrage' | 'browse';
 const PLATFORM_LABELS: Record<PredictionPlatform, string> = {
   polymarket: 'Polymarket',
   kalshi: 'Kalshi',
+  manifold: 'Manifold',
 };
 
 export default function PredictionMarketsPage() {
@@ -36,10 +37,11 @@ export default function PredictionMarketsPage() {
 
   const allArbitrage = Array.isArray(data?.arbitrage) ? data.arbitrage : [];
   const arbitrage = authLimit ? allArbitrage.slice(0, authLimit) : allArbitrage;
-  const allMarkets = data?.markets ?? { polymarket: [], kalshi: [] };
+  const allMarkets = data?.markets ?? { polymarket: [], kalshi: [], manifold: [] };
   const markets = authLimit ? {
     polymarket: allMarkets.polymarket.slice(0, 10),
     kalshi: allMarkets.kalshi.slice(0, 10),
+    manifold: allMarkets.manifold.slice(0, 10),
   } : allMarkets;
   const meta = data?.meta;
 

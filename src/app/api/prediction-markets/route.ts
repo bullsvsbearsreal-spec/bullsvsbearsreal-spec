@@ -162,6 +162,46 @@ async function fetchKalshi(): Promise<PredictionMarket[]> {
   return allMarkets;
 }
 
+// ─── Manifold Markets ──────────────────────────────────────────
+async function fetchManifold(): Promise<PredictionMarket[]> {
+  // Fetch top markets by volume — Manifold has no auth requirement
+  const res = await fetchWithTimeout(
+    'https://api.manifold.markets/v0/search-markets?term=&sort=liquidity&limit=200&filter=open',
+    {},
+    15000
+  );
+  if (!res.ok) throw new Error(`Manifold HTTP ${res.status}`);
+  const markets: any[] = await res.json();
+
+  return markets
+    .filter((m: any) => {
+      if (m.isResolved || m.outcomeType !== 'BINARY') return false;
+      if (m.probability == null) return false;
+      if (m.probability < 0.02 || m.probability > 0.98) return false;
+      if ((m.totalLiquidity || 0) < 50) return false; // skip dust markets
+      return true;
+    })
+    .map((m: any) => {
+      const yes = m.probability ?? 0.5;
+      return {
+        id: String(m.id || ''),
+        platform: 'manifold' as const,
+        question: m.question || '',
+        slug: m.slug || '',
+        yesPrice: yes,
+        noPrice: +(1 - yes).toFixed(4),
+        volume24h: m.volume24Hours || 0,
+        totalVolume: m.volume || 0,
+        liquidity: m.totalLiquidity || 0,
+        openInterest: 0,
+        endDate: m.closeTime ? new Date(m.closeTime).toISOString() : '',
+        category: inferCategory(m.question || ''),
+        active: true,
+        url: m.url || `https://manifold.markets/${m.creatorUsername}/${m.slug}`,
+      };
+    });
+}
+
 // ─── Shared helpers ──────────────────────────────────────────
 function inferCategory(question: string, tags?: any, fallback?: string): string {
   if (tags && Array.isArray(tags) && tags.length > 0) return tags[0];
@@ -328,18 +368,21 @@ function buildArbitrage(
 export async function GET(_request: NextRequest) {
   const errors: string[] = [];
 
-  const [polyResult, kalshiResult] = await Promise.allSettled([
+  const [polyResult, kalshiResult, manifoldResult] = await Promise.allSettled([
     fetchPolymarket(),
     fetchKalshi(),
+    fetchManifold(),
   ]);
 
   const poly = polyResult.status === 'fulfilled' ? polyResult.value : [];
   const kalshi = kalshiResult.status === 'fulfilled' ? kalshiResult.value : [];
+  const manifold = manifoldResult.status === 'fulfilled' ? manifoldResult.value : [];
 
   if (polyResult.status === 'rejected') errors.push(`Polymarket: ${polyResult.reason}`);
   if (kalshiResult.status === 'rejected') errors.push(`Kalshi: ${kalshiResult.reason}`);
+  if (manifoldResult.status === 'rejected') errors.push(`Manifold: ${manifoldResult.reason}`);
 
-  const platformData = { polymarket: poly, kalshi };
+  const platformData = { polymarket: poly, kalshi, manifold };
   const arbitrage = matchAllPlatforms(platformData);
 
   const response: PredictionMarketsResponse = {
@@ -349,6 +392,7 @@ export async function GET(_request: NextRequest) {
       counts: {
         polymarket: poly.length,
         kalshi: kalshi.length,
+        manifold: manifold.length,
       },
       matchedCount: arbitrage.length,
       timestamp: Date.now(),

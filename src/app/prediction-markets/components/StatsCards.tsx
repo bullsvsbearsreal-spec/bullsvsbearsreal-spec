@@ -1,11 +1,18 @@
 'use client';
 
-import { GitCompareArrows, Percent, BarChart3, Layers } from 'lucide-react';
+import { GitCompareArrows, Percent, BarChart3, Layers, DollarSign, TrendingUp } from 'lucide-react';
 import type { PredictionArbitrage, PredictionMarketsResponse } from '@/lib/api/prediction-markets/types';
 
 interface StatsCardsProps {
   arbitrage: PredictionArbitrage[];
   meta?: PredictionMarketsResponse['meta'];
+}
+
+function fmtVol(v: number): string {
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
 }
 
 export default function StatsCards({ arbitrage, meta }: StatsCardsProps) {
@@ -14,6 +21,10 @@ export default function StatsCards({ arbitrage, meta }: StatsCardsProps) {
     ? +(arbitrage.reduce((s, a) => s + a.spreadPercent, 0) / arbitrage.length).toFixed(2)
     : 0;
   const curatedCount = arbitrage.filter(a => a.matchType === 'curated').length;
+  const actionable = arbitrage.filter(a => a.spreadPercent >= 2).length;
+
+  // Total 24h volume across all arb pairs
+  const totalVol24h = arbitrage.reduce((s, a) => s + (a.platformA.volume24h || 0) + (a.platformB.volume24h || 0), 0);
 
   const totalMarkets = meta
     ? Object.values(meta.counts).reduce((s, n) => s + n, 0)
@@ -26,7 +37,7 @@ export default function StatsCards({ arbitrage, meta }: StatsCardsProps) {
     {
       label: 'Matched Pairs',
       value: String(arbitrage.length),
-      sub: `${curatedCount} curated`,
+      sub: `${curatedCount} curated · ${actionable} actionable`,
       icon: GitCompareArrows,
       iconBg: 'bg-purple-500/10',
       iconColor: 'text-purple-400',
@@ -42,16 +53,16 @@ export default function StatsCards({ arbitrage, meta }: StatsCardsProps) {
     {
       label: 'Avg Spread',
       value: `${avgSpread.toFixed(1)}%`,
-      sub: 'across all pairs',
+      sub: `$${((avgSpread / 100) * 1000).toFixed(0)} profit per $1K`,
       icon: BarChart3,
       iconBg: 'bg-hub-yellow/10',
       iconColor: 'text-hub-yellow',
     },
     {
-      label: 'Markets',
-      value: String(totalMarkets),
-      sub: `${activePlatforms} platforms`,
-      icon: Layers,
+      label: '24h Volume',
+      value: fmtVol(totalVol24h),
+      sub: `${totalMarkets} markets · ${activePlatforms} platforms`,
+      icon: DollarSign,
       iconBg: 'bg-blue-500/10',
       iconColor: 'text-blue-400',
     },

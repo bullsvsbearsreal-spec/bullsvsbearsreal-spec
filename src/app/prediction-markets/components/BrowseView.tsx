@@ -16,6 +16,7 @@ const ROWS_PER_PAGE = 20;
 const PLATFORM_CONFIG: { key: PredictionPlatform; label: string; color: string; dotColor: string }[] = [
   { key: 'polymarket', label: 'Polymarket', color: 'text-purple-400', dotColor: 'bg-purple-400' },
   { key: 'kalshi', label: 'Kalshi', color: 'text-blue-400', dotColor: 'bg-blue-400' },
+  { key: 'manifold', label: 'Manifold', color: 'text-green-400', dotColor: 'bg-green-400' },
 ];
 
 function pct(v: number): string {
@@ -102,21 +103,39 @@ function MarketColumn({ title, markets, color, dotColor }: { title: string; mark
                   <span className="text-red-400 font-mono font-semibold">{pct(m.noPrice)}</span>
                   <span className="text-neutral-600 ml-0.5">NO</span>
                 </span>
+                {(() => {
+                  const vig = (m.yesPrice + m.noPrice) * 100;
+                  if (vig <= 101) return null;
+                  return (
+                    <span className="text-neutral-700 text-[9px]" title="Overround (vig) — how much YES+NO exceeds 100%">
+                      Vig {vig.toFixed(1)}%
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2 text-[10px] text-neutral-600">
                 {m.volume24h > 0 && (
-                  <span>Vol: <span className="text-neutral-400 font-mono">{vol(m.volume24h)}</span></span>
+                  <span>24h: <span className="text-neutral-400 font-mono">{vol(m.volume24h)}</span></span>
                 )}
-                {m.endDate && (
-                  <span>{new Date(m.endDate).toLocaleDateString()}</span>
+                {m.totalVolume > 0 && (
+                  <span>Total: <span className="text-neutral-400 font-mono">{vol(m.totalVolume)}</span></span>
                 )}
               </div>
             </div>
 
-            <div className="mt-1">
+            <div className="flex items-center gap-2 mt-1">
               <span className="px-1.5 py-0.5 rounded text-[9px] bg-white/[0.04] text-neutral-500">
                 {m.category}
               </span>
+              {m.liquidity > 0 && (
+                <span className="text-[9px] text-neutral-600">Liq: <span className="text-neutral-500 font-mono">{vol(m.liquidity)}</span></span>
+              )}
+              {m.openInterest > 0 && (
+                <span className="text-[9px] text-neutral-600">OI: <span className="text-neutral-500 font-mono">{vol(m.openInterest)}</span></span>
+              )}
+              {m.endDate && (
+                <span className="text-[9px] text-neutral-600 ml-auto">{new Date(m.endDate).toLocaleDateString()}</span>
+              )}
             </div>
           </div>
         ))}
