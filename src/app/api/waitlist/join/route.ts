@@ -31,8 +31,33 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
 }
 
+// Cleanup stale rate-limit buckets every 10 min
+let lastRateCleanup = Date.now();
+function cleanupRateBuckets() {
+  const now = Date.now();
+  if (now - lastRateCleanup < 600_000) return;
+  lastRateCleanup = now;
+  rateBuckets.forEach((v, k) => { if (now > v.reset) rateBuckets.delete(k); });
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // CSRF: verify Origin header matches our domain
+    const origin = request.headers.get('origin') || '';
+    const allowedOrigins = ['https://info-hub.io', 'https://www.info-hub.io'];
+    if (process.env.NODE_ENV === 'development') allowedOrigins.push('http://localhost:3000');
+    if (origin && !allowedOrigins.includes(origin)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Content-Type check
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return NextResponse.json({ error: 'Content-Type must be application/json' }, { status: 415 });
+    }
+
+    cleanupRateBuckets();
+
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     if (!checkRate(ip)) {
       return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });

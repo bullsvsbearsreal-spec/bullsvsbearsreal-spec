@@ -80,8 +80,6 @@ export default function LiquidationsPage() {
   const [sideFilter, setSideFilter] = useState<'all' | 'long' | 'short'>('all');
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-
   const hours = TIMEFRAME_HOURS[timeframe];
 
   // ─── Real-time WebSocket Feed (8 exchanges) ─────
@@ -163,8 +161,6 @@ export default function LiquidationsPage() {
         stats={stats}
         timeframe={timeframe}
         onTimeframeChange={setTimeframe}
-        soundEnabled={soundEnabled}
-        onSoundToggle={() => setSoundEnabled(s => !s)}
       />
 
       {/* Connection status indicator — per-exchange dots */}
@@ -215,6 +211,7 @@ export default function LiquidationsPage() {
             <LiquidationChart
               timeframeHours={hours}
               symbol={selectedSymbol}
+              topSymbols={treemapItems.slice(0, 10).map(i => i.symbol)}
             />
           </div>
         </div>

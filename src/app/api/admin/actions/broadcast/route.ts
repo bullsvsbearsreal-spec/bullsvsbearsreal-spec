@@ -4,6 +4,7 @@ import { recordAuditEvent, getAllPushSubscriptions, getAllActiveTelegramChatIds 
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const adminErr = await requireAdmin();

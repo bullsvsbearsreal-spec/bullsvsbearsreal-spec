@@ -26,7 +26,9 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
         const parsed = typeof m.outcomePrices === 'string'
           ? JSON.parse(m.outcomePrices) : m.outcomePrices;
         prices = parsed.map((p: any) => parseFloat(p) || 0.5);
-      } catch { /* */ }
+      } catch (e) {
+        console.warn('[prediction-markets] Polymarket price parse failed:', m.id, e);
+      }
       const yesPrice = prices[0] ?? 0.5;
       if (yesPrice < 0.02 || yesPrice > 0.98) return false;
       return true;
@@ -37,7 +39,9 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
         const parsed = typeof m.outcomePrices === 'string'
           ? JSON.parse(m.outcomePrices) : m.outcomePrices;
         prices = parsed.map((p: any) => parseFloat(p) || 0.5);
-      } catch { /* */ }
+      } catch (e) {
+        console.warn('[prediction-markets] Polymarket price parse failed:', m.id, e);
+      }
 
       return {
         id: String(m.id || m.conditionId || ''),
@@ -295,8 +299,15 @@ function buildArbitrage(
   question: string,
   category: string
 ): PredictionArbitrage {
-  const spread = Math.abs(a.yesPrice - b.yesPrice);
-  const cheaper = a.yesPrice < b.yesPrice ? a.platform : b.platform;
+  // Compare both YES and NO spreads — use the better opportunity
+  const yesSpread = Math.abs(a.yesPrice - b.yesPrice);
+  const noSpread = Math.abs(a.noPrice - b.noPrice);
+  const useNo = noSpread > yesSpread;
+  const spread = Math.max(yesSpread, noSpread);
+
+  const direction = useNo
+    ? `buy-${a.noPrice < b.noPrice ? a.platform : b.platform}-no`
+    : `buy-${a.yesPrice < b.yesPrice ? a.platform : b.platform}-yes`;
 
   return {
     id: `${a.id}_${b.id}`,
@@ -307,7 +318,7 @@ function buildArbitrage(
     platformB: b,
     spread,
     spreadPercent: +(spread * 100).toFixed(2),
-    direction: `buy-${cheaper}-yes`,
+    direction,
     urlA: a.url,
     urlB: b.url,
   };

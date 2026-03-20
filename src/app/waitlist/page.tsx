@@ -83,8 +83,8 @@ const FAQS = [
     a: 'InfoHub is a real-time crypto derivatives intelligence platform. We aggregate funding rates, liquidations, open interest, options data, and more from 33+ exchanges (both centralized and decentralized) into a single dashboard built for serious traders.',
   },
   {
-    q: 'When does it launch?',
-    a: 'Very soon. We\'re in the final testing phase. Join the waitlist to be the first to know when we go live.',
+    q: 'Is it live?',
+    a: 'Yes! The platform is now open to everyone. You can explore all features right now. Sign up for email updates to stay informed about new features and premium plans.',
   },
   {
     q: 'How much will it cost?',
@@ -99,8 +99,8 @@ const FAQS = [
     a: 'Three things: (1) We cover 15 DEX protocols that most competitors miss entirely. (2) We include prediction market arbitrage scanning across Polymarket and Kalshi. (3) Our funding rate analysis goes deeper with correlation matrices, arbitrage detection, and OI-weighted averages across all asset classes.',
   },
   {
-    q: 'Can I get early access?',
-    a: 'Join the waitlist above. We\'re rolling out access in batches and waitlist members get priority.',
+    q: 'Do I need an account?',
+    a: 'No. The platform is fully open — no login required. Sign up with your email to get notified about new features, premium plans, and exclusive updates.',
   },
 ];
 
@@ -173,9 +173,9 @@ export default function WaitlistPage() {
         <div className="absolute top-20 right-1/4 w-[300px] h-[300px] bg-purple-500/[0.02] rounded-full blur-[100px] pointer-events-none" />
 
         <div className="relative max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 mb-8">
-            <span className="w-2 h-2 rounded-full bg-hub-yellow animate-pulse" />
-            <span className="text-hub-yellow text-sm font-bold">Launching Soon</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 mb-8">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-green-400 text-sm font-bold">Now Open</span>
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.05]">
@@ -186,7 +186,8 @@ export default function WaitlistPage() {
           <p className="text-lg sm:text-xl text-neutral-400 max-w-lg mx-auto mb-10 leading-relaxed">
             Funding rates, liquidations, open interest, and prediction market arbitrage from{' '}
             <span className="text-white font-bold">{count} exchanges</span>.
-            Real-time. No fluff.
+            Real-time. No fluff.{' '}
+            <Link href="/funding" className="text-hub-yellow hover:underline font-semibold">Explore now &rarr;</Link>
           </p>
 
           {/* Email Form */}
@@ -196,7 +197,7 @@ export default function WaitlistPage() {
                 <Check className="w-6 h-6 text-green-400" />
               </div>
               <p className="text-green-400 font-bold text-xl">{message}</p>
-              <p className="text-green-400/60 text-sm">Check your inbox. We'll notify you at launch.</p>
+              <p className="text-green-400/60 text-sm">We'll keep you posted on new features and premium plans.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="max-w-lg mx-auto">
@@ -218,14 +219,14 @@ export default function WaitlistPage() {
                   {status === 'loading' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <>Get Early Access <ArrowRight className="w-4 h-4" /></>
+                    <>Get Updates <ArrowRight className="w-4 h-4" /></>
                   )}
                 </button>
               </div>
               {status === 'error' && (
                 <p className="text-red-400 text-sm mt-3">{message}</p>
               )}
-              <p className="text-neutral-700 text-xs mt-4">No spam, ever. Just one email when we launch.</p>
+              <p className="text-neutral-700 text-xs mt-4">No spam, ever. Just updates on new features and premium plans.</p>
             </form>
           )}
         </div>
@@ -382,7 +383,7 @@ export default function WaitlistPage() {
           <h2 className="text-3xl sm:text-4xl font-black mb-4">
             Ready to trade smarter?
           </h2>
-          <p className="text-neutral-500 mb-8">Be first in line when InfoHub launches.</p>
+          <p className="text-neutral-500 mb-8">The platform is live. <Link href="/funding" className="text-hub-yellow hover:underline">Start exploring</Link> or sign up for updates.</p>
 
           {status === 'success' ? (
             <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-green-500/10 border border-green-500/20">
@@ -406,7 +407,7 @@ export default function WaitlistPage() {
                   disabled={status === 'loading'}
                   className="px-8 py-3.5 rounded-xl bg-hub-yellow text-black font-bold text-[15px] hover:bg-hub-yellow/90 transition-all disabled:opacity-50"
                 >
-                  {status === 'loading' ? 'Joining...' : 'Get Early Access'}
+                  {status === 'loading' ? 'Joining...' : 'Get Updates'}
                 </button>
               </div>
             </form>

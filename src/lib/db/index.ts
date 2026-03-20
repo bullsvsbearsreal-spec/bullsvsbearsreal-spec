@@ -13,7 +13,15 @@ let sql: ReturnType<typeof postgres> | null = null;
 
 export function getSQL() {
   if (!DATABASE_URL) {
-    throw new Error('No database URL configured. Set DATABASE_URL env var.');
+    // Return a tagged-template proxy that throws on actual use (not on import).
+    // This allows modules to call getSQL() at init time without crashing the build.
+    return new Proxy((() => {}) as any, {
+      apply() { throw new Error('No database URL configured. Set DATABASE_URL env var.'); },
+      get(_, prop) {
+        if (prop === 'then') return undefined; // not a thenable
+        return () => { throw new Error('No database URL configured. Set DATABASE_URL env var.'); };
+      },
+    }) as ReturnType<typeof postgres>;
   }
   if (!sql) {
     sql = postgres(DATABASE_URL, {

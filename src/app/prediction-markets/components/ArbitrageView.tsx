@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ExternalLink, GitCompareArrows, Star, ArrowUpDown } from 'lucide-react';
+import { ExternalLink, GitCompareArrows, Star, ArrowUpDown, Clock, DollarSign } from 'lucide-react';
 import Pagination from '@/app/funding/components/Pagination';
 import type { PredictionArbitrage, PredictionPlatform } from '@/lib/api/prediction-markets/types';
 
@@ -29,6 +29,26 @@ function cents(v: number): string {
 function profitPerThousand(spreadPct: number): string {
   const profit = (spreadPct / 100) * 1000;
   return `$${profit.toFixed(2)}`;
+}
+
+function formatVolume(v: number): string {
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+function formatEndDate(d: string): string | null {
+  if (!d) return null;
+  try {
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return null;
+    const now = Date.now();
+    const diff = date.getTime() - now;
+    if (diff < 0) return 'Expired';
+    if (diff < 86400000) return '<1d left';
+    if (diff < 604800000) return `${Math.ceil(diff / 86400000)}d left`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch { return null; }
 }
 
 export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }: ArbitrageViewProps) {
@@ -183,6 +203,32 @@ export default function ArbitrageView({ arbitrage, searchTerm, categoryFilter }:
                         N {cents(item.platformB.noPrice)}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Info row: volume + end date + direction */}
+                  <div className="flex items-center gap-3 mt-1.5 pt-1.5 border-t border-white/[0.03]">
+                    {(item.platformA.volume24h > 0 || item.platformB.volume24h > 0) && (
+                      <span className="flex items-center gap-1 text-[9px] text-neutral-600">
+                        <DollarSign className="w-2.5 h-2.5" />
+                        Vol: {formatVolume(item.platformA.volume24h)} / {formatVolume(item.platformB.volume24h)}
+                      </span>
+                    )}
+                    {(() => {
+                      const endA = formatEndDate(item.platformA.endDate);
+                      const endB = formatEndDate(item.platformB.endDate);
+                      const end = endA || endB;
+                      if (!end) return null;
+                      const isExpiring = end.includes('left') && (end.includes('<1d') || end.includes('1d') || end.includes('2d'));
+                      return (
+                        <span className={`flex items-center gap-1 text-[9px] ${isExpiring ? 'text-red-400' : 'text-neutral-600'}`}>
+                          <Clock className="w-2.5 h-2.5" />
+                          {end}
+                        </span>
+                      );
+                    })()}
+                    <span className="text-[9px] text-neutral-600 ml-auto">
+                      {item.direction.replace('buy-', 'Buy ').replace('-yes', ' YES').replace('-no', ' NO')}
+                    </span>
                   </div>
                 </div>
 

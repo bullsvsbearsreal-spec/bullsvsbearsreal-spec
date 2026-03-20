@@ -22,19 +22,19 @@ export default function AuthOverlay() {
           </div>
 
           <h2 className="text-2xl font-bold text-white tracking-tight mb-2">
-            Sign up to unlock all data
+            Join the waitlist
           </h2>
           <p className="text-neutral-500 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
-            Create an account to access real-time funding rates, open interest,
+            Get early access to real-time funding rates, open interest,
             liquidations, and more across 33 exchanges.
           </p>
 
           <div className="space-y-3">
             <Link
-              href="/signup"
+              href="/waitlist"
               className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 transition-all"
             >
-              Create account
+              Join Waitlist
               <ArrowRight size={15} />
             </Link>
             <Link

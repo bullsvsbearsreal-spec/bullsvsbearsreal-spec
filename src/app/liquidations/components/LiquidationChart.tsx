@@ -12,12 +12,13 @@ import { BarChart3 } from 'lucide-react';
 // Types
 // ---------------------------------------------------------------------------
 
-const SYMBOLS = ['BTC', 'ETH', 'SOL'] as const;
-type SymbolOption = (typeof SYMBOLS)[number];
+const DEFAULT_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'PEPE', 'WIF', 'SUI', 'AVAX', 'LINK'];
 
 interface LiquidationChartProps {
   timeframeHours: number;
   symbol?: string | null;
+  /** Additional symbols to show in the selector (e.g. from treemap top symbols) */
+  topSymbols?: string[];
 }
 
 interface HistoryPoint {
@@ -132,17 +133,23 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 // LiquidationChart
 // ---------------------------------------------------------------------------
 
-export default function LiquidationChart({ timeframeHours, symbol }: LiquidationChartProps) {
-  const [selected, setSelected] = useState<SymbolOption>(
-    symbol && SYMBOLS.includes(symbol as SymbolOption)
-      ? (symbol as SymbolOption)
-      : 'BTC',
+export default function LiquidationChart({ timeframeHours, symbol, topSymbols }: LiquidationChartProps) {
+  // Build dynamic symbol list: merge defaults with top symbols from treemap
+  const symbols = useMemo(() => {
+    const set = new Set(DEFAULT_SYMBOLS);
+    if (topSymbols) topSymbols.forEach(s => set.add(s));
+    if (symbol) set.add(symbol);
+    return Array.from(set).slice(0, 15);
+  }, [topSymbols, symbol]);
+
+  const [selected, setSelected] = useState<string>(
+    symbol || 'BTC',
   );
 
   // Sync with external symbol prop (e.g. treemap clicks)
   useEffect(() => {
-    if (symbol && SYMBOLS.includes(symbol as SymbolOption)) {
-      setSelected(symbol as SymbolOption);
+    if (symbol) {
+      setSelected(symbol);
     }
   }, [symbol]);
 
@@ -171,8 +178,8 @@ export default function LiquidationChart({ timeframeHours, symbol }: Liquidation
           <BarChart3 className="w-3.5 h-3.5 text-neutral-500" />
           <span className="text-xs font-medium text-neutral-400">History</span>
         </div>
-        <div className="flex items-center gap-1">
-          {SYMBOLS.map((sym) => (
+        <div className="flex items-center gap-1 flex-wrap">
+          {symbols.map((sym) => (
             <button
               key={sym}
               onClick={() => setSelected(sym)}

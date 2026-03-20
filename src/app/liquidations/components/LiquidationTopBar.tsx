@@ -1,6 +1,6 @@
 'use client';
 
-import { Zap, Volume2, VolumeX } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { formatLiqValue } from '@/lib/utils/format';
 
 type Timeframe = '4h' | '8h' | '12h' | '24h';
@@ -9,8 +9,6 @@ interface LiquidationTopBarProps {
   stats: { longValue: number; shortValue: number; total: number; count: number };
   timeframe: Timeframe;
   onTimeframeChange: (tf: Timeframe) => void;
-  soundEnabled: boolean;
-  onSoundToggle: () => void;
 }
 
 const TIMEFRAMES: Timeframe[] = ['4h', '8h', '12h', '24h'];
@@ -31,8 +29,6 @@ export default function LiquidationTopBar({
   stats,
   timeframe,
   onTimeframeChange,
-  soundEnabled,
-  onSoundToggle,
 }: LiquidationTopBarProps) {
   const longPct = stats.total > 0 ? (stats.longValue / stats.total) * 100 : 0;
   const shortPct = 100 - longPct;
@@ -89,21 +85,6 @@ export default function LiquidationTopBar({
               {tf}
             </button>
           ))}
-          <button
-            onClick={onSoundToggle}
-            className={`ml-1 p-1.5 rounded-md transition-colors ${
-              soundEnabled
-                ? 'bg-hub-yellow/20 text-hub-yellow'
-                : 'text-neutral-600 hover:text-neutral-400'
-            }`}
-            aria-label={soundEnabled ? 'Mute sound' : 'Enable sound'}
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-3.5 h-3.5" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5" />
-            )}
-          </button>
         </div>
       </div>
 

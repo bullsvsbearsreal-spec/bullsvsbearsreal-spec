@@ -123,6 +123,7 @@ const PUBLIC_PAGES = new Set([
   '/market-cycle',
   '/onchain',
   '/exchange-comparison',
+  '/spreads',
   '/whale-alert',
   '/hl-whales',
   '/economic-calendar',
@@ -192,18 +193,10 @@ function handleV1Route(request: NextRequest): NextResponse {
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // ── Waitlist gate: redirect ALL unauthenticated page requests to /waitlist ──
-  // Existing signed-in users keep full access. Everyone else sees the waitlist.
-  // Login stays accessible (existing users need to sign in to get their cookie)
-  // Signup redirects to waitlist (no new accounts during waitlist period)
-  const isWaitlistExempt = pathname === '/waitlist'
-    || pathname === '/login' || pathname === '/forgot-password' || pathname === '/reset-password'
-    || pathname.startsWith('/api/') || pathname.startsWith('/_next/')
-    || pathname.startsWith('/exchanges/') || pathname.startsWith('/icons/')
-    || pathname === '/favicon.ico' || pathname === '/robots.txt' || pathname === '/sitemap.xml'
-    || pathname.endsWith('.png') || pathname.endsWith('.svg') || pathname.endsWith('.ico');
-
-  if (!isWaitlistExempt && !hasSessionCookie(request)) {
+  // ── Platform is open — no waitlist gate ──
+  // All pages are publicly accessible. Waitlist page stays up for email collection.
+  // /signup still redirects to /waitlist (no account creation yet)
+  if (pathname === '/signup') {
     return NextResponse.redirect(new URL('/waitlist', request.url));
   }
 

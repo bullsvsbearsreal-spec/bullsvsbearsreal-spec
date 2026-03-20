@@ -56,6 +56,7 @@ const navCategories: NavCategory[] = [
           { name: 'Options', href: '/options', icon: Shield, desc: 'Options flow & greeks' },
           { name: 'Basis', href: '/basis', icon: BarChart2, desc: 'Spot-perp premium' },
           { name: 'Predictions', href: '/prediction-markets', icon: Eye },
+          { name: 'Price Spreads', href: '/spreads', icon: ArrowLeftRight },
           { name: 'Execution Costs', href: '/execution-costs', icon: Crosshair },
         ],
       },

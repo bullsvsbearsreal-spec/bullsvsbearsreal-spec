@@ -265,9 +265,9 @@ export default function HomeOrange() {
                     })}
                   </div>
                   {!isAuthed && (
-                    <Link href="/signup" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
-                      <Lock size={10} />
-                      Sign up to see more
+                    <Link href="/funding" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
+                      <ChevronRight size={10} />
+                      View all
                     </Link>
                   )}
                 </>
@@ -320,9 +320,9 @@ export default function HomeOrange() {
                     ))}
                   </div>
                   {!isAuthed && (
-                    <Link href="/signup" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
-                      <Lock size={10} />
-                      Sign up to see more
+                    <Link href="/funding" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
+                      <ChevronRight size={10} />
+                      View all
                     </Link>
                   )}
                 </>
