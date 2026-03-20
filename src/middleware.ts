@@ -193,11 +193,9 @@ function handleV1Route(request: NextRequest): NextResponse {
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // ── Platform is open — no waitlist gate ──
-  // All pages are publicly accessible. Waitlist page stays up for email collection.
-  // /signup still redirects to /waitlist (no account creation yet)
+  // /signup redirects to login (no separate signup flow)
   if (pathname === '/signup') {
-    return NextResponse.redirect(new URL('/waitlist', request.url));
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // Only rate-limit API routes

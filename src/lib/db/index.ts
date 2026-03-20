@@ -256,20 +256,6 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id)`;
 
-  // Waitlist for pre-launch email collection
-  await sql`
-    CREATE TABLE IF NOT EXISTS waitlist (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      email TEXT UNIQUE NOT NULL,
-      name TEXT,
-      source TEXT DEFAULT 'website',
-      status TEXT DEFAULT 'pending',
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      notified_at TIMESTAMPTZ
-    )
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist(email)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_waitlist_created ON waitlist(created_at DESC)`;
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────

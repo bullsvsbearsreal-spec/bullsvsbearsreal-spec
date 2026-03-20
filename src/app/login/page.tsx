@@ -474,8 +474,7 @@ function LoginPageInner() {
         </div>
 
         <p className="text-center text-sm text-neutral-500 mt-6">
-          Don&apos;t have an account?{' '}
-          <Link href="/waitlist" className="text-yellow-500 hover:text-yellow-400 font-medium transition-colors">Join Waitlist</Link>
+          <Link href="/" className="text-yellow-500 hover:text-yellow-400 font-medium transition-colors">Back to dashboard</Link>
         </p>
       </div>
     </div>
