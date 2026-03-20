@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { useSound } from '@/hooks/useSound';
 import {
   getAlerts,
   addTriggeredAlert,
@@ -125,6 +126,7 @@ export function useAlertEngine(intervalMs: number = 60_000) {
   // Cooldown: don't re-fire the same alert within 30 minutes
   const lastFiredRef = useRef<Map<string, number>>(new Map());
   const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
+  const { playAlert } = useSound();
 
   const runCheck = useCallback(async () => {
     const alerts = getAlerts().filter((a) => a.enabled);
@@ -160,6 +162,9 @@ export function useAlertEngine(intervalMs: number = 60_000) {
           actualValue,
         });
 
+        // Sound notification
+        playAlert();
+
         // Browser notification (if permitted)
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           const opLabel = alert.operator === 'gt' ? 'above' : 'below';
@@ -170,7 +175,7 @@ export function useAlertEngine(intervalMs: number = 60_000) {
         }
       }
     });
-  }, []);
+  }, [playAlert]);
 
   useEffect(() => {
     // Initial check after 5s

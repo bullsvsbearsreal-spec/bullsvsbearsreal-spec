@@ -4,21 +4,12 @@ import { useCallback, useRef, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'infohub:sound:enabled'
 
-// Synthesize short UI sounds via Web Audio API — no audio files needed
-function createContext(): AudioContext | null {
-  try {
-    return new AudioContext()
-  } catch {
-    return null
-  }
-}
-
 function playTone(
   ctx: AudioContext,
   freq: number,
   duration: number,
   type: OscillatorType = 'sine',
-  volume = 0.12,
+  volume = 0.25,
 ) {
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
@@ -32,6 +23,17 @@ function playTone(
   osc.stop(ctx.currentTime + duration)
 }
 
+async function ensureCtx(ref: React.MutableRefObject<AudioContext | null>): Promise<AudioContext | null> {
+  try {
+    if (!ref.current) ref.current = new AudioContext()
+    const ctx = ref.current
+    if (ctx.state === 'suspended') await ctx.resume()
+    return ctx
+  } catch {
+    return null
+  }
+}
+
 export function useSound() {
   const ctxRef = useRef<AudioContext | null>(null)
   const [enabled, setEnabled] = useState(false)
@@ -43,68 +45,54 @@ export function useSound() {
     } catch {}
   }, [])
 
-  // Lazy-init AudioContext on first use (requires user gesture)
-  const getCtx = useCallback(() => {
-    if (!ctxRef.current) ctxRef.current = createContext()
-    const ctx = ctxRef.current
-    if (ctx?.state === 'suspended') ctx.resume()
-    return ctx
-  }, [])
-
   const prefersReduced =
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-  const canPlay = useCallback(() => {
-    return enabled && !prefersReduced
+  const toggle = useCallback(async () => {
+    const next = !enabled
+    setEnabled(next)
+    try { localStorage.setItem(STORAGE_KEY, String(next)) } catch {}
+    // Play a confirmation blip when turning on
+    if (next) {
+      const ctx = await ensureCtx(ctxRef)
+      if (ctx) playTone(ctx, 880, 0.12, 'sine', 0.3)
+    }
+  }, [enabled])
+
+  // Subtle click
+  const playClick = useCallback(async () => {
+    if (!enabled || prefersReduced) return
+    const ctx = await ensureCtx(ctxRef)
+    if (ctx) playTone(ctx, 1200, 0.06, 'sine', 0.15)
   }, [enabled, prefersReduced])
 
-  const toggle = useCallback(() => {
-    setEnabled(prev => {
-      const next = !prev
-      try { localStorage.setItem(STORAGE_KEY, String(next)) } catch {}
-      // Play a short blip when turning on so user gets confirmation
-      if (next) {
-        const ctx = getCtx()
-        if (ctx) playTone(ctx, 880, 0.08, 'sine', 0.1)
-      }
-      return next
-    })
-  }, [getCtx])
-
-  // Subtle click — short high-freq blip
-  const playClick = useCallback(() => {
-    if (!canPlay()) return
-    const ctx = getCtx()
-    if (ctx) playTone(ctx, 1200, 0.04, 'sine', 0.06)
-  }, [canPlay, getCtx])
-
   // Success — ascending two-tone
-  const playSuccess = useCallback(() => {
-    if (!canPlay()) return
-    const ctx = getCtx()
+  const playSuccess = useCallback(async () => {
+    if (!enabled || prefersReduced) return
+    const ctx = await ensureCtx(ctxRef)
     if (!ctx) return
-    playTone(ctx, 660, 0.1, 'sine', 0.1)
-    setTimeout(() => playTone(ctx, 880, 0.12, 'sine', 0.1), 80)
-  }, [canPlay, getCtx])
+    playTone(ctx, 660, 0.12, 'sine', 0.2)
+    setTimeout(() => playTone(ctx, 880, 0.15, 'sine', 0.2), 80)
+  }, [enabled, prefersReduced])
 
   // Alert — attention-grabbing mid-freq pulse
-  const playAlert = useCallback(() => {
-    if (!canPlay()) return
-    const ctx = getCtx()
+  const playAlert = useCallback(async () => {
+    if (!enabled || prefersReduced) return
+    const ctx = await ensureCtx(ctxRef)
     if (!ctx) return
-    playTone(ctx, 520, 0.15, 'triangle', 0.15)
-    setTimeout(() => playTone(ctx, 520, 0.15, 'triangle', 0.15), 180)
-  }, [canPlay, getCtx])
+    playTone(ctx, 520, 0.18, 'triangle', 0.3)
+    setTimeout(() => playTone(ctx, 520, 0.18, 'triangle', 0.3), 180)
+  }, [enabled, prefersReduced])
 
   // Liquidation — deep thud
-  const playLiquidation = useCallback(() => {
-    if (!canPlay()) return
-    const ctx = getCtx()
+  const playLiquidation = useCallback(async () => {
+    if (!enabled || prefersReduced) return
+    const ctx = await ensureCtx(ctxRef)
     if (!ctx) return
-    playTone(ctx, 180, 0.25, 'sine', 0.18)
-    playTone(ctx, 90, 0.3, 'sine', 0.12)
-  }, [canPlay, getCtx])
+    playTone(ctx, 180, 0.3, 'sine', 0.35)
+    playTone(ctx, 90, 0.35, 'sine', 0.25)
+  }, [enabled, prefersReduced])
 
   return { enabled, toggle, playClick, playSuccess, playAlert, playLiquidation }
 }

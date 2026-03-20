@@ -178,6 +178,65 @@ test.describe('Footer', () => {
   });
 });
 
+// ─── Sound Toggle ────────────────────────────────────────────
+test.describe('Sound Toggle', () => {
+  test('sound toggle button is visible in header', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const toggle = page.locator('button[aria-label*="sound"]');
+    await expect(toggle.first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test('sound toggle changes state on click', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const toggle = page.locator('button[aria-label*="sound"]').first();
+    await expect(toggle).toBeVisible({ timeout: 10000 });
+
+    // Default: sound off
+    await expect(toggle).toHaveAttribute('aria-label', 'Enable sound effects');
+
+    // Click to enable
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-label', 'Mute sound effects');
+
+    // Click to disable
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-label', 'Enable sound effects');
+  });
+});
+
+// ─── Progressive Disclosure ──────────────────────────────────
+test.describe('Funding Progressive Disclosure', () => {
+  test('shows "Show all" toggle when data loads', async ({ page }) => {
+    await page.goto('/funding', { waitUntil: 'networkidle', timeout: 30000 });
+    const showAll = page.locator('button:has-text("Show all")');
+    // May not appear if fewer than 25 pairs (unlikely in prod)
+    if (await showAll.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await expect(showAll).toBeVisible();
+      await showAll.click();
+      // After expanding, should show "Show top"
+      await expect(page.locator('button:has-text("Show top")')).toBeVisible();
+    }
+  });
+});
+
+// ─── Security Headers ───────────────────────────────────────
+test.describe('Security Headers', () => {
+  test('has CSP report-only header', async ({ page }) => {
+    const res = await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const csp = res?.headers()['content-security-policy-report-only'];
+    expect(csp).toBeTruthy();
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+  });
+
+  test('has security headers', async ({ page }) => {
+    const res = await page.goto('/', { waitUntil: 'domcontentloaded' });
+    expect(res?.headers()['x-frame-options']).toBe('DENY');
+    expect(res?.headers()['x-content-type-options']).toBe('nosniff');
+    expect(res?.headers()['strict-transport-security']).toContain('max-age=');
+  });
+});
+
 // ─── 404 Handling ─────────────────────────────────────────────
 test.describe('Error Handling', () => {
   test('nonexistent page returns 404', async ({ page }) => {

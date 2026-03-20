@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { isInWatchlist, addToWatchlist, removeFromWatchlist } from '@/lib/storage/watchlist';
+import { useSound } from '@/hooks/useSound';
 
 /**
  * Inline star toggle for adding/removing a symbol from watchlist.
@@ -10,6 +11,7 @@ import { isInWatchlist, addToWatchlist, removeFromWatchlist } from '@/lib/storag
  */
 export default function WatchlistStar({ symbol }: { symbol: string }) {
   const [starred, setStarred] = useState(false);
+  const { playClick } = useSound();
 
   useEffect(() => {
     setStarred(isInWatchlist(symbol));
@@ -23,6 +25,7 @@ export default function WatchlistStar({ symbol }: { symbol: string }) {
       addToWatchlist(symbol);
     }
     setStarred(!starred);
+    playClick();
   };
 
   return (

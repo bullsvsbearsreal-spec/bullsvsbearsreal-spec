@@ -256,6 +256,20 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id)`;
 
+  // ── Optimization indexes (Mar 2026) ──
+  // Alert notifications: time-range aggregation queries
+  await sql`CREATE INDEX IF NOT EXISTS idx_alert_notif_sent_at ON alert_notifications(sent_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_alert_notif_sent_symbol ON alert_notifications(sent_at DESC, symbol)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_alert_notif_sent_channel ON alert_notifications(sent_at DESC, channel)`;
+  // Watchlists: user lookups
+  await sql`CREATE INDEX IF NOT EXISTS idx_watchlist_user_id ON watchlists(user_id)`;
+  // Time-series aggregation without exchange filter
+  await sql`CREATE INDEX IF NOT EXISTS idx_oi_ts_symbol ON oi_snapshots(ts DESC, symbol)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_funding_ts_symbol ON funding_snapshots(ts DESC, symbol)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_liq_ts_symbol_exchange ON liquidation_snapshots(ts DESC, symbol, exchange)`;
+  // Cache expiry cleanup
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_cache_expires_at ON api_cache(expires_at DESC)`;
+
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────

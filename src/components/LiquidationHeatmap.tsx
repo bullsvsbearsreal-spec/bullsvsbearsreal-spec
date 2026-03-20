@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { RefreshCw, Flame } from 'lucide-react';
 import { formatLiqValue } from '@/lib/utils/format';
-import { useMultiExchangeLiquidations } from '@/hooks/useMultiExchangeLiquidations';
+import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
+import { useSound } from '@/hooks/useSound';
 
 const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX', 'HTX', 'gTrade'];
 
@@ -20,12 +21,20 @@ function getLiqSlang(totalValue: number, longPct: number): string | null {
 }
 
 export default function LiquidationHeatmap() {
+  const { playLiquidation } = useSound();
+
+  const onLiquidation = useCallback((liq: Liquidation) => {
+    // Sound on large liquidations (>$500K)
+    if (liq.value >= 500_000) playLiquidation();
+  }, [playLiquidation]);
+
   const { connections, stats, aggregated } = useMultiExchangeLiquidations({
     exchanges: EXCHANGES,
     minValue: 100,
     maxItems: 500,
     persistKey: 'ih-liq-home',
     persistTtlMs: 3600000, // 1h
+    onLiquidation,
   });
 
   const connectedCount = connections.filter(c => c.connected).length;
