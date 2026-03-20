@@ -6,6 +6,12 @@ import { ArrowLeft, ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarS
 import Logo from '@/components/Logo';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import CryptoMetricsPanel from './components/CryptoMetricsPanel';
+import dynamic from 'next/dynamic';
+
+const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), {
+  ssr: false,
+  loading: () => null,
+});
 
 /* ═══════════════════════════════════════════════════════════════════════
    Asset class definitions
@@ -250,6 +256,9 @@ export default function ChartPage() {
 
   // Bottom panel
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
+
+  // Tape sidebar (only for crypto)
+  const [tapeVisible, setTapeVisible] = useState(false);
 
   // Symbol dropdown
   const [symbolOpen, setSymbolOpen] = useState(false);
@@ -532,10 +541,19 @@ export default function ChartPage() {
         </div>
       </div>
 
-      {/* ─── TradingView Chart + Metrics Panel ─────────────────────── */}
+      {/* ─── TradingView Chart + Tape Sidebar + Metrics Panel ────── */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-1 relative" style={{ minHeight: '250px' }}>
-          <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
+        <div className="flex-1 flex min-h-0 relative" style={{ minHeight: '250px' }}>
+          <div className="flex-1 relative">
+            <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
+          </div>
+          {assetClass === 'crypto' && (
+            <TapeSidebar
+              symbol={displayLabel}
+              visible={tapeVisible}
+              onToggle={() => setTapeVisible(v => !v)}
+            />
+          )}
         </div>
         {assetClass === 'crypto' && (
           <CryptoMetricsPanel

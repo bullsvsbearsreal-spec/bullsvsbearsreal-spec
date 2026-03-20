@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Activity, Zap } from 'lucide-react';
 import { useApi } from '@/hooks/useSWRApi';
 import type { Time, LineData } from 'lightweight-charts';
 
@@ -109,6 +109,20 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     enabled: open,
   });
 
+  // Liquidation feed for this symbol
+  const { data: liqData } = useApi<{ data: Array<{ symbol: string; exchange: string; side: string; size: number; price: number; timestamp: string }> }>({
+    key: `chart-liqs-${symbol}`,
+    fetcher: async () => {
+      const res = await fetch(`/api/liquidations?symbol=${symbol.toUpperCase()}&limit=10`);
+      if (!res.ok) throw new Error('liq fetch failed');
+      return res.json();
+    },
+    refreshInterval: 15_000,
+    enabled: open,
+  });
+
+  const [showDetail, setShowDetail] = useState(false);
+
   const metrics = useMemo(() => {
     const sym = symbol.toUpperCase();
 
@@ -143,7 +157,26 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     const price = priceEntry?.lastPrice ?? null;
     const change24h = priceEntry?.priceChangePercent24h ?? null;
 
-    return { avgFunding, minFunding, maxFunding, totalOI, totalVolume, price, change24h, exchangeCount: fundingEntries.length };
+    // Per-exchange funding for bar chart (sorted by rate)
+    const perExchangeFunding = fundingEntries
+      .filter(f => typeof f.fundingRate === 'number' && isFinite(f.fundingRate))
+      .sort((a, b) => b.fundingRate - a.fundingRate)
+      .slice(0, 15);
+
+    // Price spread across exchanges
+    const prices = tickerEntries
+      .filter(t => t.lastPrice && t.lastPrice > 0)
+      .map(t => ({ exchange: t.exchange, price: t.lastPrice! }));
+    const priceHigh = prices.length > 0 ? prices.reduce((a, b) => a.price > b.price ? a : b) : null;
+    const priceLow = prices.length > 0 ? prices.reduce((a, b) => a.price < b.price ? a : b) : null;
+    const priceSpreadPct = priceHigh && priceLow && priceLow.price > 0
+      ? ((priceHigh.price - priceLow.price) / priceLow.price) * 100
+      : null;
+
+    return {
+      avgFunding, minFunding, maxFunding, totalOI, totalVolume, price, change24h,
+      exchangeCount: fundingEntries.length, perExchangeFunding, priceHigh, priceLow, priceSpreadPct,
+    };
   }, [symbol, fundingData, oiData, tickerData]);
 
   const chartSeries = useMemo(() => {
@@ -283,16 +316,109 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
               </div>
             </div>
 
-            {/* Mini funding chart — sits beside cards on lg+ */}
-            {chartSeries.length > 0 && (
-              <div className="lg:w-[320px] flex-shrink-0 rounded-md overflow-hidden border border-white/[0.04] bg-white/[0.01]">
-                <div className="flex items-center justify-between px-2 pt-1">
-                  <span className="text-[9px] text-neutral-600">7d Funding (Hyperliquid)</span>
+            {/* Right column: charts + spread */}
+            <div className="lg:w-[320px] flex-shrink-0 flex flex-col gap-1.5">
+              {/* Mini funding chart */}
+              {chartSeries.length > 0 && (
+                <div className="rounded-md overflow-hidden border border-white/[0.04] bg-white/[0.01]">
+                  <div className="flex items-center justify-between px-2 pt-1">
+                    <span className="text-[9px] text-neutral-600">7d Funding (Hyperliquid)</span>
+                  </div>
+                  <LightweightChart series={chartSeries} height={60} />
                 </div>
-                <LightweightChart series={chartSeries} height={60} />
-              </div>
-            )}
+              )}
+
+              {/* Price spread indicator */}
+              {metrics.priceSpreadPct !== null && metrics.priceHigh && metrics.priceLow && (
+                <div className="rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-1.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] text-neutral-600 uppercase tracking-wider">Price Spread</span>
+                    <span className={`text-[10px] font-mono font-bold ${metrics.priceSpreadPct > 0.1 ? 'text-hub-yellow' : 'text-neutral-400'}`}>
+                      {metrics.priceSpreadPct.toFixed(4)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] font-mono">
+                    <span className="text-red-400/70">{metrics.priceLow.exchange}: ${metrics.priceLow.price >= 1 ? metrics.priceLow.price.toFixed(2) : metrics.priceLow.price.toFixed(6)}</span>
+                    <span className="text-green-400/70">{metrics.priceHigh.exchange}: ${metrics.priceHigh.price >= 1 ? metrics.priceHigh.price.toFixed(2) : metrics.priceHigh.price.toFixed(6)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Expandable detail row: per-exchange funding + liquidations */}
+          <button
+            onClick={() => setShowDetail(d => !d)}
+            className="mt-1.5 w-full flex items-center justify-center gap-1 py-0.5 text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors"
+          >
+            {showDetail ? 'Hide' : 'Show'} exchange detail
+            {showDetail ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+          </button>
+
+          {showDetail && (
+            <div className="mt-1 flex flex-col lg:flex-row gap-2.5">
+              {/* Per-exchange funding bars */}
+              {metrics.perExchangeFunding.length > 0 && (
+                <div className="flex-1 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider mb-1.5">Funding by Exchange</p>
+                  <div className="space-y-[3px]">
+                    {metrics.perExchangeFunding.map(f => {
+                      const maxAbs = Math.max(...metrics.perExchangeFunding.map(x => Math.abs(x.fundingRate)), 0.001);
+                      const pct = Math.min(Math.abs(f.fundingRate) / maxAbs * 100, 100);
+                      return (
+                        <div key={f.exchange} className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-neutral-500 w-[70px] truncate text-right flex-shrink-0">
+                            {f.exchange}
+                          </span>
+                          <div className="flex-1 h-[10px] bg-white/[0.03] rounded-sm overflow-hidden relative">
+                            <div
+                              className={`absolute top-0 h-full rounded-sm transition-all ${
+                                f.fundingRate >= 0 ? 'bg-green-500/40 left-1/2' : 'bg-red-500/40 right-1/2'
+                              }`}
+                              style={{ width: `${pct / 2}%` }}
+                            />
+                            {/* Center line */}
+                            <div className="absolute left-1/2 top-0 w-px h-full bg-white/[0.1]" />
+                          </div>
+                          <span className={`text-[9px] font-mono w-[55px] text-right flex-shrink-0 ${fundingColor(f.fundingRate)}`}>
+                            {f.fundingRate >= 0 ? '+' : ''}{f.fundingRate.toFixed(4)}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent liquidations */}
+              <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
+                <div className="flex items-center gap-1 mb-1.5">
+                  <Zap className="w-3 h-3 text-hub-yellow" />
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Recent Liquidations</p>
+                </div>
+                {(!liqData?.data || liqData.data.length === 0) ? (
+                  <p className="text-[9px] text-neutral-600 text-center py-2">No recent liquidations</p>
+                ) : (
+                  <div className="space-y-[2px]">
+                    {liqData.data.slice(0, 8).map((liq, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
+                        <span className={`w-[32px] font-bold ${liq.side === 'long' || liq.side === 'buy' ? 'text-red-400' : 'text-green-400'}`}>
+                          {liq.side === 'long' || liq.side === 'buy' ? 'LONG' : 'SHORT'}
+                        </span>
+                        <span className="text-neutral-400 flex-1 truncate">{liq.exchange}</span>
+                        <span className="text-white font-bold">
+                          ${liq.size >= 1000 ? `${(liq.size / 1000).toFixed(1)}K` : liq.size.toFixed(0)}
+                        </span>
+                        <span className="text-neutral-600 text-[8px]">
+                          {new Date(liq.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
