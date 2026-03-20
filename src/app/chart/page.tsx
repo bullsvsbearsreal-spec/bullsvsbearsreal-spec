@@ -667,11 +667,6 @@ function ChartPageInner() {
             </ChartErrorBoundary>
           )}
 
-          {/* Keyboard shortcuts hint (bottom-left overlay) */}
-          <div className="absolute bottom-2 left-2 z-10 hidden lg:flex items-center gap-2 text-[9px] text-neutral-700 select-none pointer-events-none">
-            <span><kbd className="px-1 py-0.5 bg-white/[0.04] rounded">1-7</kbd> timeframe</span>
-            {assetClass === 'crypto' && <span><kbd className="px-1 py-0.5 bg-white/[0.04] rounded">T</kbd> tape</span>}
-          </div>
         </div>
         {assetClass === 'crypto' && (
           <ChartErrorBoundary name="Crypto Metrics">
