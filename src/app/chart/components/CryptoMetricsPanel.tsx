@@ -75,7 +75,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
       if (!res.ok) throw new Error('funding fetch failed');
       return res.json();
     },
-    refreshInterval: 30_000,
+    refreshInterval: 15_000,
   });
 
   const { data: oiData } = useApi<{ data: OIEntry[] }>({
@@ -85,7 +85,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
       if (!res.ok) throw new Error('oi fetch failed');
       return res.json();
     },
-    refreshInterval: 60_000,
+    refreshInterval: 30_000,
   });
 
   const { data: tickerData } = useApi<{ data: TickerEntry[] }>({
@@ -95,7 +95,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
       if (!res.ok) throw new Error('tickers fetch failed');
       return res.json();
     },
-    refreshInterval: 15_000,
+    refreshInterval: 10_000,
   });
 
   const { data: historyData } = useApi<{ points: FundingHistoryPoint[] }>({
@@ -105,7 +105,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
       if (!res.ok) throw new Error('history fetch failed');
       return res.json();
     },
-    refreshInterval: 300_000,
+    refreshInterval: 60_000,
     enabled: open,
   });
 
@@ -120,7 +120,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
       if (!res.ok) throw new Error('liq fetch failed');
       return res.json();
     },
-    refreshInterval: 15_000,
+    refreshInterval: 10_000,
     enabled: open,
   });
 
