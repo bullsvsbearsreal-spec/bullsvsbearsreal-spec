@@ -440,9 +440,12 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
 
               {/* Recent liquidations */}
               <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
-                <div className="flex items-center gap-1 mb-1.5">
-                  <Zap className="w-3 h-3 text-hub-yellow" />
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Recent Liquidations</p>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-hub-yellow" />
+                    <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Recent Liquidations</p>
+                  </div>
+                  <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">OKX</span>
                 </div>
                 {(!liqData?.data || liqData.data.length === 0) ? (
                   <p className="text-[9px] text-neutral-600 text-center py-2">No recent liquidations</p>
