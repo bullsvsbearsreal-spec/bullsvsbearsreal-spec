@@ -163,8 +163,8 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
           )}
 
           {/* Session note */}
-          <div className="flex-shrink-0 px-2 py-1 border-t border-white/[0.04]">
-            <p className="text-[7px] text-neutral-700 text-center leading-tight">
+          <div className="flex-shrink-0 px-2 py-1.5 border-t border-white/[0.06]">
+            <p className="text-[8px] text-neutral-500 text-center leading-tight">
               Session data only, clears on refresh
             </p>
           </div>
