@@ -440,7 +440,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-[8px] px-1 py-[1px] rounded bg-[#F0B90B]/10 text-[#F0B90B] font-medium">Binance</span>
-                        <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">OKX</span>
+                        <span className="text-[8px] px-1 py-[1px] rounded bg-[#00C853]/10 text-[#00C853] font-medium">OKX</span>
                         {anyConnected ? (
                           <Wifi className="w-2.5 h-2.5 text-green-400" />
                         ) : (
