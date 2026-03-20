@@ -109,8 +109,11 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     enabled: open,
   });
 
-  // Liquidation feed for this symbol
-  const { data: liqData } = useApi<{ data: Array<{ symbol: string; exchange: string; side: string; size: number; price: number; timestamp: string }> }>({
+  // Liquidation feed for this symbol (OKX REST API)
+  const { data: liqData } = useApi<{
+    exchange: string;
+    data: Array<{ side: string; size: number; price: number; value: number; timestamp: number }>;
+  }>({
     key: `chart-liqs-${symbol}`,
     fetcher: async () => {
       const res = await fetch(`/api/liquidations?symbol=${symbol.toUpperCase()}&limit=10`);
@@ -184,17 +187,19 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     const lineData: LineData<Time>[] = historyData.points
       .map(p => ({
         time: (typeof p.t === 'string' ? Math.floor(new Date(p.t).getTime() / 1000) : Math.floor(p.t / 1000)) as Time,
-        value: p.rate * 100,
+        // API already returns rate as percentage (fraction * 100), no further conversion needed
+        value: p.rate,
       }))
       .sort((a, b) => (a.time as number) - (b.time as number));
     return [{ type: 'line' as const, data: lineData, options: { color: '#eab308', lineWidth: 1.5 } }];
   }, [historyData]);
 
   return (
-    <div className="border-t border-white/[0.08] bg-[#060606] flex-shrink-0">
+    <section className="border-t border-white/[0.08] bg-[#060606] flex-shrink-0" aria-label={`${symbol} metrics`}>
       {/* Toggle bar — shows key stats inline even when collapsed */}
       <button
         onClick={onToggle}
+        aria-expanded={open}
         className="w-full flex items-center gap-3 px-3 py-1.5 hover:bg-white/[0.02] transition-colors group"
       >
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -210,24 +215,24 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
         </div>
 
         {/* Inline preview stats (visible even when collapsed) */}
-        <div className="hidden sm:flex items-center gap-3 text-[10px] font-mono overflow-hidden">
+        <div className="flex items-center gap-2 sm:gap-3 text-[10px] font-mono overflow-hidden min-w-0">
           {metrics.avgFunding !== null && (
-            <span className={fundingColor(metrics.avgFunding)}>
+            <span className={`flex-shrink-0 ${fundingColor(metrics.avgFunding)}`}>
               FR {metrics.avgFunding.toFixed(4)}%
             </span>
           )}
           {metrics.totalOI > 0 && (
-            <span className="text-neutral-500">
+            <span className="text-neutral-500 flex-shrink-0 hidden min-[480px]:inline">
               OI ${fmt(metrics.totalOI)}
             </span>
           )}
           {metrics.totalVolume > 0 && (
-            <span className="text-neutral-500">
+            <span className="text-neutral-500 flex-shrink-0 hidden sm:inline">
               Vol ${fmt(metrics.totalVolume)}
             </span>
           )}
           {metrics.change24h !== null && (
-            <span className={metrics.change24h >= 0 ? 'text-green-400/70' : 'text-red-400/70'}>
+            <span className={`flex-shrink-0 ${metrics.change24h >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
               {metrics.change24h >= 0 ? '+' : ''}{metrics.change24h.toFixed(2)}%
             </span>
           )}
@@ -235,8 +240,8 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
 
         <div className="flex-1" />
         {open
-          ? <ChevronDown className="w-3 h-3 text-neutral-600 group-hover:text-neutral-400 transition-colors flex-shrink-0" />
-          : <ChevronUp className="w-3 h-3 text-neutral-600 group-hover:text-neutral-400 transition-colors flex-shrink-0" />
+          ? <ChevronUp className="w-3 h-3 text-neutral-600 group-hover:text-neutral-400 transition-colors flex-shrink-0" />
+          : <ChevronDown className="w-3 h-3 text-neutral-600 group-hover:text-neutral-400 transition-colors flex-shrink-0" />
         }
       </button>
 
@@ -245,7 +250,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
           {/* Metrics + chart side by side on wide screens */}
           <div className="flex flex-col lg:flex-row gap-2.5">
             {/* Metric cards */}
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 flex-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 flex-1">
               {/* Avg Funding */}
               <div className="bg-white/[0.03] rounded-md px-2.5 py-1.5 border border-white/[0.04]">
                 <p className="text-[9px] text-neutral-600 uppercase tracking-wider leading-none mb-1">Avg Funding</p>
@@ -349,6 +354,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
           {/* Expandable detail row: per-exchange funding + liquidations */}
           <button
             onClick={() => setShowDetail(d => !d)}
+            aria-expanded={showDetail}
             className="mt-1.5 w-full flex items-center justify-center gap-1 py-0.5 text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors"
           >
             {showDetail ? 'Hide' : 'Show'} exchange detail
@@ -400,20 +406,23 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                   <p className="text-[9px] text-neutral-600 text-center py-2">No recent liquidations</p>
                 ) : (
                   <div className="space-y-[2px]">
-                    {liqData.data.slice(0, 8).map((liq, i) => (
-                      <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
-                        <span className={`w-[32px] font-bold ${liq.side === 'long' || liq.side === 'buy' ? 'text-red-400' : 'text-green-400'}`}>
-                          {liq.side === 'long' || liq.side === 'buy' ? 'LONG' : 'SHORT'}
-                        </span>
-                        <span className="text-neutral-400 flex-1 truncate">{liq.exchange}</span>
-                        <span className="text-white font-bold">
-                          ${liq.size >= 1000 ? `${(liq.size / 1000).toFixed(1)}K` : liq.size.toFixed(0)}
-                        </span>
-                        <span className="text-neutral-600 text-[8px]">
-                          {new Date(liq.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    ))}
+                    {liqData.data.slice(0, 8).map((liq, i) => {
+                      const usdVal = liq.value || (liq.size * liq.price);
+                      return (
+                        <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
+                          <span className={`w-[32px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
+                            {liq.side === 'long' ? 'LONG' : 'SHORT'}
+                          </span>
+                          <span className="text-neutral-500 flex-1 truncate">{liqData.exchange}</span>
+                          <span className="text-white font-bold">
+                            ${usdVal >= 1e6 ? `${(usdVal / 1e6).toFixed(1)}M` : usdVal >= 1000 ? `${(usdVal / 1000).toFixed(1)}K` : usdVal.toFixed(0)}
+                          </span>
+                          <span className="text-neutral-600 text-[8px]">
+                            {new Date(liq.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -421,6 +430,6 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

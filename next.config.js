@@ -32,11 +32,12 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live https://s3.tradingview.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' https://fonts.gstatic.com",
               "connect-src 'self' https://*.sentry.io https://*.vercel-insights.com https://*.vercel.live wss: https:",
+              "frame-src https://s3.tradingview.com https://www.tradingview.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign, Wheat, Globe2 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import CryptoMetricsPanel from './components/CryptoMetricsPanel';
+import ChartErrorBoundary from './components/ChartErrorBoundary';
+import SoundToggle from '@/components/SoundToggle';
 import dynamic from 'next/dynamic';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), {
@@ -170,9 +173,11 @@ const TIMEFRAMES = [
 
 function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    setLoading(true);
     containerRef.current.innerHTML = '';
 
     const script = document.createElement('script');
@@ -219,6 +224,10 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
       },
     });
 
+    // Hide loading skeleton once TradingView iframe loads
+    script.onload = () => setTimeout(() => setLoading(false), 600);
+    script.onerror = () => setLoading(false);
+
     const widgetContainer = document.createElement('div');
     widgetContainer.className = 'tradingview-widget-container';
     widgetContainer.style.height = '100%';
@@ -240,19 +249,47 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
     };
   }, [tvSymbol, interval]);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return (
+    <div className="w-full h-full relative">
+      {loading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black" aria-hidden="true">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
+            <span className="text-[11px] text-neutral-600 font-medium">Loading chart...</span>
+          </div>
+        </div>
+      )}
+      <div ref={containerRef} className="w-full h-full" />
+    </div>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    Page component
    ═══════════════════════════════════════════════════════════════════════ */
 
-export default function ChartPage() {
-  const [assetClass, setAssetClass] = useState<AssetClass>('crypto');
-  const [tvSymbol, setTvSymbol] = useState('BITSTAMP:BTCUSD');
-  const [displayLabel, setDisplayLabel] = useState('BTC');
-  const [displayPair, setDisplayPair] = useState('/USD');
-  const [interval, setInterval_] = useState('60');
+function ChartPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  /* ─── Initialize state from URL params ─────────────────────────────── */
+  const initialSymbolLabel = searchParams.get('s') || 'BTC';
+  const initialInterval = searchParams.get('tf') || '60';
+  const initialAssetClass = (searchParams.get('ac') as AssetClass) || 'crypto';
+
+  // Find the matching symbol from URL params
+  const initialTab = ASSET_TABS.find(t => t.id === initialAssetClass) ?? ASSET_TABS[0];
+  const initialSymbol = initialTab.pinned.find(
+    s => s.label.toUpperCase() === initialSymbolLabel.toUpperCase()
+  ) ?? initialTab.pinned[0];
+
+  const [assetClass, setAssetClass] = useState<AssetClass>(initialTab.id);
+  const [tvSymbol, setTvSymbol] = useState(initialSymbol.tvSymbol);
+  const [displayLabel, setDisplayLabel] = useState(initialSymbol.label);
+  const [displayPair, setDisplayPair] = useState(initialSymbol.displayPair ?? '');
+  const [interval, setInterval_] = useState(
+    TIMEFRAMES.some(tf => tf.value === initialInterval) ? initialInterval : '60'
+  );
 
   // Bottom panel
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
@@ -265,6 +302,7 @@ export default function ChartPage() {
   const [symbolQuery, setSymbolQuery] = useState('');
   const symbolRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const currentTab = useMemo(
     () => ASSET_TABS.find(t => t.id === assetClass)!,
@@ -281,13 +319,25 @@ export default function ChartPage() {
     );
   }, [symbolQuery, currentTab]);
 
+  /* ─── Sync state to URL params (shallow, no navigation) ────────────── */
+  const updateURL = useCallback((label: string, tf: string, ac: AssetClass) => {
+    const params = new URLSearchParams();
+    if (label !== 'BTC') params.set('s', label);
+    if (tf !== '60') params.set('tf', tf);
+    if (ac !== 'crypto') params.set('ac', ac);
+    const qs = params.toString();
+    router.replace(`/chart${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [router]);
+
   const selectSymbol = useCallback((sym: AssetSymbol) => {
     setTvSymbol(sym.tvSymbol);
     setDisplayLabel(sym.label);
     setDisplayPair(sym.displayPair ?? '');
     setSymbolOpen(false);
     setSymbolQuery('');
-  }, []);
+    setFocusedIndex(-1);
+    updateURL(sym.label, interval, assetClass);
+  }, [interval, assetClass, updateURL]);
 
   const switchAssetClass = useCallback((ac: AssetClass) => {
     setAssetClass(ac);
@@ -298,26 +348,65 @@ export default function ChartPage() {
     setTvSymbol(first.tvSymbol);
     setDisplayLabel(first.label);
     setDisplayPair(first.displayPair ?? '');
-  }, []);
+    updateURL(first.label, interval, ac);
+  }, [interval, updateURL]);
 
-  /* ─── Keyboard shortcuts for timeframes ────────────────────────────── */
+  const setIntervalAndSync = useCallback((tf: string) => {
+    setInterval_(tf);
+    updateURL(displayLabel, tf, assetClass);
+  }, [displayLabel, assetClass, updateURL]);
+
+  /* ─── Keyboard shortcuts for timeframes + Escape ───────────────────── */
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement).isContentEditable) return;
+
+      // Escape closes dropdown
+      if (e.key === 'Escape' && symbolOpen) {
+        setSymbolOpen(false);
+        setFocusedIndex(-1);
+        return;
+      }
+
+      // T key toggles tape sidebar
+      if (e.key === 't' && assetClass === 'crypto' && !symbolOpen) {
+        setTapeVisible(v => !v);
+        return;
+      }
+
+      // Number keys for timeframes
       const idx = parseInt(e.key) - 1;
       if (idx >= 0 && idx < TIMEFRAMES.length) {
-        setInterval_(TIMEFRAMES[idx].value);
+        setIntervalAndSync(TIMEFRAMES[idx].value);
       }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, []);
+  }, [symbolOpen, assetClass, setIntervalAndSync]);
+
+  /* ─── Keyboard navigation within dropdown ──────────────────────────── */
+  const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIndex(i => Math.min(i + 1, filteredSymbols.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && focusedIndex >= 0 && focusedIndex < filteredSymbols.length) {
+      e.preventDefault();
+      selectSymbol(filteredSymbols[focusedIndex]);
+    } else if (e.key === 'Escape') {
+      setSymbolOpen(false);
+      setFocusedIndex(-1);
+    }
+  }, [filteredSymbols, focusedIndex, selectSymbol]);
 
   /* ─── Close dropdown on outside click ──────────────────────────────── */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (symbolRef.current && !symbolRef.current.contains(e.target as Node)) {
         setSymbolOpen(false);
+        setFocusedIndex(-1);
       }
     }
     document.addEventListener('mousedown', handleClick);
@@ -328,6 +417,7 @@ export default function ChartPage() {
   useEffect(() => {
     if (symbolOpen && searchInputRef.current) {
       searchInputRef.current.focus();
+      setFocusedIndex(-1);
     }
   }, [symbolOpen]);
 
@@ -388,7 +478,12 @@ export default function ChartPage() {
             </button>
 
             {symbolOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 w-72 sm:w-80 bg-[#0a0a0a] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden animate-scale-in">
+              <div
+                className="absolute top-full left-0 mt-1 z-50 w-72 sm:w-80 bg-[#0a0a0a] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden animate-scale-in"
+                role="dialog"
+                aria-label="Symbol picker"
+                onKeyDown={handleDropdownKeyDown}
+              >
                 {/* Search */}
                 <div className="relative px-3 py-2 border-b border-white/[0.06]">
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
@@ -396,9 +491,10 @@ export default function ChartPage() {
                     ref={searchInputRef}
                     type="text"
                     aria-label="Search symbols"
+                    aria-activedescendant={focusedIndex >= 0 ? `symbol-${focusedIndex}` : undefined}
                     placeholder={`Search ${currentTab.label.toLowerCase()}...`}
                     value={symbolQuery}
-                    onChange={e => setSymbolQuery(e.target.value)}
+                    onChange={e => { setSymbolQuery(e.target.value); setFocusedIndex(-1); }}
                     className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30 focus-visible:ring-2 focus-visible:ring-hub-yellow/50"
                   />
                   {symbolQuery && (
@@ -446,14 +542,20 @@ export default function ChartPage() {
                       </span>
                     </div>
                   )}
-                  {filteredSymbols.map(sym => (
+                  {filteredSymbols.map((sym, idx) => (
                     <button
                       key={sym.tvSymbol}
+                      id={`symbol-${idx}`}
+                      role="option"
+                      aria-selected={sym.tvSymbol === tvSymbol}
                       onClick={() => selectSymbol(sym)}
+                      onMouseEnter={() => setFocusedIndex(idx)}
                       className={`w-full text-left px-3 py-1.5 transition-colors flex items-center gap-2 ${
-                        sym.tvSymbol === tvSymbol
-                          ? 'bg-hub-yellow/10'
-                          : 'hover:bg-white/[0.04]'
+                        focusedIndex === idx
+                          ? 'bg-white/[0.08]'
+                          : sym.tvSymbol === tvSymbol
+                            ? 'bg-hub-yellow/10'
+                            : 'hover:bg-white/[0.04]'
                       }`}
                     >
                       {assetClass === 'crypto' && sym.icon ? (
@@ -485,10 +587,12 @@ export default function ChartPage() {
                   ))}
                 </div>
 
-                {/* Hint */}
-                <div className="px-3 py-1.5 border-t border-white/[0.04] text-center">
+                {/* Hints */}
+                <div className="px-3 py-1.5 border-t border-white/[0.04] flex items-center justify-between">
                   <span className="text-[10px] text-neutral-600">
-                    Or use TradingView&apos;s built-in search in the chart toolbar
+                    <kbd className="px-1 py-0.5 bg-white/[0.06] rounded text-[9px]">↑↓</kbd> navigate
+                    <kbd className="ml-1.5 px-1 py-0.5 bg-white/[0.06] rounded text-[9px]">↵</kbd> select
+                    <kbd className="ml-1.5 px-1 py-0.5 bg-white/[0.06] rounded text-[9px]">esc</kbd> close
                   </span>
                 </div>
               </div>
@@ -497,18 +601,22 @@ export default function ChartPage() {
 
           <div className="flex-1" />
 
+          {/* Sound toggle */}
+          {assetClass === 'crypto' && <SoundToggle />}
+
           {/* Timeframe buttons */}
-          <div className="flex items-center flex-wrap gap-0.5 flex-shrink-0">
+          <div className="flex items-center flex-wrap gap-0.5 flex-shrink-0" role="group" aria-label="Timeframe">
             {TIMEFRAMES.map(tf => (
               <button
                 key={tf.value}
-                onClick={() => setInterval_(tf.value)}
+                onClick={() => setIntervalAndSync(tf.value)}
+                aria-pressed={interval === tf.value}
                 className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors flex-shrink-0 ${
                   interval === tf.value
                     ? 'bg-hub-yellow text-black font-bold'
                     : 'text-neutral-500 hover:text-white hover:bg-white/[0.06]'
                 }`}
-                title={`Shortcut: ${tf.key}`}
+                title={`${tf.label} (Shortcut: ${tf.key})`}
               >
                 {tf.label}
               </button>
@@ -545,24 +653,44 @@ export default function ChartPage() {
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex-1 flex min-h-0 relative" style={{ minHeight: '250px' }}>
           <div className="flex-1 relative">
-            <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
+            <ChartErrorBoundary name="TradingView Chart" minHeight="250px">
+              <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
+            </ChartErrorBoundary>
           </div>
           {assetClass === 'crypto' && (
-            <TapeSidebar
-              symbol={displayLabel}
-              visible={tapeVisible}
-              onToggle={() => setTapeVisible(v => !v)}
-            />
+            <ChartErrorBoundary name="Trade Tape">
+              <TapeSidebar
+                symbol={displayLabel}
+                visible={tapeVisible}
+                onToggle={() => setTapeVisible(v => !v)}
+              />
+            </ChartErrorBoundary>
           )}
+
+          {/* Keyboard shortcuts hint (bottom-left overlay) */}
+          <div className="absolute bottom-2 left-2 z-10 hidden lg:flex items-center gap-2 text-[9px] text-neutral-700 select-none pointer-events-none">
+            <span><kbd className="px-1 py-0.5 bg-white/[0.04] rounded">1-7</kbd> timeframe</span>
+            {assetClass === 'crypto' && <span><kbd className="px-1 py-0.5 bg-white/[0.04] rounded">T</kbd> tape</span>}
+          </div>
         </div>
         {assetClass === 'crypto' && (
-          <CryptoMetricsPanel
-            symbol={displayLabel}
-            open={bottomPanelOpen}
-            onToggle={() => setBottomPanelOpen(v => !v)}
-          />
+          <ChartErrorBoundary name="Crypto Metrics">
+            <CryptoMetricsPanel
+              symbol={displayLabel}
+              open={bottomPanelOpen}
+              onToggle={() => setBottomPanelOpen(v => !v)}
+            />
+          </ChartErrorBoundary>
         )}
       </div>
     </div>
+  );
+}
+
+export default function ChartPage() {
+  return (
+    <Suspense fallback={<div className="h-screen w-screen bg-black" />}>
+      <ChartPageInner />
+    </Suspense>
   );
 }

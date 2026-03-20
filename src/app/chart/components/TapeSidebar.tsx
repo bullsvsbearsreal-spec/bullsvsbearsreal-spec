@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Activity, Wifi, WifiOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRealtimeTrades, RealtimeTrade } from '@/hooks/useRealtimeTrades';
+import { useSound } from '@/hooks/useSound';
 import { formatUSD } from '@/lib/utils/format';
 
 interface TapeSidebarProps {
@@ -11,7 +12,7 @@ interface TapeSidebarProps {
   onToggle: () => void;
 }
 
-function TradeRow({ trade }: { trade: RealtimeTrade }) {
+const TradeRow = React.memo(function TradeRow({ trade }: { trade: RealtimeTrade }) {
   const isBig = trade.quoteQty >= 50_000;
   return (
     <div
@@ -31,19 +32,31 @@ function TradeRow({ trade }: { trade: RealtimeTrade }) {
       {isBig && <span className="text-hub-yellow text-[8px]">BIG</span>}
     </div>
   );
-}
+});
 
 export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarProps) {
-  const pair = `${symbol.toLowerCase()}usdt`;
-  const { trades, stats, connected } = useRealtimeTrades(visible ? pair : '');
+  // Pass bare symbol — useRealtimeTrades appends USDT internally
+  const { trades, stats, connected } = useRealtimeTrades(visible ? symbol : '');
+  const { playAlert } = useSound();
+  const prevBigCountRef = useRef(0);
+
+  // Sound alert for big trades ($100K+)
+  useEffect(() => {
+    if (!visible || trades.length === 0) return;
+    const bigCount = trades.filter(t => t.quoteQty >= 100_000).length;
+    if (bigCount > prevBigCountRef.current && prevBigCountRef.current > 0) {
+      playAlert();
+    }
+    prevBigCountRef.current = bigCount;
+  }, [trades, visible, playAlert]);
 
   return (
     <>
-      {/* Toggle button — always visible */}
+      {/* Toggle button — hidden on very small screens to avoid overlapping TradingView toolbar */}
       <button
         onClick={onToggle}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-[#0a0a0a] border border-white/[0.08] border-r-0 rounded-l-md p-1.5 hover:bg-white/[0.04] transition-colors group"
-        title={visible ? 'Hide tape' : 'Show live tape'}
+        aria-label={visible ? 'Hide trade tape' : 'Show live trade tape'}
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-[#0a0a0a] border border-white/[0.08] border-r-0 rounded-l-md p-1.5 hover:bg-white/[0.04] transition-colors group hidden sm:block"
       >
         {visible ? (
           <ChevronRight className="w-3 h-3 text-neutral-500 group-hover:text-white" />
@@ -53,18 +66,21 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
       </button>
 
       {visible && (
-        <div className="w-[200px] flex-shrink-0 border-l border-white/[0.08] bg-[#060606] flex flex-col overflow-hidden">
+        <aside className="w-[200px] flex-shrink-0 border-l border-white/[0.08] bg-[#060606] flex flex-col overflow-hidden" aria-label="Live trade tape">
           {/* Header */}
           <div className="flex items-center justify-between px-2 py-1.5 border-b border-white/[0.06]">
             <div className="flex items-center gap-1.5">
               <Activity className="w-3 h-3 text-hub-yellow" />
               <span className="text-[10px] font-semibold text-neutral-300">Live Tape</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" aria-live="polite">
               {connected ? (
-                <Wifi className="w-2.5 h-2.5 text-green-400" />
+                <Wifi className="w-2.5 h-2.5 text-green-400" aria-label="Connected" />
               ) : (
-                <WifiOff className="w-2.5 h-2.5 text-red-400" />
+                <>
+                  <WifiOff className="w-2.5 h-2.5 text-red-400" aria-label="Disconnected" />
+                  <span className="text-[8px] text-red-400/70 animate-pulse">reconnecting</span>
+                </>
               )}
             </div>
           </div>
@@ -94,7 +110,7 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
           )}
 
           {/* Trade list */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="flex-1 overflow-y-auto scrollbar-thin" role="log" aria-label="Trade stream">
             {trades.length === 0 && connected && (
               <div className="flex items-center justify-center h-full">
                 <span className="text-[10px] text-neutral-600 animate-pulse">Waiting for trades...</span>
@@ -113,19 +129,19 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
           {/* Delta bar at bottom */}
           {stats.buyVolume + stats.sellVolume > 0 && (
             <div className="flex-shrink-0 px-2 py-1 border-t border-white/[0.06]">
-              <div className="flex h-1.5 rounded-full overflow-hidden bg-white/[0.04]">
+              <div className="flex h-1.5 rounded-full overflow-hidden bg-white/[0.04]" role="meter" aria-label="Buy/sell ratio" aria-valuenow={Math.round((stats.buyVolume / (stats.buyVolume + stats.sellVolume)) * 100)}>
                 <div
-                  className="bg-green-500/60 transition-all duration-500"
+                  className="bg-green-500/60 transition-all duration-300"
                   style={{ width: `${(stats.buyVolume / (stats.buyVolume + stats.sellVolume)) * 100}%` }}
                 />
                 <div
-                  className="bg-red-500/60 transition-all duration-500"
+                  className="bg-red-500/60 transition-all duration-300"
                   style={{ width: `${(stats.sellVolume / (stats.buyVolume + stats.sellVolume)) * 100}%` }}
                 />
               </div>
             </div>
           )}
-        </div>
+        </aside>
       )}
     </>
   );
