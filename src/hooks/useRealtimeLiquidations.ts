@@ -174,7 +174,7 @@ export function useRealtimeLiquidations(enabled: boolean) {
               const px = parseFloat(item.bkPx || '0');
               const sz = parseFloat(item.sz || '0');
               const value = px * sz;
-              if (value < MIN_VALUE) return;
+              if (value < MIN_VALUE) continue;
               addLiq({
                 time: parseInt(item.ts || '0') || Date.now(),
                 symbol: normalizeSymbol(item.instId || ''),
