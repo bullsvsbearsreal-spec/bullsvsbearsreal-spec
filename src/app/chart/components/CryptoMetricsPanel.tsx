@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Activity, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Activity, Zap, Wifi, WifiOff } from 'lucide-react';
 import { useApi } from '@/hooks/useSWRApi';
+import { useRealtimeLiquidations, LIQ_WINDOWS } from '@/hooks/useRealtimeLiquidations';
 import type { Time, LineData } from 'lightweight-charts';
 
 const LightweightChart = dynamic(
@@ -109,24 +110,10 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     enabled: open,
   });
 
-  // Liquidation feed for this symbol (multi-exchange from DB)
-  const { data: liqData } = useApi<{
-    mode: string;
-    data: Array<{ symbol: string; exchange: string; side: string; price: number; quantity: number; valueUsd: number; ts: number }>;
-    count: number;
-  }>({
-    key: `chart-liqs-${symbol}`,
-    fetcher: async () => {
-      const res = await fetch(`/api/history/liquidations?mode=feed&symbol=${symbol.toUpperCase()}&hours=24&limit=100`);
-      if (!res.ok) throw new Error('liq fetch failed');
-      return res.json();
-    },
-    refreshInterval: 10_000,
-    enabled: open,
-  });
+  // Real-time liquidation WebSocket feed (Binance + OKX, in-memory only)
+  const { stats: liqStats, connected: liqConnected, liqWindow, setLiqWindow, getFilteredLiqs } = useRealtimeLiquidations(open ? symbol : '');
 
   const [showDetail, setShowDetail] = useState(false);
-  const [liqWindow, setLiqWindow] = useState<'1h' | '4h' | '12h' | '24h'>('1h');
 
   const metrics = useMemo(() => {
     const sym = symbol.toUpperCase();
@@ -439,34 +426,27 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                 );
               })()}
 
-              {/* Recent liquidations */}
+              {/* Real-time liquidations (Binance + OKX WebSocket) */}
               {(() => {
-                const LIQ_WINDOWS = [
-                  { key: '1h' as const, label: '1H', ms: 60 * 60_000 },
-                  { key: '4h' as const, label: '4H', ms: 4 * 60 * 60_000 },
-                  { key: '12h' as const, label: '12H', ms: 12 * 60 * 60_000 },
-                  { key: '24h' as const, label: '24H', ms: 24 * 60 * 60_000 },
-                ];
-                const windowMs = LIQ_WINDOWS.find(w => w.key === liqWindow)?.ms ?? 60 * 60_000;
-                const now = Date.now();
-                const allLiqs = liqData?.data ?? [];
-                const filtered = allLiqs.filter(l => now - l.ts < windowMs);
-                const totalLiqValue = filtered.reduce((sum, l) => sum + (l.valueUsd || 0), 0);
-                const longCount = filtered.filter(l => l.side === 'long').length;
-                const shortCount = filtered.filter(l => l.side === 'short').length;
-                const exchangeSet = new Set(filtered.map(l => l.exchange));
-                const exchangeNames = Array.from(exchangeSet).sort();
+                const filtered = getFilteredLiqs();
+                const anyConnected = liqConnected.binance || liqConnected.okx;
 
                 return (
-                  <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
+                  <div className="lg:w-[280px] flex-shrink-0 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2 flex flex-col">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-1">
                         <Zap className="w-3 h-3 text-hub-yellow" />
-                        <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Liquidations</p>
+                        <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Live Liquidations</p>
                       </div>
-                      <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">
-                        {exchangeNames.length > 0 ? exchangeNames.slice(0, 3).join(', ') + (exchangeNames.length > 3 ? ` +${exchangeNames.length - 3}` : '') : 'All'}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] px-1 py-[1px] rounded bg-[#F0B90B]/10 text-[#F0B90B] font-medium">Binance</span>
+                        <span className="text-[8px] px-1 py-[1px] rounded bg-white/[0.04] text-neutral-500 font-medium">OKX</span>
+                        {anyConnected ? (
+                          <Wifi className="w-2.5 h-2.5 text-green-400" />
+                        ) : (
+                          <WifiOff className="w-2.5 h-2.5 text-red-400" />
+                        )}
+                      </div>
                     </div>
 
                     {/* Time window tabs */}
@@ -489,44 +469,54 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                     </div>
 
                     {/* Summary stats */}
-                    {filtered.length > 0 && (
+                    {liqStats.count > 0 && (
                       <div className="flex items-center justify-between mb-1.5 px-0.5">
                         <span className="text-[8px] text-neutral-500 font-mono">
-                          {filtered.length} liqs | ${totalLiqValue >= 1e6 ? `${(totalLiqValue / 1e6).toFixed(1)}M` : totalLiqValue >= 1000 ? `${(totalLiqValue / 1000).toFixed(0)}K` : totalLiqValue.toFixed(0)} total
+                          {liqStats.count} liqs | ${liqStats.totalValue >= 1e6 ? `${(liqStats.totalValue / 1e6).toFixed(1)}M` : liqStats.totalValue >= 1000 ? `${(liqStats.totalValue / 1000).toFixed(0)}K` : liqStats.totalValue.toFixed(0)} total
                         </span>
                         <span className="text-[8px] font-mono">
-                          <span className="text-red-400/70">{longCount}L</span>
+                          <span className="text-red-400/70">{liqStats.longCount}L</span>
                           {' '}
-                          <span className="text-green-400/70">{shortCount}S</span>
+                          <span className="text-green-400/70">{liqStats.shortCount}S</span>
                         </span>
                       </div>
                     )}
 
                     {/* Liq list */}
-                    {filtered.length === 0 ? (
-                      <p className="text-[9px] text-neutral-600 text-center py-2">No liquidations in this window</p>
-                    ) : (
-                      <div className="space-y-[2px]">
-                        {filtered.slice(0, 12).map((liq, i) => {
-                          const usdVal = liq.valueUsd || 0;
-                          const isBig = usdVal >= 100_000;
-                          return (
-                            <div key={i} className={`flex items-center gap-1.5 text-[9px] font-mono ${isBig ? 'bg-white/[0.02]' : ''}`}>
-                              <span className={`w-[32px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
-                                {liq.side === 'long' ? 'LONG' : 'SHORT'}
-                              </span>
-                              <span className="text-neutral-500 text-[8px] w-[48px] truncate">{liq.exchange}</span>
-                              <span className={`font-bold flex-1 ${isBig ? 'text-hub-yellow' : 'text-neutral-300'}`}>
-                                ${usdVal >= 1e6 ? `${(usdVal / 1e6).toFixed(1)}M` : usdVal >= 1000 ? `${(usdVal / 1000).toFixed(1)}K` : usdVal.toFixed(0)}
-                              </span>
-                              <span className="text-neutral-600 text-[8px]">
-                                {new Date(liq.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <div className="flex-1">
+                      {filtered.length === 0 ? (
+                        <div className="flex items-center justify-center py-3">
+                          <span className="text-[9px] text-neutral-600 animate-pulse">
+                            {anyConnected ? 'Waiting for liquidations...' : 'Connecting...'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="space-y-[2px]">
+                          {filtered.slice(0, 12).map((liq, i) => {
+                            const isBig = liq.value >= 100_000;
+                            return (
+                              <div key={`${liq.time}-${i}`} className={`flex items-center gap-1.5 text-[9px] font-mono ${isBig ? 'bg-white/[0.02]' : ''}`}>
+                                <span className={`w-[32px] font-bold ${liq.side === 'long' ? 'text-red-400' : 'text-green-400'}`}>
+                                  {liq.side === 'long' ? 'LONG' : 'SHORT'}
+                                </span>
+                                <span className="text-neutral-500 text-[8px] w-[48px] truncate">{liq.exchange}</span>
+                                <span className={`font-bold flex-1 ${isBig ? 'text-hub-yellow' : 'text-neutral-300'}`}>
+                                  ${liq.value >= 1e6 ? `${(liq.value / 1e6).toFixed(1)}M` : liq.value >= 1000 ? `${(liq.value / 1000).toFixed(1)}K` : liq.value.toFixed(0)}
+                                </span>
+                                <span className="text-neutral-600 text-[8px]">
+                                  {new Date(liq.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Session note */}
+                    <p className="text-[8px] text-neutral-500 text-center mt-1.5 pt-1 border-t border-white/[0.04]">
+                      Session data only, clears on refresh
+                    </p>
                   </div>
                 );
               })()}
