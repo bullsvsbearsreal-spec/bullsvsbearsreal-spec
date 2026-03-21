@@ -72,6 +72,8 @@ async function _doInitDB(): Promise<void> {
 
   // Add mark_price column (added Mar 2026 for price gap tracking)
   await sql`ALTER TABLE funding_snapshots ADD COLUMN IF NOT EXISTS mark_price REAL`;
+  // Partial index for price-multi queries (only rows with mark_price)
+  await sql`CREATE INDEX IF NOT EXISTS idx_funding_mark_price ON funding_snapshots(symbol, exchange, ts DESC) WHERE mark_price IS NOT NULL AND mark_price > 0`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS oi_snapshots (

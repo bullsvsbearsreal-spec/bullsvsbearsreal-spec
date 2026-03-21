@@ -71,10 +71,13 @@ const SNAPSHOT_INTERVAL = 15_000;
 const MAX_SNAPSHOTS = 360; // 1.5h at 15s intervals
 
 const TIMEFRAMES = [
-  { key: '5m', label: '5M', ms: 5 * 60_000 },
-  { key: '15m', label: '15M', ms: 15 * 60_000 },
-  { key: '1h', label: '1H', ms: 60 * 60_000 },
-  { key: '6h', label: '6H', ms: 6 * 60 * 60_000 },
+  { key: '5m', label: '5M', ms: 5 * 60_000, source: 'session' as const },
+  { key: '15m', label: '15M', ms: 15 * 60_000, source: 'session' as const },
+  { key: '1h', label: '1H', ms: 60 * 60_000, source: 'session' as const },
+  { key: '6h', label: '6H', ms: 6 * 60 * 60_000, source: 'session' as const },
+  { key: '1d', label: '1D', ms: 24 * 60 * 60_000, source: 'db' as const, days: 1 },
+  { key: '7d', label: '7D', ms: 7 * 24 * 60 * 60_000, source: 'db' as const, days: 7 },
+  { key: '30d', label: '30D', ms: 30 * 24 * 60 * 60_000, source: 'db' as const, days: 30 },
 ] as const;
 type TimeframeKey = typeof TIMEFRAMES[number]['key'];
 
@@ -110,6 +113,34 @@ export default function ExchangeSpreadsPage() {
   const snapshots = useRef<PriceSnapshot[]>([]);
   const symbolPickerRef = useRef<HTMLDivElement>(null);
   const exchangePickerRef = useRef<HTMLDivElement>(null);
+
+  // ── Historical DB data ──
+  const [dbData, setDbData] = useState<Record<string, { t: number; price: number }[]> | null>(null);
+  const [dbLoading, setDbLoading] = useState(false);
+
+  // Fetch historical data when timeframe is DB-sourced
+  useEffect(() => {
+    const tf = TIMEFRAMES.find(t => t.key === timeframe);
+    if (!tf || tf.source !== 'db') { setDbData(null); return; }
+    const days = (tf as any).days || 7;
+    setDbLoading(true);
+    const controller = new AbortController();
+    fetch(`/api/history/price-multi?symbol=${encodeURIComponent(symbol)}&days=${days}`, {
+      signal: controller.signal,
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        const exchanges = json?.exchanges as Record<string, { t: number; price: number }[]> | undefined;
+        if (exchanges && Object.keys(exchanges).length > 0) {
+          setDbData(exchanges);
+        } else {
+          setDbData(null);
+        }
+      })
+      .catch(() => setDbData(null))
+      .finally(() => setDbLoading(false));
+    return () => controller.abort();
+  }, [symbol, timeframe]);
 
   // ── Fetch live tickers ──
   const { data: tickerData, isLoading, lastUpdate } = useApi<TickerEntry[]>({
@@ -196,10 +227,91 @@ export default function ExchangeSpreadsPage() {
     return { highest, lowest, spread, spreadPct, spreadBps, median: med, prices };
   }, [selectedExchanges, currentPrices]);
 
-  // ── Chart data from snapshots ──
+  // ── Chart data from snapshots or DB ──
   const chartData = useMemo(() => {
     const tf = TIMEFRAMES.find(t => t.key === timeframe)!;
     const cutoff = Date.now() - tf.ms;
+
+    // For DB-sourced timeframes, use historical data
+    if (tf.source === 'db' && dbData) {
+      const dbExchanges = Object.keys(dbData);
+      const active = selectedExchanges.filter(e => dbExchanges.includes(e));
+      if (active.length < 2) {
+        // Also try with all DB exchanges
+        const fallback = dbExchanges.slice(0, MAX_EXCHANGES);
+        if (fallback.length < 2) return [];
+        // Use whatever DB has
+        const bucketMs = (tf as any).days > 7 ? 3600_000 : 600_000; // 1h or 10min buckets
+        const allTimes = new Set<number>();
+        const lookups: Record<string, Map<number, number>> = {};
+        for (const ex of fallback) {
+          const map = new Map<number, number>();
+          for (const pt of dbData[ex]) {
+            const b = Math.round(pt.t / bucketMs) * bucketMs;
+            map.set(b, pt.price);
+            allTimes.add(b);
+          }
+          lookups[ex] = map;
+        }
+        const sorted = Array.from(allTimes).sort();
+        const rows: ChartRow[] = [];
+        const lastPrice: Record<string, number> = {};
+        for (const t of sorted) {
+          const exPrices: number[] = [];
+          for (const ex of fallback) {
+            const p = lookups[ex]?.get(t) ?? lastPrice[ex];
+            if (p) { lastPrice[ex] = p; exPrices.push(p); }
+          }
+          if (exPrices.length < 2) continue;
+          const med = median(exPrices);
+          const min = Math.min(...exPrices);
+          const max = Math.max(...exPrices);
+          const row: ChartRow = {
+            time: t, label: new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            spread: max - min, spreadPct: ((max - min) / min) * 100, median: med, min, max,
+          };
+          fallback.forEach(ex => { row[ex] = lookups[ex]?.get(t) ?? lastPrice[ex] ?? 0; });
+          rows.push(row);
+        }
+        return rows;
+      }
+      // Use selected exchanges from DB data
+      const bucketMs = (tf as any).days > 7 ? 3600_000 : 600_000;
+      const allTimes = new Set<number>();
+      const lookups: Record<string, Map<number, number>> = {};
+      for (const ex of active) {
+        const map = new Map<number, number>();
+        for (const pt of (dbData[ex] || [])) {
+          const b = Math.round(pt.t / bucketMs) * bucketMs;
+          map.set(b, pt.price);
+          allTimes.add(b);
+        }
+        lookups[ex] = map;
+      }
+      const sorted = Array.from(allTimes).sort();
+      const rows: ChartRow[] = [];
+      const lastPrice: Record<string, number> = {};
+      for (const t of sorted) {
+        const exPrices: number[] = [];
+        for (const ex of active) {
+          const p = lookups[ex]?.get(t) ?? lastPrice[ex];
+          if (p) { lastPrice[ex] = p; exPrices.push(p); }
+        }
+        if (exPrices.length < 2) continue;
+        const med = median(exPrices);
+        const min = Math.min(...exPrices);
+        const max = Math.max(...exPrices);
+        const row: ChartRow = {
+          time: t, label: new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          spread: max - min, spreadPct: ((max - min) / min) * 100, median: med, min, max,
+        };
+        active.forEach(ex => { row[ex] = lookups[ex]?.get(t) ?? lastPrice[ex] ?? 0; });
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    // Session-sourced timeframes
     const active = selectedExchanges.filter(e => availableExchanges.includes(e));
     if (active.length < 2) return [];
 
@@ -646,12 +758,30 @@ export default function ExchangeSpreadsPage() {
                 </ResponsiveContainer>
               ) : (
                 <div className="h-[420px] flex flex-col items-center justify-center text-neutral-600">
-                  <BarChart3 className="w-10 h-10 mb-3 text-neutral-700" />
-                  <p className="text-sm mb-1">Accumulating price data...</p>
-                  <p className="text-[10px] text-neutral-700">
-                    {snapshots.current.length} snapshot{snapshots.current.length !== 1 ? 's' : ''} collected, need 2+ to render chart.
-                    Updates every 15s.
-                  </p>
+                  {dbLoading ? (
+                    <>
+                      <RefreshCw className="w-8 h-8 mb-3 text-neutral-700 animate-spin" />
+                      <p className="text-sm">Loading historical data...</p>
+                    </>
+                  ) : TIMEFRAMES.find(t => t.key === timeframe)?.source === 'db' ? (
+                    <>
+                      <BarChart3 className="w-10 h-10 mb-3 text-neutral-700" />
+                      <p className="text-sm mb-1">Historical data accumulating</p>
+                      <p className="text-[10px] text-neutral-700 max-w-[300px] text-center">
+                        Mark prices are recorded every 10 minutes from all exchanges.
+                        Use 5M-6H tabs for live session data, or wait for history to build up.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="w-10 h-10 mb-3 text-neutral-700" />
+                      <p className="text-sm mb-1">Accumulating price data...</p>
+                      <p className="text-[10px] text-neutral-700">
+                        {snapshots.current.length} snapshot{snapshots.current.length !== 1 ? 's' : ''} collected, need 2+ to render chart.
+                        Updates every 15s.
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -718,7 +848,8 @@ export default function ExchangeSpreadsPage() {
               <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
               <div className="text-[11px] text-neutral-500 leading-relaxed">
                 <span className="text-hub-yellow font-medium">Live prices</span> from {availableExchanges.length} exchanges, updated every 15 seconds.
-                Chart accumulates data during your session. Spread = highest price minus lowest price across selected exchanges.
+                5M-6H tabs show session data (accumulates while you browse). 1D-30D tabs load historical mark prices from the database (10-min snapshots).
+                Spread = highest minus lowest price across selected exchanges.
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
