@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -79,6 +80,8 @@ function deriveSentiment(change24h: number, oiChange: number, funding: number): 
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function ScreenerPage() {
+  const router = useRouter();
+  const searchRef = useRef<HTMLInputElement>(null);
   const authLimit = useAuthLimit(20);
   const [rows, setRows] = useState<ScreenerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,6 +237,23 @@ export default function ScreenerPage() {
   useEffect(() => {
     setPresets([...DEFAULT_PRESETS, ...getPresets()]);
   }, []);
+
+  // Keyboard shortcut: "/" to focus search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Scroll to top on page change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [page]);
 
   /* ─── Filter + Sort ───────────────────────────────────────────── */
 
@@ -434,10 +454,11 @@ export default function ScreenerPage() {
           <div className="relative flex-1 min-w-[180px] max-w-[300px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
             <input
+              ref={searchRef}
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              placeholder="Search symbol..."
+              placeholder="Search symbol... (press /)"
               aria-label="Search symbols by name"
               className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-hub-yellow/30"
             />
@@ -574,16 +595,26 @@ export default function ScreenerPage() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] text-neutral-500">
-            Showing {paged.length} of {filtered.length} results
-            {conditions.length > 0 ? ` (filtered from ${rows.length})` : ''}
+            {loading && rows.length === 0
+              ? 'Loading...'
+              : `Showing ${paged.length} of ${filtered.length} results${conditions.length > 0 ? ` (filtered from ${rows.length})` : ''}`}
           </span>
         </div>
+
+        {/* Loading skeleton */}
+        {loading && rows.length === 0 && (
+          <div className="space-y-1">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-10 rounded-lg bg-white/[0.02] animate-pulse" />
+            ))}
+          </div>
+        )}
 
         {/* Table (desktop) */}
         <div className="overflow-x-auto scrollbar-accent rounded-xl border border-white/[0.06] hidden md:block">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-white/[0.02] border-b border-white/[0.06]">
+              <tr className="bg-hub-darker border-b border-white/[0.06] sticky top-0 z-10">
                 <th className="text-left px-3 py-2.5 text-[11px] font-medium text-neutral-500 w-8">#</th>
                 <th className="text-left px-3 py-2.5 text-[11px] font-medium text-neutral-500 w-6"></th>
                 {([
@@ -622,7 +653,11 @@ export default function ScreenerPage() {
                 return (
                   <tr
                     key={row.symbol}
-                    className={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors ${
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('button, a')) return;
+                      router.push(`/symbol/${row.symbol}`);
+                    }}
+                    className={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer ${
                       matchesAll ? 'bg-hub-yellow/[0.02]' : ''
                     }`}
                   >
@@ -794,17 +829,38 @@ export default function ScreenerPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="flex items-center justify-center gap-1.5 mt-4">
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] text-neutral-400 hover:text-white disabled:opacity-30 transition-colors"
             >
-              Previous
+              Prev
             </button>
-            <span className="text-xs text-neutral-500">
-              Page {page + 1} of {totalPages}
-            </span>
+            {Array.from({ length: totalPages }, (_, i) => i)
+              .filter(i => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1)
+              .reduce<(number | 'ellipsis')[]>((acc, i, idx, arr) => {
+                if (idx > 0 && i - (arr[idx - 1] as number) > 1) acc.push('ellipsis');
+                acc.push(i);
+                return acc;
+              }, [])
+              .map((item, idx) =>
+                item === 'ellipsis' ? (
+                  <span key={`e-${idx}`} className="px-1 text-neutral-600 text-xs">...</span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setPage(item as number)}
+                    className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                      page === item
+                        ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/20'
+                        : 'bg-white/[0.04] text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    {(item as number) + 1}
+                  </button>
+                )
+              )}
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
