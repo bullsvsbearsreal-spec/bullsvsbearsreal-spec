@@ -127,18 +127,22 @@ export default function ScreenerPage() {
       const oi: any[] = Array.isArray(oiRes?.data) ? oiRes.data : [];
 
       // Build ticker map (aggregate by symbol, deduplicate volume by exchange)
-      const MAX_SANE_VOL = 100_000_000_000; // $100B cap per exchange entry
+      // Exchanges with known inflated/unreliable volume data
+      const SKIP_VOLUME = new Set(['Gate.io', 'BitMEX', 'WhiteBIT', 'Coinbase']);
+      const MAX_SANE_VOL = 10_000_000_000; // $10B cap per exchange entry
       const tickerMap = new Map<string, { price: number; change: number; vol: number; count: number; volByExchange: Map<string, number> }>();
       tickers.forEach((t: any) => {
         const sym = t.symbol;
         const cur = tickerMap.get(sym) || { price: 0, change: 0, vol: 0, count: 0, volByExchange: new Map() };
         cur.price += t.lastPrice || 0;
         cur.change = t.priceChangePercent24h ?? t.change24h ?? cur.change;
-        // Deduplicate volume per exchange and cap inflated data
-        const rawVol = Number(t.quoteVolume24h) || 0;
-        if (rawVol > 0 && rawVol <= MAX_SANE_VOL) {
-          const existing = cur.volByExchange.get(t.exchange) || 0;
-          if (rawVol > existing) cur.volByExchange.set(t.exchange, rawVol);
+        // Deduplicate volume per exchange, skip inflated sources, cap outliers
+        if (!SKIP_VOLUME.has(t.exchange)) {
+          const rawVol = Number(t.quoteVolume24h) || 0;
+          if (rawVol > 0 && rawVol <= MAX_SANE_VOL) {
+            const existing = cur.volByExchange.get(t.exchange) || 0;
+            if (rawVol > existing) cur.volByExchange.set(t.exchange, rawVol);
+          }
         }
         cur.count++;
         tickerMap.set(sym, cur);
@@ -886,7 +890,7 @@ export default function ScreenerPage() {
           <div className="text-[10px] text-neutral-500 leading-relaxed">
             <span className="text-neutral-400 font-medium">Data sources:</span>{' '}
             <span className="text-neutral-500">
-              CEX: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, WhiteBIT, Coinbase, CoinEx, Deribit{' · '}
+              CEX: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit{' · '}
               DEX: Hyperliquid, dYdX, Aster, Lighter, Aevo, Drift, GMX, gTrade, Extended, Variational, edgeX, Nado{' · '}
               Prices refresh every 30s
             </span>
