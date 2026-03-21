@@ -1,738 +1,742 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import Pagination from '@/app/funding/components/Pagination';
-import { TokenIconSimple } from '@/components/TokenIcon';
-import { ExchangeLogo } from '@/components/ExchangeLogos';
-import UpdatedAgo from '@/components/UpdatedAgo';
-import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import { useApi } from '@/hooks/useSWRApi';
-import { formatPrice } from '@/lib/utils/format';
+import { formatPrice, formatCompact, formatPercent } from '@/lib/utils/format';
 import {
-  ArrowLeftRight, Search, ArrowUpDown, TrendingUp, TrendingDown,
-  BarChart3, Activity, Zap, Info,
+  Search, ChevronDown, X, TrendingUp, TrendingDown, Minus,
+  ArrowRightLeft, Zap, Calculator, ExternalLink, RefreshCw,
+  BarChart3, Info, Copy, Check,
 } from 'lucide-react';
-import SpreadTrackerChart from './components/SpreadTrackerChart';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
-  CartesianGrid, Cell,
-  Legend, PieChart, Pie, ReferenceLine, AreaChart, Area,
+  ComposedChart, Line, Area, XAxis, YAxis, Tooltip as RTooltip,
+  ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from 'recharts';
 
-/* ─── Types ──────────────────────────────────────────────────────── */
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-interface TickerRow {
+interface TickerEntry {
   symbol: string;
   exchange: string;
   lastPrice: number;
+  change24h: number;
   volume24h: number;
   quoteVolume24h: number;
 }
 
-interface SpreadRow {
-  symbol: string;
-  exchanges: number;
-  medianPrice: number;
-  highExchange: string;
-  highPrice: number;
-  lowExchange: string;
-  lowPrice: number;
-  spreadBps: number;
+interface PriceSnapshot {
+  t: number;
+  prices: Record<string, number>;
+}
+
+interface ChartRow {
+  time: number;
+  label: string;
+  spread: number;
   spreadPct: number;
-  totalVolume: number;
-  tickers: { exchange: string; price: number; deviation: number; volume: number }[];
+  median: number;
+  min: number;
+  max: number;
+  [ex: string]: number | string;
 }
 
-type SortField = 'symbol' | 'spreadBps' | 'exchanges' | 'medianPrice' | 'totalVolume';
-type SortOrder = 'asc' | 'desc';
+// ─── Constants ──────────────────────────────────────────────────────────────
 
-const ROWS_PER_PAGE = 40;
+const EXCHANGE_COLORS: Record<string, string> = {
+  Binance: '#F0B90B', Bybit: '#F7A600', OKX: '#FFFFFF',
+  Bitget: '#00C8B3', Hyperliquid: '#06B6D4', MEXC: '#2EBD85',
+  Kraken: '#7B61FF', 'dYdX': '#6966FF', Bitfinex: '#97C554',
+  KuCoin: '#23AF91', BingX: '#2B6AFF', Phemex: '#D4FF00',
+  HTX: '#2B6AED', 'Gate.io': '#2354E6', Coinbase: '#0052FF',
+  WhiteBIT: '#02C076', CoinEx: '#48D79E', Deribit: '#5FE1AC',
+  Drift: '#E44AFF', GMX: '#4C85E0', Aster: '#A855F7',
+  Lighter: '#FB923C', Nado: '#F43F5E', Aevo: '#818CF8',
+  Extended: '#34D399', edgeX: '#FBBF24', Variational: '#F472B6',
+  Orderly: '#38BDF8', Paradex: '#C084FC', Backpack: '#4ADE80',
+};
+const DEFAULT_COLOR = '#6B7280';
 
-/* ─── Helpers ────────────────────────────────────────────────────── */
+const PAIR_GROUPS = {
+  Majors: ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'TRX', 'AVAX', 'LINK', 'TON'],
+  Alts: ['SUI', 'APT', 'NEAR', 'DOT', 'ARB', 'OP', 'MATIC', 'FIL', 'ATOM', 'INJ', 'HBAR', 'LTC'],
+  Memes: ['PEPE', 'WIF', 'BONK', 'FLOKI', 'POPCAT', 'BRETT', 'MOG', 'MEW', 'TRUMP', 'PENGU', 'SPX', 'GOAT', 'FARTCOIN', 'TURBO', 'USELESS', 'MOODENG'],
+};
 
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+const DEFAULT_EXCHANGES = ['Binance', 'Bybit'];
+const MAX_EXCHANGES = 8;
+const SNAPSHOT_INTERVAL = 15_000;
+const MAX_SNAPSHOTS = 360; // 1.5h at 15s intervals
+
+const TIMEFRAMES = [
+  { key: '5m', label: '5M', ms: 5 * 60_000 },
+  { key: '15m', label: '15M', ms: 15 * 60_000 },
+  { key: '1h', label: '1H', ms: 60 * 60_000 },
+  { key: '6h', label: '6H', ms: 6 * 60 * 60_000 },
+] as const;
+type TimeframeKey = typeof TIMEFRAMES[number]['key'];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function getColor(ex: string): string {
+  return EXCHANGE_COLORS[ex] || DEFAULT_COLOR;
 }
 
-function buildSpreads(tickers: TickerRow[]): SpreadRow[] {
-  // Group by symbol
-  const bySymbol = new Map<string, TickerRow[]>();
-  for (const t of tickers) {
-    if (!t.lastPrice || t.lastPrice <= 0) continue;
-    const sym = t.symbol;
-    if (!bySymbol.has(sym)) bySymbol.set(sym, []);
-    bySymbol.get(sym)!.push(t);
-  }
-
-  const results: SpreadRow[] = [];
-  for (const [symbol, entries] of Array.from(bySymbol)) {
-    // Need at least 2 exchanges to compute spread
-    // Deduplicate by exchange (keep highest volume)
-    const byExchange = new Map<string, TickerRow>();
-    for (const e of entries) {
-      const existing = byExchange.get(e.exchange);
-      if (!existing || e.quoteVolume24h > existing.quoteVolume24h) {
-        byExchange.set(e.exchange, e);
-      }
-    }
-    const deduped = Array.from(byExchange.values());
-    if (deduped.length < 2) continue;
-
-    const prices = deduped.map(e => e.lastPrice);
-    const med = median(prices);
-    if (med <= 0) continue;
-
-    // Filter out outlier prices (>10% away from median = likely different contract spec or stale)
-    const MAX_DEVIATION = 0.1; // 10%
-    const sane = deduped.filter(e => Math.abs(e.lastPrice - med) / med <= MAX_DEVIATION);
-    if (sane.length < 2) continue;
-
-    // Recalculate median with sane prices only
-    const saneMed = median(sane.map(e => e.lastPrice));
-    if (saneMed <= 0) continue;
-
-    const tickerData = sane
-      .map(e => ({
-        exchange: e.exchange,
-        price: e.lastPrice,
-        deviation: ((e.lastPrice - saneMed) / saneMed) * 10000, // bps
-        volume: e.quoteVolume24h || 0,
-      }))
-      .sort((a, b) => b.deviation - a.deviation);
-
-    const high = tickerData[0];
-    const low = tickerData[tickerData.length - 1];
-    const spreadBps = high.deviation - low.deviation;
-    const totalVolume = sane.reduce((s, e) => s + (e.quoteVolume24h || 0), 0);
-
-    results.push({
-      symbol,
-      exchanges: sane.length,
-      medianPrice: saneMed,
-      highExchange: high.exchange,
-      highPrice: high.price,
-      lowExchange: low.exchange,
-      lowPrice: low.price,
-      spreadBps,
-      spreadPct: spreadBps / 100,
-      totalVolume,
-      tickers: tickerData,
-    });
-  }
-
-  return results;
+function median(arr: number[]): number {
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
-/* ─── Stats Card ─────────────────────────────────────────────────── */
+// ─── Page Component ─────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, sub, color }: {
-  icon: any; label: string; value: string; sub?: string; color: string;
-}) {
-  return (
-    <div className="relative group rounded-xl overflow-hidden"
-      style={{ background: `linear-gradient(135deg, ${color}10 0%, var(--hub-darker) 60%)`, border: `1px solid ${color}20` }}>
-      <div className="relative px-4 py-3.5">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-[0.1em]">{label}</span>
-          <Icon className="w-3.5 h-3.5" style={{ color, opacity: 0.4 }} />
-        </div>
-        <div className="text-2xl font-black text-white font-mono tracking-tight">{value}</div>
-        {sub && <span className="text-neutral-600 text-[9px] mt-1 block">{sub}</span>}
-      </div>
-    </div>
-  );
-}
+export default function ExchangeSpreadsPage() {
+  // ── State ──
+  const [symbol, setSymbol] = useState('BTC');
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(DEFAULT_EXCHANGES);
+  const [timeframe, setTimeframe] = useState<TimeframeKey>('15m');
+  const [showSymbolPicker, setShowSymbolPicker] = useState(false);
+  const [showExchangePicker, setShowExchangePicker] = useState(false);
+  const [symbolSearch, setSymbolSearch] = useState('');
+  const [exchangeSearch, setExchangeSearch] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [showCalc, setShowCalc] = useState(false);
+  const [calcAmount, setCalcAmount] = useState('10000');
+  const [calcFee, setCalcFee] = useState('0.1');
 
-/* ─── (Spread History removed) ──────────────────────────────────── */
+  // ── Refs ──
+  const snapshots = useRef<PriceSnapshot[]>([]);
+  const symbolPickerRef = useRef<HTMLDivElement>(null);
+  const exchangePickerRef = useRef<HTMLDivElement>(null);
 
-
-/* ─── Spread Charts (Recharts) ──────────────────────────────────── */
-
-function SpreadCharts({ data }: { data: SpreadRow[] }) {
-  // Distribution histogram buckets
-  const buckets = [
-    { label: '0-5', min: 0, max: 5 },
-    { label: '5-10', min: 5, max: 10 },
-    { label: '10-25', min: 10, max: 25 },
-    { label: '25-50', min: 25, max: 50 },
-    { label: '50-100', min: 50, max: 100 },
-    { label: '100-500', min: 100, max: 500 },
-    { label: '500+', min: 500, max: Infinity },
-  ];
-
-  const distData = buckets.map(b => ({
-    range: b.label,
-    count: data.filter(r => r.spreadBps >= b.min && r.spreadBps < b.max).length,
-    color: b.min >= 500 ? '#ef4444' : b.min >= 100 ? '#f97316' : b.min >= 25 ? '#eab308' : '#22c55e',
-  }));
-
-  return (
-    <div className="grid grid-cols-1 gap-3 mb-5">
-      {/* Distribution */}
-      <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4">
-        <h3 className="text-sm font-semibold text-white mb-1">Spread Distribution</h3>
-        <p className="text-[9px] text-neutral-600 mb-3">Number of pairs by spread range (bps)</p>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={distData} margin={{ top: 15, right: 10, bottom: 0, left: -10 }}>
-            <XAxis dataKey="range" tick={{ fill: '#737373', fontSize: 9 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} />
-            <RTooltip
-              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11, padding: '8px 12px' }}
-              labelStyle={{ color: '#eab308', fontWeight: 600 }}
-              formatter={(v: number) => [`${v} pairs`, '']}
-              labelFormatter={(l) => `${l} bps`}
-              separator=""
-            />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={45} label={{ position: 'top', fill: '#737373', fontSize: 9 }}>
-              {distData.map((entry, i) => (
-                <Cell key={i} fill={entry.color} fillOpacity={0.75} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-    </div>
-  );
-}
-
-/* ─── Top Spreads Chart ─────────────────────────────────────────── */
-
-function TopSpreadsChart({ data }: { data: SpreadRow[] }) {
-  const top10 = data
-    .filter(r => r.exchanges >= 3)
-    .sort((a, b) => b.spreadBps - a.spreadBps)
-    .slice(0, 12);
-  if (top10.length === 0) return null;
-
-  const maxBps = Math.max(...top10.map(r => r.spreadBps), 1);
-
-  return (
-    <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4 mb-5">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-white">Widest Spreads</h2>
-        <span className="text-[9px] text-neutral-600">3+ exchanges, sorted by spread</span>
-      </div>
-      <div className="space-y-1.5">
-        {top10.map((row, i) => {
-          const pct = (row.spreadBps / maxBps) * 100;
-          const isHot = row.spreadBps >= 500;
-          const isWarm = row.spreadBps >= 100;
-          const barColor = isHot ? 'bg-red-500/70' : isWarm ? 'bg-orange-500/60' : 'bg-hub-yellow/50';
-          const textColor = isHot ? 'text-red-400' : isWarm ? 'text-orange-400' : 'text-hub-yellow';
-          return (
-            <div key={row.symbol} className="flex items-center gap-2 group">
-              <span className="w-4 text-[9px] text-neutral-600 text-right font-mono">{i + 1}</span>
-              <div className="w-14 flex items-center gap-1 flex-shrink-0">
-                <TokenIconSimple symbol={row.symbol} size={14} />
-                <span className="text-[11px] text-white font-semibold truncate">{row.symbol}</span>
-              </div>
-              <div className="flex-1 h-5 relative bg-white/[0.03] rounded overflow-hidden">
-                <div
-                  className={`absolute inset-y-0 left-0 ${barColor} rounded transition-all group-hover:opacity-90`}
-                  style={{ width: `${Math.max(pct, 2)}%` }}
-                />
-                <div className="absolute inset-0 flex items-center px-2">
-                  <span className={`text-[9px] font-mono font-bold ${textColor}`}>
-                    {row.spreadBps.toFixed(0)} bps
-                  </span>
-                </div>
-              </div>
-              <div className="w-24 text-right flex-shrink-0 hidden sm:block">
-                <span className="text-[9px] text-green-400/70 font-mono">{row.highExchange}</span>
-                <span className="text-[9px] text-neutral-600 mx-1">→</span>
-                <span className="text-[9px] text-red-400/70 font-mono">{row.lowExchange}</span>
-              </div>
-              <span className="w-8 text-[9px] text-neutral-600 text-right font-mono flex-shrink-0">{row.exchanges}x</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Expanded Row ───────────────────────────────────────────────── */
-
-const EXCHANGE_COLORS = ['#F59E0B', '#8B5CF6', '#22C55E', '#ef4444', '#06B6D4', '#EC4899', '#F97316', '#14B8A6', '#6366F1', '#84CC16', '#FB923C', '#2DD4BF', '#F472B6', '#A78BFA', '#FBBF24', '#34D399'];
-
-interface KlinePoint { time: number; close: number; }
-
-function ExpandedRow({ row }: { row: SpreadRow }) {
-  // Fetch price history
-  const [priceHistory, setPriceHistory] = useState<KlinePoint[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/klines?symbol=${row.symbol}&interval=1h&limit=48`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        const candles = d?.candles || d?.data;
-        if (candles?.length) setPriceHistory(candles.map((c: any) => ({ time: c.time, close: c.close })));
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [row.symbol]);
-
-  // Deviation chart data
-  const deviationChartData = [...row.tickers]
-    .sort((a, b) => b.deviation - a.deviation)
-    .map(t => ({
-      exchange: t.exchange,
-      deviation: parseFloat(t.deviation.toFixed(1)),
-      price: t.price,
-      fill: t.deviation >= 0 ? '#22c55e' : '#ef4444',
-    }));
-
-  // Volume data
-  const volumeData = row.tickers
-    .filter(t => t.volume > 0)
-    .sort((a, b) => b.volume - a.volume)
-    .map((t, i) => ({
-      name: t.exchange,
-      value: t.volume,
-      fill: EXCHANGE_COLORS[i % EXCHANGE_COLORS.length],
-    }));
-  const totalVol = volumeData.reduce((s, v) => s + v.value, 0);
-
-  // Price sparkline data
-  const sparkData = priceHistory.map(p => ({
-    t: new Date(p.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    price: p.close,
-  }));
-  const priceChange = sparkData.length >= 2
-    ? ((sparkData[sparkData.length - 1].price - sparkData[0].price) / sparkData[0].price) * 100
-    : null;
-
-  return (
-    <tr>
-      <td colSpan={7} className="px-0 py-0">
-        <div className="bg-white/[0.02] border-t border-b border-white/[0.04] px-4 py-4">
-
-          {/* Price History Sparkline */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
-                48h Price History
-              </div>
-              {priceChange !== null && (
-                <span className={`text-[10px] font-mono ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-                </span>
-              )}
-            </div>
-            {loading ? (
-              <div className="h-[120px] flex items-center justify-center text-neutral-600 text-[10px]">Loading...</div>
-            ) : sparkData.length > 2 ? (
-              <ResponsiveContainer width="100%" height={120}>
-                <AreaChart data={sparkData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id={`sparkGrad-${row.symbol}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={priceChange && priceChange >= 0 ? '#22c55e' : '#ef4444'} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={priceChange && priceChange >= 0 ? '#22c55e' : '#ef4444'} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="t" tick={false} axisLine={false} tickLine={false} />
-                  <YAxis domain={['dataMin', 'dataMax']} hide />
-                  <RTooltip
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 10 }}
-                    formatter={(v: number) => [formatPrice(v), 'Price']}
-                    labelStyle={{ color: '#737373', fontSize: 9 }}
-                  />
-                  <Area type="monotone" dataKey="price"
-                    stroke={priceChange && priceChange >= 0 ? '#22c55e' : '#ef4444'}
-                    fill={`url(#sparkGrad-${row.symbol})`}
-                    strokeWidth={1.5} dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[120px] flex items-center justify-center text-neutral-600 text-[10px]">No price data for {row.symbol}</div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left: Deviation bar chart */}
-            <div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 font-semibold">
-                Price Deviation from Median (bps)
-              </div>
-              <ResponsiveContainer width="100%" height={Math.max(100, deviationChartData.length * 22)}>
-                <BarChart data={deviationChartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 70 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false}
-                    tickFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}`} />
-                  <YAxis dataKey="exchange" type="category" tick={{ fill: '#a3a3a3', fontSize: 10 }} axisLine={false} tickLine={false} width={65} />
-                  <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" />
-                  <RTooltip
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
-                    formatter={(v: number, _: string, entry: any) => {
-                      const color = v >= 0 ? '#22c55e' : '#ef4444';
-                      return [
-                        <span key="v" style={{ color, fontFamily: 'monospace' }}>{v > 0 ? '+' : ''}{v} bps</span>,
-                        <span key="l" style={{ color: '#9ca3af', fontSize: 10 }}>{formatPrice(entry.payload?.price)}</span>,
-                      ];
-                    }}
-                    separator=""
-                  />
-                  <Bar dataKey="deviation" radius={[0, 3, 3, 0]} maxBarSize={14}>
-                    {deviationChartData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} fillOpacity={0.75} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Right: Volume breakdown */}
-            <div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 font-semibold">
-                Volume by Exchange
-              </div>
-              {volumeData.length > 1 ? (
-                <div className="flex items-start gap-3">
-                  <ResponsiveContainer width="45%" height={Math.max(100, deviationChartData.length * 22)}>
-                    <PieChart>
-                      <Pie data={volumeData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                        innerRadius="30%" outerRadius="75%" strokeWidth={1} stroke="rgba(0,0,0,0.3)">
-                        {volumeData.map((entry, i) => (
-                          <Cell key={i} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <RTooltip
-                        contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
-                        formatter={(v: number, name: string) => [
-                          `$${v >= 1e9 ? (v/1e9).toFixed(1) + 'B' : v >= 1e6 ? (v/1e6).toFixed(1) + 'M' : (v/1e3).toFixed(0) + 'K'}`,
-                          name
-                        ]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex-1 space-y-1 pt-1">
-                    {volumeData.slice(0, 8).map(v => (
-                      <div key={v.name} className="flex items-center gap-1.5 text-[10px]">
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: v.fill }} />
-                        <span className="text-neutral-400 truncate flex-1">{v.name}</span>
-                        <span className="text-neutral-500 font-mono">
-                          {totalVol > 0 ? ((v.value / totalVol) * 100).toFixed(0) + '%' : '—'}
-                        </span>
-                      </div>
-                    ))}
-                    {volumeData.length > 8 && (
-                      <div className="text-[9px] text-neutral-600">+{volumeData.length - 8} more</div>
-                    )}
-                  </div>
-                </div>
-              ) : volumeData.length === 1 ? (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02]">
-                  <span className="w-3 h-3 rounded-full" style={{ background: volumeData[0].fill }} />
-                  <span className="text-neutral-300 text-xs">{volumeData[0].name}</span>
-                  <span className="text-neutral-500 font-mono text-xs ml-auto">
-                    ${totalVol >= 1e9 ? (totalVol/1e9).toFixed(1) + 'B' : totalVol >= 1e6 ? (totalVol/1e6).toFixed(1) + 'M' : (totalVol/1e3).toFixed(0) + 'K'}
-                  </span>
-                  <span className="text-neutral-600 text-[9px]">100%</span>
-                </div>
-              ) : (
-                <div className="h-20 flex items-center justify-center text-neutral-600 text-xs">No volume data</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-/* ─── Main Page ──────────────────────────────────────────────────── */
-
-export default function SpreadsPage() {
-  const { data, isLoading, lastUpdate } = useApi<TickerRow[]>({
-    key: 'tickers-spreads',
+  // ── Fetch live tickers ──
+  const { data: tickerData, isLoading, lastUpdate } = useApi<TickerEntry[]>({
+    key: 'spreads-tickers',
     fetcher: async () => {
       const res = await fetch('/api/tickers');
-      if (!res.ok) throw new Error('Failed to fetch tickers');
       const json = await res.json();
-      return json.data ?? json;
+      return (json.data || json) as TickerEntry[];
     },
-    refreshInterval: 15_000,
+    refreshInterval: SNAPSHOT_INTERVAL,
   });
 
-  const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState<SortField>('spreadBps');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
-  const [minExchanges, setMinExchanges] = useState(3);
+  // ── Accumulate snapshots ──
+  useEffect(() => {
+    if (!tickerData || tickerData.length === 0) return;
+    const now = Date.now();
+    const prices: Record<string, number> = {};
+    tickerData
+      .filter(t => t.symbol === symbol && t.lastPrice > 0)
+      .forEach(t => { prices[t.exchange] = t.lastPrice; });
 
-  const authLimit = useAuthLimit(20);
+    if (Object.keys(prices).length < 2) return;
 
-  const allSpreads = useMemo(() => {
-    if (!data) return [];
-    return buildSpreads(data);
-  }, [data]);
+    // Deduplicate: skip if last snapshot is < 10s ago
+    const last = snapshots.current[snapshots.current.length - 1];
+    if (last && now - last.t < 10_000) return;
 
-
-  const filtered = useMemo(() => {
-    let rows = allSpreads.filter(r => r.exchanges >= minExchanges);
-    if (search) {
-      const q = search.toLowerCase();
-      rows = rows.filter(r =>
-        r.symbol.toLowerCase().includes(q) ||
-        r.highExchange.toLowerCase().includes(q) ||
-        r.lowExchange.toLowerCase().includes(q)
-      );
+    snapshots.current.push({ t: now, prices });
+    if (snapshots.current.length > MAX_SNAPSHOTS) {
+      snapshots.current = snapshots.current.slice(-MAX_SNAPSHOTS);
     }
-    rows.sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case 'symbol': cmp = a.symbol.localeCompare(b.symbol); break;
-        case 'spreadBps': cmp = a.spreadBps - b.spreadBps; break;
-        case 'exchanges': cmp = a.exchanges - b.exchanges; break;
-        case 'medianPrice': cmp = a.medianPrice - b.medianPrice; break;
-        case 'totalVolume': cmp = a.totalVolume - b.totalVolume; break;
-      }
-      return sortOrder === 'desc' ? -cmp : cmp;
+  }, [tickerData, symbol]);
+
+  // Reset snapshots on symbol change
+  useEffect(() => { snapshots.current = []; }, [symbol]);
+
+  // ── Derived: available exchanges for current symbol ──
+  const { availableExchanges, currentPrices } = useMemo(() => {
+    if (!tickerData) return { availableExchanges: [] as string[], currentPrices: {} as Record<string, TickerEntry> };
+    const map: Record<string, TickerEntry> = {};
+    tickerData
+      .filter(t => t.symbol === symbol && t.lastPrice > 0)
+      .forEach(t => {
+        if (!map[t.exchange] || t.quoteVolume24h > map[t.exchange].quoteVolume24h) {
+          map[t.exchange] = t;
+        }
+      });
+    const sorted = Object.keys(map).sort((a, b) => (map[b].quoteVolume24h || 0) - (map[a].quoteVolume24h || 0));
+    return { availableExchanges: sorted, currentPrices: map };
+  }, [tickerData, symbol]);
+
+  // ── Auto-select exchanges when they become available ──
+  useEffect(() => {
+    if (availableExchanges.length < 2) return;
+    const valid = selectedExchanges.filter(e => availableExchanges.includes(e));
+    if (valid.length < 2) {
+      setSelectedExchanges(availableExchanges.slice(0, 2));
+    }
+  }, [availableExchanges]);
+
+  // ── All symbols from tickers ──
+  const allSymbols = useMemo(() => {
+    if (!tickerData) return [];
+    const counts: Record<string, number> = {};
+    tickerData.forEach(t => { counts[t.symbol] = (counts[t.symbol] || 0) + 1; });
+    return Object.entries(counts)
+      .filter(([, c]) => c >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .map(([s]) => s);
+  }, [tickerData]);
+
+  // ── Current spread metrics ──
+  const spreadInfo = useMemo(() => {
+    const active = selectedExchanges.filter(e => currentPrices[e]);
+    if (active.length < 2) return null;
+    const prices = active.map(e => ({ exchange: e, price: currentPrices[e].lastPrice }));
+    prices.sort((a, b) => b.price - a.price);
+    const highest = prices[0];
+    const lowest = prices[prices.length - 1];
+    const spread = highest.price - lowest.price;
+    const spreadPct = (spread / lowest.price) * 100;
+    const spreadBps = spreadPct * 100;
+    const med = median(prices.map(p => p.price));
+    return { highest, lowest, spread, spreadPct, spreadBps, median: med, prices };
+  }, [selectedExchanges, currentPrices]);
+
+  // ── Chart data from snapshots ──
+  const chartData = useMemo(() => {
+    const tf = TIMEFRAMES.find(t => t.key === timeframe)!;
+    const cutoff = Date.now() - tf.ms;
+    const active = selectedExchanges.filter(e => availableExchanges.includes(e));
+    if (active.length < 2) return [];
+
+    const relevant = snapshots.current.filter(s => s.t >= cutoff);
+    if (relevant.length === 0) return [];
+
+    return relevant.map(snap => {
+      const exPrices = active.map(e => snap.prices[e]).filter(Boolean);
+      if (exPrices.length < 2) return null;
+      const med = median(exPrices);
+      const min = Math.min(...exPrices);
+      const max = Math.max(...exPrices);
+      const row: ChartRow = {
+        time: snap.t,
+        label: new Date(snap.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        spread: max - min,
+        spreadPct: ((max - min) / min) * 100,
+        median: med,
+        min, max,
+      };
+      active.forEach(e => { row[e] = snap.prices[e] || 0; });
+      return row;
+    }).filter(Boolean) as ChartRow[];
+  }, [selectedExchanges, availableExchanges, timeframe, tickerData]); // tickerData triggers re-render
+
+  // ── Spread stats ──
+  const spreadStats = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const spreads = chartData.map(r => r.spread);
+    const avg = spreads.reduce((a, b) => a + b, 0) / spreads.length;
+    const max = Math.max(...spreads);
+    const min = Math.min(...spreads);
+    const maxRow = chartData.find(r => r.spread === max);
+    const minRow = chartData.find(r => r.spread === min);
+    const current = spreads[spreads.length - 1];
+    const currentPct = chartData[chartData.length - 1]?.spreadPct || 0;
+    return { avg, max, min, current, currentPct, maxTime: maxRow?.time, minTime: minRow?.time, points: chartData.length };
+  }, [chartData]);
+
+  // ── Exchange toggle ──
+  const toggleExchange = useCallback((ex: string) => {
+    setSelectedExchanges(prev => {
+      if (prev.includes(ex)) return prev.length > 1 ? prev.filter(e => e !== ex) : prev;
+      if (prev.length >= MAX_EXCHANGES) return prev;
+      return [...prev, ex];
     });
-    return rows;
-  }, [allSpreads, search, sortField, sortOrder, minExchanges]);
+  }, []);
 
-  const displayData = authLimit ? filtered.slice(0, authLimit) : filtered;
-  const totalPages = Math.max(1, Math.ceil(displayData.length / ROWS_PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIdx = (safePage - 1) * ROWS_PER_PAGE;
-  const pageData = displayData.slice(startIdx, startIdx + ROWS_PER_PAGE);
+  // ── Copy share URL ──
+  const copyShareUrl = useCallback(() => {
+    const url = `${window.location.origin}/spreads?s=${symbol}&ex=${selectedExchanges.join(',')}&tf=${timeframe}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    });
+  }, [symbol, selectedExchanges, timeframe]);
 
-  // Stats
-  const avgSpread = allSpreads.length > 0
-    ? allSpreads.reduce((s, r) => s + r.spreadBps, 0) / allSpreads.length : 0;
-  const maxSpreadRow = allSpreads.length > 0
-    ? allSpreads.reduce((max, r) => r.spreadBps > max.spreadBps ? r : max, allSpreads[0]) : null;
-  const wideSpreadCount = allSpreads.filter(r => r.spreadBps >= 10).length;
+  // ── Close pickers on outside click ──
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (symbolPickerRef.current && !symbolPickerRef.current.contains(e.target as Node)) setShowSymbolPicker(false);
+      if (exchangePickerRef.current && !exchangePickerRef.current.contains(e.target as Node)) setShowExchangePicker(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-  const toggleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(o => o === 'desc' ? 'asc' : 'desc');
-    } else {
-      setSortField(field);
-      setSortOrder('desc');
+  // ── URL params ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('s')) setSymbol(params.get('s')!);
+    if (params.get('ex')) setSelectedExchanges(params.get('ex')!.split(',').slice(0, MAX_EXCHANGES));
+    if (params.get('tf')) setTimeframe(params.get('tf') as TimeframeKey);
+  }, []);
+
+  // ── Arb profit calc ──
+  const arbProfit = useMemo(() => {
+    if (!spreadInfo) return null;
+    const amount = parseFloat(calcAmount) || 0;
+    const feePct = parseFloat(calcFee) || 0;
+    const gross = amount * (spreadInfo.spreadPct / 100);
+    const fees = amount * (feePct / 100) * 2; // buy + sell
+    const net = gross - fees;
+    return { gross, fees, net, roi: amount > 0 ? (net / amount) * 100 : 0 };
+  }, [spreadInfo, calcAmount, calcFee]);
+
+  // ── Filtered symbols for picker ──
+  const filteredSymbols = useMemo(() => {
+    const q = symbolSearch.toLowerCase();
+    if (!q) {
+      return Object.entries(PAIR_GROUPS).map(([group, symbols]) => ({
+        group,
+        symbols: symbols.filter(s => allSymbols.includes(s)),
+      })).filter(g => g.symbols.length > 0);
     }
-    setCurrentPage(1);
+    const matched = allSymbols.filter(s => s.toLowerCase().includes(q));
+    return [{ group: 'Results', symbols: matched.slice(0, 30) }];
+  }, [symbolSearch, allSymbols]);
+
+  // ── Custom tooltip ──
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const row = payload[0]?.payload as ChartRow;
+    if (!row) return null;
+    const active_ = selectedExchanges.filter(e => availableExchanges.includes(e));
+    const entries = active_
+      .map(e => ({ exchange: e, price: (row[e] as number) || 0 }))
+      .filter(e => e.price > 0)
+      .sort((a, b) => b.price - a.price);
+    return (
+      <div className="bg-[#0d1117] border border-white/10 rounded-lg px-3 py-2.5 shadow-xl min-w-[220px]">
+        <div className="text-[10px] text-neutral-500 mb-2">{row.label}</div>
+        {entries.map(e => (
+          <div key={e.exchange} className="flex items-center justify-between gap-4 py-[2px]">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ background: getColor(e.exchange) }} />
+              <span className="text-[11px] text-neutral-300">{e.exchange}</span>
+            </div>
+            <span className="text-[11px] font-mono text-white">{formatPrice(e.price)}</span>
+          </div>
+        ))}
+        <div className="border-t border-white/5 mt-1.5 pt-1.5 flex justify-between">
+          <span className="text-[10px] text-neutral-500">Spread</span>
+          <span className="text-[11px] font-mono text-hub-yellow">
+            ${row.spread.toFixed(2)} ({row.spreadPct.toFixed(3)}%)
+          </span>
+        </div>
+      </div>
+    );
   };
 
-  const SortIcon = ({ field }: { field: SortField }) => (
-    <ArrowUpDown className={`w-3 h-3 inline ml-0.5 ${sortField === field ? 'text-hub-yellow' : 'text-neutral-700'}`} />
-  );
+  // ── Right-side labels (sorted by price) ──
+  const rightLabels = useMemo(() => {
+    const active = selectedExchanges.filter(e => currentPrices[e]);
+    return active
+      .map(e => {
+        const t = currentPrices[e];
+        const med = spreadInfo?.median || t.lastPrice;
+        const devPct = ((t.lastPrice - med) / med) * 100;
+        return { exchange: e, price: t.lastPrice, devPct, change24h: t.change24h };
+      })
+      .sort((a, b) => b.price - a.price);
+  }, [selectedExchanges, currentPrices, spreadInfo]);
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-10">
-        {/* Title */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center">
-              <ArrowLeftRight className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-white">Price Spreads</h1>
-              <p className="text-neutral-500 text-xs">Cross-exchange price deviations in real-time</p>
-            </div>
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-5">
+
+        {/* ── Page Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2.5">
+              <ArrowRightLeft className="w-6 h-6 text-hub-yellow" />
+              Exchange <span className="text-gradient">Spreads</span>
+            </h1>
+            <p className="text-neutral-600 text-sm mt-1">
+              Real-time cross-exchange price comparison across {availableExchanges.length} exchanges
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <UpdatedAgo date={lastUpdate} />
+          <div className="flex items-center gap-2">
+            {lastUpdate && (
+              <span className="text-[10px] text-neutral-600">
+                Updated {new Date(lastUpdate).toLocaleTimeString()}
+              </span>
+            )}
+            <button onClick={copyShareUrl} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-neutral-400 hover:text-white text-xs transition">
+              {copiedUrl ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+              {copiedUrl ? 'Copied' : 'Share'}
+            </button>
+            <button onClick={() => setShowCalc(v => !v)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs transition ${showCalc ? 'bg-hub-yellow/10 border-hub-yellow/30 text-hub-yellow' : 'bg-white/[0.04] border-white/[0.06] text-neutral-400 hover:text-white'}`}>
+              <Calculator className="w-3 h-3" />
+              Arb Calc
+            </button>
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
-          <StatCard icon={BarChart3} label="Symbols" value={allSpreads.length.toLocaleString()}
-            sub={`${minExchanges}+ exchanges`} color="#FFA500" />
-          <StatCard icon={Activity} label="Avg Spread" value={`${avgSpread.toFixed(1)} bps`}
-            sub="Across all pairs" color="#8b5cf6" />
-          <StatCard icon={Zap} label="Wide Spreads" value={wideSpreadCount.toString()}
-            sub="> 10 bps" color="#ef4444" />
-          {maxSpreadRow && (
-            <StatCard icon={TrendingUp} label="Widest Spread"
-              value={`${maxSpreadRow.spreadBps.toFixed(1)} bps`}
-              sub={maxSpreadRow.symbol} color="#22c55e" />
-          )}
-        </div>
-
-
-        {/* Spread Tracker — Multi-exchange price comparison */}
-        <SpreadTrackerChart compact />
-
-        {!isLoading && allSpreads.length > 0 && <SpreadCharts data={allSpreads} />}
-
-        {/* Top Spreads Bar */}
-        {!isLoading && allSpreads.length > 0 && <TopSpreadsChart data={allSpreads} />}
-
-        {/* Filters */}
+        {/* ── Controls Row ── */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
-          <div className="relative flex-1 min-w-[200px] max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
-            <input
-              type="text"
-              value={search}
-              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-              placeholder="Search symbol or exchange..."
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
-            />
+
+          {/* Symbol Picker */}
+          <div className="relative" ref={symbolPickerRef}>
+            <button
+              onClick={() => { setShowSymbolPicker(v => !v); setSymbolSearch(''); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-hub-yellow/30 transition min-w-[120px]"
+            >
+              <span className="font-bold text-white text-sm">{symbol}</span>
+              <span className="text-neutral-500 text-xs">/USDT</span>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-500 ml-auto" />
+            </button>
+            {showSymbolPicker && (
+              <div className="absolute top-full mt-1 left-0 z-50 w-[260px] max-h-[360px] overflow-auto bg-[#0d1117] border border-white/[0.08] rounded-xl shadow-2xl">
+                <div className="sticky top-0 bg-[#0d1117] p-2 border-b border-white/[0.04]">
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04]">
+                    <Search className="w-3.5 h-3.5 text-neutral-500" />
+                    <input
+                      autoFocus
+                      value={symbolSearch}
+                      onChange={e => setSymbolSearch(e.target.value)}
+                      placeholder="Search symbol..."
+                      className="bg-transparent text-sm text-white outline-none w-full placeholder:text-neutral-600"
+                    />
+                  </div>
+                </div>
+                {filteredSymbols.map(group => (
+                  <div key={group.group}>
+                    <div className="px-3 py-1.5 text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">{group.group}</div>
+                    {group.symbols.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => { setSymbol(s); setShowSymbolPicker(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-white/[0.04] flex items-center justify-between ${s === symbol ? 'text-hub-yellow' : 'text-neutral-300'}`}
+                      >
+                        <span className="font-medium">{s}</span>
+                        {s === symbol && <Check className="w-3 h-3 text-hub-yellow" />}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span className="text-neutral-500">Min exchanges:</span>
-            {[2, 3, 5, 8].map(n => (
+
+          {/* Timeframe Tabs */}
+          <div className="flex items-center gap-[2px] p-[3px] rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            {TIMEFRAMES.map(tf => (
               <button
-                key={n}
-                onClick={() => { setMinExchanges(n); setCurrentPage(1); }}
-                className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
-                  minExchanges === n
-                    ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/30'
-                    : 'bg-white/[0.04] text-neutral-500 border border-white/[0.06] hover:text-white'
+                key={tf.key}
+                onClick={() => setTimeframe(tf.key)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${
+                  timeframe === tf.key
+                    ? 'bg-hub-yellow/15 text-hub-yellow'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 }`}
               >
-                {n}+
+                {tf.label}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 text-[10px] text-neutral-600">
-            <Info className="w-3 h-3" />
-            <span>Spread = highest - lowest price deviation from median (bps)</span>
+
+          {/* Exchange Pills */}
+          <div className="flex items-center gap-1.5 flex-wrap flex-1">
+            {selectedExchanges.map(ex => (
+              <button
+                key={ex}
+                onClick={() => toggleExchange(ex)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-white/[0.04] border border-white/[0.08] hover:border-white/20 transition group"
+              >
+                <div className="w-2 h-2 rounded-full" style={{ background: getColor(ex) }} />
+                <span className="text-neutral-300">{ex}</span>
+                <X className="w-3 h-3 text-neutral-600 group-hover:text-red-400 transition" />
+              </button>
+            ))}
+            <div className="relative" ref={exchangePickerRef}>
+              <button
+                onClick={() => { setShowExchangePicker(v => !v); setExchangeSearch(''); }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] bg-white/[0.04] border border-dashed border-white/[0.12] text-neutral-500 hover:text-hub-yellow hover:border-hub-yellow/30 transition"
+              >
+                + Exchange
+              </button>
+              {showExchangePicker && (
+                <div className="absolute top-full mt-1 right-0 z-50 w-[220px] max-h-[300px] overflow-auto bg-[#0d1117] border border-white/[0.08] rounded-xl shadow-2xl">
+                  <div className="sticky top-0 bg-[#0d1117] p-2 border-b border-white/[0.04]">
+                    <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/[0.04]">
+                      <Search className="w-3 h-3 text-neutral-500" />
+                      <input
+                        autoFocus
+                        value={exchangeSearch}
+                        onChange={e => setExchangeSearch(e.target.value)}
+                        placeholder="Search..."
+                        className="bg-transparent text-xs text-white outline-none w-full placeholder:text-neutral-600"
+                      />
+                    </div>
+                  </div>
+                  {availableExchanges
+                    .filter(e => !exchangeSearch || e.toLowerCase().includes(exchangeSearch.toLowerCase()))
+                    .map(ex => (
+                      <button
+                        key={ex}
+                        onClick={() => { toggleExchange(ex); if (selectedExchanges.length >= MAX_EXCHANGES - 1) setShowExchangePicker(false); }}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ${
+                          selectedExchanges.includes(ex) ? 'text-hub-yellow' : 'text-neutral-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ background: getColor(ex) }} />
+                          <span>{ex}</span>
+                        </div>
+                        {selectedExchanges.includes(ex) && <Check className="w-3 h-3" />}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            <span className="text-[10px] text-neutral-600 ml-1">
+              {selectedExchanges.length} of {availableExchanges.length}
+            </span>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-hub-darker border border-white/[0.06] rounded-2xl overflow-hidden">
-          {isLoading ? (
-            <div className="p-8 text-center text-neutral-500 text-sm">Loading ticker data...</div>
-          ) : pageData.length === 0 ? (
-            <div className="p-8 text-center text-neutral-600 text-sm">
-              No spreads found{search ? ` for "${search}"` : ''}.
-            </div>
-          ) : (
-            <div className="overflow-x-auto scrollbar-accent">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-white/[0.06] text-[10px] text-neutral-500 uppercase tracking-wider">
-                    <th className="px-4 py-3 font-semibold">#</th>
-                    <th className="px-4 py-3 font-semibold cursor-pointer hover:text-white" onClick={() => toggleSort('symbol')}>
-                      Symbol <SortIcon field="symbol" />
-                    </th>
-                    <th className="px-4 py-3 font-semibold cursor-pointer hover:text-white text-right" onClick={() => toggleSort('spreadBps')}>
-                      Spread <SortIcon field="spreadBps" />
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-right">Highest</th>
-                    <th className="px-4 py-3 font-semibold text-right">Lowest</th>
-                    <th className="px-4 py-3 font-semibold cursor-pointer hover:text-white text-right" onClick={() => toggleSort('exchanges')}>
-                      Exchanges <SortIcon field="exchanges" />
-                    </th>
-                    <th className="px-4 py-3 font-semibold cursor-pointer hover:text-white text-right" onClick={() => toggleSort('totalVolume')}>
-                      Volume <SortIcon field="totalVolume" />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageData.map((row, idx) => {
-                    const rank = startIdx + idx + 1;
-                    const isExpanded = expandedSymbol === row.symbol;
-                    const spreadColor = row.spreadBps >= 20 ? 'text-hub-yellow'
-                      : row.spreadBps >= 10 ? 'text-red-400'
-                      : row.spreadBps >= 5 ? 'text-orange-400'
-                      : 'text-neutral-400';
-                    const spreadGlow = row.spreadBps >= 20
-                      ? { textShadow: '0 0 8px rgba(255,165,0,0.4)' }
-                      : row.spreadBps >= 10
-                      ? { textShadow: '0 0 6px rgba(239,68,94,0.3)' }
-                      : undefined;
+        {/* ── Spread Hero + Arb Calc ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 mb-4">
+          {/* Spread Hero */}
+          <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5">
+            {spreadInfo ? (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex-1">
+                  <div className="text-neutral-500 text-xs mb-1 flex items-center gap-1.5">
+                    <Zap className="w-3 h-3 text-hub-yellow" />
+                    {selectedExchanges.length === 2 ? (
+                      <span>{spreadInfo.highest.exchange} vs {spreadInfo.lowest.exchange}</span>
+                    ) : (
+                      <span>Max spread across {selectedExchanges.length} exchanges</span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-3">
+                    <span className={`text-3xl sm:text-4xl font-bold font-mono ${spreadInfo.spread > 0 ? 'text-green-400' : 'text-neutral-400'}`}>
+                      ${spreadInfo.spread.toFixed(2)}
+                    </span>
+                    <span className={`text-lg font-mono ${spreadInfo.spreadPct > 0.01 ? 'text-green-400' : 'text-neutral-500'}`}>
+                      {spreadInfo.spreadPct.toFixed(4)}%
+                    </span>
+                    <span className="text-xs text-neutral-600 font-mono">
+                      ({spreadInfo.spreadBps.toFixed(1)} bps)
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-4 text-xs">
+                  <div className="text-center">
+                    <div className="text-neutral-600 mb-0.5 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3 text-green-500" /> Highest
+                    </div>
+                    <div className="font-mono text-white font-semibold">{formatPrice(spreadInfo.highest.price)}</div>
+                    <div className="text-neutral-500" style={{ color: getColor(spreadInfo.highest.exchange) }}>{spreadInfo.highest.exchange}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-neutral-600 mb-0.5 flex items-center gap-1">
+                      <TrendingDown className="w-3 h-3 text-red-500" /> Lowest
+                    </div>
+                    <div className="font-mono text-white font-semibold">{formatPrice(spreadInfo.lowest.price)}</div>
+                    <div className="text-neutral-500" style={{ color: getColor(spreadInfo.lowest.exchange) }}>{spreadInfo.lowest.exchange}</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-neutral-600 text-sm text-center py-4">
+                {isLoading ? 'Loading prices...' : 'Select at least 2 exchanges to compare'}
+              </div>
+            )}
+          </div>
 
-                    return (
-                      <React.Fragment key={row.symbol}>
-                        <tr
-                          className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer"
-                          onClick={() => setExpandedSymbol(isExpanded ? null : row.symbol)}
-                        >
-                          <td className="px-4 py-2.5 text-[11px] text-neutral-600 font-mono">{rank}</td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <TokenIconSimple symbol={row.symbol} size={18} />
-                              <span className="text-white text-xs font-semibold">{row.symbol}</span>
-                              <span className="text-[10px] text-neutral-600 font-mono">{formatPrice(row.medianPrice)}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <span className={`font-mono text-sm font-bold ${spreadColor}`} style={spreadGlow}>
-                              {row.spreadBps.toFixed(1)}
-                            </span>
-                            <span className="text-[9px] text-neutral-600 ml-1">bps</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <ExchangeLogo exchange={row.highExchange.toLowerCase()} size={13} />
-                              <span className="text-[11px] text-green-400 font-mono">{formatPrice(row.highPrice)}</span>
-                            </div>
-                            <span className="text-[9px] text-neutral-600">{row.highExchange}</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <ExchangeLogo exchange={row.lowExchange.toLowerCase()} size={13} />
-                              <span className="text-[11px] text-red-400 font-mono">{formatPrice(row.lowPrice)}</span>
-                            </div>
-                            <span className="text-[9px] text-neutral-600">{row.lowExchange}</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-right text-xs text-neutral-400 font-mono">{row.exchanges}</td>
-                          <td className="px-4 py-2.5 text-right text-xs text-neutral-400 font-mono">
-                            ${row.totalVolume >= 1e9 ? (row.totalVolume / 1e9).toFixed(1) + 'B'
-                              : row.totalVolume >= 1e6 ? (row.totalVolume / 1e6).toFixed(1) + 'M'
-                              : row.totalVolume >= 1e3 ? (row.totalVolume / 1e3).toFixed(0) + 'K'
-                              : row.totalVolume.toFixed(0)}
-                          </td>
-                        </tr>
-                        {isExpanded && <ExpandedRow row={row} />}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* Arb Calculator (collapsible) */}
+          {showCalc && spreadInfo && (
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 w-full lg:w-[260px]">
+              <div className="text-xs text-neutral-500 mb-3 font-semibold flex items-center gap-1.5">
+                <Calculator className="w-3.5 h-3.5 text-hub-yellow" /> Quick Arb Calculator
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] text-neutral-600">Trade Size ($)</label>
+                  <input
+                    value={calcAmount}
+                    onChange={e => setCalcAmount(e.target.value)}
+                    className="w-full mt-0.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm font-mono text-white outline-none focus:border-hub-yellow/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-neutral-600">Fee per side (%)</label>
+                  <input
+                    value={calcFee}
+                    onChange={e => setCalcFee(e.target.value)}
+                    className="w-full mt-0.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm font-mono text-white outline-none focus:border-hub-yellow/30"
+                  />
+                </div>
+                {arbProfit && (
+                  <div className="mt-2 pt-2 border-t border-white/[0.04] space-y-1.5">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-neutral-500">Gross</span>
+                      <span className="text-green-400 font-mono">${arbProfit.gross.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-neutral-500">Fees (2x)</span>
+                      <span className="text-red-400 font-mono">-${arbProfit.fees.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-semibold pt-1 border-t border-white/[0.04]">
+                      <span className="text-neutral-300">Net Profit</span>
+                      <span className={`font-mono ${arbProfit.net >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        ${arbProfit.net.toFixed(2)} ({arbProfit.roi.toFixed(3)}%)
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Info footer */}
-        <div className="mt-6 p-4 rounded-2xl bg-hub-yellow/5 border border-hub-yellow/10 border-l-2 border-l-hub-yellow/40">
-          <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-            <span>
-              <span className="text-hub-yellow font-medium">Spread</span> = difference between the highest and lowest exchange price for a symbol, measured in basis points (bps). 1 bps = 0.01%.
-              Prices that deviate &gt;50% from the median are excluded as outliers (different contract specs).
-              High spreads may indicate arbitrage opportunities or low liquidity on certain exchanges.
-            </span>
-          </p>
-          <p className="text-[10px] text-neutral-500 mt-2 ml-6">
-            Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit, Hyperliquid, dYdX, and more. Refreshes every 30s.
-          </p>
+        {/* ── Main Chart + Right Labels ── */}
+        <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 mb-4">
+          <div className="flex gap-4">
+            {/* Chart */}
+            <div className="flex-1 min-w-0">
+              {chartData.length >= 2 ? (
+                <ResponsiveContainer width="100%" height={420}>
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fill: '#4b5563', fontSize: 10 }}
+                      axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      domain={['dataMin', 'dataMax']}
+                      tick={{ fill: '#4b5563', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: number) => formatPrice(v)}
+                      width={70}
+                    />
+                    <RTooltip content={<CustomTooltip />} />
+                    {/* Spread band */}
+                    <Area dataKey="max" stroke="none" fill="rgba(234,179,8,0.06)" />
+                    <Area dataKey="min" stroke="none" fill="#0b0e1a" />
+                    {/* Exchange price lines */}
+                    {selectedExchanges
+                      .filter(e => availableExchanges.includes(e))
+                      .map(ex => (
+                        <Line
+                          key={ex}
+                          type="monotone"
+                          dataKey={ex}
+                          stroke={getColor(ex)}
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 4, fill: getColor(ex), stroke: '#0b0e1a', strokeWidth: 2 }}
+                          connectNulls
+                        />
+                      ))}
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[420px] flex flex-col items-center justify-center text-neutral-600">
+                  <BarChart3 className="w-10 h-10 mb-3 text-neutral-700" />
+                  <p className="text-sm mb-1">Accumulating price data...</p>
+                  <p className="text-[10px] text-neutral-700">
+                    {snapshots.current.length} snapshot{snapshots.current.length !== 1 ? 's' : ''} collected, need 2+ to render chart.
+                    Updates every 15s.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Right Labels */}
+            <div className="hidden md:flex flex-col gap-1.5 min-w-[160px] pt-2">
+              <div className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold mb-1">Live Prices</div>
+              {rightLabels.map(l => (
+                <div
+                  key={l.exchange}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition"
+                  style={{ background: `${getColor(l.exchange)}10`, borderLeft: `3px solid ${getColor(l.exchange)}` }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-semibold text-white truncate">{l.exchange}</div>
+                    <div className="text-[10px] font-mono text-neutral-400">{formatPrice(l.price)}</div>
+                  </div>
+                  <div className={`text-[10px] font-mono font-semibold ${l.devPct > 0 ? 'text-green-400' : l.devPct < 0 ? 'text-red-400' : 'text-neutral-500'}`}>
+                    {l.devPct >= 0 ? '+' : ''}{l.devPct.toFixed(3)}%
+                  </div>
+                </div>
+              ))}
+              <div className="mt-2 px-2 text-[9px] text-neutral-700">
+                Session data, refreshes every 15s
+              </div>
+            </div>
+          </div>
         </div>
 
-        {authLimit && filtered.length > authLimit && (
-          <SoftAuthGate freeLimit={authLimit} totalCount={filtered.length} dataLabel="pairs" />
+        {/* ── Spread Stats ── */}
+        {spreadStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+              <div className="text-[10px] text-neutral-600 mb-1">Current Spread</div>
+              <div className="text-lg font-bold font-mono text-white">${spreadStats.current.toFixed(2)}</div>
+              <div className="text-[10px] font-mono text-hub-yellow">{spreadStats.currentPct.toFixed(4)}%</div>
+            </div>
+            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+              <div className="text-[10px] text-neutral-600 mb-1">Avg Spread</div>
+              <div className="text-lg font-bold font-mono text-neutral-300">${spreadStats.avg.toFixed(2)}</div>
+              <div className="text-[10px] text-neutral-600">{spreadStats.points} snapshots</div>
+            </div>
+            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+              <div className="text-[10px] text-neutral-600 mb-1 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-green-500" /> Max Spread
+              </div>
+              <div className="text-lg font-bold font-mono text-green-400">${spreadStats.max.toFixed(2)}</div>
+              {spreadStats.maxTime && <div className="text-[10px] text-neutral-600">{new Date(spreadStats.maxTime).toLocaleTimeString()}</div>}
+            </div>
+            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+              <div className="text-[10px] text-neutral-600 mb-1 flex items-center gap-1">
+                <TrendingDown className="w-3 h-3 text-red-500" /> Min Spread
+              </div>
+              <div className="text-lg font-bold font-mono text-red-400">${spreadStats.min.toFixed(2)}</div>
+              {spreadStats.minTime && <div className="text-[10px] text-neutral-600">{new Date(spreadStats.minTime).toLocaleTimeString()}</div>}
+            </div>
+          </div>
         )}
 
-        {displayData.length > ROWS_PER_PAGE && (
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={displayData.length}
-            rowsPerPage={ROWS_PER_PAGE}
-            onPageChange={setCurrentPage}
-            label="pairs"
-          />
-        )}
+        {/* ── Related Pages + Info ── */}
+        <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-start gap-2.5 flex-1">
+              <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
+              <div className="text-[11px] text-neutral-500 leading-relaxed">
+                <span className="text-hub-yellow font-medium">Live prices</span> from {availableExchanges.length} exchanges, updated every 15 seconds.
+                Chart accumulates data during your session. Spread = highest price minus lowest price across selected exchanges.
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <a href="/funding" className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] text-neutral-400 hover:text-hub-yellow hover:border-hub-yellow/20 transition">
+                <Zap className="w-3 h-3" /> Funding Rates
+              </a>
+              <a href="/basis" className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] text-neutral-400 hover:text-hub-yellow hover:border-hub-yellow/20 transition">
+                <BarChart3 className="w-3 h-3" /> Basis Trades
+              </a>
+              <a href="/execution-costs" className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] text-neutral-400 hover:text-hub-yellow hover:border-hub-yellow/20 transition">
+                <ArrowRightLeft className="w-3 h-3" /> Execution Costs
+              </a>
+            </div>
+          </div>
+        </div>
+
       </main>
       <Footer />
     </div>
   );
 }
-
