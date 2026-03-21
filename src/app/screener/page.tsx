@@ -881,19 +881,23 @@ export default function ScreenerPage() {
         <SoftAuthGate freeLimit={20} totalCount={filtered.length} dataLabel="symbols" />
 
         {/* Info Footer */}
-        <div className="mt-6 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3 space-y-2">
+        <div className="mt-6 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3 space-y-2.5">
           <p className="text-xs text-neutral-400">
-            <span className="text-hub-yellow font-medium">Screener</span> aggregates real-time data from 30 exchanges.
-            Funding rates are averaged across exchanges. Open Interest is summed.
-            Use filters to find high-funding, large-OI, or trending symbols. Star symbols to add to your Watchlist.
+            <span className="text-hub-yellow font-medium">Screener</span> aggregates real-time derivatives data from 26 exchanges (14 CEX + 12 DEX). Use filters and presets to find trading opportunities. Star symbols to add to your Watchlist.
           </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-neutral-500 leading-relaxed">
+            <div><span className="text-neutral-400 font-medium">Price</span> — averaged across all reporting exchanges</div>
+            <div><span className="text-neutral-400 font-medium">Volume 24h</span> — summed per exchange, deduplicated, excludes wash-traded sources</div>
+            <div><span className="text-neutral-400 font-medium">Avg Funding</span> — mean funding rate across all exchanges listing the symbol</div>
+            <div><span className="text-neutral-400 font-medium">Open Interest</span> — total USD OI summed across all exchanges</div>
+            <div><span className="text-neutral-400 font-medium">OI Chg 24h</span> — percentage change in total OI vs 24 hours ago (from DB snapshots)</div>
+            <div><span className="text-neutral-400 font-medium">Sentiment</span> — derived from price move, OI change, and funding rate signals</div>
+          </div>
           <div className="text-[10px] text-neutral-500 leading-relaxed">
-            <span className="text-neutral-400 font-medium">Data sources:</span>{' '}
-            <span className="text-neutral-500">
-              CEX: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit{' · '}
-              DEX: Hyperliquid, dYdX, Aster, Lighter, Aevo, Drift, GMX, gTrade, Extended, Variational, edgeX, Nado{' · '}
-              Prices refresh every 30s
-            </span>
+            <span className="text-neutral-400 font-medium">Sources:</span>{' '}
+            CEX: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit{' · '}
+            DEX: Hyperliquid, dYdX, Aster, Lighter, Aevo, Drift, GMX, gTrade, Extended, Variational, edgeX, Nado{' · '}
+            Refreshes every 30s
           </div>
         </div>
       </main>
