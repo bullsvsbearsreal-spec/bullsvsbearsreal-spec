@@ -147,27 +147,23 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 
 /* ─── Spread History Chart (Session) ────────────────────────────── */
 
-const SPREAD_COLORS: Record<string, string> = { BTC: '#F59E0B', ETH: '#8B5CF6', SOL: '#22C55E' };
+const ALL_CHART_COLORS = ['#F59E0B', '#8B5CF6', '#22C55E', '#ef4444', '#06B6D4', '#EC4899', '#F97316', '#14B8A6'];
+const DEFAULT_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE'];
 
-function SpreadHistoryChart({ history, tracked }: { history: { time: number; [k: string]: number }[]; tracked: string[] }) {
-  if (history.length < 2) {
-    return (
-      <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4 mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-white">Spread History</h3>
-          <span className="text-[8px] px-1.5 py-[1px] rounded bg-white/[0.06] text-neutral-500">SESSION</span>
-        </div>
-        <div className="h-[160px] flex items-center justify-center text-neutral-600 text-xs">
-          Accumulating data... ({history.length}/2 points, updates every 30s)
-        </div>
-      </div>
-    );
-  }
+function SpreadHistoryChart({ history, allSymbols, selectedCoins, onToggleCoin }: {
+  history: { time: number; [k: string]: number }[];
+  allSymbols: string[];
+  selectedCoins: string[];
+  onToggleCoin: (sym: string) => void;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [coinSearch, setCoinSearch] = useState('');
 
-  const chartData = history.map(h => ({
-    ...h,
-    label: new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  }));
+  const filteredSymbols = allSymbols.filter(s =>
+    !coinSearch || s.toLowerCase().includes(coinSearch.toLowerCase())
+  ).slice(0, 30);
+
+  const colorMap = Object.fromEntries(selectedCoins.map((s, i) => [s, ALL_CHART_COLORS[i % ALL_CHART_COLORS.length]]));
 
   return (
     <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4 mb-5">
@@ -176,32 +172,77 @@ function SpreadHistoryChart({ history, tracked }: { history: { time: number; [k:
           <h3 className="text-sm font-semibold text-white">Spread History</h3>
           <span className="text-[8px] px-1.5 py-[1px] rounded bg-white/[0.06] text-neutral-500">SESSION</span>
         </div>
-        <span className="text-[9px] text-neutral-600">{history.length} points, clears on refresh</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-neutral-600">{history.length} pts</span>
+          <div className="relative">
+            <button
+              onClick={() => setShowPicker(!showPicker)}
+              className="text-[9px] px-2 py-1 rounded bg-hub-yellow/10 text-hub-yellow border border-hub-yellow/20 hover:bg-hub-yellow/20 transition-colors"
+            >
+              + Coins ({selectedCoins.length})
+            </button>
+            {showPicker && (
+              <div className="absolute right-0 top-full mt-1 z-50 w-48 max-h-52 overflow-y-auto rounded-lg bg-[#1a1a1a] border border-white/10 shadow-2xl">
+                <div className="sticky top-0 bg-[#1a1a1a] p-1.5 border-b border-white/[0.06]">
+                  <input
+                    type="text" value={coinSearch} onChange={e => setCoinSearch(e.target.value)}
+                    placeholder="Search..." autoFocus
+                    className="w-full px-2 py-1 rounded bg-white/[0.04] border border-white/[0.08] text-white text-[10px] placeholder-neutral-600 focus:outline-none"
+                  />
+                </div>
+                {filteredSymbols.map(s => (
+                  <button key={s} onClick={() => onToggleCoin(s)}
+                    className={`w-full text-left px-3 py-1.5 text-[10px] hover:bg-white/[0.04] flex items-center justify-between ${
+                      selectedCoins.includes(s) ? 'text-hub-yellow' : 'text-neutral-400'
+                    }`}>
+                    <span>{s}</span>
+                    {selectedCoins.includes(s) && <span className="text-hub-yellow">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      <ResponsiveContainer width="100%" height={180}>
-        <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-          <XAxis dataKey="label" tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} unit=" bps" />
-          <RTooltip
-            contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
-            labelStyle={{ color: '#737373', fontSize: 10 }}
-            formatter={(v: number, name: string) => [`${v.toFixed(1)} bps`, name]}
-          />
-          <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
-          {tracked.map(sym => (
-            <Line
-              key={sym}
-              type="stepAfter"
-              dataKey={sym}
-              stroke={SPREAD_COLORS[sym] || '#737373'}
-              strokeWidth={2}
-              dot={false}
-              connectNulls
+
+      {/* Selected coin chips */}
+      <div className="flex flex-wrap gap-1 mb-2">
+        {selectedCoins.map((s, i) => (
+          <button key={s} onClick={() => onToggleCoin(s)}
+            className="flex items-center gap-1 px-1.5 py-[2px] rounded text-[9px] font-semibold border transition-colors hover:opacity-80"
+            style={{ borderColor: colorMap[s] + '40', color: colorMap[s], background: colorMap[s] + '15' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: colorMap[s] }} />
+            {s}
+            <span className="text-neutral-600 ml-0.5">×</span>
+          </button>
+        ))}
+      </div>
+
+      {history.length < 2 ? (
+        <div className="h-[160px] flex items-center justify-center text-neutral-600 text-xs">
+          Accumulating data... ({history.length}/2 points, updates every 30s)
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={history.map(h => ({
+            ...h,
+            label: new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          }))} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+            <XAxis dataKey="label" tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} unit=" bps" />
+            <RTooltip
+              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+              labelStyle={{ color: '#737373', fontSize: 10 }}
+              formatter={(v: number, name: string) => [`${v.toFixed(1)} bps`, name]}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+            {selectedCoins.map(sym => (
+              <Line key={sym} type="stepAfter" dataKey={sym} stroke={colorMap[sym]} strokeWidth={2} dot={false} connectNulls />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+      <p className="text-[8px] text-neutral-600 mt-1 text-center">Session data only, clears on refresh</p>
     </div>
   );
 }
@@ -251,17 +292,18 @@ function SpreadCharts({ data }: { data: SpreadRow[] }) {
       <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4">
         <h3 className="text-sm font-semibold text-white mb-1">Spread Distribution</h3>
         <p className="text-[9px] text-neutral-600 mb-3">Number of pairs by spread range (bps)</p>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={distData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={distData} margin={{ top: 15, right: 10, bottom: 0, left: -10 }}>
             <XAxis dataKey="range" tick={{ fill: '#737373', fontSize: 9 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} />
             <RTooltip
-              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11, padding: '8px 12px' }}
               labelStyle={{ color: '#eab308', fontWeight: 600 }}
-              formatter={(v: number) => [`${v} pairs`, 'Count']}
+              formatter={(v: number) => [`${v} pairs`, '']}
               labelFormatter={(l) => `${l} bps`}
+              separator=""
             />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={45} label={{ position: 'top', fill: '#737373', fontSize: 9 }}>
               {distData.map((entry, i) => (
                 <Cell key={i} fill={entry.color} fillOpacity={0.75} />
               ))}
@@ -455,21 +497,34 @@ export default function SpreadsPage() {
     return buildSpreads(data);
   }, [data]);
 
-  // Track spread history for top symbols (session only)
-  const TRACKED = ['BTC', 'ETH', 'SOL'];
+  // Track spread history for selected symbols (session only)
+  const [selectedCoins, setSelectedCoins] = useState<string[]>(DEFAULT_COINS);
   const historyRef = useRef<{ time: number; [key: string]: number }[]>([]);
   const [spreadHistory, setSpreadHistory] = useState<{ time: number; [key: string]: number }[]>([]);
+
+  // All available symbols with 3+ exchanges for the picker
+  const availableSymbols = useMemo(() =>
+    allSpreads.filter(r => r.exchanges >= 3).map(r => r.symbol).sort(),
+    [allSpreads]
+  );
+
+  const toggleCoin = (sym: string) => {
+    setSelectedCoins(prev =>
+      prev.includes(sym) ? prev.filter(s => s !== sym) : prev.length < 8 ? [...prev, sym] : prev
+    );
+  };
 
   useEffect(() => {
     if (allSpreads.length === 0) return;
     const now = Date.now();
     const point: { time: number; [key: string]: number } = { time: now };
-    for (const sym of TRACKED) {
+    // Track all symbols that have ever been selected (so history persists when toggling)
+    const allTracked = Array.from(new Set([...selectedCoins, ...Object.keys(historyRef.current[0] || {}).filter(k => k !== 'time')]));
+    for (const sym of allTracked) {
       const row = allSpreads.find(r => r.symbol === sym);
       if (row) point[sym] = parseFloat(row.spreadBps.toFixed(1));
     }
     if (Object.keys(point).length > 1) {
-      // Avoid duplicate points within 10s
       const last = historyRef.current[historyRef.current.length - 1];
       if (!last || now - last.time > 10000) {
         historyRef.current.push(point);
@@ -477,7 +532,7 @@ export default function SpreadsPage() {
         setSpreadHistory([...historyRef.current]);
       }
     }
-  }, [allSpreads]);
+  }, [allSpreads, selectedCoins]);
 
   const filtered = useMemo(() => {
     let rows = allSpreads.filter(r => r.exchanges >= minExchanges);
@@ -566,7 +621,7 @@ export default function SpreadsPage() {
         </div>
 
         {/* Spread History (session) */}
-        {!isLoading && <SpreadHistoryChart history={spreadHistory} tracked={TRACKED} />}
+        {!isLoading && <SpreadHistoryChart history={spreadHistory} allSymbols={availableSymbols} selectedCoins={selectedCoins} onToggleCoin={toggleCoin} />}
 
         {/* Spread Charts */}
         {!isLoading && allSpreads.length > 0 && <SpreadCharts data={allSpreads} />}
