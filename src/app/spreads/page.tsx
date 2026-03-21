@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Pagination from '@/app/funding/components/Pagination';
@@ -17,7 +17,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
   ScatterChart, Scatter, CartesianGrid, ZAxis, Cell,
-  LineChart, Line, Legend,
+  Legend, PieChart, Pie, ReferenceLine,
 } from 'recharts';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -41,7 +41,7 @@ interface SpreadRow {
   spreadBps: number;
   spreadPct: number;
   totalVolume: number;
-  tickers: { exchange: string; price: number; deviation: number }[];
+  tickers: { exchange: string; price: number; deviation: number; volume: number }[];
 }
 
 type SortField = 'symbol' | 'spreadBps' | 'exchanges' | 'medianPrice' | 'totalVolume';
@@ -99,6 +99,7 @@ function buildSpreads(tickers: TickerRow[]): SpreadRow[] {
         exchange: e.exchange,
         price: e.lastPrice,
         deviation: ((e.lastPrice - saneMed) / saneMed) * 10000, // bps
+        volume: e.quoteVolume24h || 0,
       }))
       .sort((a, b) => b.deviation - a.deviation);
 
@@ -145,127 +146,8 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
   );
 }
 
-/* ─── Spread History Chart (Session) ────────────────────────────── */
+/* ─── (Spread History removed) ──────────────────────────────────── */
 
-const ALL_CHART_COLORS = ['#F59E0B', '#8B5CF6', '#22C55E', '#ef4444', '#06B6D4', '#EC4899', '#F97316', '#14B8A6'];
-const DEFAULT_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'LINK', 'AVAX', 'ADA'];
-// Popular coins shown first in picker
-const POPULAR_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'LINK', 'AVAX', 'ADA', 'DOT', 'MATIC',
-  'UNI', 'AAVE', 'ARB', 'OP', 'SUI', 'APT', 'NEAR', 'FIL', 'ATOM', 'INJ',
-  'WLD', 'PEPE', 'BONK', 'HBAR', 'LTC', 'BCH', 'ETC', 'FTM', 'RENDER', 'TIA'];
-
-function SpreadHistoryChart({ history, allSymbols, selectedCoins, onToggleCoin }: {
-  history: { time: number; [k: string]: number }[];
-  allSymbols: string[];
-  selectedCoins: string[];
-  onToggleCoin: (sym: string) => void;
-}) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [coinSearch, setCoinSearch] = useState('');
-
-  const filteredSymbols = useMemo(() => {
-    const available = new Set(allSymbols);
-    let sorted: string[];
-    if (coinSearch) {
-      sorted = allSymbols.filter(s => s.toLowerCase().includes(coinSearch.toLowerCase()));
-    } else {
-      // Popular coins first, then alphabetical
-      const popular = POPULAR_COINS.filter(s => available.has(s));
-      const rest = allSymbols.filter(s => !POPULAR_COINS.includes(s));
-      sorted = [...popular, ...rest];
-    }
-    return sorted.slice(0, 40);
-  }, [allSymbols, coinSearch]);
-
-  const colorMap = Object.fromEntries(selectedCoins.map((s, i) => [s, ALL_CHART_COLORS[i % ALL_CHART_COLORS.length]]));
-
-  return (
-    <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4 mb-5">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-white">Spread History</h3>
-          <span className="text-[8px] px-1.5 py-[1px] rounded bg-white/[0.06] text-neutral-500">SESSION</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] text-neutral-600">{history.length} pts</span>
-          <div className="relative">
-            <button
-              onClick={() => setShowPicker(!showPicker)}
-              className="text-[9px] px-2 py-1 rounded bg-hub-yellow/10 text-hub-yellow border border-hub-yellow/20 hover:bg-hub-yellow/20 transition-colors"
-            >
-              + Coins ({selectedCoins.length})
-            </button>
-            {showPicker && (
-              <div className="absolute right-0 top-full mt-1 z-50 w-48 max-h-52 overflow-y-auto rounded-lg bg-[#1a1a1a] border border-white/10 shadow-2xl">
-                <div className="sticky top-0 bg-[#1a1a1a] p-1.5 border-b border-white/[0.06]">
-                  <input
-                    type="text" value={coinSearch} onChange={e => setCoinSearch(e.target.value)}
-                    placeholder="Search..." autoFocus
-                    className="w-full px-2 py-1 rounded bg-white/[0.04] border border-white/[0.08] text-white text-[10px] placeholder-neutral-600 focus:outline-none"
-                  />
-                </div>
-                {!coinSearch && <div className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider font-semibold">Popular</div>}
-                {filteredSymbols.map((s, i) => (
-                  <React.Fragment key={s}>
-                    {!coinSearch && i === POPULAR_COINS.filter(p => allSymbols.includes(p)).length && (
-                      <div className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider font-semibold border-t border-white/[0.04] mt-1 pt-1">All</div>
-                    )}
-                    <button onClick={() => onToggleCoin(s)}
-                      className={`w-full text-left px-3 py-1.5 text-[10px] hover:bg-white/[0.04] flex items-center justify-between ${
-                        selectedCoins.includes(s) ? 'text-hub-yellow' : 'text-neutral-400'
-                      }`}>
-                      <span>{s}</span>
-                      {selectedCoins.includes(s) && <span className="text-hub-yellow">✓</span>}
-                    </button>
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Selected coin chips */}
-      <div className="flex flex-wrap gap-1 mb-2">
-        {selectedCoins.map((s, i) => (
-          <button key={s} onClick={() => onToggleCoin(s)}
-            className="flex items-center gap-1 px-1.5 py-[2px] rounded text-[9px] font-semibold border transition-colors hover:opacity-80"
-            style={{ borderColor: colorMap[s] + '40', color: colorMap[s], background: colorMap[s] + '15' }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: colorMap[s] }} />
-            {s}
-            <span className="text-neutral-600 ml-0.5">×</span>
-          </button>
-        ))}
-      </div>
-
-      {history.length < 2 ? (
-        <div className="h-[160px] flex items-center justify-center text-neutral-600 text-xs">
-          Accumulating data... ({history.length}/2 points, updates every 30s)
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={history.map(h => ({
-            ...h,
-            label: new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          }))} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis dataKey="label" tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} unit=" bps" />
-            <RTooltip
-              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
-              labelStyle={{ color: '#737373', fontSize: 10 }}
-              formatter={(v: number, name: string) => [`${v.toFixed(1)} bps`, name]}
-            />
-            {selectedCoins.map(sym => (
-              <Line key={sym} type="stepAfter" dataKey={sym} stroke={colorMap[sym]} strokeWidth={2} dot={false} connectNulls />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      )}
-      <p className="text-[8px] text-neutral-600 mt-1 text-center">Session data only, clears on refresh</p>
-    </div>
-  );
-}
 
 /* ─── Spread Charts (Recharts) ──────────────────────────────────── */
 
@@ -444,44 +326,113 @@ function TopSpreadsChart({ data }: { data: SpreadRow[] }) {
 
 /* ─── Expanded Row ───────────────────────────────────────────────── */
 
+const EXCHANGE_COLORS = ['#F59E0B', '#8B5CF6', '#22C55E', '#ef4444', '#06B6D4', '#EC4899', '#F97316', '#14B8A6', '#6366F1', '#84CC16', '#FB923C', '#2DD4BF', '#F472B6', '#A78BFA', '#FBBF24', '#34D399'];
+
 function ExpandedRow({ row }: { row: SpreadRow }) {
   const maxDev = Math.max(...row.tickers.map(t => Math.abs(t.deviation)), 1);
+
+  // Prepare chart data sorted by deviation
+  const deviationChartData = [...row.tickers]
+    .sort((a, b) => b.deviation - a.deviation)
+    .map(t => ({
+      exchange: t.exchange,
+      deviation: parseFloat(t.deviation.toFixed(1)),
+      price: t.price,
+      fill: t.deviation >= 0 ? '#22c55e' : '#ef4444',
+    }));
+
+  // Volume distribution (pie chart data)
+  const volumeData = row.tickers
+    .filter(t => t.volume > 0)
+    .sort((a, b) => b.volume - a.volume)
+    .map((t, i) => ({
+      name: t.exchange,
+      value: t.volume,
+      fill: EXCHANGE_COLORS[i % EXCHANGE_COLORS.length],
+    }));
+  const totalVol = volumeData.reduce((s, v) => s + v.value, 0);
+
   return (
     <tr>
       <td colSpan={7} className="px-0 py-0">
-        <div className="bg-white/[0.02] border-t border-b border-white/[0.04] px-4 py-3">
-          <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 font-semibold">
-            Price by Exchange (deviation from median in bps)
-          </div>
-          <div className="space-y-1">
-            {row.tickers.map(t => (
-              <div key={t.exchange} className="flex items-center gap-2">
-                <div className="w-20 flex items-center gap-1.5 flex-shrink-0">
-                  <ExchangeLogo exchange={t.exchange.toLowerCase()} size={14} />
-                  <span className="text-[11px] text-neutral-400 truncate">{t.exchange}</span>
-                </div>
-                <div className="flex-1 flex items-center gap-2">
-                  <div className="flex-1 h-4 relative bg-white/[0.03] rounded overflow-hidden">
-                    {/* Center line */}
-                    <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/[0.1]" />
-                    {/* Bar */}
-                    <div
-                      className="absolute top-0.5 bottom-0.5 rounded-sm"
-                      style={{
-                        left: t.deviation >= 0 ? '50%' : `${50 - (Math.abs(t.deviation) / maxDev) * 45}%`,
-                        width: `${(Math.abs(t.deviation) / maxDev) * 45}%`,
-                        background: t.deviation >= 0 ? '#22c55e' : '#ef4444',
-                        opacity: 0.7,
-                      }}
-                    />
-                  </div>
-                  <span className={`text-[11px] font-mono w-16 text-right ${t.deviation >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {t.deviation >= 0 ? '+' : ''}{t.deviation.toFixed(1)}
-                  </span>
-                </div>
-                <span className="text-[11px] font-mono text-neutral-400 w-24 text-right">{formatPrice(t.price)}</span>
+        <div className="bg-white/[0.02] border-t border-b border-white/[0.04] px-4 py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* Left: Deviation bar chart */}
+            <div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 font-semibold">
+                Price Deviation from Median (bps)
               </div>
-            ))}
+              <ResponsiveContainer width="100%" height={Math.max(120, deviationChartData.length * 24)}>
+                <BarChart data={deviationChartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 70 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false}
+                    tickFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}`} />
+                  <YAxis dataKey="exchange" type="category" tick={{ fill: '#a3a3a3', fontSize: 10 }} axisLine={false} tickLine={false} width={65} />
+                  <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" />
+                  <RTooltip
+                    contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+                    formatter={(v: number, _: string, entry: any) => {
+                      const color = v >= 0 ? '#22c55e' : '#ef4444';
+                      return [
+                        <span key="v" style={{ color, fontFamily: 'monospace' }}>{v > 0 ? '+' : ''}{v} bps</span>,
+                        <span key="l" style={{ color: '#9ca3af', fontSize: 10 }}>{formatPrice(entry.payload?.price)}</span>,
+                      ];
+                    }}
+                    separator=""
+                  />
+                  <Bar dataKey="deviation" radius={[0, 3, 3, 0]} maxBarSize={16}>
+                    {deviationChartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} fillOpacity={0.75} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Right: Volume pie chart */}
+            <div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 font-semibold">
+                Volume Share by Exchange
+              </div>
+              {volumeData.length > 0 ? (
+                <div className="flex items-start gap-3">
+                  <ResponsiveContainer width="50%" height={Math.max(120, deviationChartData.length * 24)}>
+                    <PieChart>
+                      <Pie data={volumeData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                        innerRadius="35%" outerRadius="80%" strokeWidth={1} stroke="rgba(0,0,0,0.3)">
+                        {volumeData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <RTooltip
+                        contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+                        formatter={(v: number, name: string) => [
+                          `$${v >= 1e9 ? (v/1e9).toFixed(1) + 'B' : v >= 1e6 ? (v/1e6).toFixed(1) + 'M' : (v/1e3).toFixed(0) + 'K'}`,
+                          name
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex-1 space-y-1 pt-1">
+                    {volumeData.slice(0, 8).map((v, i) => (
+                      <div key={v.name} className="flex items-center gap-1.5 text-[10px]">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: v.fill }} />
+                        <span className="text-neutral-400 truncate flex-1">{v.name}</span>
+                        <span className="text-neutral-500 font-mono">
+                          {totalVol > 0 ? ((v.value / totalVol) * 100).toFixed(0) + '%' : '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {volumeData.length > 8 && (
+                      <div className="text-[9px] text-neutral-600">+{volumeData.length - 8} more</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-24 flex items-center justify-center text-neutral-600 text-xs">No volume data</div>
+              )}
+            </div>
           </div>
         </div>
       </td>
@@ -517,42 +468,6 @@ export default function SpreadsPage() {
     return buildSpreads(data);
   }, [data]);
 
-  // Track spread history for selected symbols (session only)
-  const [selectedCoins, setSelectedCoins] = useState<string[]>(DEFAULT_COINS);
-  const historyRef = useRef<{ time: number; [key: string]: number }[]>([]);
-  const [spreadHistory, setSpreadHistory] = useState<{ time: number; [key: string]: number }[]>([]);
-
-  // All available symbols with 3+ exchanges for the picker
-  const availableSymbols = useMemo(() =>
-    allSpreads.filter(r => r.exchanges >= 3).map(r => r.symbol).sort(),
-    [allSpreads]
-  );
-
-  const toggleCoin = (sym: string) => {
-    setSelectedCoins(prev =>
-      prev.includes(sym) ? prev.filter(s => s !== sym) : prev.length < 8 ? [...prev, sym] : prev
-    );
-  };
-
-  useEffect(() => {
-    if (allSpreads.length === 0) return;
-    const now = Date.now();
-    const point: { time: number; [key: string]: number } = { time: now };
-    // Track all symbols that have ever been selected (so history persists when toggling)
-    const allTracked = Array.from(new Set([...selectedCoins, ...Object.keys(historyRef.current[0] || {}).filter(k => k !== 'time')]));
-    for (const sym of allTracked) {
-      const row = allSpreads.find(r => r.symbol === sym);
-      if (row) point[sym] = parseFloat(row.spreadBps.toFixed(1));
-    }
-    if (Object.keys(point).length > 1) {
-      const last = historyRef.current[historyRef.current.length - 1];
-      if (!last || now - last.time > 10000) {
-        historyRef.current.push(point);
-        if (historyRef.current.length > 120) historyRef.current.shift();
-        setSpreadHistory([...historyRef.current]);
-      }
-    }
-  }, [allSpreads, selectedCoins]);
 
   const filtered = useMemo(() => {
     let rows = allSpreads.filter(r => r.exchanges >= minExchanges);
@@ -640,8 +555,6 @@ export default function SpreadsPage() {
           )}
         </div>
 
-        {/* Spread History (session) */}
-        {!isLoading && <SpreadHistoryChart history={spreadHistory} allSymbols={availableSymbols} selectedCoins={selectedCoins} onToggleCoin={toggleCoin} />}
 
         {/* Spread Charts */}
         {!isLoading && allSpreads.length > 0 && <SpreadCharts data={allSpreads} />}
