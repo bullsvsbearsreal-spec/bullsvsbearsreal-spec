@@ -140,6 +140,62 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
   );
 }
 
+/* ─── Top Spreads Chart ─────────────────────────────────────────── */
+
+function TopSpreadsChart({ data }: { data: SpreadRow[] }) {
+  const top10 = data
+    .filter(r => r.exchanges >= 3)
+    .sort((a, b) => b.spreadBps - a.spreadBps)
+    .slice(0, 12);
+  if (top10.length === 0) return null;
+
+  const maxBps = Math.max(...top10.map(r => r.spreadBps), 1);
+
+  return (
+    <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4 mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-white">Widest Spreads</h2>
+        <span className="text-[9px] text-neutral-600">3+ exchanges, sorted by spread</span>
+      </div>
+      <div className="space-y-1.5">
+        {top10.map((row, i) => {
+          const pct = (row.spreadBps / maxBps) * 100;
+          const isHot = row.spreadBps >= 500;
+          const isWarm = row.spreadBps >= 100;
+          const barColor = isHot ? 'bg-red-500/70' : isWarm ? 'bg-orange-500/60' : 'bg-hub-yellow/50';
+          const textColor = isHot ? 'text-red-400' : isWarm ? 'text-orange-400' : 'text-hub-yellow';
+          return (
+            <div key={row.symbol} className="flex items-center gap-2 group">
+              <span className="w-4 text-[9px] text-neutral-600 text-right font-mono">{i + 1}</span>
+              <div className="w-14 flex items-center gap-1 flex-shrink-0">
+                <TokenIconSimple symbol={row.symbol} size={14} />
+                <span className="text-[11px] text-white font-semibold truncate">{row.symbol}</span>
+              </div>
+              <div className="flex-1 h-5 relative bg-white/[0.03] rounded overflow-hidden">
+                <div
+                  className={`absolute inset-y-0 left-0 ${barColor} rounded transition-all group-hover:opacity-90`}
+                  style={{ width: `${Math.max(pct, 2)}%` }}
+                />
+                <div className="absolute inset-0 flex items-center px-2">
+                  <span className={`text-[9px] font-mono font-bold ${textColor}`}>
+                    {row.spreadBps.toFixed(0)} bps
+                  </span>
+                </div>
+              </div>
+              <div className="w-24 text-right flex-shrink-0 hidden sm:block">
+                <span className="text-[9px] text-green-400/70 font-mono">{row.highExchange}</span>
+                <span className="text-[9px] text-neutral-600 mx-1">→</span>
+                <span className="text-[9px] text-red-400/70 font-mono">{row.lowExchange}</span>
+              </div>
+              <span className="w-8 text-[9px] text-neutral-600 text-right font-mono flex-shrink-0">{row.exchanges}x</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Expanded Row ───────────────────────────────────────────────── */
 
 function ExpandedRow({ row }: { row: SpreadRow }) {
@@ -300,6 +356,9 @@ export default function SpreadsPage() {
               sub={maxSpreadRow.symbol} color="#22c55e" />
           )}
         </div>
+
+        {/* Top Spreads Chart */}
+        {!isLoading && allSpreads.length > 0 && <TopSpreadsChart data={allSpreads} />}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
