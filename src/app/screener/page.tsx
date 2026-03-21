@@ -109,7 +109,7 @@ export default function ScreenerPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      setLoading(true);
+      if (rows.length === 0) setLoading(true);
       setError(null);
 
       const [tickerRes, fundingRes, oiRes, deltaRes] = await Promise.all([
@@ -227,7 +227,7 @@ export default function ScreenerPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000); // 60s (was 30s)
+    const interval = setInterval(fetchData, 30000); // 30s refresh
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -372,12 +372,12 @@ export default function ScreenerPage() {
             <h1 className="heading-page">Screener</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
               {loading && rows.length === 0
-                ? 'Scanning symbols across 17 exchanges...'
+                ? 'Scanning symbols across 30 exchanges...'
                 : `Filter ${rows.length} symbols by funding, OI, volume, and price action`}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={17} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={30} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
@@ -405,7 +405,7 @@ export default function ScreenerPage() {
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Combined Volume</div>
               <div className="text-sm font-bold text-white font-mono">{formatNumber(stats.totalVol)}</div>
-              <div className="text-[8px] text-neutral-600 mt-0.5">Sum across all exchange-pairs</div>
+              <div className="text-[9px] text-neutral-500 mt-0.5">Sum across all exchange-pairs</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Avg Funding</div>
@@ -485,7 +485,7 @@ export default function ScreenerPage() {
 
           {conditions.length > 0 && (
             <button
-              onClick={() => { setConditions([]); setPage(0); }}
+              onClick={() => { setConditions([]); setShowFilters(false); setPage(0); }}
               className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-red-400 hover:text-red-300 bg-red-500/10 border border-red-500/20 transition-colors"
             >
               Clear All
@@ -739,10 +739,14 @@ export default function ScreenerPage() {
                     <Star className="w-3.5 h-3.5" fill={inWl ? 'currentColor' : 'none'} />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1">
                   <div>
                     <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Price</span>
                     <div className="text-xs font-mono text-neutral-300">{formatPrice(row.price)}</div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Vol 24h</span>
+                    <div className="text-xs font-mono text-neutral-400">{formatNumber(row.volume24h)}</div>
                   </div>
                   <div>
                     <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Funding</span>
@@ -817,7 +821,7 @@ export default function ScreenerPage() {
         {/* Info Footer */}
         <div className="mt-6 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3">
           <p className="text-xs text-neutral-400">
-            <span className="text-hub-yellow font-medium">Screener</span> aggregates real-time data from 17+ exchanges.
+            <span className="text-hub-yellow font-medium">Screener</span> aggregates real-time data from 30 exchanges.
             Funding rates are averaged across exchanges. Open Interest is summed.
             Use filters to find high-funding, large-OI, or trending symbols. Star symbols to add to your Watchlist.
           </p>
