@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
-  ScatterChart, Scatter, CartesianGrid, ZAxis, Cell,
+  CartesianGrid, Cell,
   Legend, PieChart, Pie, ReferenceLine, AreaChart, Area,
 } from 'recharts';
 
@@ -169,27 +169,8 @@ function SpreadCharts({ data }: { data: SpreadRow[] }) {
     color: b.min >= 500 ? '#ef4444' : b.min >= 100 ? '#f97316' : b.min >= 25 ? '#eab308' : '#22c55e',
   }));
 
-  // Scatter: spread vs volume (top 50 by volume, 5+ exchanges)
-  const scatterData = data
-    .filter(r => r.exchanges >= 5 && r.totalVolume > 0)
-    .sort((a, b) => b.totalVolume - a.totalVolume)
-    .slice(0, 50)
-    .map(r => ({
-      symbol: r.symbol,
-      spread: r.spreadBps,
-      volume: r.totalVolume,
-      exchanges: r.exchanges,
-    }));
-
-  const fmtVol = (v: number) => {
-    if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
-    if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
-    if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
-    return `$${v.toFixed(0)}`;
-  };
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-5">
+    <div className="grid grid-cols-1 gap-3 mb-5">
       {/* Distribution */}
       <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4">
         <h3 className="text-sm font-semibold text-white mb-1">Spread Distribution</h3>
@@ -214,56 +195,6 @@ function SpreadCharts({ data }: { data: SpreadRow[] }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Scatter: Spread vs Volume */}
-      <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4">
-        <h3 className="text-sm font-semibold text-white mb-1">Spread vs Volume</h3>
-        <p className="text-[9px] text-neutral-600 mb-3">Top 50 by volume (5+ exchanges). Dot size = exchange count</p>
-        <ResponsiveContainer width="100%" height={180}>
-          <ScatterChart margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis
-              type="number" dataKey="volume" name="Volume"
-              tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false}
-              tickFormatter={fmtVol} scale="log" domain={['auto', 'auto']}
-            />
-            <YAxis
-              type="number" dataKey="spread" name="Spread"
-              tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false}
-              unit=" bps"
-            />
-            <ZAxis type="number" dataKey="exchanges" range={[20, 200]} />
-            <RTooltip
-              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
-              formatter={(v: number, name: string) => [
-                name === 'Volume' ? fmtVol(v) : `${v.toFixed(1)} bps`,
-                name,
-              ]}
-              labelFormatter={() => ''}
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const d = payload[0]?.payload;
-                return (
-                  <div className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 shadow-xl">
-                    <p className="text-white font-bold text-xs">{d.symbol}</p>
-                    <p className="text-neutral-400 text-[10px]">Spread: <span className="text-hub-yellow font-mono">{d.spread.toFixed(1)} bps</span></p>
-                    <p className="text-neutral-400 text-[10px]">Volume: <span className="text-white font-mono">{fmtVol(d.volume)}</span></p>
-                    <p className="text-neutral-400 text-[10px]">Exchanges: <span className="text-white">{d.exchanges}</span></p>
-                  </div>
-                );
-              }}
-            />
-            <Scatter data={scatterData}>
-              {scatterData.map((entry, i) => (
-                <Cell
-                  key={i}
-                  fill={entry.spread >= 500 ? '#ef4444' : entry.spread >= 100 ? '#f97316' : entry.spread >= 25 ? '#eab308' : '#22c55e'}
-                  fillOpacity={0.7}
-                />
-              ))}
-            </Scatter>
-          </ScatterChart>
-        </ResponsiveContainer>
-      </div>
     </div>
   );
 }
