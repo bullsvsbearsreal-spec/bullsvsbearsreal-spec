@@ -14,6 +14,10 @@ import {
   ArrowLeftRight, Search, ArrowUpDown, TrendingUp, TrendingDown,
   BarChart3, Activity, Zap, Info,
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
+  ScatterChart, Scatter, CartesianGrid, ZAxis, Cell,
+} from 'recharts';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -135,6 +139,124 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
         </div>
         <div className="text-2xl font-black text-white font-mono tracking-tight">{value}</div>
         {sub && <span className="text-neutral-600 text-[9px] mt-1 block">{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Spread Charts (Recharts) ──────────────────────────────────── */
+
+function SpreadCharts({ data }: { data: SpreadRow[] }) {
+  // Distribution histogram buckets
+  const buckets = [
+    { label: '0-5', min: 0, max: 5 },
+    { label: '5-10', min: 5, max: 10 },
+    { label: '10-25', min: 10, max: 25 },
+    { label: '25-50', min: 25, max: 50 },
+    { label: '50-100', min: 50, max: 100 },
+    { label: '100-500', min: 100, max: 500 },
+    { label: '500+', min: 500, max: Infinity },
+  ];
+
+  const distData = buckets.map(b => ({
+    range: b.label,
+    count: data.filter(r => r.spreadBps >= b.min && r.spreadBps < b.max).length,
+    color: b.min >= 500 ? '#ef4444' : b.min >= 100 ? '#f97316' : b.min >= 25 ? '#eab308' : '#22c55e',
+  }));
+
+  // Scatter: spread vs volume (top 50 by volume, 5+ exchanges)
+  const scatterData = data
+    .filter(r => r.exchanges >= 5 && r.totalVolume > 0)
+    .sort((a, b) => b.totalVolume - a.totalVolume)
+    .slice(0, 50)
+    .map(r => ({
+      symbol: r.symbol,
+      spread: r.spreadBps,
+      volume: r.totalVolume,
+      exchanges: r.exchanges,
+    }));
+
+  const fmtVol = (v: number) => {
+    if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+    if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+    if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+    return `$${v.toFixed(0)}`;
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-5">
+      {/* Distribution */}
+      <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-1">Spread Distribution</h3>
+        <p className="text-[9px] text-neutral-600 mb-3">Number of pairs by spread range (bps)</p>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={distData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+            <XAxis dataKey="range" tick={{ fill: '#737373', fontSize: 9 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} />
+            <RTooltip
+              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+              labelStyle={{ color: '#eab308', fontWeight: 600 }}
+              formatter={(v: number) => [`${v} pairs`, 'Count']}
+              labelFormatter={(l) => `${l} bps`}
+            />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
+              {distData.map((entry, i) => (
+                <Cell key={i} fill={entry.color} fillOpacity={0.75} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Scatter: Spread vs Volume */}
+      <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-1">Spread vs Volume</h3>
+        <p className="text-[9px] text-neutral-600 mb-3">Top 50 by volume (5+ exchanges). Dot size = exchange count</p>
+        <ResponsiveContainer width="100%" height={180}>
+          <ScatterChart margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+            <XAxis
+              type="number" dataKey="volume" name="Volume"
+              tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false}
+              tickFormatter={fmtVol} scale="log" domain={['auto', 'auto']}
+            />
+            <YAxis
+              type="number" dataKey="spread" name="Spread"
+              tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false}
+              unit=" bps"
+            />
+            <ZAxis type="number" dataKey="exchanges" range={[20, 200]} />
+            <RTooltip
+              contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+              formatter={(v: number, name: string) => [
+                name === 'Volume' ? fmtVol(v) : `${v.toFixed(1)} bps`,
+                name,
+              ]}
+              labelFormatter={() => ''}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0]?.payload;
+                return (
+                  <div className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 shadow-xl">
+                    <p className="text-white font-bold text-xs">{d.symbol}</p>
+                    <p className="text-neutral-400 text-[10px]">Spread: <span className="text-hub-yellow font-mono">{d.spread.toFixed(1)} bps</span></p>
+                    <p className="text-neutral-400 text-[10px]">Volume: <span className="text-white font-mono">{fmtVol(d.volume)}</span></p>
+                    <p className="text-neutral-400 text-[10px]">Exchanges: <span className="text-white">{d.exchanges}</span></p>
+                  </div>
+                );
+              }}
+            />
+            <Scatter data={scatterData}>
+              {scatterData.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={entry.spread >= 500 ? '#ef4444' : entry.spread >= 100 ? '#f97316' : entry.spread >= 25 ? '#eab308' : '#22c55e'}
+                  fillOpacity={0.7}
+                />
+              ))}
+            </Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
@@ -357,7 +479,10 @@ export default function SpreadsPage() {
           )}
         </div>
 
-        {/* Top Spreads Chart */}
+        {/* Spread Charts */}
+        {!isLoading && allSpreads.length > 0 && <SpreadCharts data={allSpreads} />}
+
+        {/* Top Spreads Bar */}
         {!isLoading && allSpreads.length > 0 && <TopSpreadsChart data={allSpreads} />}
 
         {/* Filters */}
