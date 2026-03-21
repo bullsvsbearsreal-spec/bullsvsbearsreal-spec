@@ -196,9 +196,10 @@ export default function ScreenerPage() {
   const oiCache = useRef<any[]>([]);
   const deltaCache = useRef<any[]>([]);
 
+  const hasData = useRef(false);
   const fetchData = useCallback(async () => {
     try {
-      if (rows.length === 0) setLoading(true);
+      if (!hasData.current) setLoading(true);
       setError(null);
 
       // Phase 1: Tickers (fastest, ~200ms cached) — show price/volume/change immediately
@@ -213,17 +214,27 @@ export default function ScreenerPage() {
       // Show tickers as soon as they arrive
       const tickerRes = await tickerPromise;
       tickerCache.current = Array.isArray(tickerRes?.data) ? tickerRes.data : Array.isArray(tickerRes) ? tickerRes : [];
-      setRows(buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current));
+      const phase1 = buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current);
+      setRows(phase1);
+      hasData.current = true;
       setLoading(false);
       setLastUpdate(new Date());
 
-      // Fill in the rest when ready
-      const [fundingRes, oiRes, deltaRes] = await restPromise;
-      fundingCache.current = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
-      oiCache.current = Array.isArray(oiRes?.data) ? oiRes.data : [];
-      deltaCache.current = deltaRes?.data || deltaRes?.deltas || [];
-      setRows(buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current));
-      setLastUpdate(new Date());
+      // Fill in the rest when ready — don't overwrite with empty on failure
+      try {
+        const [fundingRes, oiRes, deltaRes] = await restPromise;
+        const newFunding = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
+        const newOi = Array.isArray(oiRes?.data) ? oiRes.data : [];
+        const newDelta = deltaRes?.data || deltaRes?.deltas || [];
+        if (newFunding.length > 0) fundingCache.current = newFunding;
+        if (newOi.length > 0) oiCache.current = newOi;
+        if (newDelta.length > 0) deltaCache.current = newDelta;
+        const phase2 = buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current);
+        setRows(phase2);
+        setLastUpdate(new Date());
+      } catch {
+        // Phase 2 failed — keep phase 1 data, retry on next interval
+      }
     } catch (err) {
       setError('Unable to fetch screener data — check your connection or try again shortly.');
       console.error(err);
