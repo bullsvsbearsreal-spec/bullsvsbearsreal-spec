@@ -202,39 +202,29 @@ export default function ScreenerPage() {
       if (!hasData.current) setLoading(true);
       setError(null);
 
-      // Phase 1: Tickers (fastest, ~200ms cached) — show price/volume/change immediately
-      const tickerPromise = fetch('/api/tickers').then((r) => r.json());
-      // Phase 2: Funding + OI + Delta (slower, ~1-3s) — fill in after
-      const restPromise = Promise.all([
-        fetch('/api/funding?assetClass=crypto').then((r) => r.json()),
-        fetch('/api/openinterest').then((r) => r.json()),
+      // Fetch all 4 APIs in parallel
+      const [tickerRes, fundingRes, oiRes, deltaRes] = await Promise.all([
+        fetch('/api/tickers').then((r) => r.json()).catch(() => null),
+        fetch('/api/funding?assetClass=crypto').then((r) => r.json()).catch(() => null),
+        fetch('/api/openinterest').then((r) => r.json()).catch(() => null),
         fetch('/api/oi-delta').then((r) => r.ok ? r.json() : null).catch(() => null),
       ]);
 
-      // Show tickers as soon as they arrive
-      const tickerRes = await tickerPromise;
-      tickerCache.current = Array.isArray(tickerRes?.data) ? tickerRes.data : Array.isArray(tickerRes) ? tickerRes : [];
-      const phase1 = buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current);
-      setRows(phase1);
+      // Update caches — only overwrite if new data is non-empty
+      const newTickers = Array.isArray(tickerRes?.data) ? tickerRes.data : Array.isArray(tickerRes) ? tickerRes : [];
+      const newFunding = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
+      const newOi = Array.isArray(oiRes?.data) ? oiRes.data : [];
+      const newDelta = deltaRes?.data || deltaRes?.deltas || [];
+      if (newTickers.length > 0) tickerCache.current = newTickers;
+      if (newFunding.length > 0) fundingCache.current = newFunding;
+      if (newOi.length > 0) oiCache.current = newOi;
+      if (newDelta.length > 0) deltaCache.current = newDelta;
+
+      const merged = buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current);
+      setRows(merged);
       hasData.current = true;
       setLoading(false);
       setLastUpdate(new Date());
-
-      // Fill in the rest when ready — don't overwrite with empty on failure
-      try {
-        const [fundingRes, oiRes, deltaRes] = await restPromise;
-        const newFunding = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
-        const newOi = Array.isArray(oiRes?.data) ? oiRes.data : [];
-        const newDelta = deltaRes?.data || deltaRes?.deltas || [];
-        if (newFunding.length > 0) fundingCache.current = newFunding;
-        if (newOi.length > 0) oiCache.current = newOi;
-        if (newDelta.length > 0) deltaCache.current = newDelta;
-        const phase2 = buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current);
-        setRows(phase2);
-        setLastUpdate(new Date());
-      } catch {
-        // Phase 2 failed — keep phase 1 data, retry on next interval
-      }
     } catch (err) {
       setError('Unable to fetch screener data — check your connection or try again shortly.');
       console.error(err);
