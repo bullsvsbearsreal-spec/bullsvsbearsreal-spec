@@ -398,12 +398,12 @@ export default function ScreenerPage() {
             <h1 className="heading-page">Screener</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
               {loading && rows.length === 0
-                ? 'Scanning symbols across 30 exchanges...'
+                ? 'Scanning symbols across 26 exchanges...'
                 : `Filter ${rows.length} symbols by funding, OI, volume, and price action`}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={30} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={26} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
