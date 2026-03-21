@@ -575,11 +575,15 @@ function IVSmileChart({
 
   if (points.length < 2) return null;
 
-  const allIVs = points.flatMap((p) => [p.callIV, p.putIV].filter((v) => v > 0));
-  if (allIVs.length === 0) return null;
+  // Combine call/put IV (identical by put-call parity) into single line
+  const combinedIVs = points.map((p) => {
+    if (p.callIV > 0 && p.putIV > 0) return (p.callIV + p.putIV) / 2;
+    return p.callIV || p.putIV || 0;
+  }).filter((v) => v > 0);
+  if (combinedIVs.length === 0) return null;
 
-  const minIV = Math.min(...allIVs) * 0.92;
-  const maxIV = Math.max(...allIVs) * 1.05;
+  const minIV = Math.min(...combinedIVs) * 0.92;
+  const maxIV = Math.max(...combinedIVs) * 1.05;
   const range = maxIV - minIV || 1;
 
   const width = 900;
@@ -590,22 +594,19 @@ function IVSmileChart({
   const scaleX = (i: number) => pad.left + (i / (points.length - 1)) * chartW;
   const scaleY = (val: number) => pad.top + (1 - (val - minIV) / range) * chartH;
 
-  // Build raw data points, then smooth with moving average
+  // Build single IV curve (call≈put by parity), smooth with moving average
   const SMOOTH_WINDOW = 5;
-  const rawCall = points.map((p, i) => ({ x: scaleX(i), y: p.callIV })).filter(d => d.y > 0);
-  const rawPut = points.map((p, i) => ({ x: scaleX(i), y: p.putIV })).filter(d => d.y > 0);
-  const smoothCall = smoothData(rawCall, SMOOTH_WINDOW).map(d => ({ x: d.x, y: scaleY(d.y) }));
-  const smoothPut = smoothData(rawPut, SMOOTH_WINDOW).map(d => ({ x: d.x, y: scaleY(d.y) }));
+  const rawIV = points.map((p, i) => {
+    const iv = p.callIV > 0 && p.putIV > 0 ? (p.callIV + p.putIV) / 2 : (p.callIV || p.putIV);
+    return { x: scaleX(i), y: iv };
+  }).filter(d => d.y > 0);
+  const smoothIV = smoothData(rawIV, SMOOTH_WINDOW).map(d => ({ x: d.x, y: scaleY(d.y) }));
 
-  const callPath = smoothPath(smoothCall);
-  const putPath = smoothPath(smoothPut);
+  const ivPath = smoothPath(smoothIV);
 
-  // Area fill paths
-  const callArea = smoothCall.length > 1
-    ? `${callPath} L${smoothCall[smoothCall.length - 1].x},${pad.top + chartH} L${smoothCall[0].x},${pad.top + chartH} Z`
-    : '';
-  const putArea = smoothPut.length > 1
-    ? `${putPath} L${smoothPut[smoothPut.length - 1].x},${pad.top + chartH} L${smoothPut[0].x},${pad.top + chartH} Z`
+  // Area fill path
+  const ivArea = smoothIV.length > 1
+    ? `${ivPath} L${smoothIV[smoothIV.length - 1].x},${pad.top + chartH} L${smoothIV[0].x},${pad.top + chartH} Z`
     : '';
 
   // Spot price position
@@ -645,21 +646,14 @@ function IVSmileChart({
           <p className="text-xs font-bold text-white font-mono mb-1.5">
             Strike ${hoveredPoint.strike.toLocaleString()}
           </p>
-          {hoveredPoint.callIV > 0 && (
+          {(hoveredPoint.callIV > 0 || hoveredPoint.putIV > 0) && (
             <div className="flex items-center gap-2 text-[11px]">
-              <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
-              <span className="text-neutral-400">Call IV</span>
-              <span className="text-green-400 font-mono font-medium ml-auto">{hoveredPoint.callIV.toFixed(1)}%</span>
+              <span className="w-2 h-2 rounded-sm bg-[#eab308]" />
+              <span className="text-neutral-400">Implied Vol</span>
+              <span className="text-hub-yellow font-mono font-medium ml-auto">{((hoveredPoint.callIV + hoveredPoint.putIV) / (hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 ? 2 : 1)).toFixed(1)}%</span>
             </div>
           )}
-          {hoveredPoint.putIV > 0 && (
-            <div className="flex items-center gap-2 text-[11px] mt-1">
-              <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
-              <span className="text-neutral-400">Put IV</span>
-              <span className="text-red-400 font-mono font-medium ml-auto">{hoveredPoint.putIV.toFixed(1)}%</span>
-            </div>
-          )}
-          {hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 && (
+          {hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 && Math.abs(hoveredPoint.callIV - hoveredPoint.putIV) > 0.5 && (
             <div className="border-t border-white/[0.06] mt-2 pt-1.5 text-[10px] text-neutral-500 font-mono">
               Skew: {(hoveredPoint.putIV - hoveredPoint.callIV).toFixed(1)}%
             </div>
@@ -720,34 +714,23 @@ function IVSmileChart({
           </>
         )}
 
-        {/* Call IV area + smooth line */}
-        {callArea && (
-          <path d={callArea} fill="rgba(34,197,94,0.08)" />
+        {/* IV area + smooth line (single curve, call≈put by parity) */}
+        {ivArea && (
+          <path d={ivArea} fill="rgba(234,179,8,0.08)" />
         )}
-        {callPath && (
-          <path d={callPath} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
-        )}
-
-        {/* Put IV area + smooth line */}
-        {putArea && (
-          <path d={putArea} fill="rgba(239,68,68,0.08)" />
-        )}
-        {putPath && (
-          <path d={putPath} fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+        {ivPath && (
+          <path d={ivPath} fill="none" stroke="#eab308" strokeWidth="2.5" strokeLinecap="round" />
         )}
 
-        {/* Hover crosshair + dots */}
+        {/* Hover crosshair + dot */}
         {hovered !== null && hoveredPoint && (
           <g>
             <line
               x1={hoveredX} y1={pad.top} x2={hoveredX} y2={pad.top + chartH}
               stroke="rgba(255,255,255,0.15)" strokeWidth={1} strokeDasharray="2,2"
             />
-            {hoveredPoint.callIV > 0 && (
-              <circle cx={hoveredX} cy={scaleY(hoveredPoint.callIV)} r={4} fill="#22c55e" stroke="#000" strokeWidth={1.5} />
-            )}
-            {hoveredPoint.putIV > 0 && (
-              <circle cx={hoveredX} cy={scaleY(hoveredPoint.putIV)} r={4} fill="#ef4444" stroke="#000" strokeWidth={1.5} />
+            {(hoveredPoint.callIV > 0 || hoveredPoint.putIV > 0) && (
+              <circle cx={hoveredX} cy={scaleY((hoveredPoint.callIV + hoveredPoint.putIV) / (hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 ? 2 : 1))} r={4} fill="#eab308" stroke="#000" strokeWidth={1.5} />
             )}
           </g>
         )}
@@ -1222,8 +1205,7 @@ export default function OptionsPage() {
                   <IVSmileChart points={data.ivSmile} spotPrice={data.underlyingPrice} />
                 </div>
                 <Legend items={[
-                  { color: '#22c55e', label: 'Call IV', type: 'line' },
-                  { color: '#ef4444', label: 'Put IV', type: 'line' },
+                  { color: '#eab308', label: 'Implied Volatility', type: 'line' },
                 ]} />
               </Section>
             )}
@@ -1328,8 +1310,8 @@ export default function OptionsPage() {
                 </div>
               )}
 
-              <p className="text-[10px] text-neutral-600">
-                Max Pain = strike that minimizes total option holder profit · Updates every 60s
+              <p className="text-[10px] text-neutral-600 max-w-md text-right">
+                Max Pain = strike that minimizes total option holder profit · P/C Ratio = put OI / call OI · IV Smile = mark IV across strikes (call ≈ put by put-call parity) · Updates every 60s
               </p>
             </div>
           </div>
