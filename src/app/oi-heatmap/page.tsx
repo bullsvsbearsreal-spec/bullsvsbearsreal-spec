@@ -6,7 +6,7 @@ import Footer from '@/components/Footer';
 import UpdatedAgo from '@/components/UpdatedAgo';
 import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD, formatPercent, formatCompact } from '@/lib/utils/format';
-import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Activity, Info } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,7 +115,7 @@ function squarify(
 // ---------------------------------------------------------------------------
 
 function getOIChangeColor(change: number | null): string {
-  if (change === null || change === undefined || isNaN(change)) return 'rgba(100, 100, 110, 0.7)';
+  if (change === null || change === undefined || isNaN(change)) return 'rgba(60, 60, 70, 0.85)';
   if (change >= 20) return 'rgba(34, 197, 94, 0.95)';
   if (change >= 10) return 'rgba(34, 197, 94, 0.8)';
   if (change >= 5) return 'rgba(34, 197, 94, 0.65)';
@@ -494,18 +494,17 @@ export default function OIHeatmapPage() {
                         {formatCompact(rect.item.totalOI)}
                       </text>
                     )}
-                    {showChange && rect.item.change24h !== null && (
+                    {showChange && (
                       <text
                         x={cx}
                         y={cy + symbolFontSize * 0.45 + detailFontSize * 1.25}
                         textAnchor="middle"
                         dominantBaseline="central"
                         fill={
-                          rect.item.change24h >= 0.5
-                            ? 'rgba(134, 239, 172, 1)'
-                            : rect.item.change24h <= -0.5
-                              ? 'rgba(252, 165, 165, 1)'
-                              : 'rgba(220, 220, 220, 0.9)'
+                          rect.item.change24h === null ? 'rgba(180, 180, 180, 0.7)'
+                            : rect.item.change24h >= 0.5 ? 'rgba(134, 239, 172, 1)'
+                            : rect.item.change24h <= -0.5 ? 'rgba(252, 165, 165, 1)'
+                            : 'rgba(220, 220, 220, 0.9)'
                         }
                         fontSize={detailFontSize}
                         fontWeight="500"
@@ -514,8 +513,9 @@ export default function OIHeatmapPage() {
                         strokeWidth={detailFontSize * 0.03}
                         paintOrder="stroke"
                       >
-                        {rect.item.change24h >= 0 ? '+' : ''}
-                        {rect.item.change24h.toFixed(1)}%
+                        {rect.item.change24h !== null
+                          ? `${rect.item.change24h >= 0 ? '+' : ''}${rect.item.change24h.toFixed(1)}%`
+                          : 'N/A'}
                       </text>
                     )}
                   </g>
@@ -575,6 +575,21 @@ export default function OIHeatmapPage() {
             <span className="text-[10px] text-neutral-500 ml-1">+20%+</span>
           </div>
         )}
+
+        {/* Info footer */}
+        <div className="mt-6 p-4 rounded-2xl bg-hub-yellow/5 border border-hub-yellow/10 border-l-2 border-l-hub-yellow/40">
+          <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
+            <span>
+              <span className="text-hub-yellow font-medium">Tile size</span> = total open interest across all exchanges.{' '}
+              <span className="text-hub-yellow font-medium">Color</span> = 24h OI change (green = increasing, red = decreasing, gray = no data).
+              OI change requires historical snapshots (10-min intervals). "N/A" means insufficient history.
+            </span>
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-2 ml-6">
+            Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, KuCoin, Deribit, HTX, Hyperliquid, dYdX, Drift, GMX, and more. Refreshes every 3 min.
+          </p>
+        </div>
       </main>
       <Footer />
     </div>
