@@ -85,8 +85,8 @@ function buildSpreads(tickers: TickerRow[]): SpreadRow[] {
     const med = median(prices);
     if (med <= 0) continue;
 
-    // Filter out outlier prices (>20% away from median = likely different contract spec or stale)
-    const MAX_DEVIATION = 0.2; // 20%
+    // Filter out outlier prices (>10% away from median = likely different contract spec or stale)
+    const MAX_DEVIATION = 0.1; // 10%
     const sane = deduped.filter(e => Math.abs(e.lastPrice - med) / med <= MAX_DEVIATION);
     if (sane.length < 2) continue;
 
