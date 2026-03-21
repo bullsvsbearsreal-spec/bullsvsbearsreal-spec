@@ -266,13 +266,14 @@ export default function SpreadTrackerChart({ compact = false }: SpreadTrackerCha
       let exchanges: Record<string, RawPoint[]> | undefined;
       try {
         const res = await fetch(
-          `/api/history/price-multi?symbol=${encodeURIComponent(symbol)}&days=${days}`
+          `/api/history/price-multi?symbol=${encodeURIComponent(symbol)}&days=${days}`,
+          { signal: AbortSignal.timeout(8000) },
         );
         if (res.ok) {
           const json = await res.json();
           exchanges = json.exchanges as Record<string, RawPoint[]> | undefined;
         }
-      } catch { /* DB unavailable, will fallback to tickers */ }
+      } catch { /* DB unavailable or timeout, will fallback to tickers */ }
 
       if (!exchanges || Object.keys(exchanges).length === 0) {
         // Fallback: try current tickers
@@ -286,7 +287,11 @@ export default function SpreadTrackerChart({ compact = false }: SpreadTrackerCha
           const now = Date.now();
           const snapshot: Record<string, RawPoint[]> = {};
           matching.forEach((t: any) => {
-            snapshot[t.exchange] = [{ t: now, price: t.lastPrice }];
+            // Create 2 fake data points (now and 1min ago) so chart renders lines
+            snapshot[t.exchange] = [
+              { t: now - 60_000, price: t.lastPrice },
+              { t: now, price: t.lastPrice },
+            ];
           });
           setRawData(snapshot);
           const sorted = Object.keys(snapshot).sort();
