@@ -277,6 +277,22 @@ function ExecutionCostsInner() {
             </div>
           </div>
         )}
+
+        {/* Info footer */}
+        <div className="mt-6 p-4 rounded-2xl bg-hub-yellow/5 border border-hub-yellow/10 border-l-2 border-l-hub-yellow/40">
+          <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
+            <span>
+              <span className="text-hub-yellow font-medium">Total cost</span> = Fee + Spread + Impact.
+              CLOB venues (Hyperliquid, dYdX, Drift, Aster, Aevo, Lighter, edgeX) use real-time orderbook depth.
+              AMM venues (gTrade, GMX) use formula-based pricing with no spread.
+              Venues with stale prices (&gt;5% from consensus) are automatically excluded.
+            </span>
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-2 ml-6">
+            DEX perpetuals only. Refreshes every 15s. Trade links open the exchange directly.
+          </p>
+        </div>
       </main>
       <Footer />
     </div>

@@ -132,6 +132,19 @@ export async function calculateAllVenueCosts(
     results.push(unavailable('Variational', 'quote', 'No quotes'));
   }
 
+  // Price sanity check: compare all mid prices and exclude venues >5% from consensus
+  const availableMids = results.filter(r => r.available && r.midPrice > 0).map(r => r.midPrice);
+  if (availableMids.length >= 3) {
+    const sorted = [...availableMids].sort((a, b) => a - b);
+    const mid = sorted[Math.floor(sorted.length / 2)];
+    for (const r of results) {
+      if (r.available && r.midPrice > 0 && Math.abs(r.midPrice - mid) / mid > 0.05) {
+        r.available = false;
+        r.error = `Stale price ($${r.midPrice.toFixed(0)} vs consensus $${mid.toFixed(0)})`;
+      }
+    }
+  }
+
   // Sort by total cost (cheapest first), unavailable at end
   results.sort((a, b) => {
     if (a.available !== b.available) return a.available ? -1 : 1;
