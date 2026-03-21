@@ -188,8 +188,10 @@ export default function ScreenerPage() {
         const f = fundingMap.get(symbol);
         const o = oiMap.get(symbol);
 
-        // Skip if no price data
+        // Skip if no price data or low-quality symbol
         if (!t || t.count === 0) return;
+        // Quality filter: require 2+ exchanges OR $50K+ volume to exclude scam/test tokens
+        if (t.count < 2 && t.vol < 50_000) return;
 
         const change24h = t.change || 0;
         const avgFunding = f ? f.total / f.count : 0;
