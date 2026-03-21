@@ -875,12 +875,20 @@ export default function ScreenerPage() {
         <SoftAuthGate freeLimit={20} totalCount={filtered.length} dataLabel="symbols" />
 
         {/* Info Footer */}
-        <div className="mt-6 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3">
+        <div className="mt-6 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3 space-y-2">
           <p className="text-xs text-neutral-400">
             <span className="text-hub-yellow font-medium">Screener</span> aggregates real-time data from 30 exchanges.
             Funding rates are averaged across exchanges. Open Interest is summed.
             Use filters to find high-funding, large-OI, or trending symbols. Star symbols to add to your Watchlist.
           </p>
+          <div className="text-[10px] text-neutral-500 leading-relaxed">
+            <span className="text-neutral-400 font-medium">Data sources:</span>{' '}
+            <span className="text-neutral-500">
+              CEX: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, WhiteBIT, Coinbase, CoinEx, Deribit{' · '}
+              DEX: Hyperliquid, dYdX, Aster, Lighter, Aevo, Drift, GMX, gTrade, Extended, Variational, edgeX, Nado{' · '}
+              Prices refresh every 30s
+            </span>
+          </div>
         </div>
       </main>
       <ReferralBanner />
