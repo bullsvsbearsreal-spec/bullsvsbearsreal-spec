@@ -23,6 +23,9 @@ export default function DepthChart({ venues, orderSizeUsd }: Props) {
       label: v.maxFillableSize > MAX_DEPTH_DISPLAY
         ? formatUSD(v.maxFillableSize, 1) + '+'
         : formatUSD(v.maxFillableSize, 1),
+      method: v.method,
+      canFill: v.maxFillableSize >= orderSizeUsd,
+      fillPct: Math.min((v.maxFillableSize / orderSizeUsd) * 100, 100),
     }));
 
   const fmtUsd = (v: number) => formatUSD(v, 1);
@@ -42,12 +45,26 @@ export default function DepthChart({ venues, orderSizeUsd }: Props) {
           <XAxis dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11, fontWeight: 500 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
           <YAxis tickFormatter={fmtUsd} tick={{ fill: '#737373', fontSize: 10 }} axisLine={false} tickLine={false} width={55} />
           <Tooltip
-            contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
-            labelStyle={{ color: '#fff', fontWeight: 600 }}
-            formatter={(value: number, _: string, entry: any) => [
-              entry.payload.capped ? `${fmtUsd(value)}+ (vAMM)` : fmtUsd(value),
-              'Depth',
-            ]}
+            contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11, padding: '8px 12px' }}
+            labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}
+            formatter={(value: number, _: string, entry: any) => {
+              const p = entry.payload;
+              const depthStr = p.capped ? `${fmtUsd(value)}+ (vAMM)` : fmtUsd(value);
+              const fillStr = p.canFill
+                ? '✓ Can fill your order'
+                : `${p.fillPct.toFixed(0)}% of your order`;
+              return [
+                <span key="d" style={{ fontFamily: 'monospace' }}>
+                  {depthStr}
+                  <br />
+                  <span style={{ color: p.canFill ? '#22c55e' : '#f59e0b', fontSize: 10 }}>{fillStr}</span>
+                  <br />
+                  <span style={{ color: '#737373', fontSize: 9 }}>Method: {p.method?.toUpperCase()}</span>
+                </span>,
+                'Available depth',
+              ];
+            }}
+            separator=": "
           />
           <ReferenceLine
             y={orderSizeUsd}
