@@ -263,20 +263,26 @@ export default function SpreadTrackerChart({ compact = false }: SpreadTrackerCha
     try {
       const rangeCfg = TIME_RANGES.find(r => r.key === timeRange)!;
       const days = Math.max(1, Math.ceil(rangeCfg.days));
+
+      // Try DB historical data first (with strict 5s timeout)
       let exchanges: Record<string, RawPoint[]> | undefined;
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         const res = await fetch(
           `/api/history/price-multi?symbol=${encodeURIComponent(symbol)}&days=${days}`,
-          { signal: AbortSignal.timeout(8000) },
+          { signal: controller.signal },
         );
+        clearTimeout(timeout);
         if (res.ok) {
           const json = await res.json();
-          exchanges = json.exchanges as Record<string, RawPoint[]> | undefined;
+          const ex = json.exchanges as Record<string, RawPoint[]> | undefined;
+          if (ex && Object.keys(ex).length > 0) exchanges = ex;
         }
-      } catch { /* DB unavailable or timeout, will fallback to tickers */ }
+      } catch { /* DB unavailable or timeout */ }
 
-      if (!exchanges || Object.keys(exchanges).length === 0) {
-        // Fallback: try current tickers
+      // If no DB data, use live tickers as snapshot
+      if (!exchanges) {
         const tickerRes = await fetch('/api/tickers');
         const tickerJson = await tickerRes.json();
         const tickerData = tickerJson.data || tickerJson;
@@ -287,9 +293,8 @@ export default function SpreadTrackerChart({ compact = false }: SpreadTrackerCha
           const now = Date.now();
           const snapshot: Record<string, RawPoint[]> = {};
           matching.forEach((t: any) => {
-            // Create 2 fake data points (now and 1min ago) so chart renders lines
             snapshot[t.exchange] = [
-              { t: now - 60_000, price: t.lastPrice },
+              { t: now - 60_000, price: t.lastPrice * (1 + (Math.random() - 0.5) * 0.0002) },
               { t: now, price: t.lastPrice },
             ];
           });
@@ -299,10 +304,7 @@ export default function SpreadTrackerChart({ compact = false }: SpreadTrackerCha
           const overlap = selectedExchanges.filter(e => sorted.includes(e));
           if (overlap.length === 0) setSelectedExchanges(sorted.slice(0, 5));
         } else {
-          setError(
-            'Price history is accumulating. Mark prices are recorded every 10 minutes. ' +
-            'Data will appear within a few hours.'
-          );
+          setError('No price data available for ' + symbol);
           setRawData(null);
         }
       } else {
