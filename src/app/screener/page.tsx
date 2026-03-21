@@ -108,123 +108,121 @@ export default function ScreenerPage() {
   // Watchlist state trigger
   const [wlTick, setWlTick] = useState(0);
 
-  /* ─── Data Fetching ───────────────────────────────────────────── */
+  /* ─── Data Helpers ────────────────────────────────────────────── */
+
+  const SKIP_VOLUME = useRef(new Set(['Gate.io', 'BitMEX', 'WhiteBIT', 'Coinbase']));
+  const MAX_SANE_VOL = 10_000_000_000;
+
+  const buildRows = useCallback((
+    tickers: any[], funding: any[], oi: any[], deltas: any[]
+  ): ScreenerRow[] => {
+    const tickerMap = new Map<string, { price: number; change: number; vol: number; count: number; volByExchange: Map<string, number> }>();
+    tickers.forEach((t: any) => {
+      const sym = t.symbol;
+      const cur = tickerMap.get(sym) || { price: 0, change: 0, vol: 0, count: 0, volByExchange: new Map() };
+      cur.price += t.lastPrice || 0;
+      cur.change = t.priceChangePercent24h ?? t.change24h ?? cur.change;
+      if (!SKIP_VOLUME.current.has(t.exchange)) {
+        const rawVol = Number(t.quoteVolume24h) || 0;
+        if (rawVol > 0 && rawVol <= MAX_SANE_VOL) {
+          const existing = cur.volByExchange.get(t.exchange) || 0;
+          if (rawVol > existing) cur.volByExchange.set(t.exchange, rawVol);
+        }
+      }
+      cur.count++;
+      tickerMap.set(sym, cur);
+    });
+    tickerMap.forEach((v) => {
+      v.vol = Array.from(v.volByExchange.values()).reduce((sum, x) => sum + x, 0);
+    });
+
+    const fundingMap = new Map<string, { total: number; count: number }>();
+    funding.forEach((f: any) => {
+      const cur = fundingMap.get(f.symbol) || { total: 0, count: 0 };
+      cur.total += f.fundingRate || 0;
+      cur.count++;
+      fundingMap.set(f.symbol, cur);
+    });
+
+    const oiMap = new Map<string, { total: number; count: number }>();
+    oi.forEach((o: any) => {
+      const cur = oiMap.get(o.symbol) || { total: 0, count: 0 };
+      cur.total += o.openInterestValue || 0;
+      cur.count++;
+      oiMap.set(o.symbol, cur);
+    });
+
+    const deltaMap = new Map<string, number>();
+    interface RawDelta { symbol?: string; change24h?: number }
+    (deltas as RawDelta[]).forEach((d) => {
+      if (d.symbol && d.change24h != null) deltaMap.set(d.symbol, d.change24h);
+    });
+
+    const allSymbols = new Set<string>();
+    tickerMap.forEach((_, k) => allSymbols.add(k));
+    fundingMap.forEach((_, k) => allSymbols.add(k));
+    oiMap.forEach((_, k) => allSymbols.add(k));
+    const merged: ScreenerRow[] = [];
+
+    allSymbols.forEach((symbol) => {
+      const t = tickerMap.get(symbol);
+      const f = fundingMap.get(symbol);
+      const o = oiMap.get(symbol);
+      if (!t || t.count === 0) return;
+      if (t.count < 2 && t.vol < 50_000) return;
+
+      const change24h = t.change || 0;
+      const avgFunding = f ? f.total / f.count : 0;
+      const oiChange24h = deltaMap.get(symbol) || 0;
+      const { label: sentiment, color: sentimentColor } = deriveSentiment(change24h, oiChange24h, avgFunding);
+      const totalOI = o?.total || 0;
+      let vol = t.vol;
+      if (totalOI > 0 && vol > 500 * totalOI) vol = Math.min(vol, 10 * totalOI);
+
+      merged.push({
+        symbol, price: t.price / t.count, change24h, volume24h: vol,
+        avgFunding, fundingExchanges: f?.count || 0,
+        totalOI, oiExchanges: o?.count || 0, oiChange24h, sentiment, sentimentColor,
+      });
+    });
+    return merged;
+  }, []);
+
+  /* ─── Data Fetching (progressive) ───────────────────────────── */
+
+  // Cache refs so progressive updates can merge partial data
+  const tickerCache = useRef<any[]>([]);
+  const fundingCache = useRef<any[]>([]);
+  const oiCache = useRef<any[]>([]);
+  const deltaCache = useRef<any[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
       if (rows.length === 0) setLoading(true);
       setError(null);
 
-      const [tickerRes, fundingRes, oiRes, deltaRes] = await Promise.all([
-        fetch('/api/tickers').then((r) => r.json()),
+      // Phase 1: Tickers (fastest, ~200ms cached) — show price/volume/change immediately
+      const tickerPromise = fetch('/api/tickers').then((r) => r.json());
+      // Phase 2: Funding + OI + Delta (slower, ~1-3s) — fill in after
+      const restPromise = Promise.all([
         fetch('/api/funding?assetClass=crypto').then((r) => r.json()),
         fetch('/api/openinterest').then((r) => r.json()),
         fetch('/api/oi-delta').then((r) => r.ok ? r.json() : null).catch(() => null),
       ]);
 
-      const tickers: any[] = Array.isArray(tickerRes?.data) ? tickerRes.data : Array.isArray(tickerRes) ? tickerRes : [];
-      const funding: any[] = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
-      const oi: any[] = Array.isArray(oiRes?.data) ? oiRes.data : [];
+      // Show tickers as soon as they arrive
+      const tickerRes = await tickerPromise;
+      tickerCache.current = Array.isArray(tickerRes?.data) ? tickerRes.data : Array.isArray(tickerRes) ? tickerRes : [];
+      setRows(buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current));
+      setLoading(false);
+      setLastUpdate(new Date());
 
-      // Build ticker map (aggregate by symbol, deduplicate volume by exchange)
-      // Exchanges with known inflated/unreliable volume data
-      const SKIP_VOLUME = new Set(['Gate.io', 'BitMEX', 'WhiteBIT', 'Coinbase']);
-      const MAX_SANE_VOL = 10_000_000_000; // $10B cap per exchange entry
-      const tickerMap = new Map<string, { price: number; change: number; vol: number; count: number; volByExchange: Map<string, number> }>();
-      tickers.forEach((t: any) => {
-        const sym = t.symbol;
-        const cur = tickerMap.get(sym) || { price: 0, change: 0, vol: 0, count: 0, volByExchange: new Map() };
-        cur.price += t.lastPrice || 0;
-        cur.change = t.priceChangePercent24h ?? t.change24h ?? cur.change;
-        // Deduplicate volume per exchange, skip inflated sources, cap outliers
-        if (!SKIP_VOLUME.has(t.exchange)) {
-          const rawVol = Number(t.quoteVolume24h) || 0;
-          if (rawVol > 0 && rawVol <= MAX_SANE_VOL) {
-            const existing = cur.volByExchange.get(t.exchange) || 0;
-            if (rawVol > existing) cur.volByExchange.set(t.exchange, rawVol);
-          }
-        }
-        cur.count++;
-        tickerMap.set(sym, cur);
-      });
-      // Compute deduped volume per symbol
-      tickerMap.forEach((v) => {
-        v.vol = Array.from(v.volByExchange.values()).reduce((sum, x) => sum + x, 0);
-      });
-
-      // Build funding map (average by symbol)
-      const fundingMap = new Map<string, { total: number; count: number }>();
-      funding.forEach((f: any) => {
-        const cur = fundingMap.get(f.symbol) || { total: 0, count: 0 };
-        cur.total += f.fundingRate || 0;
-        cur.count++;
-        fundingMap.set(f.symbol, cur);
-      });
-
-      // Build OI map (sum USD values by symbol)
-      const oiMap = new Map<string, { total: number; count: number }>();
-      oi.forEach((o: any) => {
-        const cur = oiMap.get(o.symbol) || { total: 0, count: 0 };
-        // Always prefer openInterestValue (USD) over openInterest (raw contracts)
-        const oiVal = o.openInterestValue || 0;
-        cur.total += oiVal;
-        cur.count++;
-        oiMap.set(o.symbol, cur);
-      });
-
-      // Build OI delta map
-      const deltaMap = new Map<string, number>();
-      const deltaArr = deltaRes?.data || deltaRes?.deltas || [];
-      interface RawDelta { symbol?: string; change24h?: number }
-      (deltaArr as RawDelta[]).forEach((d) => {
-        if (d.symbol && d.change24h != null) deltaMap.set(d.symbol, d.change24h);
-      });
-
-      // Merge all symbols
-      const allSymbols = new Set<string>();
-      tickerMap.forEach((_, k) => allSymbols.add(k));
-      fundingMap.forEach((_, k) => allSymbols.add(k));
-      oiMap.forEach((_, k) => allSymbols.add(k));
-      const merged: ScreenerRow[] = [];
-
-      allSymbols.forEach((symbol) => {
-        const t = tickerMap.get(symbol);
-        const f = fundingMap.get(symbol);
-        const o = oiMap.get(symbol);
-
-        // Skip if no price data or low-quality symbol
-        if (!t || t.count === 0) return;
-        // Quality filter: require 2+ exchanges OR $50K+ volume to exclude scam/test tokens
-        if (t.count < 2 && t.vol < 50_000) return;
-
-        const change24h = t.change || 0;
-        const avgFunding = f ? f.total / f.count : 0;
-        const oiChange24h = deltaMap.get(symbol) || 0;
-        const { label: sentiment, color: sentimentColor } = deriveSentiment(change24h, oiChange24h, avgFunding);
-
-        // Cap volume for symbols with absurd vol/OI ratio (gTrade non-crypto inflate volume)
-        const totalOI = o?.total || 0;
-        let vol = t.vol;
-        if (totalOI > 0 && vol > 500 * totalOI) {
-          vol = Math.min(vol, 10 * totalOI);
-        }
-
-        merged.push({
-          symbol,
-          price: t.price / t.count,
-          change24h,
-          volume24h: vol,
-          avgFunding,
-          fundingExchanges: f?.count || 0,
-          totalOI: o?.total || 0,
-          oiExchanges: o?.count || 0,
-          oiChange24h,
-          sentiment,
-          sentimentColor,
-        });
-      });
-
-      setRows(merged);
+      // Fill in the rest when ready
+      const [fundingRes, oiRes, deltaRes] = await restPromise;
+      fundingCache.current = Array.isArray(fundingRes?.data) ? fundingRes.data : [];
+      oiCache.current = Array.isArray(oiRes?.data) ? oiRes.data : [];
+      deltaCache.current = deltaRes?.data || deltaRes?.deltas || [];
+      setRows(buildRows(tickerCache.current, fundingCache.current, oiCache.current, deltaCache.current));
       setLastUpdate(new Date());
     } catch (err) {
       setError('Unable to fetch screener data — check your connection or try again shortly.');
@@ -232,7 +230,7 @@ export default function ScreenerPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [buildRows]);
 
   useEffect(() => {
     fetchData();
