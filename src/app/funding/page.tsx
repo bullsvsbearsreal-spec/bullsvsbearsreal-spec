@@ -427,9 +427,9 @@ export default function FundingPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={activeExchangeCount || ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
             <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
-            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — real-time data from ${ALL_EXCHANGES.length} exchanges`} />
+            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — real-time data from ${activeExchangeCount || ALL_EXCHANGES.length} exchanges`} />
             <button
               onClick={fetchData}
               disabled={loading}
