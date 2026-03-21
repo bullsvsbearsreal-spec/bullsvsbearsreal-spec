@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Pagination from '@/app/funding/components/Pagination';
@@ -17,6 +17,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
   ScatterChart, Scatter, CartesianGrid, ZAxis, Cell,
+  LineChart, Line, Legend,
 } from 'recharts';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -140,6 +141,67 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
         <div className="text-2xl font-black text-white font-mono tracking-tight">{value}</div>
         {sub && <span className="text-neutral-600 text-[9px] mt-1 block">{sub}</span>}
       </div>
+    </div>
+  );
+}
+
+/* ─── Spread History Chart (Session) ────────────────────────────── */
+
+const SPREAD_COLORS: Record<string, string> = { BTC: '#F59E0B', ETH: '#8B5CF6', SOL: '#22C55E' };
+
+function SpreadHistoryChart({ history, tracked }: { history: { time: number; [k: string]: number }[]; tracked: string[] }) {
+  if (history.length < 2) {
+    return (
+      <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4 mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-white">Spread History</h3>
+          <span className="text-[8px] px-1.5 py-[1px] rounded bg-white/[0.06] text-neutral-500">SESSION</span>
+        </div>
+        <div className="h-[160px] flex items-center justify-center text-neutral-600 text-xs">
+          Accumulating data... ({history.length}/2 points, updates every 30s)
+        </div>
+      </div>
+    );
+  }
+
+  const chartData = history.map(h => ({
+    ...h,
+    label: new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  }));
+
+  return (
+    <div className="bg-hub-darker border border-white/[0.06] rounded-2xl p-4 mb-5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-white">Spread History</h3>
+          <span className="text-[8px] px-1.5 py-[1px] rounded bg-white/[0.06] text-neutral-500">SESSION</span>
+        </div>
+        <span className="text-[9px] text-neutral-600">{history.length} points, clears on refresh</span>
+      </div>
+      <ResponsiveContainer width="100%" height={180}>
+        <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey="label" tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false} unit=" bps" />
+          <RTooltip
+            contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+            labelStyle={{ color: '#737373', fontSize: 10 }}
+            formatter={(v: number, name: string) => [`${v.toFixed(1)} bps`, name]}
+          />
+          <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+          {tracked.map(sym => (
+            <Line
+              key={sym}
+              type="stepAfter"
+              dataKey={sym}
+              stroke={SPREAD_COLORS[sym] || '#737373'}
+              strokeWidth={2}
+              dot={false}
+              connectNulls
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -393,6 +455,30 @@ export default function SpreadsPage() {
     return buildSpreads(data);
   }, [data]);
 
+  // Track spread history for top symbols (session only)
+  const TRACKED = ['BTC', 'ETH', 'SOL'];
+  const historyRef = useRef<{ time: number; [key: string]: number }[]>([]);
+  const [spreadHistory, setSpreadHistory] = useState<{ time: number; [key: string]: number }[]>([]);
+
+  useEffect(() => {
+    if (allSpreads.length === 0) return;
+    const now = Date.now();
+    const point: { time: number; [key: string]: number } = { time: now };
+    for (const sym of TRACKED) {
+      const row = allSpreads.find(r => r.symbol === sym);
+      if (row) point[sym] = parseFloat(row.spreadBps.toFixed(1));
+    }
+    if (Object.keys(point).length > 1) {
+      // Avoid duplicate points within 10s
+      const last = historyRef.current[historyRef.current.length - 1];
+      if (!last || now - last.time > 10000) {
+        historyRef.current.push(point);
+        if (historyRef.current.length > 120) historyRef.current.shift();
+        setSpreadHistory([...historyRef.current]);
+      }
+    }
+  }, [allSpreads]);
+
   const filtered = useMemo(() => {
     let rows = allSpreads.filter(r => r.exchanges >= minExchanges);
     if (search) {
@@ -478,6 +564,9 @@ export default function SpreadsPage() {
               sub={maxSpreadRow.symbol} color="#22c55e" />
           )}
         </div>
+
+        {/* Spread History (session) */}
+        {!isLoading && <SpreadHistoryChart history={spreadHistory} tracked={TRACKED} />}
 
         {/* Spread Charts */}
         {!isLoading && allSpreads.length > 0 && <SpreadCharts data={allSpreads} />}
