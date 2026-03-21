@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
           symbol: r.symbol,
           exchange: r.exchange,
           rate: r.fundingRate,
-          predicted: r.predictedRate ?? undefined,
-          markPrice: r.markPrice ?? undefined,
+          predicted: r.predictedRate != null ? Number(r.predictedRate) : undefined,
+          markPrice: r.markPrice != null && r.markPrice > 0 ? Number(r.markPrice) : undefined,
         }));
 
       fundingInserted = await saveFundingSnapshot(fundingEntries);

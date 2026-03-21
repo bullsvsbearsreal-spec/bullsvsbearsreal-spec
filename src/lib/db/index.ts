@@ -326,10 +326,12 @@ export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Prom
   let inserted = 0;
   for (let i = 0; i < entries.length; i += 50) {
     const chunk = entries.slice(i, i + 50);
-    const promises = chunk.map(e =>
-      sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
-          VALUES (${e.symbol}, ${e.exchange}, ${e.rate}, ${e.predicted ?? null}, ${e.markPrice ?? null})`
-    );
+    const promises = chunk.map(e => {
+      const predicted = e.predicted != null ? e.predicted : null;
+      const markPrice = e.markPrice != null ? e.markPrice : null;
+      return sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
+          VALUES (${e.symbol}, ${e.exchange}, ${e.rate}, ${predicted}, ${markPrice})`;
+    });
     await Promise.all(promises);
     inserted += chunk.length;
   }
