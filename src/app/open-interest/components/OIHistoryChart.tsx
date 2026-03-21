@@ -55,6 +55,7 @@ const EXCHANGE_COLORS: Record<string, string> = {
   'Bitunix': '#F59E0B',
   'GMX': '#3B82F6',
   'Drift': '#A78BFA',
+  'Others': '#525252',
 };
 
 const FALLBACK_COLOR = '#6B7280';
@@ -114,7 +115,12 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
   const total = payload.reduce((sum, p) => sum + (p.value || 0), 0);
-  const sorted = [...payload].sort((a, b) => (b.value || 0) - (a.value || 0));
+  const sorted = [...payload]
+    .filter((p) => (p.value || 0) > 0)
+    .sort((a, b) => (b.value || 0) - (a.value || 0));
+  const shown = sorted.slice(0, 8);
+  const othersCount = sorted.length - shown.length;
+  const othersValue = sorted.slice(8).reduce((s, p) => s + (p.value || 0), 0);
 
   return (
     <div
@@ -124,6 +130,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
         borderRadius: 8,
         padding: '8px 12px',
         fontSize: 11,
+        maxWidth: 240,
       }}
     >
       <p className="text-zinc-400 mb-1">
@@ -131,19 +138,25 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
           month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
         }) : ''}
       </p>
-      <p className="text-white font-medium mb-1">Total: {formatOI(total)}</p>
-      {sorted.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+      <p className="text-white font-medium mb-1.5">Total: {formatOI(total)}</p>
+      {shown.map((entry) => (
+        <div key={entry.dataKey} className="flex items-center justify-between gap-3 py-[1px]">
           <span className="flex items-center gap-1.5">
             <span
-              className="inline-block w-2 h-2 rounded-full"
+              className="inline-block w-2 h-2 rounded-full flex-shrink-0"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-zinc-300">{entry.dataKey}</span>
+            <span className="text-zinc-300 truncate">{entry.dataKey}</span>
           </span>
-          <span className="text-zinc-100 font-mono">{formatOI(entry.value || 0)}</span>
+          <span className="text-zinc-100 font-mono text-[10px]">{formatOI(entry.value || 0)}</span>
         </div>
       ))}
+      {othersCount > 0 && (
+        <div className="flex items-center justify-between gap-3 py-[1px] border-t border-white/[0.06] mt-1 pt-1">
+          <span className="text-zinc-500">+{othersCount} more</span>
+          <span className="text-zinc-400 font-mono text-[10px]">{formatOI(othersValue)}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -188,31 +201,39 @@ export default function OIHistoryChart({ symbol }: OIHistoryChartProps) {
       (ex) => rawData[ex] && rawData[ex].length > 0,
     );
 
-    // Collect all unique timestamps
-    const timeSet = new Set<number>();
-    for (const ex of exchangeNames) {
-      for (const pt of rawData[ex]) {
-        timeSet.add(new Date(pt.t).getTime());
-      }
-    }
+    // Bucket timestamps to 10-minute intervals to align across exchanges
+    const BUCKET_MS = 10 * 60 * 1000; // 10 minutes
+    const bucket = (ts: number) => Math.round(ts / BUCKET_MS) * BUCKET_MS;
 
-    const sortedTimes = Array.from(timeSet).sort((a, b) => a - b);
-
-    // Build lookup maps per exchange
+    // Build lookup maps per exchange (bucketed)
     const lookups: Record<string, Map<number, number>> = {};
+    const allBuckets = new Set<number>();
     for (const ex of exchangeNames) {
       const map = new Map<number, number>();
       for (const pt of rawData[ex]) {
-        map.set(new Date(pt.t).getTime(), pt.oi);
+        const b = bucket(new Date(pt.t).getTime());
+        // Keep latest value per bucket
+        const existing = map.get(b);
+        if (!existing || pt.oi > 0) map.set(b, pt.oi);
+        allBuckets.add(b);
       }
       lookups[ex] = map;
     }
 
-    // Build rows
+    const sortedTimes = Array.from(allBuckets).sort((a, b) => a - b);
+
+    // Build rows with forward-fill (carry last known value)
+    const lastKnown: Record<string, number> = {};
     const rows: ChartRow[] = sortedTimes.map((ts) => {
       const row: ChartRow = { time: ts };
       for (const ex of exchangeNames) {
-        row[ex] = lookups[ex].get(ts) ?? 0;
+        const val = lookups[ex].get(ts);
+        if (val !== undefined && val > 0) {
+          lastKnown[ex] = val;
+          row[ex] = val;
+        } else {
+          row[ex] = lastKnown[ex] ?? 0;
+        }
       }
       return row;
     });
@@ -224,9 +245,26 @@ export default function OIHistoryChart({ symbol }: OIHistoryChartProps) {
     }));
     totals.sort((a, b) => b.total - a.total);
 
+    // Group smaller exchanges into "Others" for cleaner chart
+    const MAX_SHOWN = 10;
+    const topExchanges = totals.slice(0, MAX_SHOWN).map(t => t.ex);
+    const otherExchanges = totals.slice(MAX_SHOWN).map(t => t.ex);
+
+    if (otherExchanges.length > 0) {
+      for (const row of rows) {
+        let othersSum = 0;
+        for (const ex of otherExchanges) {
+          othersSum += (row[ex] as number) || 0;
+          delete row[ex];
+        }
+        row['Others'] = othersSum;
+      }
+      topExchanges.push('Others');
+    }
+
     return {
       chartData: rows,
-      exchanges: totals.map((t) => t.ex),
+      exchanges: topExchanges,
     };
   }, [rawData]);
 
