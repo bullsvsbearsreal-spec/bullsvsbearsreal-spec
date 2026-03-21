@@ -361,7 +361,7 @@ function ExchangeBasisCard({ exchange, entries, isActive, onClick }: {
 export default function BasisPage() {
   const authLimit = useAuthLimit(20);
   const [sortField, setSortField] = useState<SortField>('basis');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [basisTab, setBasisTab] = useState<BasisTab>('all');
@@ -404,7 +404,8 @@ export default function BasisPage() {
           fundingInterval: fr.fundingInterval,
         };
       })
-      .filter(entry => Math.abs(entry.basis) <= MAX_BASIS_PCT);
+      .filter(entry => Math.abs(entry.basis) <= MAX_BASIS_PCT)
+      .filter(entry => entry.markPrice !== entry.indexPrice); // Exclude exchanges returning identical mark/index
   }, [rawData]);
 
   const exchanges = useMemo(() => {
@@ -493,15 +494,17 @@ export default function BasisPage() {
     return { avg, highest, deepest, count: uniqueSymbols, median };
   }, [basisData, establishedData]);
 
-  // Top premiums/discounts: only established tokens (3+ exchanges)
-  const topPremiums = useMemo(() =>
-    [...establishedData].sort((a, b) => b.basis - a.basis).slice(0, 5),
-    [establishedData]
-  );
-  const topDiscounts = useMemo(() =>
-    [...establishedData].sort((a, b) => a.basis - b.basis).slice(0, 5),
-    [establishedData]
-  );
+  // Top premiums/discounts: only established tokens (3+ exchanges), deduplicated by symbol
+  const topPremiums = useMemo(() => {
+    const sorted = [...establishedData].sort((a, b) => b.basis - a.basis);
+    const seen = new Set<string>();
+    return sorted.filter(e => { if (seen.has(e.symbol)) return false; seen.add(e.symbol); return true; }).slice(0, 5);
+  }, [establishedData]);
+  const topDiscounts = useMemo(() => {
+    const sorted = [...establishedData].sort((a, b) => a.basis - b.basis);
+    const seen = new Set<string>();
+    return sorted.filter(e => { if (seen.has(e.symbol)) return false; seen.add(e.symbol); return true; }).slice(0, 5);
+  }, [establishedData]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -938,7 +941,7 @@ export default function BasisPage() {
                 </span>
               </p>
               <p className="text-[10px] text-neutral-500 mt-2 ml-6">
-                Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit, Hyperliquid, dYdX, and more. Refreshes every 60s.
+                Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit, Hyperliquid, dYdX, and more. Exchanges returning identical mark/index prices are excluded. Entries with |basis| &gt; 5% are filtered as outliers. Refreshes every 60s.
               </p>
             </div>
           </div>
