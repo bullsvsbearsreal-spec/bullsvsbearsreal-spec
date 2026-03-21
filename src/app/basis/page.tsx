@@ -361,7 +361,7 @@ function ExchangeBasisCard({ exchange, entries, isActive, onClick }: {
 export default function BasisPage() {
   const authLimit = useAuthLimit(20);
   const [sortField, setSortField] = useState<SortField>('basis');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [searchTerm, setSearchTerm] = useState('');
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [basisTab, setBasisTab] = useState<BasisTab>('all');
@@ -380,7 +380,7 @@ export default function BasisPage() {
 
   const rawData = fundingRates ?? [];
 
-  const MAX_BASIS_PCT = 10; // Filter entries with >10% basis (stale/incorrect prices on illiquid exchanges)
+  const MAX_BASIS_PCT = 5; // Filter entries with >5% basis (stale/incorrect prices on illiquid exchanges)
 
   const basisData: BasisEntry[] = useMemo(() => {
     return rawData
@@ -936,6 +936,9 @@ export default function BasisPage() {
                   Basis is calculated as <span className="text-neutral-400 font-mono">(markPrice - indexPrice) / indexPrice x 100</span>.
                   Large premiums often precede funding rate increases.
                 </span>
+              </p>
+              <p className="text-[10px] text-neutral-500 mt-2 ml-6">
+                Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit, Hyperliquid, dYdX, and more. Refreshes every 60s.
               </p>
             </div>
           </div>
