@@ -14,7 +14,7 @@ import {
   ArrowLeftRight, Search, ArrowUpDown, TrendingUp, TrendingDown,
   BarChart3, Activity, Zap, Info,
 } from 'lucide-react';
-import PriceSpreadChart from './components/PriceSpreadChart';
+import SpreadTrackerChart from './components/SpreadTrackerChart';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
   CartesianGrid, Cell,
@@ -563,9 +563,8 @@ export default function SpreadsPage() {
         </div>
 
 
-        {/* Spread Charts */}
-        {/* Historical Price Spread Chart */}
-        <PriceSpreadChart />
+        {/* Spread Tracker — Multi-exchange price comparison */}
+        <SpreadTrackerChart compact />
 
         {!isLoading && allSpreads.length > 0 && <SpreadCharts data={allSpreads} />}
 
