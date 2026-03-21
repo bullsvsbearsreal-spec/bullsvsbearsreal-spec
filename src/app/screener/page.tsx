@@ -202,12 +202,21 @@ export default function ScreenerPage() {
       if (!hasData.current) setLoading(true);
       setError(null);
 
+      // Fetch with 15s timeout to prevent hanging
+      const fetchWithTimeout = (url: string, ms = 15000) => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { signal: ctrl.signal })
+          .then((r) => { clearTimeout(timer); return r.json(); })
+          .catch(() => { clearTimeout(timer); return null; });
+      };
+
       // Fetch all 4 APIs in parallel
       const [tickerRes, fundingRes, oiRes, deltaRes] = await Promise.all([
-        fetch('/api/tickers').then((r) => r.json()).catch(() => null),
-        fetch('/api/funding?assetClass=crypto').then((r) => r.json()).catch(() => null),
-        fetch('/api/openinterest').then((r) => r.json()).catch(() => null),
-        fetch('/api/oi-delta').then((r) => r.ok ? r.json() : null).catch(() => null),
+        fetchWithTimeout('/api/tickers'),
+        fetchWithTimeout('/api/funding?assetClass=crypto'),
+        fetchWithTimeout('/api/openinterest'),
+        fetchWithTimeout('/api/oi-delta'),
       ]);
 
       // Update caches — only overwrite if new data is non-empty
