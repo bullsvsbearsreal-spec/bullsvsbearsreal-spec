@@ -52,22 +52,25 @@ export default function OpenInterestPage() {
     try {
       setLoading(true);
       setError(null);
-      const [data, deltaRes] = await Promise.all([
-        fetchAllOpenInterest(),
-        fetch('/api/oi-delta').then(r => r.ok ? r.json() : null).catch(() => null),
-      ]);
+      // Fetch OI data first (fast, ~0.2s cached)
+      const data = await fetchAllOpenInterest();
       setOpenInterest(data);
-      // Build delta lookup map
-      if (Array.isArray(deltaRes?.data)) {
-        const map = new Map<string, OIDelta>();
-        deltaRes.data.forEach((d: OIDelta) => map.set(d.symbol, d));
-        setOiDeltas(map);
-      }
       setLastUpdate(new Date());
+      setLoading(false);
+      // Fetch deltas in background (can be slow/timeout — don't block UI)
+      fetch('/api/oi-delta')
+        .then(r => r.ok ? r.json() : null)
+        .then(deltaRes => {
+          if (Array.isArray(deltaRes?.data)) {
+            const map = new Map<string, OIDelta>();
+            deltaRes.data.forEach((d: OIDelta) => map.set(d.symbol, d));
+            setOiDeltas(map);
+          }
+        })
+        .catch(() => {}); // silently fail — deltas are optional
     } catch (err) {
       setError('Unable to reach exchange APIs — check your connection or try again shortly.');
       console.error(err);
-    } finally {
       setLoading(false);
     }
   };
