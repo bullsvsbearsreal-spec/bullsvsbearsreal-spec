@@ -132,15 +132,18 @@ export async function calculateAllVenueCosts(
     results.push(unavailable('Variational', 'quote', 'No quotes'));
   }
 
-  // Price sanity check: compare all mid prices and exclude venues >5% from consensus
-  const availableMids = results.filter(r => r.available && r.midPrice > 0).map(r => r.midPrice);
-  if (availableMids.length >= 3) {
-    const sorted = [...availableMids].sort((a, b) => a - b);
-    const mid = sorted[Math.floor(sorted.length / 2)];
+  // Price sanity check: use AMM oracle prices (gTrade/GMX) as reference since they
+  // pull from on-chain oracles and are always current, unlike CLOB orderbooks which
+  // can return stale data from geo-blocked regions
+  const oracleVenues = results.filter(r => r.available && r.midPrice > 0 && (r.method === 'amm_formula' || r.method === 'amm_rpc'));
+  const refPrice = oracleVenues.length > 0
+    ? oracleVenues.reduce((s, r) => s + r.midPrice, 0) / oracleVenues.length
+    : 0;
+  if (refPrice > 0) {
     for (const r of results) {
-      if (r.available && r.midPrice > 0 && Math.abs(r.midPrice - mid) / mid > 0.05) {
+      if (r.available && r.midPrice > 0 && Math.abs(r.midPrice - refPrice) / refPrice > 0.05) {
         r.available = false;
-        r.error = `Stale price ($${r.midPrice.toFixed(0)} vs consensus $${mid.toFixed(0)})`;
+        r.error = `Stale price ($${r.midPrice.toFixed(0)} vs oracle $${refPrice.toFixed(0)})`;
       }
     }
   }
