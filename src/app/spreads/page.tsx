@@ -148,7 +148,11 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 /* ─── Spread History Chart (Session) ────────────────────────────── */
 
 const ALL_CHART_COLORS = ['#F59E0B', '#8B5CF6', '#22C55E', '#ef4444', '#06B6D4', '#EC4899', '#F97316', '#14B8A6'];
-const DEFAULT_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE'];
+const DEFAULT_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'LINK', 'AVAX', 'ADA'];
+// Popular coins shown first in picker
+const POPULAR_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'LINK', 'AVAX', 'ADA', 'DOT', 'MATIC',
+  'UNI', 'AAVE', 'ARB', 'OP', 'SUI', 'APT', 'NEAR', 'FIL', 'ATOM', 'INJ',
+  'WLD', 'PEPE', 'BONK', 'HBAR', 'LTC', 'BCH', 'ETC', 'FTM', 'RENDER', 'TIA'];
 
 function SpreadHistoryChart({ history, allSymbols, selectedCoins, onToggleCoin }: {
   history: { time: number; [k: string]: number }[];
@@ -159,9 +163,19 @@ function SpreadHistoryChart({ history, allSymbols, selectedCoins, onToggleCoin }
   const [showPicker, setShowPicker] = useState(false);
   const [coinSearch, setCoinSearch] = useState('');
 
-  const filteredSymbols = allSymbols.filter(s =>
-    !coinSearch || s.toLowerCase().includes(coinSearch.toLowerCase())
-  ).slice(0, 30);
+  const filteredSymbols = useMemo(() => {
+    const available = new Set(allSymbols);
+    let sorted: string[];
+    if (coinSearch) {
+      sorted = allSymbols.filter(s => s.toLowerCase().includes(coinSearch.toLowerCase()));
+    } else {
+      // Popular coins first, then alphabetical
+      const popular = POPULAR_COINS.filter(s => available.has(s));
+      const rest = allSymbols.filter(s => !POPULAR_COINS.includes(s));
+      sorted = [...popular, ...rest];
+    }
+    return sorted.slice(0, 40);
+  }, [allSymbols, coinSearch]);
 
   const colorMap = Object.fromEntries(selectedCoins.map((s, i) => [s, ALL_CHART_COLORS[i % ALL_CHART_COLORS.length]]));
 
@@ -190,14 +204,20 @@ function SpreadHistoryChart({ history, allSymbols, selectedCoins, onToggleCoin }
                     className="w-full px-2 py-1 rounded bg-white/[0.04] border border-white/[0.08] text-white text-[10px] placeholder-neutral-600 focus:outline-none"
                   />
                 </div>
-                {filteredSymbols.map(s => (
-                  <button key={s} onClick={() => onToggleCoin(s)}
-                    className={`w-full text-left px-3 py-1.5 text-[10px] hover:bg-white/[0.04] flex items-center justify-between ${
-                      selectedCoins.includes(s) ? 'text-hub-yellow' : 'text-neutral-400'
-                    }`}>
-                    <span>{s}</span>
-                    {selectedCoins.includes(s) && <span className="text-hub-yellow">✓</span>}
-                  </button>
+                {!coinSearch && <div className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider font-semibold">Popular</div>}
+                {filteredSymbols.map((s, i) => (
+                  <React.Fragment key={s}>
+                    {!coinSearch && i === POPULAR_COINS.filter(p => allSymbols.includes(p)).length && (
+                      <div className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider font-semibold border-t border-white/[0.04] mt-1 pt-1">All</div>
+                    )}
+                    <button onClick={() => onToggleCoin(s)}
+                      className={`w-full text-left px-3 py-1.5 text-[10px] hover:bg-white/[0.04] flex items-center justify-between ${
+                        selectedCoins.includes(s) ? 'text-hub-yellow' : 'text-neutral-400'
+                      }`}>
+                      <span>{s}</span>
+                      {selectedCoins.includes(s) && <span className="text-hub-yellow">✓</span>}
+                    </button>
+                  </React.Fragment>
                 ))}
               </div>
             )}
@@ -480,7 +500,7 @@ export default function SpreadsPage() {
       const json = await res.json();
       return json.data ?? json;
     },
-    refreshInterval: 30_000,
+    refreshInterval: 15_000,
   });
 
   const [search, setSearch] = useState('');
