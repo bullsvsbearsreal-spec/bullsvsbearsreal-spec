@@ -355,7 +355,7 @@ function OIByExpiryChart({
   const maxOI = Math.max(...entries.map((e) => Math.max(e.callOI, e.putOI)), 1);
   const totalOI = entries.reduce((s, e) => s + e.totalOI, 0) || 1;
   const width = 900;
-  const pad = { top: 16, bottom: 50, left: 4, right: 4 };
+  const pad = { top: 28, bottom: 36, left: 4, right: 4 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   // Cap group width so bars aren't too spread out with few entries
@@ -496,27 +496,17 @@ function OIByExpiryChart({
                 </text>
               )}
 
-              {/* Date label */}
+              {/* Date label — single line */}
               <text
                 x={x + groupW / 2}
-                y={height - 22}
+                y={height - 14}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="8.5"
                 fill={isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.35)'}
                 fontWeight={isHovered ? 'bold' : 'normal'}
                 fontFamily="monospace"
               >
                 {label}
-              </text>
-              <text
-                x={x + groupW / 2}
-                y={height - 10}
-                textAnchor="middle"
-                fontSize="7.5"
-                fill="rgba(255,255,255,0.15)"
-                fontFamily="monospace"
-              >
-                '{year}
               </text>
             </g>
           );
@@ -1310,9 +1300,23 @@ export default function OptionsPage() {
                 </div>
               )}
 
-              <p className="text-[10px] text-neutral-600 max-w-md text-right">
-                Max Pain = strike that minimizes total option holder profit · P/C Ratio = put OI / call OI · IV Smile = mark IV across strikes (call ≈ put by put-call parity) · Updates every 60s
+            </div>
+
+            {/* Info footer */}
+            <div className="bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3 space-y-2">
+              <p className="text-xs text-neutral-400">
+                <span className="text-hub-yellow font-medium">Options</span> aggregates real-time options data from Deribit, OKX, and Bybit. OI is summed across all exchanges. Prices update every 60s.
               </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-neutral-500 leading-relaxed">
+                <div><span className="text-neutral-400 font-medium">Max Pain</span> — strike price that minimizes total option holder profit at expiry</div>
+                <div><span className="text-neutral-400 font-medium">Put/Call Ratio</span> — total put OI / total call OI. Below 0.7 = bullish, above 1.2 = bearish hedging</div>
+                <div><span className="text-neutral-400 font-medium">IV Smile</span> — mark implied volatility across strikes (call ≈ put by put-call parity)</div>
+                <div><span className="text-neutral-400 font-medium">OI by Strike</span> — open interest distribution across strike prices (70-130% of spot)</div>
+              </div>
+              <div className="text-[10px] text-neutral-500">
+                <span className="text-neutral-400 font-medium">Sources:</span>{' '}
+                Deribit (~90% of market), OKX, Bybit · Currencies: BTC, ETH, SOL · Refreshes every 60s
+              </div>
             </div>
           </div>
         )}
