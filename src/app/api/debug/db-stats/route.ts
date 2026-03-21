@@ -14,6 +14,16 @@ export async function GET() {
     await initDB();
     const sql = getSQL();
 
+    // Test: insert a funding snapshot with mark_price to verify column works
+    await sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
+      VALUES ('_TEST', '_TEST', 0.001, null, 70000.0)`;
+
+    // Verify it was inserted
+    const testRow = await sql`SELECT mark_price FROM funding_snapshots WHERE symbol = '_TEST' ORDER BY ts DESC LIMIT 1`;
+
+    // Clean up
+    await sql`DELETE FROM funding_snapshots WHERE symbol = '_TEST'`;
+
     const [fundingCount, oiCount, markPriceCount, recentFunding, recentOI] = await Promise.all([
       sql`SELECT COUNT(*) as cnt FROM funding_snapshots`,
       sql`SELECT COUNT(*) as cnt FROM oi_snapshots`,
@@ -23,6 +33,7 @@ export async function GET() {
     ]);
 
     return NextResponse.json({
+      test_mark_price_insert: testRow[0]?.mark_price,
       funding_total: Number(fundingCount[0]?.cnt),
       oi_total: Number(oiCount[0]?.cnt),
       mark_price_non_null: Number(markPriceCount[0]?.cnt),
