@@ -14,44 +14,58 @@ export async function GET() {
     await initDB();
     const sql = getSQL();
 
-    // Test: insert a funding snapshot with mark_price to verify column works
-    await sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
-      VALUES ('_TEST', '_TEST', 0.001, null, 70000.0)`;
+    // Check if mark_price column exists
+    const columns = await sql`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'funding_snapshots'
+      ORDER BY ordinal_position
+    `;
 
-    // Verify it was inserted
-    const testRow = await sql`SELECT mark_price FROM funding_snapshots WHERE symbol = '_TEST' ORDER BY ts DESC LIMIT 1`;
+    // Try ALTER TABLE explicitly
+    let alterResult = 'skipped';
+    const hasMark = columns.some((c: any) => c.column_name === 'mark_price');
+    if (!hasMark) {
+      try {
+        await sql`ALTER TABLE funding_snapshots ADD COLUMN mark_price REAL`;
+        alterResult = 'added_column';
+      } catch (e: any) {
+        alterResult = 'error: ' + e.message;
+      }
+    } else {
+      alterResult = 'column_exists';
+    }
 
-    // Clean up
-    await sql`DELETE FROM funding_snapshots WHERE symbol = '_TEST'`;
+    // Test insert with mark_price
+    let testResult: any = null;
+    try {
+      await sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
+        VALUES ('_TEST', '_TEST', 0.001, null, 70000.0)`;
+      const testRow = await sql`SELECT id, mark_price FROM funding_snapshots WHERE symbol = '_TEST' ORDER BY ts DESC LIMIT 1`;
+      testResult = { inserted: true, mark_price: testRow[0]?.mark_price, id: testRow[0]?.id };
+      await sql`DELETE FROM funding_snapshots WHERE symbol = '_TEST'`;
+    } catch (e: any) {
+      testResult = { inserted: false, error: e.message };
+    }
 
-    const [fundingCount, oiCount, markPriceCount, recentFunding, recentOI] = await Promise.all([
+    const [fundingCount, markPriceCount, recentFunding] = await Promise.all([
       sql`SELECT COUNT(*) as cnt FROM funding_snapshots`,
-      sql`SELECT COUNT(*) as cnt FROM oi_snapshots`,
       sql`SELECT COUNT(*) as cnt FROM funding_snapshots WHERE mark_price IS NOT NULL AND mark_price > 0`,
-      sql`SELECT symbol, exchange, rate, mark_price, ts FROM funding_snapshots ORDER BY ts DESC LIMIT 5`,
-      sql`SELECT symbol, exchange, oi_usd, ts FROM oi_snapshots ORDER BY ts DESC LIMIT 3`,
+      sql`SELECT symbol, exchange, rate, mark_price, ts FROM funding_snapshots ORDER BY ts DESC LIMIT 3`,
     ]);
 
     return NextResponse.json({
-      test_mark_price_insert: testRow[0]?.mark_price,
+      columns: columns.map((c: any) => `${c.column_name}:${c.data_type}`),
+      has_mark_price_column: hasMark,
+      alter_result: alterResult,
+      test_insert: testResult,
       funding_total: Number(fundingCount[0]?.cnt),
-      oi_total: Number(oiCount[0]?.cnt),
       mark_price_non_null: Number(markPriceCount[0]?.cnt),
       recent_funding: recentFunding.map((r: any) => ({
-        symbol: r.symbol,
-        exchange: r.exchange,
-        rate: r.rate,
-        mark_price: r.mark_price,
-        ts: r.ts,
-      })),
-      recent_oi: recentOI.map((r: any) => ({
-        symbol: r.symbol,
-        exchange: r.exchange,
-        oi_usd: r.oi_usd,
-        ts: r.ts,
+        s: r.symbol, e: r.exchange, rate: r.rate, mark: r.mark_price, ts: r.ts,
       })),
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e.message, stack: e.stack?.split('\n').slice(0, 3) }, { status: 500 });
   }
 }
