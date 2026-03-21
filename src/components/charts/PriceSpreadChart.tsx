@@ -103,12 +103,15 @@ export default function PriceSpreadChart({ tickers, symbol }: Props) {
             }}
             formatter={(value: number, _name: string, entry: any) => {
               const price = entry.payload?.price;
+              const sign = value > 0 ? '+' : '';
+              const color = value >= 0 ? '#22c55e' : '#ef4444';
               return [
-                `${value > 0 ? '+' : ''}${value.toFixed(2)} bps (${formatPrice(price)})`,
-                'Deviation',
+                <span key="v" style={{ color, fontFamily: 'monospace' }}>{sign}{value.toFixed(2)} bps</span>,
+                <span key="l" style={{ color: '#9ca3af', fontSize: 10 }}>{formatPrice(price)}</span>,
               ];
             }}
             labelStyle={{ color: '#eab308', fontWeight: 600 }}
+            separator=""
             cursor={{ fill: 'rgba(255,255,255,0.03)' }}
           />
           <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeDasharray="3 3" />

@@ -177,7 +177,11 @@ export default function SymbolPage() {
     return tickers.reduce((s, t) => s + t.lastPrice, 0) / tickers.length;
   }, [tickers]);
 
-  const totalVolume = useMemo(() => tickers.reduce((s, t) => s + t.volume24h, 0), [tickers]);
+  const SKIP_VOLUME = new Set(['Gate.io', 'BitMEX', 'WhiteBIT', 'Coinbase']);
+  const MAX_VOL = 10_000_000_000;
+  const totalVolume = useMemo(() => tickers
+    .filter(t => !SKIP_VOLUME.has(t.exchange) && t.volume24h <= MAX_VOL)
+    .reduce((s, t) => s + t.volume24h, 0), [tickers]);
   const totalOI = useMemo(() => oi.reduce((s, o) => s + o.openInterest, 0), [oi]);
   const avgFunding = useMemo(() => {
     if (funding.length === 0) return 0;
