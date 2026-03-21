@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Pagination from '@/app/funding/components/Pagination';
@@ -17,7 +17,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
   ScatterChart, Scatter, CartesianGrid, ZAxis, Cell,
-  Legend, PieChart, Pie, ReferenceLine,
+  Legend, PieChart, Pie, ReferenceLine, AreaChart, Area,
 } from 'recharts';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -328,10 +328,26 @@ function TopSpreadsChart({ data }: { data: SpreadRow[] }) {
 
 const EXCHANGE_COLORS = ['#F59E0B', '#8B5CF6', '#22C55E', '#ef4444', '#06B6D4', '#EC4899', '#F97316', '#14B8A6', '#6366F1', '#84CC16', '#FB923C', '#2DD4BF', '#F472B6', '#A78BFA', '#FBBF24', '#34D399'];
 
-function ExpandedRow({ row }: { row: SpreadRow }) {
-  const maxDev = Math.max(...row.tickers.map(t => Math.abs(t.deviation)), 1);
+interface KlinePoint { time: number; close: number; }
 
-  // Prepare chart data sorted by deviation
+function ExpandedRow({ row }: { row: SpreadRow }) {
+  // Fetch price history
+  const [priceHistory, setPriceHistory] = useState<KlinePoint[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/klines?symbol=${row.symbol}&interval=1h&limit=48`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const candles = d?.candles || d?.data;
+        if (candles?.length) setPriceHistory(candles.map((c: any) => ({ time: c.time, close: c.close })));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [row.symbol]);
+
+  // Deviation chart data
   const deviationChartData = [...row.tickers]
     .sort((a, b) => b.deviation - a.deviation)
     .map(t => ({
@@ -341,7 +357,7 @@ function ExpandedRow({ row }: { row: SpreadRow }) {
       fill: t.deviation >= 0 ? '#22c55e' : '#ef4444',
     }));
 
-  // Volume distribution (pie chart data)
+  // Volume data
   const volumeData = row.tickers
     .filter(t => t.volume > 0)
     .sort((a, b) => b.volume - a.volume)
@@ -352,18 +368,68 @@ function ExpandedRow({ row }: { row: SpreadRow }) {
     }));
   const totalVol = volumeData.reduce((s, v) => s + v.value, 0);
 
+  // Price sparkline data
+  const sparkData = priceHistory.map(p => ({
+    t: new Date(p.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    price: p.close,
+  }));
+  const priceChange = sparkData.length >= 2
+    ? ((sparkData[sparkData.length - 1].price - sparkData[0].price) / sparkData[0].price) * 100
+    : null;
+
   return (
     <tr>
       <td colSpan={7} className="px-0 py-0">
         <div className="bg-white/[0.02] border-t border-b border-white/[0.04] px-4 py-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
+          {/* Price History Sparkline */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
+                48h Price History
+              </div>
+              {priceChange !== null && (
+                <span className={`text-[10px] font-mono ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                </span>
+              )}
+            </div>
+            {loading ? (
+              <div className="h-[80px] flex items-center justify-center text-neutral-600 text-[10px]">Loading...</div>
+            ) : sparkData.length > 2 ? (
+              <ResponsiveContainer width="100%" height={80}>
+                <AreaChart data={sparkData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id={`sparkGrad-${row.symbol}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={priceChange && priceChange >= 0 ? '#22c55e' : '#ef4444'} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={priceChange && priceChange >= 0 ? '#22c55e' : '#ef4444'} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="t" tick={false} axisLine={false} tickLine={false} />
+                  <YAxis domain={['auto', 'auto']} hide />
+                  <RTooltip
+                    contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 10 }}
+                    formatter={(v: number) => [formatPrice(v), 'Price']}
+                    labelStyle={{ color: '#737373', fontSize: 9 }}
+                  />
+                  <Area type="monotone" dataKey="price"
+                    stroke={priceChange && priceChange >= 0 ? '#22c55e' : '#ef4444'}
+                    fill={`url(#sparkGrad-${row.symbol})`}
+                    strokeWidth={1.5} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[80px] flex items-center justify-center text-neutral-600 text-[10px]">No price data available</div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left: Deviation bar chart */}
             <div>
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 font-semibold">
                 Price Deviation from Median (bps)
               </div>
-              <ResponsiveContainer width="100%" height={Math.max(120, deviationChartData.length * 24)}>
+              <ResponsiveContainer width="100%" height={Math.max(100, deviationChartData.length * 22)}>
                 <BarChart data={deviationChartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 70 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
                   <XAxis type="number" tick={{ fill: '#525252', fontSize: 9 }} axisLine={false} tickLine={false}
@@ -381,7 +447,7 @@ function ExpandedRow({ row }: { row: SpreadRow }) {
                     }}
                     separator=""
                   />
-                  <Bar dataKey="deviation" radius={[0, 3, 3, 0]} maxBarSize={16}>
+                  <Bar dataKey="deviation" radius={[0, 3, 3, 0]} maxBarSize={14}>
                     {deviationChartData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} fillOpacity={0.75} />
                     ))}
@@ -390,17 +456,17 @@ function ExpandedRow({ row }: { row: SpreadRow }) {
               </ResponsiveContainer>
             </div>
 
-            {/* Right: Volume pie chart */}
+            {/* Right: Volume breakdown */}
             <div>
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 font-semibold">
-                Volume Share by Exchange
+                Volume by Exchange
               </div>
-              {volumeData.length > 0 ? (
+              {volumeData.length > 1 ? (
                 <div className="flex items-start gap-3">
-                  <ResponsiveContainer width="50%" height={Math.max(120, deviationChartData.length * 24)}>
+                  <ResponsiveContainer width="45%" height={Math.max(100, deviationChartData.length * 22)}>
                     <PieChart>
                       <Pie data={volumeData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                        innerRadius="35%" outerRadius="80%" strokeWidth={1} stroke="rgba(0,0,0,0.3)">
+                        innerRadius="30%" outerRadius="75%" strokeWidth={1} stroke="rgba(0,0,0,0.3)">
                         {volumeData.map((entry, i) => (
                           <Cell key={i} fill={entry.fill} />
                         ))}
@@ -415,7 +481,7 @@ function ExpandedRow({ row }: { row: SpreadRow }) {
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="flex-1 space-y-1 pt-1">
-                    {volumeData.slice(0, 8).map((v, i) => (
+                    {volumeData.slice(0, 8).map(v => (
                       <div key={v.name} className="flex items-center gap-1.5 text-[10px]">
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: v.fill }} />
                         <span className="text-neutral-400 truncate flex-1">{v.name}</span>
@@ -429,8 +495,17 @@ function ExpandedRow({ row }: { row: SpreadRow }) {
                     )}
                   </div>
                 </div>
+              ) : volumeData.length === 1 ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02]">
+                  <span className="w-3 h-3 rounded-full" style={{ background: volumeData[0].fill }} />
+                  <span className="text-neutral-300 text-xs">{volumeData[0].name}</span>
+                  <span className="text-neutral-500 font-mono text-xs ml-auto">
+                    ${totalVol >= 1e9 ? (totalVol/1e9).toFixed(1) + 'B' : totalVol >= 1e6 ? (totalVol/1e6).toFixed(1) + 'M' : (totalVol/1e3).toFixed(0) + 'K'}
+                  </span>
+                  <span className="text-neutral-600 text-[9px]">100%</span>
+                </div>
               ) : (
-                <div className="h-24 flex items-center justify-center text-neutral-600 text-xs">No volume data</div>
+                <div className="h-20 flex items-center justify-center text-neutral-600 text-xs">No volume data</div>
               )}
             </div>
           </div>
