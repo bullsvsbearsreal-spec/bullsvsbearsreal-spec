@@ -167,7 +167,7 @@ export default function PriceSpreadChart() {
       const json = await res.json();
       const exchanges = json.exchanges as Record<string, RawPoint[]> | undefined;
       if (!exchanges || Object.keys(exchanges).length === 0) {
-        setError('No price history available for this symbol');
+        setError('Price history is accumulating. Mark prices are recorded every 10 minutes from all exchanges. Data will appear within a few hours.');
         setRawData(null);
       } else {
         setRawData(exchanges);
