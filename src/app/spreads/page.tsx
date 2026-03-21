@@ -80,23 +80,32 @@ function buildSpreads(tickers: TickerRow[]): SpreadRow[] {
     const med = median(prices);
     if (med <= 0) continue;
 
-    const tickerData = deduped
+    // Filter out outlier prices (>20% away from median = likely different contract spec or stale)
+    const MAX_DEVIATION = 0.2; // 20%
+    const sane = deduped.filter(e => Math.abs(e.lastPrice - med) / med <= MAX_DEVIATION);
+    if (sane.length < 2) continue;
+
+    // Recalculate median with sane prices only
+    const saneMed = median(sane.map(e => e.lastPrice));
+    if (saneMed <= 0) continue;
+
+    const tickerData = sane
       .map(e => ({
         exchange: e.exchange,
         price: e.lastPrice,
-        deviation: ((e.lastPrice - med) / med) * 10000, // bps
+        deviation: ((e.lastPrice - saneMed) / saneMed) * 10000, // bps
       }))
       .sort((a, b) => b.deviation - a.deviation);
 
     const high = tickerData[0];
     const low = tickerData[tickerData.length - 1];
     const spreadBps = high.deviation - low.deviation;
-    const totalVolume = deduped.reduce((s, e) => s + (e.quoteVolume24h || 0), 0);
+    const totalVolume = sane.reduce((s, e) => s + (e.quoteVolume24h || 0), 0);
 
     results.push({
       symbol,
-      exchanges: deduped.length,
-      medianPrice: med,
+      exchanges: sane.length,
+      medianPrice: saneMed,
       highExchange: high.exchange,
       highPrice: high.price,
       lowExchange: low.exchange,
@@ -420,6 +429,21 @@ export default function SpreadsPage() {
               </table>
             </div>
           )}
+        </div>
+
+        {/* Info footer */}
+        <div className="mt-6 p-4 rounded-2xl bg-hub-yellow/5 border border-hub-yellow/10 border-l-2 border-l-hub-yellow/40">
+          <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
+            <span>
+              <span className="text-hub-yellow font-medium">Spread</span> = difference between the highest and lowest exchange price for a symbol, measured in basis points (bps). 1 bps = 0.01%.
+              Prices that deviate &gt;50% from the median are excluded as outliers (different contract specs).
+              High spreads may indicate arbitrage opportunities or low liquidity on certain exchanges.
+            </span>
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-2 ml-6">
+            Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit, Hyperliquid, dYdX, and more. Refreshes every 30s.
+          </p>
         </div>
 
         {authLimit && filtered.length > authLimit && (
