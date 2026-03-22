@@ -109,7 +109,7 @@ export default function SpreadsPage() {
     const t = TFS.find(x => x.key === tf)!;
     setLoading(true);
     let c = false;
-    fetch(`/api/klines-multi?symbol=${sym}&interval=${t.interval}&limit=${t.limit}`)
+    fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit)
       .then(r => r.ok ? r.json() : null)
       .then(j => { if (!c) setKd(j?.exchanges && Object.keys(j.exchanges).length > 0 ? j.exchanges : null); })
       .catch(() => { if (!c) setKd(null); })
@@ -141,11 +141,11 @@ export default function SpreadsPage() {
       }
       if (prices.length < 1) continue;
       const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
-      for (const e of exs) if (pt[e]) pt[`${e}_dev`] = ((pt[e] as number) - avg) / avg * 100;
+      for (const e of exs) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
       pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
       const d = new Date(t);
       pt.label = tf === '30d' ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-        : tf === '7d' ? `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+        : tf === '7d' ? (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0')
         : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       rows.push(pt);
     }
@@ -317,7 +317,6 @@ export default function SpreadsPage() {
                 </div>
               )}
             </div>
-          </div>
         </div>
 
         {/* ── Stats Cards ── */}
