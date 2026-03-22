@@ -100,9 +100,31 @@ function SpreadTooltip({ active, payload, exList, colorFn }: any) {
 }
 
 export default function SpreadsPage() {
-  const [sym, setSym] = useState('BTC');
-  const [sel, setSel] = useState<string[]>(['Binance','Bybit','OKX','Bitget','MEXC']);
-  const [tf, setTf] = useState<TfK>('1d');
+  // Read initial state from URL params
+  const initFromUrl = useCallback(() => {
+    if (typeof window === 'undefined') return { sym: 'BTC', sel: ['Binance','Bybit','OKX','Bitget','MEXC'], tf: '1d' as TfK };
+    const p = new URLSearchParams(window.location.search);
+    return {
+      sym: p.get('s') || 'BTC',
+      sel: p.get('ex')?.split(',').filter(Boolean) || ['Binance','Bybit','OKX','Bitget','MEXC'],
+      tf: (p.get('tf') || '1d') as TfK,
+    };
+  }, []);
+  const init = initFromUrl();
+  const [sym, setSym] = useState(init.sym);
+  const [sel, setSel] = useState<string[]>(init.sel);
+  const [tf, setTf] = useState<TfK>(init.tf);
+
+  // Sync state to URL
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (sym !== 'BTC') p.set('s', sym);
+    if (sel.join(',') !== 'Binance,Bybit,OKX,Bitget,MEXC') p.set('ex', sel.join(','));
+    if (tf !== '1d') p.set('tf', tf);
+    const qs = p.toString();
+    const url = qs ? window.location.pathname + '?' + qs : window.location.pathname;
+    window.history.replaceState(null, '', url);
+  }, [sym, sel, tf]);
   const [showSym, setShowSym] = useState(false);
   const [symQ, setSymQ] = useState('');
   const [showEx, setShowEx] = useState(false);
@@ -111,6 +133,17 @@ export default function SpreadsPage() {
   const [showCalc, setShowCalc] = useState(false);
   const [calcAmt, setCalcAmt] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (showSym && !t.closest('[data-sym-picker]')) setShowSym(false);
+      if (showEx && !t.closest('[data-ex-picker]')) setShowEx(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSym, showEx]);
 
   // Live data from existing APIs
   type TickerEntry = { symbol: string; exchange: string; lastPrice: number; change24h: number; quoteVolume24h: number };
@@ -181,8 +214,11 @@ export default function SpreadsPage() {
       }
       if (prices.length < 1) continue;
       const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+      // Filter out stale/anomalous prices (>2% from mean)
+      const sane = prices.filter(p => Math.abs(p - avg) / avg < 0.02);
+      const useP = sane.length >= 2 ? sane : prices;
       for (const e of exs) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
-      pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
+      pt._spread = useP.length >= 2 ? Math.max(...useP) - Math.min(...useP) : 0;
       const d = new Date(t);
       pt.label = tf === '30d' ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
         : tf === '7d' ? (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0')
@@ -255,7 +291,7 @@ export default function SpreadsPage() {
         {/* ── Controls ── */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           {/* Symbol */}
-          <div className="relative">
+          <div className="relative" data-sym-picker>
             <button onClick={() => setShowSym(!showSym)} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-hub-yellow/30 transition">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={getCoinIcon(sym)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -313,7 +349,7 @@ export default function SpreadsPage() {
               <button onClick={() => toggle(e)} className="text-neutral-600 hover:text-white"><X className="w-3 h-3" /></button>
             </span>
           ))}
-            <div className="relative">
+            <div className="relative" data-ex-picker>
               <button onClick={() => setShowEx(!showEx)} className="px-2.5 py-1 rounded-full text-[11px] text-neutral-500 bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow/30 transition">
                 + Exchange
               </button>
@@ -367,7 +403,9 @@ export default function SpreadsPage() {
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-hub-yellow" />
-                <span className="text-xs text-neutral-500">Current Spread</span>
+                <span className="text-xs text-neutral-500">
+                  {exs.length === 2 ? stats.hi?.e + ' vs ' + stats.lo?.e : 'Current Spread'}
+                </span>
               </div>
               <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
               <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
@@ -451,7 +489,15 @@ export default function SpreadsPage() {
           </div>
 
           {loading ? (
-            <div className="h-[420px] flex items-center justify-center"><RefreshCw className="w-5 h-5 text-neutral-700 animate-spin" /></div>
+            <div className="h-[420px] flex flex-col gap-3 p-4">
+              <div className="flex gap-4 mb-2">
+                {[1,2,3,4,5].map(i => <div key={i} className="h-3 rounded bg-white/[0.03] animate-pulse" style={{ width: 60 + i * 10 }} />)}
+              </div>
+              <div className="flex-1 rounded-lg bg-white/[0.02] animate-pulse" />
+              <div className="flex justify-between">
+                {[1,2,3,4,5,6].map(i => <div key={i} className="h-2 w-12 rounded bg-white/[0.03] animate-pulse" />)}
+              </div>
+            </div>
           ) : data.length > 0 ? (
             <ResponsiveContainer width="100%" height={420}>
               <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -585,10 +631,21 @@ export default function SpreadsPage() {
                       const fundingMap = new Map(funding.map(f => [f.exchange, f]));
                       const oiMap = new Map(oi.map(o => [o.exchange, o]));
                       const allExchanges = new Set([...tickers.map(t => t.exchange), ...stats.prices.map(p => p.e)]);
+                      // Compute 24h change from klines (first vs last candle)
+                      const changeMap = new Map<string, number>();
+                      if (kd) {
+                        for (const [ex, candles] of Object.entries(kd)) {
+                          if (candles.length >= 2) {
+                            const first = candles[0].c;
+                            const last = candles[candles.length - 1].c;
+                            if (first > 0) changeMap.set(ex, ((last - first) / first) * 100);
+                          }
+                        }
+                      }
                       const rows = Array.from(allExchanges).map(e => ({
                         exchange: e,
                         price: tickerMap.get(e)?.lastPrice || stats.prices.find(p => p.e === e)?.p || 0,
-                        change: tickerMap.get(e)?.change24h,
+                        change: changeMap.get(e) ?? tickerMap.get(e)?.change24h,
                         fundingRate: fundingMap.get(e)?.fundingRate,
                         oiValue: oiMap.get(e)?.openInterestValue,
                         volume: tickerMap.get(e)?.quoteVolume24h,
