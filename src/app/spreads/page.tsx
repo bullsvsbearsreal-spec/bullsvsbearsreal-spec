@@ -163,7 +163,7 @@ export default function SpreadsTerminal() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={getCoinIcon(sym)} alt="" className="w-4 h-4 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 <span className="font-mono font-bold text-sm">{sym}</span>
-                <span className="text-neutral-600 text-xs">PERP</span>
+                <span className="text-neutral-600 text-[10px]">/USDT</span>
                 <ChevronDown className="w-3 h-3 text-neutral-600" />
               </button>
               {showSym && (
@@ -214,7 +214,7 @@ export default function SpreadsTerminal() {
               </span>
             ))}
             <div className="relative">
-              <button onClick={() => setShowEx(!showEx)} className="px-1.5 py-0.5 text-[10px] text-neutral-600 border border-[#1a1f2e] rounded hover:border-amber-500/30 font-mono">+EX</button>
+              <button onClick={() => setShowEx(!showEx)} className="px-1.5 py-0.5 text-[10px] text-neutral-500 border border-[#1a1f2e] rounded hover:border-amber-500/30">+ Add</button>
               {showEx && (
                 <div className="absolute top-full mt-1 left-0 z-50 w-36 bg-[#0c0e16] border border-[#1a1f2e] rounded shadow-2xl py-0.5">
                   {EXCHANGES.map((e, i) => (
@@ -228,11 +228,11 @@ export default function SpreadsTerminal() {
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              <button onClick={() => setShowCalc(!showCalc)} className="px-2 py-1 text-[10px] font-mono text-neutral-600 border border-[#1a1f2e] rounded hover:text-amber-400 hover:border-amber-500/20 transition">
-                <Calculator className="w-3 h-3 inline mr-1" />ARB
+              <button onClick={() => setShowCalc(!showCalc)} className="px-2 py-1 text-[10px] text-neutral-500 border border-[#1a1f2e] rounded hover:text-amber-400 hover:border-amber-500/20 transition">
+                <Calculator className="w-3 h-3 inline mr-1" />Arb Calc
               </button>
               {loading && <RefreshCw className="w-3 h-3 text-neutral-700 animate-spin" />}
-              <span className="text-[9px] text-neutral-700 font-mono">{exs.length} FEEDS</span>
+              <span className="text-[9px] text-neutral-600">{exs.length} exchanges</span>
               <span className="text-[9px] text-neutral-700 font-mono hidden sm:inline">
                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
@@ -255,36 +255,30 @@ export default function SpreadsTerminal() {
                   <span className="font-mono font-bold text-lg">{sym}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-neutral-600 block font-mono">SPREAD</span>
-                  <span className={`font-mono text-xl font-bold animate-pulse ${stats.cur > stats.avg ? 'text-green-400' : 'text-amber-400'}`}>${fp(stats.cur)}</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-neutral-600 block font-mono">PCT</span>
-                  <span className="font-mono text-sm text-white">{stats.pct.toFixed(4)}%</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-neutral-600 block font-mono">BPS</span>
-                  <span className={`font-mono text-sm px-1.5 py-0.5 rounded ${stats.pct * 100 > 10 ? 'bg-green-500/10 text-green-400' : stats.pct * 100 > 5 ? 'bg-amber-500/10 text-amber-400' : 'text-neutral-400'}`}>{(stats.pct * 100).toFixed(1)}</span>
+                  <span className="text-[9px] text-neutral-500 block">Spread</span>
+                  <span className={`font-mono text-xl font-bold ${stats.cur > stats.avg ? 'text-green-400' : 'text-amber-400'}`}>${fp(stats.cur)}</span>
+                  <span className="text-neutral-500 text-xs ml-1.5">{stats.pct.toFixed(3)}%</span>
+                  <span className={`text-[10px] ml-1 px-1 py-[1px] rounded ${stats.pct * 100 > 10 ? 'bg-green-500/10 text-green-400' : stats.pct * 100 > 5 ? 'bg-amber-500/10 text-amber-400' : 'bg-white/[0.03] text-neutral-500'}`}>{(stats.pct * 100).toFixed(1)} bps</span>
                 </div>
                 <div className="h-6 w-px bg-[#1a1f2e]" />
                 <div>
-                  <span className="text-[9px] text-neutral-600 block font-mono">HIGH</span>
+                  <span className="text-[9px] text-neutral-500 block">Highest</span>
                   <span className="font-mono text-sm text-green-400">${stats.hi ? fp(stats.hi.p) : '—'}</span>
-                  <span className="text-[8px] text-neutral-600 ml-1">{stats.hi?.e}</span>
+                  <span className="text-[9px] text-neutral-600 ml-1">{stats.hi?.e}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-neutral-600 block font-mono">LOW</span>
+                  <span className="text-[9px] text-neutral-500 block">Lowest</span>
                   <span className="font-mono text-sm text-red-400">${stats.lo ? fp(stats.lo.p) : '—'}</span>
-                  <span className="text-[8px] text-neutral-600 ml-1">{stats.lo?.e}</span>
+                  <span className="text-[9px] text-neutral-600 ml-1">{stats.lo?.e}</span>
                 </div>
                 <div className="h-6 w-px bg-[#1a1f2e]" />
                 <div>
-                  <span className="text-[9px] text-neutral-600 block font-mono">RANGE ({TFS.find(t=>t.key===tf)?.label})</span>
-                  <span className="font-mono text-sm text-white">${fp(stats.min)} — ${fp(stats.max)}</span>
+                  <span className="text-[9px] text-neutral-500 block">{TFS.find(t=>t.key===tf)?.label} Range</span>
+                  <span className="font-mono text-sm text-white">${fp(stats.min)} <span className="text-neutral-600">to</span> ${fp(stats.max)}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-neutral-600 block font-mono">AVG</span>
-                  <span className="font-mono text-sm text-neutral-400">${fp(stats.avg)}</span>
+                  <span className="text-[9px] text-neutral-500 block">Average</span>
+                  <span className="font-mono text-sm text-neutral-300">${fp(stats.avg)}</span>
                 </div>
               </div>
             )}
@@ -310,7 +304,11 @@ export default function SpreadsTerminal() {
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-neutral-800 font-mono text-xs">NO DATA FOR {sym}</div>
+                <div className="h-[400px] flex flex-col items-center justify-center text-neutral-700 text-xs">
+                  <Activity className="w-8 h-8 mb-2 text-neutral-800" />
+                  <p>No price data for {sym}</p>
+                  <p className="text-[10px] text-neutral-800 mt-1">Try a different symbol or timeframe</p>
+                </div>
               )}
             </div>
 
@@ -318,7 +316,8 @@ export default function SpreadsTerminal() {
             {data.length > 0 && exs.length >= 2 && (
               <div className="border-t border-[#1a1f2e] p-2">
                 <div className="flex items-center gap-2 px-1 mb-1">
-                  <span className="text-[9px] font-mono text-neutral-600">SPREAD HISTORY ($)</span>
+                  <span className="text-[10px] text-neutral-500">Spread History</span>
+                  <span className="text-[9px] text-neutral-700">highest − lowest price over time</span>
                 </div>
                 <ResponsiveContainer width="100%" height={120}>
                   <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -345,7 +344,7 @@ export default function SpreadsTerminal() {
             {/* Exchange Prices Panel */}
             <div className="border-b border-[#1a1f2e]">
               <div className="px-3 py-1.5 bg-[#0a0c14] border-b border-[#1a1f2e]">
-                <span className="text-[9px] font-mono text-amber-400 font-bold tracking-wider">EXCHANGE PRICES</span>
+                <span className="text-[10px] text-amber-400 font-semibold">Exchange Prices</span>
               </div>
               {stats?.prices.map((x, i) => {
                 const median = stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length;
@@ -356,8 +355,8 @@ export default function SpreadsTerminal() {
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-sm" style={{ background: cx(x.e, exs.indexOf(x.e)) }} />
                       <span className="text-[10px] font-mono text-neutral-400">{x.e}</span>
-                      {i === 0 && <span className="text-[7px] px-1 py-[0.5px] bg-green-500/10 text-green-400 rounded font-mono font-bold">HIGH</span>}
-                      {i === stats.prices.length - 1 && <span className="text-[7px] px-1 py-[0.5px] bg-red-500/10 text-red-400 rounded font-mono font-bold">LOW</span>}
+                      {i === 0 && <span className="text-[7px] px-1 py-[0.5px] bg-green-500/10 text-green-400 rounded font-medium">high</span>}
+                      {i === stats.prices.length - 1 && <span className="text-[7px] px-1 py-[0.5px] bg-red-500/10 text-red-400 rounded font-medium">low</span>}
                     </div>
                     <div className="flex items-center gap-2">
                       {/* Deviation bar */}
@@ -379,19 +378,19 @@ export default function SpreadsTerminal() {
             {stats && (
               <div className="border-b border-[#1a1f2e]">
                 <div className="px-3 py-1.5 bg-[#0a0c14] border-b border-[#1a1f2e]">
-                  <span className="text-[9px] font-mono text-amber-400 font-bold tracking-wider">SPREAD ANALYTICS</span>
+                  <span className="text-[10px] text-amber-400 font-semibold">Spread Analytics</span>
                 </div>
                 <div className="grid grid-cols-2 gap-px bg-[#1a1f2e]">
                   {[
-                    { label: 'CURRENT', value: '$' + fp(stats.cur), color: 'text-amber-400' },
-                    { label: `AVG (${TFS.find(t=>t.key===tf)?.label})`, value: '$' + fp(stats.avg), color: 'text-white' },
-                    { label: 'MAX', value: '$' + fp(stats.max), color: 'text-green-400', sub: stats.maxT ? new Date(stats.maxT).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' },
-                    { label: 'MIN', value: '$' + fp(stats.min), color: 'text-cyan-400', sub: stats.minT ? new Date(stats.minT).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' },
+                    { label: 'Current', value: '$' + fp(stats.cur), color: 'text-amber-400' },
+                    { label: `Avg (${TFS.find(t=>t.key===tf)?.label})`, value: '$' + fp(stats.avg), color: 'text-white' },
+                    { label: 'Max', value: '$' + fp(stats.max), color: 'text-green-400', sub: stats.maxT ? new Date(stats.maxT).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' },
+                    { label: 'Min', value: '$' + fp(stats.min), color: 'text-cyan-400', sub: stats.minT ? new Date(stats.minT).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' },
                   ].map(s => (
-                    <div key={s.label} className="bg-[#0c0e16] px-3 py-2">
-                      <span className="text-[8px] font-mono text-neutral-600 block">{s.label}</span>
+                    <div key={s.label} className="bg-[#0c0e16] px-3 py-2.5">
+                      <span className="text-[9px] text-neutral-500 block mb-0.5">{s.label}</span>
                       <span className={`font-mono text-sm font-bold ${s.color}`}>{s.value}</span>
-                      {s.sub && <span className="text-[8px] font-mono text-neutral-700 block">{s.sub}</span>}
+                      {s.sub && <span className="text-[8px] text-neutral-600 block mt-0.5">{s.sub}</span>}
                     </div>
                   ))}
                 </div>
@@ -402,16 +401,16 @@ export default function SpreadsTerminal() {
             {showCalc && stats && (
               <div className="border-b border-[#1a1f2e]">
                 <div className="px-3 py-1.5 bg-[#0a0c14] border-b border-[#1a1f2e]">
-                  <span className="text-[9px] font-mono text-amber-400 font-bold tracking-wider">ARB CALCULATOR</span>
+                  <span className="text-[10px] text-amber-400 font-semibold">Arb Calculator</span>
                 </div>
                 <div className="px-3 py-2 space-y-2">
                   <div>
-                    <label className="text-[8px] font-mono text-neutral-600">SIZE (USD)</label>
+                    <label className="text-[9px] text-neutral-500">Trade size ($)</label>
                     <input value={calcAmt} onChange={e => setCalcAmt(e.target.value)} type="number"
                       className="w-full px-2 py-1 bg-[#12141e] border border-[#1a1f2e] rounded text-xs font-mono text-white outline-none focus:border-amber-500/30" />
                   </div>
                   <div>
-                    <label className="text-[8px] font-mono text-neutral-600">FEE/SIDE (%)</label>
+                    <label className="text-[9px] text-neutral-500">Fee per side (%)</label>
                     <input value={calcFee} onChange={e => setCalcFee(e.target.value)} type="number" step="0.01"
                       className="w-full px-2 py-1 bg-[#12141e] border border-[#1a1f2e] rounded text-xs font-mono text-white outline-none focus:border-amber-500/30" />
                   </div>
@@ -422,7 +421,7 @@ export default function SpreadsTerminal() {
                     const profit = size * (net / 100);
                     return (
                       <div className={`px-2 py-1.5 rounded ${profit > 0 ? 'bg-green-500/5 border border-green-500/10' : 'bg-red-500/5 border border-red-500/10'}`}>
-                        <span className="text-[8px] font-mono text-neutral-600 block">NET PROFIT</span>
+                        <span className="text-[9px] text-neutral-500 block">Net profit</span>
                         <span className={`font-mono text-lg font-bold ${profit > 0 ? 'text-green-400' : 'text-red-400'}`}>{profit >= 0 ? '+' : ''}${fp(Math.abs(profit))}</span>
                         <span className="text-[9px] font-mono text-neutral-600 ml-2">({net.toFixed(4)}%)</span>
                       </div>
@@ -435,7 +434,7 @@ export default function SpreadsTerminal() {
             {/* Legend */}
             <div className="px-3 py-2 border-b border-[#1a1f2e]">
               <div className="px-0 py-1 bg-[#0a0c14] rounded">
-                <span className="text-[8px] font-mono text-neutral-700 block px-2 mb-1">CHART LEGEND</span>
+                <span className="text-[9px] text-neutral-600 block px-2 mb-1">Legend</span>
                 {exs.map((e, i) => {
                   const last = data[data.length - 1];
                   const p = last ? last[e] as number : 0;
@@ -454,8 +453,8 @@ export default function SpreadsTerminal() {
 
             {/* Data Source */}
             <div className="px-3 py-2 mt-auto">
-              <p className="text-[8px] font-mono text-neutral-700 leading-relaxed">
-                DATA: {exs.join(' · ')} · {TFS.find(t=>t.key===tf)?.label} CANDLES · 5M CACHE · PERP FUTURES CLOSE PRICES
+              <p className="text-[8px] text-neutral-700 leading-relaxed">
+                Candle close prices from {exs.join(', ')}. {TFS.find(t=>t.key===tf)?.label} timeframe, 5 min cache. Perpetual futures.
               </p>
             </div>
           </div>
