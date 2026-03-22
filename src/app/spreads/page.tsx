@@ -11,11 +11,11 @@ import Footer from '@/components/Footer';
 
 // ─── Colors per exchange (TradingView neon palette) ──────────────────────────
 const COLORS: Record<string, string> = {
-  Binance: '#F0B90B', Bybit: '#F7A600', OKX: '#00C076', Bitget: '#00B4AB',
-  MEXC: '#1DB7FF', HTX: '#2B6AED', Hyperliquid: '#00FFCC', dYdX: '#6966FF',
-  Kraken: '#7B61FF', 'Gate.io': '#2354E6', Coinbase: '#0052FF', Phemex: '#D4FF00',
+  Binance: '#F0B90B', Bybit: '#FF6B6B', OKX: '#00FF9D', Bitget: '#00D4FF',
+  MEXC: '#A855F7', HTX: '#FF61D2', Hyperliquid: '#00FFCC', dYdX: '#6966FF',
+  Kraken: '#FF9500', 'Gate.io': '#3B82F6', Coinbase: '#0052FF', Phemex: '#D4FF00',
 };
-const PALETTE = ['#F0B90B','#00FFCC','#6966FF','#FF6B6B','#00C076','#1DB7FF','#F7A600','#FF61D2','#D4FF00','#2354E6'];
+const PALETTE = ['#F0B90B','#FF6B6B','#00FF9D','#00D4FF','#A855F7','#FF61D2','#00FFCC','#6966FF','#FF9500','#3B82F6'];
 function getColor(ex: string, i: number) { return COLORS[ex] || PALETTE[i % PALETTE.length]; }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -110,6 +110,14 @@ export default function SpreadsPage() {
         if (p) { last[ex] = p; pt[ex] = p; hasAny = true; }
       }
       if (!hasAny) continue;
+      // Compute spread band
+      const prices = exs.map(e => pt[e] as number).filter(p => typeof p === 'number' && p > 0);
+      if (prices.length >= 2) {
+        pt._min = Math.min(...prices);
+        pt._max = Math.max(...prices);
+        pt._spread = (pt._max as number) - (pt._min as number);
+        pt._range = [pt._min, pt._max]; // for Area band
+      }
       const d = new Date(t);
       pt.label = tf === '30d'
         ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
@@ -202,7 +210,7 @@ export default function SpreadsPage() {
               <ArrowLeftRight className="w-6 h-6 text-hub-yellow" />
               Exchange <span className="text-hub-yellow">Spreads</span>
             </h1>
-            <p className="text-neutral-500 text-sm mt-1">Compare {symbol} prices across exchanges in real-time</p>
+            <p className="text-neutral-500 text-sm mt-1">Compare {symbol}/USDT perp prices across {EXCHANGES.length} exchanges</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowCalc(!showCalc)} className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-neutral-400 hover:text-white transition flex items-center gap-1.5">
@@ -325,16 +333,24 @@ export default function SpreadsPage() {
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-neutral-300">Price Chart</h2>
-            <div className="flex items-center gap-4">
-              {/* Right-side legend */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {activeExchanges.map((ex, i) => {
                 const last = chartData[chartData.length - 1];
                 const price = last ? last[ex] as number : 0;
+                const median = stats?.prices ? stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length : price;
+                const devPct = median > 0 ? ((price - median) / median) * 100 : 0;
                 return (
-                  <span key={ex} className="flex items-center gap-1.5 text-[11px]">
-                    <span className="w-2.5 h-[3px] rounded-full" style={{ background: getColor(ex, i) }} />
-                    <span className="text-neutral-400">{ex}</span>
-                    {price > 0 && <span className="font-mono text-white">{formatPrice(price)}</span>}
+                  <span key={ex} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px]"
+                    style={{ background: getColor(ex, i) + '15', borderLeft: `3px solid ${getColor(ex, i)}` }}>
+                    <span className="text-neutral-300 font-medium">{ex}</span>
+                    {price > 0 && (
+                      <>
+                        <span className="font-mono text-white">{formatPrice(price)}</span>
+                        <span className={`font-mono ${devPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {devPct >= 0 ? '+' : ''}{devPct.toFixed(3)}%
+                        </span>
+                      </>
+                    )}
                   </span>
                 );
               })}
@@ -354,16 +370,24 @@ export default function SpreadsPage() {
                   interval={Math.max(0, Math.floor(chartData.length / 8))}
                 />
                 <YAxis
-                  domain={[(min: number) => min * 0.999, (max: number) => max * 1.001]}
+                  domain={['dataMin', 'dataMax']}
                   tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => formatPrice(v)} width={75}
+                  padding={{ top: 20, bottom: 20 }}
                 />
                 <RTooltip content={<CustomTooltip />} />
+                {/* Spread band (shaded area between min and max) */}
+                {activeExchanges.length >= 2 && (
+                  <Area type="monotone" dataKey="_max" stroke="none" fill="rgba(234,179,8,0.06)"
+                    baseLine={chartData.map(d => (d._min as number) || 0)} connectNulls
+                    isAnimationActive={false} />
+                )}
                 {activeExchanges.map((ex, i) => (
                   <Line key={ex} type="monotone" dataKey={ex} stroke={getColor(ex, i)}
-                    strokeWidth={2} dot={false}
-                    activeDot={{ r: 4, fill: getColor(ex, i), stroke: '#0b0e1a', strokeWidth: 2 }}
-                    connectNulls />
+                    strokeWidth={2.5} dot={false}
+                    activeDot={{ r: 5, fill: getColor(ex, i), stroke: '#0b0e1a', strokeWidth: 2 }}
+                    connectNulls
+                    style={{ filter: `drop-shadow(0 0 4px ${getColor(ex, i)}40)` }} />
                 ))}
               </ComposedChart>
             </ResponsiveContainer>
