@@ -33,9 +33,11 @@ const SYMBOLS: Record<string, string[]> = {
   Forex: ['EUR','GBP','JPY'],
   Stocks: ['AAPL','TSLA','NVDA','COIN','MSTR','META','AMZN','GOOGL','MSFT'],
 };
-const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','Phemex','KuCoin','HTX','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit'];
+const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit'];
 const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','GMX','gTrade','Extended','Variational','edgeX','Nado'];
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
+// Exchanges that have kline/candle API support in /api/klines-multi
+const CHART_SUPPORTED = new Set(['Binance','Bybit','OKX','Bitget','MEXC','HTX','Hyperliquid','dYdX','Kraken','BingX']);
 const TFS = [
   { key: '1d', label: '1D', interval: '1h', limit: 24 },
   { key: '7d', label: '7D', interval: '1h', limit: 168 },
@@ -319,10 +321,11 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider">CEX ({CEX_EXCHANGES.length})</p>
                     {CEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ${sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : CHART_SUPPORTED.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
+                          {!CHART_SUPPORTED.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
@@ -334,10 +337,11 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider mt-1 border-t border-white/[0.06] pt-2">DEX ({DEX_EXCHANGES.length})</p>
                     {DEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ${sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : CHART_SUPPORTED.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
+                          {!CHART_SUPPORTED.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
