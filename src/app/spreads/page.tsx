@@ -6,8 +6,10 @@ import {
   CartesianGrid, ResponsiveContainer, Area,
 } from 'recharts';
 import { ArrowLeftRight, Search, ChevronDown, X, Info, RefreshCw, Calculator, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { getCoinIcon } from '@/lib/coinIcons';
 
 // ─── Colors per exchange (TradingView neon palette) ──────────────────────────
 const COLORS: Record<string, string> = {
@@ -23,9 +25,12 @@ type Candle = { t: number; c: number };
 type ChartPoint = { time: number; label: string; [ex: string]: number | string };
 
 const SYMBOLS = {
-  Majors: ['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','AVAX','LINK','TON'],
-  Alts: ['SUI','APT','NEAR','DOT','ARB','OP','MATIC','FIL','ATOM','INJ','HBAR','LTC'],
-  Memes: ['PEPE','WIF','BONK','FLOKI','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU'],
+  Majors: ['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','AVAX','LINK','TON','LTC','BCH','ETC','TRX'],
+  'Layer 2': ['ARB','OP','MATIC','STRK','ZK','IMX','MANTA','STX','SEI'],
+  Alts: ['SUI','APT','NEAR','DOT','FIL','ATOM','INJ','HBAR','RENDER','TIA','ALGO','VET','FTM'],
+  DeFi: ['AAVE','UNI','MKR','CRV','DYDX','SNX','COMP','LDO','EIGEN','ENA','ONDO','JUP','PYTH'],
+  Memes: ['PEPE','WIF','BONK','FLOKI','SHIB','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU','TURBO','NEIRO'],
+  Gaming: ['SAND','MANA','AXS','GALA','BLUR','ENS','WLD','W','ZRO'],
 };
 const ALL_SYMBOLS = [...SYMBOLS.Majors, ...SYMBOLS.Alts, ...SYMBOLS.Memes];
 
@@ -244,6 +249,8 @@ export default function SpreadsPage() {
           {/* Symbol Picker */}
           <div className="relative">
             <button onClick={() => setShowSymPicker(!showSymPicker)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-hub-yellow/30 transition">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={getCoinIcon(symbol)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <span className="text-lg font-bold">{symbol}</span>
               <span className="text-neutral-500 text-sm">/USDT</span>
               <ChevronDown className="w-4 h-4 text-neutral-500" />
@@ -265,8 +272,11 @@ export default function SpreadsPage() {
                       <p className="px-3 py-1 text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">{group}</p>
                       {filtered.map(s => (
                         <button key={s} onClick={() => { setSymbol(s); setShowSymPicker(false); setSymSearch(''); }}
-                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-white/[0.04] ${s === symbol ? 'text-hub-yellow' : 'text-neutral-300'}`}>
+                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-white/[0.04] flex items-center gap-2 ${s === symbol ? 'text-hub-yellow' : 'text-neutral-300'}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={getCoinIcon(s)} alt="" className="w-4 h-4 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           {s}
+                          {s === symbol && <span className="ml-auto text-hub-yellow text-[10px]">✓</span>}
                         </button>
                       ))}
                     </div>
@@ -321,11 +331,15 @@ export default function SpreadsPage() {
 
         {/* ── Spread Hero ── */}
         {stats && (
-          <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="rounded-xl bg-gradient-to-r from-white/[0.03] to-white/[0.01] border border-white/[0.08] p-5 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <p className="text-neutral-500 text-xs mb-1">
-                {activeExchanges.length === 2 ? `${stats.highest?.ex} vs ${stats.lowest?.ex}` : `Max spread across ${activeExchanges.length} exchanges`}
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={getCoinIcon(symbol)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <p className="text-neutral-500 text-xs">
+                  {activeExchanges.length === 2 ? `${stats.highest?.ex} vs ${stats.lowest?.ex}` : `Max spread across ${activeExchanges.length} exchanges`}
+                </p>
+              </div>
               <div className="flex items-baseline gap-3">
                 <span className={`text-3xl font-bold font-mono ${stats.current > 0 ? 'text-hub-yellow' : 'text-neutral-400'}`}>
                   {formatPrice(stats.current)}
@@ -463,21 +477,21 @@ export default function SpreadsPage() {
         {/* ── Spread Stats Cards ── */}
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
               <p className="text-[10px] text-neutral-500 mb-1">Current Spread</p>
               <p className="text-lg font-bold font-mono text-hub-yellow">{formatPrice(stats.current)}</p>
               <p className="text-[10px] text-neutral-600">{stats.currentPct.toFixed(4)}%</p>
             </div>
-            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
               <p className="text-[10px] text-neutral-500 mb-1">Avg Spread ({TIMEFRAMES.find(t=>t.key===tf)?.label})</p>
               <p className="text-lg font-bold font-mono text-white">{formatPrice(stats.avg)}</p>
             </div>
-            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
               <p className="text-[10px] text-neutral-500 mb-1 flex items-center gap-1"><TrendingUp className="w-3 h-3 text-green-400" /> Max Spread</p>
               <p className="text-lg font-bold font-mono text-green-400">{formatPrice(stats.max)}</p>
               <p className="text-[10px] text-neutral-600">{stats.maxTime ? new Date(stats.maxTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>
             </div>
-            <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
               <p className="text-[10px] text-neutral-500 mb-1 flex items-center gap-1"><TrendingDown className="w-3 h-3 text-cyan-400" /> Min Spread</p>
               <p className="text-lg font-bold font-mono text-cyan-400">{formatPrice(stats.min)}</p>
               <p className="text-[10px] text-neutral-600">{stats.minTime ? new Date(stats.minTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>
