@@ -62,6 +62,7 @@ export default function SpreadsPage() {
   const [klineData, setKlineData] = useState<Record<string, Candle[]> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCalc, setShowCalc] = useState(false);
+  const [viewMode, setViewMode] = useState<'price' | 'deviation'>('price');
   const [calcSize, setCalcSize] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
 
@@ -110,13 +111,22 @@ export default function SpreadsPage() {
         if (p) { last[ex] = p; pt[ex] = p; hasAny = true; }
       }
       if (!hasAny) continue;
-      // Compute spread band
+      // Compute spread band + deviation %
       const prices = exs.map(e => pt[e] as number).filter(p => typeof p === 'number' && p > 0);
       if (prices.length >= 2) {
         pt._min = Math.min(...prices);
         pt._max = Math.max(...prices);
         pt._spread = (pt._max as number) - (pt._min as number);
-        pt._range = [pt._min, pt._max]; // for Area band
+        const med = prices.reduce((s, p) => s + p, 0) / prices.length;
+        // Add deviation % for each exchange (deviation from mean)
+        for (const ex of exs) {
+          const p = pt[ex] as number;
+          if (typeof p === 'number' && p > 0 && med > 0) {
+            pt[`${ex}_dev`] = ((p - med) / med) * 100; // % deviation
+          }
+        }
+        pt._devMin = ((pt._min as number) - med) / med * 100;
+        pt._devMax = ((pt._max as number) - med) / med * 100;
       }
       const d = new Date(t);
       pt.label = tf === '30d'
@@ -173,25 +183,35 @@ export default function SpreadsPage() {
     if (!active || !payload?.length) return null;
     const pt = payload[0]?.payload;
     if (!pt) return null;
-    const prices = activeExchanges.map(ex => ({ ex, p: pt[ex] as number })).filter(x => typeof x.p === 'number');
+    const prices = activeExchanges.map(ex => ({
+      ex, p: pt[ex] as number, dev: pt[`${ex}_dev`] as number
+    })).filter(x => typeof x.p === 'number');
     prices.sort((a,b) => b.p - a.p);
     const spread = prices.length >= 2 ? prices[0].p - prices[prices.length-1].p : 0;
+    const spreadPct = prices.length >= 2 ? (spread / prices[prices.length-1].p) * 100 : 0;
     return (
-      <div className="bg-[#0d0f1a] border border-white/10 rounded-lg px-3 py-2 shadow-2xl text-xs">
-        <p className="text-neutral-400 mb-1.5 text-[10px]">{pt.label}</p>
-        {prices.map((x, i) => (
-          <div key={x.ex} className="flex items-center justify-between gap-4 py-[1px]">
+      <div className="bg-[#0d0f1a] border border-white/10 rounded-lg px-3 py-2.5 shadow-2xl text-xs min-w-[200px]">
+        <p className="text-neutral-400 mb-2 text-[10px]">{pt.label}</p>
+        {prices.map((x) => (
+          <div key={x.ex} className="flex items-center justify-between gap-4 py-[2px]">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full" style={{ background: getColor(x.ex, activeExchanges.indexOf(x.ex)) }} />
               <span className="text-neutral-300">{x.ex}</span>
             </span>
-            <span className="font-mono text-white">{formatPrice(x.p)}</span>
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-white">{formatPrice(x.p)}</span>
+              {typeof x.dev === 'number' && (
+                <span className={`font-mono text-[10px] ${x.dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {x.dev >= 0 ? '+' : ''}{x.dev.toFixed(3)}%
+                </span>
+              )}
+            </span>
           </div>
         ))}
         {prices.length >= 2 && (
-          <div className="border-t border-white/10 mt-1.5 pt-1.5 flex justify-between">
+          <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
             <span className="text-neutral-500">Spread</span>
-            <span className="font-mono text-hub-yellow">{formatPrice(spread)}</span>
+            <span className="font-mono text-hub-yellow">{formatPrice(spread)} <span className="text-neutral-500 text-[10px]">({spreadPct.toFixed(3)}%)</span></span>
           </div>
         )}
       </div>
@@ -337,7 +357,15 @@ export default function SpreadsPage() {
         {/* ── Chart ── */}
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-neutral-300">Price Chart</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-neutral-300">Price Chart</h2>
+              <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
+                <button onClick={() => setViewMode('price')}
+                  className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${viewMode === 'price' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400'}`}>$</button>
+                <button onClick={() => setViewMode('deviation')}
+                  className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${viewMode === 'deviation' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400'}`}>%</button>
+              </div>
+            </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {activeExchanges.map((ex, i) => {
                 const last = chartData[chartData.length - 1];
@@ -375,20 +403,28 @@ export default function SpreadsPage() {
                   interval={Math.max(0, Math.floor(chartData.length / 8))}
                 />
                 <YAxis
-                  domain={['dataMin', 'dataMax']}
+                  domain={viewMode === 'deviation' ? ['auto', 'auto'] : ['dataMin', 'dataMax']}
                   tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => formatPrice(v)} width={75}
+                  tickFormatter={(v: number) => viewMode === 'deviation' ? `${v >= 0 ? '+' : ''}${v.toFixed(3)}%` : formatPrice(v)}
+                  width={viewMode === 'deviation' ? 70 : 75}
                   padding={{ top: 20, bottom: 20 }}
                 />
                 <RTooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeDasharray: '4 4' }} />
                 {/* Spread band (shaded area between min and max) */}
-                {activeExchanges.length >= 2 && (
+                {activeExchanges.length >= 2 && viewMode === 'price' && (
                   <Area type="monotone" dataKey="_max" stroke="none" fill="rgba(234,179,8,0.06)"
                     baseLine={chartData.map(d => (d._min as number) || 0)} connectNulls
                     isAnimationActive={false} />
                 )}
+                {activeExchanges.length >= 2 && viewMode === 'deviation' && (
+                  <Area type="monotone" dataKey="_devMax" stroke="none" fill="rgba(234,179,8,0.06)"
+                    baseLine={chartData.map(d => (d._devMin as number) || 0)} connectNulls
+                    isAnimationActive={false} />
+                )}
                 {activeExchanges.map((ex, i) => (
-                  <Line key={ex} type="monotone" dataKey={ex} stroke={getColor(ex, i)}
+                  <Line key={ex} type="monotone"
+                    dataKey={viewMode === 'deviation' ? `${ex}_dev` : ex}
+                    stroke={getColor(ex, i)}
                     strokeWidth={2.5} dot={false}
                     activeDot={{ r: 5, fill: getColor(ex, i), stroke: '#0b0e1a', strokeWidth: 2 }}
                     connectNulls
