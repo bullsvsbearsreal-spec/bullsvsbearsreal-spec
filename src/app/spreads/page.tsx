@@ -175,6 +175,7 @@ export default function SpreadsPage() {
     }
   }, [wsSpread, alertActive, alertThreshold, sym, lastAlert]);
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
+  const [viewMode, setViewMode] = useState<'price' | 'pct'>('price');
   const [candleExchange, setCandleExchange] = useState('');
 
   // Close dropdowns on outside click
@@ -587,6 +588,15 @@ export default function SpreadsPage() {
                 <button onClick={() => { setChartMode('candle'); if (!candleExchange && exs.length > 0) setCandleExchange(exs[0]); }}
                   className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (chartMode === 'candle' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>Candles</button>
               </div>
+              {/* Price vs % view toggle */}
+              {chartMode === 'line' && (
+                <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
+                  <button onClick={() => setViewMode('price')}
+                    className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (viewMode === 'price' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>$</button>
+                  <button onClick={() => setViewMode('pct')}
+                    className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (viewMode === 'pct' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>%</button>
+                </div>
+              )}
               {chartMode === 'candle' && (
                 <select value={candleExchange} onChange={e => setCandleExchange(e.target.value)}
                   className="px-2 py-0.5 rounded-md text-[10px] bg-white/[0.04] border border-white/[0.06] text-neutral-300 outline-none">
@@ -645,11 +655,11 @@ export default function SpreadsPage() {
                 <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 7))} />
-                <YAxis domain={yDomain} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => '$' + fp(v)} width={72} allowDataOverflow />
+                <YAxis domain={viewMode === 'pct' ? ['auto', 'auto'] : yDomain} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
+                  tickFormatter={(v: number) => viewMode === 'pct' ? (v >= 0 ? '+' : '') + v.toFixed(3) + '%' : '$' + fp(v)} width={viewMode === 'pct' ? 68 : 72} allowDataOverflow />
                 <RTooltip content={<SpreadTooltip exList={exs} colorFn={ec} />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeDasharray: '4 4' }} />
                 {exs.map((e, i) => (
-                  <Line key={e} type="monotone" dataKey={e} stroke={ec(e, i)} strokeWidth={2.5} dot={false}
+                  <Line key={e} type="monotone" dataKey={viewMode === 'pct' ? e + '_dev' : e} stroke={ec(e, i)} strokeWidth={2.5} dot={false}
                     activeDot={{ r: 4, fill: ec(e, i), stroke: '#0f0f14', strokeWidth: 2 }} connectNulls
                     style={{ filter: `drop-shadow(0 0 6px ${ec(e, i)}40)` }} />
                 ))}
