@@ -481,18 +481,41 @@ export default function SpreadsPage() {
           )}
         </div>
 
-        {/* ── Spread History ── */}
-        {data.length > 0 && exs.length >= 2 && (
+        {/* ── Spread History + Range Analysis ── */}
+        {data.length > 0 && exs.length >= 2 && stats && (
           <div className="rounded-2xl bg-[#0c0e14] border border-white/[0.06] p-4 sm:p-5 mb-5">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-sm font-semibold">Spread Over Time</h2>
-                <p className="text-[11px] text-neutral-500">Highest minus lowest price across selected exchanges</p>
+                <h2 className="text-sm font-semibold">Spread History ({TFS.find(t => t.key === tf)?.label})</h2>
+                <p className="text-[11px] text-neutral-500">
+                  Price spread between highest and lowest exchange over time.
+                  Use this to find the typical spread range for {sym}.
+                </p>
               </div>
-              {stats && <span className="text-[11px] text-neutral-500">Avg: <span className="text-hub-yellow font-mono">{'$'}{fp(stats.avg)}</span></span>}
+              {/* Spread Range Summary */}
+              <div className="flex gap-4 sm:gap-6 flex-shrink-0">
+                <div className="text-center sm:text-right">
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Max</p>
+                  <p className="font-mono text-sm text-green-400">{'$'}{fp(stats.max)}</p>
+                  <p className="text-[9px] text-neutral-600">
+                    {stats.maxT ? new Date(stats.maxT).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                  </p>
+                </div>
+                <div className="text-center sm:text-right">
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Average</p>
+                  <p className="font-mono text-sm text-hub-yellow">{'$'}{fp(stats.avg)}</p>
+                </div>
+                <div className="text-center sm:text-right">
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Min</p>
+                  <p className="font-mono text-sm text-cyan-400">{'$'}{fp(stats.min)}</p>
+                  <p className="text-[9px] text-neutral-600">
+                    {stats.minT ? new Date(stats.minT).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                  </p>
+                </div>
+              </div>
             </div>
-            <ResponsiveContainer width="100%" height={150}>
-              <ComposedChart data={data} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={data} margin={{ top: 5, right: 50, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 6))} />
@@ -500,11 +523,24 @@ export default function SpreadsPage() {
                   tickFormatter={(v: number) => '$' + fp(v)} width={55} domain={[0, 'auto']} />
                 <RTooltip contentStyle={{ background: '#141418', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
                   formatter={(v: number) => ['$' + fp(v), 'Spread']} labelStyle={{ color: '#6b7280' }} />
-                {stats && <ReferenceLine y={stats.avg} stroke="#F59E0B" strokeDasharray="3 3" strokeWidth={1}
-                  label={{ value: 'avg', position: 'right', fill: '#F59E0B', fontSize: 9 }} />}
-                <Area type="monotone" dataKey="_spread" stroke="#F59E0B" fill="rgba(245,158,11,0.1)" strokeWidth={1.5} dot={false} connectNulls />
+                {/* Max spread line (top range) */}
+                <ReferenceLine y={stats.max} stroke="#22c55e" strokeDasharray="6 3" strokeWidth={1}
+                  label={{ value: 'MAX $' + fp(stats.max), position: 'right', fill: '#22c55e', fontSize: 8 }} />
+                {/* Average spread line */}
+                <ReferenceLine y={stats.avg} stroke="#F59E0B" strokeDasharray="3 3" strokeWidth={1}
+                  label={{ value: 'AVG $' + fp(stats.avg), position: 'right', fill: '#F59E0B', fontSize: 8 }} />
+                {/* Min spread line (bottom range) */}
+                <ReferenceLine y={stats.min} stroke="#06b6d4" strokeDasharray="6 3" strokeWidth={1}
+                  label={{ value: 'MIN $' + fp(stats.min), position: 'right', fill: '#06b6d4', fontSize: 8 }} />
+                {/* Spread area fill */}
+                <Area type="monotone" dataKey="_spread" stroke="#F59E0B" fill="rgba(245,158,11,0.08)" strokeWidth={2} dot={false} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
+            <p className="text-[10px] text-neutral-600 mt-3 text-center">
+              The spread typically ranges between {'$'}{fp(stats.min)} (min) and {'$'}{fp(stats.max)} (max).
+              Average spread over {TFS.find(t => t.key === tf)?.label}: {'$'}{fp(stats.avg)}.
+              Values above the green MAX line indicate unusual spread widening.
+            </p>
           </div>
         )}
 
