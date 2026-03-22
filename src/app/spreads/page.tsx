@@ -8,7 +8,8 @@ import {
 import { ArrowLeftRight, Search, ChevronDown, X, RefreshCw, Calculator, TrendingUp, TrendingDown, Activity, BarChart3, Zap, Info } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { getCoinIcon, getExchangeIcon } from '@/lib/coinIcons';
+import { getCoinIcon } from '@/lib/coinIcons';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 
 // ─── Exchange colors ─────────────────────────────────────────────────────────
 const EX_COLORS: Record<string, string> = {
@@ -151,12 +152,7 @@ export default function SpreadsPage() {
         {ps.map(x => (
           <div key={x.e} className="flex justify-between gap-4 py-[2px]">
             <span className="flex items-center gap-1.5">
-              {getExchangeIcon(x.e) ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={getExchangeIcon(x.e)!} alt="" className="w-3.5 h-3.5 rounded-full" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none'; }} />
-              ) : (
-                <span className="w-2 h-2 rounded-full" style={{ background: ec(x.e, exs.indexOf(x.e)) }} />
-              )}
+              <ExchangeLogo exchange={x.e} size={14} />
               <span className="text-neutral-300">{x.e}</span>
             </span>
             <span className="flex items-center gap-1.5">
@@ -256,21 +252,13 @@ export default function SpreadsPage() {
 
           {/* Exchanges */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            {sel.map((e, i) => {
-              const icon = getExchangeIcon(e);
-              return (
+            {sel.map((e) => (
               <span key={e} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white/[0.04] border border-white/[0.06]">
-                {icon ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={icon} alt="" className="w-4 h-4 rounded-full" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none'; }} />
-                ) : (
-                  <span className="w-3 h-3 rounded-full" style={{ background: ec(e, i) }} />
-                )}
+                <ExchangeLogo exchange={e} size={16} />
                 {e}
                 <button onClick={() => toggle(e)} className="text-neutral-600 hover:text-white ml-0.5"><X className="w-3 h-3" /></button>
               </span>
-              );
-            })}
+            ))}
             <div className="relative">
               <button onClick={() => setShowEx(!showEx)} className="px-2.5 py-1 rounded-full text-[11px] text-neutral-500 bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow/30 transition">
                 + Exchange
@@ -281,12 +269,7 @@ export default function SpreadsPage() {
                     <button key={e} onClick={() => { toggle(e); setShowEx(false); }}
                       className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.04] flex items-center justify-between ${sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
                       <span className="flex items-center gap-2">
-                        {getExchangeIcon(e) ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={getExchangeIcon(e)!} alt="" className="w-4 h-4 rounded-full" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none'; }} />
-                        ) : (
-                          <span className="w-3 h-3 rounded-full" style={{ background: ec(e, i) }} />
-                        )}
+                        <ExchangeLogo exchange={e} size={16} />
                         {e}
                       </span>
                       {sel.includes(e) && <span className="text-hub-yellow text-[10px]">✓</span>}
@@ -343,7 +326,7 @@ export default function SpreadsPage() {
           <div className="rounded-xl bg-[#0c0e14] border border-white/[0.06] px-4 py-2 mb-5 flex items-center gap-5 overflow-x-auto scrollbar-none">
             {stats.prices.map((x, i) => (
               <div key={x.e} className="flex items-center gap-2 flex-shrink-0">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ec(x.e, exs.indexOf(x.e)) }} />
+                <ExchangeLogo exchange={x.e} size={14} />
                 <span className="text-[11px] text-neutral-500">{x.e}</span>
                 <span className="font-mono text-[12px] text-white font-medium">{'$'}{fp(x.p)}</span>
                 {(() => {
@@ -455,7 +438,7 @@ export default function SpreadsPage() {
                 return (
                   <div key={x.e} className={`px-4 sm:px-5 py-3 flex items-center justify-between border-b border-white/[0.03] ${i === 0 ? 'bg-green-500/[0.02]' : i === stats.prices.length - 1 ? 'bg-red-500/[0.02]' : ''}`}>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: ec(x.e, exs.indexOf(x.e)) }} />
+                      <ExchangeLogo exchange={x.e} size={18} />
                       <span className="text-sm font-medium">{x.e}</span>
                       {i === 0 && <span className="text-[8px] px-1.5 py-[1px] rounded bg-green-500/10 text-green-400 font-semibold">highest</span>}
                       {i === stats.prices.length - 1 && <span className="text-[8px] px-1.5 py-[1px] rounded bg-red-500/10 text-red-400 font-semibold">lowest</span>}
