@@ -2,29 +2,27 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  ComposedChart, Line, XAxis, YAxis, Tooltip as RTooltip,
-  CartesianGrid, ResponsiveContainer, Area,
+  ComposedChart, Line, Area, XAxis, YAxis, Tooltip as RTooltip,
+  CartesianGrid, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { ArrowLeftRight, Search, ChevronDown, X, Info, RefreshCw, Calculator, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import Image from 'next/image';
+import { Search, ChevronDown, X, RefreshCw, Calculator, TrendingUp, TrendingDown, Activity, Zap } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getCoinIcon } from '@/lib/coinIcons';
 
-// ─── Colors per exchange (TradingView neon palette) ──────────────────────────
-const COLORS: Record<string, string> = {
+// ─── Bloomberg-style neon colors ─────────────────────────────────────────────
+const EX_COLORS: Record<string, string> = {
   Binance: '#F0B90B', Bybit: '#FF6B6B', OKX: '#00FF9D', Bitget: '#00D4FF',
   MEXC: '#A855F7', HTX: '#FF61D2', Hyperliquid: '#00FFCC', dYdX: '#6966FF',
-  Kraken: '#FF9500', 'Gate.io': '#3B82F6', Coinbase: '#0052FF', Phemex: '#D4FF00',
 };
-const PALETTE = ['#F0B90B','#FF6B6B','#00FF9D','#00D4FF','#A855F7','#FF61D2','#00FFCC','#6966FF','#FF9500','#3B82F6'];
-function getColor(ex: string, i: number) { return COLORS[ex] || PALETTE[i % PALETTE.length]; }
+const PALETTE = ['#F0B90B','#FF6B6B','#00FF9D','#00D4FF','#A855F7','#FF61D2','#00FFCC','#6966FF'];
+function cx(ex: string, i: number) { return EX_COLORS[ex] || PALETTE[i % PALETTE.length]; }
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Data ────────────────────────────────────────────────────────────────────
 type Candle = { t: number; c: number };
-type ChartPoint = { time: number; label: string; [ex: string]: number | string };
+type Pt = { time: number; label: string; _spread?: number; [k: string]: any };
 
-const SYMBOLS = {
+const SYMBOLS: Record<string, string[]> = {
   Majors: ['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','AVAX','LINK','TON','LTC','BCH','ETC','TRX'],
   'Layer 2': ['ARB','OP','MATIC','STRK','ZK','IMX','MANTA','STX','SEI'],
   Alts: ['SUI','APT','NEAR','DOT','FIL','ATOM','INJ','HBAR','RENDER','TIA','ALGO','VET','FTM'],
@@ -32,567 +30,423 @@ const SYMBOLS = {
   Memes: ['PEPE','WIF','BONK','FLOKI','SHIB','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU','TURBO','NEIRO'],
   Gaming: ['SAND','MANA','AXS','GALA','BLUR','ENS','WLD','W','ZRO'],
 };
-const ALL_SYMBOLS = [...SYMBOLS.Majors, ...SYMBOLS.Alts, ...SYMBOLS.Memes];
-
+const ALL_SYM = Object.values(SYMBOLS).flat();
 const EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','HTX','Hyperliquid','dYdX'];
-
-const TIMEFRAMES = [
+const TFS = [
   { key: '1d', label: '1D', interval: '1h', limit: 24 },
   { key: '7d', label: '7D', interval: '1h', limit: 168 },
   { key: '30d', label: '30D', interval: '4h', limit: 180 },
 ] as const;
-type TfKey = typeof TIMEFRAMES[number]['key'];
+type TfK = typeof TFS[number]['key'];
 
-function formatPrice(v: number) {
-  if (v >= 1000) return '$' + v.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (v >= 1) return '$' + v.toFixed(2);
-  return '$' + v.toPrecision(4);
-}
-function formatCompact(v: number) {
-  if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
-  if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
-  if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
-  return '$' + v.toFixed(2);
+function fp(v: number) {
+  if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (v >= 1) return v.toFixed(2);
+  return v.toPrecision(4);
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
-
-export default function SpreadsPage() {
-  const [symbol, setSymbol] = useState('BTC');
-  const [selected, setSelected] = useState<string[]>(['Binance', 'Bybit', 'OKX', 'Hyperliquid']);
-  const [tf, setTf] = useState<TfKey>('1d');
-  const [showSymPicker, setShowSymPicker] = useState(false);
-  const [symSearch, setSymSearch] = useState('');
-  const [showExPicker, setShowExPicker] = useState(false);
-  const [klineData, setKlineData] = useState<Record<string, Candle[]> | null>(null);
+export default function SpreadsTerminal() {
+  const [sym, setSym] = useState('BTC');
+  const [sel, setSel] = useState<string[]>(['Binance','Bybit','OKX','Hyperliquid']);
+  const [tf, setTf] = useState<TfK>('1d');
+  const [showSym, setShowSym] = useState(false);
+  const [symQ, setSymQ] = useState('');
+  const [showEx, setShowEx] = useState(false);
+  const [kd, setKd] = useState<Record<string, Candle[]> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCalc, setShowCalc] = useState(false);
-  const [viewMode, setViewMode] = useState<'price' | 'deviation'>('price');
-  const [calcSize, setCalcSize] = useState('10000');
+  const [calcAmt, setCalcAmt] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
+  const [now] = useState(Date.now);
 
-  // ── Fetch klines ──
+  // Fetch
   useEffect(() => {
-    const t = TIMEFRAMES.find(x => x.key === tf)!;
+    const t = TFS.find(x => x.key === tf)!;
     setLoading(true);
-    let cancelled = false;
-    fetch(`/api/klines-multi?symbol=${symbol}&interval=${t.interval}&limit=${t.limit}`)
+    let c = false;
+    fetch(`/api/klines-multi?symbol=${sym}&interval=${t.interval}&limit=${t.limit}`)
       .then(r => r.ok ? r.json() : null)
-      .then(json => {
-        if (cancelled) return;
-        const ex = json?.exchanges as Record<string, Candle[]> | undefined;
-        setKlineData(ex && Object.keys(ex).length > 0 ? ex : null);
-      })
-      .catch(() => { if (!cancelled) setKlineData(null); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [symbol, tf]);
+      .then(j => { if (!c) setKd(j?.exchanges && Object.keys(j.exchanges).length > 0 ? j.exchanges : null); })
+      .catch(() => { if (!c) setKd(null); })
+      .finally(() => { if (!c) setLoading(false); });
+    return () => { c = true; };
+  }, [sym, tf]);
 
-  // ── Build chart data ──
-  const { chartData, activeExchanges } = useMemo(() => {
-    if (!klineData) return { chartData: [] as ChartPoint[], activeExchanges: [] as string[] };
-    const avail = Object.keys(klineData);
-    const active = selected.filter(e => avail.includes(e));
-    const exs = active.length >= 1 ? active : avail.slice(0, 4);
-    if (exs.length < 1) return { chartData: [], activeExchanges: [] };
-
-    // Bucket timestamps
-    const allTimes = new Set<number>();
+  // Chart data
+  const { data, exs } = useMemo(() => {
+    if (!kd) return { data: [] as Pt[], exs: [] as string[] };
+    const av = Object.keys(kd);
+    const active = sel.filter(e => av.includes(e));
+    const exs = active.length >= 1 ? active : av.slice(0, 4);
+    const times = new Set<number>();
     const maps: Record<string, Map<number, number>> = {};
-    for (const ex of exs) {
+    for (const e of exs) {
       const m = new Map<number, number>();
-      for (const c of klineData[ex]) if (c.c > 0) { m.set(c.t, c.c); allTimes.add(c.t); }
-      maps[ex] = m;
+      for (const c of kd[e]) if (c.c > 0) { m.set(c.t, c.c); times.add(c.t); }
+      maps[e] = m;
     }
-
-    const sorted = Array.from(allTimes).sort((a,b) => a - b);
-    const rows: ChartPoint[] = [];
+    const sorted = Array.from(times).sort((a, b) => a - b);
+    const rows: Pt[] = [];
     const last: Record<string, number> = {};
     for (const t of sorted) {
-      const pt: ChartPoint = { time: t, label: '' };
-      let hasAny = false;
-      for (const ex of exs) {
-        const p = maps[ex]?.get(t) ?? last[ex];
-        if (p) { last[ex] = p; pt[ex] = p; hasAny = true; }
+      const pt: Pt = { time: t, label: '' };
+      const prices: number[] = [];
+      for (const e of exs) {
+        const p = maps[e]?.get(t) ?? last[e];
+        if (p) { last[e] = p; pt[e] = p; pt[`${e}_dev`] = 0; prices.push(p); }
       }
-      if (!hasAny) continue;
-      // Compute spread band + deviation %
-      const prices = exs.map(e => pt[e] as number).filter(p => typeof p === 'number' && p > 0);
-      if (prices.length >= 2) {
-        pt._min = Math.min(...prices);
-        pt._max = Math.max(...prices);
-        pt._spread = (pt._max as number) - (pt._min as number);
-        const med = prices.reduce((s, p) => s + p, 0) / prices.length;
-        // Add deviation % for each exchange (deviation from mean)
-        for (const ex of exs) {
-          const p = pt[ex] as number;
-          if (typeof p === 'number' && p > 0 && med > 0) {
-            pt[`${ex}_dev`] = ((p - med) / med) * 100; // % deviation
-          }
-        }
-        pt._devMin = ((pt._min as number) - med) / med * 100;
-        pt._devMax = ((pt._max as number) - med) / med * 100;
-      }
+      if (prices.length < 1) continue;
+      const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+      for (const e of exs) if (pt[e]) pt[`${e}_dev`] = ((pt[e] as number) - avg) / avg * 100;
+      pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
       const d = new Date(t);
-      pt.label = tf === '30d'
-        ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-        : tf === '7d'
-          ? d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-          : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      pt.label = tf === '30d' ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+        : tf === '7d' ? `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+        : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       rows.push(pt);
     }
-    return { chartData: rows, activeExchanges: exs };
-  }, [klineData, selected, tf]);
+    return { data: rows, exs };
+  }, [kd, sel, tf]);
 
-  // ── Spread stats ──
+  // Stats
   const stats = useMemo(() => {
-    if (chartData.length === 0 || activeExchanges.length < 2) return null;
-    let sumSpread = 0, maxSpread = 0, minSpread = Infinity, maxTime = 0, minTime = 0;
-    let count = 0;
-    for (const pt of chartData) {
-      const prices = activeExchanges.map(e => pt[e] as number).filter(p => typeof p === 'number' && p > 0);
-      if (prices.length < 2) continue;
-      const spread = Math.max(...prices) - Math.min(...prices);
-      sumSpread += spread;
-      count++;
-      if (spread > maxSpread) { maxSpread = spread; maxTime = pt.time; }
-      if (spread < minSpread) { minSpread = spread; minTime = pt.time; }
+    if (data.length === 0 || exs.length < 2) return null;
+    let sum = 0, max = 0, min = Infinity, maxT = 0, minT = 0, cnt = 0;
+    for (const pt of data) {
+      const s = pt._spread || 0;
+      sum += s; cnt++;
+      if (s > max) { max = s; maxT = pt.time; }
+      if (s < min) { min = s; minT = pt.time; }
     }
-    const avg = count > 0 ? sumSpread / count : 0;
-    // Current spread
-    const last = chartData[chartData.length - 1];
-    const lastPrices = activeExchanges.map(e => ({ ex: e, p: last[e] as number })).filter(x => typeof x.p === 'number' && x.p > 0);
-    lastPrices.sort((a,b) => b.p - a.p);
-    const current = lastPrices.length >= 2 ? lastPrices[0].p - lastPrices[lastPrices.length-1].p : 0;
-    const currentPct = lastPrices.length >= 2 ? (current / lastPrices[lastPrices.length-1].p) * 100 : 0;
-    return {
-      current, currentPct, avg, max: maxSpread, min: minSpread === Infinity ? 0 : minSpread,
-      maxTime, minTime, highest: lastPrices[0], lowest: lastPrices[lastPrices.length-1],
-      prices: lastPrices,
-    };
-  }, [chartData, activeExchanges]);
+    const last = data[data.length - 1];
+    const prices = exs.map(e => ({ e, p: last[e] as number })).filter(x => x.p > 0).sort((a, b) => b.p - a.p);
+    const cur = prices.length >= 2 ? prices[0].p - prices[prices.length - 1].p : 0;
+    const pct = prices.length >= 2 ? (cur / prices[prices.length - 1].p) * 100 : 0;
+    return { cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, prices, hi: prices[0], lo: prices[prices.length - 1] };
+  }, [data, exs]);
 
-  // ── Symbol picker filter ──
-  const filteredSymbols = useMemo(() => {
-    if (!symSearch) return ALL_SYMBOLS;
-    const q = symSearch.toUpperCase();
-    return ALL_SYMBOLS.filter(s => s.includes(q));
-  }, [symSearch]);
+  const toggle = useCallback((e: string) => setSel(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e].slice(0, 8)), []);
 
-  const toggleExchange = useCallback((ex: string) => {
-    setSelected(prev => prev.includes(ex) ? prev.filter(e => e !== ex) : [...prev, ex].slice(0, 8));
-  }, []);
-
-  // ── Custom Tooltip ──
-  const CustomTooltip = ({ active, payload }: any) => {
+  // Tooltip
+  const Tip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const pt = payload[0]?.payload;
     if (!pt) return null;
-    const prices = activeExchanges.map(ex => ({
-      ex, p: pt[ex] as number, dev: pt[`${ex}_dev`] as number
-    })).filter(x => typeof x.p === 'number');
-    prices.sort((a,b) => b.p - a.p);
-    const spread = prices.length >= 2 ? prices[0].p - prices[prices.length-1].p : 0;
-    const spreadPct = prices.length >= 2 ? (spread / prices[prices.length-1].p) * 100 : 0;
+    const ps = exs.map(e => ({ e, p: pt[e] as number, d: pt[`${e}_dev`] as number })).filter(x => x.p > 0).sort((a, b) => b.p - a.p);
+    const sp = ps.length >= 2 ? ps[0].p - ps[ps.length - 1].p : 0;
     return (
-      <div className="bg-[#0d0f1a] border border-white/10 rounded-lg px-3 py-2.5 shadow-2xl text-xs min-w-[200px]">
-        <p className="text-neutral-400 mb-2 text-[10px]">{pt.label}</p>
-        {prices.map((x) => (
-          <div key={x.ex} className="flex items-center justify-between gap-4 py-[2px]">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: getColor(x.ex, activeExchanges.indexOf(x.ex)) }} />
-              <span className="text-neutral-300">{x.ex}</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="font-mono text-white">{formatPrice(x.p)}</span>
-              {typeof x.dev === 'number' && (
-                <span className={`font-mono text-[10px] ${x.dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {x.dev >= 0 ? '+' : ''}{x.dev.toFixed(3)}%
-                </span>
-              )}
-            </span>
+      <div className="bg-[#0a0a12] border border-[#1a1f2e] rounded px-2.5 py-2 font-mono text-[10px] shadow-xl min-w-[180px]">
+        <div className="text-neutral-500 mb-1.5 border-b border-[#1a1f2e] pb-1">{pt.label}</div>
+        {ps.map(x => (
+          <div key={x.e} className="flex justify-between gap-3 py-[1px]">
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm" style={{ background: cx(x.e, exs.indexOf(x.e)) }} /><span className="text-neutral-400">{x.e}</span></span>
+            <span><span className="text-white">{fp(x.p)}</span> <span className={x.d >= 0 ? 'text-green-400' : 'text-red-400'}>{x.d >= 0 ? '+' : ''}{x.d.toFixed(3)}%</span></span>
           </div>
         ))}
-        {prices.length >= 2 && (
-          <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
-            <span className="text-neutral-500">Spread</span>
-            <span className="font-mono text-hub-yellow">{formatPrice(spread)} <span className="text-neutral-500 text-[10px]">({spreadPct.toFixed(3)}%)</span></span>
-          </div>
-        )}
+        {sp > 0 && <div className="border-t border-[#1a1f2e] mt-1 pt-1 flex justify-between"><span className="text-neutral-600">SPREAD</span><span className="text-amber-400">${fp(sp)}</span></div>}
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0e1a] text-white flex flex-col">
+    <div className="min-h-screen bg-[#080a10] text-white flex flex-col">
       <Header />
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6">
+      <main className="flex-1 w-full">
 
-        {/* ── Title Row ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-              <ArrowLeftRight className="w-6 h-6 text-hub-yellow" />
-              Exchange <span className="text-hub-yellow">Spreads</span>
-            </h1>
-            <p className="text-neutral-500 text-sm mt-1">Compare {symbol}/USDT perp prices across {EXCHANGES.length} exchanges</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowCalc(!showCalc)} className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-neutral-400 hover:text-white transition flex items-center gap-1.5">
-              <Calculator className="w-3.5 h-3.5" /> Arb Calc
-            </button>
-          </div>
-        </div>
-
-        {/* ── Controls Row ── */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          {/* Symbol Picker */}
-          <div className="relative">
-            <button onClick={() => setShowSymPicker(!showSymPicker)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-hub-yellow/30 transition">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={getCoinIcon(symbol)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              <span className="text-lg font-bold">{symbol}</span>
-              <span className="text-neutral-500 text-sm">/USDT</span>
-              <ChevronDown className="w-4 h-4 text-neutral-500" />
-            </button>
-            {showSymPicker && (
-              <div className="absolute top-full mt-1 left-0 z-50 w-56 max-h-80 overflow-y-auto rounded-lg bg-[#141418] border border-white/[0.08] shadow-2xl">
-                <div className="p-2 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.04]">
-                    <Search className="w-3.5 h-3.5 text-neutral-500" />
-                    <input value={symSearch} onChange={e => setSymSearch(e.target.value)} placeholder="Search..." autoFocus
-                      className="bg-transparent text-sm text-white placeholder:text-neutral-600 outline-none w-full" />
+        {/* ── Terminal Header Bar ── */}
+        <div className="border-b border-[#1a1f2e] bg-[#0c0e16]">
+          <div className="max-w-[1600px] mx-auto px-3 py-2 flex items-center gap-2 flex-wrap">
+            {/* Symbol */}
+            <div className="relative">
+              <button onClick={() => setShowSym(!showSym)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#12141e] border border-[#1a1f2e] rounded hover:border-amber-500/30 transition">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={getCoinIcon(sym)} alt="" className="w-4 h-4 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <span className="font-mono font-bold text-sm">{sym}</span>
+                <span className="text-neutral-600 text-xs">PERP</span>
+                <ChevronDown className="w-3 h-3 text-neutral-600" />
+              </button>
+              {showSym && (
+                <div className="absolute top-full mt-1 left-0 z-50 w-52 max-h-[400px] overflow-y-auto bg-[#0c0e16] border border-[#1a1f2e] rounded shadow-2xl">
+                  <div className="p-1.5 border-b border-[#1a1f2e] sticky top-0 bg-[#0c0e16]">
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[#12141e] rounded">
+                      <Search className="w-3 h-3 text-neutral-600" />
+                      <input value={symQ} onChange={e => setSymQ(e.target.value)} placeholder="Search..." autoFocus className="bg-transparent text-xs text-white placeholder:text-neutral-700 outline-none w-full font-mono" />
+                    </div>
                   </div>
-                </div>
-                {Object.entries(SYMBOLS).map(([group, syms]) => {
-                  const filtered = syms.filter(s => !symSearch || s.includes(symSearch.toUpperCase()));
-                  if (filtered.length === 0) return null;
-                  return (
-                    <div key={group}>
-                      <p className="px-3 py-1 text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">{group}</p>
-                      {filtered.map(s => (
-                        <button key={s} onClick={() => { setSymbol(s); setShowSymPicker(false); setSymSearch(''); }}
-                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-white/[0.04] flex items-center gap-2 ${s === symbol ? 'text-hub-yellow' : 'text-neutral-300'}`}>
+                  {Object.entries(SYMBOLS).map(([g, ss]) => {
+                    const f = ss.filter(s => !symQ || s.includes(symQ.toUpperCase()));
+                    if (!f.length) return null;
+                    return (<div key={g}>
+                      <div className="px-2.5 py-1 text-[8px] text-neutral-600 uppercase tracking-widest font-bold bg-[#0a0c14]">{g}</div>
+                      {f.map(s => (
+                        <button key={s} onClick={() => { setSym(s); setShowSym(false); setSymQ(''); }}
+                          className={`w-full text-left px-2.5 py-1 text-xs hover:bg-[#12141e] flex items-center gap-1.5 font-mono ${s === sym ? 'text-amber-400' : 'text-neutral-400'}`}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={getCoinIcon(s)} alt="" className="w-4 h-4 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <img src={getCoinIcon(s)} alt="" className="w-3.5 h-3.5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           {s}
-                          {s === symbol && <span className="ml-auto text-hub-yellow text-[10px]">✓</span>}
                         </button>
                       ))}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    </div>);
+                  })}
+                </div>
+              )}
+            </div>
 
-          {/* Timeframe Tabs */}
-          <div className="flex items-center gap-[2px] p-[3px] rounded-lg bg-white/[0.03] border border-white/[0.06]">
-            {TIMEFRAMES.map(t => (
+            <div className="h-4 w-px bg-[#1a1f2e]" />
+
+            {/* Timeframe */}
+            {TFS.map(t => (
               <button key={t.key} onClick={() => setTf(t.key)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${tf === t.key ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300'}`}>
+                className={`px-2 py-1 text-[10px] font-mono font-bold rounded transition ${tf === t.key ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' : 'text-neutral-600 hover:text-neutral-400 border border-transparent'}`}>
                 {t.label}
               </button>
             ))}
-          </div>
 
-          {/* Exchange Pills */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {selected.map((ex, i) => (
-              <span key={ex} className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-white/[0.04] border border-white/[0.06]">
-                <span className="w-2 h-2 rounded-full" style={{ background: getColor(ex, i) }} />
-                {ex}
-                <button onClick={() => toggleExchange(ex)} className="ml-0.5 text-neutral-600 hover:text-white"><X className="w-3 h-3" /></button>
+            <div className="h-4 w-px bg-[#1a1f2e]" />
+
+            {/* Exchanges */}
+            {sel.map((e, i) => (
+              <span key={e} className="flex items-center gap-1 px-1.5 py-0.5 bg-[#12141e] border border-[#1a1f2e] rounded text-[10px] font-mono">
+                <span className="w-1.5 h-1.5 rounded-sm" style={{ background: cx(e, i) }} />
+                <span className="text-neutral-400">{e}</span>
+                <button onClick={() => toggle(e)} className="text-neutral-700 hover:text-red-400 ml-0.5"><X className="w-2.5 h-2.5" /></button>
               </span>
             ))}
             <div className="relative">
-              <button onClick={() => setShowExPicker(!showExPicker)}
-                className="px-2 py-1 rounded-full text-[11px] text-neutral-500 bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow/30 transition">
-                + Exchange
-              </button>
-              {showExPicker && (
-                <div className="absolute top-full mt-1 left-0 z-50 w-44 rounded-lg bg-[#141418] border border-white/[0.08] shadow-2xl py-1">
-                  {EXCHANGES.map(ex => (
-                    <button key={ex} onClick={() => { toggleExchange(ex); setShowExPicker(false); }}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.04] flex items-center justify-between ${selected.includes(ex) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ background: getColor(ex, EXCHANGES.indexOf(ex)) }} />
-                        {ex}
-                      </span>
-                      {selected.includes(ex) && <span className="text-hub-yellow text-[10px]">✓</span>}
+              <button onClick={() => setShowEx(!showEx)} className="px-1.5 py-0.5 text-[10px] text-neutral-600 border border-[#1a1f2e] rounded hover:border-amber-500/30 font-mono">+EX</button>
+              {showEx && (
+                <div className="absolute top-full mt-1 left-0 z-50 w-36 bg-[#0c0e16] border border-[#1a1f2e] rounded shadow-2xl py-0.5">
+                  {EXCHANGES.map((e, i) => (
+                    <button key={e} onClick={() => { toggle(e); setShowEx(false); }}
+                      className={`w-full text-left px-2.5 py-1 text-[10px] font-mono hover:bg-[#12141e] flex items-center gap-1.5 ${sel.includes(e) ? 'text-amber-400' : 'text-neutral-500'}`}>
+                      <span className="w-1.5 h-1.5 rounded-sm" style={{ background: cx(e, i) }} />{e}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <span className="text-[10px] text-neutral-600">{selected.length} of {EXCHANGES.length}</span>
+
+            <div className="ml-auto flex items-center gap-2">
+              <button onClick={() => setShowCalc(!showCalc)} className="px-2 py-1 text-[10px] font-mono text-neutral-600 border border-[#1a1f2e] rounded hover:text-amber-400 hover:border-amber-500/20 transition">
+                <Calculator className="w-3 h-3 inline mr-1" />ARB
+              </button>
+              {loading && <RefreshCw className="w-3 h-3 text-neutral-700 animate-spin" />}
+              <span className="text-[9px] text-neutral-700 font-mono">{exs.length} FEEDS</span>
+            </div>
           </div>
         </div>
 
-        {/* ── Spread Hero ── */}
-        {stats && (
-          <div className="rounded-xl bg-gradient-to-r from-white/[0.03] to-white/[0.01] border border-white/[0.08] p-5 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={getCoinIcon(symbol)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                <p className="text-neutral-500 text-xs">
-                  {activeExchanges.length === 2 ? `${stats.highest?.ex} vs ${stats.lowest?.ex}` : `Max spread across ${activeExchanges.length} exchanges`}
-                </p>
-              </div>
-              <div className="flex items-baseline gap-3">
-                <span className={`text-3xl font-bold font-mono ${stats.current > 0 ? 'text-hub-yellow' : 'text-neutral-400'}`}>
-                  {formatPrice(stats.current)}
-                </span>
-                <span className="text-neutral-400 text-sm">{stats.currentPct.toFixed(4)}%</span>
-                <span className="text-neutral-600 text-xs">({(stats.currentPct * 100).toFixed(1)} bps)</span>
-              </div>
-            </div>
-            <div className="flex gap-4 sm:gap-6 flex-wrap">
-              <div className="text-right">
-                <p className="text-[10px] text-neutral-500 flex items-center gap-1"><TrendingUp className="w-3 h-3 text-green-400" /> Highest</p>
-                <p className="font-mono text-sm text-white">{stats.highest ? formatPrice(stats.highest.p) : '—'}</p>
-                <p className="text-[10px] text-green-400">{stats.highest?.ex}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-neutral-500 flex items-center gap-1"><TrendingDown className="w-3 h-3 text-red-400" /> Lowest</p>
-                <p className="font-mono text-sm text-white">{stats.lowest ? formatPrice(stats.lowest.p) : '—'}</p>
-                <p className="text-[10px] text-red-400">{stats.lowest?.ex}</p>
-              </div>
-              <div className="text-right border-l border-white/[0.06] pl-4">
-                <p className="text-[10px] text-neutral-500">Spread Range ({TIMEFRAMES.find(t=>t.key===tf)?.label})</p>
-                <p className="font-mono text-sm text-white">{formatPrice(stats.min)} — {formatPrice(stats.max)}</p>
-                <p className="text-[10px] text-neutral-500">avg {formatPrice(stats.avg)}</p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ── Main Grid ── */}
+        <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-0">
 
-        {/* ── Chart ── */}
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-neutral-300">Price Chart</h2>
-              <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
-                <button onClick={() => setViewMode('price')}
-                  className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${viewMode === 'price' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400'}`}>$</button>
-                <button onClick={() => setViewMode('deviation')}
-                  className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${viewMode === 'deviation' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400'}`}>%</button>
+          {/* Left: Chart Area */}
+          <div className="border-r border-[#1a1f2e]">
+
+            {/* Spread Ticker */}
+            {stats && (
+              <div className="border-b border-[#1a1f2e] px-3 py-2 flex items-center gap-4 flex-wrap bg-[#0c0e16]">
+                <div className="flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={getCoinIcon(sym)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  <span className="font-mono font-bold text-lg">{sym}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-neutral-600 block font-mono">SPREAD</span>
+                  <span className={`font-mono text-xl font-bold ${stats.cur > stats.avg ? 'text-green-400' : 'text-amber-400'}`}>${fp(stats.cur)}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-neutral-600 block font-mono">PCT</span>
+                  <span className="font-mono text-sm text-white">{stats.pct.toFixed(4)}%</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-neutral-600 block font-mono">BPS</span>
+                  <span className="font-mono text-sm text-neutral-400">{(stats.pct * 100).toFixed(1)}</span>
+                </div>
+                <div className="h-6 w-px bg-[#1a1f2e]" />
+                <div>
+                  <span className="text-[9px] text-neutral-600 block font-mono">HIGH</span>
+                  <span className="font-mono text-sm text-green-400">${stats.hi ? fp(stats.hi.p) : '—'}</span>
+                  <span className="text-[8px] text-neutral-600 ml-1">{stats.hi?.e}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-neutral-600 block font-mono">LOW</span>
+                  <span className="font-mono text-sm text-red-400">${stats.lo ? fp(stats.lo.p) : '—'}</span>
+                  <span className="text-[8px] text-neutral-600 ml-1">{stats.lo?.e}</span>
+                </div>
+                <div className="h-6 w-px bg-[#1a1f2e]" />
+                <div>
+                  <span className="text-[9px] text-neutral-600 block font-mono">RANGE ({TFS.find(t=>t.key===tf)?.label})</span>
+                  <span className="font-mono text-sm text-white">${fp(stats.min)} — ${fp(stats.max)}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-neutral-600 block font-mono">AVG</span>
+                  <span className="font-mono text-sm text-neutral-400">${fp(stats.avg)}</span>
+                </div>
               </div>
+            )}
+
+            {/* Price Chart */}
+            <div className="p-2">
+              {loading ? (
+                <div className="h-[400px] flex items-center justify-center"><RefreshCw className="w-5 h-5 text-neutral-800 animate-spin" /></div>
+              ) : data.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#1a1f2e" strokeDasharray="1 4" />
+                    <XAxis dataKey="label" tick={{ fill: '#374151', fontSize: 9, fontFamily: 'monospace' }} axisLine={{ stroke: '#1a1f2e' }} tickLine={false}
+                      interval={Math.max(0, Math.floor(data.length / 6))} />
+                    <YAxis domain={['dataMin', 'dataMax']} tick={{ fill: '#374151', fontSize: 9, fontFamily: 'monospace' }} axisLine={{ stroke: '#1a1f2e' }} tickLine={false}
+                      tickFormatter={(v: number) => '$' + fp(v)} width={70} padding={{ top: 15, bottom: 15 }} />
+                    <RTooltip content={<Tip />} cursor={{ stroke: '#374151', strokeDasharray: '2 2' }} />
+                    {exs.map((e, i) => (
+                      <Line key={e} type="monotone" dataKey={e} stroke={cx(e, i)} strokeWidth={2} dot={false}
+                        activeDot={{ r: 3, fill: cx(e, i), stroke: '#080a10', strokeWidth: 1.5 }} connectNulls />
+                    ))}
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[400px] flex items-center justify-center text-neutral-800 font-mono text-xs">NO DATA FOR {sym}</div>
+              )}
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              {activeExchanges.map((ex, i) => {
-                const last = chartData[chartData.length - 1];
-                const price = last ? last[ex] as number : 0;
-                const median = stats?.prices ? stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length : price;
-                const devPct = median > 0 ? ((price - median) / median) * 100 : 0;
+
+            {/* Spread Chart */}
+            {data.length > 0 && exs.length >= 2 && (
+              <div className="border-t border-[#1a1f2e] p-2">
+                <div className="flex items-center gap-2 px-1 mb-1">
+                  <span className="text-[9px] font-mono text-neutral-600">SPREAD HISTORY ($)</span>
+                </div>
+                <ResponsiveContainer width="100%" height={120}>
+                  <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#1a1f2e" strokeDasharray="1 4" />
+                    <XAxis dataKey="label" tick={{ fill: '#374151', fontSize: 8, fontFamily: 'monospace' }} axisLine={{ stroke: '#1a1f2e' }} tickLine={false}
+                      interval={Math.max(0, Math.floor(data.length / 6))} />
+                    <YAxis tick={{ fill: '#374151', fontSize: 8, fontFamily: 'monospace' }} axisLine={{ stroke: '#1a1f2e' }} tickLine={false}
+                      tickFormatter={(v: number) => '$' + fp(v)} width={55} domain={[0, 'auto']} />
+                    <RTooltip contentStyle={{ background: '#0a0a12', border: '1px solid #1a1f2e', borderRadius: 4, fontSize: 10, fontFamily: 'monospace' }}
+                      formatter={(v: number) => ['$' + fp(v), 'Spread']} labelStyle={{ color: '#6b7280' }} />
+                    {stats && <ReferenceLine y={stats.avg} stroke="#F59E0B" strokeDasharray="3 3" strokeWidth={1} />}
+                    <Area type="monotone" dataKey="_spread" stroke="#F59E0B" fill="rgba(245,158,11,0.08)" strokeWidth={1.5} dot={false} connectNulls />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Right Sidebar: Terminal Panels */}
+          <div className="bg-[#0c0e16] flex flex-col">
+
+            {/* Exchange Prices Panel */}
+            <div className="border-b border-[#1a1f2e]">
+              <div className="px-3 py-1.5 bg-[#0a0c14] border-b border-[#1a1f2e]">
+                <span className="text-[9px] font-mono text-amber-400 font-bold tracking-wider">EXCHANGE PRICES</span>
+              </div>
+              {stats?.prices.map((x, i) => {
+                const median = stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length;
+                const dev = ((x.p - median) / median) * 100;
+                const fromLo = x.p - stats.lo!.p;
                 return (
-                  <span key={ex} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px]"
-                    style={{ background: getColor(ex, i) + '15', borderLeft: `3px solid ${getColor(ex, i)}` }}>
-                    <span className="text-neutral-300 font-medium">{ex}</span>
-                    {price > 0 && (
-                      <>
-                        <span className="font-mono text-white">{formatPrice(price)}</span>
-                        <span className={`font-mono ${devPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {devPct >= 0 ? '+' : ''}{devPct.toFixed(3)}%
-                        </span>
-                      </>
-                    )}
-                  </span>
+                  <div key={x.e} className={`px-3 py-1.5 flex items-center justify-between border-b border-[#0f1118] ${i === 0 ? 'bg-green-500/[0.03]' : i === stats.prices.length - 1 ? 'bg-red-500/[0.03]' : ''}`}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-sm" style={{ background: cx(x.e, exs.indexOf(x.e)) }} />
+                      <span className="text-[10px] font-mono text-neutral-400">{x.e}</span>
+                      {i === 0 && <span className="text-[7px] px-1 py-[0.5px] bg-green-500/10 text-green-400 rounded font-mono font-bold">HIGH</span>}
+                      {i === stats.prices.length - 1 && <span className="text-[7px] px-1 py-[0.5px] bg-red-500/10 text-red-400 rounded font-mono font-bold">LOW</span>}
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono text-[11px] text-white">${fp(x.p)}</span>
+                      <span className={`font-mono text-[9px] ml-1.5 ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>{dev >= 0 ? '+' : ''}{dev.toFixed(3)}%</span>
+                    </div>
+                  </div>
                 );
               })}
             </div>
-          </div>
 
-          {loading ? (
-            <div className="h-[480px] flex items-center justify-center">
-              <RefreshCw className="w-6 h-6 text-neutral-700 animate-spin" />
-            </div>
-          ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={480}>
-              <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="label" tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false}
-                  interval={Math.max(0, Math.floor(chartData.length / 8))}
-                />
-                <YAxis
-                  domain={viewMode === 'deviation' ? ['auto', 'auto'] : ['dataMin', 'dataMax']}
-                  tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => viewMode === 'deviation' ? `${v >= 0 ? '+' : ''}${v.toFixed(3)}%` : formatPrice(v)}
-                  width={viewMode === 'deviation' ? 70 : 75}
-                  padding={{ top: 20, bottom: 20 }}
-                />
-                <RTooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeDasharray: '4 4' }} />
-                {/* Zero reference line in deviation mode */}
-                {viewMode === 'deviation' && activeExchanges.length >= 2 && (
-                  <Line type="monotone" dataKey={() => 0} stroke="rgba(255,255,255,0.1)"
-                    strokeWidth={1} strokeDasharray="4 4" dot={false} connectNulls isAnimationActive={false} />
-                )}
-                {activeExchanges.map((ex, i) => (
-                  <Line key={ex} type="monotone"
-                    dataKey={viewMode === 'deviation' ? `${ex}_dev` : ex}
-                    stroke={getColor(ex, i)}
-                    strokeWidth={2.5} dot={false}
-                    activeDot={{ r: 5, fill: getColor(ex, i), stroke: '#0b0e1a', strokeWidth: 2 }}
-                    connectNulls
-                    style={{ filter: `drop-shadow(0 0 4px ${getColor(ex, i)}40)` }} />
-                ))}
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[480px] flex flex-col items-center justify-center text-neutral-600">
-              <ArrowLeftRight className="w-10 h-10 mb-3 text-neutral-700" />
-              <p className="text-sm">No price data available for {symbol}</p>
-              <p className="text-[10px] text-neutral-700 mt-1">Try a different symbol or check back later</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Spread History Chart ── */}
-        {chartData.length > 0 && activeExchanges.length >= 2 && (
-          <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-semibold text-neutral-300">Spread Over Time</h2>
-              <span className="text-[10px] text-neutral-500">Highest minus lowest price across selected exchanges</span>
-            </div>
-            <ResponsiveContainer width="100%" height={160}>
-              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9 }} axisLine={false} tickLine={false}
-                  interval={Math.max(0, Math.floor(chartData.length / 6))} />
-                <YAxis tick={{ fill: '#4b5563', fontSize: 9 }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => formatPrice(v)} width={65} domain={[0, 'auto']} />
-                <RTooltip
-                  contentStyle={{ background: '#0d0f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11 }}
-                  formatter={(v: number) => [formatPrice(v), 'Spread']}
-                  labelStyle={{ color: '#9ca3af' }} />
-                <Area type="monotone" dataKey="_spread" stroke="#eab308" fill="rgba(234,179,8,0.15)"
-                  strokeWidth={1.5} dot={false} connectNulls />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* ── Spread Stats Cards ── */}
-        {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
-              <p className="text-[10px] text-neutral-500 mb-1">Current Spread</p>
-              <p className="text-lg font-bold font-mono text-hub-yellow">{formatPrice(stats.current)}</p>
-              <p className="text-[10px] text-neutral-600">{stats.currentPct.toFixed(4)}%</p>
-            </div>
-            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
-              <p className="text-[10px] text-neutral-500 mb-1">Avg Spread ({TIMEFRAMES.find(t=>t.key===tf)?.label})</p>
-              <p className="text-lg font-bold font-mono text-white">{formatPrice(stats.avg)}</p>
-            </div>
-            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
-              <p className="text-[10px] text-neutral-500 mb-1 flex items-center gap-1"><TrendingUp className="w-3 h-3 text-green-400" /> Max Spread</p>
-              <p className="text-lg font-bold font-mono text-green-400">{formatPrice(stats.max)}</p>
-              <p className="text-[10px] text-neutral-600">{stats.maxTime ? new Date(stats.maxTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>
-            </div>
-            <div className="rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/[0.06] p-4">
-              <p className="text-[10px] text-neutral-500 mb-1 flex items-center gap-1"><TrendingDown className="w-3 h-3 text-cyan-400" /> Min Spread</p>
-              <p className="text-lg font-bold font-mono text-cyan-400">{formatPrice(stats.min)}</p>
-              <p className="text-[10px] text-neutral-600">{stats.minTime ? new Date(stats.minTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Exchange Price Table ── */}
-        {stats && stats.prices.length > 0 && (
-          <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] overflow-hidden mb-4">
-            <div className="px-4 py-3 border-b border-white/[0.06]">
-              <h3 className="text-sm font-semibold text-neutral-300">Current Prices by Exchange</h3>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[10px] text-neutral-500 uppercase tracking-wider">
-                  <th className="px-4 py-2 text-left">Exchange</th>
-                  <th className="px-4 py-2 text-right">Price</th>
-                  <th className="px-4 py-2 text-right">vs Median</th>
-                  <th className="px-4 py-2 text-right">Spread from Lowest</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.prices.map((x, i) => {
-                  const median = stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length;
-                  const devPct = ((x.p - median) / median) * 100;
-                  const fromLowest = x.p - stats.lowest!.p;
-                  return (
-                    <tr key={x.ex} className="border-t border-white/[0.03] hover:bg-white/[0.02]">
-                      <td className="px-4 py-2.5 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: getColor(x.ex, activeExchanges.indexOf(x.ex)) }} />
-                        <span className="font-medium text-white">{x.ex}</span>
-                        {i === 0 && <span className="text-[8px] px-1 py-[1px] rounded bg-green-500/10 text-green-400 font-semibold">HIGH</span>}
-                        {i === stats.prices.length - 1 && <span className="text-[8px] px-1 py-[1px] rounded bg-red-500/10 text-red-400 font-semibold">LOW</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-white">{formatPrice(x.p)}</td>
-                      <td className={`px-4 py-2.5 text-right font-mono ${devPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {devPct >= 0 ? '+' : ''}{devPct.toFixed(4)}%
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-neutral-400">
-                        {fromLowest > 0 ? `+${formatPrice(fromLowest)}` : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* ── Arb Calculator ── */}
-        {showCalc && stats && (
-          <div className="rounded-xl bg-white/[0.02] border border-hub-yellow/20 p-4 mb-4">
-            <h3 className="text-sm font-semibold text-hub-yellow mb-3 flex items-center gap-2">
-              <Calculator className="w-4 h-4" /> Arbitrage Calculator
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="text-[10px] text-neutral-500 block mb-1">Trade Size (USD)</label>
-                <input value={calcSize} onChange={e => setCalcSize(e.target.value)} type="number"
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono outline-none focus:border-hub-yellow/30" />
+            {/* Spread Stats Panel */}
+            {stats && (
+              <div className="border-b border-[#1a1f2e]">
+                <div className="px-3 py-1.5 bg-[#0a0c14] border-b border-[#1a1f2e]">
+                  <span className="text-[9px] font-mono text-amber-400 font-bold tracking-wider">SPREAD ANALYTICS</span>
+                </div>
+                <div className="grid grid-cols-2 gap-px bg-[#1a1f2e]">
+                  {[
+                    { label: 'CURRENT', value: '$' + fp(stats.cur), color: 'text-amber-400' },
+                    { label: `AVG (${TFS.find(t=>t.key===tf)?.label})`, value: '$' + fp(stats.avg), color: 'text-white' },
+                    { label: 'MAX', value: '$' + fp(stats.max), color: 'text-green-400', sub: stats.maxT ? new Date(stats.maxT).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' },
+                    { label: 'MIN', value: '$' + fp(stats.min), color: 'text-cyan-400', sub: stats.minT ? new Date(stats.minT).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' },
+                  ].map(s => (
+                    <div key={s.label} className="bg-[#0c0e16] px-3 py-2">
+                      <span className="text-[8px] font-mono text-neutral-600 block">{s.label}</span>
+                      <span className={`font-mono text-sm font-bold ${s.color}`}>{s.value}</span>
+                      {s.sub && <span className="text-[8px] font-mono text-neutral-700 block">{s.sub}</span>}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] text-neutral-500 block mb-1">Fee per side (%)</label>
-                <input value={calcFee} onChange={e => setCalcFee(e.target.value)} type="number" step="0.01"
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono outline-none focus:border-hub-yellow/30" />
+            )}
+
+            {/* Arb Calculator */}
+            {showCalc && stats && (
+              <div className="border-b border-[#1a1f2e]">
+                <div className="px-3 py-1.5 bg-[#0a0c14] border-b border-[#1a1f2e]">
+                  <span className="text-[9px] font-mono text-amber-400 font-bold tracking-wider">ARB CALCULATOR</span>
+                </div>
+                <div className="px-3 py-2 space-y-2">
+                  <div>
+                    <label className="text-[8px] font-mono text-neutral-600">SIZE (USD)</label>
+                    <input value={calcAmt} onChange={e => setCalcAmt(e.target.value)} type="number"
+                      className="w-full px-2 py-1 bg-[#12141e] border border-[#1a1f2e] rounded text-xs font-mono text-white outline-none focus:border-amber-500/30" />
+                  </div>
+                  <div>
+                    <label className="text-[8px] font-mono text-neutral-600">FEE/SIDE (%)</label>
+                    <input value={calcFee} onChange={e => setCalcFee(e.target.value)} type="number" step="0.01"
+                      className="w-full px-2 py-1 bg-[#12141e] border border-[#1a1f2e] rounded text-xs font-mono text-white outline-none focus:border-amber-500/30" />
+                  </div>
+                  {(() => {
+                    const size = Number(calcAmt) || 0;
+                    const fee = Number(calcFee) || 0;
+                    const net = stats.pct - fee * 2;
+                    const profit = size * (net / 100);
+                    return (
+                      <div className={`px-2 py-1.5 rounded ${profit > 0 ? 'bg-green-500/5 border border-green-500/10' : 'bg-red-500/5 border border-red-500/10'}`}>
+                        <span className="text-[8px] font-mono text-neutral-600 block">NET PROFIT</span>
+                        <span className={`font-mono text-lg font-bold ${profit > 0 ? 'text-green-400' : 'text-red-400'}`}>{profit >= 0 ? '+' : ''}${fp(Math.abs(profit))}</span>
+                        <span className="text-[9px] font-mono text-neutral-600 ml-2">({net.toFixed(4)}%)</span>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] text-neutral-500 block mb-1">Estimated Profit</label>
-                {(() => {
-                  const size = Number(calcSize) || 0;
-                  const fee = Number(calcFee) || 0;
-                  const grossPct = stats.currentPct;
-                  const netPct = grossPct - (fee * 2);
-                  const netProfit = size * (netPct / 100);
+            )}
+
+            {/* Legend */}
+            <div className="px-3 py-2 border-b border-[#1a1f2e]">
+              <div className="px-0 py-1 bg-[#0a0c14] rounded">
+                <span className="text-[8px] font-mono text-neutral-700 block px-2 mb-1">CHART LEGEND</span>
+                {exs.map((e, i) => {
+                  const last = data[data.length - 1];
+                  const p = last ? last[e] as number : 0;
                   return (
-                    <div className={`px-3 py-2 rounded-lg ${netProfit > 0 ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                      <span className={`text-lg font-bold font-mono ${netProfit > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {netProfit >= 0 ? '+' : ''}{formatPrice(netProfit)}
+                    <div key={e} className="flex items-center justify-between px-2 py-0.5">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-[2px]" style={{ background: cx(e, i) }} />
+                        <span className="text-[9px] font-mono text-neutral-500">{e}</span>
                       </span>
-                      <span className="text-[10px] text-neutral-500 ml-2">({netPct.toFixed(4)}% net)</span>
+                      <span className="text-[9px] font-mono text-neutral-400">{p > 0 ? '$' + fp(p) : '—'}</span>
                     </div>
                   );
-                })()}
+                })}
               </div>
             </div>
+
+            {/* Data Source */}
+            <div className="px-3 py-2 mt-auto">
+              <p className="text-[8px] font-mono text-neutral-700 leading-relaxed">
+                DATA: {exs.join(' · ')} · {TFS.find(t=>t.key===tf)?.label} CANDLES · 5M CACHE · PERP FUTURES CLOSE PRICES
+              </p>
+            </div>
           </div>
-        )}
-
-        {/* ── Info Footer ── */}
-        <div className="p-4 rounded-xl bg-hub-yellow/5 border border-hub-yellow/10 border-l-2 border-l-hub-yellow/40">
-          <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-            <span>
-              Historical candle data fetched directly from exchange APIs (Binance, Bybit, OKX, Bitget, MEXC, HTX, Hyperliquid, dYdX).
-              Each line shows the close price of {symbol}/USDT perpetual futures on that exchange.
-              Spread = highest price minus lowest price across selected exchanges. 5-min cache.
-            </span>
-          </p>
         </div>
-
       </main>
       <Footer />
     </div>
