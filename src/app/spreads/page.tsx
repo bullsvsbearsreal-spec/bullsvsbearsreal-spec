@@ -249,8 +249,10 @@ export default function ExchangeSpreadsPage() {
       for (const ex of active) {
         const map = new Map<number, number>();
         for (const candle of klineData[ex]) {
-          map.set(candle.t, candle.c); // use close price
-          allTimes.add(candle.t);
+          if (candle.c > 0) { // Skip zero/invalid prices
+            map.set(candle.t, candle.c);
+            allTimes.add(candle.t);
+          }
         }
         lookups[ex] = map;
       }
@@ -695,7 +697,7 @@ export default function ExchangeSpreadsPage() {
                       interval="preserveStartEnd"
                     />
                     <YAxis
-                      domain={['dataMin', 'dataMax']}
+                      domain={[(dataMin: number) => dataMin * 0.999, (dataMax: number) => dataMax * 1.001]}
                       tick={{ fill: '#4b5563', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
