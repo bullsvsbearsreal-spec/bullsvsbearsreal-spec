@@ -39,15 +39,11 @@ const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','GM
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
 // Exchanges with direct kline API (fast, 1h candles)
 // All other exchanges use DB mark_price snapshots (10-min, needs accumulation)
-const KLINE_DIRECT = new Set([
-  'Binance','Bybit','OKX','Bitget','MEXC','HTX','Kraken','BingX',
-  'Phemex','KuCoin','Bitfinex','CoinEx','Deribit','Coinbase','WhiteBIT',
-  'Hyperliquid','dYdX','Aevo',
-]);
 const TFS = [
-  { key: '1d', label: '1D', interval: '1h', limit: 24 },
-  { key: '7d', label: '7D', interval: '1h', limit: 168 },
-  { key: '30d', label: '30D', interval: '4h', limit: 180 },
+  { key: 'live', label: 'Live', source: 'ws' as const },
+  { key: '1d', label: '1D', source: 'db' as const, days: 1 },
+  { key: '7d', label: '7D', source: 'db' as const, days: 7 },
+  { key: '30d', label: '30D', source: 'db' as const, days: 30 },
 ] as const;
 type TfK = typeof TFS[number]['key'];
 
@@ -103,12 +99,12 @@ function SpreadTooltip({ active, payload, exList, colorFn }: any) {
 export default function SpreadsPage() {
   // Read initial state from URL params
   const initFromUrl = useCallback(() => {
-    if (typeof window === 'undefined') return { sym: 'BTC', sel: ['Binance','Bybit','OKX','Bitget','MEXC'], tf: '1d' as TfK };
+    if (typeof window === 'undefined') return { sym: 'BTC', sel: ['Binance','Bybit','OKX','Hyperliquid'], tf: 'live' as TfK };
     const p = new URLSearchParams(window.location.search);
     return {
       sym: p.get('s') || 'BTC',
-      sel: p.get('ex')?.split(',').filter(Boolean) || ['Binance','Bybit','OKX','Bitget','MEXC'],
-      tf: (p.get('tf') || '1d') as TfK,
+      sel: p.get('ex')?.split(',').filter(Boolean) || ['Binance','Bybit','OKX','Hyperliquid'],
+      tf: (p.get('tf') || 'live') as TfK,
     };
   }, []);
   const init = initFromUrl();
@@ -142,7 +138,7 @@ export default function SpreadsPage() {
   const prevPricesRef = useRef<Record<string, number>>({});
 
   // ── WebSocket real-time prices ──
-  const { prices: wsPrices, connected: wsConnected } = useMultiExchangeWS(sym, sel, wsEnabled);
+  const { prices: wsPrices, connected: wsConnected, history: wsHistory } = useMultiExchangeWS(sym, sel, wsEnabled);
   const wsCount = Object.values(wsConnected).filter(Boolean).length;
   const wsTotal = sel.filter(e => WS_SUPPORTED.includes(e)).length;
 
@@ -197,33 +193,22 @@ export default function SpreadsPage() {
   const [funding, setFunding] = useState<FundingEntry[]>([]);
   const [oi, setOI] = useState<OIEntry[]>([]);
 
-  // Fetch klines (exchange APIs) — auto-refreshes every 60s
+  // Fetch DB history for 1D/7D/30D views
+  const [dbHistory, setDbHistory] = useState<Array<{ t: number; spread: number; pct: number; high_ex: string; low_ex: string }>>([]);
   useEffect(() => {
-    const t = TFS.find(x => x.key === tf)!;
+    const t = TFS.find(x => x.key === tf);
+    if (!t || t.source !== 'db') { setKd(null); setLoading(false); return; }
+    setLoading(true);
     let c = false;
-    const doFetch = (showLoading = true) => {
-      if (showLoading) setLoading(true);
-      fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit)
-        .then(r => r.ok ? r.json() : null)
-        .then(json => {
-          if (c) return;
-          const klines = json?.exchanges || {};
-          const merged: Record<string, Candle[]> = { ...klines };
-          setKd(Object.keys(merged).length > 0 ? merged : null);
-          // Smart default: switch to % view if spread > $50 (prices too far apart for $ view)
-          if (Object.keys(merged).length >= 2) {
-            const lastPrices = Object.values(merged).map(candles => candles[candles.length - 1]?.c || 0).filter(p => p > 0);
-            if (lastPrices.length >= 2) {
-              const spread = Math.max(...lastPrices) - Math.min(...lastPrices);
-              if (spread > 50 && viewMode === 'price') setViewMode('pct');
-            }
-          }
-        }).catch(() => { if (!c) setKd(null); })
-        .finally(() => { if (!c) setLoading(false); });
-    };
-    doFetch(true);
-    const timer = setInterval(() => doFetch(false), 60_000); // refresh every 60s silently
-    return () => { c = true; clearInterval(timer); };
+    fetch(`/api/history/spreads?symbol=${sym}&days=${(t as any).days || 7}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (c) return;
+        setDbHistory(json?.data || []);
+      })
+      .catch(() => { if (!c) setDbHistory([]); })
+      .finally(() => { if (!c) setLoading(false); });
+    return () => { c = true; };
   }, [sym, tf]);
 
   // Fetch live tickers + funding + OI (refresh every 30s)
@@ -250,6 +235,30 @@ export default function SpreadsPage() {
   }, [sym]);
 
   const { data, exs, available } = useMemo<{ data: Pt[]; exs: string[]; available?: string[] }>(() => {
+    // LIVE mode: use WebSocket history
+    if (tf === 'live') {
+      if (wsHistory.length < 2) return { data: [] as Pt[], exs: sel.filter(e => WS_SUPPORTED.includes(e)) };
+      const wsExs = sel.filter(e => WS_SUPPORTED.includes(e));
+      if (wsExs.length === 0) return { data: [] as Pt[], exs: [] as string[] };
+      const rows: Pt[] = [];
+      for (const snap of wsHistory) {
+        const pt: Pt = { time: snap.t, label: '' };
+        const prices: number[] = [];
+        for (const e of wsExs) {
+          const p = snap.prices[e];
+          if (p && p > 0) { pt[e] = p; prices.push(p); }
+        }
+        if (prices.length < 1) continue;
+        const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+        for (const e of wsExs) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
+        pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
+        pt.label = new Date(snap.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        rows.push(pt);
+      }
+      return { data: rows, exs: wsExs };
+    }
+
+    // DB mode: use kd if available (legacy), otherwise empty
     if (!kd) return { data: [] as Pt[], exs: [] as string[] };
     const av = Object.keys(kd);
     const active = sel.filter(e => av.includes(e));
@@ -274,7 +283,6 @@ export default function SpreadsPage() {
       }
       if (prices.length < 1) continue;
       const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
-      // Filter out stale/anomalous prices (>2% from mean)
       const sane = prices.filter(p => Math.abs(p - avg) / avg < 0.02);
       const useP = sane.length >= 2 ? sane : prices;
       for (const e of exs) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
@@ -286,7 +294,7 @@ export default function SpreadsPage() {
       rows.push(pt);
     }
     return { data: rows, exs, available: av };
-  }, [kd, sel, tf]);
+  }, [kd, sel, tf, wsHistory]);
 
   const stats = useMemo(() => {
     if (data.length === 0 || exs.length < 2) return null;
@@ -453,11 +461,11 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider">CEX ({CEX_EXCHANGES.length})</p>
                     {CEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : KLINE_DIRECT.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : WS_SUPPORTED.includes(e) ? 'text-neutral-400' : 'text-neutral-600')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {!KLINE_DIRECT.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">via DB</span>}
+                          {!WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
@@ -469,11 +477,11 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider mt-1 border-t border-white/[0.06] pt-2">DEX ({DEX_EXCHANGES.length})</p>
                     {DEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : KLINE_DIRECT.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : WS_SUPPORTED.includes(e) ? 'text-neutral-400' : 'text-neutral-600')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {!KLINE_DIRECT.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">via DB</span>}
+                          {!WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
@@ -576,7 +584,9 @@ export default function SpreadsPage() {
               <img src={getCoinIcon(sym)} alt="" className="w-6 h-6 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <div>
                 <h2 className="text-sm font-semibold">{sym} Perp Price by Exchange</h2>
-                <p className="text-[11px] text-neutral-500">Close prices across {exs.length} venues · {TFS.find(t=>t.key===tf)?.label}</p>
+                <p className="text-[11px] text-neutral-500">
+                  {tf === 'live' ? `Live WebSocket prices · ${wsHistory.length} snapshots · updates every 5s` : `Close prices across ${exs.length} venues · ${TFS.find(t=>t.key===tf)?.label}`}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap justify-end">
@@ -622,7 +632,7 @@ export default function SpreadsPage() {
                 {[1,2,3,4,5,6].map(i => <div key={i} className="h-2 w-12 rounded bg-white/[0.03] animate-pulse" />)}
               </div>
             </div>
-          ) : data.length > 0 && chartMode === 'candle' && candleExchange && kd?.[candleExchange] ? (
+          ) : data.length > 0 && chartMode === 'candle' && candleExchange && tf !== 'live' && kd?.[candleExchange] ? (
             /* Candlestick chart for single exchange */
             <ResponsiveContainer width="100%" height={420}>
               <ComposedChart data={kd[candleExchange].map(c => ({
@@ -679,7 +689,15 @@ export default function SpreadsPage() {
           ) : (
             <div className="h-[420px] flex flex-col items-center justify-center text-neutral-600">
               <Activity className="w-8 h-8 mb-2 text-neutral-700" />
-              {available && available.length > 0 ? (
+              {tf === 'live' ? (
+                <>
+                  <p className="text-sm">Waiting for WebSocket data...</p>
+                  <p className="text-[10px] text-neutral-500 mt-1">
+                    {wsCount > 0 ? `${wsCount} exchanges connected. Chart builds every 5 seconds.` : 'Connecting to exchanges...'}
+                  </p>
+                  {wsHistory.length > 0 && <p className="text-[10px] text-neutral-600 mt-1">{wsHistory.length} snapshots collected, need 2+ to render</p>}
+                </>
+              ) : available && available.length > 0 ? (
                 <>
                   <p className="text-sm">Selected exchanges don{"'"}t list {sym}</p>
                   <p className="text-[10px] text-neutral-500 mt-2">Available on: {available.join(', ')}</p>

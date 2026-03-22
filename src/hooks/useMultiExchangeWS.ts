@@ -116,12 +116,19 @@ const WS_CREATORS: Record<string, (s: string, cb: (p: WSPrice) => void) => WebSo
 
 export const WS_SUPPORTED = Object.keys(WS_CREATORS);
 
+export type PriceSnapshot = { t: number; prices: Record<string, number> };
+
+const MAX_HISTORY = 2000; // ~2.7 hours at 5s intervals
+
 export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled = true) {
   const [prices, setPrices] = useState<PriceMap>({});
   const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [history, setHistory] = useState<PriceSnapshot[]>([]);
   const wsRefs = useRef<Record<string, WebSocket>>({});
   const pricesRef = useRef<PriceMap>({});
+  const historyRef = useRef<PriceSnapshot[]>([]);
   const updateTimer = useRef<NodeJS.Timeout | null>(null);
+  const historyTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Batch state updates every 250ms to avoid excessive re-renders
   const scheduleBatchUpdate = useCallback(() => {
@@ -163,6 +170,24 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       }
     }
 
+    // Snapshot prices every 5 seconds for chart history
+    historyRef.current = [];
+    setHistory([]);
+    historyTimer.current = setInterval(() => {
+      const current = pricesRef.current;
+      const priceMap: Record<string, number> = {};
+      let hasAny = false;
+      for (const [ex, p] of Object.entries(current)) {
+        if (p.price > 0) { priceMap[ex] = p.price; hasAny = true; }
+      }
+      if (hasAny) {
+        const snap: PriceSnapshot = { t: Date.now(), prices: priceMap };
+        historyRef.current.push(snap);
+        if (historyRef.current.length > MAX_HISTORY) historyRef.current.shift();
+        setHistory([...historyRef.current]);
+      }
+    }, 5000);
+
     return () => {
       Object.values(wsRefs.current).forEach(ws => {
         try { ws.close(); } catch {}
@@ -171,8 +196,10 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       pricesRef.current = {};
       if (updateTimer.current) clearTimeout(updateTimer.current);
       updateTimer.current = null;
+      if (historyTimer.current) clearInterval(historyTimer.current);
+      historyTimer.current = null;
     };
   }, [symbol, exchanges.join(','), enabled, handlePrice]);
 
-  return { prices, connected };
+  return { prices, connected, history };
 }
