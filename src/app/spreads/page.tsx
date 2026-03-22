@@ -197,25 +197,33 @@ export default function SpreadsPage() {
   const [funding, setFunding] = useState<FundingEntry[]>([]);
   const [oi, setOI] = useState<OIEntry[]>([]);
 
-  // Fetch klines (exchange APIs) + DB mark_price fallback for non-kline exchanges
+  // Fetch klines (exchange APIs) — auto-refreshes every 60s
   useEffect(() => {
     const t = TFS.find(x => x.key === tf)!;
-    const days = tf === '1d' ? 1 : tf === '7d' ? 7 : 30;
-    setLoading(true);
     let c = false;
-    fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit)
-      .then(r => r.ok ? r.json() : null)
-      .then(json => {
-      if (c) return;
-      const klines = json?.exchanges || {};
-
-      const merged: Record<string, Candle[]> = { ...klines };
-      // DB fallback removed — price-multi endpoint not available
-      // DEX exchanges without kline APIs show in table only
-      setKd(Object.keys(merged).length > 0 ? merged : null);
-    }).catch(() => { if (!c) setKd(null); })
-      .finally(() => { if (!c) setLoading(false); });
-    return () => { c = true; };
+    const doFetch = (showLoading = true) => {
+      if (showLoading) setLoading(true);
+      fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit)
+        .then(r => r.ok ? r.json() : null)
+        .then(json => {
+          if (c) return;
+          const klines = json?.exchanges || {};
+          const merged: Record<string, Candle[]> = { ...klines };
+          setKd(Object.keys(merged).length > 0 ? merged : null);
+          // Smart default: switch to % view if spread > $50 (prices too far apart for $ view)
+          if (Object.keys(merged).length >= 2) {
+            const lastPrices = Object.values(merged).map(candles => candles[candles.length - 1]?.c || 0).filter(p => p > 0);
+            if (lastPrices.length >= 2) {
+              const spread = Math.max(...lastPrices) - Math.min(...lastPrices);
+              if (spread > 50 && viewMode === 'price') setViewMode('pct');
+            }
+          }
+        }).catch(() => { if (!c) setKd(null); })
+        .finally(() => { if (!c) setLoading(false); });
+    };
+    doFetch(true);
+    const timer = setInterval(() => doFetch(false), 60_000); // refresh every 60s silently
+    return () => { c = true; clearInterval(timer); };
   }, [sym, tf]);
 
   // Fetch live tickers + funding + OI (refresh every 30s)
