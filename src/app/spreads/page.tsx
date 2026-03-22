@@ -253,7 +253,7 @@ export default function SpreadsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={getCoinIcon(sym)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <span className="text-lg font-bold">{sym}</span>
-              <span className="text-neutral-500 text-sm">/USDT</span>
+              <span className="text-neutral-500 text-sm"> Perp</span>
               <ChevronDown className="w-4 h-4 text-neutral-500" />
             </button>
             {showSym && (
@@ -426,7 +426,7 @@ export default function SpreadsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={getCoinIcon(sym)} alt="" className="w-6 h-6 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <div>
-                <h2 className="text-sm font-semibold">{sym}/USDT Price by Exchange</h2>
+                <h2 className="text-sm font-semibold">{sym} Perp Price by Exchange</h2>
                 <p className="text-[11px] text-neutral-500">Close prices across {exs.length} venues · {TFS.find(t=>t.key===tf)?.label}</p>
               </div>
             </div>
@@ -664,9 +664,10 @@ export default function SpreadsPage() {
           <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
             <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
             <span>
-              Historical candle data from {exs.join(', ')} perpetual futures.
-              Each line shows the close price on that exchange. Spread = highest minus lowest price.
-              Data refreshes with 5-min cache.
+              <span className="text-hub-yellow font-medium">Chart</span>: historical candle close prices from exchange APIs (5-min cache).{' '}
+              <span className="text-hub-yellow font-medium">Table</span>: live prices, funding rates, OI, and volume from /api/tickers, /api/funding, /api/openinterest (30s refresh).{' '}
+              <span className="text-hub-yellow font-medium">Spread</span> = highest minus lowest price across selected exchanges.{' '}
+              Chart data from: {exs.length > 0 ? exs.join(', ') : 'no exchanges selected'}.
             </span>
           </p>
         </div>
