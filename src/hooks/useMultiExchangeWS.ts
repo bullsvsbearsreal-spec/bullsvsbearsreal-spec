@@ -107,10 +107,60 @@ function createHyperliquidWS(symbol: string, onPrice: (p: WSPrice) => void): Web
   } catch { return null; }
 }
 
+function createBitgetWS(symbol: string, onPrice: (p: WSPrice) => void): WebSocket | null {
+  try {
+    const ws = new WebSocket('wss://ws.bitget.com/v2/ws/public');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ op: 'subscribe', args: [{ instType: 'USDT-FUTURES', channel: 'ticker', instId: `${symbol}USDT` }] }));
+    };
+    ws.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.data?.[0]) {
+          const t = d.data[0];
+          const last = +(t.lastPr || t.last || 0);
+          const bid = +(t.bidPr || t.bid1 || last);
+          const ask = +(t.askPr || t.ask1 || last);
+          if (last > 0) onPrice({ exchange: 'Bitget', symbol, price: last, bid, ask, ts: +t.ts || Date.now() });
+        }
+      } catch {}
+    };
+    const ping = setInterval(() => { try { ws.send('ping'); } catch {} }, 25000);
+    ws.onclose = () => clearInterval(ping);
+    return ws;
+  } catch { return null; }
+}
+
+function createMEXCWS(symbol: string, onPrice: (p: WSPrice) => void): WebSocket | null {
+  try {
+    const ws = new WebSocket('wss://contract.mexc.com/edge');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ method: 'sub.ticker', param: { symbol: `${symbol}_USDT` } }));
+    };
+    ws.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.channel === 'push.ticker' && d.data) {
+          const t = d.data;
+          const last = +(t.lastPrice || t.fairPrice || 0);
+          const bid = +(t.bid1 || last);
+          const ask = +(t.ask1 || last);
+          if (last > 0) onPrice({ exchange: 'MEXC', symbol, price: last, bid, ask, ts: d.ts || Date.now() });
+        }
+      } catch {}
+    };
+    const ping = setInterval(() => { try { ws.send(JSON.stringify({ method: 'ping' })); } catch {} }, 20000);
+    ws.onclose = () => clearInterval(ping);
+    return ws;
+  } catch { return null; }
+}
+
 const WS_CREATORS: Record<string, (s: string, cb: (p: WSPrice) => void) => WebSocket | null> = {
   Binance: createBinanceWS,
   Bybit: createBybitWS,
   OKX: createOKXWS,
+  Bitget: createBitgetWS,
+  MEXC: createMEXCWS,
   Hyperliquid: createHyperliquidWS,
 };
 
@@ -170,6 +220,30 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       }
     }
 
+    // REST polling fallback for exchanges without WebSocket support
+    const restExchanges = exchanges.filter(e => !WS_CREATORS[e]);
+    let restTimer: NodeJS.Timeout | null = null;
+    if (restExchanges.length > 0) {
+      const pollRest = () => {
+        fetch('/api/tickers')
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            const tickers: any[] = json?.data || json || [];
+            for (const t of tickers) {
+              if (t.symbol === symbol && restExchanges.includes(t.exchange) && t.lastPrice > 0) {
+                handlePrice({
+                  exchange: t.exchange, symbol, price: t.lastPrice,
+                  bid: t.lastPrice, ask: t.lastPrice, ts: Date.now(),
+                });
+              }
+            }
+          })
+          .catch(() => {});
+      };
+      pollRest(); // immediate first fetch
+      restTimer = setInterval(pollRest, 10_000); // poll every 10s
+    }
+
     // Snapshot prices every 5 seconds for chart history
     historyRef.current = [];
     setHistory([]);
@@ -198,6 +272,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       updateTimer.current = null;
       if (historyTimer.current) clearInterval(historyTimer.current);
       historyTimer.current = null;
+      if (restTimer) clearInterval(restTimer);
     };
   }, [symbol, exchanges.join(','), enabled, handlePrice]);
 
