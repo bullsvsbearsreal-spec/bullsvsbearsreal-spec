@@ -120,17 +120,15 @@ export default function SpreadsPage() {
 
   const toggle = useCallback((e: string) => setSel(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e].slice(0, 8)), []);
 
-  // Smart Y-axis domain: IQR-based to show spread detail
   const yDomain = useMemo(() => {
     if (data.length === 0 || exs.length === 0) return [0, 1];
-    const allPrices: number[] = [];
-    for (const pt of data) for (const e of exs) { const p = pt[e] as number; if (typeof p === 'number' && p > 0) allPrices.push(p); }
-    if (allPrices.length === 0) return [0, 1];
-    allPrices.sort((a, b) => a - b);
-    const q1 = allPrices[Math.floor(allPrices.length * 0.05)] || allPrices[0];
-    const q3 = allPrices[Math.floor(allPrices.length * 0.95)] || allPrices[allPrices.length - 1];
-    const iqr = q3 - q1;
-    const pad = Math.max(iqr * 0.3, q1 * 0.001);
+    const ap: number[] = [];
+    for (const pt of data) for (const e of exs) { const p = pt[e] as number; if (typeof p === 'number' && p > 0) ap.push(p); }
+    if (ap.length === 0) return [0, 1];
+    ap.sort((a, b) => a - b);
+    const q1 = ap[Math.floor(ap.length * 0.05)] || ap[0];
+    const q3 = ap[Math.floor(ap.length * 0.95)] || ap[ap.length - 1];
+    const pad = Math.max((q3 - q1) * 0.3, q1 * 0.001);
     return [q1 - pad, q3 + pad];
   }, [data, exs]);
 
@@ -150,7 +148,7 @@ export default function SpreadsPage() {
               <span className="text-neutral-300">{x.e}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="font-mono text-white">${fp(x.p)}</span>
+              <span className="font-mono text-white">{'$'}{fp(x.p)}</span>
               {typeof x.d === 'number' && <span className={`font-mono text-[10px] ${x.d >= 0 ? 'text-green-400' : 'text-red-400'}`}>{x.d >= 0 ? '+' : ''}{x.d.toFixed(3)}%</span>}
             </span>
           </div>
@@ -158,7 +156,7 @@ export default function SpreadsPage() {
         {sp > 0 && (
           <div className="border-t border-white/[0.06] mt-2 pt-1.5 flex justify-between">
             <span className="text-neutral-500">Spread</span>
-            <span className="font-mono text-hub-yellow">${fp(sp)}</span>
+            <span className="font-mono text-hub-yellow">{'$'}{fp(sp)}</span>
           </div>
         )}
       </div>
@@ -280,7 +278,7 @@ export default function SpreadsPage() {
                 <Zap className="w-4 h-4 text-hub-yellow" />
                 <span className="text-xs text-neutral-500">Current Spread</span>
               </div>
-              <p className="text-2xl font-bold font-mono text-hub-yellow">${fp(stats.cur)}</p>
+              <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
               <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
             </div>
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
@@ -288,9 +286,9 @@ export default function SpreadsPage() {
                 <BarChart3 className="w-4 h-4 text-neutral-500" />
                 <span className="text-xs text-neutral-500">Avg Spread ({TFS.find(t=>t.key===tf)?.label})</span>
               </div>
-              <p className="text-2xl font-bold font-mono text-white">${fp(stats.avg)}</p>
+              <p className="text-2xl font-bold font-mono text-white">{'$'}{fp(stats.avg)}</p>
               <p className="text-[11px] text-neutral-500 mt-1">
-                Range: ${fp(stats.min)} — ${fp(stats.max)}
+                Range: {'$'}{fp(stats.min)} — {'$'}{fp(stats.max)}
               </p>
             </div>
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
@@ -319,7 +317,7 @@ export default function SpreadsPage() {
               <div key={x.e} className="flex items-center gap-2 flex-shrink-0">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ec(x.e, exs.indexOf(x.e)) }} />
                 <span className="text-[11px] text-neutral-500">{x.e}</span>
-                <span className="font-mono text-[12px] text-white font-medium">${fp(x.p)}</span>
+                <span className="font-mono text-[12px] text-white font-medium">{'$'}{fp(x.p)}</span>
                 {(() => {
                   const median = stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length;
                   const dev = ((x.p - median) / median) * 100;
@@ -334,7 +332,7 @@ export default function SpreadsPage() {
             ))}
             <div className="flex-shrink-0 ml-auto pl-4 border-l border-white/[0.06]">
               <span className="text-[10px] text-neutral-600">SPREAD </span>
-              <span className="font-mono text-[12px] text-hub-yellow font-bold">${fp(stats.cur)}</span>
+              <span className="font-mono text-[12px] text-hub-yellow font-bold">{'$'}{fp(stats.cur)}</span>
             </div>
           </div>
         )}
@@ -378,7 +376,6 @@ export default function SpreadsPage() {
                 ))}
               </ComposedChart>
             </ResponsiveContainer>
-          )
           ) : (
             <div className="h-[420px] flex flex-col items-center justify-center text-neutral-600">
               <Activity className="w-8 h-8 mb-2 text-neutral-700" />
@@ -396,7 +393,7 @@ export default function SpreadsPage() {
                 <h2 className="text-sm font-semibold">Spread Over Time</h2>
                 <p className="text-[11px] text-neutral-500">Highest minus lowest price across selected exchanges</p>
               </div>
-              {stats && <span className="text-[11px] text-neutral-500">Avg: <span className="text-hub-yellow font-mono">${fp(stats.avg)}</span></span>}
+              {stats && <span className="text-[11px] text-neutral-500">Avg: <span className="text-hub-yellow font-mono">{'$'}{fp(stats.avg)}</span></span>}
             </div>
             <ResponsiveContainer width="100%" height={150}>
               <ComposedChart data={data} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
@@ -440,7 +437,7 @@ export default function SpreadsPage() {
                         <div className={`h-full rounded-full ${dev >= 0 ? 'bg-green-500/60' : 'bg-red-500/60'}`}
                           style={{ width: `${Math.min(100, Math.abs(dev) * 400)}%` }} />
                       </div>
-                      <span className="font-mono text-sm text-white">${fp(x.p)}</span>
+                      <span className="font-mono text-sm text-white">{'$'}{fp(x.p)}</span>
                       <span className={`font-mono text-[11px] w-16 text-right ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {dev >= 0 ? '+' : ''}{dev.toFixed(3)}%
                       </span>
@@ -475,7 +472,7 @@ export default function SpreadsPage() {
                   <div className={`p-4 rounded-xl ${profit > 0 ? 'bg-green-500/[0.05] border border-green-500/10' : 'bg-red-500/[0.05] border border-red-500/10'}`}>
                     <p className="text-[11px] text-neutral-500 mb-1">Estimated net profit</p>
                     <p className={`text-2xl font-bold font-mono ${profit > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {profit >= 0 ? '+' : ''}${fp(Math.abs(profit))}
+                      {profit >= 0 ? '+' : ''}{'$'}{fp(Math.abs(profit))}
                     </p>
                     <p className="text-[11px] text-neutral-500 mt-1">
                       Gross {stats.pct.toFixed(3)}% − fees {(fee * 2).toFixed(2)}% = net {net.toFixed(3)}%
