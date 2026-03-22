@@ -204,7 +204,7 @@ export default function SpreadsPage() {
             {loading ? (
               <span className="flex items-center gap-1.5 text-xs text-neutral-600"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Loading...</span>
             ) : (
-              <span className="flex items-center gap-1.5 text-xs text-neutral-500"><span className="w-1.5 h-1.5 rounded-full bg-green-400" /> {exs.length} exchanges</span>
+              <span className="flex items-center gap-1.5 text-xs text-neutral-500"><span className="w-1.5 h-1.5 rounded-full bg-green-400" /> {sel.length} selected · {exs.length} with data</span>
             )}
             <button onClick={() => setShowCalc(!showCalc)}
               className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-neutral-400 hover:text-white transition flex items-center gap-1.5">
