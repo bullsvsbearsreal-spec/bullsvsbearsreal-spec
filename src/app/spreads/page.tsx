@@ -8,7 +8,7 @@ import {
 import { ArrowLeftRight, Search, ChevronDown, X, RefreshCw, Calculator, TrendingUp, TrendingDown, Activity, BarChart3, Zap, Info } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { getCoinIcon } from '@/lib/coinIcons';
+import { getCoinIcon, getExchangeIcon } from '@/lib/coinIcons';
 
 // ─── Exchange colors ─────────────────────────────────────────────────────────
 const EX_COLORS: Record<string, string> = {
@@ -29,7 +29,7 @@ const SYMBOLS: Record<string, string[]> = {
   Memes: ['PEPE','WIF','BONK','FLOKI','SHIB','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU','TURBO','NEIRO'],
   Gaming: ['SAND','MANA','AXS','GALA','BLUR','ENS','WLD','W','ZRO'],
 };
-const EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','HTX','Hyperliquid','dYdX'];
+const EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','HTX','Kraken','Hyperliquid','dYdX','Coinbase','BingX','Phemex','KuCoin','Bitfinex','WhiteBIT','CoinEx','Drift','GMX','Aevo'];
 const TFS = [
   { key: '1d', label: '1D', interval: '1h', limit: 24 },
   { key: '7d', label: '7D', interval: '1h', limit: 168 },
@@ -40,7 +40,11 @@ type TfK = typeof TFS[number]['key'];
 function fp(v: number) {
   if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   if (v >= 1) return v.toFixed(2);
-  return v.toPrecision(4);
+  if (v >= 0.01) return v.toFixed(4);
+  if (v >= 0.0001) return v.toFixed(6);
+  if (v >= 0.0000001) return v.toFixed(10);
+  if (v === 0) return '0';
+  return v.toExponential(2);
 }
 
 export default function SpreadsPage() {
@@ -144,7 +148,12 @@ export default function SpreadsPage() {
         {ps.map(x => (
           <div key={x.e} className="flex justify-between gap-4 py-[2px]">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: ec(x.e, exs.indexOf(x.e)) }} />
+              {getExchangeIcon(x.e) ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={getExchangeIcon(x.e)!} alt="" className="w-3.5 h-3.5 rounded-full" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none'; }} />
+              ) : (
+                <span className="w-2 h-2 rounded-full" style={{ background: ec(x.e, exs.indexOf(x.e)) }} />
+              )}
               <span className="text-neutral-300">{x.e}</span>
             </span>
             <span className="flex items-center gap-1.5">
@@ -244,13 +253,21 @@ export default function SpreadsPage() {
 
           {/* Exchanges */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            {sel.map((e, i) => (
+            {sel.map((e, i) => {
+              const icon = getExchangeIcon(e);
+              return (
               <span key={e} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white/[0.04] border border-white/[0.06]">
-                <span className="w-2 h-2 rounded-full" style={{ background: ec(e, i) }} />
+                {icon ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={icon} alt="" className="w-4 h-4 rounded-full" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                  <span className="w-3 h-3 rounded-full" style={{ background: ec(e, i) }} />
+                )}
                 {e}
                 <button onClick={() => toggle(e)} className="text-neutral-600 hover:text-white ml-0.5"><X className="w-3 h-3" /></button>
               </span>
-            ))}
+              );
+            })}
             <div className="relative">
               <button onClick={() => setShowEx(!showEx)} className="px-2.5 py-1 rounded-full text-[11px] text-neutral-500 bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow/30 transition">
                 + Exchange
@@ -260,7 +277,15 @@ export default function SpreadsPage() {
                   {EXCHANGES.map((e, i) => (
                     <button key={e} onClick={() => { toggle(e); setShowEx(false); }}
                       className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.04] flex items-center justify-between ${sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
-                      <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: ec(e, i) }} />{e}</span>
+                      <span className="flex items-center gap-2">
+                        {getExchangeIcon(e) ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={getExchangeIcon(e)!} alt="" className="w-4 h-4 rounded-full" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none'; }} />
+                        ) : (
+                          <span className="w-3 h-3 rounded-full" style={{ background: ec(e, i) }} />
+                        )}
+                        {e}
+                      </span>
                       {sel.includes(e) && <span className="text-hub-yellow text-[10px]">✓</span>}
                     </button>
                   ))}
