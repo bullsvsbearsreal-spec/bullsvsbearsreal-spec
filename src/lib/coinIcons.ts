@@ -29,10 +29,15 @@ export function getCoinIconUrl(symbol: string, size: 'small' | 'large' = 'small'
   return `https://assets.coingecko.com/coins/images/${getCoinGeckoImageId(id)}/small/${id}.png`;
 }
 
-// Use a simpler CDN that doesn't need image IDs
+// Use multiple CDN fallbacks for coin icons
 export function getCoinIcon(symbol: string): string {
   const s = symbol.toUpperCase();
-  // Use CryptoCompare free icon CDN (no API key needed, just symbol)
+  const id = COINGECKO_IDS[s];
+  if (id) {
+    // CoinGecko CDN (most reliable for known coins)
+    return `https://assets.coingecko.com/coins/images/${getCoinGeckoImageId(id)}/small/${id}.png`;
+  }
+  // Fallback: CryptoCompare symbol-based CDN
   return `https://www.cryptocompare.com/media/37746251/${s.toLowerCase()}.png`;
 }
 

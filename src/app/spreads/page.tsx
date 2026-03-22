@@ -34,7 +34,7 @@ const SYMBOLS: Record<string, string[]> = {
   Stocks: ['AAPL','TSLA','NVDA','COIN','MSTR','META','AMZN','GOOGL','MSFT'],
 };
 const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit'];
-const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','GMX','gTrade','Extended','Variational','edgeX','Nado'];
+const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','GMX','gTrade','Extended','Variational','edgeX','Nado','Backpack','Orderly','Paradex'];
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
 // Exchanges with kline/candle chart support in /api/klines-multi
 const CHART_SUPPORTED = new Set([
