@@ -55,9 +55,9 @@ function fp(v: number) {
   if (v >= 1) return v.toFixed(2);
   if (v >= 0.01) return v.toFixed(4);
   if (v >= 0.0001) return v.toFixed(6);
-  if (v >= 0.0000001) return v.toFixed(10);
   if (v === 0) return '0';
-  return v.toExponential(2);
+  // For very small numbers, use significant digits instead of fixed decimals
+  return Number(v.toPrecision(4)).toString();
 }
 
 function SpreadTooltip({ active, payload, exList, colorFn }: any) {
@@ -656,7 +656,7 @@ export default function SpreadsPage() {
                   <div className={`p-4 rounded-xl ${profit > 0 ? 'bg-green-500/[0.05] border border-green-500/10' : 'bg-red-500/[0.05] border border-red-500/10'}`}>
                     <p className="text-[11px] text-neutral-500 mb-1">Estimated net profit</p>
                     <p className={`text-2xl font-bold font-mono ${profit > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {profit >= 0 ? '+' : ''}{'$'}{fp(Math.abs(profit))}
+                      {profit >= 0 ? '+' : '-'}{'$'}{fp(Math.abs(profit))}
                     </p>
                     <p className="text-[11px] text-neutral-500 mt-1">
                       Gross {stats.pct.toFixed(3)}% − fees {(fee * 2).toFixed(2)}% = net {net.toFixed(3)}%
