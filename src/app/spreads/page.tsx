@@ -120,6 +120,20 @@ export default function SpreadsPage() {
 
   const toggle = useCallback((e: string) => setSel(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e].slice(0, 8)), []);
 
+  // Smart Y-axis domain: IQR-based to show spread detail
+  const yDomain = useMemo(() => {
+    if (data.length === 0 || exs.length === 0) return [0, 1];
+    const allPrices: number[] = [];
+    for (const pt of data) for (const e of exs) { const p = pt[e] as number; if (typeof p === 'number' && p > 0) allPrices.push(p); }
+    if (allPrices.length === 0) return [0, 1];
+    allPrices.sort((a, b) => a - b);
+    const q1 = allPrices[Math.floor(allPrices.length * 0.05)] || allPrices[0];
+    const q3 = allPrices[Math.floor(allPrices.length * 0.95)] || allPrices[allPrices.length - 1];
+    const iqr = q3 - q1;
+    const pad = Math.max(iqr * 0.3, q1 * 0.001);
+    return [q1 - pad, q3 + pad];
+  }, [data, exs]);
+
   const Tip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const pt = payload[0]?.payload;
@@ -348,24 +362,13 @@ export default function SpreadsPage() {
 
           {loading ? (
             <div className="h-[420px] flex items-center justify-center"><RefreshCw className="w-5 h-5 text-neutral-700 animate-spin" /></div>
-          ) : data.length > 0 ? (() => {
-            // Smart Y-axis: compute tight domain showing spread detail
-            const allPrices: number[] = [];
-            for (const pt of data) for (const e of exs) { const p = pt[e] as number; if (typeof p === 'number' && p > 0) allPrices.push(p); }
-            allPrices.sort((a, b) => a - b);
-            const q1 = allPrices[Math.floor(allPrices.length * 0.05)] || allPrices[0];
-            const q3 = allPrices[Math.floor(allPrices.length * 0.95)] || allPrices[allPrices.length - 1];
-            const iqr = q3 - q1;
-            const pad = Math.max(iqr * 0.3, q1 * 0.001); // at least 0.1% padding
-            const yMin = q1 - pad;
-            const yMax = q3 + pad;
-            return (
+          ) : data.length > 0 ? (
             <ResponsiveContainer width="100%" height={420}>
               <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 7))} />
-                <YAxis domain={[yMin, yMax]} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
+                <YAxis domain={yDomain} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => '$' + fp(v)} width={72} allowDataOverflow />
                 <RTooltip content={<Tip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeDasharray: '4 4' }} />
                 {exs.map((e, i) => (
@@ -374,8 +377,8 @@ export default function SpreadsPage() {
                     style={{ filter: `drop-shadow(0 0 6px ${ec(e, i)}40)` }} />
                 ))}
               </ComposedChart>
-            </ResponsiveContainer>);
-          })()
+            </ResponsiveContainer>
+          )
           ) : (
             <div className="h-[420px] flex flex-col items-center justify-center text-neutral-600">
               <Activity className="w-8 h-8 mb-2 text-neutral-700" />
