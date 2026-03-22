@@ -56,8 +56,8 @@ function fp(v: number) {
   if (v >= 1) return v.toFixed(2);
   if (v >= 0.01) return v.toFixed(4);
   if (v >= 0.0001) return v.toFixed(6);
-  if (v === 0) return '0';
-  // For very small numbers, use significant digits instead of fixed decimals
+  if (v === 0) return '0.00';
+  if (v < 0.0001) return v.toExponential(1);
   return Number(v.toPrecision(4)).toString();
 }
 
@@ -203,27 +203,18 @@ export default function SpreadsPage() {
     const days = tf === '1d' ? 1 : tf === '7d' ? 7 : 30;
     setLoading(true);
     let c = false;
-    Promise.allSettled([
-      // Source 1: Exchange kline APIs (Binance, Bybit, OKX, etc.)
-      fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit).then(r => r.ok ? r.json() : null),
-      // Source 2: DB mark_price snapshots (all exchanges including DEX)
-      fetch('/api/history/price-multi?symbol=' + sym + '&days=' + days, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([kRes, dbRes]) => {
+    fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
       if (c) return;
-      const klines = (kRes.status === 'fulfilled' && kRes.value?.exchanges) || {};
-      const dbPrices = (dbRes.status === 'fulfilled' && dbRes.value?.exchanges) || {};
+      const klines = json?.exchanges || {};
 
-      // Merge: klines take priority, DB fills gaps for exchanges without kline API
       const merged: Record<string, Candle[]> = { ...klines };
-      for (const [ex, pts] of Object.entries(dbPrices) as [string, any[]][]) {
-        if (!merged[ex] && pts.length > 0) {
-          // Convert DB format {t, price} to kline format (line-only, no OHLC)
-          merged[ex] = pts.map((p: any) => ({ t: p.t, o: p.price, h: p.price, l: p.price, c: p.price })).filter((c: Candle) => c.c > 0);
-        }
-      }
-
+      // DB fallback removed — price-multi endpoint not available
+      // DEX exchanges without kline APIs show in table only
       setKd(Object.keys(merged).length > 0 ? merged : null);
-    }).finally(() => { if (!c) setLoading(false); });
+    }).catch(() => { if (!c) setKd(null); })
+      .finally(() => { if (!c) setLoading(false); });
     return () => { c = true; };
   }, [sym, tf]);
 
