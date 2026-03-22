@@ -13,6 +13,7 @@ import {
   saveFundingSnapshot,
   saveOISnapshot,
   saveLiquidationSnapshot,
+  saveSpreadSnapshot,
   pruneOldData,
   recordAdminMetric,
 } from '@/lib/db';
@@ -106,6 +107,42 @@ export async function GET(request: NextRequest) {
         }));
 
       oiInserted = await saveOISnapshot(oiEntries);
+    }
+
+    // Process spread snapshots from tickers
+    let spreadInserted = 0;
+    try {
+      const tickerRes = await fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(15000) });
+      if (tickerRes.ok) {
+        const tickerJson = await tickerRes.json();
+        const tickers: any[] = tickerJson.data || tickerJson || [];
+        // Group by symbol, compute spread for top symbols
+        const bySymbol: Record<string, { exchange: string; price: number }[]> = {};
+        for (const t of tickers) {
+          if (!t.lastPrice || t.lastPrice <= 0) continue;
+          if (!bySymbol[t.symbol]) bySymbol[t.symbol] = [];
+          bySymbol[t.symbol].push({ exchange: t.exchange, price: t.lastPrice });
+        }
+        const topSyms = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK'];
+        for (const sym of topSyms) {
+          const entries = bySymbol[sym];
+          if (!entries || entries.length < 2) continue;
+          entries.sort((a, b) => b.price - a.price);
+          const high = entries[0];
+          const low = entries[entries.length - 1];
+          const spread = high.price - low.price;
+          const pct = (spread / low.price) * 100;
+          await saveSpreadSnapshot({
+            symbol: sym, spreadUsd: spread, spreadPct: pct,
+            highExchange: high.exchange, lowExchange: low.exchange,
+            highPrice: high.price, lowPrice: low.price,
+            exchangeCount: entries.length,
+          });
+          spreadInserted++;
+        }
+      }
+    } catch (e) {
+      console.error('[cron/snapshot] spread error:', e);
     }
 
     // NOTE: Liquidation ingestion is handled SOLELY by /api/cron/ingest-liquidations (runs every 1m).

@@ -86,6 +86,23 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_oi_sym_ts ON oi_snapshots(symbol, ts DESC)`;
 
+  // Spread snapshots for historical tracking
+  await sql`
+    CREATE TABLE IF NOT EXISTS spread_snapshots (
+      id SERIAL PRIMARY KEY,
+      symbol TEXT NOT NULL,
+      spread_usd REAL NOT NULL,
+      spread_pct REAL NOT NULL,
+      high_exchange TEXT,
+      low_exchange TEXT,
+      high_price REAL,
+      low_price REAL,
+      exchange_count INT DEFAULT 0,
+      ts TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_spread_sym_ts ON spread_snapshots(symbol, ts DESC)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS watchlists (
       id SERIAL PRIMARY KEY,
@@ -2268,6 +2285,53 @@ export async function countUserApiKeys(userId: string): Promise<number> {
     return Number(rows[0].cnt);
   } catch (e) {
     return 0;
+  }
+}
+
+// ─── Spread Snapshots ───────────────────────────────────────────────────────
+
+export async function saveSpreadSnapshot(data: {
+  symbol: string; spreadUsd: number; spreadPct: number;
+  highExchange: string; lowExchange: string;
+  highPrice: number; lowPrice: number; exchangeCount: number;
+}): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`INSERT INTO spread_snapshots (symbol, spread_usd, spread_pct, high_exchange, low_exchange, high_price, low_price, exchange_count)
+      VALUES (${data.symbol}, ${data.spreadUsd}, ${data.spreadPct}, ${data.highExchange}, ${data.lowExchange}, ${data.highPrice}, ${data.lowPrice}, ${data.exchangeCount})`;
+  } catch (e) {
+    console.error('DB saveSpreadSnapshot error:', e);
+  }
+}
+
+export async function getSpreadHistory(
+  symbol: string, days: number = 7
+): Promise<Array<{ t: number; spread: number; pct: number; high_ex: string; low_ex: string }>> {
+  try {
+    const sql = getSQL();
+    const intervalStr = `${days} days`;
+    const rows = days > 7
+      ? await sql`
+          SELECT EXTRACT(EPOCH FROM date_trunc('hour', ts)) * 1000 AS t,
+                 AVG(spread_usd) AS spread, AVG(spread_pct) AS pct,
+                 MODE() WITHIN GROUP (ORDER BY high_exchange) AS high_ex,
+                 MODE() WITHIN GROUP (ORDER BY low_exchange) AS low_ex
+          FROM spread_snapshots
+          WHERE symbol = ${symbol} AND ts > NOW() - ${intervalStr}::interval
+          GROUP BY date_trunc('hour', ts) ORDER BY t ASC`
+      : await sql`
+          SELECT EXTRACT(EPOCH FROM ts) * 1000 AS t, spread_usd AS spread,
+                 spread_pct AS pct, high_exchange AS high_ex, low_exchange AS low_ex
+          FROM spread_snapshots
+          WHERE symbol = ${symbol} AND ts > NOW() - ${intervalStr}::interval
+          ORDER BY ts ASC`;
+    return rows.map((r: any) => ({
+      t: Number(r.t), spread: Number(r.spread), pct: Number(r.pct),
+      high_ex: r.high_ex, low_ex: r.low_ex,
+    }));
+  } catch (e) {
+    console.error('DB getSpreadHistory error:', e);
+    return [];
   }
 }
 
