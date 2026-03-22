@@ -264,17 +264,42 @@ export default function SpreadsPage() {
                 + Exchange
               </button>
               {showEx && (
-                <div className="absolute top-full mt-1 left-0 z-50 w-44 rounded-xl bg-[#141418] border border-white/[0.08] shadow-2xl py-1">
-                  {EXCHANGES.map((e, i) => (
-                    <button key={e} onClick={() => { toggle(e); setShowEx(false); }}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.04] flex items-center justify-between ${sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
-                      <span className="flex items-center gap-2">
-                        <ExchangeLogo exchange={e} size={16} />
-                        {e}
-                      </span>
-                      {sel.includes(e) && <span className="text-hub-yellow text-[10px]">✓</span>}
-                    </button>
-                  ))}
+                <div className="absolute top-full mt-1 left-0 z-50 w-52 max-h-72 overflow-y-auto rounded-xl bg-[#141418] border border-white/[0.08] shadow-2xl">
+                  <div className="p-2 border-b border-white/[0.06] sticky top-0 bg-[#141418] z-10">
+                    <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold px-1 mb-1">Select exchanges ({sel.length}/8)</p>
+                  </div>
+                  <div className="py-1">
+                    <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider">CEX</p>
+                    {EXCHANGES.filter(e => !['Hyperliquid','dYdX','Drift','GMX','Aevo'].includes(e)).map((e) => (
+                      <button key={e} onClick={() => toggle(e)}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ${sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
+                        <span className="flex items-center gap-2.5">
+                          <ExchangeLogo exchange={e} size={18} />
+                          {e}
+                        </span>
+                        {sel.includes(e) ? (
+                          <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
+                        ) : (
+                          <span className="w-4 h-4 rounded border border-white/[0.1]" />
+                        )}
+                      </button>
+                    ))}
+                    <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider mt-1 border-t border-white/[0.06] pt-2">DEX</p>
+                    {EXCHANGES.filter(e => ['Hyperliquid','dYdX','Drift','GMX','Aevo'].includes(e)).map((e) => (
+                      <button key={e} onClick={() => toggle(e)}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ${sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400'}`}>
+                        <span className="flex items-center gap-2.5">
+                          <ExchangeLogo exchange={e} size={18} />
+                          {e}
+                        </span>
+                        {sel.includes(e) ? (
+                          <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
+                        ) : (
+                          <span className="w-4 h-4 rounded border border-white/[0.1]" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
