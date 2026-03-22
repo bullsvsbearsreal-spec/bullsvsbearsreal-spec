@@ -14,7 +14,7 @@ function sym(ex: string, s: string): string {
   const u = s.toUpperCase();
   const map: Record<string, string> = {
     binance: `${u}USDT`, bybit: `${u}USDT`, okx: `${u}-USDT-SWAP`,
-    bitget: `${u}USDT`, mexc: `${u}USDT`, htx: `${u.toLowerCase()}usdt`,
+    bitget: `${u}USDT`, mexc: `${u}_USDT`, htx: `${u.toLowerCase()}usdt`,
     hyperliquid: u, dydx: `${u}-USD`,
   };
   return map[ex] || `${u}USDT`;
@@ -40,7 +40,8 @@ const fetchers: Record<string, (s: string, iv: string, n: number) => Promise<Can
     return (await r.json()).data?.reverse().map((k: string[]) => ({ t: +k[0], c: +k[4] })).filter((c: Candle) => c.c > 0) || [];
   },
   Bitget: async (s, iv, n) => {
-    const r = await f(`https://api.bitget.com/api/v2/mix/market/candles?productType=USDT-FUTURES&symbol=${sym('bitget',s)}&granularity=${iv}&limit=${n}`);
+    const m: Record<string,string> = { '1h': '1H', '4h': '4H', '1d': '1D' };
+    const r = await f(`https://api.bitget.com/api/v2/mix/market/candles?productType=USDT-FUTURES&symbol=${sym('bitget',s)}&granularity=${m[iv]||'1H'}&limit=${n}`);
     if (!r.ok) return [];
     return (await r.json()).data?.reverse().map((k: string[]) => ({ t: +k[0], c: +k[4] })).filter((c: Candle) => c.c > 0) || [];
   },
@@ -74,6 +75,22 @@ const fetchers: Record<string, (s: string, iv: string, n: number) => Promise<Can
     const r = await f(`https://indexer.dydx.trade/v4/candles/perpetualMarkets/${s.toUpperCase()}-USD?resolution=${m[iv]||'1HOUR'}&limit=${n}`);
     if (!r.ok) return [];
     return (await r.json()).candles?.reverse().map((k: any) => ({ t: new Date(k.startedAt).getTime(), c: +k.close })).filter((c: Candle) => c.c > 0) || [];
+  },
+  Kraken: async (s, iv, n) => {
+    const u = s.toUpperCase();
+    const pair = u === 'BTC' ? 'PI_XBTUSD' : `PI_${u}USD`;
+    const m: Record<string,string> = { '1h': '1h', '4h': '4h', '1d': '1d' };
+    const r = await f(`https://futures.kraken.com/api/charts/v1/trade/${pair}/${m[iv]||'1h'}?from=${Math.floor((Date.now() - n * (iv === '1d' ? 86400000 : iv === '4h' ? 14400000 : 3600000)) / 1000)}`);
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.candles || []).map((k: any) => ({ t: k.time * 1000, c: +k.close })).filter((c: Candle) => c.c > 0);
+  },
+  BingX: async (s, iv, n) => {
+    const m: Record<string,string> = { '1h': '1h', '4h': '4h', '1d': '1d' };
+    const r = await f(`https://open-api.bingx.com/openApi/swap/v3/quote/klines?symbol=${s.toUpperCase()}-USDT&interval=${m[iv]||'1h'}&limit=${n}`);
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.data || []).map((k: any) => ({ t: +k.time, c: +k.close })).filter((c: Candle) => c.c > 0);
   },
 };
 
