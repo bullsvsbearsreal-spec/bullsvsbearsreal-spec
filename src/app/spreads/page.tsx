@@ -133,6 +133,7 @@ export default function SpreadsPage() {
   const [showCalc, setShowCalc] = useState(false);
   const [calcAmt, setCalcAmt] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
+  const [calcMode, setCalcMode] = useState<'usd' | 'coin'>('usd');
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
   const [candleExchange, setCandleExchange] = useState('');
 
@@ -602,7 +603,7 @@ export default function SpreadsPage() {
                 <h2 className="text-sm font-semibold">Spread History ({TFS.find(t => t.key === tf)?.label})</h2>
                 <p className="text-[11px] text-neutral-500">
                   Price spread between highest and lowest exchange over time.
-                  Use this to find the typical spread range for {sym}.
+                  Across: {exs.join(', ')}.
                 </p>
               </div>
               {/* Spread Range Summary */}
@@ -753,9 +754,20 @@ export default function SpreadsPage() {
             <p className="text-[11px] text-neutral-500 mb-4">Estimate net profit from cross-exchange arbitrage</p>
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] text-neutral-500 block mb-1">Trade size ($)</label>
-                <input value={calcAmt} onChange={e => setCalcAmt(e.target.value)} type="number"
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono outline-none focus:border-hub-yellow/30" />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] text-neutral-500">Trade size</label>
+                  <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
+                    <button onClick={() => setCalcMode('usd')}
+                      className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${calcMode === 'usd' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600'}`}>USD</button>
+                    <button onClick={() => setCalcMode('coin')}
+                      className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${calcMode === 'coin' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600'}`}>{sym}</button>
+                  </div>
+                </div>
+                <div className="relative">
+                  <input value={calcAmt} onChange={e => setCalcAmt(e.target.value)} type="number"
+                    className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono outline-none focus:border-hub-yellow/30" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-neutral-600">{calcMode === 'usd' ? 'USD' : sym}</span>
+                </div>
               </div>
               <div>
                 <label className="text-[11px] text-neutral-500 block mb-1">Fee per side (%)</label>
@@ -763,7 +775,9 @@ export default function SpreadsPage() {
                   className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono outline-none focus:border-hub-yellow/30" />
               </div>
               {stats && (() => {
-                const size = Number(calcAmt) || 0;
+                const rawAmt = Number(calcAmt) || 0;
+                const midPrice = stats.prices.length > 0 ? stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length : 1;
+                const size = calcMode === 'coin' ? rawAmt * midPrice : rawAmt;
                 const fee = Number(calcFee) || 0;
                 const net = stats.pct - fee * 2;
                 const profit = size * (net / 100);
