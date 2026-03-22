@@ -19,7 +19,7 @@ const EX_COLORS: Record<string, string> = {
 const PALETTE = ['#F0B90B','#FF6B6B','#00FF9D','#00D4FF','#A855F7','#FF61D2','#00FFCC','#6966FF'];
 function ec(ex: string, i: number) { return EX_COLORS[ex] || PALETTE[i % PALETTE.length]; }
 
-type Candle = { t: number; c: number };
+type Candle = { t: number; o: number; h: number; l: number; c: number };
 type Pt = { time: number; label: string; _spread?: number; [k: string]: any };
 
 const SYMBOLS: Record<string, string[]> = {
@@ -133,6 +133,8 @@ export default function SpreadsPage() {
   const [showCalc, setShowCalc] = useState(false);
   const [calcAmt, setCalcAmt] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
+  const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
+  const [candleExchange, setCandleExchange] = useState('');
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -173,8 +175,8 @@ export default function SpreadsPage() {
       const merged: Record<string, Candle[]> = { ...klines };
       for (const [ex, pts] of Object.entries(dbPrices) as [string, any[]][]) {
         if (!merged[ex] && pts.length > 0) {
-          // Convert DB format {t, price} to kline format {t, c}
-          merged[ex] = pts.map((p: any) => ({ t: p.t, c: p.price })).filter((c: Candle) => c.c > 0);
+          // Convert DB format {t, price} to kline format (line-only, no OHLC)
+          merged[ex] = pts.map((p: any) => ({ t: p.t, o: p.price, h: p.price, l: p.price, c: p.price })).filter((c: Candle) => c.c > 0);
         }
       }
 
@@ -495,7 +497,20 @@ export default function SpreadsPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap justify-end">
-              {exs.map((e, i) => (
+              {/* Chart mode toggle */}
+              <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
+                <button onClick={() => setChartMode('line')}
+                  className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (chartMode === 'line' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>Lines</button>
+                <button onClick={() => { setChartMode('candle'); if (!candleExchange && exs.length > 0) setCandleExchange(exs[0]); }}
+                  className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (chartMode === 'candle' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>Candles</button>
+              </div>
+              {chartMode === 'candle' && (
+                <select value={candleExchange} onChange={e => setCandleExchange(e.target.value)}
+                  className="px-2 py-0.5 rounded-md text-[10px] bg-white/[0.04] border border-white/[0.06] text-neutral-300 outline-none">
+                  {exs.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              )}
+              {chartMode === 'line' && exs.map((e, i) => (
                 <span key={e} className="flex items-center gap-1 text-[10px]">
                   <span className="w-3 h-[2px] rounded-full" style={{ background: ec(e, i) }} />
                   <ExchangeLogo exchange={e} size={12} />
@@ -515,7 +530,33 @@ export default function SpreadsPage() {
                 {[1,2,3,4,5,6].map(i => <div key={i} className="h-2 w-12 rounded bg-white/[0.03] animate-pulse" />)}
               </div>
             </div>
+          ) : data.length > 0 && chartMode === 'candle' && candleExchange && kd?.[candleExchange] ? (
+            /* Candlestick chart for single exchange */
+            <ResponsiveContainer width="100%" height={420}>
+              <ComposedChart data={kd[candleExchange].map(c => ({
+                ...c, label: new Date(c.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                bodyLow: Math.min(c.o, c.c), bodyHigh: Math.max(c.o, c.c),
+                color: c.c >= c.o ? '#22c55e' : '#ef4444',
+              }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
+                  interval={Math.max(0, Math.floor(kd[candleExchange].length / 8))} />
+                <YAxis domain={['dataMin', 'dataMax']} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
+                  tickFormatter={(v: number) => '$' + fp(v)} width={72} padding={{ top: 10, bottom: 10 }} />
+                <RTooltip contentStyle={{ background: '#141418', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+                  formatter={(v: number, name: string) => ['$' + fp(v), name]} labelStyle={{ color: '#6b7280' }} />
+                {/* Wicks (high-low line) */}
+                <Line type="monotone" dataKey="h" stroke="#4b5563" strokeWidth={1} dot={false} connectNulls name="High" />
+                <Line type="monotone" dataKey="l" stroke="#4b5563" strokeWidth={1} dot={false} connectNulls name="Low" />
+                {/* Body (open-close) as area between */}
+                <Area type="step" dataKey="bodyHigh" stroke="none" fill="rgba(34,197,94,0.3)" connectNulls name="Close" />
+                <Area type="step" dataKey="bodyLow" stroke="none" fill="#0c0e14" connectNulls name="Open" />
+                {/* Close line for visibility */}
+                <Line type="monotone" dataKey="c" stroke="#F59E0B" strokeWidth={1.5} dot={false} connectNulls name="Close" />
+              </ComposedChart>
+            </ResponsiveContainer>
           ) : data.length > 0 ? (
+            /* Multi-line chart */
             <ResponsiveContainer width="100%" height={420}>
               <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
