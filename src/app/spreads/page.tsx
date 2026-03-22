@@ -336,7 +336,7 @@ export default function SpreadsPage() {
                 <TrendingUp className="w-4 h-4 text-green-400" />
                 <span className="text-xs text-neutral-500">Highest Price</span>
               </div>
-              <p className="text-2xl font-bold font-mono text-white">${stats.hi ? fp(stats.hi.p) : '—'}</p>
+              <p className="text-2xl font-bold font-mono text-white">{'$'}{stats.hi ? fp(stats.hi.p) : '—'}</p>
               <p className="text-[11px] text-green-400 mt-1">{stats.hi?.e}</p>
             </div>
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
@@ -344,7 +344,7 @@ export default function SpreadsPage() {
                 <TrendingDown className="w-4 h-4 text-red-400" />
                 <span className="text-xs text-neutral-500">Lowest Price</span>
               </div>
-              <p className="text-2xl font-bold font-mono text-white">${stats.lo ? fp(stats.lo.p) : '—'}</p>
+              <p className="text-2xl font-bold font-mono text-white">{'$'}{stats.lo ? fp(stats.lo.p) : '—'}</p>
               <p className="text-[11px] text-red-400 mt-1">{stats.lo?.e}</p>
             </div>
           </div>
