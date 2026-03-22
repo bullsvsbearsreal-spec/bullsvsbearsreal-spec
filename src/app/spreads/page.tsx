@@ -65,7 +65,7 @@ const PAIR_GROUPS = {
   Memes: ['PEPE', 'WIF', 'BONK', 'FLOKI', 'POPCAT', 'BRETT', 'MOG', 'MEW', 'TRUMP', 'PENGU', 'SPX', 'GOAT', 'FARTCOIN', 'TURBO', 'USELESS', 'MOODENG'],
 };
 
-const DEFAULT_EXCHANGES = ['Binance', 'Bybit'];
+const DEFAULT_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Hyperliquid'];
 const MAX_EXCHANGES = 8;
 const SNAPSHOT_INTERVAL = 15_000;
 const MAX_SNAPSHOTS = 360; // 1.5h at 15s intervals
@@ -99,7 +99,7 @@ export default function ExchangeSpreadsPage() {
   // ── State ──
   const [symbol, setSymbol] = useState('BTC');
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>(DEFAULT_EXCHANGES);
-  const [timeframe, setTimeframe] = useState<TimeframeKey>('15m');
+  const [timeframe, setTimeframe] = useState<TimeframeKey>('1d');
   const [showSymbolPicker, setShowSymbolPicker] = useState(false);
   const [showExchangePicker, setShowExchangePicker] = useState(false);
   const [symbolSearch, setSymbolSearch] = useState('');
@@ -198,7 +198,9 @@ export default function ExchangeSpreadsPage() {
     if (availableExchanges.length < 2) return;
     const valid = selectedExchanges.filter(e => availableExchanges.includes(e));
     if (valid.length < 2) {
-      setSelectedExchanges(availableExchanges.slice(0, 2));
+      // Keep defaults if they're available, otherwise pick top by volume
+      const defaults = DEFAULT_EXCHANGES.filter(e => availableExchanges.includes(e));
+      setSelectedExchanges(defaults.length >= 2 ? defaults : availableExchanges.slice(0, 4));
     }
   }, [availableExchanges]);
 
@@ -682,7 +684,7 @@ export default function ExchangeSpreadsPage() {
             {/* Chart */}
             <div className="flex-1 min-w-0">
               {chartData.length >= 2 ? (
-                <ResponsiveContainer width="100%" height={420}>
+                <ResponsiveContainer width="100%" height={480}>
                   <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
                     <XAxis
@@ -722,7 +724,7 @@ export default function ExchangeSpreadsPage() {
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[420px] flex flex-col items-center justify-center text-neutral-600">
+                <div className="h-[480px] flex flex-col items-center justify-center text-neutral-600">
                   {klineLoading ? (
                     <>
                       <RefreshCw className="w-8 h-8 mb-3 text-neutral-700 animate-spin" />
