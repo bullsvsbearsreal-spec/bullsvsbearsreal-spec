@@ -298,15 +298,42 @@ export default function SpreadsPage() {
           </div>
         )}
 
+        {/* ── Bloomberg Ticker Strip ── */}
+        {stats && (
+          <div className="rounded-xl bg-[#0c0e14] border border-white/[0.06] px-4 py-2 mb-5 flex items-center gap-5 overflow-x-auto scrollbar-none">
+            {stats.prices.map((x, i) => (
+              <div key={x.e} className="flex items-center gap-2 flex-shrink-0">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ec(x.e, exs.indexOf(x.e)) }} />
+                <span className="text-[11px] text-neutral-500">{x.e}</span>
+                <span className="font-mono text-[12px] text-white font-medium">${fp(x.p)}</span>
+                {(() => {
+                  const median = stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length;
+                  const dev = ((x.p - median) / median) * 100;
+                  return (
+                    <span className={`font-mono text-[10px] ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {dev >= 0 ? '▲' : '▼'}{Math.abs(dev).toFixed(3)}%
+                    </span>
+                  );
+                })()}
+                {i < stats.prices.length - 1 && <span className="text-neutral-800 mx-1">│</span>}
+              </div>
+            ))}
+            <div className="flex-shrink-0 ml-auto pl-4 border-l border-white/[0.06]">
+              <span className="text-[10px] text-neutral-600">SPREAD </span>
+              <span className="font-mono text-[12px] text-hub-yellow font-bold">${fp(stats.cur)}</span>
+            </div>
+          </div>
+        )}
+
         {/* ── Price Chart ── */}
-        <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 mb-5">
+        <div className="rounded-2xl bg-[#0c0e14] border border-white/[0.06] p-4 sm:p-5 mb-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={getCoinIcon(sym)} alt="" className="w-6 h-6 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <div>
                 <h2 className="text-sm font-semibold">{sym}/USDT Price by Exchange</h2>
-                <p className="text-[11px] text-neutral-500">Perpetual futures close prices, {TFS.find(t=>t.key===tf)?.label} view</p>
+                <p className="text-[11px] text-neutral-500">Close prices across {exs.length} venues · {TFS.find(t=>t.key===tf)?.label}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -325,9 +352,9 @@ export default function SpreadsPage() {
             <ResponsiveContainer width="100%" height={420}>
               <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false}
+                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 7))} />
-                <YAxis domain={['dataMin', 'dataMax']} tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false}
+                <YAxis domain={['dataMin', 'dataMax']} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => '$' + fp(v)} width={72} padding={{ top: 15, bottom: 15 }} />
                 <RTooltip content={<Tip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeDasharray: '4 4' }} />
                 {exs.map((e, i) => (
@@ -348,7 +375,7 @@ export default function SpreadsPage() {
 
         {/* ── Spread History ── */}
         {data.length > 0 && exs.length >= 2 && (
-          <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 mb-5">
+          <div className="rounded-2xl bg-[#0c0e14] border border-white/[0.06] p-4 sm:p-5 mb-5">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-sm font-semibold">Spread Over Time</h2>
@@ -359,9 +386,9 @@ export default function SpreadsPage() {
             <ResponsiveContainer width="100%" height={150}>
               <ComposedChart data={data} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9 }} axisLine={false} tickLine={false}
+                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 6))} />
-                <YAxis tick={{ fill: '#4b5563', fontSize: 9 }} axisLine={false} tickLine={false}
+                <YAxis tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => '$' + fp(v)} width={55} domain={[0, 'auto']} />
                 <RTooltip contentStyle={{ background: '#141418', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
                   formatter={(v: number) => ['$' + fp(v), 'Spread']} labelStyle={{ color: '#6b7280' }} />
