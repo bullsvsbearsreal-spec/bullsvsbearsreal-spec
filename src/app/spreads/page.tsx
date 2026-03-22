@@ -117,11 +117,12 @@ export default function SpreadsPage() {
     return () => { c = true; };
   }, [sym, tf]);
 
-  const { data, exs } = useMemo(() => {
+  const { data, exs, available } = useMemo<{ data: Pt[]; exs: string[]; available?: string[] }>(() => {
     if (!kd) return { data: [] as Pt[], exs: [] as string[] };
     const av = Object.keys(kd);
     const active = sel.filter(e => av.includes(e));
-    const exs = active.length >= 1 ? active : av.slice(0, 4);
+    if (active.length === 0) return { data: [] as Pt[], exs: [] as string[], available: av };
+    const exs = active;
     const times = new Set<number>();
     const maps: Record<string, Map<number, number>> = {};
     for (const e of exs) {
@@ -149,7 +150,7 @@ export default function SpreadsPage() {
         : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       rows.push(pt);
     }
-    return { data: rows, exs };
+    return { data: rows, exs, available: av };
   }, [kd, sel, tf]);
 
   const stats = useMemo(() => {
@@ -429,8 +430,21 @@ export default function SpreadsPage() {
           ) : (
             <div className="h-[420px] flex flex-col items-center justify-center text-neutral-600">
               <Activity className="w-8 h-8 mb-2 text-neutral-700" />
-              <p className="text-sm">No price data for {sym}</p>
-              <p className="text-[10px] text-neutral-700 mt-1">Try a different symbol or timeframe</p>
+              {available && available.length > 0 ? (
+                <>
+                  <p className="text-sm">Selected exchanges don{"'"}t list {sym}</p>
+                  <p className="text-[10px] text-neutral-500 mt-2">Available on: {available.join(', ')}</p>
+                  <button onClick={() => setSel(available.slice(0, 5))}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-hub-yellow/10 border border-hub-yellow/20 text-hub-yellow text-xs hover:bg-hub-yellow/20 transition">
+                    Switch to available exchanges
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm">No price data for {sym}</p>
+                  <p className="text-[10px] text-neutral-700 mt-1">Try a different symbol or timeframe</p>
+                </>
+              )}
             </div>
           )}
         </div>
