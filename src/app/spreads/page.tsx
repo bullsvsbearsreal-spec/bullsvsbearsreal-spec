@@ -28,6 +28,9 @@ const SYMBOLS: Record<string, string[]> = {
   DeFi: ['AAVE','UNI','MKR','CRV','DYDX','SNX','COMP','LDO','EIGEN','ENA','ONDO','JUP','PYTH'],
   Memes: ['PEPE','WIF','BONK','FLOKI','SHIB','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU','TURBO','NEIRO'],
   Gaming: ['SAND','MANA','AXS','GALA','BLUR','ENS','WLD','W','ZRO'],
+  Commodities: ['XAU','XAG','XAUT'],
+  Forex: ['EUR','GBP','JPY'],
+  Stocks: ['AAPL','TSLA','NVDA','COIN','MSTR','META','AMZN','GOOGL','MSFT'],
 };
 const EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','HTX','Kraken','Hyperliquid','dYdX','Coinbase','BingX','Phemex','KuCoin','Bitfinex','WhiteBIT','CoinEx','Drift','GMX','Aevo'];
 const TFS = [
