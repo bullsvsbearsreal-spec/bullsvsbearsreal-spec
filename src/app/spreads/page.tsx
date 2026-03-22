@@ -642,7 +642,7 @@ export default function SpreadsPage() {
           ) : data.length > 0 ? (
             /* Multi-line chart */
             <ResponsiveContainer width="100%" height={420}>
-              <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <ComposedChart data={data} margin={{ top: 8, right: 65, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 7))} />
@@ -652,8 +652,20 @@ export default function SpreadsPage() {
                 {exs.map((e, i) => (
                   <Line key={e} type="monotone" dataKey={viewMode === 'pct' ? e + '_dev' : e} stroke={ec(e, i)} strokeWidth={2.5} dot={false}
                     activeDot={{ r: 4, fill: ec(e, i), stroke: '#0f0f14', strokeWidth: 2 }} connectNulls
-                    style={{ filter: `drop-shadow(0 0 6px ${ec(e, i)}40)` }} />
+                    style={{ filter: `drop-shadow(0 0 6px ${ec(e, i)}40)` }}
+                    label={false} />
                 ))}
+                {/* Right-side current price labels */}
+                {data.length > 0 && exs.map((e, i) => {
+                  const last = data[data.length - 1];
+                  const val = viewMode === 'pct' ? last[e + '_dev'] as number : last[e] as number;
+                  if (typeof val !== 'number') return null;
+                  return (
+                    <ReferenceLine key={'ref-' + e} y={val} stroke="none"
+                      label={{ value: viewMode === 'pct' ? (val >= 0 ? '+' : '') + val.toFixed(3) + '%' : '$' + fp(val),
+                        position: 'right', fill: ec(e, i), fontSize: 9, fontFamily: 'ui-monospace, monospace' }} />
+                  );
+                })}
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
