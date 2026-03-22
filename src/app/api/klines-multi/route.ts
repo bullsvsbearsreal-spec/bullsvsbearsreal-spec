@@ -78,7 +78,10 @@ const fetchers: Record<string, (s: string, iv: string, n: number) => Promise<Can
   },
   Kraken: async (s, iv, n) => {
     const u = s.toUpperCase();
-    const pair = u === 'BTC' ? 'PI_XBTUSD' : `PI_${u}USD`;
+    // Kraken futures only reliably supports major coins
+    const krakenMap: Record<string,string> = { BTC: 'PI_XBTUSD', ETH: 'PI_ETHUSD', SOL: 'PI_SOLUSD', XRP: 'PI_XRPUSD', ADA: 'PI_ADAUSD', DOT: 'PI_DOTUSD', LINK: 'PI_LINKUSD', AVAX: 'PI_AVAXUSD' };
+    const pair = krakenMap[u];
+    if (!pair) return [];
     const m: Record<string,string> = { '1h': '1h', '4h': '4h', '1d': '1d' };
     const r = await f(`https://futures.kraken.com/api/charts/v1/trade/${pair}/${m[iv]||'1h'}?from=${Math.floor((Date.now() - n * (iv === '1d' ? 86400000 : iv === '4h' ? 14400000 : 3600000)) / 1000)}`);
     if (!r.ok) return [];
@@ -110,16 +113,8 @@ const fetchers: Record<string, (s: string, iv: string, n: number) => Promise<Can
     const j = await r.json();
     return (j.data || []).map((k: number[]) => ({ t: k[0] * 1000, o: k[1], h: k[2], l: k[3], c: k[4] })).filter((c: Candle) => c.c > 0 && c.o > 0);
   },
-  Bitfinex: async (s, iv, n) => {
-    const u = s.toUpperCase();
-    const pair = u === 'BTC' ? 'tBTCF0:USTF0' : `t${u}F0:USTF0`;
-    const m: Record<string,string> = { '1h': '1h', '4h': '4h', '1d': '1D' };
-    const r = await f(`https://api-pub.bitfinex.com/v2/candles/trade:${m[iv]||'1h'}:${pair}/hist?limit=${n}&sort=1`);
-    if (!r.ok) return [];
-    const j = await r.json();
-    // Bitfinex v2: [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
-    return (j || []).map((k: number[]) => ({ t: k[0], o: k[1], h: k[3], l: k[4], c: k[2] })).filter((c: Candle) => c.c > 0 && c.o > 0);
-  },
+  // Bitfinex disabled: perp pair format tBTCF0:USTF0 returns wrong prices ($11.5K for BTC)
+  // Bitfinex: async () => [],
   CoinEx: async (s, iv, n) => {
     const m: Record<string,string> = { '1h': '1hour', '4h': '4hour', '1d': '1day' };
     const r = await f(`https://api.coinex.com/v2/futures/kline?market=${s.toUpperCase()}USDT&type=${m[iv]||'1hour'}&limit=${n}`);
@@ -213,11 +208,35 @@ export async function GET(req: NextRequest) {
     exchanges.map(async ex => ({ exchange: ex, candles: await fetchers[ex](symbol, interval, limit).catch(() => [] as Candle[]) }))
   );
 
-  const data: Record<string, Candle[]> = {};
-  let ok = 0;
+  const rawData: Record<string, Candle[]> = {};
   for (const r of results) {
     if (r.status === 'fulfilled' && r.value.candles.length > 0) {
-      data[r.value.exchange] = r.value.candles;
+      rawData[r.value.exchange] = r.value.candles;
+    }
+  }
+
+  // Outlier filtering: exclude exchanges whose last close is >3% from median
+  const lastPrices = Object.entries(rawData).map(([ex, candles]) => ({
+    ex, price: candles[candles.length - 1]?.c || 0,
+  })).filter(x => x.price > 0).sort((a, b) => a.price - b.price);
+
+  const data: Record<string, Candle[]> = {};
+  let ok = 0;
+  if (lastPrices.length >= 3) {
+    const medIdx = Math.floor(lastPrices.length / 2);
+    const median = lastPrices[medIdx].price;
+    for (const { ex, price } of lastPrices) {
+      const dev = Math.abs(price - median) / median;
+      if (dev < 0.03) { // within 3% of median
+        data[ex] = rawData[ex];
+        ok++;
+      }
+      // else: silently excluded as outlier
+    }
+  } else {
+    // Too few exchanges to filter, include all
+    for (const [ex, candles] of Object.entries(rawData)) {
+      data[ex] = candles;
       ok++;
     }
   }
