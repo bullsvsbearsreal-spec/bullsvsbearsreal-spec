@@ -314,7 +314,7 @@ export default function SpreadsPage() {
                 <span className="text-neutral-600 text-xs">({(stats.currentPct * 100).toFixed(1)} bps)</span>
               </div>
             </div>
-            <div className="flex gap-6">
+            <div className="flex gap-4 sm:gap-6 flex-wrap">
               <div className="text-right">
                 <p className="text-[10px] text-neutral-500 flex items-center gap-1"><TrendingUp className="w-3 h-3 text-green-400" /> Highest</p>
                 <p className="font-mono text-sm text-white">{stats.highest ? formatPrice(stats.highest.p) : '—'}</p>
@@ -324,6 +324,11 @@ export default function SpreadsPage() {
                 <p className="text-[10px] text-neutral-500 flex items-center gap-1"><TrendingDown className="w-3 h-3 text-red-400" /> Lowest</p>
                 <p className="font-mono text-sm text-white">{stats.lowest ? formatPrice(stats.lowest.p) : '—'}</p>
                 <p className="text-[10px] text-red-400">{stats.lowest?.ex}</p>
+              </div>
+              <div className="text-right border-l border-white/[0.06] pl-4">
+                <p className="text-[10px] text-neutral-500">Spread Range ({TIMEFRAMES.find(t=>t.key===tf)?.label})</p>
+                <p className="font-mono text-sm text-white">{formatPrice(stats.min)} — {formatPrice(stats.max)}</p>
+                <p className="text-[10px] text-neutral-500">avg {formatPrice(stats.avg)}</p>
               </div>
             </div>
           </div>
@@ -375,7 +380,7 @@ export default function SpreadsPage() {
                   tickFormatter={(v: number) => formatPrice(v)} width={75}
                   padding={{ top: 20, bottom: 20 }}
                 />
-                <RTooltip content={<CustomTooltip />} />
+                <RTooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeDasharray: '4 4' }} />
                 {/* Spread band (shaded area between min and max) */}
                 {activeExchanges.length >= 2 && (
                   <Area type="monotone" dataKey="_max" stroke="none" fill="rgba(234,179,8,0.06)"
@@ -399,6 +404,31 @@ export default function SpreadsPage() {
             </div>
           )}
         </div>
+
+        {/* ── Spread History Chart ── */}
+        {chartData.length > 0 && activeExchanges.length >= 2 && (
+          <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-neutral-300">Spread Over Time</h2>
+              <span className="text-[10px] text-neutral-500">Highest minus lowest price across selected exchanges</span>
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9 }} axisLine={false} tickLine={false}
+                  interval={Math.max(0, Math.floor(chartData.length / 6))} />
+                <YAxis tick={{ fill: '#4b5563', fontSize: 9 }} axisLine={false} tickLine={false}
+                  tickFormatter={(v: number) => formatPrice(v)} width={65} domain={[0, 'auto']} />
+                <RTooltip
+                  contentStyle={{ background: '#0d0f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11 }}
+                  formatter={(v: number) => [formatPrice(v), 'Spread']}
+                  labelStyle={{ color: '#9ca3af' }} />
+                <Area type="monotone" dataKey="_spread" stroke="#eab308" fill="rgba(234,179,8,0.15)"
+                  strokeWidth={1.5} dot={false} connectNulls />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         {/* ── Spread Stats Cards ── */}
         {stats && (
