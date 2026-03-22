@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip as RTooltip,
   CartesianGrid, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { ArrowLeftRight, Search, ChevronDown, X, RefreshCw, Calculator, TrendingUp, TrendingDown, Activity, BarChart3, Zap, Info } from 'lucide-react';
+import { ArrowLeftRight, Search, ChevronDown, X, RefreshCw, Calculator, TrendingUp, TrendingDown, Activity, BarChart3, Zap, Info, Wifi, WifiOff, Bell, BellOff } from 'lucide-react';
+import { useMultiExchangeWS, WS_SUPPORTED } from '@/hooks/useMultiExchangeWS';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getCoinIcon } from '@/lib/coinIcons';
@@ -134,6 +135,45 @@ export default function SpreadsPage() {
   const [calcAmt, setCalcAmt] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
   const [calcMode, setCalcMode] = useState<'usd' | 'coin'>('usd');
+  const [wsEnabled, setWsEnabled] = useState(true);
+  const [alertThreshold, setAlertThreshold] = useState('');
+  const [alertActive, setAlertActive] = useState(false);
+  const [lastAlert, setLastAlert] = useState<string | null>(null);
+  const prevPricesRef = useRef<Record<string, number>>({});
+
+  // ── WebSocket real-time prices ──
+  const { prices: wsPrices, connected: wsConnected } = useMultiExchangeWS(sym, sel, wsEnabled);
+  const wsCount = Object.values(wsConnected).filter(Boolean).length;
+  const wsTotal = sel.filter(e => WS_SUPPORTED.includes(e)).length;
+
+  // Compute live spread from WS prices
+  const wsSpread = useMemo(() => {
+    const wsPriceValues = Object.values(wsPrices).filter(p => p.price > 0);
+    if (wsPriceValues.length < 2) return null;
+    const sorted = [...wsPriceValues].sort((a, b) => b.price - a.price);
+    const spread = sorted[0].price - sorted[sorted.length - 1].price;
+    const pct = (spread / sorted[sorted.length - 1].price) * 100;
+    return { spread, pct, high: sorted[0], low: sorted[sorted.length - 1], prices: sorted };
+  }, [wsPrices]);
+
+  // ── Alert checking ──
+  useEffect(() => {
+    if (!alertActive || !wsSpread || !alertThreshold) return;
+    const threshold = Number(alertThreshold);
+    if (threshold <= 0 || isNaN(threshold)) return;
+    if (wsSpread.spread >= threshold) {
+      const msg = `${sym} spread $${wsSpread.spread.toFixed(2)} exceeded $${threshold} threshold! ${wsSpread.high.exchange} $${fp(wsSpread.high.price)} vs ${wsSpread.low.exchange} $${fp(wsSpread.low.price)}`;
+      if (msg !== lastAlert) {
+        setLastAlert(msg);
+        // Browser notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('InfoHub Spread Alert', { body: msg, icon: '/favicon.ico' });
+        }
+        // Sound alert
+        try { new Audio('/audio/alert.mp3').play().catch(() => {}); } catch {}
+      }
+    }
+  }, [wsSpread, alertActive, alertThreshold, sym, lastAlert]);
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
   const [candleExchange, setCandleExchange] = useState('');
 
@@ -303,8 +343,39 @@ export default function SpreadsPage() {
             )}
             <button onClick={() => setShowCalc(!showCalc)}
               className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-neutral-400 hover:text-white transition flex items-center gap-1.5">
-              <Calculator className="w-3.5 h-3.5" /> Arb Calculator
+              <Calculator className="w-3.5 h-3.5" /> Arb Calc
             </button>
+            {/* WS toggle */}
+            <button onClick={() => setWsEnabled(!wsEnabled)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition ${
+                wsEnabled && wsCount > 0
+                  ? 'bg-green-500/[0.06] border-green-500/20 text-green-400'
+                  : 'bg-white/[0.04] border-white/[0.08] text-neutral-500'
+              }`}>
+              {wsEnabled ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              {wsEnabled ? `WS ${wsCount}/${wsTotal}` : 'WS Off'}
+            </button>
+            {/* Alert toggle */}
+            <div className="flex items-center gap-1">
+              <button onClick={() => {
+                if (!alertActive && 'Notification' in window) Notification.requestPermission();
+                setAlertActive(!alertActive);
+              }}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition ${
+                  alertActive ? 'bg-hub-yellow/10 border-hub-yellow/20 text-hub-yellow' : 'bg-white/[0.04] border-white/[0.08] text-neutral-500'
+                }`}>
+                {alertActive ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+                Alert
+              </button>
+              {alertActive && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-neutral-600">$</span>
+                  <input value={alertThreshold} onChange={e => setAlertThreshold(e.target.value)}
+                    type="number" placeholder="100" step="10"
+                    className="w-16 px-1.5 py-1 rounded bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white outline-none focus:border-hub-yellow/30" />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -459,29 +530,40 @@ export default function SpreadsPage() {
           </div>
         )}
 
-        {/* ── Bloomberg Ticker Strip ── */}
+        {/* ── Bloomberg Ticker Strip (WS-powered when available) ── */}
         {stats && (
           <div className="rounded-xl bg-[#0c0e14] border border-white/[0.06] px-4 py-2 mb-5 flex items-center gap-5 overflow-x-auto scrollbar-none">
-            {stats.prices.map((x, i) => (
-              <div key={x.e} className="flex items-center gap-2 flex-shrink-0">
-                <ExchangeLogo exchange={x.e} size={14} />
-                <span className="text-[11px] text-neutral-500">{x.e}</span>
-                <span className="font-mono text-[12px] text-white font-medium">{'$'}{fp(x.p)}</span>
-                {(() => {
-                  const median = stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length;
-                  const dev = ((x.p - median) / median) * 100;
-                  return (
-                    <span className={`font-mono text-[10px] ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {dev >= 0 ? '▲' : '▼'}{Math.abs(dev).toFixed(3)}%
-                    </span>
-                  );
-                })()}
-                {i < stats.prices.length - 1 && <span className="text-neutral-800 mx-1">│</span>}
-              </div>
-            ))}
+            {stats.prices.map((x, i) => {
+              const wsP = wsPrices[x.e];
+              const livePrice = wsP?.price || x.p;
+              const prev = prevPricesRef.current[x.e] || livePrice;
+              const direction = livePrice > prev ? 'up' : livePrice < prev ? 'down' : 'same';
+              prevPricesRef.current[x.e] = livePrice;
+              const median = stats.prices.reduce((s, p) => s + (wsPrices[p.e]?.price || p.p), 0) / stats.prices.length;
+              const dev = ((livePrice - median) / median) * 100;
+              return (
+                <div key={x.e} className="flex items-center gap-2 flex-shrink-0">
+                  <ExchangeLogo exchange={x.e} size={14} />
+                  <span className="text-[11px] text-neutral-500">{x.e}</span>
+                  <span className={`font-mono text-[12px] font-medium transition-colors duration-300 ${
+                    direction === 'up' ? 'text-green-400' : direction === 'down' ? 'text-red-400' : 'text-white'
+                  }`}>
+                    {'$'}{fp(livePrice)}
+                  </span>
+                  {wsP && <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" title="Live WS" />}
+                  <span className={`font-mono text-[10px] ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {dev >= 0 ? '▲' : '▼'}{Math.abs(dev).toFixed(3)}%
+                  </span>
+                  {i < stats.prices.length - 1 && <span className="text-neutral-800 mx-1">│</span>}
+                </div>
+              );
+            })}
             <div className="flex-shrink-0 ml-auto pl-4 border-l border-white/[0.06]">
               <span className="text-[10px] text-neutral-600">SPREAD </span>
-              <span className="font-mono text-[12px] text-hub-yellow font-bold">{'$'}{fp(stats.cur)}</span>
+              <span className="font-mono text-[12px] text-hub-yellow font-bold">
+                {'$'}{fp(wsSpread?.spread ?? stats.cur)}
+              </span>
+              {wsCount > 0 && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />}
             </div>
           </div>
         )}
