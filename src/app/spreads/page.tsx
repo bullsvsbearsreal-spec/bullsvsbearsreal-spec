@@ -105,6 +105,15 @@ export default function SpreadsPage() {
   const [calcAmt, setCalcAmt] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
 
+  // Live data from existing APIs
+  type TickerEntry = { symbol: string; exchange: string; lastPrice: number; change24h: number; quoteVolume24h: number };
+  type FundingEntry = { symbol: string; exchange: string; fundingRate: number; markPrice: number };
+  type OIEntry = { symbol: string; exchange: string; openInterestValue: number };
+  const [tickers, setTickers] = useState<TickerEntry[]>([]);
+  const [funding, setFunding] = useState<FundingEntry[]>([]);
+  const [oi, setOI] = useState<OIEntry[]>([]);
+
+  // Fetch klines (historical chart)
   useEffect(() => {
     const t = TFS.find(x => x.key === tf)!;
     setLoading(true);
@@ -116,6 +125,29 @@ export default function SpreadsPage() {
       .finally(() => { if (!c) setLoading(false); });
     return () => { c = true; };
   }, [sym, tf]);
+
+  // Fetch live tickers + funding + OI (refresh every 30s)
+  useEffect(() => {
+    let c = false;
+    const load = () => {
+      Promise.allSettled([
+        fetch('/api/tickers').then(r => r.ok ? r.json() : null),
+        fetch('/api/funding').then(r => r.ok ? r.json() : null),
+        fetch('/api/openinterest').then(r => r.ok ? r.json() : null),
+      ]).then(([tRes, fRes, oRes]) => {
+        if (c) return;
+        const tData = (tRes.status === 'fulfilled' && tRes.value?.data) || [];
+        const fData = (fRes.status === 'fulfilled' && fRes.value?.data) || [];
+        const oData = (oRes.status === 'fulfilled' && oRes.value?.data) || [];
+        setTickers(tData.filter((t: any) => t.symbol === sym));
+        setFunding(fData.filter((f: any) => f.symbol === sym));
+        setOI(oData.filter((o: any) => o.symbol === sym));
+      });
+    };
+    load();
+    const iv = setInterval(load, 30000);
+    return () => { c = true; clearInterval(iv); };
+  }, [sym]);
 
   const { data, exs, available } = useMemo<{ data: Pt[]; exs: string[]; available?: string[] }>(() => {
     if (!kd) return { data: [] as Pt[], exs: [] as string[] };
@@ -477,38 +509,81 @@ export default function SpreadsPage() {
         )}
 
         {/* ── Exchange Table + Arb Calc side by side ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
           {/* Exchange Table */}
           {stats && stats.prices.length > 0 && (
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] overflow-hidden">
-              <div className="px-4 sm:px-5 py-3 border-b border-white/[0.06]">
-                <h3 className="text-sm font-semibold">Price by Exchange</h3>
-                <p className="text-[11px] text-neutral-500 mt-0.5">Sorted by price, highest first</p>
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] overflow-hidden lg:col-span-2">
+              <div className="px-4 sm:px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">{sym} Market Data by Exchange</h3>
+                  <p className="text-[11px] text-neutral-500 mt-0.5">Live prices, funding, OI, and volume · refreshes every 30s</p>
+                </div>
+                <span className="text-[10px] text-neutral-600">{tickers.length} exchanges reporting</span>
               </div>
-              {stats.prices.map((x, i) => {
-                const median = stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length;
-                const dev = ((x.p - median) / median) * 100;
-                return (
-                  <div key={x.e} className={`px-4 sm:px-5 py-3 flex items-center justify-between border-b border-white/[0.03] ${i === 0 ? 'bg-green-500/[0.02]' : i === stats.prices.length - 1 ? 'bg-red-500/[0.02]' : ''}`}>
-                    <div className="flex items-center gap-2.5">
-                      <ExchangeLogo exchange={x.e} size={18} />
-                      <span className="text-sm font-medium">{x.e}</span>
-                      {i === 0 && <span className="text-[8px] px-1.5 py-[1px] rounded bg-green-500/10 text-green-400 font-semibold">highest</span>}
-                      {i === stats.prices.length - 1 && <span className="text-[8px] px-1.5 py-[1px] rounded bg-red-500/10 text-red-400 font-semibold">lowest</span>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-14 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${dev >= 0 ? 'bg-green-500/60' : 'bg-red-500/60'}`}
-                          style={{ width: `${Math.min(100, Math.abs(dev) * 400)}%` }} />
-                      </div>
-                      <span className="font-mono text-sm text-white">{'$'}{fp(x.p)}</span>
-                      <span className={`font-mono text-[11px] w-16 text-right ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {dev >= 0 ? '+' : ''}{dev.toFixed(3)}%
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-[10px] text-neutral-500 uppercase tracking-wider border-b border-white/[0.06]">
+                      <th className="px-4 py-2 text-left">Exchange</th>
+                      <th className="px-3 py-2 text-right">Price</th>
+                      <th className="px-3 py-2 text-right">vs Median</th>
+                      <th className="px-3 py-2 text-right">24h Change</th>
+                      <th className="px-3 py-2 text-right">Funding Rate</th>
+                      <th className="px-3 py-2 text-right">Open Interest</th>
+                      <th className="px-3 py-2 text-right">Volume 24h</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      // Merge all data sources by exchange
+                      const tickerMap = new Map(tickers.map(t => [t.exchange, t]));
+                      const fundingMap = new Map(funding.map(f => [f.exchange, f]));
+                      const oiMap = new Map(oi.map(o => [o.exchange, o]));
+                      const allExchanges = new Set([...tickers.map(t => t.exchange), ...stats.prices.map(p => p.e)]);
+                      const rows = Array.from(allExchanges).map(e => ({
+                        exchange: e,
+                        price: tickerMap.get(e)?.lastPrice || stats.prices.find(p => p.e === e)?.p || 0,
+                        change: tickerMap.get(e)?.change24h,
+                        fundingRate: fundingMap.get(e)?.fundingRate,
+                        oiValue: oiMap.get(e)?.openInterestValue,
+                        volume: tickerMap.get(e)?.quoteVolume24h,
+                      })).filter(r => r.price > 0).sort((a, b) => b.price - a.price);
+                      const median = rows.length > 0 ? rows.reduce((s, r) => s + r.price, 0) / rows.length : 0;
+                      return rows.map((r, i) => {
+                        const dev = median > 0 ? ((r.price - median) / median) * 100 : 0;
+                        return (
+                          <tr key={r.exchange} className={'border-b border-white/[0.03] hover:bg-white/[0.02] ' + (i === 0 ? 'bg-green-500/[0.02]' : i === rows.length - 1 ? 'bg-red-500/[0.02]' : '')}>
+                            <td className="px-4 py-2.5">
+                              <span className="flex items-center gap-2">
+                                <ExchangeLogo exchange={r.exchange} size={16} />
+                                <span className="font-medium text-white">{r.exchange}</span>
+                                {i === 0 && <span className="text-[7px] px-1 py-[1px] rounded bg-green-500/10 text-green-400 font-bold">HIGH</span>}
+                                {i === rows.length - 1 && <span className="text-[7px] px-1 py-[1px] rounded bg-red-500/10 text-red-400 font-bold">LOW</span>}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-white">{'$'}{fp(r.price)}</td>
+                            <td className={'px-3 py-2.5 text-right font-mono ' + (dev >= 0 ? 'text-green-400' : 'text-red-400')}>
+                              {dev >= 0 ? '+' : ''}{dev.toFixed(3)}%
+                            </td>
+                            <td className={'px-3 py-2.5 text-right font-mono ' + (r.change !== undefined ? (r.change >= 0 ? 'text-green-400' : 'text-red-400') : 'text-neutral-600')}>
+                              {r.change !== undefined ? (r.change >= 0 ? '+' : '') + r.change.toFixed(2) + '%' : '—'}
+                            </td>
+                            <td className={'px-3 py-2.5 text-right font-mono ' + (r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400') : 'text-neutral-600')}>
+                              {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100).toFixed(4) + '%' : '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-neutral-300">
+                              {r.oiValue ? '$' + (r.oiValue >= 1e9 ? (r.oiValue/1e9).toFixed(2)+'B' : r.oiValue >= 1e6 ? (r.oiValue/1e6).toFixed(1)+'M' : (r.oiValue/1e3).toFixed(0)+'K') : '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-neutral-300">
+                              {r.volume ? '$' + (r.volume >= 1e9 ? (r.volume/1e9).toFixed(2)+'B' : r.volume >= 1e6 ? (r.volume/1e6).toFixed(1)+'M' : (r.volume/1e3).toFixed(0)+'K') : '—'}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
