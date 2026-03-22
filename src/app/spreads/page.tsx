@@ -53,6 +53,45 @@ function fp(v: number) {
   return v.toExponential(2);
 }
 
+function SpreadTooltip({ active, payload, exList, colorFn }: any) {
+  if (!active || !payload?.length) return null;
+  const pt = payload[0]?.payload;
+  if (!pt) return null;
+  const exchanges: string[] = exList || [];
+  const ps = exchanges
+    .map((e: string) => ({ e, p: pt[e] as number, d: pt[e + '_dev'] as number }))
+    .filter((x: any) => x.p > 0)
+    .sort((a: any, b: any) => b.p - a.p);
+  const sp = ps.length >= 2 ? ps[0].p - ps[ps.length - 1].p : 0;
+  return (
+    <div className="bg-[#141418] border border-white/[0.08] rounded-lg px-3 py-2.5 shadow-xl text-xs min-w-[200px]">
+      <p className="text-neutral-500 text-[10px] mb-2 pb-1.5 border-b border-white/[0.06]">{pt.label}</p>
+      {ps.map((x: any) => (
+        <div key={x.e} className="flex justify-between gap-4 py-[2px]">
+          <span className="flex items-center gap-1.5">
+            <ExchangeLogo exchange={x.e} size={14} />
+            <span className="text-neutral-300">{x.e}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="font-mono text-white">{'$'}{fp(x.p)}</span>
+            {typeof x.d === 'number' && (
+              <span className={'font-mono text-[10px] ' + (x.d >= 0 ? 'text-green-400' : 'text-red-400')}>
+                {x.d >= 0 ? '+' : ''}{x.d.toFixed(3)}%
+              </span>
+            )}
+          </span>
+        </div>
+      ))}
+      {sp > 0 && (
+        <div className="border-t border-white/[0.06] mt-2 pt-1.5 flex justify-between">
+          <span className="text-neutral-500">Spread</span>
+          <span className="font-mono text-hub-yellow">{'$'}{fp(sp)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SpreadsPage() {
   const [sym, setSym] = useState('BTC');
   const [sel, setSel] = useState<string[]>(['Binance','Bybit','OKX','Bitget','MEXC']);
@@ -142,36 +181,7 @@ export default function SpreadsPage() {
     return [q1 - pad, q3 + pad];
   }, [data, exs]);
 
-  const Tip = ({ active, payload }: any) => {
-    if (!active || !payload?.length) return null;
-    const pt = payload[0]?.payload;
-    if (!pt) return null;
-    const ps = exs.map(e => ({ e, p: pt[e] as number, d: pt[`${e}_dev`] as number })).filter(x => x.p > 0).sort((a, b) => b.p - a.p);
-    const sp = ps.length >= 2 ? ps[0].p - ps[ps.length - 1].p : 0;
-    return (
-      <div className="bg-[#141418] border border-white/[0.08] rounded-lg px-3 py-2.5 shadow-xl text-xs min-w-[200px]">
-        <p className="text-neutral-500 text-[10px] mb-2 pb-1.5 border-b border-white/[0.06]">{pt.label}</p>
-        {ps.map(x => (
-          <div key={x.e} className="flex justify-between gap-4 py-[2px]">
-            <span className="flex items-center gap-1.5">
-              <ExchangeLogo exchange={x.e} size={14} />
-              <span className="text-neutral-300">{x.e}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="font-mono text-white">{'$'}{fp(x.p)}</span>
-              {typeof x.d === 'number' && <span className={`font-mono text-[10px] ${x.d >= 0 ? 'text-green-400' : 'text-red-400'}`}>{x.d >= 0 ? '+' : ''}{x.d.toFixed(3)}%</span>}
-            </span>
-          </div>
-        ))}
-        {sp > 0 && (
-          <div className="border-t border-white/[0.06] mt-2 pt-1.5 flex justify-between">
-            <span className="text-neutral-500">Spread</span>
-            <span className="font-mono text-hub-yellow">{'$'}{fp(sp)}</span>
-          </div>
-        )}
-      </div>
-    );
-  };
+  // Tooltip rendered via renderTip callback below
 
   return (
     <div className="min-h-screen bg-background text-white flex flex-col">
@@ -409,7 +419,7 @@ export default function SpreadsPage() {
                   interval={Math.max(0, Math.floor(data.length / 7))} />
                 <YAxis domain={yDomain} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => '$' + fp(v)} width={72} allowDataOverflow />
-                <RTooltip content={<Tip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeDasharray: '4 4' }} />
+                <RTooltip content={<SpreadTooltip exList={exs} colorFn={ec} />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeDasharray: '4 4' }} />
                 {exs.map((e, i) => (
                   <Line key={e} type="monotone" dataKey={e} stroke={ec(e, i)} strokeWidth={2.5} dot={false}
                     activeDot={{ r: 4, fill: ec(e, i), stroke: '#0f0f14', strokeWidth: 2 }} connectNulls
