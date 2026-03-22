@@ -36,8 +36,13 @@ const SYMBOLS: Record<string, string[]> = {
 const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit'];
 const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','GMX','gTrade','Extended','Variational','edgeX','Nado'];
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
-// Exchanges that have kline/candle API support in /api/klines-multi
-const CHART_SUPPORTED = new Set(['Binance','Bybit','OKX','Bitget','MEXC','HTX','Hyperliquid','dYdX','Kraken','BingX']);
+// Exchanges with kline/candle chart support in /api/klines-multi
+const CHART_SUPPORTED = new Set([
+  'Binance','Bybit','OKX','Bitget','MEXC','HTX','Kraken','BingX', // CEX
+  'Phemex','KuCoin','Bitfinex','CoinEx','Deribit','Coinbase','WhiteBIT', // CEX
+  'Hyperliquid','dYdX','Aevo', // DEX
+]);
+// No kline API: Bitunix, Aster, Lighter, Drift, GMX, gTrade, Extended, Variational, edgeX, Nado
 const TFS = [
   { key: '1d', label: '1D', interval: '1h', limit: 24 },
   { key: '7d', label: '7D', interval: '1h', limit: 168 },
