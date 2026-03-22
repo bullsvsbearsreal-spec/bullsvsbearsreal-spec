@@ -233,6 +233,9 @@ export default function SpreadsTerminal() {
               </button>
               {loading && <RefreshCw className="w-3 h-3 text-neutral-700 animate-spin" />}
               <span className="text-[9px] text-neutral-700 font-mono">{exs.length} FEEDS</span>
+              <span className="text-[9px] text-neutral-700 font-mono hidden sm:inline">
+                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
             </div>
           </div>
         </div>
@@ -253,7 +256,7 @@ export default function SpreadsTerminal() {
                 </div>
                 <div>
                   <span className="text-[9px] text-neutral-600 block font-mono">SPREAD</span>
-                  <span className={`font-mono text-xl font-bold ${stats.cur > stats.avg ? 'text-green-400' : 'text-amber-400'}`}>${fp(stats.cur)}</span>
+                  <span className={`font-mono text-xl font-bold animate-pulse ${stats.cur > stats.avg ? 'text-green-400' : 'text-amber-400'}`}>${fp(stats.cur)}</span>
                 </div>
                 <div>
                   <span className="text-[9px] text-neutral-600 block font-mono">PCT</span>
@@ -261,7 +264,7 @@ export default function SpreadsTerminal() {
                 </div>
                 <div>
                   <span className="text-[9px] text-neutral-600 block font-mono">BPS</span>
-                  <span className="font-mono text-sm text-neutral-400">{(stats.pct * 100).toFixed(1)}</span>
+                  <span className={`font-mono text-sm px-1.5 py-0.5 rounded ${stats.pct * 100 > 10 ? 'bg-green-500/10 text-green-400' : stats.pct * 100 > 5 ? 'bg-amber-500/10 text-amber-400' : 'text-neutral-400'}`}>{(stats.pct * 100).toFixed(1)}</span>
                 </div>
                 <div className="h-6 w-px bg-[#1a1f2e]" />
                 <div>
@@ -300,8 +303,9 @@ export default function SpreadsTerminal() {
                       tickFormatter={(v: number) => '$' + fp(v)} width={70} padding={{ top: 15, bottom: 15 }} />
                     <RTooltip content={<Tip />} cursor={{ stroke: '#374151', strokeDasharray: '2 2' }} />
                     {exs.map((e, i) => (
-                      <Line key={e} type="monotone" dataKey={e} stroke={cx(e, i)} strokeWidth={2} dot={false}
-                        activeDot={{ r: 3, fill: cx(e, i), stroke: '#080a10', strokeWidth: 1.5 }} connectNulls />
+                      <Line key={e} type="monotone" dataKey={e} stroke={cx(e, i)} strokeWidth={2.5} dot={false}
+                        activeDot={{ r: 4, fill: cx(e, i), stroke: '#080a10', strokeWidth: 2 }} connectNulls
+                        style={{ filter: `drop-shadow(0 0 6px ${cx(e, i)}50)` }} />
                     ))}
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -325,7 +329,9 @@ export default function SpreadsTerminal() {
                       tickFormatter={(v: number) => '$' + fp(v)} width={55} domain={[0, 'auto']} />
                     <RTooltip contentStyle={{ background: '#0a0a12', border: '1px solid #1a1f2e', borderRadius: 4, fontSize: 10, fontFamily: 'monospace' }}
                       formatter={(v: number) => ['$' + fp(v), 'Spread']} labelStyle={{ color: '#6b7280' }} />
-                    {stats && <ReferenceLine y={stats.avg} stroke="#F59E0B" strokeDasharray="3 3" strokeWidth={1} />}
+                    {stats && <ReferenceLine y={stats.avg} stroke="#F59E0B" strokeDasharray="3 3" strokeWidth={1} label={{ value: 'AVG', position: 'right', fill: '#F59E0B', fontSize: 8, fontFamily: 'monospace' }} />}
+                    {stats && stats.max > 0 && <ReferenceLine y={stats.max} stroke="#22c55e" strokeDasharray="2 4" strokeWidth={0.5} />}
+                    {stats && stats.min > 0 && <ReferenceLine y={stats.min} stroke="#06b6d4" strokeDasharray="2 4" strokeWidth={0.5} />}
                     <Area type="monotone" dataKey="_spread" stroke="#F59E0B" fill="rgba(245,158,11,0.08)" strokeWidth={1.5} dot={false} connectNulls />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -353,9 +359,16 @@ export default function SpreadsTerminal() {
                       {i === 0 && <span className="text-[7px] px-1 py-[0.5px] bg-green-500/10 text-green-400 rounded font-mono font-bold">HIGH</span>}
                       {i === stats.prices.length - 1 && <span className="text-[7px] px-1 py-[0.5px] bg-red-500/10 text-red-400 rounded font-mono font-bold">LOW</span>}
                     </div>
-                    <div className="text-right">
-                      <span className="font-mono text-[11px] text-white">${fp(x.p)}</span>
-                      <span className={`font-mono text-[9px] ml-1.5 ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>{dev >= 0 ? '+' : ''}{dev.toFixed(3)}%</span>
+                    <div className="flex items-center gap-2">
+                      {/* Deviation bar */}
+                      <div className="w-12 h-1.5 bg-[#12141e] rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${dev >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                          style={{ width: `${Math.min(100, Math.abs(dev) * 500)}%`, marginLeft: dev < 0 ? 'auto' : 0 }} />
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono text-[11px] text-white">${fp(x.p)}</span>
+                        <span className={`font-mono text-[9px] ml-1 ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>{dev >= 0 ? '+' : ''}{dev.toFixed(3)}%</span>
+                      </div>
                     </div>
                   </div>
                 );
