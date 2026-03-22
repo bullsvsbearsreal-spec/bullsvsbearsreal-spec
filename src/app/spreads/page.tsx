@@ -410,16 +410,10 @@ export default function SpreadsPage() {
                   padding={{ top: 20, bottom: 20 }}
                 />
                 <RTooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeDasharray: '4 4' }} />
-                {/* Spread band (shaded area between min and max) */}
-                {activeExchanges.length >= 2 && viewMode === 'price' && (
-                  <Area type="monotone" dataKey="_max" stroke="none" fill="rgba(234,179,8,0.06)"
-                    baseLine={chartData.map(d => (d._min as number) || 0)} connectNulls
-                    isAnimationActive={false} />
-                )}
-                {activeExchanges.length >= 2 && viewMode === 'deviation' && (
-                  <Area type="monotone" dataKey="_devMax" stroke="none" fill="rgba(234,179,8,0.06)"
-                    baseLine={chartData.map(d => (d._devMin as number) || 0)} connectNulls
-                    isAnimationActive={false} />
+                {/* Zero reference line in deviation mode */}
+                {viewMode === 'deviation' && activeExchanges.length >= 2 && (
+                  <Line type="monotone" dataKey={() => 0} stroke="rgba(255,255,255,0.1)"
+                    strokeWidth={1} strokeDasharray="4 4" dot={false} connectNulls isAnimationActive={false} />
                 )}
                 {activeExchanges.map((ex, i) => (
                   <Line key={ex} type="monotone"
