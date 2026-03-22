@@ -119,20 +119,18 @@ export default function ExchangeSpreadsPage() {
   const [klineData, setKlineData] = useState<Record<string, KlineCandle[]> | null>(null);
   const [klineLoading, setKlineLoading] = useState(false);
 
-  // Fetch klines when timeframe is klines-sourced
+  // Fetch klines when timeframe is klines-sourced (fetch ALL exchanges, filter client-side)
   useEffect(() => {
     const tf = TIMEFRAMES.find(t => t.key === timeframe);
     if (!tf || tf.source !== 'klines') { setKlineData(null); return; }
     const interval = (tf as any).interval || '1h';
     const limit = (tf as any).limit || 168;
     setKlineLoading(true);
-    const controller = new AbortController();
-    const exParam = selectedExchanges.length > 0 ? `&exchanges=${selectedExchanges.join(',')}` : '';
-    fetch(`/api/klines-multi?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}${exParam}`, {
-      signal: controller.signal,
-    })
+    let cancelled = false;
+    fetch(`/api/klines-multi?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`)
       .then(r => r.ok ? r.json() : null)
       .then(json => {
+        if (cancelled) return;
         const exchanges = json?.exchanges as Record<string, KlineCandle[]> | undefined;
         if (exchanges && Object.keys(exchanges).length > 0) {
           setKlineData(exchanges);
@@ -140,10 +138,10 @@ export default function ExchangeSpreadsPage() {
           setKlineData(null);
         }
       })
-      .catch(() => setKlineData(null))
-      .finally(() => setKlineLoading(false));
-    return () => controller.abort();
-  }, [symbol, timeframe, selectedExchanges]);
+      .catch(() => { if (!cancelled) setKlineData(null); })
+      .finally(() => { if (!cancelled) setKlineLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol, timeframe]);
 
   // ── Fetch live tickers ──
   const { data: tickerData, isLoading, lastUpdate } = useApi<TickerEntry[]>({
@@ -238,7 +236,9 @@ export default function ExchangeSpreadsPage() {
     // For klines-sourced timeframes, use exchange API historical data
     if (tf.source === 'klines' && klineData) {
       const klineExchanges = Object.keys(klineData);
-      const active = klineExchanges.length > 0 ? klineExchanges : [];
+      // Filter to selected exchanges (if they have kline data), fall back to all kline exchanges
+      const filtered = selectedExchanges.filter(e => klineExchanges.includes(e));
+      const active = filtered.length >= 1 ? filtered : klineExchanges;
       if (active.length < 1) return [];
 
       // Build time-aligned data from kline close prices
@@ -300,7 +300,7 @@ export default function ExchangeSpreadsPage() {
       active.forEach(e => { row[e] = snap.prices[e] || 0; });
       return row;
     }).filter(Boolean) as ChartRow[];
-  }, [selectedExchanges, availableExchanges, timeframe, tickerData]); // tickerData triggers re-render
+  }, [selectedExchanges, availableExchanges, timeframe, tickerData, klineData]);
 
   // ── Spread stats ──
   const spreadStats = useMemo(() => {
