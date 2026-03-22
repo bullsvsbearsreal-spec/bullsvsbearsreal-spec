@@ -36,13 +36,13 @@ const SYMBOLS: Record<string, string[]> = {
 const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit'];
 const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','GMX','gTrade','Extended','Variational','edgeX','Nado','Backpack','Orderly','Paradex'];
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
-// Exchanges with kline/candle chart support in /api/klines-multi
-const CHART_SUPPORTED = new Set([
-  'Binance','Bybit','OKX','Bitget','MEXC','HTX','Kraken','BingX', // CEX
-  'Phemex','KuCoin','Bitfinex','CoinEx','Deribit','Coinbase','WhiteBIT', // CEX
-  'Hyperliquid','dYdX','Aevo', // DEX
+// Exchanges with direct kline API (fast, 1h candles)
+// All other exchanges use DB mark_price snapshots (10-min, needs accumulation)
+const KLINE_DIRECT = new Set([
+  'Binance','Bybit','OKX','Bitget','MEXC','HTX','Kraken','BingX',
+  'Phemex','KuCoin','Bitfinex','CoinEx','Deribit','Coinbase','WhiteBIT',
+  'Hyperliquid','dYdX','Aevo',
 ]);
-// No kline API: Bitunix, Aster, Lighter, Drift, GMX, gTrade, Extended, Variational, edgeX, Nado
 const TFS = [
   { key: '1d', label: '1D', interval: '1h', limit: 24 },
   { key: '7d', label: '7D', interval: '1h', limit: 168 },
@@ -153,16 +153,33 @@ export default function SpreadsPage() {
   const [funding, setFunding] = useState<FundingEntry[]>([]);
   const [oi, setOI] = useState<OIEntry[]>([]);
 
-  // Fetch klines (historical chart)
+  // Fetch klines (exchange APIs) + DB mark_price fallback for non-kline exchanges
   useEffect(() => {
     const t = TFS.find(x => x.key === tf)!;
+    const days = tf === '1d' ? 1 : tf === '7d' ? 7 : 30;
     setLoading(true);
     let c = false;
-    fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit)
-      .then(r => r.ok ? r.json() : null)
-      .then(j => { if (!c) setKd(j?.exchanges && Object.keys(j.exchanges).length > 0 ? j.exchanges : null); })
-      .catch(() => { if (!c) setKd(null); })
-      .finally(() => { if (!c) setLoading(false); });
+    Promise.allSettled([
+      // Source 1: Exchange kline APIs (Binance, Bybit, OKX, etc.)
+      fetch('/api/klines-multi?symbol=' + sym + '&interval=' + t.interval + '&limit=' + t.limit).then(r => r.ok ? r.json() : null),
+      // Source 2: DB mark_price snapshots (all exchanges including DEX)
+      fetch('/api/history/price-multi?symbol=' + sym + '&days=' + days, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([kRes, dbRes]) => {
+      if (c) return;
+      const klines = (kRes.status === 'fulfilled' && kRes.value?.exchanges) || {};
+      const dbPrices = (dbRes.status === 'fulfilled' && dbRes.value?.exchanges) || {};
+
+      // Merge: klines take priority, DB fills gaps for exchanges without kline API
+      const merged: Record<string, Candle[]> = { ...klines };
+      for (const [ex, pts] of Object.entries(dbPrices) as [string, any[]][]) {
+        if (!merged[ex] && pts.length > 0) {
+          // Convert DB format {t, price} to kline format {t, c}
+          merged[ex] = pts.map((p: any) => ({ t: p.t, c: p.price })).filter((c: Candle) => c.c > 0);
+        }
+      }
+
+      setKd(Object.keys(merged).length > 0 ? merged : null);
+    }).finally(() => { if (!c) setLoading(false); });
     return () => { c = true; };
   }, [sym, tf]);
 
@@ -362,11 +379,11 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider">CEX ({CEX_EXCHANGES.length})</p>
                     {CEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : CHART_SUPPORTED.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : KLINE_DIRECT.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {!CHART_SUPPORTED.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
+                          {!KLINE_DIRECT.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">via DB</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
@@ -378,11 +395,11 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider mt-1 border-t border-white/[0.06] pt-2">DEX ({DEX_EXCHANGES.length})</p>
                     {DEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : CHART_SUPPORTED.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : KLINE_DIRECT.has(e) ? 'text-neutral-400' : 'text-neutral-600')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {!CHART_SUPPORTED.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
+                          {!KLINE_DIRECT.has(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">via DB</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
