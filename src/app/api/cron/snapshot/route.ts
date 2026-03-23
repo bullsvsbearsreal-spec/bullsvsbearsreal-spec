@@ -151,8 +151,9 @@ export async function GET(request: NextRequest) {
     // bypassing the ON CONFLICT dedup). This inflated totals to $917M vs Coinglass's $141M.
     // Removed 2026-03-18 to fix the overcount. See ingest-liquidations for the sole insertion path.
 
-    // Prune old data every run — keep 7 days max to stay within DB limits
-    const pruned = await pruneOldData(7);
+    // Aggressive prune to clear old duplicated liquidation data
+    // Keep 1 day (clean data post-dedup fix), prune funding/oi at 7 days
+    const pruned = await pruneOldData(1);
 
     // Record DB size for admin monitoring (~1 in 6 runs, roughly hourly)
     if (Math.random() < 0.17) {
