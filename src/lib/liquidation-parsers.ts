@@ -87,7 +87,7 @@ export const DYDX_LIQ_MARKETS = [
 
 export const EXCHANGE_WS_URLS: Record<string, string> = {
   Binance: 'wss://fstream.binance.com/ws/!forceOrder@arr',
-  Bybit: 'wss://stream.bybit.nl/v5/public/linear',
+  Bybit: 'wss://stream.bybit.com/v5/public/linear',
   OKX: 'wss://ws.okx.com:8443/ws/v5/public',
   Bitget: 'wss://ws.bitget.com/v2/ws/public',
   Deribit: 'wss://www.deribit.com/ws/api/v2',
