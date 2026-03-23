@@ -5,6 +5,7 @@ import {
   type Liquidation,
   parseBinanceLiq,
   parseBybitLiq,
+  parseBybitLiqAll,
   parseOKXLiq,
   parseBitgetLiq,
   parseDeribitLiq,
@@ -195,19 +196,25 @@ function createExchangeWS(
         // Skip Bitfinex info/subscription events (object with "event" key)
         if (data.event === 'info' || data.event === 'subscribed') return;
 
-        let liq: Liquidation | null = null;
-        switch (exchange) {
-          case 'Binance': liq = parseBinanceLiq(data); break;
-          case 'Bybit': liq = parseBybitLiq(data); break;
-          case 'OKX': liq = parseOKXLiq(data); break;
-          case 'Bitget': liq = parseBitgetLiq(data); break;
-          case 'Deribit': liq = parseDeribitLiq(data); break;
-          case 'HTX': liq = parseHTXLiq(data); break;
-          case 'dYdX': liq = parseDydxLiq(data); break;
-          case 'Bitfinex': liq = parseBitfinexLiq(data); break;
-        }
-        if (liq && liq.value > 0) {
-          onMessage(liq);
+        // Bybit sends batched liquidations — process all items
+        if (exchange === 'Bybit') {
+          const liqs = parseBybitLiqAll(data);
+          for (const liq of liqs) {
+            if (liq.value > 0) onMessage(liq);
+          }
+        } else {
+          let liq: Liquidation | null = null;
+          switch (exchange) {
+            case 'Binance': liq = parseBinanceLiq(data); break;
+            case 'OKX': liq = parseOKXLiq(data); break;
+            case 'Bitget': liq = parseBitgetLiq(data); break;
+            case 'HTX': liq = parseHTXLiq(data); break;
+            case 'dYdX': liq = parseDydxLiq(data); break;
+            case 'Bitfinex': liq = parseBitfinexLiq(data); break;
+          }
+          if (liq && liq.value > 0) {
+            onMessage(liq);
+          }
         }
       } catch (err) {
         // Log parse errors in dev for debugging (production builds strip console.debug)

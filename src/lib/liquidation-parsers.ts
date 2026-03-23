@@ -87,7 +87,7 @@ export const DYDX_LIQ_MARKETS = [
 
 export const EXCHANGE_WS_URLS: Record<string, string> = {
   Binance: 'wss://fstream.binance.com/ws/!forceOrder@arr',
-  Bybit: 'wss://stream.bybit.com/v5/public/linear',
+  Bybit: 'wss://stream.bybit.nl/v5/public/linear',
   OKX: 'wss://ws.okx.com:8443/ws/v5/public',
   Bitget: 'wss://ws.bitget.com/v2/ws/public',
   Deribit: 'wss://www.deribit.com/ws/api/v2',
@@ -193,27 +193,34 @@ export function parseBinanceLiq(data: any): Liquidation | null {
 }
 
 export function parseBybitLiq(data: any): Liquidation | null {
-  // allLiquidation.{symbol} topic (replaced deprecated liquidation.{symbol})
-  if (!data.topic?.startsWith('allLiquidation.') && !data.topic?.startsWith('liquidation.')) return null;
-  // allLiquidation sends data as array, old liquidation sent as object
+  const liqs = parseBybitLiqAll(data);
+  return liqs.length > 0 ? liqs[0] : null;
+}
+
+/** Parse ALL liquidations from a Bybit allLiquidation message (can be batched) */
+export function parseBybitLiqAll(data: any): Liquidation[] {
+  if (!data.topic?.startsWith('allLiquidation.') && !data.topic?.startsWith('liquidation.')) return [];
   const raw = data.data;
-  if (!raw) return null;
-  const d = Array.isArray(raw) ? raw[0] : raw;
-  if (!d) return null;
-  const price = parseFloat(d.price || d.p || '0');
-  const size = parseFloat(d.size || d.v || '0');
-  const symbol = (d.symbol || d.s || '').replace('USDT', '').replace('USDC', '');
-  if (!symbol || price <= 0 || size <= 0) return null;
-  return {
-    id: `byb-${symbol}-${d.updatedTime || d.T || Date.now()}`,
-    symbol,
-    side: (d.side === 'Buy' || d.S === 'Buy') ? 'short' : 'long',
-    price,
-    quantity: size,
-    value: price * size,
-    exchange: 'Bybit',
-    timestamp: d.updatedTime || d.T || Date.now(),
-  };
+  if (!raw) return [];
+  const items = Array.isArray(raw) ? raw : [raw];
+  const results: Liquidation[] = [];
+  for (const d of items) {
+    const price = parseFloat(d.price || d.p || '0');
+    const size = parseFloat(d.size || d.v || '0');
+    const symbol = (d.symbol || d.s || '').replace('USDT', '').replace('USDC', '');
+    if (!symbol || price <= 0 || size <= 0) continue;
+    results.push({
+      id: `byb-${symbol}-${d.updatedTime || d.T || Date.now()}-${results.length}`,
+      symbol,
+      side: (d.side === 'Buy' || d.S === 'Buy') ? 'short' : 'long',
+      price,
+      quantity: size,
+      value: price * size,
+      exchange: 'Bybit',
+      timestamp: d.updatedTime || d.T || Date.now(),
+    });
+  }
+  return results;
 }
 
 export function parseOKXLiq(data: any): Liquidation | null {
