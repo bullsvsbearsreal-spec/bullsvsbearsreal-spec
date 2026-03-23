@@ -41,18 +41,23 @@ export async function GET(request: NextRequest) {
     await initDB();
 
     const origin = request.nextUrl.origin;
-    const [fundingRes, oiRes] = await Promise.all([
-      fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) }),
-      fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(25000) }),
-      // Liquidation heatmap fetch removed — ingestion handled by /api/cron/ingest-liquidations
-    ]);
+    // With 1-min cron: only do full funding+OI every 10 min (when minute is 0)
+    const minute = new Date().getMinutes();
+    const isFullRun = minute % 10 === 0;
+
+    const [fundingRes, oiRes] = isFullRun
+      ? await Promise.all([
+          fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) }),
+          fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(25000) }),
+        ])
+      : [null, null];
 
     let fundingInserted = 0;
     let oiInserted = 0;
     let liqInserted = 0;
 
-    // Process funding rates
-    if (fundingRes.ok) {
+    // Process funding rates (only on full runs every 10 min)
+    if (fundingRes?.ok) {
       const fundingJson = await fundingRes.json();
       const fundingData: any[] = fundingJson.data || [];
 
@@ -81,8 +86,8 @@ export async function GET(request: NextRequest) {
       fundingInserted = await saveFundingSnapshot(fundingEntries);
     }
 
-    // Process open interest
-    if (oiRes.ok) {
+    // Process open interest (only on full runs every 10 min)
+    if (oiRes?.ok) {
       const oiJson = await oiRes.json();
       const oiData: any[] = oiJson.data || [];
 
@@ -151,9 +156,8 @@ export async function GET(request: NextRequest) {
     // bypassing the ON CONFLICT dedup). This inflated totals to $917M vs Coinglass's $141M.
     // Removed 2026-03-18 to fix the overcount. See ingest-liquidations for the sole insertion path.
 
-    // Aggressive prune to clear old duplicated liquidation data
-    // Keep 1 day (clean data post-dedup fix), prune funding/oi at 7 days
-    const pruned = await pruneOldData(1);
+    // Prune on full runs only (every 10 min)
+    const pruned = isFullRun ? await pruneOldData(1) : { funding: 0, oi: 0, liquidations: 0 };
 
     // Record DB size for admin monitoring (~1 in 6 runs, roughly hourly)
     if (Math.random() < 0.17) {
@@ -166,9 +170,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+      runType: isFullRun ? 'full' : 'price-only',
       fundingInserted,
       oiInserted,
-      liqInserted,
+      spreadInserted,
       pruned: pruned.funding + pruned.oi + pruned.liquidations > 0 ? pruned : undefined,
       timestamp: Date.now(),
     });
