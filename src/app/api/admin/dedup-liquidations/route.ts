@@ -32,14 +32,21 @@ export async function POST(request: NextRequest) {
     // Count before
     const [{ count: before }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
 
-    // Simple approach: delete all data older than 2 hours
-    // The dedup fix prevents new duplicates, so fresh data is clean
-    const keepHours = Number(request.nextUrl.searchParams.get('keep') || '2');
-    const del = await sql`
-      DELETE FROM liquidation_snapshots
-      WHERE ts < NOW() - ${keepHours + ' hours'}::interval
-    `;
-    const totalDeleted = Number(del.count || (Number(before) - 0));
+    // Delete in small batches to avoid timeout
+    let totalDeleted = 0;
+    for (let i = 0; i < 10; i++) {
+      const del = await sql`
+        DELETE FROM liquidation_snapshots
+        WHERE id IN (
+          SELECT id FROM liquidation_snapshots
+          WHERE ts < NOW() - '1 hour'::interval
+          LIMIT 50000
+        )
+      `;
+      const deleted = Number(del.count || 0);
+      totalDeleted += deleted;
+      if (deleted < 50000) break;
+    }
 
     // Count after
     const [{ count: after }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
