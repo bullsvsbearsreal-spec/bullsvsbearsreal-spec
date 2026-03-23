@@ -32,30 +32,38 @@ export async function POST(request: NextRequest) {
     // Count before
     const [{ count: before }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
 
-    // Delete duplicates: keep the row with the LOWEST id for each
-    // (symbol, exchange, side, rounded_price, rounded_ts) group
-    const result = await sql`
-      DELETE FROM liquidation_snapshots
-      WHERE id NOT IN (
-        SELECT MIN(id)
-        FROM liquidation_snapshots
-        GROUP BY symbol, exchange, side,
-                 ROUND(price::numeric, 1),
-                 date_trunc('second', ts)
-      )
-    `;
+    // Delete duplicates in batches (faster than one huge query)
+    // Strategy: delete rows where a row with the same key but lower id exists
+    let totalDeleted = 0;
+    for (let batch = 0; batch < 20; batch++) {
+      const del = await sql`
+        DELETE FROM liquidation_snapshots
+        WHERE id IN (
+          SELECT a.id FROM liquidation_snapshots a
+          INNER JOIN liquidation_snapshots b
+            ON a.symbol = b.symbol
+            AND a.exchange = b.exchange
+            AND a.side = b.side
+            AND ROUND(a.price::numeric, 0) = ROUND(b.price::numeric, 0)
+            AND date_trunc('second', a.ts) = date_trunc('second', b.ts)
+            AND a.id > b.id
+          LIMIT 10000
+        )
+      `;
+      const deleted = Number(del.count || 0);
+      totalDeleted += deleted;
+      if (deleted === 0) break; // no more duplicates
+    }
 
     // Count after
     const [{ count: after }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
-
-    const deleted = Number(before) - Number(after);
 
     return NextResponse.json({
       ok: true,
       before: Number(before),
       after: Number(after),
-      deleted,
-      pctRemoved: ((deleted / Number(before)) * 100).toFixed(1) + '%',
+      deleted: totalDeleted,
+      pctRemoved: ((totalDeleted / Math.max(1, Number(before))) * 100).toFixed(1) + '%',
     });
   } catch (e: any) {
     console.error('[admin/dedup-liquidations] error:', e);
