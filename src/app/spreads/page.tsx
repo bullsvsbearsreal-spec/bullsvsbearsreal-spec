@@ -280,11 +280,15 @@ export default function SpreadsPage() {
     if (active.length === 0 && av.length > 0) {
       // No selected exchanges have kline data — auto-use all available
       const fallback = av.slice(0, 8);
+      const bucketMs2 = tf === '1d' ? 3600_000 : 14400_000;
       const times2 = new Set<number>();
       const maps2: Record<string, Map<number, number>> = {};
       for (const e of fallback) {
         const m = new Map<number, number>();
-        for (const c of kd[e]) if (c.c > 0) { m.set(c.t, c.c); times2.add(c.t); }
+        for (const c of kd[e]) if (c.c > 0) {
+          const bucket = Math.round(c.t / bucketMs2) * bucketMs2;
+          m.set(bucket, c.c); times2.add(bucket);
+        }
         maps2[e] = m;
       }
       const sorted2 = Array.from(times2).sort((a, b) => a - b);
@@ -311,29 +315,44 @@ export default function SpreadsPage() {
     }
     if (active.length === 0) return { data: [] as Pt[], exs: [] as string[], available: av };
     const exs = active;
-    const times = new Set<number>();
+    // Bucket timestamps to align exchanges (1h for 1D, 4h for 7D/30D)
+    const bucketMs = tf === '1d' ? 3600_000 : 14400_000;
     const maps: Record<string, Map<number, number>> = {};
+    const allBuckets = new Set<number>();
     for (const e of exs) {
       const m = new Map<number, number>();
-      for (const c of kd[e]) if (c.c > 0) { m.set(c.t, c.c); times.add(c.t); }
+      for (const c of kd[e]) {
+        if (c.c > 0) {
+          const bucket = Math.round(c.t / bucketMs) * bucketMs;
+          m.set(bucket, c.c);
+          allBuckets.add(bucket);
+        }
+      }
       maps[e] = m;
     }
-    const sorted = Array.from(times).sort((a, b) => a - b);
+    const sorted = Array.from(allBuckets).sort((a, b) => a - b);
     const rows: Pt[] = [];
-    const last: Record<string, number> = {};
     for (const t of sorted) {
       const pt: Pt = { time: t, label: '' };
       const prices: number[] = [];
+      const exPrices: { e: string; p: number }[] = [];
       for (const e of exs) {
-        const p = maps[e]?.get(t) ?? last[e];
-        if (p) { last[e] = p; pt[e] = p; prices.push(p); }
+        const p = maps[e]?.get(t); // NO forward-fill — only actual data
+        if (p && p > 0) { exPrices.push({ e, p }); prices.push(p); }
       }
-      if (prices.length < 1) continue;
-      const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
-      const sane = prices.filter(p => Math.abs(p - avg) / avg < 0.02);
-      const useP = sane.length >= 2 ? sane : prices;
-      for (const e of exs) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
-      pt._spread = useP.length >= 2 ? Math.max(...useP) - Math.min(...useP) : 0;
+      if (prices.length < 2) continue; // need 2+ exchanges at same timestamp
+      // Filter outliers: exclude if >1% from median at this timestamp
+      const sortedP = [...prices].sort((a, b) => a - b);
+      const median = sortedP[Math.floor(sortedP.length / 2)];
+      const sane = exPrices.filter(x => Math.abs(x.p - median) / median < 0.03);
+      const useExs = sane.length >= 2 ? sane : exPrices;
+      const avg = useExs.reduce((s, x) => s + x.p, 0) / useExs.length;
+      for (const x of useExs) {
+        pt[x.e] = x.p;
+        pt[x.e + '_dev'] = ((x.p - avg) / avg) * 100;
+      }
+      const usePrices = useExs.map(x => x.p);
+      pt._spread = Math.max(...usePrices) - Math.min(...usePrices);
       const d = new Date(t);
       pt.label = tf === '30d' ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
         : tf === '7d' ? (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0')
