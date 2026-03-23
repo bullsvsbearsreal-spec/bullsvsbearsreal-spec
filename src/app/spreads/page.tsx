@@ -264,6 +264,38 @@ export default function SpreadsPage() {
     if (!kd) return { data: [] as Pt[], exs: [] as string[] };
     const av = Object.keys(kd);
     const active = sel.filter(e => av.includes(e));
+    if (active.length === 0 && av.length > 0) {
+      // No selected exchanges have kline data — auto-use all available
+      const fallback = av.slice(0, 8);
+      const times2 = new Set<number>();
+      const maps2: Record<string, Map<number, number>> = {};
+      for (const e of fallback) {
+        const m = new Map<number, number>();
+        for (const c of kd[e]) if (c.c > 0) { m.set(c.t, c.c); times2.add(c.t); }
+        maps2[e] = m;
+      }
+      const sorted2 = Array.from(times2).sort((a, b) => a - b);
+      const rows2: Pt[] = [];
+      const last2: Record<string, number> = {};
+      for (const t of sorted2) {
+        const pt: Pt = { time: t, label: '' };
+        const prices: number[] = [];
+        for (const e of fallback) {
+          const p = maps2[e]?.get(t) ?? last2[e];
+          if (p) { last2[e] = p; pt[e] = p; prices.push(p); }
+        }
+        if (prices.length < 1) continue;
+        const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+        for (const e of fallback) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
+        pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
+        const d = new Date(t);
+        pt.label = tf === '30d' ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+          : tf === '7d' ? (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0')
+          : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        rows2.push(pt);
+      }
+      return { data: rows2, exs: fallback, available: av };
+    }
     if (active.length === 0) return { data: [] as Pt[], exs: [] as string[], available: av };
     const exs = active;
     const times = new Set<number>();
@@ -443,13 +475,20 @@ export default function SpreadsPage() {
 
         {/* Exchange Pills (own row) */}
         <div className="flex items-center gap-1.5 flex-wrap mb-5">
-          {sel.map((e) => (
-            <span key={e} className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium bg-white/[0.04] border border-white/[0.06]">
-              <ExchangeLogo exchange={e} size={14} />
-              {e}
-              <button onClick={() => toggle(e)} className="text-neutral-600 hover:text-white"><X className="w-3 h-3" /></button>
-            </span>
-          ))}
+          {sel.map((e) => {
+            const hasChart = kd ? !!kd[e] : false;
+            const isInChart = exs.includes(e);
+            return (
+              <span key={e} className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium border ${
+                isInChart ? 'bg-white/[0.06] border-white/[0.1]' : 'bg-white/[0.02] border-white/[0.04] opacity-60'
+              }`}>
+                <ExchangeLogo exchange={e} size={14} />
+                {e}
+                {tf !== 'live' && !hasChart && <span className="text-[7px] text-neutral-600 px-1 py-[0.5px] rounded bg-white/[0.03]">table</span>}
+                <button onClick={() => toggle(e)} className="text-neutral-600 hover:text-white"><X className="w-3 h-3" /></button>
+              </span>
+            );
+          })}
             <div className="relative" data-ex-picker>
               <button onClick={() => setShowEx(!showEx)} className="px-2.5 py-1 rounded-full text-[11px] text-neutral-500 bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow/30 transition">
                 + Exchange
@@ -467,7 +506,11 @@ export default function SpreadsPage() {
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {!WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
+                          {tf === 'live' ? (
+                            !WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
+                          ) : (
+                            kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>
+                          )}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
@@ -483,7 +526,11 @@ export default function SpreadsPage() {
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {!WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
+                          {tf === 'live' ? (
+                            !WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
+                          ) : (
+                            kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>
+                          )}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
