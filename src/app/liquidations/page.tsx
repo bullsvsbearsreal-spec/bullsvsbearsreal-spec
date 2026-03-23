@@ -8,6 +8,7 @@ import LiquidationTreemap from './components/LiquidationTreemap';
 import LiquidationFeed from './components/LiquidationFeed';
 import LiquidationBottomBar from './components/LiquidationBottomBar';
 import { isLiqCryptoSymbol, normalizeLiqSymbol } from '@/lib/liquidation-parsers';
+import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import dynamic from 'next/dynamic';
 
@@ -188,7 +189,7 @@ export default function LiquidationsPage() {
             {connections.map(c => (
               <span
                 key={c.exchange}
-                className={`text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 font-medium ${
+                className={`text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 font-medium flex items-center gap-1 ${
                   c.connected
                     ? (c.eventCount ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/10 text-yellow-400')
                     : 'bg-red-500/10 text-red-400'
@@ -197,7 +198,7 @@ export default function LiquidationsPage() {
                   ? `Connected · ${c.eventCount || 0} events${c.lastEventAt ? ` · last ${Math.round((Date.now() - c.lastEventAt) / 1000)}s ago` : ''}`
                   : 'Disconnected')}
               >
-                {c.exchange}{c.eventCount ? ` ${c.eventCount}` : ''}
+                <ExchangeLogo exchange={c.exchange} size={10} />{c.exchange}{c.eventCount ? ` ${c.eventCount}` : ''}
               </span>
             ))}
           </div>

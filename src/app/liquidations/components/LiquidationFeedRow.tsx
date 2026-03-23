@@ -16,13 +16,23 @@ interface FeedRowProps {
 }
 
 const WHALE_THRESHOLD = 500_000;
+const SHARK_THRESHOLD = 100_000;
 
 function getValueColor(value: number): string {
   if (value >= 1_000_000) return 'text-extreme-gradient';
   if (value >= WHALE_THRESHOLD) return 'text-rekt-hot';
-  if (value >= 100_000) return 'text-orange-400';
+  if (value >= SHARK_THRESHOLD) return 'text-orange-400';
+  if (value >= 50_000) return 'text-amber-400';
   if (value >= 10_000) return 'text-yellow-400';
-  return 'text-neutral-300';
+  if (value >= 1_000) return 'text-neutral-300';
+  return 'text-neutral-500';
+}
+
+function getSizeBadge(value: number): { label: string; className: string } | null {
+  if (value >= 1_000_000) return { label: 'MEGA', className: 'bg-red-500/20 text-red-400 ring-1 ring-red-500/30' };
+  if (value >= WHALE_THRESHOLD) return { label: 'WHALE', className: 'badge-extreme' };
+  if (value >= SHARK_THRESHOLD) return { label: 'SHARK', className: 'bg-orange-500/15 text-orange-400 ring-1 ring-orange-500/20' };
+  return null;
 }
 
 function formatTimeAgo(ts: number): string {
@@ -74,10 +84,13 @@ function LiquidationFeedRowInner({
         {formatLiqValue(value)}
       </span>
 
-      {/* Whale badge */}
-      {isWhale && (
-        <span className="badge-extreme text-[7px] py-0 px-1 shrink-0">WHALE</span>
-      )}
+      {/* Size badge */}
+      {(() => {
+        const badge = getSizeBadge(value);
+        return badge ? (
+          <span className={`text-[7px] py-0 px-1 rounded-sm font-bold shrink-0 ${badge.className}`}>{badge.label}</span>
+        ) : null;
+      })()}
 
       {/* Side label */}
       <span

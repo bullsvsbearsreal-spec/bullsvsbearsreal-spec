@@ -15,13 +15,20 @@ const TIMEFRAMES: Timeframe[] = ['4h', '8h', '12h', '24h'];
 
 /** Trader slang based on rekt volume */
 function getRektSlang(total: number, longPct: number): string | null {
+  if (total >= 1_000_000_000) return 'Unprecedented liquidation event';
   if (total >= 500_000_000) return 'Total bloodbath';
-  if (total >= 100_000_000) return 'Absolute carnage';
+  if (total >= 200_000_000) return 'Absolute carnage';
+  if (total >= 100_000_000) {
+    if (longPct >= 75) return 'Longs getting destroyed';
+    if (longPct <= 25) return 'Massive short squeeze';
+    return 'Major liquidation wave';
+  }
   if (total >= 50_000_000) {
-    if (longPct >= 70) return 'Longs getting destroyed';
-    if (longPct <= 30) return 'Massive short squeeze';
+    if (longPct >= 70) return 'Bulls getting rekt';
+    if (longPct <= 30) return 'Bears getting squeezed';
     return 'Both sides rekt';
   }
+  if (total >= 20_000_000) return 'Elevated liquidation activity';
   return null;
 }
 
