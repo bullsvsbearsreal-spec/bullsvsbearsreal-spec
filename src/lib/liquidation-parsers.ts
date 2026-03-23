@@ -101,9 +101,13 @@ export const EXCHANGE_WS_URLS: Record<string, string> = {
 export function getSubscriptionMessages(exchange: string): string[] {
   switch (exchange) {
     case 'Bybit': {
-      // allLiquidation topic replaced deprecated liquidation topic (2025)
+      // allLiquidation topic — Bybit limits to 10 topics per subscribe message
       const args = BYBIT_SYMBOLS.map(s => `allLiquidation.${s}`);
-      return [JSON.stringify({ op: 'subscribe', args })];
+      const messages: string[] = [];
+      for (let i = 0; i < args.length; i += 10) {
+        messages.push(JSON.stringify({ op: 'subscribe', args: args.slice(i, i + 10) }));
+      }
+      return messages;
     }
     case 'OKX':
       return [JSON.stringify({
