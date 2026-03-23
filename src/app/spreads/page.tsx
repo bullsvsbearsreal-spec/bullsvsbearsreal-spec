@@ -193,22 +193,35 @@ export default function SpreadsPage() {
   const [funding, setFunding] = useState<FundingEntry[]>([]);
   const [oi, setOI] = useState<OIEntry[]>([]);
 
-  // Fetch klines + DB history for 1D/7D/30D views
+  // Fetch klines + DB mark_price history + spread history for 1D/7D/30D views
   const [dbHistory, setDbHistory] = useState<Array<{ t: number; spread: number; pct: number; high_ex: string; low_ex: string }>>([]);
   useEffect(() => {
     const t = TFS.find(x => x.key === tf);
     if (!t || t.source !== 'db') return; // Live tab uses WS only
     setLoading(true);
     let c = false;
-    // Fetch klines from exchange APIs for chart + spread history from DB
+    const days = (t as any).days || 7;
+    // Fetch 3 sources: klines (exchange APIs), DB mark_prices (all exchanges), spread history
     Promise.allSettled([
       fetch(`/api/klines-multi?symbol=${sym}&interval=${(t as any).interval || '1h'}&limit=${(t as any).limit || 168}`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/history/spreads?symbol=${sym}&days=${(t as any).days || 7}`).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([kRes, dbRes]) => {
+      fetch(`/api/history/price-multi?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/history/spreads?symbol=${sym}&days=${days}`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([kRes, dbPriceRes, dbSpreadRes]) => {
       if (c) return;
       const klines = (kRes.status === 'fulfilled' && kRes.value?.exchanges) || {};
-      setKd(Object.keys(klines).length > 0 ? klines : null);
-      setDbHistory((dbRes.status === 'fulfilled' && dbRes.value?.data) || []);
+      const dbPrices = (dbPriceRes.status === 'fulfilled' && dbPriceRes.value?.exchanges) || {};
+
+      // Merge: klines take priority, DB mark_price fills gaps for exchanges without kline APIs
+      const merged: Record<string, Candle[]> = { ...klines };
+      for (const [ex, pts] of Object.entries(dbPrices) as [string, any[]][]) {
+        if (!merged[ex] && pts.length > 0) {
+          // Convert DB {t, price} to Candle format (line-only, o=h=l=c)
+          merged[ex] = pts.map((p: any) => ({ t: p.t, o: p.price, h: p.price, l: p.price, c: p.price })).filter((x: Candle) => x.c > 0);
+        }
+      }
+
+      setKd(Object.keys(merged).length > 0 ? merged : null);
+      setDbHistory((dbSpreadRes.status === 'fulfilled' && dbSpreadRes.value?.data) || []);
     }).finally(() => { if (!c) setLoading(false); });
     return () => { c = true; };
   }, [sym, tf]);
