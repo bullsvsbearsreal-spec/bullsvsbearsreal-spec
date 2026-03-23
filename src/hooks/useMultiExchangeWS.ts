@@ -204,19 +204,19 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       const ws = WS_CREATORS[ex](symbol, handlePrice);
       if (ws) {
         wsRefs.current[ex] = ws;
-        ws.onopen = () => {
+        // Use addEventListener to avoid overwriting onopen/onclose set by create functions
+        ws.addEventListener('open', () => {
           conState[ex] = true;
           setConnected(prev => ({ ...prev, [ex]: true }));
-          // Re-subscribe for Bybit/OKX (already done in create functions)
-        };
-        ws.onclose = () => {
+        });
+        ws.addEventListener('close', () => {
           conState[ex] = false;
           setConnected(prev => ({ ...prev, [ex]: false }));
-        };
-        ws.onerror = () => {
+        });
+        ws.addEventListener('error', () => {
           conState[ex] = false;
           setConnected(prev => ({ ...prev, [ex]: false }));
-        };
+        });
       }
     }
 
