@@ -89,9 +89,12 @@ export default function LiquidationTreemap({
       {/* Body */}
       <div className="p-2" role="grid" aria-label="Liquidation heatmap tiles">
         {/* Top 3 large tiles */}
-        {topItems.length > 0 && (
-          <div className="grid grid-cols-3 gap-1.5 mb-1.5">
+        {topItems.length > 0 && (() => {
+          const topTotal = topItems.reduce((s, i) => s + i.totalValue, 0);
+          return (
+          <div className="flex gap-1.5 mb-1.5">
             {topItems.map((item) => {
+              const widthPct = topTotal > 0 ? Math.max(15, (item.totalValue / topTotal) * 100) : 33;
               const colors = getTileColors(item);
               const total = item.longValue + item.shortValue;
               const longPct = total > 0 ? (item.longValue / total) * 100 : 50;
@@ -101,7 +104,8 @@ export default function LiquidationTreemap({
                 <button
                   key={item.symbol}
                   onClick={() => onSymbolClick?.(item.symbol)}
-                  className={`${colors} h-24 rounded-lg p-2.5 flex flex-col justify-between hover:brightness-110 focus-visible:ring-2 focus-visible:ring-hub-yellow/60 focus-visible:outline-none transition-all text-left`}
+                  style={{ width: `${widthPct}%` }}
+                  className={`${colors} h-24 rounded-lg p-2.5 flex flex-col justify-between hover:brightness-110 focus-visible:ring-2 focus-visible:ring-hub-yellow/60 focus-visible:outline-none transition-all text-left flex-shrink-0`}
                 >
                   <div className="flex items-center gap-1.5">
                     <TokenIconSimple symbol={item.symbol} size={16} />
@@ -131,7 +135,8 @@ export default function LiquidationTreemap({
               );
             })}
           </div>
-        )}
+          );
+        })()}
 
         {/* Remaining items compact grid */}
         {remainingItems.length > 0 && (

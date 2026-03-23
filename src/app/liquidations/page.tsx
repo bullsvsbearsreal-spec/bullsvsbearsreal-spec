@@ -148,6 +148,20 @@ export default function LiquidationsPage() {
     return { longValue, shortValue, total: longValue + shortValue, count };
   }, [treemapItems]);
 
+  // Stats filtered by CEX/DEX (for bottom bar)
+  const filteredStats = useMemo(() => {
+    if (exchangeFilter === 'all') return stats;
+    // Compute from feed items when filtered (feed has exchange info)
+    let longValue = 0, shortValue = 0, count = 0;
+    for (const item of feedItems) {
+      const val = item.valueUsd || 0;
+      if (item.side === 'long') longValue += val;
+      else shortValue += val;
+      count++;
+    }
+    return { longValue, shortValue, total: longValue + shortValue, count };
+  }, [stats, exchangeFilter, feedItems]);
+
   // Connection status
   const connectedCount = connections.filter(c => c.connected).length;
 
@@ -187,7 +201,7 @@ export default function LiquidationsPage() {
               </span>
             ))}
           </div>
-          <span className="text-[10px] text-neutral-700 ml-auto flex-shrink-0" title="Liquidation data from WebSocket-connected exchanges. Some exchanges send events infrequently during calm markets.">
+          <span className="text-[10px] text-neutral-500 ml-auto flex-shrink-0" title="Liquidation data from WebSocket-connected exchanges. Some exchanges send events infrequently during calm markets.">
             Partial coverage · verify independently
           </span>
         </div>
@@ -229,7 +243,7 @@ export default function LiquidationsPage() {
 
       {/* Bottom bar: long/short ratio + exchange filter */}
       <LiquidationBottomBar
-        stats={stats}
+        stats={filteredStats}
         exchangeFilter={exchangeFilter}
         onExchangeFilterChange={setExchangeFilter}
       />

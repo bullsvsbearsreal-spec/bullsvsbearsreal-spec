@@ -404,9 +404,13 @@ export async function saveLiquidationSnapshot(entries: LiquidationSnapshotEntry[
   for (let i = 0; i < entries.length; i += 50) {
     const chunk = entries.slice(i, i + 50);
     const promises = chunk.map(e => {
-      const ts = e.timestamp ? new Date(e.timestamp).toISOString() : new Date().toISOString();
+      // Round timestamp to nearest second and price to 2 decimals for better dedup
+      const rawTs = e.timestamp ? new Date(e.timestamp) : new Date();
+      rawTs.setMilliseconds(0); // truncate ms for dedup
+      const ts = rawTs.toISOString();
+      const price = Math.round(e.price * 100) / 100; // round to cents
       return sql`INSERT INTO liquidation_snapshots (symbol, exchange, side, price, quantity, value_usd, ts)
-          VALUES (${e.symbol}, ${e.exchange}, ${e.side}, ${e.price}, ${e.quantity}, ${e.valueUsd}, ${ts})
+          VALUES (${e.symbol}, ${e.exchange}, ${e.side}, ${price}, ${e.quantity}, ${e.valueUsd}, ${ts})
           ON CONFLICT (symbol, exchange, side, price, ts) DO NOTHING`;
     });
     await Promise.all(promises);
