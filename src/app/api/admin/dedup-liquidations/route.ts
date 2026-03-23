@@ -26,19 +26,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const sql = getSQL();
 
-    // Count before
-    const [{ count: before }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
-
-    // Fast approach: TRUNCATE and let fresh data accumulate
-    // Old data is all duplicated (3-5x), not worth keeping
-    await sql`TRUNCATE liquidation_snapshots`;
-    const totalDeleted = Number(before);
-
-    // Count after
-    const [{ count: after }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
+    // Skip counting — just truncate fast
+    await sql`TRUNCATE liquidation_snapshots RESTART IDENTITY`;
+    const totalDeleted = -1; // unknown, table was truncated
+    const before = -1;
+    const after = 0;
 
     return NextResponse.json({
       ok: true,
