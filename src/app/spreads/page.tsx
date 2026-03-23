@@ -188,7 +188,7 @@ export default function SpreadsPage() {
     }
   }, [wsSpread, alertActive, alertThreshold, sym, lastAlert]);
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
-  const [viewMode, setViewMode] = useState<'price' | 'pct'>('price');
+  const [viewMode, setViewMode] = useState<'price' | 'pct'>('pct'); // Default to % view like reference
   const [candleExchange, setCandleExchange] = useState('');
 
   // Close dropdowns on outside click
@@ -308,7 +308,7 @@ export default function SpreadsPage() {
     const active = sel.filter(e => av.includes(e));
     if (active.length === 0 && av.length > 0) {
       // No selected exchanges have kline data — auto-use all available
-      const fallback = av.slice(0, 8);
+      const fallback = av;
       const bucketMs2 = tf === '1d' ? 3600_000 : 14400_000;
       const times2 = new Set<number>();
       const maps2: Record<string, Map<number, number>> = {};
@@ -389,6 +389,10 @@ export default function SpreadsPage() {
       }
       const usePrices = useExs.map(x => x.p);
       pt._spread = Math.max(...usePrices) - Math.min(...usePrices);
+      // Spread (A - B) line: difference between first two exchanges in %
+      if (useExs.length >= 2 && avg > 0) {
+        pt._spreadAB = ((useExs[0].p - useExs[1].p) / avg) * 100;
+      }
       const d = new Date(t);
       pt.label = tf === '30d' ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
         : tf === '7d' ? (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0')
@@ -423,7 +427,7 @@ export default function SpreadsPage() {
     return { cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, maxHi, maxLo, minHi, minLo, prices, hi: prices[0], lo: prices[prices.length - 1] };
   }, [data, exs]);
 
-  const toggle = useCallback((e: string) => setSel(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e].slice(0, 8)), []);
+  const toggle = useCallback((e: string) => setSel(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e]), []);
 
   const yDomain = useMemo(() => {
     if (data.length === 0 || exs.length === 0) return [0, 1];
@@ -712,7 +716,9 @@ export default function SpreadsPage() {
               <div>
                 <h2 className="text-sm font-semibold">{sym} Perp Price by Exchange</h2>
                 <p className="text-[11px] text-neutral-500">
-                  {tf === 'live' ? `Live WebSocket prices · ${wsHistory.length} snapshots · updates every 5s` : `Close prices across ${exs.length} venues · ${TFS.find(t=>t.key===tf)?.label}`}
+                  {tf === 'live'
+                    ? `Live WebSocket prices · ${wsHistory.length} snapshots · updates every 5s`
+                    : `${data.length} data points · ${tf === '1d' ? '1h' : '4h'} resolution · ${exs.length} venues`}
                 </p>
               </div>
             </div>
@@ -753,6 +759,12 @@ export default function SpreadsPage() {
                   <span className="text-neutral-400">{e}</span>
                 </span>
               ))}
+              {chartMode === 'line' && viewMode === 'pct' && exs.length >= 2 && (
+                <span className="flex items-center gap-1 text-[10px] text-neutral-500">
+                  <span className="w-3 h-[1px] border-t border-dashed border-neutral-500" />
+                  Spread (A − B)
+                </span>
+              )}
             </div>
           </div>
 
@@ -846,6 +858,15 @@ export default function SpreadsPage() {
                     style={{ filter: `drop-shadow(0 0 6px ${ec(e, i)}40)` }}
                     label={false} />
                 ))}
+                {/* Spread (A - B) line in % mode */}
+                {viewMode === 'pct' && exs.length >= 2 && (
+                  <Line type="monotone" dataKey="_spreadAB" stroke="#9ca3af" strokeWidth={1} dot={false}
+                    strokeDasharray="4 3" connectNulls opacity={0.5} name={`Spread (${exs[0]} − ${exs[1]})`} />
+                )}
+                {/* Zero reference line in % mode */}
+                {viewMode === 'pct' && (
+                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                )}
                 {/* Right-side current price labels */}
                 {data.length > 0 && exs.map((e, i) => {
                   const last = data[data.length - 1];
