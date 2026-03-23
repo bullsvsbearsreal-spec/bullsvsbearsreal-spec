@@ -126,7 +126,8 @@ export default function SpreadsPage() {
   const [symQ, setSymQ] = useState('');
   const [showEx, setShowEx] = useState(false);
   const [kd, setKd] = useState<Record<string, Candle[]> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Don't block initial render
+  const [chartLoading, setChartLoading] = useState(false);
   const [showCalc, setShowCalc] = useState(false);
   const [calcAmt, setCalcAmt] = useState('10000');
   const [calcFee, setCalcFee] = useState('0.1');
@@ -197,8 +198,8 @@ export default function SpreadsPage() {
   const [dbHistory, setDbHistory] = useState<Array<{ t: number; spread: number; pct: number; high_ex: string; low_ex: string }>>([]);
   useEffect(() => {
     const t = TFS.find(x => x.key === tf);
-    if (!t || t.source !== 'db') { setLoading(false); return; } // Live tab uses WS only
-    setLoading(true);
+    if (!t || t.source !== 'db') { setChartLoading(false); return; } // Live tab uses WS only
+    setChartLoading(true);
     let c = false;
     const days = (t as any).days || 7;
     // Fetch 3 sources: klines (exchange APIs), DB mark_prices (all exchanges), spread history
@@ -222,7 +223,7 @@ export default function SpreadsPage() {
 
       setKd(Object.keys(merged).length > 0 ? merged : null);
       setDbHistory((dbSpreadRes.status === 'fulfilled' && dbSpreadRes.value?.data) || []);
-    }).finally(() => { if (!c) setLoading(false); });
+    }).finally(() => { if (!c) setChartLoading(false); });
     return () => { c = true; };
   }, [sym, tf]);
 
@@ -427,7 +428,7 @@ export default function SpreadsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {loading ? (
+            {chartLoading ? (
               <span className="flex items-center gap-1.5 text-xs text-neutral-600"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Loading...</span>
             ) : (
               <span className="flex items-center gap-1.5 text-xs text-neutral-500"><span className="w-1.5 h-1.5 rounded-full bg-green-400" /> {sel.length} selected · {exs.length} with data</span>
@@ -720,7 +721,7 @@ export default function SpreadsPage() {
             </div>
           </div>
 
-          {loading ? (
+          {chartLoading ? (
             <div className="h-[420px] flex flex-col gap-3 p-4">
               <div className="flex gap-4 mb-2">
                 {[1,2,3,4,5].map(i => <div key={i} className="h-3 rounded bg-white/[0.03] animate-pulse" style={{ width: 60 + i * 10 }} />)}

@@ -6,9 +6,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 type Candle = { t: number; o: number; h: number; l: number; c: number };
 
-async function f(url: string, ms = 8000): Promise<Response> {
+async function f(url: string, ms = 5000): Promise<Response> {
   return fetch(url, { signal: AbortSignal.timeout(ms) });
 }
+
+// Fast exchanges that respond in <2s — fetch by default
+const FAST_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'HTX', 'Hyperliquid', 'dYdX'];
+// Slow exchanges — only fetch when explicitly requested
+const SLOW_EXCHANGES = ['Kraken', 'BingX', 'Phemex', 'KuCoin', 'CoinEx', 'Deribit', 'Coinbase', 'WhiteBIT', 'Aevo', 'Drift', 'GMX', 'gTrade', 'Aster', 'Lighter'];
 
 function sym(ex: string, s: string): string {
   const u = s.toUpperCase();
@@ -203,7 +208,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(cached.data, { headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=300' } });
   }
 
-  const exchanges = exFilter.length > 0 ? exFilter.filter(e => fetchers[e]) : Object.keys(fetchers);
+  // Default to fast exchanges only (saves ~3s). Include slow ones only when explicitly requested.
+  const exchanges = exFilter.length > 0 ? exFilter.filter(e => fetchers[e]) : FAST_EXCHANGES.filter(e => fetchers[e]);
   const results = await Promise.allSettled(
     exchanges.map(async ex => ({ exchange: ex, candles: await fetchers[ex](symbol, interval, limit).catch(() => [] as Candle[]) }))
   );
