@@ -734,10 +734,17 @@ export default function SpreadsPage() {
                 </div>
               )}
               {chartMode === 'candle' && (
-                <select value={candleExchange} onChange={e => setCandleExchange(e.target.value)}
-                  className="px-2 py-0.5 rounded-md text-[10px] bg-white/[0.04] border border-white/[0.06] text-neutral-300 outline-none">
-                  {exs.map(e => <option key={e} value={e}>{e}</option>)}
-                </select>
+                <div className="flex items-center gap-1">
+                  {exs.filter(e => kd?.[e]).map(e => (
+                    <button key={e} onClick={() => setCandleExchange(e)}
+                      className={`px-2 py-0.5 rounded text-[9px] font-medium transition flex items-center gap-1 ${
+                        candleExchange === e ? 'bg-white/[0.08] text-white border border-white/[0.15]' : 'text-neutral-500 hover:text-neutral-300'
+                      }`}>
+                      <ExchangeLogo exchange={e} size={12} />
+                      {e}
+                    </button>
+                  ))}
+                </div>
               )}
               {chartMode === 'line' && exs.map((e, i) => (
                 <span key={e} className="flex items-center gap-1 text-[10px]">
@@ -760,30 +767,69 @@ export default function SpreadsPage() {
               </div>
             </div>
           ) : data.length > 0 && chartMode === 'candle' && candleExchange && tf !== 'live' && kd?.[candleExchange] ? (
-            /* Candlestick chart for single exchange */
-            <ResponsiveContainer width="100%" height={420}>
-              <ComposedChart data={kd[candleExchange].map(c => ({
-                ...c, label: new Date(c.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                bodyLow: Math.min(c.o, c.c), bodyHigh: Math.max(c.o, c.c),
-                color: c.c >= c.o ? '#22c55e' : '#ef4444',
-              }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
-                  interval={Math.max(0, Math.floor(kd[candleExchange].length / 8))} />
-                <YAxis domain={['dataMin', 'dataMax']} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => '$' + fp(v)} width={72} padding={{ top: 10, bottom: 10 }} />
-                <RTooltip contentStyle={{ background: '#141418', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
-                  formatter={(v: number, name: string) => ['$' + fp(v), name]} labelStyle={{ color: '#6b7280' }} />
-                {/* Wicks (high-low line) */}
-                <Line type="monotone" dataKey="h" stroke="#4b5563" strokeWidth={1} dot={false} connectNulls name="High" />
-                <Line type="monotone" dataKey="l" stroke="#4b5563" strokeWidth={1} dot={false} connectNulls name="Low" />
-                {/* Body (open-close) as area between */}
-                <Area type="step" dataKey="bodyHigh" stroke="none" fill="rgba(34,197,94,0.3)" connectNulls name="Close" />
-                <Area type="step" dataKey="bodyLow" stroke="none" fill="#0c0e14" connectNulls name="Open" />
-                {/* Close line for visibility */}
-                <Line type="monotone" dataKey="c" stroke="#F59E0B" strokeWidth={1.5} dot={false} connectNulls name="Close" />
-              </ComposedChart>
-            </ResponsiveContainer>
+            /* Proper candlestick chart using custom SVG bars */
+            (() => {
+              const candles = kd[candleExchange];
+              const prices = candles.flatMap(c => [c.h, c.l]).filter(p => p > 0);
+              const minP = Math.min(...prices), maxP = Math.max(...prices);
+              const pad = (maxP - minP) * 0.05;
+              const yMin = minP - pad, yMax = maxP + pad;
+              const W = 1200, H = 420, ML = 72, MR = 8, MT = 8, MB = 30;
+              const cw = (W - ML - MR) / candles.length;
+              const toY = (p: number) => MT + (1 - (p - yMin) / (yMax - yMin)) * (H - MT - MB);
+              const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (yMax - yMin) * (i / 4));
+              return (
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[420px]" preserveAspectRatio="none">
+                  {/* Grid lines */}
+                  {yTicks.map((v, i) => (
+                    <g key={i}>
+                      <line x1={ML} x2={W - MR} y1={toY(v)} y2={toY(v)} stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
+                      <text x={ML - 6} y={toY(v) + 3} textAnchor="end" fill="#4b5563" fontSize="9" fontFamily="ui-monospace, monospace">{'$' + fp(v)}</text>
+                    </g>
+                  ))}
+                  {/* Candles */}
+                  {candles.map((c, i) => {
+                    const x = ML + i * cw + cw / 2;
+                    const bullish = c.c >= c.o;
+                    const color = bullish ? '#22c55e' : '#ef4444';
+                    const bodyTop = toY(Math.max(c.o, c.c));
+                    const bodyBot = toY(Math.min(c.o, c.c));
+                    const bodyH = Math.max(bodyBot - bodyTop, 1);
+                    const barW = Math.max(cw * 0.6, 2);
+                    return (
+                      <g key={i}>
+                        {/* Wick */}
+                        <line x1={x} x2={x} y1={toY(c.h)} y2={toY(c.l)} stroke={color} strokeWidth={1} opacity={0.6} />
+                        {/* Body */}
+                        <rect x={x - barW / 2} y={bodyTop} width={barW} height={bodyH}
+                          fill={bullish ? color : color} stroke={color} strokeWidth={0.5}
+                          fillOpacity={bullish ? 0.8 : 0.9} rx={1} />
+                      </g>
+                    );
+                  })}
+                  {/* X-axis labels */}
+                  {candles.filter((_, i) => i % Math.max(1, Math.floor(candles.length / 8)) === 0).map((c, i) => {
+                    const idx = candles.indexOf(c);
+                    const x = ML + idx * cw + cw / 2;
+                    const d = new Date(c.t);
+                    const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return <text key={i} x={x} y={H - 6} textAnchor="middle" fill="#4b5563" fontSize="9" fontFamily="ui-monospace, monospace">{label}</text>;
+                  })}
+                  {/* Current price line */}
+                  {candles.length > 0 && (() => {
+                    const last = candles[candles.length - 1];
+                    const y = toY(last.c);
+                    return (
+                      <g>
+                        <line x1={ML} x2={W - MR} y1={y} y2={y} stroke="#F59E0B" strokeWidth={0.8} strokeDasharray="4 3" opacity={0.6} />
+                        <rect x={W - MR - 58} y={y - 8} width={56} height={16} rx={3} fill="#F59E0B" />
+                        <text x={W - MR - 30} y={y + 4} textAnchor="middle" fill="#000" fontSize="9" fontWeight="600" fontFamily="ui-monospace, monospace">{'$' + fp(last.c)}</text>
+                      </g>
+                    );
+                  })()}
+                </svg>
+              );
+            })()
           ) : data.length > 0 ? (
             /* Multi-line chart */
             <ResponsiveContainer width="100%" height={420}>
