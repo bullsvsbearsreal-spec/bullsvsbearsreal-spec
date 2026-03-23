@@ -99,11 +99,11 @@ function SpreadTooltip({ active, payload, exList, colorFn }: any) {
 export default function SpreadsPage() {
   // Read initial state from URL params
   const initFromUrl = useCallback(() => {
-    if (typeof window === 'undefined') return { sym: 'BTC', sel: ['Binance','Bybit','OKX','Hyperliquid'], tf: 'live' as TfK };
+    if (typeof window === 'undefined') return { sym: 'BTC', sel: ['Binance','Bybit','OKX','Bitget','Hyperliquid'], tf: 'live' as TfK };
     const p = new URLSearchParams(window.location.search);
     return {
       sym: p.get('s') || 'BTC',
-      sel: p.get('ex')?.split(',').filter(Boolean) || ['Binance','Bybit','OKX','Hyperliquid'],
+      sel: p.get('ex')?.split(',').filter(Boolean) || ['Binance','Bybit','OKX','Bitget','Hyperliquid'],
       tf: (p.get('tf') || 'live') as TfK,
     };
   }, []);
@@ -365,16 +365,26 @@ export default function SpreadsPage() {
   const stats = useMemo(() => {
     if (data.length === 0 || exs.length < 2) return null;
     let sum = 0, max = 0, min = Infinity, maxT = 0, minT = 0, cnt = 0;
+    let maxHi = '', maxLo = '', minHi = '', minLo = '';
     for (const pt of data) {
       const s = pt._spread || 0; sum += s; cnt++;
-      if (s > max) { max = s; maxT = pt.time; }
-      if (s < min) { min = s; minT = pt.time; }
+      if (s > max) {
+        max = s; maxT = pt.time;
+        // Find which exchanges were highest/lowest at this timestamp
+        const p = exs.map(e => ({ e, p: pt[e] as number })).filter(x => typeof x.p === 'number' && x.p > 0).sort((a, b) => b.p - a.p);
+        if (p.length >= 2) { maxHi = p[0].e; maxLo = p[p.length - 1].e; }
+      }
+      if (s < min) {
+        min = s; minT = pt.time;
+        const p = exs.map(e => ({ e, p: pt[e] as number })).filter(x => typeof x.p === 'number' && x.p > 0).sort((a, b) => b.p - a.p);
+        if (p.length >= 2) { minHi = p[0].e; minLo = p[p.length - 1].e; }
+      }
     }
     const last = data[data.length - 1];
     const prices = exs.map(e => ({ e, p: last[e] as number })).filter(x => x.p > 0).sort((a, b) => b.p - a.p);
     const cur = prices.length >= 2 ? prices[0].p - prices[prices.length - 1].p : 0;
     const pct = prices.length >= 2 ? (cur / prices[prices.length - 1].p) * 100 : 0;
-    return { cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, prices, hi: prices[0], lo: prices[prices.length - 1] };
+    return { cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, maxHi, maxLo, minHi, minLo, prices, hi: prices[0], lo: prices[prices.length - 1] };
   }, [data, exs]);
 
   const toggle = useCallback((e: string) => setSel(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e].slice(0, 8)), []);
@@ -811,8 +821,11 @@ export default function SpreadsPage() {
               {/* Spread Range Summary */}
               <div className="flex gap-4 sm:gap-6 flex-shrink-0">
                 <div className="text-center sm:text-right">
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Max</p>
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Max Spread</p>
                   <p className="font-mono text-sm text-green-400">{'$'}{fp(stats.max)}</p>
+                  <p className="text-[9px] text-green-400/70">
+                    {stats.maxHi} vs {stats.maxLo}
+                  </p>
                   <p className="text-[9px] text-neutral-600">
                     {stats.maxT ? new Date(stats.maxT).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                   </p>
@@ -822,8 +835,11 @@ export default function SpreadsPage() {
                   <p className="font-mono text-sm text-hub-yellow">{'$'}{fp(stats.avg)}</p>
                 </div>
                 <div className="text-center sm:text-right">
-                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Min</p>
+                  <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Min Spread</p>
                   <p className="font-mono text-sm text-cyan-400">{'$'}{fp(stats.min)}</p>
+                  <p className="text-[9px] text-cyan-400/70">
+                    {stats.minHi} vs {stats.minLo}
+                  </p>
                   <p className="text-[9px] text-neutral-600">
                     {stats.minT ? new Date(stats.minT).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                   </p>
@@ -837,8 +853,35 @@ export default function SpreadsPage() {
                   interval={Math.max(0, Math.floor(data.length / 6))} />
                 <YAxis tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => '$' + fp(v)} width={55} domain={[0, 'auto']} />
-                <RTooltip contentStyle={{ background: '#141418', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
-                  formatter={(v: number) => ['$' + fp(v), 'Spread']} labelStyle={{ color: '#6b7280' }} />
+                <RTooltip content={({ active, payload }: any) => {
+                  if (!active || !payload?.length) return null;
+                  const pt = payload[0]?.payload;
+                  if (!pt) return null;
+                  const spread = pt._spread || 0;
+                  // Find highest and lowest at this point
+                  const p = exs.map(e => ({ e, p: pt[e] as number })).filter(x => typeof x.p === 'number' && x.p > 0).sort((a, b) => b.p - a.p);
+                  return (
+                    <div className="bg-[#141418] border border-white/[0.08] rounded-lg px-3 py-2 text-xs">
+                      <p className="text-neutral-500 mb-1.5">{pt.label}</p>
+                      <div className="flex justify-between gap-4 mb-1">
+                        <span className="text-neutral-400">Spread</span>
+                        <span className="font-mono text-hub-yellow font-bold">{'$'}{fp(spread)}</span>
+                      </div>
+                      {p.length >= 2 && (
+                        <>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-neutral-500">Highest</span>
+                            <span className="font-mono text-green-400">{p[0].e} {'$'}{fp(p[0].p)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-neutral-500">Lowest</span>
+                            <span className="font-mono text-red-400">{p[p.length-1].e} {'$'}{fp(p[p.length-1].p)}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                }} />
                 {/* Max spread line (top range) */}
                 <ReferenceLine y={stats.max} stroke="#22c55e" strokeDasharray="6 3" strokeWidth={1}
                   label={{ value: 'MAX $' + fp(stats.max), position: 'right', fill: '#22c55e', fontSize: 8 }} />
