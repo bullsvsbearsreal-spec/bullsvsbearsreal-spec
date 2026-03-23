@@ -193,21 +193,23 @@ export default function SpreadsPage() {
   const [funding, setFunding] = useState<FundingEntry[]>([]);
   const [oi, setOI] = useState<OIEntry[]>([]);
 
-  // Fetch DB history for 1D/7D/30D views
+  // Fetch klines + DB history for 1D/7D/30D views
   const [dbHistory, setDbHistory] = useState<Array<{ t: number; spread: number; pct: number; high_ex: string; low_ex: string }>>([]);
   useEffect(() => {
     const t = TFS.find(x => x.key === tf);
-    if (!t || t.source !== 'db') { setKd(null); setLoading(false); return; }
+    if (!t || t.source !== 'db') return; // Live tab uses WS only
     setLoading(true);
     let c = false;
-    fetch(`/api/history/spreads?symbol=${sym}&days=${(t as any).days || 7}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(json => {
-        if (c) return;
-        setDbHistory(json?.data || []);
-      })
-      .catch(() => { if (!c) setDbHistory([]); })
-      .finally(() => { if (!c) setLoading(false); });
+    // Fetch klines from exchange APIs for chart + spread history from DB
+    Promise.allSettled([
+      fetch(`/api/klines-multi?symbol=${sym}&interval=${(t as any).interval || '1h'}&limit=${(t as any).limit || 168}`).then(r => r.ok ? r.json() : null),
+      fetch(`/api/history/spreads?symbol=${sym}&days=${(t as any).days || 7}`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([kRes, dbRes]) => {
+      if (c) return;
+      const klines = (kRes.status === 'fulfilled' && kRes.value?.exchanges) || {};
+      setKd(Object.keys(klines).length > 0 ? klines : null);
+      setDbHistory((dbRes.status === 'fulfilled' && dbRes.value?.data) || []);
+    }).finally(() => { if (!c) setLoading(false); });
     return () => { c = true; };
   }, [sym, tf]);
 
