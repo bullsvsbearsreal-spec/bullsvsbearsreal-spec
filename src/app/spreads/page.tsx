@@ -197,7 +197,7 @@ export default function SpreadsPage() {
   const [dbHistory, setDbHistory] = useState<Array<{ t: number; spread: number; pct: number; high_ex: string; low_ex: string }>>([]);
   useEffect(() => {
     const t = TFS.find(x => x.key === tf);
-    if (!t || t.source !== 'db') return; // Live tab uses WS only
+    if (!t || t.source !== 'db') { setLoading(false); return; } // Live tab uses WS only
     setLoading(true);
     let c = false;
     const days = (t as any).days || 7;
@@ -332,15 +332,22 @@ export default function SpreadsPage() {
     }
     const sorted = Array.from(allBuckets).sort((a, b) => a - b);
     const rows: Pt[] = [];
+    const lastSeen: Record<string, { p: number; t: number }> = {};
     for (const t of sorted) {
       const pt: Pt = { time: t, label: '' };
       const prices: number[] = [];
       const exPrices: { e: string; p: number }[] = [];
       for (const e of exs) {
-        const p = maps[e]?.get(t); // NO forward-fill — only actual data
+        let p = maps[e]?.get(t);
+        if (p && p > 0) {
+          lastSeen[e] = { p, t };
+        } else if (lastSeen[e] && (t - lastSeen[e].t) <= bucketMs * 2) {
+          // Forward-fill only if last seen within 2 buckets (prevent stale data)
+          p = lastSeen[e].p;
+        }
         if (p && p > 0) { exPrices.push({ e, p }); prices.push(p); }
       }
-      if (prices.length < 2) continue; // need 2+ exchanges at same timestamp
+      if (prices.length < 2) continue;
       // Filter outliers: exclude if >1% from median at this timestamp
       const sortedP = [...prices].sort((a, b) => a - b);
       const median = sortedP[Math.floor(sortedP.length / 2)];
