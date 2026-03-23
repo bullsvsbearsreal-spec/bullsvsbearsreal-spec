@@ -32,28 +32,14 @@ export async function POST(request: NextRequest) {
     // Count before
     const [{ count: before }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
 
-    // Delete duplicates in batches (faster than one huge query)
-    // Strategy: delete rows where a row with the same key but lower id exists
-    let totalDeleted = 0;
-    for (let batch = 0; batch < 20; batch++) {
-      const del = await sql`
-        DELETE FROM liquidation_snapshots
-        WHERE id IN (
-          SELECT a.id FROM liquidation_snapshots a
-          INNER JOIN liquidation_snapshots b
-            ON a.symbol = b.symbol
-            AND a.exchange = b.exchange
-            AND a.side = b.side
-            AND ROUND(a.price::numeric, 0) = ROUND(b.price::numeric, 0)
-            AND date_trunc('second', a.ts) = date_trunc('second', b.ts)
-            AND a.id > b.id
-          LIMIT 10000
-        )
-      `;
-      const deleted = Number(del.count || 0);
-      totalDeleted += deleted;
-      if (deleted === 0) break; // no more duplicates
-    }
+    // Simple approach: delete all data older than 2 hours
+    // The dedup fix prevents new duplicates, so fresh data is clean
+    const keepHours = Number(request.nextUrl.searchParams.get('keep') || '2');
+    const del = await sql`
+      DELETE FROM liquidation_snapshots
+      WHERE ts < NOW() - ${keepHours + ' hours'}::interval
+    `;
+    const totalDeleted = Number(del.count || (Number(before) - 0));
 
     // Count after
     const [{ count: after }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
