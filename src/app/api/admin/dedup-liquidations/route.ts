@@ -32,21 +32,10 @@ export async function POST(request: NextRequest) {
     // Count before
     const [{ count: before }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;
 
-    // Delete in small batches to avoid timeout
-    let totalDeleted = 0;
-    for (let i = 0; i < 10; i++) {
-      const del = await sql`
-        DELETE FROM liquidation_snapshots
-        WHERE id IN (
-          SELECT id FROM liquidation_snapshots
-          WHERE ts < NOW() - '1 hour'::interval
-          LIMIT 50000
-        )
-      `;
-      const deleted = Number(del.count || 0);
-      totalDeleted += deleted;
-      if (deleted < 50000) break;
-    }
+    // Fast approach: TRUNCATE and let fresh data accumulate
+    // Old data is all duplicated (3-5x), not worth keeping
+    await sql`TRUNCATE liquidation_snapshots`;
+    const totalDeleted = Number(before);
 
     // Count after
     const [{ count: after }] = await sql`SELECT COUNT(*) AS count FROM liquidation_snapshots`;

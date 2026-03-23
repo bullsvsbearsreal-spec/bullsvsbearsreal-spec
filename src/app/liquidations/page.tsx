@@ -56,7 +56,7 @@ interface TreemapItem {
 const DEX_EXCHANGES = new Set(['gTrade', 'dYdX', 'Hyperliquid', 'GMX', 'Drift', 'Aevo', 'Lighter']);
 
 // All 9 WebSocket-supported exchanges (BingX/MEXC removed — no public liquidation WS)
-const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'HTX', 'gTrade', 'dYdX', 'Bitfinex'];
+const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'HTX', 'gTrade', 'dYdX', 'Bitfinex'];
 
 // ─── SWR Fetcher ────────────────────────────────────
 const fetcher = (url: string) => fetch(url).then(r => r.json());

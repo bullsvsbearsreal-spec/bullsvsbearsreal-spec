@@ -267,22 +267,21 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch from all exchanges in parallel
-  const [binance, okx, htx, gtrade, deribit] = await Promise.all([
+  const [binance, okx, htx, gtrade] = await Promise.all([
     fetchBinanceLiqs(),
     fetchOKXLiqs(),
     fetchHTXLiqs(),
     fetchGTradeLiqs(),
-    fetchDeribitLiqs(),
+    // Deribit removed — unstable connection, mostly BTC/ETH only
   ]);
 
-  const allRows = [...binance, ...okx, ...htx, ...gtrade, ...deribit];
+  const allRows = [...binance, ...okx, ...htx, ...gtrade];
 
   const fetched = {
     binance: binance.length,
     okx: okx.length,
     htx: htx.length,
     gtrade: gtrade.length,
-    deribit: deribit.length,
   };
 
   if (allRows.length === 0) {
