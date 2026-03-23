@@ -13,11 +13,27 @@ import { getCoinIcon } from '@/lib/coinIcons';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 
 // ─── Exchange colors ─────────────────────────────────────────────────────────
+// Maximally distinct colors — no two should look similar on dark bg
 const EX_COLORS: Record<string, string> = {
-  Binance: '#F0B90B', Bybit: '#FF6B6B', OKX: '#00FF9D', Bitget: '#00D4FF',
-  MEXC: '#A855F7', HTX: '#FF61D2', Hyperliquid: '#00FFCC', dYdX: '#6966FF',
+  Binance: '#F0B90B',     // gold/yellow
+  Bybit: '#FF4040',       // bright red
+  OKX: '#00FF00',         // pure green
+  Bitget: '#00BFFF',      // deep sky blue
+  MEXC: '#FF00FF',        // magenta
+  HTX: '#FF8C00',         // dark orange
+  Hyperliquid: '#00FFFF', // cyan
+  dYdX: '#9D4EDD',       // purple
+  Kraken: '#FFFF00',      // yellow
+  'Gate.io': '#7FFF00',   // chartreuse
+  Coinbase: '#4169E1',    // royal blue
+  KuCoin: '#00FA9A',      // medium spring green
+  BingX: '#FF69B4',       // hot pink
+  Phemex: '#D2691E',      // chocolate
+  CoinEx: '#48D1CC',      // medium turquoise
+  Deribit: '#BA55D3',     // medium orchid
+  WhiteBIT: '#ADFF2F',    // green yellow
 };
-const PALETTE = ['#F0B90B','#FF6B6B','#00FF9D','#00D4FF','#A855F7','#FF61D2','#00FFCC','#6966FF'];
+const PALETTE = ['#F0B90B','#FF4040','#00FF00','#00BFFF','#FF00FF','#FF8C00','#00FFFF','#9D4EDD','#FFFF00','#7FFF00'];
 function ec(ex: string, i: number) { return EX_COLORS[ex] || PALETTE[i % PALETTE.length]; }
 
 type Candle = { t: number; o: number; h: number; l: number; c: number };
@@ -202,26 +218,38 @@ export default function SpreadsPage() {
     setChartLoading(true);
     let c = false;
     const days = (t as any).days || 7;
-    // Fetch 3 sources: klines (exchange APIs), DB mark_prices (all exchanges), spread history
+    // Fetch klines FIRST (fast, renders chart), then DB sources in background
+    fetch(`/api/klines-multi?symbol=${sym}&interval=${(t as any).interval || '1h'}&limit=${(t as any).limit || 168}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (c) return;
+        const klines = json?.exchanges || {};
+        if (Object.keys(klines).length > 0) {
+          setKd(klines);
+          setChartLoading(false); // Show chart immediately
+        }
+      }).catch(() => {});
+    // DB sources in background (don't block chart)
     Promise.allSettled([
-      fetch(`/api/klines-multi?symbol=${sym}&interval=${(t as any).interval || '1h'}&limit=${(t as any).limit || 168}`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/history/price-multi?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/history/spreads?symbol=${sym}&days=${days}`).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([kRes, dbPriceRes, dbSpreadRes]) => {
+      fetch(`/api/history/price-multi?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/history/spreads?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([dbPriceRes, dbSpreadRes]) => {
       if (c) return;
-      const klines = (kRes.status === 'fulfilled' && kRes.value?.exchanges) || {};
       const dbPrices = (dbPriceRes.status === 'fulfilled' && dbPriceRes.value?.exchanges) || {};
 
-      // Merge: klines take priority, DB mark_price fills gaps for exchanges without kline APIs
-      const merged: Record<string, Candle[]> = { ...klines };
-      for (const [ex, pts] of Object.entries(dbPrices) as [string, any[]][]) {
-        if (!merged[ex] && pts.length > 0) {
-          // Convert DB {t, price} to Candle format (line-only, o=h=l=c)
-          merged[ex] = pts.map((p: any) => ({ t: p.t, o: p.price, h: p.price, l: p.price, c: p.price })).filter((x: Candle) => x.c > 0);
-        }
+      // Merge DB mark_price into existing klines (fills gaps for DEX exchanges)
+      if (Object.keys(dbPrices).length > 0) {
+        setKd(prev => {
+          if (!prev) return prev;
+          const merged = { ...prev };
+          for (const [ex, pts] of Object.entries(dbPrices) as [string, any[]][]) {
+            if (!merged[ex] && pts.length > 0) {
+              merged[ex] = pts.map((p: any) => ({ t: p.t, o: p.price, h: p.price, l: p.price, c: p.price })).filter((x: Candle) => x.c > 0);
+            }
+          }
+          return merged;
+        });
       }
-
-      setKd(Object.keys(merged).length > 0 ? merged : null);
       setDbHistory((dbSpreadRes.status === 'fulfilled' && dbSpreadRes.value?.data) || []);
     }).finally(() => { if (!c) setChartLoading(false); });
     return () => { c = true; };
@@ -693,7 +721,7 @@ export default function SpreadsPage() {
               <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
                 <button onClick={() => setChartMode('line')}
                   className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (chartMode === 'line' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>Lines</button>
-                <button onClick={() => { setChartMode('candle'); if (!candleExchange && exs.length > 0) setCandleExchange(exs[0]); }}
+                <button onClick={() => { setChartMode('candle'); if (!candleExchange && exs.length > 0) setCandleExchange(exs.includes('Binance') ? 'Binance' : exs[0]); }}
                   className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (chartMode === 'candle' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>Candles</button>
               </div>
               {/* Price vs % view toggle */}
