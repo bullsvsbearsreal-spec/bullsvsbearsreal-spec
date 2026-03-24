@@ -752,6 +752,8 @@ const METRIC_ALIASES: Record<string, string> = {
   liquidations24h: 'liquidations24h',
   liqs: 'liquidations24h',
   liq24h: 'liquidations24h',
+  spread: 'spread',
+  spreadpct: 'spreadPct',
 };
 const VALID_OPERATORS = new Set(['gt', 'lt']);
 
@@ -766,14 +768,14 @@ async function handleAlert(chatId: number, args: string[]): Promise<void> {
         '/alert remove &lt;n&gt; — Remove by number',
         '/alert clear — Remove all',
         '',
-        '<b>Metrics:</b> price, funding, oi, change24h, volume, liquidations',
+        '<b>Metrics:</b> price, funding, oi, change24h, volume, liquidations, spread, spreadpct',
         '<b>Operators:</b> gt (greater than), lt (less than)',
         '',
         '<b>Examples:</b>',
         '/alert add BTC price gt 100000',
         '/alert add ETH funding lt -0.01',
-        '/alert add BTC liquidations gt 50000000',
-        '/alert add SOL volume gt 1000000000',
+        '/alert add BTC spread gt 50',
+        '/alert add BTC spreadpct gt 0.1',
       ].join('\n'),
     );
     return;

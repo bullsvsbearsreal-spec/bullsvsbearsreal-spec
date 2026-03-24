@@ -11,9 +11,11 @@ export interface MarketData {
   openInterest: number;
   volume24h: number;
   liquidations24h: number;
+  spread?: number;
+  spreadPct?: number;
 }
 
-export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h';
+export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h' | 'spread' | 'spreadPct';
 export type AlertOperator = 'gt' | 'lt';
 
 export interface Alert {
@@ -86,6 +88,29 @@ export async function fetchMarketDataServer(
     }
   }
 
+  // Compute spread per symbol from ticker data
+  if (tickerRes?.data) {
+    const bySymbol = new Map<string, number[]>();
+    for (const t of tickerRes.data) {
+      if (t.lastPrice > 0) {
+        const arr = bySymbol.get(t.symbol) || [];
+        arr.push(t.lastPrice);
+        bySymbol.set(t.symbol, arr);
+      }
+    }
+    bySymbol.forEach((prices, sym) => {
+      if (prices.length < 2) return;
+      const sorted = prices.sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const sane = sorted.filter(p => Math.abs(p - median) / median < 0.05);
+      if (sane.length < 2) return;
+      const spread = sane[sane.length - 1] - sane[0];
+      const spreadPct = (spread / sane[0]) * 100;
+      const entry = map.get(sym);
+      if (entry) { entry.spread = spread; entry.spreadPct = spreadPct; }
+    });
+  }
+
   // Funding rates → average per symbol
   if (fundingRes?.data) {
     const sums = new Map<string, { sum: number; count: number }>();
@@ -140,6 +165,8 @@ export function getMetricValue(data: MarketData, metric: AlertMetric): number {
     case 'change24h': return data.change24h;
     case 'volume24h': return data.volume24h;
     case 'liquidations24h': return data.liquidations24h;
+    case 'spread': return data.spread || 0;
+    case 'spreadPct': return data.spreadPct || 0;
   }
 }
 
