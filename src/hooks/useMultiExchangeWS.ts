@@ -329,6 +329,23 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
           }
         })
         .catch(() => {});
+      // gTrade: source prices from funding API (not in tickers due to 2MB endpoint)
+      if (restExchanges.includes('gTrade')) {
+        fetch('/api/funding')
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            const data: any[] = json?.data || json || [];
+            for (const f of data) {
+              if (f.exchange === 'gTrade' && f.symbol === symbol && f.markPrice > 0) {
+                handlePrice({
+                  exchange: 'gTrade', symbol, price: f.markPrice,
+                  bid: f.markPrice, ask: f.markPrice, ts: Date.now(),
+                });
+              }
+            }
+          })
+          .catch(() => {});
+      }
     };
     // Always start REST polling (covers both non-WS and failed-WS exchanges)
     setTimeout(pollRest, 5000); // first poll after 5s (give WS time to connect)

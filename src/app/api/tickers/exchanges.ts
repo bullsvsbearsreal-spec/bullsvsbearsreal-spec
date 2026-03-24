@@ -600,30 +600,10 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
 
   // GMX V2 -- markets/info does not include price/volume data, only OI and funding rates
 
-  // gTrade (Gains Network) — extract mark prices from funding API response
-  // The trading-variables endpoint (2MB) is too slow for ticker fetching.
-  // Instead, piggyback on the funding data which already has gTrade mark prices.
-  {
-    name: 'gTrade',
-    fetcher: async (fetchFn) => {
-      const base = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://info-hub.io');
-      const res = await fetchFn(`${base}/api/funding`, {}, 10000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const data: any[] = json?.data || json || [];
-      const results: TickerData[] = [];
-      for (const f of data) {
-        if (f.exchange !== 'gTrade' || !f.markPrice || f.markPrice <= 0) continue;
-        if (!isCryptoSymbol(f.symbol)) continue;
-        results.push({
-          symbol: f.symbol, exchange: 'gTrade', lastPrice: f.markPrice, price: f.markPrice,
-          priceChangePercent24h: 0, changePercent24h: 0,
-          high24h: f.markPrice, low24h: f.markPrice, volume24h: 0, quoteVolume24h: 0,
-        });
-      }
-      return results;
-    },
-  },
+  // gTrade — prices injected client-side from funding API (see spreads page REST poll)
+  // The trading-variables endpoint (2MB) is too slow and self-fetching /api/funding
+  // doesn't work on Vercel serverless. gTrade prices come from the funding_snapshots
+  // mark_price column via DB history merge on the spreads page.
 
   // Aster DEX — Binance-compatible API
   {
