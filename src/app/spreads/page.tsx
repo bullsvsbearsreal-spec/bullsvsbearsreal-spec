@@ -325,10 +325,11 @@ export default function SpreadsPage() {
   }, [sym]);
 
   const { data, exs, available } = useMemo<{ data: Pt[]; exs: string[]; available?: string[] }>(() => {
-    // LIVE mode: use WebSocket history
+    // LIVE mode: use WebSocket + REST history
     if (tf === 'live') {
-      if (wsHistory.length < 2) return { data: [] as Pt[], exs: sel.filter(e => WS_SUPPORTED.includes(e)) };
-      const wsExs = sel.filter(e => WS_SUPPORTED.includes(e));
+      if (wsHistory.length < 2) return { data: [] as Pt[], exs: sel };
+      // Include all selected exchanges that have data (WS + REST-polled)
+      const wsExs = sel.filter(e => wsHistory.some(snap => snap.prices[e] > 0));
       if (wsExs.length === 0) return { data: [] as Pt[], exs: [] as string[] };
       const rows: Pt[] = [];
       for (const snap of wsHistory) {
