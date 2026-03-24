@@ -600,40 +600,28 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
 
   // GMX V2 -- markets/info does not include price/volume data, only OI and funding rates
 
-  // gTrade (Gains Network) — Chainlink oracle prices via native fetch (large response, needs long timeout)
+  // gTrade (Gains Network) — extract mark prices from funding API response
+  // The trading-variables endpoint (2MB) is too slow for ticker fetching.
+  // Instead, piggyback on the funding data which already has gTrade mark prices.
   {
     name: 'gTrade',
-    fetcher: async () => {
-      // Use native fetch with AbortSignal instead of fetchWithTimeout (needs 20s for 2MB response)
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20000);
-      try {
-        const res = await fetch('https://backend-arbitrum.gains.trade/trading-variables', { signal: controller.signal });
-        clearTimeout(timer);
-        if (!res.ok) return [];
-        const raw = await res.json();
-        const pairs: any[] = raw.pairs || [];
-        const tokenPrices: number[] = (raw.tokenPrices || []).map(Number);
-        const results: TickerData[] = [];
-        for (let i = 0; i < pairs.length; i++) {
-          const pair = pairs[i];
-          if (!pair?.from) continue;
-          const price = tokenPrices[i];
-          if (!price || price <= 0) continue;
-          if (pair.groupIndex !== '0') continue; // Only crypto (group 0)
-          const symbol = pair.from.split('_')[0];
-          if (!isCryptoSymbol(symbol)) continue;
-          results.push({
-            symbol, exchange: 'gTrade', lastPrice: price, price,
-            priceChangePercent24h: 0, changePercent24h: 0,
-            high24h: price, low24h: price, volume24h: 0, quoteVolume24h: 0,
-          });
-        }
-        return results;
-      } catch {
-        clearTimeout(timer);
-        return [];
+    fetcher: async (fetchFn) => {
+      const base = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://info-hub.io');
+      const res = await fetchFn(`${base}/api/funding`, {}, 10000);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const data: any[] = json?.data || json || [];
+      const results: TickerData[] = [];
+      for (const f of data) {
+        if (f.exchange !== 'gTrade' || !f.markPrice || f.markPrice <= 0) continue;
+        if (!isCryptoSymbol(f.symbol)) continue;
+        results.push({
+          symbol: f.symbol, exchange: 'gTrade', lastPrice: f.markPrice, price: f.markPrice,
+          priceChangePercent24h: 0, changePercent24h: 0,
+          high24h: f.markPrice, low24h: f.markPrice, volume24h: 0, quoteVolume24h: 0,
+        });
       }
+      return results;
     },
   },
 
