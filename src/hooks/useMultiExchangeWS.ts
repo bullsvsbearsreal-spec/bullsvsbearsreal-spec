@@ -307,28 +307,32 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
     }
 
     // REST polling fallback for exchanges without WebSocket support
-    const restExchanges = exchanges.filter(e => !WS_CREATORS[e]);
+    // Also includes WS exchanges that fail to connect (checked after 15s)
+    const restExchangesBase = exchanges.filter(e => !WS_CREATORS[e]);
     let restTimer: NodeJS.Timeout | null = null;
-    if (restExchanges.length > 0) {
-      const pollRest = () => {
-        fetch('/api/tickers')
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
-            const tickers: any[] = json?.data || json || [];
-            for (const t of tickers) {
-              if (t.symbol === symbol && restExchanges.includes(t.exchange) && t.lastPrice > 0) {
-                handlePrice({
-                  exchange: t.exchange, symbol, price: t.lastPrice,
-                  bid: t.lastPrice, ask: t.lastPrice, ts: Date.now(),
-                });
-              }
+    const pollRest = () => {
+      // Include WS exchanges that haven't sent any data yet
+      const wsStale = wsExchanges.filter(e => !pricesRef.current[e]);
+      const restExchanges = [...restExchangesBase, ...wsStale];
+      if (restExchanges.length === 0) return;
+      fetch('/api/tickers')
+        .then(r => r.ok ? r.json() : null)
+        .then(json => {
+          const tickers: any[] = json?.data || json || [];
+          for (const t of tickers) {
+            if (t.symbol === symbol && restExchanges.includes(t.exchange) && t.lastPrice > 0) {
+              handlePrice({
+                exchange: t.exchange, symbol, price: t.lastPrice,
+                bid: t.lastPrice, ask: t.lastPrice, ts: Date.now(),
+              });
             }
-          })
-          .catch(() => {});
-      };
-      pollRest(); // immediate first fetch
-      restTimer = setInterval(pollRest, 10_000); // poll every 10s
-    }
+          }
+        })
+        .catch(() => {});
+    };
+    // Always start REST polling (covers both non-WS and failed-WS exchanges)
+    setTimeout(pollRest, 5000); // first poll after 5s (give WS time to connect)
+    restTimer = setInterval(pollRest, 10_000); // then every 10s
 
     // Snapshot prices every 5 seconds for chart history
     historyRef.current = [];
