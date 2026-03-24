@@ -163,6 +163,22 @@ export async function GET(request: NextRequest) {
             }
           } catch (arbErr) { /* arb tracking non-critical */ }
         }
+
+        // Store per-exchange prices as mark_price in funding_snapshots every 5 min
+        // This enables 1D/7D/30D chart lines for ALL exchanges (not just those with kline APIs)
+        if (minute % 5 === 0) {
+          const priceEntries: Array<{ symbol: string; exchange: string; rate: number; markPrice: number }> = [];
+          for (const sym of topSyms) {
+            const symEntries = bySymbol[sym];
+            if (!symEntries) continue;
+            for (const e of symEntries) {
+              priceEntries.push({ symbol: sym, exchange: e.exchange, rate: 0, markPrice: e.price });
+            }
+          }
+          if (priceEntries.length > 0) {
+            await saveFundingSnapshot(priceEntries);
+          }
+        }
       }
     } catch (e) {
       console.error('[cron/snapshot] spread error:', e);
