@@ -190,6 +190,7 @@ export default function SpreadsPage() {
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
   const [viewMode, setViewMode] = useState<'price' | 'pct'>('pct'); // Default to % view like reference
   const [candleExchange, setCandleExchange] = useState('');
+  const [spreadUnit, setSpreadUnit] = useState<'usd' | 'pct'>('usd');
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -296,6 +297,7 @@ export default function SpreadsPage() {
         const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
         for (const e of wsExs) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
         pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
+        pt._spreadPct = prices.length >= 2 ? ((Math.max(...prices) - Math.min(...prices)) / Math.min(...prices)) * 100 : 0;
         pt.label = new Date(snap.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         rows.push(pt);
       }
@@ -334,6 +336,7 @@ export default function SpreadsPage() {
         const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
         for (const e of fallback) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
         pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
+        pt._spreadPct = prices.length >= 2 ? ((Math.max(...prices) - Math.min(...prices)) / Math.min(...prices)) * 100 : 0;
         const d = new Date(t);
         pt.label = tf === '30d' ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
           : tf === '7d' ? (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0')
@@ -389,6 +392,7 @@ export default function SpreadsPage() {
       }
       const usePrices = useExs.map(x => x.p);
       pt._spread = Math.max(...usePrices) - Math.min(...usePrices);
+      pt._spreadPct = usePrices.length >= 2 ? ((Math.max(...usePrices) - Math.min(...usePrices)) / Math.min(...usePrices)) * 100 : 0;
       // Spread (A - B) line: difference between first two exchanges in %
       if (useExs.length >= 2 && avg > 0) {
         pt._spreadAB = ((useExs[0].p - useExs[1].p) / avg) * 100;
@@ -405,12 +409,15 @@ export default function SpreadsPage() {
   const stats = useMemo(() => {
     if (data.length === 0 || exs.length < 2) return null;
     let sum = 0, max = 0, min = Infinity, maxT = 0, minT = 0, cnt = 0;
+    let sumPct = 0, maxPct = 0, minPct = Infinity;
     let maxHi = '', maxLo = '', minHi = '', minLo = '';
     for (const pt of data) {
       const s = pt._spread || 0; sum += s; cnt++;
+      const sp = pt._spreadPct || 0; sumPct += sp;
+      if (sp > maxPct) maxPct = sp;
+      if (sp < minPct) minPct = sp;
       if (s > max) {
         max = s; maxT = pt.time;
-        // Find which exchanges were highest/lowest at this timestamp
         const p = exs.map(e => ({ e, p: pt[e] as number })).filter(x => typeof x.p === 'number' && x.p > 0).sort((a, b) => b.p - a.p);
         if (p.length >= 2) { maxHi = p[0].e; maxLo = p[p.length - 1].e; }
       }
@@ -424,7 +431,10 @@ export default function SpreadsPage() {
     const prices = exs.map(e => ({ e, p: last[e] as number })).filter(x => x.p > 0).sort((a, b) => b.p - a.p);
     const cur = prices.length >= 2 ? prices[0].p - prices[prices.length - 1].p : 0;
     const pct = prices.length >= 2 ? (cur / prices[prices.length - 1].p) * 100 : 0;
-    return { cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, maxHi, maxLo, minHi, minLo, prices, hi: prices[0], lo: prices[prices.length - 1] };
+    return {
+      cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, maxHi, maxLo, minHi, minLo, prices, hi: prices[0], lo: prices[prices.length - 1],
+      avgPct: cnt ? sumPct / cnt : 0, maxPct, minPct: minPct === Infinity ? 0 : minPct,
+    };
   }, [data, exs]);
 
   const toggle = useCallback((e: string) => setSel(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e]), []);
@@ -637,8 +647,29 @@ export default function SpreadsPage() {
                   {exs.length === 2 ? stats.hi?.e + ' vs ' + stats.lo?.e : 'Current Spread'}
                 </span>
               </div>
-              <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
-              <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
+              {exs.length === 2 && stats.hi && stats.lo ? (
+                <>
+                  <div className="space-y-0.5 mb-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-green-400 truncate">{stats.hi.e}</span>
+                      <span className="font-mono text-xs text-white">{'$'}{fp(stats.hi.p)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-red-400 truncate">{stats.lo.e}</span>
+                      <span className="font-mono text-xs text-white">{'$'}{fp(stats.lo.p)}</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-white/[0.06] pt-1.5">
+                    <p className="text-xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
+                    <p className="text-[11px] text-neutral-500">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
+                  <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
+                </>
+              )}
             </div>
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -915,17 +946,24 @@ export default function SpreadsPage() {
           <div className="rounded-2xl bg-[#0c0e14] border border-white/[0.06] p-4 sm:p-5 mb-5">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-sm font-semibold">Spread History ({TFS.find(t => t.key === tf)?.label})</h2>
-                <p className="text-[11px] text-neutral-500">
-                  Price spread between highest and lowest exchange over time.
-                  Across: {exs.join(', ')}.
+                <div className="flex items-center gap-3">
+                  <h2 className="text-sm font-semibold">Spread History ({TFS.find(t => t.key === tf)?.label})</h2>
+                  <div className="flex rounded-lg overflow-hidden border border-white/[0.08]">
+                    <button onClick={() => setSpreadUnit('usd')} className={`px-2.5 py-0.5 text-[10px] font-medium transition-colors ${spreadUnit === 'usd' ? 'bg-white/[0.1] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}>USD</button>
+                    <button onClick={() => setSpreadUnit('pct')} className={`px-2.5 py-0.5 text-[10px] font-medium transition-colors ${spreadUnit === 'pct' ? 'bg-white/[0.1] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}>%</button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-500 mt-1">
+                  {exs.length === 2
+                    ? `${sym} spread: ${exs[0]} vs ${exs[1]}`
+                    : `Price spread between highest and lowest exchange. Across: ${exs.join(', ')}.`}
                 </p>
               </div>
               {/* Spread Range Summary */}
               <div className="flex gap-4 sm:gap-6 flex-shrink-0">
                 <div className="text-center sm:text-right">
                   <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Max Spread</p>
-                  <p className="font-mono text-sm text-green-400">{'$'}{fp(stats.max)}</p>
+                  <p className="font-mono text-sm text-green-400">{spreadUnit === 'usd' ? '$' + fp(stats.max) : stats.maxPct.toFixed(3) + '%'}</p>
                   <p className="text-[9px] text-green-400/70">
                     {stats.maxHi} vs {stats.maxLo}
                   </p>
@@ -935,11 +973,11 @@ export default function SpreadsPage() {
                 </div>
                 <div className="text-center sm:text-right">
                   <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Average</p>
-                  <p className="font-mono text-sm text-hub-yellow">{'$'}{fp(stats.avg)}</p>
+                  <p className="font-mono text-sm text-hub-yellow">{spreadUnit === 'usd' ? '$' + fp(stats.avg) : stats.avgPct.toFixed(3) + '%'}</p>
                 </div>
                 <div className="text-center sm:text-right">
                   <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Min Spread</p>
-                  <p className="font-mono text-sm text-cyan-400">{'$'}{fp(stats.min)}</p>
+                  <p className="font-mono text-sm text-cyan-400">{spreadUnit === 'usd' ? '$' + fp(stats.min) : stats.minPct.toFixed(3) + '%'}</p>
                   <p className="text-[9px] text-cyan-400/70">
                     {stats.minHi} vs {stats.minLo}
                   </p>
@@ -955,20 +993,20 @@ export default function SpreadsPage() {
                 <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 6))} />
                 <YAxis tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => '$' + fp(v)} width={55} domain={[0, 'auto']} />
+                  tickFormatter={(v: number) => spreadUnit === 'usd' ? '$' + fp(v) : v.toFixed(3) + '%'} width={55} domain={[0, 'auto']} />
                 <RTooltip content={({ active, payload }: any) => {
                   if (!active || !payload?.length) return null;
                   const pt = payload[0]?.payload;
                   if (!pt) return null;
                   const spread = pt._spread || 0;
-                  // Find highest and lowest at this point
+                  const spreadPct = pt._spreadPct || 0;
                   const p = exs.map(e => ({ e, p: pt[e] as number })).filter(x => typeof x.p === 'number' && x.p > 0).sort((a, b) => b.p - a.p);
                   return (
                     <div className="bg-[#141418] border border-white/[0.08] rounded-lg px-3 py-2 text-xs">
                       <p className="text-neutral-500 mb-1.5">{pt.label}</p>
                       <div className="flex justify-between gap-4 mb-1">
                         <span className="text-neutral-400">Spread</span>
-                        <span className="font-mono text-hub-yellow font-bold">{'$'}{fp(spread)}</span>
+                        <span className="font-mono text-hub-yellow font-bold">{'$'}{fp(spread)} ({spreadPct.toFixed(3)}%)</span>
                       </div>
                       {p.length >= 2 && (
                         <>
@@ -986,22 +1024,23 @@ export default function SpreadsPage() {
                   );
                 }} />
                 {/* Max spread line (top range) */}
-                <ReferenceLine y={stats.max} stroke="#22c55e" strokeDasharray="6 3" strokeWidth={1}
-                  label={{ value: 'MAX $' + fp(stats.max), position: 'right', fill: '#22c55e', fontSize: 8 }} />
+                <ReferenceLine y={spreadUnit === 'usd' ? stats.max : stats.maxPct} stroke="#22c55e" strokeDasharray="6 3" strokeWidth={1}
+                  label={{ value: 'MAX ' + (spreadUnit === 'usd' ? '$' + fp(stats.max) : stats.maxPct.toFixed(3) + '%'), position: 'right', fill: '#22c55e', fontSize: 8 }} />
                 {/* Average spread line */}
-                <ReferenceLine y={stats.avg} stroke="#F59E0B" strokeDasharray="3 3" strokeWidth={1}
-                  label={{ value: 'AVG $' + fp(stats.avg), position: 'right', fill: '#F59E0B', fontSize: 8 }} />
+                <ReferenceLine y={spreadUnit === 'usd' ? stats.avg : stats.avgPct} stroke="#F59E0B" strokeDasharray="3 3" strokeWidth={1}
+                  label={{ value: 'AVG ' + (spreadUnit === 'usd' ? '$' + fp(stats.avg) : stats.avgPct.toFixed(3) + '%'), position: 'right', fill: '#F59E0B', fontSize: 8 }} />
                 {/* Min spread line (bottom range) */}
-                <ReferenceLine y={stats.min} stroke="#06b6d4" strokeDasharray="6 3" strokeWidth={1}
-                  label={{ value: 'MIN $' + fp(stats.min), position: 'right', fill: '#06b6d4', fontSize: 8 }} />
+                <ReferenceLine y={spreadUnit === 'usd' ? stats.min : stats.minPct} stroke="#06b6d4" strokeDasharray="6 3" strokeWidth={1}
+                  label={{ value: 'MIN ' + (spreadUnit === 'usd' ? '$' + fp(stats.min) : stats.minPct.toFixed(3) + '%'), position: 'right', fill: '#06b6d4', fontSize: 8 }} />
                 {/* Spread area fill */}
-                <Area type="monotone" dataKey="_spread" stroke="#F59E0B" fill="rgba(245,158,11,0.08)" strokeWidth={2} dot={false} connectNulls />
+                <Area type="monotone" dataKey={spreadUnit === 'usd' ? '_spread' : '_spreadPct'} stroke="#F59E0B" fill="rgba(245,158,11,0.08)" strokeWidth={2} dot={false} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
             <p className="text-[10px] text-neutral-600 mt-3 text-center">
-              The spread typically ranges between {'$'}{fp(stats.min)} (min) and {'$'}{fp(stats.max)} (max).
-              Average spread over {TFS.find(t => t.key === tf)?.label}: {'$'}{fp(stats.avg)}.
-              Values above the green MAX line indicate unusual spread widening.
+              {spreadUnit === 'usd'
+                ? `Spread ranges between $${fp(stats.min)} (min) and $${fp(stats.max)} (max). Average: $${fp(stats.avg)} over ${TFS.find(t => t.key === tf)?.label}.`
+                : `Spread ranges between ${stats.minPct.toFixed(3)}% (min) and ${stats.maxPct.toFixed(3)}% (max). Average: ${stats.avgPct.toFixed(3)}% over ${TFS.find(t => t.key === tf)?.label}.`}
+              {' '}Values above the green MAX line indicate unusual spread widening.
             </p>
           </div>
         )}

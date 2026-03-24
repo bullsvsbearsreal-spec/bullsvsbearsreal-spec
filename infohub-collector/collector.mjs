@@ -9,7 +9,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const BASE_URL = process.env.INFOHUB_BASE_URL || 'https://info-hub.io';
 const MAX_SYMBOLS = 200;
 const BATCH_SIZE = 50;
-const KEEP_DAYS = 14;
+const KEEP_DAYS = 30;
 
 if (!DATABASE_URL) {
   console.error('Missing DATABASE_URL env var');
@@ -190,16 +190,17 @@ async function collectSnapshots() {
     }
   }
 
-  // ── Prune every run — 14-day retention keeps DB within 1GB ──
+  // ── Prune every run — 30-day retention ──
   let pruned = null;
   try {
     const intervalStr = `${KEEP_DAYS} days`;
     const fr = await sql`DELETE FROM funding_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
     const oi = await sql`DELETE FROM oi_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
     const lq = await sql`DELETE FROM liquidation_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
+    const sp = await sql`DELETE FROM spread_snapshots WHERE ts < NOW() - ${intervalStr}::interval`;
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
-    const total = (fr.count ?? 0) + (oi.count ?? 0) + (lq.count ?? 0);
-    if (total > 0) pruned = { funding: fr.count ?? 0, oi: oi.count ?? 0, liq: lq.count ?? 0 };
+    const total = (fr.count ?? 0) + (oi.count ?? 0) + (lq.count ?? 0) + (sp.count ?? 0);
+    if (total > 0) pruned = { funding: fr.count ?? 0, oi: oi.count ?? 0, liq: lq.count ?? 0, spread: sp.count ?? 0 };
   } catch (err) {
     result.errors.push(`prune: ${err.message}`);
   }
