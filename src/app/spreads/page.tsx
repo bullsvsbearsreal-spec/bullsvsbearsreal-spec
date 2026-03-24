@@ -51,7 +51,8 @@ const SYMBOLS: Record<string, string[]> = {
   Stocks: ['AAPL','TSLA','NVDA','COIN','MSTR','META','AMZN','GOOGL','MSFT'],
 };
 const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit'];
-const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','GMX','gTrade','Extended','Variational','edgeX','Nado','Backpack','Orderly','Paradex'];
+// Excluded: gTrade, GMX (oracle-based, no independent prices), edgeX (no ticker API)
+const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','Extended','Variational','Nado','Backpack','Orderly','Paradex'];
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
 // Exchanges with direct kline API (fast, 1h candles)
 // All other exchanges use DB mark_price snapshots (10-min, needs accumulation)
@@ -510,7 +511,7 @@ export default function SpreadsPage() {
               Exchange <span className="text-gradient">Spreads</span>
             </h1>
             <p className="text-neutral-500 text-sm mt-1">
-              Cross-exchange price comparison across <span className="text-neutral-400 font-medium">{EXCHANGES.length} exchanges</span> (16 CEX + 12 DEX)
+              Cross-exchange price comparison across <span className="text-neutral-400 font-medium">{EXCHANGES.length} exchanges</span> ({CEX_EXCHANGES.length} CEX + {DEX_EXCHANGES.length} DEX)
             </p>
           </div>
           <div className="flex items-center gap-3">
