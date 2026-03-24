@@ -749,7 +749,11 @@ export default function SpreadsPage() {
         {/* ── Bloomberg Ticker Strip (WS-powered when available) ── */}
         {stats && (
           <div className="rounded-xl bg-[#0c0e14] border border-white/[0.06] px-4 py-2 mb-5 flex items-center gap-5 overflow-x-auto scrollbar-none">
-            {stats.prices.map((x, i) => {
+            {[...stats.prices].sort((a, b) => {
+              const pa = wsPrices[a.e]?.price || a.p;
+              const pb = wsPrices[b.e]?.price || b.p;
+              return pb - pa;
+            }).map((x, i) => {
               const wsP = wsPrices[x.e];
               const livePrice = wsP?.price || x.p;
               const prev = prevPricesRef.current[x.e] || livePrice;
@@ -759,6 +763,7 @@ export default function SpreadsPage() {
               const dev = ((livePrice - median) / median) * 100;
               return (
                 <div key={x.e} className="flex items-center gap-2 flex-shrink-0">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: ec(x.e, exs.indexOf(x.e)) }} />
                   <ExchangeLogo exchange={x.e} size={14} />
                   <span className="text-[11px] text-neutral-500">{x.e}</span>
                   <span className={`font-mono text-[12px] font-medium transition-colors duration-300 ${
