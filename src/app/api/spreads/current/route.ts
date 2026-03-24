@@ -1,4 +1,10 @@
 import { NextResponse } from 'next/server';
+import { fetchAllExchangesWithHealth } from '../../_shared/exchange-fetchers';
+import { fetchWithTimeout } from '../../_shared/fetch';
+import { tickerFetchers } from '../../tickers/exchanges';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Cache in memory for 30s
 let cache: { data: any; ts: number } | null = null;
@@ -10,12 +16,9 @@ export async function GET() {
   }
 
   try {
-    // Fetch live tickers from internal API
-    const base = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const tickerRes = await fetch(`${base}/api/tickers`, { cache: 'no-store' });
-    if (!tickerRes.ok) return NextResponse.json({ error: 'Failed to fetch tickers' }, { status: 502 });
-    const tickerData = await tickerRes.json();
-    const tickers: Array<{ symbol: string; exchange: string; lastPrice: number; quoteVolume24h?: number }> = tickerData?.data || tickerData || [];
+    // Fetch tickers directly (no self-fetch)
+    const { data: results } = await fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout);
+    const tickers: Array<{ symbol: string; exchange: string; lastPrice: number }> = results as any;
 
     // Group by symbol
     const bySymbol: Record<string, Array<{ exchange: string; price: number }>> = {};
@@ -26,7 +29,7 @@ export async function GET() {
     }
 
     // Compute spread for each symbol
-    const results: Array<{
+    const data: Array<{
       symbol: string;
       spreadUsd: number;
       spreadPct: number;
@@ -52,22 +55,18 @@ export async function GET() {
       const spreadUsd = high.price - low.price;
       const spreadPct = (spreadUsd / low.price) * 100;
 
-      results.push({
-        symbol,
-        spreadUsd,
-        spreadPct,
-        highExchange: high.exchange,
-        highPrice: high.price,
-        lowExchange: low.exchange,
-        lowPrice: low.price,
+      data.push({
+        symbol, spreadUsd, spreadPct,
+        highExchange: high.exchange, highPrice: high.price,
+        lowExchange: low.exchange, lowPrice: low.price,
         exchangeCount: sane.length,
       });
     }
 
     // Sort by spread % descending
-    results.sort((a, b) => b.spreadPct - a.spreadPct);
+    data.sort((a, b) => b.spreadPct - a.spreadPct);
 
-    const resp = { data: results, count: results.length, ts: Date.now() };
+    const resp = { data, count: data.length, ts: Date.now() };
     cache = { data: resp, ts: Date.now() };
     return NextResponse.json(resp, { headers: { 'Cache-Control': 's-maxage=30, stale-while-revalidate=60' } });
   } catch (err: any) {
