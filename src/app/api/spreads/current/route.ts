@@ -5,6 +5,7 @@ import { tickerFetchers } from '../../tickers/exchanges';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 // Cache in memory for 30s
 let cache: { data: any; ts: number } | null = null;
