@@ -32,6 +32,7 @@ const EX_COLORS: Record<string, string> = {
   CoinEx: '#48D1CC',      // medium turquoise
   Deribit: '#BA55D3',     // medium orchid
   WhiteBIT: '#ADFF2F',    // green yellow
+  gTrade: '#E8590C',      // burnt orange
 };
 const PALETTE = ['#F0B90B','#FF4040','#00FF00','#00BFFF','#FF00FF','#FF8C00','#00FFFF','#9D4EDD','#FFFF00','#7FFF00'];
 function ec(ex: string, i: number) { return EX_COLORS[ex] || PALETTE[i % PALETTE.length]; }
@@ -51,8 +52,7 @@ const SYMBOLS: Record<string, string[]> = {
   Stocks: ['AAPL','TSLA','NVDA','COIN','MSTR','META','AMZN','GOOGL','MSFT'],
 };
 const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit','BitMEX','Gate.io'];
-// Excluded: gTrade, GMX (oracle-based Chainlink prices, no independent spread), edgeX (no ticker API)
-const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','Extended','Variational','Nado','Backpack','Orderly','Paradex'];
+const DEX_EXCHANGES = ['Hyperliquid','dYdX','gTrade','Aster','Lighter','Aevo','Drift','Extended','Variational','Nado','Backpack','Orderly','Paradex'];
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
 // Exchanges with direct kline API (fast, 1h candles)
 // All other exchanges use DB mark_price snapshots (10-min, needs accumulation)
