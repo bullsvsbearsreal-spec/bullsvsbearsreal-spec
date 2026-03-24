@@ -13,13 +13,15 @@ export interface WSPrice {
 
 type PriceMap = Record<string, WSPrice>;
 
-// All exchanges are supported via REST polling — no WS needed
+// All exchanges are supported via REST polling
 export const WS_SUPPORTED: string[] = [];
 
 export type PriceSnapshot = { t: number; prices: Record<string, number> };
 
-const MAX_HISTORY = 2000; // ~2.7 hours at 5s intervals
-const POLL_INTERVAL = 5_000; // 5 seconds
+const MAX_HISTORY = 2000;
+const POLL_INTERVAL = 2_000; // 2 seconds — fast enough for spread comparison
+const SNAPSHOT_INTERVAL = 3_000; // chart history every 3s
+const STALE_MS = 20_000; // prices older than 20s are excluded from spread
 
 // Exchanges whose prices come from /api/funding (markPrice) instead of /api/tickers
 const FUNDING_EXCHANGES = new Set(['gTrade', 'GMX']);
@@ -30,14 +32,16 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
   const [history, setHistory] = useState<PriceSnapshot[]>([]);
   const pricesRef = useRef<PriceMap>({});
   const historyRef = useRef<PriceSnapshot[]>([]);
-  const updateTimer = useRef<NodeJS.Timeout | null>(null);
+  const pendingUpdate = useRef(false);
 
+  // Batch state updates — flush on next animation frame
   const scheduleBatchUpdate = useCallback(() => {
-    if (updateTimer.current) return;
-    updateTimer.current = setTimeout(() => {
+    if (pendingUpdate.current) return;
+    pendingUpdate.current = true;
+    requestAnimationFrame(() => {
       setPrices({ ...pricesRef.current });
-      updateTimer.current = null;
-    }, 250);
+      pendingUpdate.current = false;
+    });
   }, []);
 
   const handlePrice = useCallback((p: WSPrice) => {
@@ -50,86 +54,103 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
 
     const tickerExchanges = exchanges.filter(e => !FUNDING_EXCHANGES.has(e));
     const fundingExchanges = exchanges.filter(e => FUNDING_EXCHANGES.has(e));
+    let aborted = false;
 
     const poll = () => {
-      // Fetch tickers for most exchanges
+      if (aborted) return;
+      const now = Date.now();
+
+      // Fetch tickers + funding in parallel
+      const promises: Promise<void>[] = [];
+
       if (tickerExchanges.length > 0) {
-        fetch('/api/tickers')
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
-            const tickers: any[] = json?.data || json || [];
-            const found = new Set<string>();
-            for (const t of tickers) {
-              if (t.symbol === symbol && exchanges.includes(t.exchange) && t.lastPrice > 0) {
-                handlePrice({
-                  exchange: t.exchange, symbol, price: t.lastPrice,
-                  bid: t.lastPrice, ask: t.lastPrice, ts: Date.now(),
-                });
-                found.add(t.exchange);
+        promises.push(
+          fetch('/api/tickers')
+            .then(r => r.ok ? r.json() : null)
+            .then(json => {
+              if (aborted) return;
+              const tickers: any[] = json?.data || json || [];
+              const found = new Set<string>();
+              for (const t of tickers) {
+                if (t.symbol === symbol && exchanges.includes(t.exchange) && t.lastPrice > 0) {
+                  handlePrice({
+                    exchange: t.exchange, symbol, price: t.lastPrice,
+                    bid: t.lastPrice, ask: t.lastPrice, ts: now,
+                  });
+                  found.add(t.exchange);
+                }
               }
-            }
-            // Update connected state
-            setConnected(prev => {
-              const next = { ...prev };
-              for (const e of tickerExchanges) next[e] = found.has(e);
-              return next;
-            });
-          })
-          .catch(() => {});
+              setConnected(prev => {
+                const next = { ...prev };
+                for (const e of tickerExchanges) next[e] = found.has(e);
+                return next;
+              });
+            })
+            .catch(() => {})
+        );
       }
 
-      // Fetch gTrade/GMX prices from funding API (markPrice)
       if (fundingExchanges.length > 0) {
-        fetch('/api/funding')
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
-            const data: any[] = json?.data || json || [];
-            const found = new Set<string>();
-            for (const f of data) {
-              if (f.symbol === symbol && fundingExchanges.includes(f.exchange) && f.markPrice > 0) {
-                handlePrice({
-                  exchange: f.exchange, symbol, price: f.markPrice,
-                  bid: f.markPrice, ask: f.markPrice, ts: Date.now(),
-                });
-                found.add(f.exchange);
+        promises.push(
+          fetch('/api/funding')
+            .then(r => r.ok ? r.json() : null)
+            .then(json => {
+              if (aborted) return;
+              const data: any[] = json?.data || json || [];
+              const found = new Set<string>();
+              for (const f of data) {
+                if (f.symbol === symbol && fundingExchanges.includes(f.exchange) && f.markPrice > 0) {
+                  handlePrice({
+                    exchange: f.exchange, symbol, price: f.markPrice,
+                    bid: f.markPrice, ask: f.markPrice, ts: now,
+                  });
+                  found.add(f.exchange);
+                }
               }
-            }
-            setConnected(prev => {
-              const next = { ...prev };
-              for (const e of fundingExchanges) next[e] = found.has(e);
-              return next;
-            });
-          })
-          .catch(() => {});
+              setConnected(prev => {
+                const next = { ...prev };
+                for (const e of fundingExchanges) next[e] = found.has(e);
+                return next;
+              });
+            })
+            .catch(() => {})
+        );
       }
+
+      Promise.allSettled(promises);
     };
 
-    // First poll immediately, then every 5s
+    // First poll immediately, then every 2s
     poll();
     const pollTimer = setInterval(poll, POLL_INTERVAL);
 
-    // Snapshot prices every 5 seconds for chart history
+    // Snapshot prices for chart history (only non-stale prices)
     historyRef.current = [];
     setHistory([]);
     const historyTimer = setInterval(() => {
+      const now = Date.now();
       const current = pricesRef.current;
       const priceMap: Record<string, number> = {};
       let hasAny = false;
       for (const [ex, p] of Object.entries(current)) {
-        if (p.price > 0) { priceMap[ex] = p.price; hasAny = true; }
+        // Exclude stale prices (>20s old) to avoid false spreads
+        if (p.price > 0 && (now - p.ts) < STALE_MS) {
+          priceMap[ex] = p.price;
+          hasAny = true;
+        }
       }
       if (hasAny) {
-        const snap: PriceSnapshot = { t: Date.now(), prices: priceMap };
+        const snap: PriceSnapshot = { t: now, prices: priceMap };
         historyRef.current.push(snap);
         if (historyRef.current.length > MAX_HISTORY) historyRef.current.shift();
         setHistory([...historyRef.current]);
       }
-    }, 5000);
+    }, SNAPSHOT_INTERVAL);
 
     return () => {
+      aborted = true;
       pricesRef.current = {};
-      if (updateTimer.current) clearTimeout(updateTimer.current);
-      updateTimer.current = null;
+      pendingUpdate.current = false;
       clearInterval(pollTimer);
       clearInterval(historyTimer);
     };
