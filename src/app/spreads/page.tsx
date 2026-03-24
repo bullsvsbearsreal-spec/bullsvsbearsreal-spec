@@ -120,7 +120,7 @@ export default function SpreadsPage() {
     const p = new URLSearchParams(window.location.search);
     return {
       sym: p.get('s') || 'BTC',
-      sel: p.get('ex')?.split(',').filter(Boolean) || ['Binance','Bybit','OKX','Bitget','Hyperliquid'],
+      sel: p.get('ex')?.split(',').filter(e => e && EXCHANGES.includes(e)) || ['Binance','Bybit','OKX','Bitget','Hyperliquid'],
       tf: (p.get('tf') || 'live') as TfK,
     };
   }, []);
