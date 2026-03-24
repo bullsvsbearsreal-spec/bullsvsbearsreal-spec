@@ -219,8 +219,11 @@ export default function SpreadsPage() {
     setChartLoading(true);
     let c = false;
     const days = (t as any).days || 7;
-    // Fetch klines FIRST (fast, renders chart), then DB sources in background
-    fetch(`/api/klines-multi?symbol=${sym}&interval=${(t as any).interval || '1h'}&limit=${(t as any).limit || 168}`)
+    // Fetch klines — pass all selected exchanges so slow ones (BingX, Kraken, etc.) get data too
+    const interval = (t as any).interval || '1h';
+    const limit = (t as any).limit || 168;
+    const exParam = sel.length > 0 ? `&exchanges=${sel.join(',')}` : '';
+    fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}${exParam}`)
       .then(r => r.ok ? r.json() : null)
       .then(json => {
         if (c) return;
@@ -254,7 +257,8 @@ export default function SpreadsPage() {
       setDbHistory((dbSpreadRes.status === 'fulfilled' && dbSpreadRes.value?.data) || []);
     }).finally(() => { if (!c) setChartLoading(false); });
     return () => { c = true; };
-  }, [sym, tf]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sym, tf, [...sel].sort().join(',')]);
 
   // Fetch live tickers + funding + OI (refresh every 30s)
   useEffect(() => {
