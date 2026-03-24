@@ -832,19 +832,12 @@ export default function SpreadsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {/* Chart mode toggle */}
-              <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08] bg-white/[0.02]">
-                <button onClick={() => setChartMode('line')}
-                  className={'px-3 py-1 text-[10px] font-medium transition-all ' + (chartMode === 'line' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>
-                  <Activity className="w-3 h-3 inline mr-1" />Lines
-                </button>
-                <button onClick={() => { setChartMode('candle'); if (!candleExchange && exs.length > 0) setCandleExchange(exs.includes('Binance') ? 'Binance' : exs[0]); }}
-                  className={'px-3 py-1 text-[10px] font-medium transition-all border-l border-white/[0.06] ' + (chartMode === 'candle' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>
-                  <BarChart3 className="w-3 h-3 inline mr-1" />Candles
-                </button>
-              </div>
+              {/* Chart label */}
+              <span className="flex items-center gap-1 text-[10px] text-neutral-500">
+                <Activity className="w-3 h-3" />Multi-Line
+              </span>
               {/* Price vs % view toggle */}
-              {chartMode === 'line' && (
+              {(
                 <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08] bg-white/[0.02]">
                   <button onClick={() => setViewMode('price')}
                     className={'px-2.5 py-1 text-[10px] font-bold transition-all ' + (viewMode === 'price' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>$</button>
@@ -853,34 +846,21 @@ export default function SpreadsPage() {
                 </div>
               )}
               {/* Outlier filter toggle */}
-              {chartMode === 'line' && exs.length > 2 && (
+              {exs.length > 2 && (
                 <button onClick={() => setHideOutliers(h => !h)}
                   className={`px-3 py-1 rounded-lg text-[10px] font-medium transition-all border ${hideOutliers ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/[0.02] text-neutral-500 border-white/[0.08] hover:text-neutral-300'}`}
                   title={hideOutliers ? 'Hiding exchanges >1% from median — click to show all' : 'Showing all exchanges — click to filter outliers'}>
                   {hideOutliers ? 'Filtered' : 'Raw'}
                 </button>
               )}
-              {chartMode === 'candle' && (
-                <div className="flex items-center gap-1">
-                  {exs.filter(e => kd?.[e]).map(e => (
-                    <button key={e} onClick={() => setCandleExchange(e)}
-                      className={`px-2 py-0.5 rounded text-[9px] font-medium transition flex items-center gap-1 ${
-                        candleExchange === e ? 'bg-white/[0.08] text-white border border-white/[0.15]' : 'text-neutral-500 hover:text-neutral-300'
-                      }`}>
-                      <ExchangeLogo exchange={e} size={12} />
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {chartMode === 'line' && exs.map((e, i) => (
+              {exs.map((e, i) => (
                 <span key={e} className="flex items-center gap-1 text-[10px]">
                   <span className="w-3 h-[2px] rounded-full" style={{ background: ec(e, i) }} />
                   <ExchangeLogo exchange={e} size={12} />
                   <span className="text-neutral-400">{e}</span>
                 </span>
               ))}
-              {chartMode === 'line' && viewMode === 'pct' && exs.length >= 2 && (
+              {viewMode === 'pct' && exs.length >= 2 && (
                 <span className="flex items-center gap-1 text-[10px] text-neutral-500">
                   <span className="w-3 h-[1px] border-t border-dashed border-neutral-500" />
                   Spread (A − B)
@@ -899,70 +879,6 @@ export default function SpreadsPage() {
                 {[1,2,3,4,5,6].map(i => <div key={i} className="h-2 w-12 rounded bg-white/[0.03] animate-pulse" />)}
               </div>
             </div>
-          ) : data.length > 0 && chartMode === 'candle' && candleExchange && tf !== 'live' && kd?.[candleExchange] ? (
-            /* Proper candlestick chart using custom SVG bars */
-            (() => {
-              const candles = kd[candleExchange];
-              const prices = candles.flatMap(c => [c.h, c.l]).filter(p => p > 0);
-              const minP = Math.min(...prices), maxP = Math.max(...prices);
-              const pad = (maxP - minP) * 0.05;
-              const yMin = minP - pad, yMax = maxP + pad;
-              const W = 1200, H = 420, ML = 72, MR = 8, MT = 8, MB = 30;
-              const cw = (W - ML - MR) / candles.length;
-              const toY = (p: number) => MT + (1 - (p - yMin) / (yMax - yMin)) * (H - MT - MB);
-              const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (yMax - yMin) * (i / 4));
-              return (
-                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[420px]" preserveAspectRatio="none">
-                  {/* Grid lines */}
-                  {yTicks.map((v, i) => (
-                    <g key={i}>
-                      <line x1={ML} x2={W - MR} y1={toY(v)} y2={toY(v)} stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
-                      <text x={ML - 6} y={toY(v) + 3} textAnchor="end" fill="#4b5563" fontSize="9" fontFamily="ui-monospace, monospace">{'$' + fp(v)}</text>
-                    </g>
-                  ))}
-                  {/* Candles */}
-                  {candles.map((c, i) => {
-                    const x = ML + i * cw + cw / 2;
-                    const bullish = c.c >= c.o;
-                    const color = bullish ? '#22c55e' : '#ef4444';
-                    const bodyTop = toY(Math.max(c.o, c.c));
-                    const bodyBot = toY(Math.min(c.o, c.c));
-                    const bodyH = Math.max(bodyBot - bodyTop, 1);
-                    const barW = Math.max(cw * 0.6, 2);
-                    return (
-                      <g key={i}>
-                        {/* Wick */}
-                        <line x1={x} x2={x} y1={toY(c.h)} y2={toY(c.l)} stroke={color} strokeWidth={1} opacity={0.6} />
-                        {/* Body */}
-                        <rect x={x - barW / 2} y={bodyTop} width={barW} height={bodyH}
-                          fill={bullish ? color : color} stroke={color} strokeWidth={0.5}
-                          fillOpacity={bullish ? 0.8 : 0.9} rx={1} />
-                      </g>
-                    );
-                  })}
-                  {/* X-axis labels */}
-                  {candles.filter((_, i) => i % Math.max(1, Math.floor(candles.length / 8)) === 0).map((c, i) => {
-                    const idx = candles.indexOf(c);
-                    const x = ML + idx * cw + cw / 2;
-                    const d = new Date(c.t);
-                    const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    return <text key={i} x={x} y={H - 6} textAnchor="middle" fill="#4b5563" fontSize="9" fontFamily="ui-monospace, monospace">{label}</text>;
-                  })}
-                  {/* Current price line */}
-                  {candles.length > 0 && (() => {
-                    const last = candles[candles.length - 1];
-                    const y = toY(last.c);
-                    return (
-                      <g>
-                        <line x1={ML} x2={W - MR} y1={y} y2={y} stroke="#F59E0B" strokeWidth={0.8} strokeDasharray="4 3" opacity={0.6} />
-                        <rect x={W - MR - 58} y={y - 8} width={56} height={16} rx={3} fill="#F59E0B" />
-                        <text x={W - MR - 30} y={y + 4} textAnchor="middle" fill="#000" fontSize="9" fontWeight="600" fontFamily="ui-monospace, monospace">{'$' + fp(last.c)}</text>
-                      </g>
-                    );
-                  })()}
-                </svg>
-              );
-            })()
           ) : data.length > 0 ? (
             /* Multi-line chart */
             <ResponsiveContainer width="100%" height={420}>
