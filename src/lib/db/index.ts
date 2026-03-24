@@ -103,6 +103,25 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_spread_sym_ts ON spread_snapshots(symbol, ts DESC)`;
 
+  // Arbitrage opportunity tracker
+  await sql`
+    CREATE TABLE IF NOT EXISTS arb_opportunities (
+      id SERIAL PRIMARY KEY,
+      symbol TEXT NOT NULL,
+      spread_usd REAL NOT NULL,
+      spread_pct REAL NOT NULL,
+      high_exchange TEXT NOT NULL,
+      low_exchange TEXT NOT NULL,
+      max_spread_usd REAL NOT NULL,
+      max_spread_pct REAL NOT NULL,
+      opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      closed_at TIMESTAMPTZ,
+      status TEXT DEFAULT 'open'
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_arb_opp_sym_status ON arb_opportunities(symbol, status)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_arb_opp_opened ON arb_opportunities(opened_at DESC)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS watchlists (
       id SERIAL PRIMARY KEY,

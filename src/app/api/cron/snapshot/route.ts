@@ -144,6 +144,24 @@ export async function GET(request: NextRequest) {
             exchangeCount: entries.length,
           });
           spreadInserted++;
+
+          // Track arb opportunities
+          const arbThreshold = sym === 'BTC' ? 0.3 : 0.5; // % threshold
+          try {
+            const dbSql = getSQL();
+            const openArb = await dbSql`SELECT * FROM arb_opportunities WHERE symbol = ${sym} AND status = 'open' LIMIT 1`;
+            if (openArb.length > 0) {
+              const arb = openArb[0];
+              if (pct > +arb.max_spread_pct) {
+                await dbSql`UPDATE arb_opportunities SET max_spread_usd = ${spread}, max_spread_pct = ${pct} WHERE id = ${arb.id}`;
+              }
+              if (pct < arbThreshold * 0.5) {
+                await dbSql`UPDATE arb_opportunities SET status = 'closed', closed_at = NOW() WHERE id = ${arb.id}`;
+              }
+            } else if (pct > arbThreshold) {
+              await dbSql`INSERT INTO arb_opportunities (symbol, spread_usd, spread_pct, high_exchange, low_exchange, max_spread_usd, max_spread_pct) VALUES (${sym}, ${spread}, ${pct}, ${high.exchange}, ${low.exchange}, ${spread}, ${pct})`;
+            }
+          } catch (arbErr) { /* arb tracking non-critical */ }
         }
       }
     } catch (e) {
