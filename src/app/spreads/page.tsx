@@ -213,24 +213,40 @@ export default function SpreadsPage() {
 
   // Fetch klines + DB mark_price history + spread history for 1D/7D/30D views
   const [dbHistory, setDbHistory] = useState<Array<{ t: number; spread: number; pct: number; high_ex: string; low_ex: string }>>([]);
+  // Ref to track current selection for the slow-exchange effect
+  const selRef = useRef(sel);
+  selRef.current = sel;
   useEffect(() => {
     const t = TFS.find(x => x.key === tf);
     if (!t || t.source !== 'db') { setChartLoading(false); return; } // Live tab uses WS only
     setChartLoading(true);
     let c = false;
     const days = (t as any).days || 7;
-    // Fetch klines — pass all selected exchanges so slow ones (BingX, Kraken, etc.) get data too
     const interval = (t as any).interval || '1h';
     const limit = (t as any).limit || 168;
-    const exParam = sel.length > 0 ? `&exchanges=${sel.join(',')}` : '';
-    fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}${exParam}`)
+    // Fetch fast exchanges first for instant chart, then slow ones for selected exchanges
+    fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}`)
       .then(r => r.ok ? r.json() : null)
       .then(json => {
         if (c) return;
         const klines = json?.exchanges || {};
         if (Object.keys(klines).length > 0) {
           setKd(klines);
-          setChartLoading(false); // Show chart immediately
+          setChartLoading(false);
+        }
+        // Fetch any selected slow exchanges that weren't in the fast set
+        const FAST = ['Binance','Bybit','OKX','Bitget','MEXC','HTX','Hyperliquid','dYdX'];
+        const slow = selRef.current.filter(e => !FAST.includes(e));
+        if (slow.length > 0) {
+          fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}&exchanges=${slow.join(',')}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(sj => {
+              if (c) return;
+              const extra = sj?.exchanges || {};
+              if (Object.keys(extra).length > 0) {
+                setKd(prev => prev ? { ...prev, ...extra } : extra);
+              }
+            }).catch(() => {});
         }
       }).catch(() => {});
     // DB sources in background (don't block chart)
@@ -257,8 +273,29 @@ export default function SpreadsPage() {
       setDbHistory((dbSpreadRes.status === 'fulfilled' && dbSpreadRes.value?.data) || []);
     }).finally(() => { if (!c) setChartLoading(false); });
     return () => { c = true; };
+  }, [sym, tf]);
+
+  // Fetch klines for newly added exchanges that aren't in kd yet
+  useEffect(() => {
+    if (!kd || tf === 'live') return;
+    const missing = sel.filter(e => kd && !kd[e]);
+    if (missing.length === 0) return;
+    const t = TFS.find(x => x.key === tf);
+    const interval = (t as any)?.interval || '1h';
+    const limit = (t as any)?.limit || 168;
+    let c = false;
+    fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}&exchanges=${missing.join(',')}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (c) return;
+        const extra = json?.exchanges || {};
+        if (Object.keys(extra).length > 0) {
+          setKd(prev => prev ? { ...prev, ...extra } : extra);
+        }
+      }).catch(() => {});
+    return () => { c = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sym, tf, [...sel].sort().join(',')]);
+  }, [sel.length, sym, tf]);
 
   // Fetch live tickers + funding + OI (refresh every 30s)
   useEffect(() => {
