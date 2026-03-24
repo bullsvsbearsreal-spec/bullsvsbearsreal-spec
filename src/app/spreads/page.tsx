@@ -6,7 +6,7 @@ import {
   CartesianGrid, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { ArrowLeftRight, Search, ChevronDown, X, RefreshCw, Calculator, TrendingUp, TrendingDown, Activity, BarChart3, Zap, Info, Wifi, WifiOff, Bell, BellOff } from 'lucide-react';
-import { useMultiExchangeWS, WS_SUPPORTED } from '@/hooks/useMultiExchangeWS';
+import { useMultiExchangeWS } from '@/hooks/useMultiExchangeWS';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getCoinIcon } from '@/lib/coinIcons';
@@ -158,7 +158,6 @@ export default function SpreadsPage() {
   // ── WebSocket real-time prices ──
   const { prices: wsPrices, connected: wsConnected, history: wsHistory } = useMultiExchangeWS(sym, sel, wsEnabled);
   const wsCount = Object.values(wsConnected).filter(Boolean).length;
-  const wsTotal = sel.filter(e => WS_SUPPORTED.includes(e)).length;
 
   // Compute live spread from WS prices
   const wsSpread = useMemo(() => {
@@ -559,7 +558,7 @@ export default function SpreadsPage() {
                   : 'bg-white/[0.04] border-white/[0.08] text-neutral-500'
               }`}>
               {wsEnabled ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              {wsEnabled ? `WS ${wsCount}/${wsTotal}` : 'WS Off'}
+              {wsEnabled ? `Live ${wsCount}/${sel.length}` : 'Paused'}
             </button>
             {/* Alert toggle */}
             <div className="flex items-center gap-1">
@@ -666,12 +665,12 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider">CEX ({CEX_EXCHANGES.length})</p>
                     {CEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : WS_SUPPORTED.includes(e) ? 'text-neutral-400' : 'text-neutral-600')}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
                           {tf === 'live' ? (
-                            !WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
+                            false && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
                           ) : (
                             kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>
                           )}
@@ -686,12 +685,12 @@ export default function SpreadsPage() {
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider mt-1 border-t border-white/[0.06] pt-2">DEX ({DEX_EXCHANGES.length})</p>
                     {DEX_EXCHANGES.map((e) => (
                       <button key={e} onClick={() => toggle(e)}
-                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : WS_SUPPORTED.includes(e) ? 'text-neutral-400' : 'text-neutral-600')}>
+                        className={'w-full text-left px-3 py-2 text-xs hover:bg-white/[0.04] flex items-center justify-between ' + (sel.includes(e) ? 'text-hub-yellow' : 'text-neutral-400')}>
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
                           {tf === 'live' ? (
-                            !WS_SUPPORTED.includes(e) && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
+                            false && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
                           ) : (
                             kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>
                           )}
