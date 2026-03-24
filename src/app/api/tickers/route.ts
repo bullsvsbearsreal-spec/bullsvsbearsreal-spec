@@ -46,7 +46,13 @@ export async function GET(request: Request) {
     );
 
     // Normalize symbols for token rebrands (RNDR→RENDER, MATIC→POL)
-    data.forEach((entry: any) => { entry.symbol = normalizeSymbol(entry.symbol); });
+    // Stamp each ticker with fetchedAt based on exchange health latency
+    const now = Date.now();
+    const exLatency = new Map(health.map(h => [h.name, h.latencyMs]));
+    data.forEach((entry: any) => {
+      entry.symbol = normalizeSymbol(entry.symbol);
+      entry.fetchedAt = now - (exLatency.get(entry.exchange) || 0);
+    });
 
     // Calculate total volume across ALL exchanges before client-side dedup.
     // Per-symbol: sum volumes across exchanges (each exchange contributes once per symbol).

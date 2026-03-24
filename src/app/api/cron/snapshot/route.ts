@@ -128,7 +128,12 @@ export async function GET(request: NextRequest) {
           if (!bySymbol[t.symbol]) bySymbol[t.symbol] = [];
           bySymbol[t.symbol].push({ exchange: t.exchange, price: t.lastPrice });
         }
-        const topSyms = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK'];
+        // Auto-detect top 50 symbols by exchange count (more exchanges = more relevant for spread tracking)
+        const topSyms = Object.entries(bySymbol)
+          .filter(([, entries]) => entries.length >= 2)
+          .sort((a, b) => b[1].length - a[1].length)
+          .slice(0, 50)
+          .map(([sym]) => sym);
         for (const sym of topSyms) {
           const entries = bySymbol[sym];
           if (!entries || entries.length < 2) continue;

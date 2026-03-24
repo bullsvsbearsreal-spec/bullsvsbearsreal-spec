@@ -798,7 +798,11 @@ export default function SpreadsPage() {
                   }`}>
                     {'$'}{fp(livePrice)}
                   </span>
-                  {wsP && <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" title="Live WS" />}
+                  {wsP && (() => {
+                    const age = Math.round((Date.now() - wsP.ts) / 1000);
+                    const fresh = age < 10;
+                    return <span className={`text-[8px] font-mono ${fresh ? 'text-green-500' : 'text-neutral-600'}`} title={`Last update ${age}s ago`}>{age}s</span>;
+                  })()}
                   <span className={`font-mono text-[10px] ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {dev >= 0 ? '▲' : '▼'}{Math.abs(dev).toFixed(3)}%
                   </span>

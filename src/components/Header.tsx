@@ -58,6 +58,7 @@ const navCategories: NavCategory[] = [
           { name: 'Basis', href: '/basis', icon: BarChart2, desc: 'Spot-perp premium' },
           { name: 'Predictions', href: '/prediction-markets', icon: Eye },
           { name: 'Price Spreads', href: '/spreads', icon: ArrowLeftRight },
+          { name: 'Spread Scanner', href: '/spread-scanner', icon: ArrowLeftRight, desc: 'Multi-coin spreads' },
           { name: 'Execution Costs', href: '/execution-costs', icon: Crosshair },
         ],
       },

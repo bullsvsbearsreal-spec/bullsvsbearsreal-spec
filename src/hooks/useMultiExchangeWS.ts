@@ -75,7 +75,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
                 if (t.symbol === symbol && exchanges.includes(t.exchange) && t.lastPrice > 0) {
                   handlePrice({
                     exchange: t.exchange, symbol, price: t.lastPrice,
-                    bid: t.lastPrice, ask: t.lastPrice, ts: now,
+                    bid: t.lastPrice, ask: t.lastPrice, ts: t.fetchedAt || now,
                   });
                   found.add(t.exchange);
                 }
