@@ -831,29 +831,33 @@ export default function SpreadsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 flex-wrap justify-end">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {/* Chart mode toggle */}
-              <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
+              <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08] bg-white/[0.02]">
                 <button onClick={() => setChartMode('line')}
-                  className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (chartMode === 'line' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>Lines</button>
+                  className={'px-3 py-1 text-[10px] font-medium transition-all ' + (chartMode === 'line' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>
+                  <Activity className="w-3 h-3 inline mr-1" />Lines
+                </button>
                 <button onClick={() => { setChartMode('candle'); if (!candleExchange && exs.length > 0) setCandleExchange(exs.includes('Binance') ? 'Binance' : exs[0]); }}
-                  className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (chartMode === 'candle' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>Candles</button>
+                  className={'px-3 py-1 text-[10px] font-medium transition-all border-l border-white/[0.06] ' + (chartMode === 'candle' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>
+                  <BarChart3 className="w-3 h-3 inline mr-1" />Candles
+                </button>
               </div>
               {/* Price vs % view toggle */}
               {chartMode === 'line' && (
-                <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
+                <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08] bg-white/[0.02]">
                   <button onClick={() => setViewMode('price')}
-                    className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (viewMode === 'price' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>$</button>
+                    className={'px-2.5 py-1 text-[10px] font-bold transition-all ' + (viewMode === 'price' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>$</button>
                   <button onClick={() => setViewMode('pct')}
-                    className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (viewMode === 'pct' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>%</button>
+                    className={'px-2.5 py-1 text-[10px] font-bold transition-all border-l border-white/[0.06] ' + (viewMode === 'pct' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>%</button>
                 </div>
               )}
               {/* Outlier filter toggle */}
               {chartMode === 'line' && exs.length > 2 && (
                 <button onClick={() => setHideOutliers(h => !h)}
-                  className={`px-2 py-0.5 rounded text-[9px] font-semibold transition border ${hideOutliers ? 'bg-white/[0.06] text-neutral-300 border-white/[0.1]' : 'text-neutral-600 border-transparent hover:text-neutral-400'}`}
-                  title={hideOutliers ? 'Hiding exchanges >1% from median' : 'Showing all exchanges'}>
-                  {hideOutliers ? 'Outliers Hidden' : 'Show All'}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-medium transition-all border ${hideOutliers ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/[0.02] text-neutral-500 border-white/[0.08] hover:text-neutral-300'}`}
+                  title={hideOutliers ? 'Hiding exchanges >1% from median — click to show all' : 'Showing all exchanges — click to filter outliers'}>
+                  {hideOutliers ? 'Filtered' : 'Raw'}
                 </button>
               )}
               {chartMode === 'candle' && (
