@@ -257,13 +257,12 @@ export default function SpreadsPage() {
       if (c) return;
       const dbPrices = (dbPriceRes.status === 'fulfilled' && dbPriceRes.value?.exchanges) || {};
 
-      // Merge DB mark_price into existing klines (fills gaps for DEX exchanges)
+      // Merge DB mark_price into klines (fills gaps for DEX + exchanges with empty klines)
       if (Object.keys(dbPrices).length > 0) {
         setKd(prev => {
-          if (!prev) return prev;
-          const merged = { ...prev };
+          const merged = prev ? { ...prev } : {};
           for (const [ex, pts] of Object.entries(dbPrices) as [string, any[]][]) {
-            if (!merged[ex] && pts.length > 0) {
+            if ((!merged[ex] || merged[ex].length === 0) && pts.length > 0) {
               merged[ex] = pts.map((p: any) => ({ t: p.t, o: p.price, h: p.price, l: p.price, c: p.price })).filter((x: Candle) => x.c > 0);
             }
           }
@@ -276,9 +275,13 @@ export default function SpreadsPage() {
   }, [sym, tf]);
 
   // Fetch klines for newly added exchanges that aren't in kd yet
+  const kdRef = useRef(kd);
+  kdRef.current = kd;
+  const selKey = sel.join(',');
   useEffect(() => {
-    if (!kd || tf === 'live') return;
-    const missing = sel.filter(e => kd && !kd[e]);
+    if (!kdRef.current || tf === 'live') return;
+    const cur = kdRef.current;
+    const missing = sel.filter(e => !cur[e] || cur[e].length === 0);
     if (missing.length === 0) return;
     const t = TFS.find(x => x.key === tf);
     const interval = (t as any)?.interval || '1h';
@@ -295,7 +298,7 @@ export default function SpreadsPage() {
       }).catch(() => {});
     return () => { c = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sel.length, sym, tf]);
+  }, [selKey, sym, tf]);
 
   // Fetch live tickers + funding + OI (refresh every 30s)
   useEffect(() => {
