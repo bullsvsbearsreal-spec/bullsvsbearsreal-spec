@@ -50,8 +50,8 @@ const SYMBOLS: Record<string, string[]> = {
   Forex: ['EUR','GBP','JPY'],
   Stocks: ['AAPL','TSLA','NVDA','COIN','MSTR','META','AMZN','GOOGL','MSFT'],
 };
-const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit'];
-// Excluded: gTrade, GMX (oracle-based, no independent prices), edgeX (no ticker API)
+const CEX_EXCHANGES = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit','BitMEX','Gate.io'];
+// Excluded: gTrade, GMX (oracle-based Chainlink prices, no independent spread), edgeX (no ticker API)
 const DEX_EXCHANGES = ['Hyperliquid','dYdX','Aster','Lighter','Aevo','Drift','Extended','Variational','Nado','Backpack','Orderly','Paradex'];
 const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
 // Exchanges with direct kline API (fast, 1h candles)
