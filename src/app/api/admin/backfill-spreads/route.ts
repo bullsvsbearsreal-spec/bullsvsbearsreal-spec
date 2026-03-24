@@ -38,7 +38,11 @@ async function fetchBybitKlines(symbol: string, limit: number): Promise<Array<{t
   } catch { return []; }
 }
 
-export async function POST(req: NextRequest) {
+// Support both GET (Vercel cron) and POST (manual)
+export async function GET(req: NextRequest) { return run(req); }
+export async function POST(req: NextRequest) { return run(req); }
+
+async function run(req: NextRequest) {
   // Auth check
   const auth = req.headers.get('authorization');
   if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
