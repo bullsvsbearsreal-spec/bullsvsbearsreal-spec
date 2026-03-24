@@ -599,7 +599,44 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
   },
 
   // GMX V2 -- markets/info does not include price/volume data, only OI and funding rates
-  // gTrade -- no public ticker API available
+
+  // gTrade (Gains Network) — prices from Chainlink oracle via trading-variables endpoint
+  {
+    name: 'gTrade',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://backend-arbitrum.gains.trade/trading-variables', {}, 15000);
+      if (!res.ok) return [];
+      const raw = await res.json();
+      const pairs = raw.pairs || [];
+      const tokenPrices: number[] = (raw.tokenPrices || []).map(Number);
+      const results: TickerData[] = [];
+      const DELISTED = new Set([4,6,12,15,24,25,27,28,30,31,36,41,52,53,54,59,60,61,63,66,67,68,69,70,71,72,73,75,76,77,78,79,95,96,97,98,99,101,106,111,113,114,116,118,120,122,123,125,127,130,147,152,160,163,170,179,182,183,186,198,208,209,221,224,225,227,229,230,231,234,238,239,241,247,250,253,254,255,258,261,268,270,272,273,275,276,278,279,280,281,284,285,290,291,292,294,296,303,305,306,311,312,322,323,330,333,335,336,337,342,343,344,346,347,349,350,351,352,353,354,355,357,362,365,366,372,379,380,387,395,396,400,401,408,423,427,428,430,435,436,437,438,441]);
+      for (let i = 0; i < pairs.length; i++) {
+        if (DELISTED.has(i)) continue;
+        const pair = pairs[i];
+        if (!pair?.from) continue;
+        const price = tokenPrices[i];
+        if (!price || price <= 0) continue;
+        const groupIdx = parseInt(pair.groupIndex);
+        if (groupIdx !== 0 && groupIdx !== 1) continue; // Only crypto pairs (group 0=crypto, 1=forex — keep crypto only)
+        const symbol = pair.from.split('_')[0];
+        if (!isCryptoSymbol(symbol)) continue;
+        results.push({
+          symbol,
+          exchange: 'gTrade',
+          lastPrice: price,
+          price,
+          priceChangePercent24h: 0,
+          changePercent24h: 0,
+          high24h: price,
+          low24h: price,
+          volume24h: 0,
+          quoteVolume24h: 0,
+        });
+      }
+      return results;
+    },
+  },
 
   // Aster DEX — Binance-compatible API
   {

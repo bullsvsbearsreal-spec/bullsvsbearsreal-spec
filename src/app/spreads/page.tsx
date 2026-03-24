@@ -70,7 +70,7 @@ function fp(v: number) {
   if (v >= 0.01) return v.toFixed(4);
   if (v >= 0.0001) return v.toFixed(6);
   if (v === 0) return '0.00';
-  if (v < 0.0001) return v.toExponential(1);
+  if (v < 0.0001 && v > 0) return '< 0.0001';
   return Number(v.toPrecision(4)).toString();
 }
 
@@ -502,7 +502,7 @@ export default function SpreadsPage() {
     const cur = prices.length >= 2 ? prices[0].p - prices[prices.length - 1].p : 0;
     const pct = prices.length >= 2 ? (cur / prices[prices.length - 1].p) * 100 : 0;
     // Percentile: what % of historical data points had a lower spread than current
-    const percentile = cnt > 1 ? Math.round(data.filter(pt => (pt._spread || 0) < cur).length / cnt * 100) : null;
+    const percentile = cnt > 10 ? Math.round(data.filter(pt => (pt._spread || 0) < cur).length / cnt * 100) : null;
     return {
       cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, maxHi, maxLo, minHi, minLo, prices, hi: prices[0], lo: prices[prices.length - 1],
       avgPct: cnt ? sumPct / cnt : 0, maxPct, minPct: minPct === Infinity ? 0 : minPct, percentile,
