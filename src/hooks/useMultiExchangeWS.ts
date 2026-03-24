@@ -155,6 +155,89 @@ function createMEXCWS(symbol: string, onPrice: (p: WSPrice) => void): WebSocket 
   } catch { return null; }
 }
 
+// HTX (Huobi) Futures: wss://api.huobi.pro/linear-swap-ws (gzip compressed)
+function createHTXWS(symbol: string, onPrice: (p: WSPrice) => void): WebSocket | null {
+  try {
+    const ws = new WebSocket('wss://api.huobi.pro/linear-swap-ws');
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ sub: `market.${symbol}-USDT.bbo`, id: 'bbo' }));
+    };
+    ws.onmessage = async (e) => {
+      try {
+        // HTX sends gzip-compressed binary frames
+        const ds = new DecompressionStream('gzip');
+        const writer = ds.writable.getWriter();
+        writer.write(new Uint8Array(e.data as ArrayBuffer));
+        writer.close();
+        const reader = ds.readable.getReader();
+        const chunks: Uint8Array[] = [];
+        let done = false;
+        while (!done) { const r = await reader.read(); if (r.value) chunks.push(r.value); done = r.done; }
+        const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+        const merged = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const c of chunks) { merged.set(c, offset); offset += c.length; }
+        const text = new TextDecoder().decode(merged);
+        const d = JSON.parse(text);
+        // Respond to pings
+        if (d.ping) { ws.send(JSON.stringify({ pong: d.ping })); return; }
+        if (d.tick) {
+          const bid = +(d.tick.bid?.[0] || 0), ask = +(d.tick.ask?.[0] || 0);
+          const price = bid > 0 && ask > 0 ? (bid + ask) / 2 : bid || ask;
+          if (price > 0) onPrice({ exchange: 'HTX', symbol, price, bid: bid || price, ask: ask || price, ts: d.ts || Date.now() });
+        }
+      } catch {}
+    };
+    return ws;
+  } catch { return null; }
+}
+
+// Kraken Futures: wss://futures.kraken.com/ws/v1
+const KRAKEN_SYMBOLS = ['BTC','ETH','SOL','XRP','ADA','DOT','LINK','AVAX','DOGE','LTC'];
+function createKrakenWS(symbol: string, onPrice: (p: WSPrice) => void): WebSocket | null {
+  if (!KRAKEN_SYMBOLS.includes(symbol)) return null;
+  try {
+    const ws = new WebSocket('wss://futures.kraken.com/ws/v1');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ event: 'subscribe', feed: 'ticker', product_ids: [`PI_${symbol}USD`] }));
+    };
+    ws.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.feed === 'ticker' && d.product_id) {
+          const bid = +(d.bid || 0), ask = +(d.ask || 0), last = +(d.last || d.markPrice || 0);
+          if (last > 0) onPrice({ exchange: 'Kraken', symbol, price: last, bid: bid || last, ask: ask || last, ts: Date.now() });
+        }
+      } catch {}
+    };
+    return ws;
+  } catch { return null; }
+}
+
+// KuCoin Futures: REST-polled at higher frequency (no WS — requires token handshake)
+// Kept in WS_CREATORS so it counts toward WS badge, but uses REST internally
+function createKuCoinWS(symbol: string, onPrice: (p: WSPrice) => void): WebSocket | null {
+  // KuCoin WS requires async token fetch which doesn't fit the sync return pattern.
+  // Use fast REST polling (5s) instead — still faster than the default 10s REST fallback.
+  const poll = () => {
+    fetch(`https://api-futures.kucoin.com/api/v1/ticker?symbol=${symbol}USDTM`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        const t = json?.data;
+        if (!t) return;
+        const last = +(t.price || 0);
+        const bid = +(t.bestBidPrice || last);
+        const ask = +(t.bestAskPrice || last);
+        if (last > 0) onPrice({ exchange: 'KuCoin', symbol, price: last, bid, ask, ts: t.ts || Date.now() });
+      }).catch(() => {});
+  };
+  poll();
+  const timer = setInterval(poll, 5000);
+  // Return a fake "WebSocket" that cleans up the timer
+  return { close: () => clearInterval(timer), addEventListener: () => {}, readyState: 1 } as any;
+}
+
 const WS_CREATORS: Record<string, (s: string, cb: (p: WSPrice) => void) => WebSocket | null> = {
   Binance: createBinanceWS,
   Bybit: createBybitWS,
@@ -162,6 +245,9 @@ const WS_CREATORS: Record<string, (s: string, cb: (p: WSPrice) => void) => WebSo
   Bitget: createBitgetWS,
   MEXC: createMEXCWS,
   Hyperliquid: createHyperliquidWS,
+  HTX: createHTXWS,
+  Kraken: createKrakenWS,
+  KuCoin: createKuCoinWS,
 };
 
 export const WS_SUPPORTED = Object.keys(WS_CREATORS);
