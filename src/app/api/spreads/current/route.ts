@@ -11,8 +11,8 @@ export async function GET() {
 
   try {
     // Fetch live tickers from internal API
-    const base = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-    const tickerRes = await fetch(`${base}/api/tickers`, { next: { revalidate: 30 } });
+    const base = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const tickerRes = await fetch(`${base}/api/tickers`, { cache: 'no-store' });
     if (!tickerRes.ok) return NextResponse.json({ error: 'Failed to fetch tickers' }, { status: 502 });
     const tickerData = await tickerRes.json();
     const tickers: Array<{ symbol: string; exchange: string; lastPrice: number; quoteVolume24h?: number }> = tickerData?.data || tickerData || [];
