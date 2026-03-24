@@ -45,8 +45,8 @@ const fetchers: Record<string, (s: string, iv: string, n: number) => Promise<Can
     return (await r.json()).data?.reverse().map((k: string[]) => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4] })).filter((c: Candle) => c.c > 0 && c.o > 0) || [];
   },
   Bitget: async (s, iv, n) => {
-    const m: Record<string,string> = { '1h': '1H', '4h': '4H', '1d': '1D' };
-    const r = await f(`https://api.bitget.com/api/v2/mix/market/candles?productType=USDT-FUTURES&symbol=${sym('bitget',s)}&granularity=${m[iv]||'1H'}&limit=${n}`);
+    const m: Record<string,string> = { '1h': '1H', '4h': '4H', '1d': '1Dutc' };
+    const r = await f(`https://api.bitget.com/api/v2/mix/market/candles?productType=USDT-FUTURES&symbol=${sym('bitget',s)}&granularity=${m[iv]||'1H'}&limit=${Math.min(n, 200)}`);
     if (!r.ok) return [];
     return (await r.json()).data?.reverse().map((k: string[]) => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4] })).filter((c: Candle) => c.c > 0 && c.o > 0) || [];
   },

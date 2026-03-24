@@ -58,9 +58,9 @@ const EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
 // All other exchanges use DB mark_price snapshots (10-min, needs accumulation)
 const TFS = [
   { key: 'live', label: 'Live', source: 'ws' as const },
-  { key: '1d', label: '1D', source: 'db' as const, days: 1 },
-  { key: '7d', label: '7D', source: 'db' as const, days: 7 },
-  { key: '30d', label: '30D', source: 'db' as const, days: 30 },
+  { key: '1d', label: '1D', source: 'db' as const, days: 1, interval: '1h', limit: 24 },
+  { key: '7d', label: '7D', source: 'db' as const, days: 7, interval: '1h', limit: 168 },
+  { key: '30d', label: '30D', source: 'db' as const, days: 30, interval: '4h', limit: 180 },
 ] as const;
 type TfK = typeof TFS[number]['key'];
 
@@ -192,6 +192,7 @@ export default function SpreadsPage() {
   const [viewMode, setViewMode] = useState<'price' | 'pct'>('pct'); // Default to % view like reference
   const [candleExchange, setCandleExchange] = useState('');
   const [spreadUnit, setSpreadUnit] = useState<'usd' | 'pct'>('usd');
+  const [hideOutliers, setHideOutliers] = useState(true);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -273,6 +274,28 @@ export default function SpreadsPage() {
       setDbHistory((dbSpreadRes.status === 'fulfilled' && dbSpreadRes.value?.data) || []);
     }).finally(() => { if (!c) setChartLoading(false); });
     return () => { c = true; };
+  }, [sym, tf]);
+
+  // Auto-refresh DB charts every 60s
+  useEffect(() => {
+    const tfDef = TFS.find(x => x.key === tf);
+    if (!tfDef || tfDef.source !== 'db') return;
+    const timer = setInterval(() => {
+      const days = (tfDef as any).days || 7;
+      const iv = (tfDef as any).interval || '1h';
+      const lim = (tfDef as any).limit || 168;
+      fetch(`/api/klines-multi?symbol=${sym}&interval=${iv}&limit=${lim}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(json => {
+          const klines = json?.exchanges || {};
+          if (Object.keys(klines).length > 0) setKd(prev => prev ? { ...prev, ...klines } : klines);
+        }).catch(() => {});
+      fetch(`/api/history/spreads?symbol=${sym}&days=${days}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(json => { if (json?.data) setDbHistory(json.data); })
+        .catch(() => {});
+    }, 60_000);
+    return () => clearInterval(timer);
   }, [sym, tf]);
 
   // Fetch klines for newly added exchanges that aren't in kd yet
@@ -429,7 +452,8 @@ export default function SpreadsPage() {
       // Filter outliers: exclude if >1% from median at this timestamp
       const sortedP = [...prices].sort((a, b) => a - b);
       const median = sortedP[Math.floor(sortedP.length / 2)];
-      const sane = exPrices.filter(x => Math.abs(x.p - median) / median < 0.03);
+      const outlierThreshold = hideOutliers ? 0.01 : 0.10;
+      const sane = exPrices.filter(x => Math.abs(x.p - median) / median < outlierThreshold);
       const useExs = sane.length >= 2 ? sane : exPrices;
       const avg = useExs.reduce((s, x) => s + x.p, 0) / useExs.length;
       for (const x of useExs) {
@@ -450,7 +474,7 @@ export default function SpreadsPage() {
       rows.push(pt);
     }
     return { data: rows, exs, available: av };
-  }, [kd, sel, tf, wsHistory]);
+  }, [kd, sel, tf, wsHistory, hideOutliers]);
 
   const stats = useMemo(() => {
     if (data.length === 0 || exs.length < 2) return null;
@@ -477,9 +501,11 @@ export default function SpreadsPage() {
     const prices = exs.map(e => ({ e, p: last[e] as number })).filter(x => x.p > 0).sort((a, b) => b.p - a.p);
     const cur = prices.length >= 2 ? prices[0].p - prices[prices.length - 1].p : 0;
     const pct = prices.length >= 2 ? (cur / prices[prices.length - 1].p) * 100 : 0;
+    // Percentile: what % of historical data points had a lower spread than current
+    const percentile = cnt > 1 ? Math.round(data.filter(pt => (pt._spread || 0) < cur).length / cnt * 100) : null;
     return {
       cur, pct, avg: cnt ? sum / cnt : 0, max, min: min === Infinity ? 0 : min, maxT, minT, maxHi, maxLo, minHi, minLo, prices, hi: prices[0], lo: prices[prices.length - 1],
-      avgPct: cnt ? sumPct / cnt : 0, maxPct, minPct: minPct === Infinity ? 0 : minPct,
+      avgPct: cnt ? sumPct / cnt : 0, maxPct, minPct: minPct === Infinity ? 0 : minPct, percentile,
     };
   }, [data, exs]);
 
@@ -708,12 +734,14 @@ export default function SpreadsPage() {
                   <div className="border-t border-white/[0.06] pt-1.5">
                     <p className="text-xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
                     <p className="text-[11px] text-neutral-500">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
+                    {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{stats.percentile}th percentile</p>}
                   </div>
                 </>
               ) : (
                 <>
                   <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
                   <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
+                  {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{stats.percentile}th percentile</p>}
                 </>
               )}
             </div>
@@ -820,6 +848,14 @@ export default function SpreadsPage() {
                   <button onClick={() => setViewMode('pct')}
                     className={'px-2 py-0.5 rounded text-[9px] font-semibold transition ' + (viewMode === 'pct' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600 hover:text-neutral-400')}>%</button>
                 </div>
+              )}
+              {/* Outlier filter toggle */}
+              {chartMode === 'line' && exs.length > 2 && (
+                <button onClick={() => setHideOutliers(h => !h)}
+                  className={`px-2 py-0.5 rounded text-[9px] font-semibold transition border ${hideOutliers ? 'bg-white/[0.06] text-neutral-300 border-white/[0.1]' : 'text-neutral-600 border-transparent hover:text-neutral-400'}`}
+                  title={hideOutliers ? 'Hiding exchanges >1% from median' : 'Showing all exchanges'}>
+                  {hideOutliers ? 'Outliers Hidden' : 'Show All'}
+                </button>
               )}
               {chartMode === 'candle' && (
                 <div className="flex items-center gap-1">
