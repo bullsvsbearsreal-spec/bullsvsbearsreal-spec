@@ -38,8 +38,7 @@ export async function POST(req: NextRequest) { return run(req); }
 
 async function run(req: NextRequest) {
   const auth = req.headers.get('authorization');
-  const oneTimeKey = req.nextUrl.searchParams.get('key');
-  if (oneTimeKey !== 'backfill-2026-03-25' && (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`)) {
+  if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
