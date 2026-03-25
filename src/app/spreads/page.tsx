@@ -803,7 +803,7 @@ export default function SpreadsPage() {
                   <div className="border-t border-white/[0.06] pt-1.5">
                     <p className="text-xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
                     <p className="text-[11px] text-neutral-500">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
-                    {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{ordinal(stats.percentile)} percentile</p>}
+                    {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{stats.percentile >= 50 ? `Top ${100 - stats.percentile}%` : `Bottom ${stats.percentile}%`}</p>}
                   </div>
                 </>
               ) : (
@@ -811,7 +811,7 @@ export default function SpreadsPage() {
                   <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
                   <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
                   <div className="flex items-center gap-2 mt-1">
-                    {stats.percentile !== null && <span className="text-[10px] text-neutral-600">{ordinal(stats.percentile)} pctl</span>}
+                    {stats.percentile !== null && <span className="text-[10px] text-neutral-600">{stats.percentile >= 50 ? `Top ${100 - stats.percentile}%` : `Bottom ${stats.percentile}%`}</span>}
                     {(() => {
                       const fresh = Object.values(wsPrices).filter(p => p.price > 0 && (Date.now() - p.ts) < 20000).length;
                       const total = sel.length;
@@ -835,7 +835,7 @@ export default function SpreadsPage() {
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-green-400" />
-                <span className="text-xs text-neutral-500">Highest Price</span>
+                <span className="text-xs text-neutral-500">{tf === 'live' ? 'Highest Price' : 'Last Highest'}</span>
               </div>
               <p className="text-2xl font-bold font-mono text-white">{'$'}{stats.hi ? fp(stats.hi.p) : '—'}</p>
               <p className="text-[11px] text-green-400 mt-1">{stats.hi?.e}</p>
@@ -843,7 +843,7 @@ export default function SpreadsPage() {
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingDown className="w-4 h-4 text-red-400" />
-                <span className="text-xs text-neutral-500">Lowest Price</span>
+                <span className="text-xs text-neutral-500">{tf === 'live' ? 'Lowest Price' : 'Last Lowest'}</span>
               </div>
               <p className="text-2xl font-bold font-mono text-white">{'$'}{stats.lo ? fp(stats.lo.p) : '—'}</p>
               <p className="text-[11px] text-red-400 mt-1">{stats.lo?.e}</p>
@@ -919,10 +919,6 @@ export default function SpreadsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {/* Chart label */}
-              <span className="flex items-center gap-1 text-[10px] text-neutral-500">
-                <Activity className="w-3 h-3" />Multi-Line
-              </span>
               {/* Price vs % view toggle */}
               {(
                 <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08] bg-white/[0.02]">
@@ -933,7 +929,7 @@ export default function SpreadsPage() {
                 </div>
               )}
               {/* Auto-hint to switch to % when lines overlap in $ view */}
-              {viewMode === 'price' && stats && stats.pct < 0.5 && exs.length >= 2 && (
+              {viewMode === 'price' && stats && stats.pct < 0.05 && exs.length >= 2 && (
                 <button onClick={() => setViewMode('pct')}
                   className="px-2 py-1 rounded-lg text-[9px] text-amber-400/70 hover:text-amber-400 hover:bg-amber-400/5 transition animate-pulse">
                   Lines overlapping? Try %
