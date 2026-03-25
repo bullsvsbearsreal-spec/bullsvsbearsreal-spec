@@ -13,13 +13,12 @@ export interface WSPrice {
 
 type PriceMap = Record<string, WSPrice>;
 
-
 export type PriceSnapshot = { t: number; prices: Record<string, number> };
 
 const MAX_HISTORY = 2000;
-const POLL_INTERVAL = 2_000; // 2 seconds — fast enough for spread comparison
+const POLL_INTERVAL = 3_000; // 3s — matches server L1 cache TTL
 const SNAPSHOT_INTERVAL = 3_000; // chart history every 3s
-const STALE_MS = 20_000; // prices older than 20s are excluded from spread
+const STALE_MS = 20_000; // prices older than 20s excluded from spread
 
 // Exchanges whose prices come from /api/funding (markPrice) instead of /api/tickers
 const FUNDING_EXCHANGES = new Set(['gTrade', 'GMX']);
@@ -31,13 +30,14 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
   const exchangeKey = exchanges.join(',');
   const pricesRef = useRef<PriceMap>({});
   const historyRef = useRef<PriceSnapshot[]>([]);
+  const rafId = useRef<number>(0);
   const pendingUpdate = useRef(false);
 
   // Batch state updates — flush on next animation frame
   const scheduleBatchUpdate = useCallback(() => {
     if (pendingUpdate.current) return;
     pendingUpdate.current = true;
-    requestAnimationFrame(() => {
+    rafId.current = requestAnimationFrame(() => {
       setPrices({ ...pricesRef.current });
       pendingUpdate.current = false;
     });
@@ -58,8 +58,6 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
     const poll = () => {
       if (aborted) return;
       const now = Date.now();
-
-      // Fetch tickers + funding in parallel
       const promises: Promise<void>[] = [];
 
       if (tickerExchanges.length > 0) {
@@ -79,7 +77,13 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
                   found.add(t.exchange);
                 }
               }
+              // Only update connected state if it actually changed
               setConnected(prev => {
+                let changed = false;
+                for (const e of tickerExchanges) {
+                  if (prev[e] !== found.has(e)) { changed = true; break; }
+                }
+                if (!changed) return prev; // same reference = no re-render
                 const next = { ...prev };
                 for (const e of tickerExchanges) next[e] = found.has(e);
                 return next;
@@ -107,6 +111,11 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
                 }
               }
               setConnected(prev => {
+                let changed = false;
+                for (const e of fundingExchanges) {
+                  if (prev[e] !== found.has(e)) { changed = true; break; }
+                }
+                if (!changed) return prev;
                 const next = { ...prev };
                 for (const e of fundingExchanges) next[e] = found.has(e);
                 return next;
@@ -119,7 +128,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       Promise.allSettled(promises);
     };
 
-    // First poll immediately, then every 2s
+    // First poll immediately, then every 3s
     poll();
     const pollTimer = setInterval(poll, POLL_INTERVAL);
 
@@ -132,7 +141,6 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       const priceMap: Record<string, number> = {};
       let hasAny = false;
       for (const [ex, p] of Object.entries(current)) {
-        // Exclude stale prices (>20s old) to avoid false spreads
         if (p.price > 0 && (now - p.ts) < STALE_MS) {
           priceMap[ex] = p.price;
           hasAny = true;
@@ -150,6 +158,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       aborted = true;
       pricesRef.current = {};
       pendingUpdate.current = false;
+      cancelAnimationFrame(rafId.current); // prevent state update on unmounted component
       clearInterval(pollTimer);
       clearInterval(historyTimer);
     };
