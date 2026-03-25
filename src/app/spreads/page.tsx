@@ -1019,9 +1019,9 @@ export default function SpreadsPage() {
               <Activity className="w-8 h-8 mb-2 text-neutral-700" />
               {tf === 'live' ? (
                 <>
-                  <p className="text-sm">Waiting for WebSocket data...</p>
+                  <p className="text-sm">Loading live prices...</p>
                   <p className="text-[10px] text-neutral-500 mt-1">
-                    {wsCount > 0 ? `${wsCount} exchanges connected. Chart builds every 3 seconds.` : 'Connecting to exchanges...'}
+                    {wsCount > 0 ? `${wsCount} exchanges reporting. Chart builds every 3 seconds.` : 'Fetching prices from exchanges...'}
                   </p>
                   {wsHistory.length > 0 && <p className="text-[10px] text-neutral-600 mt-1">{wsHistory.length} snapshots collected, need 2+ to render</p>}
                 </>
