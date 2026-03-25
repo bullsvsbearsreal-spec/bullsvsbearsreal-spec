@@ -80,7 +80,6 @@ const TFS = [
 ] as const;
 type TfK = typeof TFS[number]['key'];
 
-function ordinal(n: number) { const s = ['th','st','nd','rd']; const v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); }
 function fp(v: number) {
   if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   if (v >= 1) return v.toFixed(2);
@@ -173,7 +172,6 @@ export default function SpreadsPage() {
   }, []);
   const [showEx, setShowEx] = useState(false);
   const [kd, setKd] = useState<Record<string, Candle[]> | null>(null);
-  const [loading, setLoading] = useState(false); // Don't block initial render
   const [chartLoading, setChartLoading] = useState(false);
   const [showCalc, setShowCalc] = useState(false);
   const [calcAmt, setCalcAmt] = useState('10000');
@@ -194,10 +192,10 @@ export default function SpreadsPage() {
   const wsSpread = useMemo(() => {
     const wsPriceValues = Object.values(wsPrices).filter(p => p.price > 0);
     if (wsPriceValues.length < 2) return null;
-    // Filter outliers: exclude prices >3% from median
+    // Filter outliers: exclude prices >10% from median (matches chart threshold)
     const prices = wsPriceValues.map(p => p.price).sort((a, b) => a - b);
     const median = prices[Math.floor(prices.length / 2)];
-    const sane = wsPriceValues.filter(p => Math.abs(p.price - median) / median < 0.03);
+    const sane = wsPriceValues.filter(p => Math.abs(p.price - median) / median < 0.10);
     if (sane.length < 2) return null;
     const sorted = [...sane].sort((a, b) => b.price - a.price);
     const spread = sorted[0].price - sorted[sorted.length - 1].price;
@@ -226,9 +224,7 @@ export default function SpreadsPage() {
       }
     }
   }, [wsSpread, alertActive, alertThreshold, sym, lastAlert]);
-  const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
   const [viewMode, setViewMode] = useState<'price' | 'pct'>('price'); // Default to $ — snakether wants side-by-side dollar prices
-  const [candleExchange, setCandleExchange] = useState('');
   const [spreadUnit, setSpreadUnit] = useState<'usd' | 'pct'>('usd');
   // Outlier threshold at 10% — shows all real data, only catches extreme errors
 
@@ -754,11 +750,7 @@ export default function SpreadsPage() {
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {tf === 'live' ? (
-                            false && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
-                          ) : (
-                            kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>
-                          )}
+                          {tf !== 'live' && kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>
@@ -774,11 +766,7 @@ export default function SpreadsPage() {
                         <span className="flex items-center gap-2.5">
                           <ExchangeLogo exchange={e} size={18} />
                           {e}
-                          {tf === 'live' ? (
-                            false && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">REST</span>
-                          ) : (
-                            kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>
-                          )}
+                          {tf !== 'live' && kd && !kd[e] && <span className="text-[7px] px-1 py-[0.5px] rounded bg-neutral-800 text-neutral-500">table only</span>}
                         </span>
                         {sel.includes(e) ? (
                           <span className="w-4 h-4 rounded bg-hub-yellow/20 flex items-center justify-center text-hub-yellow text-[10px]">✓</span>

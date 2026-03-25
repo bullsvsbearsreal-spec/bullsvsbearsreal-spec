@@ -13,8 +13,6 @@ export interface WSPrice {
 
 type PriceMap = Record<string, WSPrice>;
 
-// All exchanges are supported via REST polling
-export const WS_SUPPORTED: string[] = [];
 
 export type PriceSnapshot = { t: number; prices: Record<string, number> };
 
@@ -30,6 +28,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
   const [prices, setPrices] = useState<PriceMap>({});
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [history, setHistory] = useState<PriceSnapshot[]>([]);
+  const exchangeKey = exchanges.join(',');
   const pricesRef = useRef<PriceMap>({});
   const historyRef = useRef<PriceSnapshot[]>([]);
   const pendingUpdate = useRef(false);
@@ -154,7 +153,8 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       clearInterval(pollTimer);
       clearInterval(historyTimer);
     };
-  }, [symbol, exchanges.join(','), enabled, handlePrice]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, exchangeKey, enabled, handlePrice]);
 
   return { prices, connected, history };
 }
