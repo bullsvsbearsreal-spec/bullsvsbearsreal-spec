@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 // ---------------------------------------------------------------------------
-// L1: In-memory cache (10-second TTL — fast refresh for spread comparison)
+// L1: In-memory cache (3-second TTL — fastest without WebSockets)
 // ---------------------------------------------------------------------------
 let l1Cache: { body: any; timestamp: number } | null = null;
-const L1_TTL = 10 * 1000; // 10 seconds
+const L1_TTL = 3 * 1000; // 3 seconds
 
 // Filter response to only include requested symbols (e.g. ?symbols=BTC,ETH)
 function filterBySymbols(body: any, symbols: Set<string>) {
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   if (l1Cache && Date.now() - l1Cache.timestamp < L1_TTL) {
     const body = symbolFilter ? filterBySymbols(l1Cache.body, symbolFilter) : l1Cache.body;
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=5' },
     });
   }
 
@@ -90,7 +90,7 @@ export async function GET(request: Request) {
 
     const finalBody = symbolFilter ? filterBySymbols(responseBody, symbolFilter) : responseBody;
     return NextResponse.json(finalBody, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=5' },
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
     if (l1Cache) {
       const body = symbolFilter ? filterBySymbols(l1Cache.body, symbolFilter) : l1Cache.body;
       return NextResponse.json(body, {
-        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=10' },
+        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=3' },
       });
     }
 
