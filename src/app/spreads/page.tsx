@@ -216,7 +216,7 @@ export default function SpreadsPage() {
   const [viewMode, setViewMode] = useState<'price' | 'pct'>('price'); // Default to $ — snakether wants side-by-side dollar prices
   const [candleExchange, setCandleExchange] = useState('');
   const [spreadUnit, setSpreadUnit] = useState<'usd' | 'pct'>('usd');
-  const [hideOutliers, setHideOutliers] = useState(true);
+  // Outlier threshold at 10% — shows all real data, only catches extreme errors
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -390,7 +390,7 @@ export default function SpreadsPage() {
         // Filter outliers in live mode (same as DB mode)
         const sortedP = [...prices].sort((a, b) => a - b);
         const median = sortedP[Math.floor(sortedP.length / 2)];
-        const outlierThreshold = hideOutliers ? 0.005 : 0.10; // 0.5% when filtered
+        const outlierThreshold = 0.10; // 10% — show all real data
         const saneExs: { e: string; p: number }[] = [];
         for (const e of wsExs) {
           const p = pt[e] as number;
@@ -491,7 +491,7 @@ export default function SpreadsPage() {
       // Filter outliers: exclude if >1% from median at this timestamp
       const sortedP = [...prices].sort((a, b) => a - b);
       const median = sortedP[Math.floor(sortedP.length / 2)];
-      const outlierThreshold = hideOutliers ? 0.005 : 0.10; // 0.5% when filtered
+      const outlierThreshold = 0.10; // 10% — show all real data
       const sane = exPrices.filter(x => Math.abs(x.p - median) / median < outlierThreshold);
       const useExs = sane.length >= 2 ? sane : exPrices;
       const avg = useExs.reduce((s, x) => s + x.p, 0) / useExs.length;
@@ -513,7 +513,7 @@ export default function SpreadsPage() {
       rows.push(pt);
     }
     return { data: rows, exs, available: av };
-  }, [kd, sel, tf, wsHistory, hideOutliers]);
+  }, [kd, sel, tf, wsHistory]);
 
   const stats = useMemo(() => {
     if (data.length === 0 || exs.length < 2) return null;
@@ -936,14 +936,7 @@ export default function SpreadsPage() {
                   Lines overlapping? Try %
                 </button>
               )}
-              {/* Outlier filter toggle */}
-              {exs.length > 2 && (
-                <button onClick={() => setHideOutliers(h => !h)}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-medium transition-all border ${hideOutliers ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/[0.02] text-neutral-500 border-white/[0.08] hover:text-neutral-300'}`}
-                  title={hideOutliers ? 'Hiding exchanges >1% from median — click to show all' : 'Showing all exchanges — click to filter outliers'}>
-                  {hideOutliers ? 'Filtered' : 'Raw'}
-                </button>
-              )}
+              {/* All data shown — 10% outlier threshold catches only extreme errors */}
               {exs.map((e, i) => (
                 <span key={e} className="flex items-center gap-1 text-[10px]">
                   <span className="w-3 h-[2px] rounded-full" style={{ background: ec(e, i) }} />
