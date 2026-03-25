@@ -64,6 +64,7 @@ const TFS = [
 ] as const;
 type TfK = typeof TFS[number]['key'];
 
+function ordinal(n: number) { const s = ['th','st','nd','rd']; const v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); }
 function fp(v: number) {
   if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   if (v >= 1) return v.toFixed(2);
@@ -188,7 +189,7 @@ export default function SpreadsPage() {
     }
   }, [wsSpread, alertActive, alertThreshold, sym, lastAlert]);
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
-  const [viewMode, setViewMode] = useState<'price' | 'pct'>('pct'); // Default to % view like reference
+  const [viewMode, setViewMode] = useState<'price' | 'pct'>('price'); // Default to $ — snakether wants side-by-side dollar prices
   const [candleExchange, setCandleExchange] = useState('');
   const [spreadUnit, setSpreadUnit] = useState<'usd' | 'pct'>('usd');
   const [hideOutliers, setHideOutliers] = useState(true);
@@ -733,14 +734,14 @@ export default function SpreadsPage() {
                   <div className="border-t border-white/[0.06] pt-1.5">
                     <p className="text-xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
                     <p className="text-[11px] text-neutral-500">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
-                    {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{stats.percentile}th percentile</p>}
+                    {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{ordinal(stats.percentile)} percentile</p>}
                   </div>
                 </>
               ) : (
                 <>
                   <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
                   <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
-                  {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{stats.percentile}th percentile</p>}
+                  {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{ordinal(stats.percentile)} percentile</p>}
                 </>
               )}
             </div>
