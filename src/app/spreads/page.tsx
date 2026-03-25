@@ -34,8 +34,22 @@ const EX_COLORS: Record<string, string> = {
   Deribit: '#BA55D3',     // medium orchid
   WhiteBIT: '#ADFF2F',    // green yellow
   gTrade: '#E8590C',      // burnt orange
+  Bitunix: '#FFD700',     // bright gold
+  Lighter: '#1E90FF',     // dodger blue
+  Variational: '#32CD32', // lime green
+  Aster: '#FF6347',       // tomato
+  Aevo: '#DDA0DD',        // plum
+  Drift: '#20B2AA',       // light sea green
+  GMX: '#4682B4',         // steel blue
+  Extended: '#CD853F',    // peru
+  edgeX: '#8B008B',       // dark magenta
+  Nado: '#B22222',        // firebrick
+  Backpack: '#DAA520',    // goldenrod
+  Orderly: '#5F9EA0',     // cadet blue
+  Paradex: '#C71585',     // medium violet red
+  Bitfinex: '#97C900',    // yellow-green
 };
-const PALETTE = ['#F0B90B','#FF4040','#00FF00','#00BFFF','#FF00FF','#FF8C00','#00FFFF','#9D4EDD','#FFFF00','#7FFF00'];
+const PALETTE = ['#F0B90B','#FF4040','#00FF00','#00BFFF','#FF00FF','#FF8C00','#00FFFF','#9D4EDD','#FFD700','#1E90FF','#32CD32','#FF6347','#DDA0DD','#20B2AA'];
 function ec(ex: string, i: number) { return EX_COLORS[ex] || PALETTE[i % PALETTE.length]; }
 
 type Candle = { t: number; o: number; h: number; l: number; c: number };
