@@ -390,7 +390,7 @@ export default function SpreadsPage() {
         // Filter outliers in live mode (same as DB mode)
         const sortedP = [...prices].sort((a, b) => a - b);
         const median = sortedP[Math.floor(sortedP.length / 2)];
-        const outlierThreshold = hideOutliers ? 0.01 : 0.10;
+        const outlierThreshold = hideOutliers ? 0.005 : 0.10; // 0.5% when filtered
         const saneExs: { e: string; p: number }[] = [];
         for (const e of wsExs) {
           const p = pt[e] as number;
@@ -491,7 +491,7 @@ export default function SpreadsPage() {
       // Filter outliers: exclude if >1% from median at this timestamp
       const sortedP = [...prices].sort((a, b) => a - b);
       const median = sortedP[Math.floor(sortedP.length / 2)];
-      const outlierThreshold = hideOutliers ? 0.01 : 0.10;
+      const outlierThreshold = hideOutliers ? 0.005 : 0.10; // 0.5% when filtered
       const sane = exPrices.filter(x => Math.abs(x.p - median) / median < outlierThreshold);
       const useExs = sane.length >= 2 ? sane : exPrices;
       const avg = useExs.reduce((s, x) => s + x.p, 0) / useExs.length;
