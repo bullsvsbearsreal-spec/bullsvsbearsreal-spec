@@ -830,7 +830,7 @@ export default function SpreadsPage() {
                 <h2 className="text-sm font-semibold">{sym} Perp Price by Exchange</h2>
                 <p className="text-[11px] text-neutral-500">
                   {tf === 'live'
-                    ? `Live WebSocket prices · ${wsHistory.length} snapshots · updates every 5s`
+                    ? `Live prices · ${wsHistory.length} snapshots · updates every 2s`
                     : `${data.length} data points · ${tf === '1d' ? '1h' : '4h'} resolution · ${exs.length} venues`}
                 </p>
               </div>
@@ -928,7 +928,7 @@ export default function SpreadsPage() {
                 <>
                   <p className="text-sm">Waiting for WebSocket data...</p>
                   <p className="text-[10px] text-neutral-500 mt-1">
-                    {wsCount > 0 ? `${wsCount} exchanges connected. Chart builds every 5 seconds.` : 'Connecting to exchanges...'}
+                    {wsCount > 0 ? `${wsCount} exchanges connected. Chart builds every 3 seconds.` : 'Connecting to exchanges...'}
                   </p>
                   {wsHistory.length > 0 && <p className="text-[10px] text-neutral-600 mt-1">{wsHistory.length} snapshots collected, need 2+ to render</p>}
                 </>
