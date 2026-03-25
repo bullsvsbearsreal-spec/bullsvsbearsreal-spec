@@ -159,16 +159,18 @@ export default function SpreadsPage() {
   const [showSym, setShowSym] = useState(false);
   const [symQ, setSymQ] = useState('');
   const [dynamicSymbols, setDynamicSymbols] = useState<string[]>([]);
-  // Fetch all available symbols from tickers API on mount
+  // Fetch all available symbols from tickers API (deferred — not needed for initial chart)
   useEffect(() => {
-    fetch('/api/tickers').then(r => r.ok ? r.json() : null).then(json => {
-      const tickers: any[] = json?.data || json || [];
-      const syms = new Set<string>();
-      for (const t of tickers) if (t.symbol) syms.add(t.symbol);
-      // Filter out symbols already in SYMBOLS
-      const existing = new Set(Object.values(SYMBOLS).flat());
-      setDynamicSymbols(Array.from(syms).filter(s => !existing.has(s)).sort());
-    }).catch(() => {});
+    const t = setTimeout(() => {
+      fetch('/api/tickers').then(r => r.ok ? r.json() : null).then(json => {
+        const tickers: any[] = json?.data || json || [];
+        const syms = new Set<string>();
+        for (const t of tickers) if (t.symbol) syms.add(t.symbol);
+        const existing = new Set(Object.values(SYMBOLS).flat());
+        setDynamicSymbols(Array.from(syms).filter(s => !existing.has(s)).sort());
+      }).catch(() => {});
+    }, 5000);
+    return () => clearTimeout(t);
   }, []);
   const [showEx, setShowEx] = useState(false);
   const [kd, setKd] = useState<Record<string, Candle[]> | null>(null);
@@ -358,7 +360,7 @@ export default function SpreadsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selKey, sym, tf]);
 
-  // Fetch live tickers + funding + OI (refresh every 30s)
+  // Fetch live tickers + funding + OI (defer 3s to prioritize chart, then refresh every 30s)
   useEffect(() => {
     let c = false;
     const load = () => {
@@ -376,9 +378,9 @@ export default function SpreadsPage() {
         setOI(oData.filter((o: any) => o.symbol === sym));
       });
     };
-    load();
+    const delay = setTimeout(load, 3000); // defer to let chart load first
     const iv = setInterval(load, 30000);
-    return () => { c = true; clearInterval(iv); };
+    return () => { c = true; clearTimeout(delay); clearInterval(iv); };
   }, [sym]);
 
   const { data, exs, available } = useMemo<{ data: Pt[]; exs: string[]; available?: string[] }>(() => {
