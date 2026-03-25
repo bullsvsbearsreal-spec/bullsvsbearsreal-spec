@@ -85,17 +85,16 @@ async function run(req: NextRequest) {
         rows.push([sym, spread, pct, high[0], low[0], high[1], low[1], entries.length, new Date(bucket).toISOString()]);
       }
 
-      // Batch insert with ON CONFLICT skip
+      // Single bulk insert
       if (rows.length > 0) {
-        for (const row of rows) {
-          try {
-            await sql`
-              INSERT INTO spread_snapshots (symbol, spread_usd, spread_pct, high_exchange, low_exchange, high_price, low_price, exchange_count, ts)
-              VALUES (${row[0]}, ${row[1]}, ${row[2]}, ${row[3]}, ${row[4]}, ${row[5]}, ${row[6]}, ${row[7]}, ${row[8]}::timestamptz)
-            `;
-            inserted++;
-          } catch { /* skip duplicates */ }
-        }
+        const values = rows.map(r =>
+          `('${r[0]}', ${r[1]}, ${r[2]}, '${r[3]}', '${r[4]}', ${r[5]}, ${r[6]}, ${r[7]}, '${r[8]}'::timestamptz)`
+        ).join(',\n');
+        await sql.unsafe(`
+          INSERT INTO spread_snapshots (symbol, spread_usd, spread_pct, high_exchange, low_exchange, high_price, low_price, exchange_count, ts)
+          VALUES ${values}
+        `);
+        inserted = rows.length;
       }
     } catch (err: any) {
       results.push({ symbol: sym, inserted, skipped: -1 });
