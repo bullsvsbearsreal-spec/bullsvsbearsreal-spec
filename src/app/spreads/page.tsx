@@ -90,9 +90,10 @@ function SpreadTooltip({ active, payload, exList, colorFn }: any) {
   return (
     <div className="bg-[#141418] border border-white/[0.08] rounded-lg px-3 py-2.5 shadow-xl text-xs min-w-[200px]">
       <p className="text-neutral-500 text-[10px] mb-2 pb-1.5 border-b border-white/[0.06]">{pt.label}</p>
-      {ps.map((x: any) => (
+      {ps.map((x: any, i: number) => (
         <div key={x.e} className="flex justify-between gap-4 py-[2px]">
           <span className="flex items-center gap-1.5">
+            <span className="w-3 h-[2px] rounded-full flex-shrink-0" style={{ backgroundColor: colorFn(x.e, exchanges.indexOf(x.e)) }} />
             <ExchangeLogo exchange={x.e} size={14} />
             <span className="text-neutral-300">{x.e}</span>
           </span>
