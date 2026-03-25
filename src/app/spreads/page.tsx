@@ -42,11 +42,12 @@ type Pt = { time: number; label: string; _spread?: number; [k: string]: any };
 
 const SYMBOLS: Record<string, string[]> = {
   Majors: ['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','AVAX','LINK','TON','LTC','BCH','ETC','TRX'],
-  'Layer 2': ['ARB','OP','MATIC','STRK','ZK','IMX','MANTA','STX','SEI'],
-  Alts: ['SUI','APT','NEAR','DOT','FIL','ATOM','INJ','HBAR','RENDER','TIA','ALGO','VET','FTM'],
-  DeFi: ['AAVE','UNI','MKR','CRV','DYDX','SNX','COMP','LDO','EIGEN','ENA','ONDO','JUP','PYTH'],
-  Memes: ['PEPE','WIF','BONK','FLOKI','SHIB','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU','TURBO','NEIRO'],
-  Gaming: ['SAND','MANA','AXS','GALA','BLUR','ENS','WLD','W','ZRO'],
+  'Layer 2': ['ARB','OP','MATIC','STRK','ZK','IMX','MANTA','STX','SEI','METIS','BLAST'],
+  AI: ['TAO','FET','RENDER','RNDR','ARKM','WLD','OCEAN','AGIX','AKT','NEAR','AR'],
+  Alts: ['SUI','APT','DOT','FIL','ATOM','INJ','HBAR','TIA','ALGO','VET','FTM','KAS','JASMY','IOTA','EOS','XLM','THETA','EGLD','GRT','SAND'],
+  DeFi: ['AAVE','UNI','MKR','CRV','DYDX','SNX','COMP','LDO','EIGEN','ENA','ONDO','JUP','PYTH','PENDLE','CAKE','SUSHI','1INCH','GMX','RSR'],
+  Memes: ['PEPE','WIF','BONK','FLOKI','SHIB','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU','TURBO','NEIRO','DEGEN','BOME','MYRO','MOODENG'],
+  Gaming: ['MANA','AXS','GALA','BLUR','ENS','W','ZRO','PIXEL','PORTAL','PRIME','IMX','RONIN','BEAM'],
   Commodities: ['XAU','XAG','XAUT'],
   Forex: ['EUR','GBP','JPY'],
   Stocks: ['AAPL','TSLA','NVDA','COIN','MSTR','META','AMZN','GOOGL','MSFT'],
@@ -142,6 +143,18 @@ export default function SpreadsPage() {
   }, [sym, sel, tf]);
   const [showSym, setShowSym] = useState(false);
   const [symQ, setSymQ] = useState('');
+  const [dynamicSymbols, setDynamicSymbols] = useState<string[]>([]);
+  // Fetch all available symbols from tickers API on mount
+  useEffect(() => {
+    fetch('/api/tickers').then(r => r.ok ? r.json() : null).then(json => {
+      const tickers: any[] = json?.data || json || [];
+      const syms = new Set<string>();
+      for (const t of tickers) if (t.symbol) syms.add(t.symbol);
+      // Filter out symbols already in SYMBOLS
+      const existing = new Set(Object.values(SYMBOLS).flat());
+      setDynamicSymbols(Array.from(syms).filter(s => !existing.has(s)).sort());
+    }).catch(() => {});
+  }, []);
   const [showEx, setShowEx] = useState(false);
   const [kd, setKd] = useState<Record<string, Candle[]> | null>(null);
   const [loading, setLoading] = useState(false); // Don't block initial render
@@ -621,6 +634,23 @@ export default function SpreadsPage() {
                     ))}
                   </div>);
                 })}
+                {/* Dynamic symbols from live tickers (not in static list) */}
+                {dynamicSymbols.length > 0 && (() => {
+                  const f = dynamicSymbols.filter(s => !symQ || s.toUpperCase().includes(symQ.toUpperCase()));
+                  if (!f.length) return null;
+                  return (<div>
+                    <p className="px-3 py-1 text-[9px] text-neutral-600 uppercase tracking-wider font-semibold">All Coins ({f.length})</p>
+                    {f.slice(0, symQ ? 50 : 20).map(s => (
+                      <button key={s} onClick={() => { setSym(s); setShowSym(false); setSymQ(''); }}
+                        className={`w-full text-left px-3 py-1.5 text-sm hover:bg-white/[0.04] flex items-center gap-2 ${s === sym ? 'text-hub-yellow' : 'text-neutral-300'}`}>
+                        <img src={getCoinIcon(s)} alt="" className="w-4 h-4 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        {s}
+                        {s === sym && <span className="ml-auto text-hub-yellow text-xs">✓</span>}
+                      </button>
+                    ))}
+                    {!symQ && f.length > 20 && <p className="px-3 py-1 text-[9px] text-neutral-500">Type to search {f.length - 20} more...</p>}
+                  </div>);
+                })()}
               </div>
             )}
           </div>
