@@ -50,9 +50,12 @@ async function run(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Process one symbol at a time via ?symbol= param (avoids timeout)
+  const singleSym = req.nextUrl.searchParams.get('symbol')?.toUpperCase();
+  const symsToProcess = singleSym ? [singleSym] : SYMBOLS.slice(0, 3); // default: first 3 only
   const results: Array<{ symbol: string; inserted: number; skipped: number }> = [];
 
-  for (const sym of SYMBOLS) {
+  for (const sym of symsToProcess) {
     let inserted = 0, skipped = 0;
 
     try {
