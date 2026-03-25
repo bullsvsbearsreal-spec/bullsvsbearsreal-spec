@@ -16,12 +16,11 @@ type PriceMap = Record<string, WSPrice>;
 export type PriceSnapshot = { t: number; prices: Record<string, number> };
 
 const MAX_HISTORY = 2000;
-const POLL_INTERVAL = 3_000; // 3s — matches server L1 cache TTL
-const SNAPSHOT_INTERVAL = 3_000; // chart history every 3s
-const STALE_MS = 20_000; // prices older than 20s excluded from spread
-
-// Exchanges whose prices come from /api/funding (markPrice) instead of /api/tickers
-const FUNDING_EXCHANGES = new Set(['gTrade', 'GMX']);
+const AGGREGATOR_URL = 'https://prices.info-hub.io'; // VPS aggregator
+const AGGREGATOR_FALLBACK = 'http://46.101.247.54:3100'; // direct IP fallback
+const POLL_INTERVAL = 2_000; // 2s — aggregator has no cache, always fresh
+const SNAPSHOT_INTERVAL = 3_000;
+const STALE_MS = 20_000;
 
 export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled = true) {
   const [prices, setPrices] = useState<PriceMap>({});
@@ -32,8 +31,8 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
   const historyRef = useRef<PriceSnapshot[]>([]);
   const rafId = useRef<number>(0);
   const pendingUpdate = useRef(false);
+  const baseUrl = useRef(AGGREGATOR_FALLBACK); // start with direct IP, upgrade if domain works
 
-  // Batch state updates — flush on next animation frame
   const scheduleBatchUpdate = useCallback(() => {
     if (pendingUpdate.current) return;
     pendingUpdate.current = true;
@@ -43,96 +42,61 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
     });
   }, []);
 
-  const handlePrice = useCallback((p: WSPrice) => {
-    pricesRef.current[p.exchange] = p;
+  const handlePrice = useCallback((exchange: string, sym: string, price: number, bid: number, ask: number, ts: number) => {
+    pricesRef.current[exchange] = { exchange, symbol: sym, price, bid, ask, ts };
     scheduleBatchUpdate();
   }, [scheduleBatchUpdate]);
 
   useEffect(() => {
     if (!enabled || !symbol) return;
-
-    const tickerExchanges = exchanges.filter(e => !FUNDING_EXCHANGES.has(e));
-    const fundingExchanges = exchanges.filter(e => FUNDING_EXCHANGES.has(e));
     let aborted = false;
+
+    // Try domain first, fallback to IP
+    fetch(`${AGGREGATOR_URL}/health`, { signal: AbortSignal.timeout(3000) })
+      .then(r => { if (r.ok) baseUrl.current = AGGREGATOR_URL; })
+      .catch(() => { baseUrl.current = AGGREGATOR_FALLBACK; });
 
     const poll = () => {
       if (aborted) return;
       const now = Date.now();
-      const promises: Promise<void>[] = [];
 
-      if (tickerExchanges.length > 0) {
-        promises.push(
-          fetch('/api/tickers')
-            .then(r => r.ok ? r.json() : null)
-            .then(json => {
-              if (aborted) return;
-              const tickers: any[] = json?.data || json || [];
-              const found = new Set<string>();
-              for (const t of tickers) {
-                if (t.symbol === symbol && exchanges.includes(t.exchange) && t.lastPrice > 0) {
-                  handlePrice({
-                    exchange: t.exchange, symbol, price: t.lastPrice,
-                    bid: t.lastPrice, ask: t.lastPrice, ts: t.fetchedAt || now,
-                  });
-                  found.add(t.exchange);
-                }
-              }
-              // Only update connected state if it actually changed
-              setConnected(prev => {
-                let changed = false;
-                for (const e of tickerExchanges) {
-                  if (prev[e] !== found.has(e)) { changed = true; break; }
-                }
-                if (!changed) return prev; // same reference = no re-render
-                const next = { ...prev };
-                for (const e of tickerExchanges) next[e] = found.has(e);
-                return next;
-              });
-            })
-            .catch(() => {})
-        );
-      }
+      fetch(`${baseUrl.current}/prices?symbol=${symbol}`, { signal: AbortSignal.timeout(5000) })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (aborted || !data?.data?.[symbol]) return;
+          const exPrices = data.data[symbol];
+          const found = new Set<string>();
 
-      if (fundingExchanges.length > 0) {
-        promises.push(
-          fetch('/api/funding')
-            .then(r => r.ok ? r.json() : null)
-            .then(json => {
-              if (aborted) return;
-              const data: any[] = json?.data || json || [];
-              const found = new Set<string>();
-              for (const f of data) {
-                if (f.symbol === symbol && fundingExchanges.includes(f.exchange) && f.markPrice > 0) {
-                  handlePrice({
-                    exchange: f.exchange, symbol, price: f.markPrice,
-                    bid: f.markPrice, ask: f.markPrice, ts: now,
-                  });
-                  found.add(f.exchange);
-                }
-              }
-              setConnected(prev => {
-                let changed = false;
-                for (const e of fundingExchanges) {
-                  if (prev[e] !== found.has(e)) { changed = true; break; }
-                }
-                if (!changed) return prev;
-                const next = { ...prev };
-                for (const e of fundingExchanges) next[e] = found.has(e);
-                return next;
-              });
-            })
-            .catch(() => {})
-        );
-      }
+          for (const [ex, info] of Object.entries(exPrices) as [string, any][]) {
+            if (!exchanges.includes(ex)) continue;
+            if (info.price > 0) {
+              handlePrice(ex, symbol, info.price, info.bid || info.price, info.ask || info.price, info.ts || now);
+              found.add(ex);
+            }
+          }
 
-      Promise.allSettled(promises);
+          // Update connected state only if changed
+          setConnected(prev => {
+            let changed = false;
+            for (const e of exchanges) {
+              if (prev[e] !== found.has(e)) { changed = true; break; }
+            }
+            if (!changed) return prev;
+            const next: Record<string, boolean> = {};
+            for (const e of exchanges) next[e] = found.has(e);
+            return next;
+          });
+        })
+        .catch(() => {
+          // If aggregator fails, fallback to direct API
+          if (baseUrl.current === AGGREGATOR_URL) baseUrl.current = AGGREGATOR_FALLBACK;
+        });
     };
 
-    // First poll immediately, then every 3s
     poll();
     const pollTimer = setInterval(poll, POLL_INTERVAL);
 
-    // Snapshot prices for chart history (only non-stale prices)
+    // Snapshot for chart history
     historyRef.current = [];
     setHistory([]);
     const historyTimer = setInterval(() => {
@@ -158,7 +122,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       aborted = true;
       pricesRef.current = {};
       pendingUpdate.current = false;
-      cancelAnimationFrame(rafId.current); // prevent state update on unmounted component
+      cancelAnimationFrame(rafId.current);
       clearInterval(pollTimer);
       clearInterval(historyTimer);
     };
