@@ -16,7 +16,8 @@ type PriceMap = Record<string, WSPrice>;
 export type PriceSnapshot = { t: number; prices: Record<string, number> };
 
 const MAX_HISTORY = 2000;
-const POLL_INTERVAL = 2_000; // 2s — proxied through Vercel to avoid mixed content
+const AGGREGATOR_URL = 'https://prices.info-hub.io'; // Direct HTTPS to VPS via Cloudflare
+const POLL_INTERVAL = 2_000;
 const SNAPSHOT_INTERVAL = 3_000;
 const STALE_MS = 20_000;
 
@@ -53,7 +54,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       if (aborted) return;
       const now = Date.now();
 
-      fetch(`/api/prices?symbol=${symbol}`, { signal: AbortSignal.timeout(5000) })
+      fetch(`${AGGREGATOR_URL}/prices?symbol=${symbol}`, { signal: AbortSignal.timeout(5000) })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (aborted || !data?.data?.[symbol]) return;
