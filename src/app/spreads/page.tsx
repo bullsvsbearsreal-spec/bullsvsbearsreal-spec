@@ -900,6 +900,13 @@ export default function SpreadsPage() {
                     className={'px-2.5 py-1 text-[10px] font-bold transition-all border-l border-white/[0.06] ' + (viewMode === 'pct' ? 'bg-hub-yellow/20 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]')}>%</button>
                 </div>
               )}
+              {/* Auto-hint to switch to % when lines overlap in $ view */}
+              {viewMode === 'price' && stats && stats.pct < 0.5 && exs.length >= 2 && (
+                <button onClick={() => setViewMode('pct')}
+                  className="px-2 py-1 rounded-lg text-[9px] text-amber-400/70 hover:text-amber-400 hover:bg-amber-400/5 transition animate-pulse">
+                  Lines overlapping? Try %
+                </button>
+              )}
               {/* Outlier filter toggle */}
               {exs.length > 2 && (
                 <button onClick={() => setHideOutliers(h => !h)}
@@ -944,12 +951,19 @@ export default function SpreadsPage() {
                 <YAxis domain={viewMode === 'pct' ? ['auto', 'auto'] : yDomain} tick={{ fill: '#4b5563', fontSize: 10, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => viewMode === 'pct' ? (v >= 0 ? '+' : '') + v.toFixed(3) + '%' : '$' + fp(v)} width={viewMode === 'pct' ? 68 : 72} allowDataOverflow />
                 <RTooltip content={<SpreadTooltip exList={exs} colorFn={ec} />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeDasharray: '4 4' }} />
-                {exs.map((e, i) => (
-                  <Line key={e} type="monotone" dataKey={viewMode === 'pct' ? e + '_dev' : e} stroke={ec(e, i)} strokeWidth={2.5} dot={false}
-                    activeDot={{ r: 4, fill: ec(e, i), stroke: '#0f0f14', strokeWidth: 2 }} connectNulls
-                    style={{ filter: `drop-shadow(0 0 6px ${ec(e, i)}40)` }}
-                    label={false} />
-                ))}
+                {exs.map((e, i) => {
+                  // Alternate dash patterns so overlapping lines are distinguishable
+                  const dashes = ['', '8 3', '4 4', '12 4 4 4', '2 2', '6 6'];
+                  const widths = [2.5, 2.5, 2, 2, 1.5, 1.5];
+                  return (
+                    <Line key={e} type="monotone" dataKey={viewMode === 'pct' ? e + '_dev' : e} stroke={ec(e, i)}
+                      strokeWidth={widths[i % widths.length]} dot={false}
+                      strokeDasharray={i === 0 ? undefined : dashes[i % dashes.length] || undefined}
+                      activeDot={{ r: 4, fill: ec(e, i), stroke: '#0f0f14', strokeWidth: 2 }} connectNulls
+                      style={{ filter: `drop-shadow(0 0 6px ${ec(e, i)}40)` }}
+                      label={false} />
+                  );
+                })}
                 {/* Spread (A - B) line in % mode */}
                 {viewMode === 'pct' && exs.length >= 2 && (
                   <Line type="monotone" dataKey="_spreadAB" stroke="#9ca3af" strokeWidth={1} dot={false}
