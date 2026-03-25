@@ -173,11 +173,16 @@ export default function SpreadsPage() {
   const { prices: wsPrices, connected: wsConnected, history: wsHistory } = useMultiExchangeWS(sym, sel, wsEnabled);
   const wsCount = Object.values(wsConnected).filter(Boolean).length;
 
-  // Compute live spread from WS prices
+  // Compute live spread from WS prices (with outlier filtering)
   const wsSpread = useMemo(() => {
     const wsPriceValues = Object.values(wsPrices).filter(p => p.price > 0);
     if (wsPriceValues.length < 2) return null;
-    const sorted = [...wsPriceValues].sort((a, b) => b.price - a.price);
+    // Filter outliers: exclude prices >3% from median
+    const prices = wsPriceValues.map(p => p.price).sort((a, b) => a - b);
+    const median = prices[Math.floor(prices.length / 2)];
+    const sane = wsPriceValues.filter(p => Math.abs(p.price - median) / median < 0.03);
+    if (sane.length < 2) return null;
+    const sorted = [...sane].sort((a, b) => b.price - a.price);
     const spread = sorted[0].price - sorted[sorted.length - 1].price;
     const pct = (spread / sorted[sorted.length - 1].price) * 100;
     return { spread, pct, high: sorted[0], low: sorted[sorted.length - 1], prices: sorted };
@@ -376,10 +381,25 @@ export default function SpreadsPage() {
           if (p && p > 0) { pt[e] = p; prices.push(p); }
         }
         if (prices.length < 1) continue;
-        const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
-        for (const e of wsExs) if (pt[e]) pt[e + '_dev'] = ((pt[e] as number) - avg) / avg * 100;
-        pt._spread = prices.length >= 2 ? Math.max(...prices) - Math.min(...prices) : 0;
-        pt._spreadPct = prices.length >= 2 ? ((Math.max(...prices) - Math.min(...prices)) / Math.min(...prices)) * 100 : 0;
+        // Filter outliers in live mode (same as DB mode)
+        const sortedP = [...prices].sort((a, b) => a - b);
+        const median = sortedP[Math.floor(sortedP.length / 2)];
+        const outlierThreshold = hideOutliers ? 0.01 : 0.10;
+        const saneExs: { e: string; p: number }[] = [];
+        for (const e of wsExs) {
+          const p = pt[e] as number;
+          if (typeof p === 'number' && p > 0 && Math.abs(p - median) / median < outlierThreshold) {
+            saneExs.push({ e, p });
+          } else if (typeof p === 'number' && p > 0) {
+            delete pt[e]; // Remove outlier from data point
+          }
+        }
+        const sanePrices = saneExs.map(x => x.p);
+        if (sanePrices.length < 1) continue;
+        const avg = sanePrices.reduce((s, p) => s + p, 0) / sanePrices.length;
+        for (const x of saneExs) pt[x.e + '_dev'] = ((x.p - avg) / avg) * 100;
+        pt._spread = sanePrices.length >= 2 ? Math.max(...sanePrices) - Math.min(...sanePrices) : 0;
+        pt._spreadPct = sanePrices.length >= 2 ? ((Math.max(...sanePrices) - Math.min(...sanePrices)) / Math.min(...sanePrices)) * 100 : 0;
         pt.label = new Date(snap.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         rows.push(pt);
       }
