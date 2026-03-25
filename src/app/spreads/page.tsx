@@ -168,6 +168,7 @@ export default function SpreadsPage() {
   const [alertThreshold, setAlertThreshold] = useState('');
   const [alertActive, setAlertActive] = useState(false);
   const [lastAlert, setLastAlert] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const prevPricesRef = useRef<Record<string, number>>({});
 
   // ── WebSocket real-time prices ──
@@ -198,6 +199,9 @@ export default function SpreadsPage() {
       const msg = `${sym} spread $${wsSpread.spread.toFixed(2)} exceeded $${threshold} threshold! ${wsSpread.high.exchange} $${fp(wsSpread.high.price)} vs ${wsSpread.low.exchange} $${fp(wsSpread.low.price)}`;
       if (msg !== lastAlert) {
         setLastAlert(msg);
+        // In-page toast
+        setToast(msg);
+        setTimeout(() => setToast(null), 8000);
         // Browser notification
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('InfoHub Spread Alert', { body: msg, icon: '/favicon.ico' });
@@ -562,7 +566,21 @@ export default function SpreadsPage() {
   return (
     <div className="min-h-screen bg-background text-white flex flex-col">
       <Header />
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6">
+      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6 relative">
+
+        {/* ── Toast notification ── */}
+        {toast && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top duration-300 max-w-lg">
+            <div className="bg-amber-500/10 border border-amber-500/30 backdrop-blur-lg rounded-xl px-4 py-3 shadow-2xl flex items-start gap-3">
+              <Bell className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-300">Spread Alert</p>
+                <p className="text-xs text-neutral-300 mt-0.5">{toast}</p>
+              </div>
+              <button onClick={() => setToast(null)} className="text-neutral-500 hover:text-white p-1"><X className="w-4 h-4" /></button>
+            </div>
+          </div>
+        )}
 
         {/* ── Title ── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -792,7 +810,15 @@ export default function SpreadsPage() {
                 <>
                   <p className="text-2xl font-bold font-mono text-hub-yellow">{'$'}{fp(stats.cur)}</p>
                   <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
-                  {stats.percentile !== null && <p className="text-[10px] text-neutral-600 mt-0.5">{ordinal(stats.percentile)} percentile</p>}
+                  <div className="flex items-center gap-2 mt-1">
+                    {stats.percentile !== null && <span className="text-[10px] text-neutral-600">{ordinal(stats.percentile)} pctl</span>}
+                    {(() => {
+                      const fresh = Object.values(wsPrices).filter(p => p.price > 0 && (Date.now() - p.ts) < 20000).length;
+                      const total = sel.length;
+                      const pct = total > 0 ? Math.round((fresh / total) * 100) : 0;
+                      return <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${pct >= 80 ? 'bg-green-500/10 text-green-400' : pct >= 50 ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>{pct}% accurate</span>;
+                    })()}
+                  </div>
                 </>
               )}
             </div>
@@ -1192,6 +1218,8 @@ export default function SpreadsPage() {
                                 ); })()}
                                 {i === 0 && <span className="text-[7px] px-1 py-[1px] rounded bg-green-500/10 text-green-400 font-bold">HIGH</span>}
                                 {i === rows.length - 1 && <span className="text-[7px] px-1 py-[1px] rounded bg-red-500/10 text-red-400 font-bold">LOW</span>}
+                                {i === 0 && r.fundingRate !== undefined && r.fundingRate < -0.005 && <span className="text-[7px] px-1 py-[1px] rounded bg-purple-500/10 text-purple-400 font-bold" title="High price + negative funding = short arb opportunity">ARB ↓</span>}
+                                {i === rows.length - 1 && r.fundingRate !== undefined && r.fundingRate > 0.01 && <span className="text-[7px] px-1 py-[1px] rounded bg-purple-500/10 text-purple-400 font-bold" title="Low price + positive funding = long arb opportunity">ARB ↑</span>}
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-right font-mono text-white">{'$'}{fp(r.price)}</td>
