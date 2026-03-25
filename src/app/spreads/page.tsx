@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { ArrowLeftRight, Search, ChevronDown, X, RefreshCw, Calculator, TrendingUp, TrendingDown, Activity, BarChart3, Zap, Info, Wifi, WifiOff, Bell, BellOff } from 'lucide-react';
 import { useMultiExchangeWS } from '@/hooks/useMultiExchangeWS';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getCoinIcon } from '@/lib/coinIcons';
@@ -840,10 +841,14 @@ export default function SpreadsPage() {
               const median = stats.prices.reduce((s, p) => s + (wsPrices[p.e]?.price || p.p), 0) / stats.prices.length;
               const dev = ((livePrice - median) / median) * 100;
               return (
-                <div key={x.e} className="flex items-center gap-2 flex-shrink-0">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: ec(x.e, exs.indexOf(x.e)) }} />
+                <div key={x.e} className={`flex items-center gap-2 flex-shrink-0 ${wsP && (Date.now() - wsP.ts) > 30000 ? 'opacity-40' : ''}`}>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${wsP && (Date.now() - wsP.ts) > 30000 ? 'bg-red-500' : ''}`} style={wsP && (Date.now() - wsP.ts) > 30000 ? {} : { backgroundColor: ec(x.e, exs.indexOf(x.e)) }} />
                   <ExchangeLogo exchange={x.e} size={14} />
-                  <span className="text-[11px] text-neutral-500">{x.e}</span>
+                  {(() => { const ref = getExchangeReferralUrl(x.e); return ref ? (
+                    <a href={ref} target="_blank" rel="noopener noreferrer" className="text-[11px] text-neutral-500 hover:text-hub-yellow transition" title={`Trade on ${x.e} (referral)`}>{x.e}</a>
+                  ) : (
+                    <span className="text-[11px] text-neutral-500">{x.e}</span>
+                  ); })()}
                   <span className={`font-mono text-[12px] font-medium transition-colors duration-300 ${
                     direction === 'up' ? 'text-green-400' : direction === 'down' ? 'text-red-400' : 'text-white'
                   }`}>
@@ -851,8 +856,9 @@ export default function SpreadsPage() {
                   </span>
                   {wsP && (() => {
                     const age = Math.round((Date.now() - wsP.ts) / 1000);
+                    const stale = age > 30;
                     const fresh = age < 10;
-                    return <span className={`text-[8px] font-mono ${fresh ? 'text-green-500' : 'text-neutral-600'}`} title={`Last update ${age}s ago`}>{age}s</span>;
+                    return <span className={`text-[8px] font-mono ${stale ? 'text-red-400' : fresh ? 'text-green-500' : 'text-neutral-600'}`} title={`Last update ${age}s ago${stale ? ' — STALE' : ''}`}>{age}s</span>;
                   })()}
                   <span className={`font-mono text-[10px] ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {dev >= 0 ? '▲' : '▼'}{Math.abs(dev).toFixed(3)}%
@@ -1179,7 +1185,11 @@ export default function SpreadsPage() {
                             <td className="px-4 py-2.5">
                               <span className="flex items-center gap-2">
                                 <ExchangeLogo exchange={r.exchange} size={16} />
-                                <span className="font-medium text-white">{r.exchange}</span>
+                                {(() => { const ref = getExchangeReferralUrl(r.exchange); return ref ? (
+                                  <a href={ref} target="_blank" rel="noopener noreferrer" className="font-medium text-white hover:text-hub-yellow transition">{r.exchange}</a>
+                                ) : (
+                                  <span className="font-medium text-white">{r.exchange}</span>
+                                ); })()}
                                 {i === 0 && <span className="text-[7px] px-1 py-[1px] rounded bg-green-500/10 text-green-400 font-bold">HIGH</span>}
                                 {i === rows.length - 1 && <span className="text-[7px] px-1 py-[1px] rounded bg-red-500/10 text-red-400 font-bold">LOW</span>}
                               </span>
