@@ -169,9 +169,9 @@ export async function GET(request: NextRequest) {
           } catch (arbErr) { /* arb tracking non-critical */ }
         }
 
-        // Store per-exchange prices as mark_price in funding_snapshots every 5 min
+        // Store per-exchange prices as mark_price in funding_snapshots every cron run
         // This enables 1D/7D/30D chart lines for ALL exchanges (not just those with kline APIs)
-        if (minute % 5 === 0) {
+        {
           const priceEntries: Array<{ symbol: string; exchange: string; rate: number; markPrice: number }> = [];
           for (const sym of topSyms) {
             const symEntries = bySymbol[sym];

@@ -35,6 +35,8 @@ export default function SpreadScannerPage() {
   const [sortKey, setSortKey] = useState<SortKey>('spreadPct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filter, setFilter] = useState('');
+  const [cexOnly, setCexOnly] = useState(false);
+  const CEX_SET = new Set(['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit','BitMEX','Gate.io']);
 
   const fetchData = () => {
     fetch('/api/spreads/current')
@@ -62,13 +64,14 @@ export default function SpreadScannerPage() {
 
   const sorted = useMemo(() => {
     let f = rows;
-    if (filter) f = rows.filter(r => r.symbol.toLowerCase().includes(filter.toLowerCase()));
+    if (filter) f = f.filter(r => r.symbol.toLowerCase().includes(filter.toLowerCase()));
+    if (cexOnly) f = f.filter(r => CEX_SET.has(r.highExchange) && CEX_SET.has(r.lowExchange));
     return [...f].sort((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1;
       if (sortKey === 'symbol') return mul * a.symbol.localeCompare(b.symbol);
       return mul * ((a[sortKey] as number) - (b[sortKey] as number));
     });
-  }, [rows, sortKey, sortDir, filter]);
+  }, [rows, sortKey, sortDir, filter, cexOnly]);
 
   const SortIcon = ({ k }: { k: SortKey }) => (
     <ArrowUpDown className={`w-3 h-3 inline ml-1 ${sortKey === k ? 'text-hub-yellow' : 'text-neutral-600'}`} />
@@ -98,8 +101,8 @@ export default function SpreadScannerPage() {
           </div>
         </div>
 
-        {/* Search filter */}
-        <div className="mb-4">
+        {/* Search + filters */}
+        <div className="mb-4 flex items-center gap-3 flex-wrap">
           <input
             type="text"
             placeholder="Filter by symbol..."
@@ -107,6 +110,11 @@ export default function SpreadScannerPage() {
             onChange={e => setFilter(e.target.value)}
             className="w-full sm:w-64 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30"
           />
+          <button
+            onClick={() => setCexOnly(c => !c)}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition border ${cexOnly ? 'bg-hub-yellow/10 text-hub-yellow border-hub-yellow/30' : 'bg-white/[0.03] text-neutral-500 border-white/[0.08] hover:text-neutral-300'}`}>
+            {cexOnly ? 'CEX Only ✓' : 'CEX Only'}
+          </button>
         </div>
 
         {/* Table */}
