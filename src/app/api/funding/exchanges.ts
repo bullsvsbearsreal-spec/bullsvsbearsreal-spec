@@ -1294,13 +1294,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
           const totalBorrowRate8h = borrowV2Rate8h + borrowV1Rate8h;
 
-          // gTrade "Holding Fee" = Funding + Borrowing combined per side.
-          // SDK convention: positive = cost (paid by trader), negative = earning.
-          // Funding signs: when currentRate < 0, longs earn (fundingRateLong < 0),
-          // shorts pay (fundingRateShort > 0). When > 0, vice versa.
-          // Borrowing is ALWAYS a cost (positive), applied symmetrically to both sides.
-          fundingRateLong = fundingRateLong + totalBorrowRate8h;
-          fundingRateShort = fundingRateShort + totalBorrowRate8h;
+          // Keep funding and borrowing separate — gTrade UI shows them as separate lines.
+          // fundingRateLong/Short = pure directional funding (matches gTrade "Funding Fee")
+          // borrowingRate = symmetric cost both sides pay (matches gTrade "Borrowing Fee")
+          // Previously we combined them, which inflated the displayed funding rate.
 
           // Build symbol — gTrade pairs may have expiry suffixes like "INTC_24_5"
           // Strip anything after first underscore to get base symbol (INTC)
