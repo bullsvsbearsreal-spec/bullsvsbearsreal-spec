@@ -1100,7 +1100,14 @@ export default function SpreadsPage() {
                 <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
                   interval={Math.max(0, Math.floor(data.length / 6))} />
                 <YAxis tick={{ fill: '#4b5563', fontSize: 9, fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => spreadUnit === 'usd' ? '$' + fp(v) : v.toFixed(3) + '%'} width={55} domain={[0, 'auto']} />
+                  tickFormatter={(v: number) => spreadUnit === 'usd' ? '$' + fp(v) : v.toFixed(3) + '%'} width={55}
+                  domain={[0, (() => {
+                    const key = spreadUnit === 'usd' ? '_spread' : '_spreadPct';
+                    const vals = data.map(d => (d[key] as number) || 0).filter(v => v > 0).sort((a, b) => a - b);
+                    if (vals.length < 3) return 'auto';
+                    const p95 = vals[Math.floor(vals.length * 0.95)];
+                    return p95 * 1.2; // 20% padding above 95th percentile
+                  })()]} />
                 <RTooltip content={({ active, payload }: any) => {
                   if (!active || !payload?.length) return null;
                   const pt = payload[0]?.payload;
