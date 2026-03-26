@@ -9,17 +9,18 @@ export interface WSPrice {
   bid: number;
   ask: number;
   ts: number;
+  latency?: number; // ms since last update
 }
 
 type PriceMap = Record<string, WSPrice>;
 
 export type PriceSnapshot = { t: number; prices: Record<string, number> };
 
-const MAX_HISTORY = 2000;
+const MAX_HISTORY = 3000;
 const AGGREGATOR_URL = 'https://prices.info-hub.io'; // Direct HTTPS to VPS via Cloudflare
-const POLL_INTERVAL = 2_000;
-const SNAPSHOT_INTERVAL = 3_000;
-const STALE_MS = 20_000;
+const POLL_INTERVAL = 1_000;   // 1s polling — 2× faster than before
+const SNAPSHOT_INTERVAL = 1_500; // 1.5s snapshots — chart builds faster
+const STALE_MS = 15_000;        // 15s staleness — tighter freshness window
 
 export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled = true) {
   const [prices, setPrices] = useState<PriceMap>({});

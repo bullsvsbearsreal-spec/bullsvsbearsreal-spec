@@ -137,7 +137,7 @@ export default function SpreadsPage() {
     const p = new URLSearchParams(window.location.search);
     return {
       sym: p.get('s') || 'BTC',
-      sel: p.get('ex')?.split(',').filter(e => e && EXCHANGES.includes(e)) || ['Binance','Bybit','OKX','Bitget','Hyperliquid'],
+      sel: p.get('ex')?.split(',').filter(e => e && EXCHANGES.includes(e)) || ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','Hyperliquid','dYdX'],
       tf: (p.get('tf') || 'live') as TfK,
     };
   }, []);
@@ -150,7 +150,7 @@ export default function SpreadsPage() {
   useEffect(() => {
     const p = new URLSearchParams();
     if (sym !== 'BTC') p.set('s', sym);
-    if (sel.join(',') !== 'Binance,Bybit,OKX,Bitget,MEXC') p.set('ex', sel.join(','));
+    if (sel.join(',') !== 'Binance,Bybit,OKX,Bitget,MEXC,Kraken,Hyperliquid,dYdX') p.set('ex', sel.join(','));
     if (tf !== '1d') p.set('tf', tf);
     const qs = p.toString();
     const url = qs ? window.location.pathname + '?' + qs : window.location.pathname;
@@ -378,8 +378,8 @@ export default function SpreadsPage() {
         setOI(oData.filter((o: any) => o.symbol === sym));
       });
     };
-    const delay = setTimeout(load, 3000); // defer to let chart load first
-    const iv = setInterval(load, 30000);
+    const delay = setTimeout(load, 1000); // 1s defer — chart loads fast enough now
+    const iv = setInterval(load, 15000);  // 15s refresh — 2× faster than before
     return () => { c = true; clearTimeout(delay); clearInterval(iv); };
   }, [sym]);
 
@@ -742,7 +742,7 @@ export default function SpreadsPage() {
               {showEx && (
                 <div className="absolute top-full mt-1 left-0 z-50 w-52 max-h-72 overflow-y-auto rounded-xl bg-[#141418] border border-white/[0.08] shadow-2xl">
                   <div className="p-2 border-b border-white/[0.06] sticky top-0 bg-[#141418] z-10">
-                    <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold px-1 mb-1">Select exchanges ({sel.length}/8)</p>
+                    <p className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold px-1 mb-1">Select exchanges ({sel.length}/{EXCHANGES.length})</p>
                   </div>
                   <div className="py-1">
                     <p className="px-3 py-1 text-[8px] text-neutral-600 uppercase tracking-wider">CEX ({CEX_EXCHANGES.length})</p>
@@ -785,7 +785,7 @@ export default function SpreadsPage() {
 
         {/* ── Stats Cards ── */}
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-hub-yellow" />
@@ -853,6 +853,29 @@ export default function SpreadsPage() {
               <p className="text-2xl font-bold font-mono text-white">{'$'}{stats.lo ? fp(stats.lo.p) : '—'}</p>
               <p className="text-[11px] text-red-400 mt-1">{stats.lo?.e}</p>
             </div>
+            {/* Best Bid/Ask card — shows tightest bid-ask from WS data */}
+            {tf === 'live' && (() => {
+              const bidAsks = Object.values(wsPrices)
+                .filter(p => p.bid > 0 && p.ask > 0 && p.ask > p.bid && (Date.now() - p.ts) < 15000)
+                .map(p => ({ e: p.exchange, bid: p.bid, ask: p.ask, spread: p.ask - p.bid, bps: ((p.ask - p.bid) / p.bid) * 10000 }))
+                .sort((a, b) => a.bps - b.bps);
+              const best = bidAsks[0];
+              const worst = bidAsks[bidAsks.length - 1];
+              if (!best) return null;
+              return (
+                <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs text-neutral-500">Tightest B/A</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono text-cyan-400">{best.bps.toFixed(1)} bps</p>
+                  <p className="text-[11px] text-neutral-400 mt-1">{best.e}</p>
+                  {worst && bidAsks.length > 1 && (
+                    <p className="text-[10px] text-neutral-600 mt-0.5">Widest: {worst.bps.toFixed(1)} bps ({worst.e})</p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -885,10 +908,15 @@ export default function SpreadsPage() {
                   }`}>
                     {'$'}{fp(livePrice)}
                   </span>
+                  {wsP && wsP.bid > 0 && wsP.ask > 0 && wsP.ask !== wsP.bid && (
+                    <span className="text-[8px] font-mono text-neutral-600" title={`Bid: $${fp(wsP.bid)} / Ask: $${fp(wsP.ask)}`}>
+                      {((wsP.ask - wsP.bid) / wsP.bid * 10000).toFixed(1)}bp
+                    </span>
+                  )}
                   {wsP && (() => {
                     const age = Math.round((Date.now() - wsP.ts) / 1000);
-                    const stale = age > 30;
-                    const fresh = age < 10;
+                    const stale = age > 15;
+                    const fresh = age < 5;
                     return <span className={`text-[8px] font-mono ${stale ? 'text-red-400' : fresh ? 'text-green-500' : 'text-neutral-600'}`} title={`Last update ${age}s ago${stale ? ' — STALE' : ''}`}>{age}s</span>;
                   })()}
                   <span className={`font-mono text-[10px] ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -918,7 +946,7 @@ export default function SpreadsPage() {
                 <h2 className="text-sm font-semibold">{sym} Perp Price by Exchange</h2>
                 <p className="text-[11px] text-neutral-500">
                   {tf === 'live'
-                    ? `Live prices · ${wsHistory.length} snapshots · updates every 2s`
+                    ? `Live prices · ${wsHistory.length} snapshots · updates every 1s`
                     : `${data.length} data points · ${tf === '1d' ? '1h' : '4h'} resolution · ${exs.length} venues`}
                 </p>
               </div>
@@ -1019,7 +1047,7 @@ export default function SpreadsPage() {
                 <>
                   <p className="text-sm">Loading live prices...</p>
                   <p className="text-[10px] text-neutral-500 mt-1">
-                    {wsCount > 0 ? `${wsCount} exchanges reporting. Chart builds every 3 seconds.` : 'Fetching prices from exchanges...'}
+                    {wsCount > 0 ? `${wsCount} exchanges reporting. Chart builds every 1.5 seconds.` : 'Fetching prices from exchanges...'}
                   </p>
                   {wsHistory.length > 0 && <p className="text-[10px] text-neutral-600 mt-1">{wsHistory.length} snapshots collected, need 2+ to render</p>}
                 </>
@@ -1171,9 +1199,11 @@ export default function SpreadsPage() {
                     <tr className="text-[10px] text-neutral-500 uppercase tracking-wider border-b border-white/[0.06]">
                       <th className="px-4 py-2 text-left">Exchange</th>
                       <th className="px-3 py-2 text-right">Price</th>
+                      <th className="px-3 py-2 text-right">Bid/Ask</th>
                       <th className="px-3 py-2 text-right">vs Median</th>
                       <th className="px-3 py-2 text-right">24h Change</th>
-                      <th className="px-3 py-2 text-right">Funding Rate</th>
+                      <th className="px-3 py-2 text-right">Funding (8h)</th>
+                      <th className="px-3 py-2 text-right">Funding (Ann.)</th>
                       <th className="px-3 py-2 text-right">Open Interest</th>
                       <th className="px-3 py-2 text-right">Volume 24h</th>
                     </tr>
@@ -1224,6 +1254,16 @@ export default function SpreadsPage() {
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-right font-mono text-white">{'$'}{fp(r.price)}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-neutral-400">
+                              {(() => {
+                                const ws = wsPrices[r.exchange];
+                                if (ws && ws.bid > 0 && ws.ask > 0 && ws.ask > ws.bid) {
+                                  const bps = ((ws.ask - ws.bid) / ws.bid * 10000).toFixed(1);
+                                  return <span title={`Bid: $${fp(ws.bid)} / Ask: $${fp(ws.ask)}`}>{bps} bp</span>;
+                                }
+                                return '—';
+                              })()}
+                            </td>
                             <td className={'px-3 py-2.5 text-right font-mono ' + (dev >= 0 ? 'text-green-400' : 'text-red-400')}>
                               {dev >= 0 ? '+' : ''}{dev.toFixed(3)}%
                             </td>
@@ -1232,6 +1272,9 @@ export default function SpreadsPage() {
                             </td>
                             <td className={'px-3 py-2.5 text-right font-mono ' + (r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400') : 'text-neutral-600')}>
                               {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100).toFixed(4) + '%' : '—'}
+                            </td>
+                            <td className={'px-3 py-2.5 text-right font-mono text-[10px] ' + (r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400/70' : 'text-red-400/70') : 'text-neutral-600')}>
+                              {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100 * 3 * 365).toFixed(1) + '%' : '—'}
                             </td>
                             <td className="px-3 py-2.5 text-right font-mono text-neutral-300">
                               {r.oiValue ? '$' + (r.oiValue >= 1e9 ? (r.oiValue/1e9).toFixed(2)+'B' : r.oiValue >= 1e6 ? (r.oiValue/1e6).toFixed(1)+'M' : (r.oiValue/1e3).toFixed(0)+'K') : '—'}
@@ -1304,7 +1347,7 @@ export default function SpreadsPage() {
             <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
             <span>
               <span className="text-hub-yellow font-medium">Chart</span>: historical candle close prices from exchange APIs (5-min cache).{' '}
-              <span className="text-hub-yellow font-medium">Table</span>: live prices, funding rates, OI, and volume from /api/tickers, /api/funding, /api/openinterest (30s refresh).{' '}
+              <span className="text-hub-yellow font-medium">Table</span>: live prices, bid/ask, funding rates, OI, and volume from /api/tickers, /api/funding, /api/openinterest (15s refresh).{' '}
               <span className="text-hub-yellow font-medium">Spread</span> = highest minus lowest price across selected exchanges.{' '}
               Chart data from: {exs.length > 0 ? exs.join(', ') : 'no exchanges selected'}.
             </span>
