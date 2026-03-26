@@ -1229,20 +1229,35 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             // Step 3: Convert per-second rate to 8h percentage
             fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
-            // gTrade's skew model (from @gainsnetwork/sdk getLongShortAprMultiplier):
-            // The minority side pays an amplified rate proportional to the OI imbalance.
-            // SDK allows up to 100x but we cap at 10x since extreme ratios produce absurd
-            // holding fees that don't reflect practical trading costs.
-            fundingRateLong = fundingRate8h;
-            fundingRateShort = -fundingRate8h;
-            const APR_MULT_CAP = 10;
-            if (params.aprMultiplierEnabled && oiLongToken > 0 && oiShortToken > 0) {
-              if (fundingRate8h < 0) {
-                fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, APR_MULT_CAP);
-                fundingRateShort = -fundingRate8h;
-              } else if (fundingRate8h > 0) {
-                fundingRateLong = fundingRate8h;
-                fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, APR_MULT_CAP);
+            // gTrade holding fee per side = directional funding + borrowing.
+            // When one side has 0 OI, that side can't receive funding, so the other
+            // side only pays borrowing (the funding component has no counterparty).
+            // With APR multiplier: minority side pays amplified rate, majority pays base.
+            if (oiLongToken <= 0 && oiShortToken <= 0) {
+              // No OI at all — no funding
+              fundingRateLong = 0;
+              fundingRateShort = 0;
+            } else if (oiShortToken <= 0) {
+              // No shorts: longs can't pay funding (no counterparty), only borrowing applies
+              fundingRateLong = 0; // will add borrowing below
+              fundingRateShort = -fundingRate8h; // shorts would receive funding if they existed
+            } else if (oiLongToken <= 0) {
+              // No longs: shorts can't pay funding, only borrowing
+              fundingRateLong = fundingRate8h;
+              fundingRateShort = 0;
+            } else {
+              // Both sides have OI — apply APR multiplier for skew
+              fundingRateLong = fundingRate8h;
+              fundingRateShort = -fundingRate8h;
+              const APR_MULT_CAP = 10;
+              if (params.aprMultiplierEnabled) {
+                if (fundingRate8h < 0) {
+                  fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, APR_MULT_CAP);
+                  fundingRateShort = -fundingRate8h;
+                } else if (fundingRate8h > 0) {
+                  fundingRateLong = fundingRate8h;
+                  fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, APR_MULT_CAP);
+                }
               }
             }
           }
@@ -1307,21 +1322,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol = baseFrom + (pair.to || 'USD');
           }
 
-          // gTrade "Holding Fee" = combined funding + borrowing per side.
-          // fundingRate8h is the directional funding component (positive = longs pay shorts).
-          // fundingRateLong / fundingRateShort are the TOTAL holding fees per side
-          // (positive = cost for that side, negative = earning).
-          // Negate per-side rates: SDK uses positive=cost convention,
-          // but display/gTrade UI uses positive=earning (green) convention.
-          // Only show separate L/S when there's meaningful directional funding —
-          // if both sides are equal (pure borrowing), L/S display is redundant and confusing.
-          const hasDirectionalFunding = Math.abs(fundingRate8h) > 0.00001;
+          // gTrade "Holding Fee" = funding + borrowing per side.
+          // L/S rates include borrowing to match gTrade's UI display.
+          // Positive = cost (you pay), consistent with gTrade convention.
+          const holdingFeeLong = fundingRateLong + totalBorrowRate8h;
+          const holdingFeeShort = fundingRateShort + totalBorrowRate8h;
+          const hasDirectionalFunding = Math.abs(fundingRate8h) > 0.00001 || totalBorrowRate8h > 0.00001;
           results.push({
             symbol,
             exchange: 'gTrade',
             fundingRate: fundingRate8h,
-            fundingRateLong: hasDirectionalFunding ? -fundingRateLong : undefined,
-            fundingRateShort: hasDirectionalFunding ? -fundingRateShort : undefined,
+            fundingRateLong: hasDirectionalFunding ? holdingFeeLong : undefined,
+            fundingRateShort: hasDirectionalFunding ? holdingFeeShort : undefined,
             borrowingRate: totalBorrowRate8h > 0.00001 ? totalBorrowRate8h : undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: tokenPrice,
