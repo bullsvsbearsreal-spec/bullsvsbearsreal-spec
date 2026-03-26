@@ -19,6 +19,7 @@ interface DominanceData {
   marketCapChange24h: number | null;
   updatedAt: number;
   dominanceBreakdown: Record<string, number>;
+  source?: string;
 }
 
 /* ─── Donut Chart (SVG) ──────────────────────────────────────────── */
@@ -202,7 +203,7 @@ export default function DominancePage() {
                   <p className="text-lg font-bold text-white font-mono">
                     {data.totalVolume24h != null ? `$${formatCompact(data.totalVolume24h)}` : '-'}
                   </p>
-                  <span className="text-neutral-700 text-[8px]">Global spot+deriv · CoinGecko</span>
+                  <span className="text-neutral-700 text-[8px]">Global spot+deriv · {data.source === 'cmc' ? 'CoinMarketCap' : 'CoinGecko'}</span>
                 </div>
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
@@ -303,7 +304,7 @@ export default function DominancePage() {
           {/* Info footer */}
           <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
             <p className="text-neutral-500 text-xs leading-relaxed">
-              Market Dominance tracks each cryptocurrency&apos;s market cap share relative to the total crypto market. Rising BTC dominance typically indicates a &quot;flight to safety&quot; within crypto. Falling BTC dominance often signals an altseason where altcoins outperform. Data sourced from CoinGecko. Updates every 5 minutes.
+              Market Dominance tracks each cryptocurrency&apos;s market cap share relative to the total crypto market. Rising BTC dominance typically indicates a &quot;flight to safety&quot; within crypto. Falling BTC dominance often signals an altseason where altcoins outperform. Data sourced from {data?.source === 'cmc' ? 'CoinMarketCap' : 'CoinGecko'}. Updates every 5 minutes.
             </p>
           </div>
         </div>

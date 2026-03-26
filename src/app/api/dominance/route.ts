@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { getCache, setCache, isDBConfigured } from '@/lib/db';
+import { fetchWithTimeout } from '../_shared/fetch';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -37,12 +38,12 @@ interface DominanceResult {
 async function fetchFromCMC(): Promise<DominanceResult | null> {
   if (!CMC_API_KEY) return null;
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       'https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest?convert=USD',
       {
         headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY, Accept: 'application/json' },
-        signal: AbortSignal.timeout(10000),
       },
+      10000,
     );
     if (!res.ok) return null;
     const json = await res.json();
@@ -72,10 +73,11 @@ async function fetchFromCMC(): Promise<DominanceResult | null> {
 /** Fallback: CoinGecko free API (provides richer breakdown) */
 async function fetchFromCoinGecko(): Promise<DominanceResult | null> {
   try {
-    const res = await fetch('https://api.coingecko.com/api/v3/global', {
-      headers: { Accept: 'application/json' },
-      next: { revalidate: 300 },
-    });
+    const res = await fetchWithTimeout(
+      'https://api.coingecko.com/api/v3/global',
+      { headers: { Accept: 'application/json' } },
+      10000,
+    );
     if (!res.ok) return null;
     const json = await res.json();
     const d = json.data;
