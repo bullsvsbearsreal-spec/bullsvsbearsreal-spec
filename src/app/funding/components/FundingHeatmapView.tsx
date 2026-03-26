@@ -893,7 +893,7 @@ export default function FundingHeatmapView({
                         const isCross = isRowHovered && hoveredCol === ex;
                         const rawLs = longShortMap?.get(`${symbol}|${ex}`);
                         const ls = rawLs ? { long: rawLs.long * pMult, short: rawLs.short * pMult } : undefined;
-                        const hasLS = showLongShort && ls !== undefined && rate !== undefined;
+                        const hasLS = ls !== undefined && rate !== undefined; // Always show L/S when available
                         // Cell background always uses base funding rate (comparable across all exchanges)
                         const colorRate = rate;
                         const colors = rateToColors(colorRate, gridClamp, cellColors);
