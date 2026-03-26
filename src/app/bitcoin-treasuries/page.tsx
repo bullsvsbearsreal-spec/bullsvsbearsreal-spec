@@ -375,7 +375,7 @@ export default function BitcoinTreasuriesPage() {
                   ${data.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
-                  Source: {data.priceSource === 'yahoo' ? 'Yahoo Finance' : 'Fallback'}
+                  Source: {data.priceSource === 'yahoo' ? 'Yahoo Finance' : data.priceSource === 'coingecko' ? 'CoinGecko' : 'Fallback'}
                 </p>
               </div>
 

@@ -55,7 +55,7 @@ const HOLDERS: HolderEntry[] = [
 
 /* --- BTC price fetch ------------------------------------------------------ */
 
-async function fetchBTCPrice(): Promise<number | null> {
+async function fetchBTCPriceYahoo(): Promise<number | null> {
   try {
     const res = await fetchWithTimeout(
       'https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?range=1d&interval=1d',
@@ -71,6 +71,32 @@ async function fetchBTCPrice(): Promise<number | null> {
   }
 }
 
+async function fetchBTCPriceCoinGecko(): Promise<number | null> {
+  try {
+    const res = await fetchWithTimeout(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; InfoHub/1.0)' } },
+      6000,
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const price = json?.bitcoin?.usd;
+    return typeof price === 'number' ? price : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBTCPrice(): Promise<{ price: number; source: 'yahoo' | 'coingecko' | 'fallback' }> {
+  const yahoo = await fetchBTCPriceYahoo();
+  if (yahoo) return { price: yahoo, source: 'yahoo' };
+
+  const gecko = await fetchBTCPriceCoinGecko();
+  if (gecko) return { price: gecko, source: 'coingecko' };
+
+  return { price: 68_000, source: 'fallback' }; // conservative fallback
+}
+
 /* --- Main handler --------------------------------------------------------- */
 
 export async function GET() {
@@ -82,8 +108,7 @@ export async function GET() {
     });
   }
 
-  const price = await fetchBTCPrice();
-  const btcPrice = price ?? 97_000; // fallback price if Yahoo fails
+  const { price: btcPrice, source: priceSource } = await fetchBTCPrice();
 
   const holders = [...HOLDERS]
     .sort((a, b) => b.btcHoldings - a.btcHoldings)
@@ -97,7 +122,7 @@ export async function GET() {
 
   const body = {
     price: btcPrice,
-    priceSource: price !== null ? 'yahoo' : 'fallback',
+    priceSource,
     totalBTC,
     totalValueUsd,
     holders,
