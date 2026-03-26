@@ -638,7 +638,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         .map(({ symbol, totalOi }) => ({
           symbol,
           exchange: 'GMX',
-          openInterest: totalOi, // Already in USD
+          openInterest: 0, // GMX OI is USD-denominated only, no coin count available
           openInterestValue: totalOi,
         }));
     },
