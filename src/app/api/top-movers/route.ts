@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json(cachedData, { headers: cacheHeaders });
   } catch (error) {
-    console.error('Top movers CMC error:', error);
+    console.warn('Top movers CMC failed, trying CoinGecko fallback:', error instanceof Error ? error.message : error);
 
     // Fallback: try CoinGecko if CMC fails
     try {

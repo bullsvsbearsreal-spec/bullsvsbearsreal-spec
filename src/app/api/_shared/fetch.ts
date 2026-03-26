@@ -70,7 +70,10 @@ export function maybeProxyUrl(url: string): string {
 
 // Top 500 coins by market cap — cached for 30 minutes (CMC)
 let top500Cache: { symbols: Set<string>; timestamp: number } | null = null;
+let top500FailedAt = 0; // Cooldown to avoid spamming CMC on repeated failures
+let top500FailLogged = false; // Only log the warning once per failure window
 const TOP500_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const TOP500_FAIL_COOLDOWN = 5 * 60 * 1000; // 5 min cooldown after failure
 
 const CMC_API_KEY = process.env.CMC_API_KEY || '';
 
@@ -80,6 +83,11 @@ export async function getTop500Symbols(): Promise<Set<string>> {
     return top500Cache.symbols;
   }
 
+  // Failure cooldown — don't hammer CMC if it just failed
+  if (top500FailedAt && Date.now() - top500FailedAt < TOP500_FAIL_COOLDOWN) {
+    return top500Cache?.symbols ?? new Set<string>();
+  }
+
   // L2: DB cache (may have been populated by top-movers route)
   if (isDBConfigured()) {
     try {
@@ -87,6 +95,7 @@ export async function getTop500Symbols(): Promise<Set<string>> {
       if (dbSymbols && dbSymbols.length > 100) {
         const symbols = new Set<string>(dbSymbols);
         top500Cache = { symbols, timestamp: Date.now() };
+        top500FailLogged = false;
         return symbols;
       }
     } catch { /* proceed to CMC */ }
@@ -107,6 +116,8 @@ export async function getTop500Symbols(): Promise<Set<string>> {
     const symbols = new Set<string>(symbolArray);
     if (symbols.size > 100) {
       top500Cache = { symbols, timestamp: Date.now() };
+      top500FailedAt = 0;
+      top500FailLogged = false;
       // Store in DB for other routes to reuse
       if (isDBConfigured()) {
         setCache('top500-symbols', symbolArray, 1800).catch(() => {});
@@ -114,9 +125,11 @@ export async function getTop500Symbols(): Promise<Set<string>> {
     }
     return symbols;
   } catch (err) {
-    // On failure, return cached data if available, otherwise allow all
-    if (!top500Cache) {
-      console.warn('[CMC] Top500 fetch failed with no cache — all symbols will pass filter:', err instanceof Error ? err.message : err);
+    top500FailedAt = Date.now();
+    // Only log once per failure window to avoid spamming logs
+    if (!top500FailLogged) {
+      top500FailLogged = true;
+      console.warn('[CMC] Top500 fetch failed — using fallback (suppressing further warnings for 5 min):', err instanceof Error ? err.message : err);
     }
     return top500Cache?.symbols ?? new Set<string>();
   }

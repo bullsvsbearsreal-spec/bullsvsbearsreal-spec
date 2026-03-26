@@ -73,9 +73,35 @@ export async function GET(request: Request) {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
   } catch (err) {
-    console.error('Coin search error:', err);
+    console.warn('Coin search CMC failed, trying CoinGecko:', err instanceof Error ? err.message : err);
+
+    // Fallback: CoinGecko search API
+    try {
+      const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`,
+        { signal: AbortSignal.timeout(8000), headers: { Accept: 'application/json' } },
+      );
+      if (cgRes.ok) {
+        const cgData = await cgRes.json();
+        const coins = (cgData.coins || []).slice(0, 10).map((c: any) => ({
+          id: c.id || c.slug || '',
+          name: c.name || '',
+          api_symbol: (c.symbol || '').toLowerCase(),
+          symbol: (c.symbol || '').toUpperCase(),
+          market_cap_rank: c.market_cap_rank || null,
+          thumb: c.thumb || '',
+          large: c.large || '',
+        }));
+        return Response.json({ results: coins }, {
+          headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+        });
+      }
+    } catch (cgErr) {
+      console.error('Coin search CoinGecko fallback also failed:', cgErr instanceof Error ? cgErr.message : cgErr);
+    }
+
     return Response.json(
-      { results: [], error: err instanceof Error ? err.message : 'Search failed' },
+      { results: [], error: 'Search temporarily unavailable' },
       { status: 502 },
     );
   }
