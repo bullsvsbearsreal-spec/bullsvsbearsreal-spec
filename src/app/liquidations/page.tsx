@@ -59,7 +59,7 @@ const DEX_EXCHANGES = new Set(['gTrade', 'dYdX', 'Hyperliquid', 'GMX', 'Drift', 
 const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'HTX', 'gTrade', 'dYdX', 'Bitfinex'];
 
 // ─── SWR Fetcher ────────────────────────────────────
-const fetcher = (url: string) => fetch(url).then(r => r.json());
+const fetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null);
 
 // Convert WS Liquidation to FeedItem
 function liqToFeedItem(liq: Liquidation): FeedItem {

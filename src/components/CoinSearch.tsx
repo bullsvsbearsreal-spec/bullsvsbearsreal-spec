@@ -51,6 +51,7 @@ export default function CoinSearch({
         setIsLoading(true);
         try {
           const res = await fetch(`/api/coin-search?q=${encodeURIComponent(query)}`);
+          if (!res.ok) throw new Error(`Search API ${res.status}`);
           const json = await res.json();
           setResults(json.results || []);
         } catch {

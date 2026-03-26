@@ -12,7 +12,7 @@ export default function StatsOverview() {
   const { data: marketStats } = useMarketStats();
   const { data: moversRes } = useApi({
     key: 'topMovers',
-    fetcher: () => fetch('/api/top-movers').then(r => r.json()).catch(() => ({ gainers: [], losers: [] })),
+    fetcher: () => fetch('/api/top-movers').then(r => r.ok ? r.json() : { gainers: [], losers: [] }).catch(() => ({ gainers: [], losers: [] })),
     refreshInterval: 60_000,
   });
 

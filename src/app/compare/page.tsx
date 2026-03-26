@@ -43,9 +43,9 @@ export default function ComparePage() {
     try {
       setLoading(true);
       const [tickerRes, fundingRes, oiRes] = await Promise.all([
-        fetch('/api/tickers').then(r => r.json()),
-        fetch('/api/funding?assetClass=crypto').then(r => r.json()),
-        fetch('/api/openinterest').then(r => r.json()),
+        fetch('/api/tickers').then(r => r.ok ? r.json() : { data: [] }),
+        fetch('/api/funding?assetClass=crypto').then(r => r.ok ? r.json() : { data: [] }),
+        fetch('/api/openinterest').then(r => r.ok ? r.json() : { data: [] }),
       ]);
       setTickers(Array.isArray(tickerRes) ? tickerRes : Array.isArray(tickerRes?.data) ? tickerRes.data : []);
       setFunding(Array.isArray(fundingRes?.data) ? fundingRes.data : []);

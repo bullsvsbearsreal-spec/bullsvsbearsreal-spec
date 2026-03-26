@@ -85,7 +85,7 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
     setCache('tickers', result);
     return result;
   } catch (error) {
-    console.error('Error fetching tickers:', error);
+    console.warn('[Tickers]', error instanceof Error ? error.message : error);
     // Fallback to direct API calls (will only work for CORS-enabled APIs like dYdX)
     const results = await Promise.allSettled([
       dydxAPI.getTickers().then(data => data.map(t => ({ ...t, exchange: t.exchange || 'dYdX' }))),
@@ -162,7 +162,7 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
     setCache('openInterest', allOI);
     return allOI;
   } catch (error) {
-    console.error('Error fetching open interest:', error);
+    console.warn('[OI]', error instanceof Error ? error.message : error);
     // Fallback to direct API calls (will only work for CORS-enabled APIs like dYdX)
     const results = await Promise.allSettled([
       dydxAPI.getOpenInterest(),
@@ -306,14 +306,15 @@ export async function fetchLongShortRatio(symbol: string = 'BTCUSDT'): Promise<{
   try {
     const response = await fetch(`/api/longshort?symbol=${symbol}`);
     if (!response.ok) {
-      throw new Error('Failed to fetch long/short ratio');
+      throw new Error(`Long/short API ${response.status}`);
     }
     const result = await response.json();
     setCache(`longShort_${symbol}`, result);
     return result;
   } catch (error) {
-    console.error('Error fetching long/short ratio:', error);
-    return { longRatio: 50, shortRatio: 50 }; // Default fallback
+    // Expected intermittent failure (cold start, rate limit) — fallback is safe
+    console.warn('[L/S]', symbol, error instanceof Error ? error.message : error);
+    return { longRatio: 50, shortRatio: 50 };
   }
 }
 

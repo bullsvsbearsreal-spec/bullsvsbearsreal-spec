@@ -41,11 +41,12 @@ export default function TopMovers() {
     const fetchData = async () => {
       try {
         const res = await fetch('/api/top-movers');
+        if (!res.ok) throw new Error(`Top movers API ${res.status}`);
         const data = await res.json();
         setGainers(data.gainers || []);
         setLosers(data.losers || []);
       } catch (error) {
-        console.error('Failed to fetch top movers:', error);
+        console.warn('Failed to fetch top movers:', error instanceof Error ? error.message : error);
       } finally {
         setLoading(false);
       }
