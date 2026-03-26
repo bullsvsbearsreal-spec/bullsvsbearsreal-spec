@@ -80,23 +80,23 @@ export default function WatchlistPage() {
 
   /* ---- data fetchers (useCallback-wrapped to prevent infinite loop) */
   const tickerFetcher = useCallback(
-    () => fetch('/api/tickers').then((r) => r.json()).then((j: any) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
+    () => fetch('/api/tickers').then((r) => r.ok ? r.json() : { data: [] }).then((j: any) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
     [],
   );
 
   const fundingFetcher = useCallback(
     () =>
       fetch('/api/funding')
-        .then((r) => r.json())
-        .then((j: { data: FundingEntry[] }) => j.data),
+        .then((r) => r.ok ? r.json() : { data: [] })
+        .then((j: { data: FundingEntry[] }) => j?.data ?? []),
     [],
   );
 
   const oiFetcher = useCallback(
     () =>
       fetch('/api/openinterest')
-        .then((r) => r.json())
-        .then((j: { data: OIEntry[] }) => j.data),
+        .then((r) => r.ok ? r.json() : { data: [] })
+        .then((j: { data: OIEntry[] }) => j?.data ?? []),
     [],
   );
 
