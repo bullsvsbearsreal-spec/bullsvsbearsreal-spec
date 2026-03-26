@@ -61,7 +61,7 @@ export default function FundingPage() {
   const [marginFilter, setMarginFilter] = useState<MarginFilter>('linear');
   const [assetClass, setAssetClass] = useState<AssetClass>('all');
   const [fundingPeriod, setFundingPeriod] = useState<FundingPeriod>('8h');
-  const [showAllSymbols, setShowAllSymbols] = useState(false);
+  const [showAllSymbols, setShowAllSymbols] = useState(true);
   const exchangeSelectorRef = useRef<HTMLDivElement>(null);
   const { prefs: fundingPrefs, updatePrefs: updateFundingPrefs } = useFundingPrefs();
 
