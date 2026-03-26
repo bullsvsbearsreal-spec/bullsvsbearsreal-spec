@@ -18,6 +18,11 @@ interface ExchangeSort {
   direction: 'desc' | 'asc';
 }
 
+interface SymbolSort {
+  symbol: string;
+  direction: 'asc' | 'desc';
+}
+
 type HeatmapMode = 'grid' | 'treemap';
 
 interface AccumulatedFunding { d1: number; d7: number; d30: number }
@@ -182,6 +187,7 @@ export default function FundingHeatmapView({
   const settingsRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [exchangeSort, setExchangeSort] = useState<ExchangeSort | null>(null);
+  const [symbolSort, setSymbolSort] = useState<SymbolSort | null>(null);
   const [coinSearch, setCoinSearch] = useState('');
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [hoveredCol, setHoveredCol] = useState<string | null>(null);
@@ -243,7 +249,19 @@ export default function FundingHeatmapView({
       if (prev.direction === 'desc') return { exchange, direction: 'asc' };
       return null;
     });
+    setSymbolSort(null); // clear symbol sort when sorting by exchange
     setCurrentPage(1);
+  }, []);
+
+  const handleSymbolClick = useCallback((symbol: string, e: React.MouseEvent) => {
+    e.preventDefault(); // prevent Link navigation
+    e.stopPropagation();
+    setSymbolSort(prev => {
+      if (!prev || prev.symbol !== symbol) return { symbol, direction: 'asc' }; // lowest first by default
+      if (prev.direction === 'asc') return { symbol, direction: 'desc' };
+      return null;
+    });
+    setExchangeSort(null); // clear exchange sort when sorting by symbol
   }, []);
 
   // ── Coin search filter ──
@@ -326,6 +344,22 @@ export default function FundingHeatmapView({
     });
     return [...withData, ...withoutData];
   }, [filteredSymbols, exchangeSort, heatmapData, avgRates, intervalMap, fundingPeriod]);
+
+  // Sort exchanges (columns) when a symbol row is clicked
+  const sortedExchanges = useMemo(() => {
+    if (!symbolSort) return visibleExchanges;
+    const { symbol, direction } = symbolSort;
+    const rates = heatmapData.get(symbol);
+    if (!rates) return visibleExchanges;
+    const withData = visibleExchanges.filter(ex => rates.get(ex) !== undefined);
+    const withoutData = visibleExchanges.filter(ex => rates.get(ex) === undefined);
+    withData.sort((a, b) => {
+      const rateA = rates.get(a)! * periodMultiplier(intervalMap?.get(`${symbol}|${a}`), fundingPeriod);
+      const rateB = rates.get(b)! * periodMultiplier(intervalMap?.get(`${symbol}|${b}`), fundingPeriod);
+      return direction === 'asc' ? rateA - rateB : rateB - rateA;
+    });
+    return [...withData, ...withoutData];
+  }, [visibleExchanges, symbolSort, heatmapData, intervalMap, fundingPeriod]);
 
   const totalPages = Math.max(1, Math.ceil(sortedSymbols.length / ROWS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -797,7 +831,7 @@ export default function FundingHeatmapView({
                       ) : null}
                     </button>
                   </th>
-                  {visibleExchanges.map(ex => {
+                  {sortedExchanges.map(ex => {
                     const isActive = exchangeSort?.exchange === ex;
                     const fee = EXCHANGE_FEES[ex];
                     return (
@@ -856,12 +890,28 @@ export default function FundingHeatmapView({
                           transition: 'background 60ms',
                         }}
                       >
-                        <Link href={`/funding/${symbol}`} className="flex items-center gap-2.5 py-2 no-underline group/link">
+                        <div className="flex items-center gap-2.5 py-2">
                           <TokenIconSimple symbol={symbol} size={24} />
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-[14px] font-bold text-white leading-tight truncate group-hover/link:text-hub-yellow transition-colors">
-                              {symbol}
-                            </span>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={(e) => handleSymbolClick(symbol, e)}
+                                className={`text-[14px] font-bold leading-tight truncate transition-colors cursor-pointer hover:text-hub-yellow ${
+                                  symbolSort?.symbol === symbol ? 'text-hub-yellow' : 'text-white'
+                                }`}
+                                title={`Sort exchanges by ${symbol} funding rate`}
+                              >
+                                {symbol}
+                              </button>
+                              {symbolSort?.symbol === symbol && (
+                                symbolSort.direction === 'asc'
+                                  ? <ChevronUp className="w-3 h-3 text-hub-yellow flex-shrink-0" />
+                                  : <ChevronDown className="w-3 h-3 text-hub-yellow flex-shrink-0" />
+                              )}
+                              <Link href={`/funding/${symbol}`} className="text-neutral-600 hover:text-hub-yellow transition-colors flex-shrink-0 ml-auto" title={`${symbol} funding details`}>
+                                <ExternalLink className="w-3 h-3" />
+                              </Link>
+                            </div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[11px] font-mono tabular-nums leading-tight font-semibold" style={{ color: avgColors.text }}>
                                 {avg !== undefined ? formatRateAdaptive(avg) : '—'}
@@ -879,10 +929,10 @@ export default function FundingHeatmapView({
                               );
                             })()}
                           </div>
-                        </Link>
+                        </div>
                       </td>
 
-                      {visibleExchanges.map(ex => {
+                      {sortedExchanges.map(ex => {
                         const rawRate = rates?.get(ex);
                         const interval = intervalMap?.get(`${symbol}|${ex}`);
                         const pMult = periodMultiplier(interval, fundingPeriod);
