@@ -25,7 +25,9 @@ export async function logExchangeError(
   context?: { route?: string; endpoint?: string; status?: number },
 ) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`[Exchange:${exchange}] ${message}`, context);
+  // Use warn instead of error — exchange failures are expected (CloudFlare blocks, timeouts)
+  // and handled by circuit breakers. Sentry still captures at warning level.
+  console.warn(`[Exchange:${exchange}] ${message}`);
 
   const sentry = await getSentry();
   if (sentry) {

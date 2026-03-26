@@ -31,18 +31,21 @@ export interface FetchAllResult<T> {
 const CIRCUIT_THRESHOLD = 5;
 const CIRCUIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const CIRCUIT_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+const CIRCUIT_MAX_COOLDOWN_MS = 30 * 60 * 1000; // 30 min max backoff for persistent failures
 
 interface CircuitState {
   failures: number;
   firstFailureAt: number;
   openedAt: number | null; // null = circuit closed
+  consecutiveOpens: number; // tracks how many times circuit has re-opened without success
+  lastLoggedAt: number; // avoid spamming the same warning
 }
 
 const circuitStates = new Map<string, CircuitState>();
 
 function getCircuit(name: string): CircuitState {
   if (!circuitStates.has(name)) {
-    circuitStates.set(name, { failures: 0, firstFailureAt: 0, openedAt: null });
+    circuitStates.set(name, { failures: 0, firstFailureAt: 0, openedAt: null, consecutiveOpens: 0, lastLoggedAt: 0 });
   }
   return circuitStates.get(name)!;
 }
@@ -50,8 +53,9 @@ function getCircuit(name: string): CircuitState {
 function isCircuitOpen(name: string): boolean {
   const state = getCircuit(name);
   if (!state.openedAt) return false;
-  // Auto-reset after cooldown
-  if (Date.now() - state.openedAt >= CIRCUIT_COOLDOWN_MS) {
+  // Exponential backoff: 2min, 4min, 8min, 16min, 30min (capped)
+  const cooldown = Math.min(CIRCUIT_COOLDOWN_MS * Math.pow(2, state.consecutiveOpens), CIRCUIT_MAX_COOLDOWN_MS);
+  if (Date.now() - state.openedAt >= cooldown) {
     state.openedAt = null;
     state.failures = 0;
     state.firstFailureAt = 0;
@@ -64,6 +68,7 @@ function recordSuccess(name: string) {
   const state = getCircuit(name);
   state.failures = 0;
   state.openedAt = null;
+  state.consecutiveOpens = 0;
 }
 
 function recordFailure(name: string) {
@@ -80,8 +85,14 @@ function recordFailure(name: string) {
   state.failures++;
 
   if (state.failures >= CIRCUIT_THRESHOLD) {
+    state.consecutiveOpens++;
     state.openedAt = now;
-    console.warn(`[CircuitBreaker] ${name}: OPEN — ${state.failures} failures in ${Math.round((now - state.firstFailureAt) / 1000)}s, skipping for ${CIRCUIT_COOLDOWN_MS / 1000}s`);
+    const cooldown = Math.min(CIRCUIT_COOLDOWN_MS * Math.pow(2, state.consecutiveOpens - 1), CIRCUIT_MAX_COOLDOWN_MS);
+    // Only log once every 10 minutes to avoid spam for persistently blocked exchanges
+    if (now - state.lastLoggedAt > 10 * 60 * 1000) {
+      state.lastLoggedAt = now;
+      console.warn(`[CircuitBreaker] ${name}: OPEN (×${state.consecutiveOpens}) — skipping for ${Math.round(cooldown / 1000)}s`);
+    }
   }
 }
 
