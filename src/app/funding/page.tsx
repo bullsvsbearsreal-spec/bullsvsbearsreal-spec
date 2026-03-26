@@ -25,7 +25,7 @@ const FundingSpreadComparison = dynamic(() => import('./components/FundingSpread
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 const CorrelationMatrix = dynamic(() => import('./components/CorrelationMatrix'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
-import ShowMoreToggle from '@/components/ShowMoreToggle';
+// ShowMoreToggle removed — always show all symbols
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { saveFundingSnapshot, getAccumulatedFundingBatch, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
@@ -61,7 +61,7 @@ export default function FundingPage() {
   const [marginFilter, setMarginFilter] = useState<MarginFilter>('linear');
   const [assetClass, setAssetClass] = useState<AssetClass>('all');
   const [fundingPeriod, setFundingPeriod] = useState<FundingPeriod>('8h');
-  const [showAllSymbols, setShowAllSymbols] = useState(true);
+  // showAllSymbols removed — always show all
   const exchangeSelectorRef = useRef<HTMLDivElement>(null);
   const { prefs: fundingPrefs, updatePrefs: updateFundingPrefs } = useFundingPrefs();
 
@@ -309,14 +309,7 @@ export default function FundingPage() {
     });
   }, [fundingRates, categoryFilter, categorySymbols, activePrioritySymbols, symbolAvgRates, symbolAbsAvgRates]);
 
-  const TOP_N = 25;
-  const displaySymbols = useMemo(() => {
-    if (showAllSymbols || symbols.length <= TOP_N) return symbols;
-    return symbols.slice(0, TOP_N);
-  }, [symbols, showAllSymbols]);
-
-  // Reset to collapsed when switching asset class or category
-  useEffect(() => { setShowAllSymbols(false); }, [assetClass, categoryFilter]);
+  const displaySymbols = symbols; // Always show all symbols
 
   const { heatmapData, intervalMap, longShortMap, predictedMap } = useMemo(() => {
     const hm = new Map<string, Map<string, number>>();
@@ -774,15 +767,7 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'heatmap' && (
-              <>
-                <FundingHeatmapView symbols={displaySymbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} predictedMap={predictedMap} accumulatedMap={accumulatedMap} fundingPeriod={fundingPeriod} fundingPrefs={fundingPrefs} onUpdatePrefs={updateFundingPrefs} />
-                <ShowMoreToggle
-                  expanded={showAllSymbols}
-                  onToggle={() => setShowAllSymbols(prev => !prev)}
-                  totalCount={symbols.length}
-                  visibleCount={TOP_N}
-                />
-              </>
+              <FundingHeatmapView symbols={displaySymbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} predictedMap={predictedMap} accumulatedMap={accumulatedMap} fundingPeriod={fundingPeriod} fundingPrefs={fundingPrefs} onUpdatePrefs={updateFundingPrefs} />
             )}
             {viewMode === 'arbitrage' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} indexPrices={indexPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} historicalSpreads={arbHistory} />
