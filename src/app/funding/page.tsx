@@ -69,12 +69,20 @@ export default function FundingPage() {
   // (initializing from localStorage during SSR causes hydration mismatches)
   useEffect(() => {
     try {
-      // Migrate from old exchange key to fundingPrefs.hiddenExchanges
+      // Restore saved exchange selection from localStorage.
+      // If the saved set is too small (< 5), treat it as stale and reset to all exchanges.
+      // This prevents first-time users from seeing a nearly-empty table due to a
+      // previously saved narrow selection (e.g. only 2/33 exchanges).
       const savedExchanges = localStorage.getItem('infohub:funding:exchanges');
       if (savedExchanges) {
         const arr = JSON.parse(savedExchanges) as string[];
         const valid = arr.filter(e => (ALL_EXCHANGES as readonly string[]).includes(e));
-        if (valid.length > 0) setSelectedExchanges(new Set(valid));
+        if (valid.length >= 5) {
+          setSelectedExchanges(new Set(valid));
+        } else {
+          // Stale/narrow selection — clear it and use the default (all exchanges)
+          localStorage.removeItem('infohub:funding:exchanges');
+        }
       }
     } catch {}
     try {

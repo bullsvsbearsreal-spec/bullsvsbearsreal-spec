@@ -74,7 +74,7 @@ export default function ComparisonCharts({ oiChartData, fundingForSymbol, select
         <div style={{ overflowY: 'auto', maxHeight: 600 }}>
         <ResponsiveContainer width="100%" height={Math.max(300, oiChartData.length * 32)}>
           <BarChart data={oiChartData} layout="vertical" margin={{ left: 90, right: 80 }}>
-            <XAxis type="number" scale="log" domain={['auto', 'auto']} tickFormatter={formatUSD} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
+            <XAxis type="number" tickFormatter={formatUSD} tick={{ fill: '#525252', fontSize: 10 }} axisLine={{ stroke: '#262626' }} tickLine={false} />
             <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={85} />
             <Tooltip content={<OITooltip />} />
             <Bar dataKey="totalOI" radius={[0, 4, 4, 0]} barSize={18} label={{ position: 'right', formatter: formatUSD, fill: '#737373', fontSize: 10 }}>

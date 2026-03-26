@@ -196,7 +196,10 @@ export async function GET(request: NextRequest) {
     // Removed 2026-03-18 to fix the overcount. See ingest-liquidations for the sole insertion path.
 
     // Prune on full runs only (every 10 min)
-    const pruned = isFullRun ? await pruneOldData(1) : { funding: 0, oi: 0, liquidations: 0 };
+    // Keep 2 days so the 24h OI delta query (which looks back ~24h10m) has headroom.
+    // Previously keepDays=1 deleted snapshots right at the 24h boundary, causing
+    // the oi_24h CTE in getOIDeltas to always find zero rows → "No data".
+    const pruned = isFullRun ? await pruneOldData(2) : { funding: 0, oi: 0, liquidations: 0 };
 
     // Record DB size for admin monitoring (~1 in 6 runs, roughly hourly)
     if (Math.random() < 0.17) {
