@@ -9,6 +9,9 @@ interface ExchangeInfo {
   count: number;
 }
 
+// Exchanges known to be CloudFlare-blocked on Vercel datacenter IPs
+const KNOWN_BLOCKED = ['BitMEX', 'Gate.io', 'edgeX'];
+
 export default function ExchangeStatusWidget() {
   const [exchanges, setExchanges] = useState<ExchangeInfo[] | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
@@ -83,6 +86,16 @@ export default function ExchangeStatusWidget() {
             </div>
           );
         })}
+      </div>
+      {/* Blocked exchanges */}
+      <div className="mt-1.5 space-y-1">
+        {KNOWN_BLOCKED.filter(name => !exchanges.some(e => e.exchange === name)).map(name => (
+          <div key={name} className="flex items-center gap-2 text-xs py-0.5 opacity-50">
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-neutral-600" />
+            <span className="text-neutral-500 flex-1 truncate">{name}</span>
+            <span className="font-mono text-neutral-600 text-[10px]">blocked</span>
+          </div>
+        ))}
       </div>
       <div className="flex items-center justify-between mt-2">
         <span className="text-[10px] text-neutral-600">{exchanges.length} exchanges active</span>

@@ -17,6 +17,12 @@ const nextConfig = {
       { protocol: 'https', hostname: 'coin-images.coingecko.com' },
     ],
   },
+  async redirects() {
+    return [
+      { source: '/sentiment', destination: '/fear-greed', permanent: true },
+      { source: '/whale-alerts', destination: '/whale-alert', permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

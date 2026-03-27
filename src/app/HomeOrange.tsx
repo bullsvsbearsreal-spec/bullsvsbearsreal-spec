@@ -80,7 +80,9 @@ export default function HomeOrange() {
 
   const cexExchanges = ALL_EXCHANGES.filter(e => !isExchangeDex(e));
   const dexExchanges = ALL_EXCHANGES.filter(e => isExchangeDex(e));
-  // Before health data loads, assume all exchanges are active (they usually are)
+  // Exchanges known to be CloudFlare-blocked on Vercel datacenter IPs
+  const KNOWN_BLOCKED = new Set(['BitMEX', 'Gate.io', 'edgeX']);
+  // Before health data loads, assume all exchanges are active (except known-blocked)
   const healthLoaded = exchangeHealth.length > 0;
   const isExchangeActive = (name: string) => {
     const h = exchangeHealth.find(x => x.name === name);
@@ -88,10 +90,10 @@ export default function HomeOrange() {
   };
   const activeCex = healthLoaded
     ? cexExchanges.filter(isExchangeActive).length
-    : cexExchanges.length;
+    : cexExchanges.filter(e => !KNOWN_BLOCKED.has(e)).length;
   const activeDex = healthLoaded
     ? dexExchanges.filter(isExchangeActive).length
-    : dexExchanges.length;
+    : dexExchanges.filter(e => !KNOWN_BLOCKED.has(e)).length;
 
   const quickLinks = [
     { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
@@ -408,7 +410,8 @@ export default function HomeOrange() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
                   {cexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
-                    const isActive = health?.status === 'ok' || !healthLoaded;
+                    const isBlocked = KNOWN_BLOCKED.has(exchange);
+                    const isActive = !isBlocked && (health?.status === 'ok' || !healthLoaded);
                     const isEmpty = healthLoaded && health?.status === 'empty';
                     const isCircuitOpen = healthLoaded && health?.status === 'circuit-open';
                     return (
@@ -425,7 +428,7 @@ export default function HomeOrange() {
                                   ? 'bg-red-500/5 border border-red-500/15'
                                   : 'bg-white/[0.02] border border-white/[0.04]'
                         }`}
-                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
+                        title={isBlocked ? `${exchange}: CloudFlare blocked on datacenter IPs` : health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
                           isActive ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : isCircuitOpen ? 'bg-orange-500 animate-pulse' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
@@ -437,6 +440,9 @@ export default function HomeOrange() {
                         )}
                         {isCircuitOpen && (
                           <span className="text-[9px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
+                        )}
+                        {isBlocked && (
+                          <span className="text-[9px] text-neutral-600 font-mono ml-auto flex-shrink-0">CF</span>
                         )}
                       </div>
                     );
@@ -460,7 +466,8 @@ export default function HomeOrange() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
                   {dexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
-                    const isActive = health?.status === 'ok' || !healthLoaded;
+                    const isBlocked = KNOWN_BLOCKED.has(exchange);
+                    const isActive = !isBlocked && (health?.status === 'ok' || !healthLoaded);
                     const isEmpty = healthLoaded && health?.status === 'empty';
                     const isCircuitOpen = healthLoaded && health?.status === 'circuit-open';
                     return (
@@ -477,7 +484,7 @@ export default function HomeOrange() {
                                   ? 'bg-red-500/5 border border-red-500/15'
                                   : 'bg-white/[0.02] border border-white/[0.04]'
                         }`}
-                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
+                        title={isBlocked ? `${exchange}: CloudFlare blocked on datacenter IPs` : health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
                           isActive ? 'bg-purple-500 shadow-[0_0_4px_rgba(168,85,247,0.4)]' : isCircuitOpen ? 'bg-orange-500 animate-pulse' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
@@ -489,6 +496,9 @@ export default function HomeOrange() {
                         )}
                         {isCircuitOpen && (
                           <span className="text-[9px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
+                        )}
+                        {isBlocked && (
+                          <span className="text-[9px] text-neutral-600 font-mono ml-auto flex-shrink-0">CF</span>
                         )}
                       </div>
                     );

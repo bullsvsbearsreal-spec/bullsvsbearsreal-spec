@@ -85,8 +85,9 @@ export default function PredictionMarketsPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />
                 )}
                 <p className="text-neutral-500 text-sm">
-                  Cross-platform arbitrage across {activePlatforms.length} platforms
-                  {meta ? ` \u00b7 ${meta.matchedCount} matched \u00b7 ${totalMarkets} markets` : ''}
+                  {meta
+                    ? `Cross-platform arbitrage across ${activePlatforms.length} platforms · ${meta.matchedCount} matched · ${totalMarkets} markets`
+                    : 'Loading prediction markets...'}
                 </p>
               </div>
             </div>
