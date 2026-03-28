@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Flame } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
+import { useDashboardOptional } from '../DashboardContext';
 
 interface Liq {
   symbol: string;
@@ -24,7 +25,10 @@ function getRektSlang(val: number, isLong: boolean): string | null {
   return isLong ? 'Longs catching strays' : 'Shorts in trouble';
 }
 
-export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
+export default function LiquidationsWidget({ wide, widgetId }: { wide?: boolean; widgetId?: string }) {
+  const ctx = useDashboardOptional();
+  const symbol = (widgetId && ctx) ? ctx.getWidgetSymbol(widgetId) : 'BTC';
+
   const [liqs, setLiqs] = useState<Liq[] | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const prevCount = useRef(0);
@@ -33,15 +37,16 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
 
   useEffect(() => {
     let mounted = true;
+    setLiqs(null);
     const load = async () => {
       try {
-        const res = await fetch('/api/liquidations?symbol=BTC&limit=10');
+        const res = await fetch(`/api/liquidations?symbol=${symbol}&limit=10`);
         if (!res.ok) return;
         const json = await res.json();
         const rawItems = json?.data || [];
-        const symbol = json?.symbol || 'BTC';
+        const responseSymbol = json?.symbol || symbol;
         const items: Liq[] = rawItems.map((d: any) => ({
-          symbol,
+          symbol: responseSymbol,
           side: d.side || 'long',
           quantity: d.size || 0,
           price: d.price || 0,
@@ -64,7 +69,7 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
     load();
     const iv = setInterval(load, 15_000);
     return () => { mounted = false; clearInterval(iv); };
-  }, [wide]);
+  }, [wide, symbol]);
 
   if (liqs === null) return <WidgetSkeleton variant="list" rows={5} />;
 
@@ -75,7 +80,7 @@ export default function LiquidationsWidget({ wide }: { wide?: boolean }) {
           <Flame className="w-4 h-4 text-green-400/60" />
         </div>
         <p className="text-xs text-neutral-500">No recent liquidations</p>
-        <p className="text-[10px] text-neutral-600 mt-0.5">BTC liquidations will show here</p>
+        <p className="text-[10px] text-neutral-600 mt-0.5">{symbol} liquidations will show here</p>
       </div>
     );
   }

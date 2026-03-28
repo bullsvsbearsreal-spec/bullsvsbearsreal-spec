@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
+import { useDashboardOptional } from '../DashboardContext';
 
 interface LSData {
   longRatio: number;
@@ -11,15 +12,19 @@ interface LSData {
   fallback?: boolean;
 }
 
-export default function LongShortWidget() {
+export default function LongShortWidget({ widgetId }: { wide?: boolean; widgetId?: string }) {
+  const ctx = useDashboardOptional();
+  const symbol = (widgetId && ctx) ? ctx.getWidgetSymbol(widgetId) : 'BTC';
+
   const [data, setData] = useState<LSData | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
+    setData(null);
     const load = async () => {
       try {
-        const res = await fetch('/api/longshort?symbol=BTCUSDT&source=global&limit=1');
+        const res = await fetch(`/api/longshort?symbol=${symbol}USDT&source=global&limit=1`);
         if (!res.ok) return;
         const json = await res.json();
         if (!mounted) return;
@@ -30,12 +35,12 @@ export default function LongShortWidget() {
           fallback: json.fallback,
         });
         setUpdatedAt(Date.now());
-      } catch (err) { console.error('[LongShort] fetch error:', err); }
+      } catch (err) { console.error(`[LongShort] fetch error for ${symbol}:`, err); }
     };
     load();
     const iv = setInterval(load, 60_000);
     return () => { mounted = false; clearInterval(iv); };
-  }, []);
+  }, [symbol]);
 
   if (!data) return <WidgetSkeleton variant="bar" />;
 
@@ -47,7 +52,7 @@ export default function LongShortWidget() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-neutral-400">BTC Long/Short</span>
+        <span className="text-xs text-neutral-400">{symbol} Long/Short</span>
         <div className="flex items-center gap-1.5">
           {data.fallback && (
             <span className="text-[9px] px-1 py-px rounded bg-yellow-500/15 text-yellow-500/80" title="Estimated ratio — live data unavailable">

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { GripVertical, X, Maximize2, Minimize2, ChevronUp, ChevronDown } from 'lucide-react';
+import { GripVertical, X, Maximize2, Minimize2, ChevronUp, ChevronDown, Lock, Unlock } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 interface WidgetWrapperProps {
   title: string;
   icon?: string;
   widgetType?: string;
+  widgetId?: string;
   index: number;
   colSpan: number;
   accentColor?: string;
@@ -16,7 +17,10 @@ interface WidgetWrapperProps {
   onPointerDown: (e: React.PointerEvent) => void;
   onRemove: () => void;
   onToggleSize?: () => void;
+  onToggleLock?: () => void;
   canExpand?: boolean;
+  isLocked?: boolean;
+  lockedSymbol?: string;
   isLoading?: boolean;
   children: React.ReactNode;
 }
@@ -34,12 +38,14 @@ const LIVE_TYPES = new Set([
   'btc-price', 'fear-greed', 'top-movers', 'liquidations', 'market-overview',
   'long-short', 'watchlist', 'portfolio', 'alerts', 'funding-heatmap', 'oi-chart',
   'arbitrage', 'exchange-status', 'fear-greed-chart', 'altseason', 'stablecoin-flows',
+  'cvd', 'slippage', 'latency',
 ]);
 
 export default function WidgetWrapper({
   title,
   icon,
   widgetType,
+  widgetId,
   index,
   colSpan,
   accentColor,
@@ -48,7 +54,10 @@ export default function WidgetWrapper({
   onPointerDown,
   onRemove,
   onToggleSize,
+  onToggleLock,
   canExpand,
+  isLocked,
+  lockedSymbol,
   isLoading,
   children,
 }: WidgetWrapperProps) {
@@ -96,6 +105,23 @@ export default function WidgetWrapper({
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Locked symbol badge */}
+          {isLocked && lockedSymbol && (
+            <span className="px-1.5 py-0.5 text-[9px] font-mono bg-hub-yellow/10 text-hub-yellow rounded">
+              {lockedSymbol}
+            </span>
+          )}
+          {/* Lock/unlock toggle */}
+          {onToggleLock && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleLock(); }}
+              className="p-1 text-neutral-600 hover:text-neutral-400 transition-colors hidden sm:block"
+              title={isLocked ? 'Unlock — follow global symbol' : 'Lock — keep current symbol'}
+              aria-pressed={isLocked}
+            >
+              {isLocked ? <Lock className="w-3 h-3 text-hub-yellow" /> : <Unlock className="w-3 h-3" />}
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
             className="p-1 text-neutral-600 hover:text-neutral-400 transition-colors md:hidden"

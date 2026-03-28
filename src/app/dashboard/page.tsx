@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { DashboardProvider } from '@/components/dashboard/DashboardContext';
 import { type WidgetLayout, DEFAULT_LAYOUT } from '@/components/dashboard/types';
 
 const LAYOUT_STORAGE_KEY = 'infohub-dashboard-layout';
@@ -130,11 +131,13 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="text-white">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-          <DashboardHeader userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />
+        <DashboardProvider>
+          <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
+            <DashboardHeader userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />
 
-          <DashboardGrid layout={layout} onLayoutChange={handleLayoutChange} />
-        </div>
+            <DashboardGrid layout={layout} onLayoutChange={handleLayoutChange} />
+          </div>
+        </DashboardProvider>
       </main>
       <ReferralBanner />
       <Footer />

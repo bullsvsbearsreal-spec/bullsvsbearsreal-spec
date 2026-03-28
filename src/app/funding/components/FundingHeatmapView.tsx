@@ -753,7 +753,7 @@ export default function FundingHeatmapView({
                     <Link href={`/funding/${sym}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-hub-yellow hover:bg-hub-yellow/10 transition-colors no-underline">
                       View details <ExternalLink className="w-3 h-3" />
                     </Link>
-                    <button onClick={() => setSelectedTreemapSym(null)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors">
+                    <button onClick={() => setSelectedTreemapSym(null)} aria-label="Close details" className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>

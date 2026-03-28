@@ -5,6 +5,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { getExchangeHexColor } from '@/lib/constants/exchange-colors';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,40 +26,6 @@ interface ChartRow {
 }
 
 type TimeRange = '1h' | '4h' | '1d' | '7d' | '30d';
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const EXCHANGE_COLORS: Record<string, string> = {
-  'Binance': '#EAB308',
-  'Bybit': '#F97316',
-  'OKX': '#FFFFFF',
-  'Bitget': '#22D3EE',
-  'MEXC': '#14B8A6',
-  'Hyperliquid': '#4ADE80',
-  'dYdX': '#A855F7',
-  'Kraken': '#8B5CF6',
-  'BingX': '#3B82F6',
-  'KuCoin': '#22C55E',
-  'HTX': '#60A5FA',
-  'Coinbase': '#2563EB',
-  'Phemex': '#84CC16',
-  'Aster': '#EC4899',
-  'Lighter': '#34D399',
-  'Aevo': '#FB7185',
-  'Deribit': '#60A5FA',
-  'Bitfinex': '#16A34A',
-  'WhiteBIT': '#D1D5DB',
-  'CoinEx': '#2DD4BF',
-  'gTrade': '#14B8A6',
-  'Bitunix': '#F59E0B',
-  'GMX': '#3B82F6',
-  'Drift': '#A78BFA',
-  'Others': '#525252',
-};
-
-const FALLBACK_COLOR = '#6B7280';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -344,8 +311,8 @@ export default function OIHistoryChart({ symbol }: OIHistoryChartProps) {
               type="monotone"
               dataKey={ex}
               stackId="oi"
-              stroke={EXCHANGE_COLORS[ex] || FALLBACK_COLOR}
-              fill={EXCHANGE_COLORS[ex] || FALLBACK_COLOR}
+              stroke={getExchangeHexColor(ex)}
+              fill={getExchangeHexColor(ex)}
               fillOpacity={0.15}
               strokeWidth={1.5}
               dot={false}

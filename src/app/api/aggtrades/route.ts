@@ -91,11 +91,11 @@ export async function GET(request: NextRequest) {
 
     // Compute CVD buckets (1-minute intervals)
     const bucketMs = 60 * 1000;
-    const bucketMap = new Map<number, { buyVol: number; sellVol: number; buyQty: number; sellQty: number }>();
+    const bucketMap = new Map<number, { buyVol: number; sellVol: number; buyQty: number; sellQty: number; priceSum: number; qtySum: number }>();
 
     processed.forEach((t: any) => {
       const key = Math.floor(t.time / bucketMs) * bucketMs;
-      const b = bucketMap.get(key) || { buyVol: 0, sellVol: 0, buyQty: 0, sellQty: 0 };
+      const b = bucketMap.get(key) || { buyVol: 0, sellVol: 0, buyQty: 0, sellQty: 0, priceSum: 0, qtySum: 0 };
       const vol = t.price * t.qty;
       if (t.isBuy) {
         b.buyVol += vol;
@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
         b.sellVol += vol;
         b.sellQty += t.qty;
       }
+      b.priceSum += t.price * t.qty;
+      b.qtySum += t.qty;
       bucketMap.set(key, b);
     });
 
@@ -114,6 +116,7 @@ export async function GET(request: NextRequest) {
       sellVol: number;
       delta: number;
       cvd: number;
+      price: number;
     }> = [];
 
     let cumDelta = 0;
@@ -131,6 +134,7 @@ export async function GET(request: NextRequest) {
         sellVol: b.sellVol,
         delta,
         cvd: cumDelta,
+        price: b.qtySum > 0 ? b.priceSum / b.qtySum : 0,
       });
     });
 

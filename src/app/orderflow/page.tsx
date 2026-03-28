@@ -7,12 +7,13 @@ import ReferralBanner from '@/components/ReferralBanner';
 import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import {
-  RefreshCw, Info, Activity, ArrowDownUp, AlertTriangle, BarChart3, Table2, BookOpen,
+  RefreshCw, Info, Activity, ArrowDownUp, BarChart3, Table2, BookOpen,
 } from 'lucide-react';
 import { useFlash } from '@/hooks/useFlash';
 import MultiDepthChart from './components/MultiDepthChart';
 import ExchangeDepthTable from './components/ExchangeDepthTable';
 import TapeView from './components/TapeView';
+import OrderbookHeatmapCanvas, { type HeatmapColumn } from './components/OrderbookHeatmapCanvas';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -74,12 +75,13 @@ interface OrderbookData {
   source?: string;
 }
 
-type ViewTab = 'depth' | 'comparison' | 'orderbook' | 'tape';
+type ViewTab = 'depth' | 'comparison' | 'orderbook' | 'heatmap' | 'tape';
 
 const VIEW_TABS: { key: ViewTab; label: string; icon: React.ReactNode }[] = [
   { key: 'depth', label: 'Depth Chart', icon: <BarChart3 className="w-3.5 h-3.5" /> },
   { key: 'comparison', label: 'Exchange Comparison', icon: <Table2 className="w-3.5 h-3.5" /> },
   { key: 'orderbook', label: 'Order Book', icon: <BookOpen className="w-3.5 h-3.5" /> },
+  { key: 'heatmap', label: 'Heatmap', icon: <Activity className="w-3.5 h-3.5" /> },
   { key: 'tape', label: 'Tape', icon: <Activity className="w-3.5 h-3.5" /> },
 ];
 
@@ -177,8 +179,52 @@ export default function OrderflowPage() {
       )
     : 0;
 
-  const isLoading = activeTab === 'orderbook' ? obLoading : activeTab === 'tape' ? false : multiLoading;
-  const lastUpdate = activeTab === 'orderbook' || activeTab === 'tape' ? null : multiLastUpdate;
+  // Heatmap — accumulate orderbook snapshots over time
+  const heatmapColumnsRef = useRef<HeatmapColumn[]>([]);
+  const [heatmapColumns, setHeatmapColumns] = useState<HeatmapColumn[]>([]);
+  const heatmapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevHeatmapSymbolRef = useRef(symbol);
+
+  useEffect(() => {
+    if (activeTab === 'heatmap') {
+      // Reset if symbol changed
+      if (prevHeatmapSymbolRef.current !== symbol) {
+        heatmapColumnsRef.current = [];
+        setHeatmapColumns([]);
+        prevHeatmapSymbolRef.current = symbol;
+      }
+
+      const fetchSnapshot = async () => {
+        try {
+          const res = await fetch(`/api/orderbook?symbol=${symbol}&limit=25`);
+          if (!res.ok) return;
+          const json = await res.json();
+          const col: HeatmapColumn = {
+            timestamp: json.timestamp || Date.now(),
+            midPrice: json.midPrice,
+            bids: json.bids.map((b: OrderLevel) => ({ price: b.price, quantity: b.quantity })),
+            asks: json.asks.map((a: OrderLevel) => ({ price: a.price, quantity: a.quantity })),
+            trades: json.trades?.slice(0, 10).map((t: Trade) => ({
+              price: t.price,
+              quantity: t.quantity,
+              side: t.isBuyerMaker ? 'sell' as const : 'buy' as const,
+            })),
+          };
+          // Keep last 120 columns (10 min at 5s intervals)
+          const updated = [...heatmapColumnsRef.current, col].slice(-120);
+          heatmapColumnsRef.current = updated;
+          setHeatmapColumns(updated);
+        } catch {}
+      };
+
+      fetchSnapshot();
+      heatmapIntervalRef.current = setInterval(fetchSnapshot, 5000);
+    }
+    return () => { if (heatmapIntervalRef.current) clearInterval(heatmapIntervalRef.current); };
+  }, [activeTab, symbol]);
+
+  const isLoading = activeTab === 'orderbook' ? obLoading : activeTab === 'tape' || activeTab === 'heatmap' ? false : multiLoading;
+  const lastUpdate = activeTab === 'orderbook' || activeTab === 'tape' || activeTab === 'heatmap' ? null : multiLastUpdate;
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -461,6 +507,34 @@ export default function OrderflowPage() {
               </>
             )}
           </>
+        )}
+
+        {/* ═══ Heatmap Tab ═══ */}
+        {activeTab === 'heatmap' && (
+          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Orderbook Heatmap</h2>
+                <p className="text-xs text-neutral-600 mt-0.5">
+                  Time × Price — intensity shows liquidity depth. {heatmapColumns.length > 0 ? `${heatmapColumns.length} snapshots` : 'Accumulating...'}
+                </p>
+              </div>
+              {heatmapColumns.length < 3 && (
+                <div className="flex items-center gap-2 text-xs text-neutral-500">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-hub-yellow" />
+                  Building heatmap...
+                </div>
+              )}
+            </div>
+            {heatmapColumns.length >= 2 ? (
+              <OrderbookHeatmapCanvas columns={heatmapColumns} height={500} />
+            ) : (
+              <div className="flex items-center justify-center py-20 text-neutral-500 text-sm">
+                <RefreshCw className="w-5 h-5 animate-spin text-hub-yellow mr-3" />
+                Accumulating orderbook snapshots — heatmap will appear after a few seconds...
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'tape' && (

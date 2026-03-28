@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { getExchangeHexColor } from '@/lib/constants/exchange-colors';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -18,21 +19,6 @@ interface ExchangeDepthTableProps {
   venues: VenueData[];
   depthSizes: number[];
 }
-
-/* ─── Constants ──────────────────────────────────────────────────── */
-
-const EXCHANGE_DOT_COLORS: Record<string, string> = {
-  'Binance': '#EAB308',
-  'Bybit': '#F97316',
-  'OKX': '#FFFFFF',
-  'Bitget': '#22D3EE',
-  'Hyperliquid': '#4ADE80',
-  'dYdX': '#A855F7',
-  'Drift': '#A78BFA',
-  'Aster': '#EC4899',
-  'Aevo': '#FB7185',
-  'Lighter': '#34D399',
-};
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
 
@@ -131,7 +117,7 @@ export default function ExchangeDepthTable({ venues, depthSizes }: ExchangeDepth
                 <tr key={v.exchange} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: EXCHANGE_DOT_COLORS[v.exchange] || '#6B7280' }} />
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: getExchangeHexColor(v.exchange) }} />
                       <span className="text-xs font-medium text-white">{v.exchange}</span>
                     </div>
                   </td>

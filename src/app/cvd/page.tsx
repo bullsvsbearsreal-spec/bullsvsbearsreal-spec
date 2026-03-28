@@ -4,21 +4,14 @@ import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { RefreshCw, Info, Activity, TrendingUp, TrendingDown, Hash, BarChart3, ArrowLeftRight } from 'lucide-react';
+import { RefreshCw, Info, Activity, TrendingUp, TrendingDown, Hash, ArrowLeftRight } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 import { useFlash } from '@/hooks/useFlash';
 import { useApi } from '@/hooks/useSWRApi';
 import DataFreshness from '@/components/DataFreshness';
+import CVDChart, { type CVDBucket } from './components/CVDChart';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
-
-interface CVDBucket {
-  time: number;
-  buyVol: number;
-  sellVol: number;
-  delta: number;
-  cvd: number;
-}
 
 interface CVDResponse {
   symbol: string;
@@ -30,74 +23,6 @@ interface CVDResponse {
 }
 
 const SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB', 'ADA', 'AVAX', 'LINK', 'DOT', 'SUI', 'PEPE'];
-
-/* ─── CVD Chart (SVG) ────────────────────────────────────────────── */
-
-function CVDChart({ buckets, width = 800, height = 200 }: { buckets: CVDBucket[]; width?: number; height?: number }) {
-  if (buckets.length < 2) return null;
-
-  const minCVD = Math.min(...buckets.map((b) => b.cvd));
-  const maxCVD = Math.max(...buckets.map((b) => b.cvd));
-  const range = maxCVD - minCVD || 1;
-  const padding = 8;
-
-  const scaleX = (i: number) => padding + (i / (buckets.length - 1)) * (width - padding * 2);
-  const scaleY = (val: number) => padding + (1 - (val - minCVD) / range) * (height - padding * 2);
-
-  // Zero line
-  const zeroY = scaleY(0);
-
-  const points = buckets.map((b, i) => `${scaleX(i)},${scaleY(b.cvd)}`).join(' ');
-
-  // Fill area under curve
-  const firstX = scaleX(0);
-  const lastX = scaleX(buckets.length - 1);
-  const areaPoints = `${firstX},${zeroY} ${points} ${lastX},${zeroY}`;
-
-  const isPositive = buckets[buckets.length - 1].cvd >= 0;
-  const lineColor = isPositive ? '#22c55e' : '#ef4444';
-  const fillColor = isPositive ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
-      {/* Zero line */}
-      {minCVD < 0 && maxCVD > 0 && (
-        <line x1={0} y1={zeroY} x2={width} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="4,4" />
-      )}
-      {/* Area fill */}
-      <polygon points={areaPoints} fill={fillColor} />
-      {/* Line */}
-      <polyline points={points} fill="none" stroke={lineColor} strokeWidth="2" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-/* ─── Volume Bars ────────────────────────────────────────────────── */
-
-function VolumeBars({ buckets, width = 800, height = 80 }: { buckets: CVDBucket[]; width?: number; height?: number }) {
-  if (buckets.length === 0) return null;
-
-  const maxVol = Math.max(...buckets.map((b) => Math.max(b.buyVol, b.sellVol)), 1);
-  const padding = 4;
-  const barW = Math.max(1, (width - padding * 2) / buckets.length - 1);
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
-      {buckets.map((b, i) => {
-        const x = padding + i * ((width - padding * 2) / buckets.length);
-        const buyH = (b.buyVol / maxVol) * (height / 2);
-        const sellH = (b.sellVol / maxVol) * (height / 2);
-        return (
-          <g key={i}>
-            <rect x={x} y={height / 2 - buyH} width={barW} height={buyH} fill="rgba(34,197,94,0.5)" rx={0.5} />
-            <rect x={x} y={height / 2} width={barW} height={sellH} fill="rgba(239,68,68,0.5)" rx={0.5} />
-          </g>
-        );
-      })}
-      <line x1={0} y1={height / 2} x2={width} y2={height / 2} stroke="rgba(255,255,255,0.06)" />
-    </svg>
-  );
-}
 
 /* ─── Component ──────────────────────────────────────────────────── */
 
@@ -263,39 +188,16 @@ export default function CVDPage() {
               </div>
             </div>
 
-            {/* CVD Chart */}
+            {/* CVD Chart + Volume Delta (Lightweight Charts) */}
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-6 h-6 rounded-md bg-hub-yellow/10 flex items-center justify-center">
                   <Activity className="w-3 h-3 text-hub-yellow" />
                 </div>
-                <h2 className="text-sm font-semibold text-white">CVD Line</h2>
+                <h2 className="text-sm font-semibold text-white">CVD Line + Volume Delta</h2>
+                <span className="text-[10px] text-neutral-600 ml-auto">Yellow = CVD · Bottom bars = buy/sell delta</span>
               </div>
-              <div className="h-[200px]">
-                <CVDChart buckets={data.buckets} />
-              </div>
-              <div className="flex justify-between mt-2 text-[10px] text-neutral-600">
-                {data.buckets.length > 0 && (
-                  <>
-                    <span>{new Date(data.buckets[0].time).toLocaleTimeString()}</span>
-                    <span>{new Date(data.buckets[data.buckets.length - 1].time).toLocaleTimeString()}</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Volume Bars */}
-            <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center">
-                  <BarChart3 className="w-3 h-3 text-blue-400" />
-                </div>
-                <h2 className="text-sm font-semibold text-white">Buy/Sell Volume</h2>
-              </div>
-              <p className="text-xs text-neutral-600 mb-3 ml-8">Green = buy aggressor (above), Red = sell aggressor (below)</p>
-              <div className="h-[100px]">
-                <VolumeBars buckets={data.buckets} />
-              </div>
+              <CVDChart buckets={data.buckets} height={340} showDivergences={true} />
             </div>
           </>
         )}

@@ -16,6 +16,7 @@ import VenueCard from './components/VenueCard';
 import CostBreakdownTable from './components/CostBreakdownTable';
 import DepthChart from './components/DepthChart';
 import SlippageHeatmap from './components/SlippageHeatmap';
+import InteractiveDepthChart from './components/InteractiveDepthChart';
 import { RefreshCw, AlertTriangle, Share2, Check, Info } from 'lucide-react';
 import { DEFAULT_ASSETS } from '@/lib/execution-costs/symbol-map';
 
@@ -83,7 +84,7 @@ function ExecutionCostsInner() {
 
   // Multi-exchange slippage heatmap data
   const slippageFetcher = useCallback(
-    () => fetch(`/api/orderbook/multi?symbol=${asset}&exchanges=Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter`)
+    () => fetch(`/api/orderbook/multi?symbol=${asset}&exchanges=Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter&depth=true`)
       .then(r => r.ok ? r.json() : null).catch(() => null),
     [asset],
   );
@@ -270,6 +271,32 @@ function ExecutionCostsInner() {
                 <DepthChart venues={activeData.venues} orderSizeUsd={size} />
               </div>
             )}
+
+            {/* Interactive depth chart — canvas-rendered multi-exchange curves */}
+            {slippageData?.venues && (() => {
+              const bidCurves: Record<string, Array<{ priceOffset: number; cumulativeUsd: number }>> = {};
+              const askCurves: Record<string, Array<{ priceOffset: number; cumulativeUsd: number }>> = {};
+              for (const v of slippageData.venues) {
+                if (!v.available) continue;
+                if (v.bidCurve?.length) bidCurves[v.exchange] = v.bidCurve;
+                if (v.askCurve?.length) askCurves[v.exchange] = v.askCurve;
+              }
+              if (Object.keys(bidCurves).length === 0 && Object.keys(askCurves).length === 0) return null;
+              return (
+                <div>
+                  <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3">Interactive Depth Curves</h2>
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <InteractiveDepthChart
+                      bidCurves={bidCurves}
+                      askCurves={askCurves}
+                      orderSizeUsd={size}
+                      onOrderSizeChange={setSize}
+                      height={340}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Slippage heatmap - multi-exchange depth comparison */}
             <div>

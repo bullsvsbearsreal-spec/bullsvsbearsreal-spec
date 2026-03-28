@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
+import { useDashboardOptional } from '../DashboardContext';
 
 interface Mover {
   symbol: string;
@@ -61,10 +62,15 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
     </div>
   );
 
+  const dashCtx = useDashboardOptional();
+
   if (!movers) return <WidgetSkeleton variant="list" rows={3} />;
 
   const Row = ({ m, idx }: { m: Mover; idx: number }) => (
-    <div key={m.symbol + idx} className="flex items-center justify-between py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
+    <div
+      key={m.symbol + idx}
+      onClick={() => dashCtx?.dispatch({ type: 'SET_SYMBOL', symbol: m.symbol })}
+      className="flex items-center justify-between py-1 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.04] transition-colors cursor-pointer">
       <div className="flex items-center gap-1.5">
         <TokenIconSimple symbol={m.symbol} size={14} />
         <span className="text-xs text-neutral-300">{m.symbol}</span>

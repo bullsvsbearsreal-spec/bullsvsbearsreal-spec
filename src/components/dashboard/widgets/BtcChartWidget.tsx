@@ -3,8 +3,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
+import { useDashboardOptional } from '../DashboardContext';
 
-export default function BtcChartWidget() {
+// Map common symbols to CoinGecko IDs
+const COINGECKO_IDS: Record<string, string> = {
+  BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', XRP: 'ripple',
+  DOGE: 'dogecoin', PEPE: 'pepe', BNB: 'binancecoin', ADA: 'cardano',
+  AVAX: 'avalanche-2', LINK: 'chainlink', DOT: 'polkadot', SUI: 'sui',
+  MATIC: 'matic-network', ARB: 'arbitrum', OP: 'optimism',
+  NEAR: 'near', ATOM: 'cosmos', FTM: 'fantom', APT: 'aptos',
+  INJ: 'injective-protocol', TIA: 'celestia', SEI: 'sei-network',
+};
+
+export default function BtcChartWidget({ widgetId }: { wide?: boolean; widgetId?: string }) {
+  const ctx = useDashboardOptional();
+  const symbol = (widgetId && ctx) ? ctx.getWidgetSymbol(widgetId) : 'BTC';
+  const coinId = COINGECKO_IDS[symbol] ?? symbol.toLowerCase();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [prices, setPrices] = useState<number[] | null>(null);
@@ -15,10 +29,11 @@ export default function BtcChartWidget() {
 
   useEffect(() => {
     let mounted = true;
+    setPrices(null);
     (async () => {
       try {
         const res = await fetch(
-          'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7',
+          `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=7`,
           { signal: AbortSignal.timeout(10000) },
         );
         if (!res.ok) return;
@@ -30,10 +45,10 @@ export default function BtcChartWidget() {
         setTimestamps(ts);
         setCurrent(pts[pts.length - 1]);
         setUpdatedAt(Date.now());
-      } catch (err) { console.error('[BtcChart] fetch error:', err); }
+      } catch (err) { console.error(`[ChartWidget] fetch error for ${symbol}:`, err); }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [coinId, symbol]);
 
   // Draw sparkline
   useEffect(() => {

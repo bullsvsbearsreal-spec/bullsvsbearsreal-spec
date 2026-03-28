@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
+import { getExchangeHexColor } from '@/lib/constants/exchange-colors';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -24,23 +25,6 @@ interface VenueDepth {
 interface MultiDepthChartProps {
   venues: VenueDepth[];
 }
-
-/* ─── Constants ──────────────────────────────────────────────────── */
-
-const EXCHANGE_COLORS: Record<string, string> = {
-  'Binance': '#EAB308',
-  'Bybit': '#F97316',
-  'OKX': '#FFFFFF',
-  'Bitget': '#22D3EE',
-  'Hyperliquid': '#4ADE80',
-  'dYdX': '#A855F7',
-  'Drift': '#A78BFA',
-  'Aster': '#EC4899',
-  'Aevo': '#FB7185',
-  'Lighter': '#34D399',
-};
-
-const FALLBACK_COLOR = '#6B7280';
 
 // Standard offset buckets (%) for normalizing across exchanges
 const BUCKETS = [0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0];
@@ -123,7 +107,7 @@ export default function MultiDepthChart({ venues }: MultiDepthChartProps) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {exchanges.map(ex => (
             <div key={ex} className="flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded-sm" style={{ background: EXCHANGE_COLORS[ex] || FALLBACK_COLOR, opacity: 0.8 }} />
+              <div className="w-2.5 h-2.5 rounded-sm" style={{ background: getExchangeHexColor(ex), opacity: 0.8 }} />
               <span className="text-[10px] text-neutral-500">{ex}</span>
             </div>
           ))}
@@ -166,8 +150,8 @@ export default function MultiDepthChart({ venues }: MultiDepthChartProps) {
               type="monotone"
               dataKey={ex}
               stackId="depth"
-              stroke={EXCHANGE_COLORS[ex] || FALLBACK_COLOR}
-              fill={EXCHANGE_COLORS[ex] || FALLBACK_COLOR}
+              stroke={getExchangeHexColor(ex)}
+              fill={getExchangeHexColor(ex)}
               fillOpacity={0.15}
               strokeWidth={1.5}
             />

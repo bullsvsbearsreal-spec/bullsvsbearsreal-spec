@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ArrowRight } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
+import { useDashboardOptional } from '../DashboardContext';
 
 interface FundingEntry {
   symbol: string;
@@ -77,6 +78,8 @@ export default function ArbitrageWidget({ wide }: { wide?: boolean }) {
 
   const arbs = useMemo(() => allPairs?.slice(0, wide ? 8 : 5) ?? null, [allPairs, wide]);
 
+  const dashCtx = useDashboardOptional();
+
   if (!arbs) return <WidgetSkeleton variant="list" />;
 
   return (
@@ -86,7 +89,10 @@ export default function ArbitrageWidget({ wide }: { wide?: boolean }) {
           <p className="text-xs text-neutral-600 py-2">No significant arb opportunities</p>
         )}
         {arbs.map((a, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs py-1 border-b border-white/[0.03] last:border-0">
+          <div
+            key={i}
+            onClick={() => dashCtx?.dispatch({ type: 'SET_SYMBOL', symbol: a.symbol })}
+            className="flex items-center gap-2 text-xs py-1 border-b border-white/[0.03] last:border-0 cursor-pointer hover:bg-white/[0.03] rounded transition-colors">
             <span className="font-bold text-white w-14 flex-shrink-0">{a.symbol}</span>
             <span className="text-neutral-500 truncate text-[10px]">{a.longExchange}</span>
             <ArrowRight className="w-3 h-3 text-neutral-600 flex-shrink-0" />

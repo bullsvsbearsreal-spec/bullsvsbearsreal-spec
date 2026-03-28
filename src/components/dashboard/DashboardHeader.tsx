@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import CoinSearch from '@/components/CoinSearch';
+import { useDashboard } from './DashboardContext';
+
+const QUICK_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'PEPE'] as const;
+const TIMEFRAMES = [
+  { label: '1H', value: 60 },
+  { label: '4H', value: 240 },
+  { label: '1D', value: 1440 },
+  { label: '7D', value: 10080 },
+] as const;
 
 interface HeaderStats {
   btcPrice: number | null;
@@ -105,6 +115,80 @@ export default function DashboardHeader({ userName }: { userName: string }) {
             <span className="text-white font-medium tabular-nums">{stats.btcDominance.toFixed(1)}%</span>
           </div>
         )}
+      </div>
+
+      {/* Global symbol & timeframe sync bar */}
+      <GlobalSymbolBar />
+    </div>
+  );
+}
+
+/* ─── Global Symbol Bar ──────────────────────────────────────────────── */
+
+function GlobalSymbolBar() {
+  const { state, dispatch } = useDashboard();
+  const [flash, setFlash] = useState(false);
+
+  useEffect(() => {
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 300);
+    return () => clearTimeout(t);
+  }, [state.globalSymbol]);
+
+  return (
+    <div
+      className={`flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-hub-darker rounded-lg border transition-colors ${
+        flash ? 'border-hub-yellow/40' : 'border-white/[0.06]'
+      }`}
+    >
+      {/* Quick symbol pills */}
+      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+        {QUICK_SYMBOLS.map((s) => (
+          <button
+            key={s}
+            onClick={() => dispatch({ type: 'SET_SYMBOL', symbol: s })}
+            className={`px-2 py-0.5 text-xs font-mono rounded transition-all whitespace-nowrap ${
+              state.globalSymbol === s
+                ? 'bg-hub-yellow/20 text-hub-yellow border border-hub-yellow/30'
+                : 'text-neutral-500 hover:text-neutral-300 border border-transparent'
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* Full search for arbitrary symbol */}
+      <div className="hidden sm:block">
+        <CoinSearch
+          compact
+          placeholder="Search..."
+          onSelect={(coin) => dispatch({ type: 'SET_SYMBOL', symbol: coin.symbol.toUpperCase() })}
+        />
+      </div>
+
+      <div className="w-px h-4 bg-white/[0.08] mx-1 flex-shrink-0" />
+
+      {/* Timeframe pills */}
+      <div className="flex items-center gap-1">
+        {TIMEFRAMES.map((tf) => (
+          <button
+            key={tf.value}
+            onClick={() => dispatch({ type: 'SET_TIMEFRAME', tf: tf.value })}
+            className={`px-2 py-0.5 text-xs font-mono rounded transition-all ${
+              state.globalTimeframe === tf.value
+                ? 'bg-white/10 text-white'
+                : 'text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            {tf.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Current symbol indicator */}
+      <div className="ml-auto text-[10px] text-neutral-600 font-mono hidden sm:block">
+        Synced: <span className="text-hub-yellow">{state.globalSymbol}</span>
       </div>
     </div>
   );

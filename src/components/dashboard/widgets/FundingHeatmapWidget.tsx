@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import WidgetSkeleton from '../WidgetSkeleton';
 import UpdatedAgo from '../UpdatedAgo';
+import { useDashboardOptional } from '../DashboardContext';
 
 interface FundingRate {
   symbol: string;
@@ -62,6 +63,8 @@ export default function FundingHeatmapWidget() {
     return () => { mounted = false; clearInterval(iv); };
   }, []);
 
+  const dashCtx = useDashboardOptional();
+
   if (rates === null) return <WidgetSkeleton variant="heatmap" />;
 
   if (rates.length === 0) {
@@ -85,7 +88,11 @@ export default function FundingHeatmapWidget() {
           return (
             <div
               key={`${r.symbol}-${r.exchange}-${i}`}
-              className={`heatmap-tile ${intensityClass}`}
+              onClick={() => {
+                const sym = r.symbol?.replace(/USDT$/, '');
+                if (sym) dashCtx?.dispatch({ type: 'SET_SYMBOL', symbol: sym });
+              }}
+              className={`heatmap-tile ${intensityClass} cursor-pointer`}
               title={`${r.symbol} ${r.exchange}: ${rate >= 0 ? '+' : ''}${rate.toFixed(4)}%${slang}`}
             >
               <span className="heatmap-tile-symbol">

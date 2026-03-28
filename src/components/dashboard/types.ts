@@ -29,7 +29,10 @@ export type WidgetType =
   | 'fear-greed-chart'
   | 'altseason'
   | 'stablecoin-flows'
-  | 'economic-calendar';
+  | 'economic-calendar'
+  | 'cvd'
+  | 'slippage'
+  | 'latency';
 
 export type WidgetCategory = 'market' | 'trading' | 'portfolio' | 'sentiment' | 'events';
 
@@ -80,6 +83,9 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
   { type: 'altseason',        name: 'Altseason Index',    description: 'Altcoin vs Bitcoin performance (90d)',      defaultW: 1, icon: 'Zap',            category: 'sentiment' },
   { type: 'stablecoin-flows', name: 'Stablecoin Flows',   description: 'Net stablecoin mint/burn indicator',        defaultW: 1, icon: 'Coins',          category: 'market' },
   { type: 'economic-calendar', name: 'Economic Calendar', description: 'Upcoming economic events & data releases',  defaultW: 1, icon: 'Calendar',       category: 'events' },
+  { type: 'cvd',               name: 'CVD',               description: 'Cumulative volume delta & divergences',     defaultW: 2, icon: 'Activity',       category: 'trading' },
+  { type: 'slippage',          name: 'Execution Costs',   description: 'Top venues ranked by slippage + fees',      defaultW: 1, icon: 'Zap',            category: 'trading' },
+  { type: 'latency',           name: 'Exchange Latency',  description: 'Real-time API response times',              defaultW: 2, icon: 'Timer',          category: 'market' },
 ];
 
 export const DEFAULT_LAYOUT: WidgetLayout[] = [

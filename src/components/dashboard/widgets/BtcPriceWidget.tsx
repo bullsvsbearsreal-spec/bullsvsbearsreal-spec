@@ -5,8 +5,12 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 import WidgetSkeleton from '../WidgetSkeleton';
 import AnimatedValue from '../AnimatedValue';
 import UpdatedAgo from '../UpdatedAgo';
+import { useDashboardOptional } from '../DashboardContext';
 
-export default function BtcPriceWidget() {
+export default function BtcPriceWidget({ widgetId }: { wide?: boolean; widgetId?: string }) {
+  const ctx = useDashboardOptional();
+  const symbol = (widgetId && ctx) ? ctx.getWidgetSymbol(widgetId) : 'BTC';
+
   const [price, setPrice] = useState<number | null>(null);
   const [change, setChange] = useState<number | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
@@ -15,22 +19,25 @@ export default function BtcPriceWidget() {
   useEffect(() => {
     let mounted = true;
     let retries = 0;
+    setPrice(null);
+    setChange(null);
+    setError(false);
     const load = async () => {
       try {
-        const res = await fetch('/api/tickers?symbols=BTC');
+        const res = await fetch(`/api/tickers?symbols=${symbol}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data = Array.isArray(json) ? json : json?.data || [];
-        const btc = Array.isArray(data) ? data.find((t: any) => t.symbol === 'BTC' || t.symbol === 'BTCUSDT') : null;
-        if (btc && mounted) {
-          setPrice(btc.price || btc.lastPrice);
-          setChange(btc.priceChangePercent24h ?? btc.change24h ?? null);
+        const match = Array.isArray(data) ? data.find((t: any) => t.symbol === symbol || t.symbol === `${symbol}USDT`) : null;
+        if (match && mounted) {
+          setPrice(match.price || match.lastPrice);
+          setChange(match.priceChangePercent24h ?? match.change24h ?? null);
           setUpdatedAt(Date.now());
           setError(false);
         }
         retries = 0;
       } catch (err) {
-        console.error('[BtcPrice] fetch error:', err);
+        console.error(`[PriceWidget] fetch error for ${symbol}:`, err);
         retries++;
         if (retries >= 3 && mounted) setError(true);
       }
@@ -38,11 +45,11 @@ export default function BtcPriceWidget() {
     load();
     const iv = setInterval(load, 30_000);
     return () => { mounted = false; clearInterval(iv); };
-  }, []);
+  }, [symbol]);
 
   if (error && price === null) return (
     <div className="text-center py-4">
-      <p className="text-xs text-neutral-500">Failed to load BTC price</p>
+      <p className="text-xs text-neutral-500">Failed to load {symbol} price</p>
       <button onClick={() => { setError(false); window.location.reload(); }} className="text-[10px] text-amber-500 hover:text-amber-400 mt-1">Retry</button>
     </div>
   );

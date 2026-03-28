@@ -4,15 +4,21 @@ import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Plus, RotateCcw, Loader2 } from 'lucide-react';
 import { type WidgetLayout, type WidgetType, WIDGET_CATALOG, WIDGET_CATEGORIES, DEFAULT_LAYOUT } from './types';
 import { useGridDrag } from './useGridDrag';
+import { useDashboard } from './DashboardContext';
 import WidgetWrapper from './WidgetWrapper';
 import WidgetPicker from './WidgetPicker';
 import LayoutPresets from './LayoutPresets';
 import WidgetErrorBoundary from './WidgetErrorBoundary';
 
+/** Widget types that respond to global symbol sync */
+const SYNCABLE_TYPES = new Set<WidgetType>([
+  'btc-price', 'btc-chart', 'oi-chart', 'liquidations', 'long-short', 'cvd', 'slippage',
+]);
+
 const QUICK_ADD_TYPES: WidgetType[] = ['market-overview', 'news', 'long-short', 'trending', 'token-unlocks'];
 
 // Lazy-loaded widget components
-const WIDGET_COMPONENTS: Record<WidgetType, React.LazyExoticComponent<React.ComponentType<{ wide?: boolean }>>> = {
+const WIDGET_COMPONENTS: Record<WidgetType, React.LazyExoticComponent<React.ComponentType<{ wide?: boolean; widgetId?: string }>>> = {
   watchlist: lazy(() => import('./widgets/WatchlistWidget')),
   portfolio: lazy(() => import('./widgets/PortfolioWidget')),
   alerts: lazy(() => import('./widgets/AlertsWidget')),
@@ -36,6 +42,9 @@ const WIDGET_COMPONENTS: Record<WidgetType, React.LazyExoticComponent<React.Comp
   altseason: lazy(() => import('./widgets/AltseasonWidget')),
   'stablecoin-flows': lazy(() => import('./widgets/StablecoinFlowsWidget')),
   'economic-calendar': lazy(() => import('./widgets/EconomicCalendarWidget')),
+  cvd: lazy(() => import('./widgets/CVDWidget')),
+  slippage: lazy(() => import('./widgets/SlippageWidget')),
+  latency: lazy(() => import('./widgets/LatencyWidget')),
 };
 
 function WidgetSkeleton() {
@@ -53,6 +62,7 @@ interface DashboardGridProps {
 
 export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { state, dispatch, getWidgetSymbol, isWidgetLocked } = useDashboard();
 
   const { drag, handleDragStart } = useGridDrag(layout, onLayoutChange);
 
@@ -92,6 +102,17 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
   const handleReset = useCallback(() => {
     onLayoutChange([...DEFAULT_LAYOUT]);
   }, [onLayoutChange]);
+
+  const handleToggleLock = useCallback(
+    (widgetId: string) => {
+      if (isWidgetLocked(widgetId)) {
+        dispatch({ type: 'UNLOCK_WIDGET', widgetId });
+      } else {
+        dispatch({ type: 'LOCK_WIDGET', widgetId, symbol: state.globalSymbol });
+      }
+    },
+    [dispatch, isWidgetLocked, state.globalSymbol],
+  );
 
   const activeTypes = layout.map((w) => w.type);
   const quickAddSuggestions = QUICK_ADD_TYPES.filter((t) => !activeTypes.includes(t));
@@ -148,6 +169,9 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
           const Component = WIDGET_COMPONENTS[widget.type];
           if (!meta || !Component) return null;
           const accent = WIDGET_CATEGORIES[meta.category]?.color;
+          const syncable = SYNCABLE_TYPES.has(widget.type);
+          const locked = syncable && isWidgetLocked(widget.id);
+          const widgetSymbol = syncable ? getWidgetSymbol(widget.id) : undefined;
 
           return (
             <WidgetWrapper
@@ -155,6 +179,7 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
               title={meta.name}
               icon={meta.icon}
               widgetType={widget.type}
+              widgetId={widget.id}
               index={index}
               colSpan={widget.w}
               accentColor={accent}
@@ -163,11 +188,14 @@ export default function DashboardGrid({ layout, onLayoutChange }: DashboardGridP
               onPointerDown={handleDragStart(index)}
               onRemove={() => handleRemove(widget.id)}
               onToggleSize={() => handleToggleSize(widget.id)}
+              onToggleLock={syncable ? () => handleToggleLock(widget.id) : undefined}
               canExpand={widget.w < 2}
+              isLocked={locked}
+              lockedSymbol={locked ? widgetSymbol : undefined}
             >
               <WidgetErrorBoundary widgetName={meta.name}>
                 <Suspense fallback={<WidgetSkeleton />}>
-                  <Component wide={widget.w === 2} />
+                  <Component wide={widget.w === 2} widgetId={widget.id} />
                 </Suspense>
               </WidgetErrorBoundary>
             </WidgetWrapper>
