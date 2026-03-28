@@ -1,0 +1,3159 @@
+{
+  "timestamp": "20260317_091355",
+  "supervisor": {
+    "agent_id": "supervisor",
+    "agent_name": "Supervisor Agent",
+    "page_name": "ALL PAGES",
+    "category": "SUPERVISOR",
+    "timestamp": "2026-03-17T09:13:54.948665",
+    "duration_seconds": 0.0,
+    "state": "pending",
+    "score": {
+      "ui_ux": 6.5,
+      "data_accuracy": 6.5,
+      "real_time": 7.0,
+      "bug_risk": 5.3,
+      "overall": 6.3
+    },
+    "ui_ux_findings": [],
+    "data_verification": [
+      {
+        "type": "cross_validation",
+        "finding": "api_health",
+        "severity": "critical",
+        "details": "16 API endpoints returning non-200 status",
+        "endpoints": {
+          "https://bullvsbear.info/api/klines": 404,
+          "https://bullvsbear.info/api/tickers": 404,
+          "https://bullvsbear.info/api/options": 404,
+          "https://bullvsbear.info/api/spot-prices": 404,
+          "https://bullvsbear.info/api/prediction-markets": 404,
+          "https://bullvsbear.info/api/execution-costs": 404,
+          "https://bullvsbear.info/api/funding": 404,
+          "https://bullvsbear.info/api/openinterest": 404,
+          "https://bullvsbear.info/api/oi-delta": 404,
+          "https://bullvsbear.info/api/liquidations": 404,
+          "https://bullvsbear.info/api/liquidation-map": 404,
+          "https://bullvsbear.info/api/liquidation-heatmap": 404,
+          "https://bullvsbear.info/api/longshort": 404,
+          "https://bullvsbear.info/api/aggtrades": 404,
+          "https://bullvsbear.info/api/orderbook": 404,
+          "https://bullvsbear.info/api/rsi": 404
+        }
+      },
+      {
+        "type": "cross_validation",
+        "finding": "security_summary",
+        "total_issues": 14,
+        "critical": 0,
+        "high": 0,
+        "details": [
+          {
+            "page": "Chart",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Screener",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Basis",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Execution Costs",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Funding Rates",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Funding Heatmap",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Open Interest",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "OI Heatmap",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Liquidations",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Liq Map",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Liq Heatmap",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Long/Short",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "CVD",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          },
+          {
+            "page": "Order Flow",
+            "type": "no_rate_limit",
+            "severity": "medium",
+            "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+          }
+        ]
+      },
+      {
+        "type": "cross_validation",
+        "finding": "swr_key_pattern",
+        "severity": "high",
+        "details": "28 pages have static SWR keys with dynamic params",
+        "pages": [
+          "Chart",
+          "Chart",
+          "Chart",
+          "Chart",
+          "Chart",
+          "Chart",
+          "Chart",
+          "Basis",
+          "Basis",
+          "Basis",
+          "Basis",
+          "Predictions",
+          "Predictions",
+          "Funding Rates",
+          "Funding Rates",
+          "Funding Rates",
+          "Funding Rates",
+          "Funding Rates",
+          "Funding Rates",
+          "Funding Rates",
+          "Funding Rates",
+          "Liq Heatmap",
+          "Liq Heatmap",
+          "Liq Heatmap",
+          "Order Flow",
+          "Order Flow",
+          "Order Flow",
+          "Order Flow"
+        ]
+      },
+      {
+        "type": "cross_validation",
+        "finding": "missing_error_handling",
+        "severity": "high",
+        "details": "3 API routes lack try/catch error handling",
+        "pages": [
+          "Funding Rates",
+          "Funding Heatmap",
+          "Open Interest"
+        ]
+      }
+    ],
+    "realtime_check": [],
+    "bugs_found": [],
+    "security_issues": [],
+    "performance_issues": [],
+    "competitor_comparison": [],
+    "improvement_proposals": [
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '1' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '2' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '3' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '4' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '5' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '6' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '7' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Basis",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'basis' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Basis",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'all' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Basis",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'premium' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Basis",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'discount' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Predictions",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'arbitrage' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Predictions",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'browse' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'crypto' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'stocks' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'forex' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'commodities' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'heatmap' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'arbitrage' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'price' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'spread' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "high",
+        "description": "API route has no try/catch \u2014 unhandled errors crash the endpoint",
+        "category": "api_no_error_handling"
+      },
+      {
+        "page": "Funding Heatmap",
+        "type": "bug",
+        "severity": "high",
+        "description": "API route has no try/catch \u2014 unhandled errors crash the endpoint",
+        "category": "api_no_error_handling"
+      },
+      {
+        "page": "Open Interest",
+        "type": "bug",
+        "severity": "high",
+        "description": "API route has no try/catch \u2014 unhandled errors crash the endpoint",
+        "category": "api_no_error_handling"
+      },
+      {
+        "page": "Liq Heatmap",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '4h' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Liq Heatmap",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '24h' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Liq Heatmap",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key '7d' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Order Flow",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'depth' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Order Flow",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'comparison' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Order Flow",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'orderbook' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Order Flow",
+        "type": "bug",
+        "severity": "high",
+        "description": "SWR key 'tape' is static but page has dynamic state \u2014 data won't refresh on param change",
+        "category": "swr_static_key"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Chart",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Screener",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Screener",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Options",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Options",
+        "type": "performance",
+        "severity": "medium",
+        "description": "4 SVG/Canvas elements \u2014 consider virtualization for large datasets",
+        "category": "heavy_rendering"
+      },
+      {
+        "page": "Basis",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Basis",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Predictions",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Execution Costs",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Execution Costs",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Execution Costs",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Funding Heatmap",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Funding Heatmap",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Open Interest",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Open Interest",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Open Interest",
+        "type": "performance",
+        "severity": "medium",
+        "description": "Array operations (.sort, .filter, .map) without useMemo \u2014 recalculates every render",
+        "category": "missing_memoization"
+      },
+      {
+        "page": "OI Heatmap",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "OI Heatmap",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Liquidations",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Liquidations",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Liq Map",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Liq Map",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Liq Map",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Liq Heatmap",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Liq Heatmap",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Liq Heatmap",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Long/Short",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Long/Short",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Long/Short",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "CVD",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "CVD",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "CVD",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "Order Flow",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "Order Flow",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Order Flow",
+        "type": "security",
+        "severity": "medium",
+        "description": "API route has no rate limiting \u2014 vulnerable to abuse",
+        "category": "no_rate_limit"
+      },
+      {
+        "page": "RSI Heatmap",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'",
+        "category": "null_safety"
+      },
+      {
+        "page": "RSI Heatmap",
+        "type": "bug",
+        "severity": "medium",
+        "description": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures",
+        "category": "effect_deps"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "low",
+        "description": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display",
+        "category": "division_by_zero"
+      },
+      {
+        "page": "Chart",
+        "type": "bug",
+        "severity": "low",
+        "description": "Array index [0] access without length check",
+        "category": "array_bounds"
+      },
+      {
+        "page": "Predictions",
+        "type": "bug",
+        "severity": "low",
+        "description": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display",
+        "category": "division_by_zero"
+      },
+      {
+        "page": "Execution Costs",
+        "type": "bug",
+        "severity": "low",
+        "description": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display",
+        "category": "division_by_zero"
+      },
+      {
+        "page": "Funding Rates",
+        "type": "bug",
+        "severity": "low",
+        "description": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display",
+        "category": "division_by_zero"
+      },
+      {
+        "page": "Funding Heatmap",
+        "type": "bug",
+        "severity": "low",
+        "description": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display",
+        "category": "division_by_zero"
+      },
+      {
+        "page": "Liquidations",
+        "type": "bug",
+        "severity": "low",
+        "description": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display",
+        "category": "division_by_zero"
+      },
+      {
+        "page": "Long/Short",
+        "type": "bug",
+        "severity": "low",
+        "description": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display",
+        "category": "division_by_zero"
+      }
+    ],
+    "screenshots": [],
+    "code_snippets": [],
+    "errors": []
+  },
+  "agents": [
+    {
+      "agent_id": "chart_agent",
+      "agent_name": "Chart Agent",
+      "page_name": "Chart",
+      "category": "ANALYSIS",
+      "timestamp": "2026-03-17T09:13:54.951221",
+      "duration_seconds": 0.43,
+      "state": "completed",
+      "score": {
+        "ui_ux": 4.8,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 1.0,
+        "overall": 4.8
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 544 lines \u2014 consider splitting into sub-components",
+          "line_count": 544
+        },
+        {
+          "type": "loading_state",
+          "severity": "medium",
+          "note": "No loading state detected \u2014 users see blank screen during data fetch"
+        },
+        {
+          "type": "error_handling",
+          "severity": "medium",
+          "note": "No error state UI detected \u2014 API failures show nothing to user"
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/klines",
+          "status": 404,
+          "latency_ms": 167.0,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Binance klines API",
+          "configured": true,
+          "note": "Data source 'Binance klines API' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "setInterval polling"
+          ],
+          "refresh_interval_ms": null,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '1' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "1"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '2' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "2"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '3' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "3"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '4' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "4"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '5' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "5"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '6' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "6"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '7' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "7"
+        },
+        {
+          "type": "division_by_zero",
+          "severity": "low",
+          "note": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display"
+        },
+        {
+          "type": "array_bounds",
+          "severity": "low",
+          "note": "Array index [0] access without length check"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "tradingview",
+          "url": "https://www.tradingview.com/chart",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "candle accuracy",
+            "indicator math",
+            "zoom/pan performance"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 544 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on Chart.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "screener_agent",
+      "agent_name": "Screener Agent",
+      "page_name": "Screener",
+      "category": "ANALYSIS",
+      "timestamp": "2026-03-17T09:13:54.951662",
+      "duration_seconds": 0.43,
+      "state": "completed",
+      "score": {
+        "ui_ux": 7.2,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 7.7,
+        "overall": 7.1
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 761 lines \u2014 consider splitting into sub-components",
+          "line_count": 761
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/tickers",
+          "status": 404,
+          "latency_ms": 150.4,
+          "data_size_bytes": 3055,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "28 exchange ticker APIs",
+          "configured": true,
+          "note": "Data source '28 exchange ticker APIs' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "setInterval polling"
+          ],
+          "refresh_interval_ms": null,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/screener",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "tradingview",
+          "url": "https://www.tradingview.com/screener",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "sort speed",
+            "filter accuracy",
+            "volume aggregation"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 761 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on Screener.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "options_agent",
+      "agent_name": "Options Agent",
+      "page_name": "Options",
+      "category": "ANALYSIS",
+      "timestamp": "2026-03-17T09:13:54.952002",
+      "duration_seconds": 0.44,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.4,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 8.2,
+        "overall": 7.0
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 1311 lines \u2014 consider splitting into sub-components",
+          "line_count": 1311
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/options",
+          "status": 404,
+          "latency_ms": 158.2,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Binance",
+          "configured": true,
+          "note": "Data source 'Binance' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "Bybit",
+          "configured": true,
+          "note": "Data source 'Bybit' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "Deribit",
+          "configured": true,
+          "note": "Data source 'Deribit' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "OKX options APIs",
+          "configured": true,
+          "note": "Data source 'OKX options APIs' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "Options is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        }
+      ],
+      "security_issues": [],
+      "performance_issues": [
+        {
+          "type": "heavy_rendering",
+          "severity": "medium",
+          "note": "4 SVG/Canvas elements \u2014 consider virtualization for large datasets"
+        }
+      ],
+      "competitor_comparison": [
+        {
+          "competitor": "laevitas",
+          "url": "https://app.laevitas.ch/options",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/options",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "IV calculation",
+            "greeks accuracy",
+            "max pain formula"
+          ],
+          "data_sources_count": 4,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 1311 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "basis_agent",
+      "agent_name": "Basis Agent",
+      "page_name": "Basis",
+      "category": "ANALYSIS",
+      "timestamp": "2026-03-17T09:13:54.952290",
+      "duration_seconds": 0.67,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.4,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 1.7,
+        "overall": 5.4
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 880 lines \u2014 consider splitting into sub-components",
+          "line_count": 880
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/spot-prices",
+          "status": 404,
+          "latency_ms": 376.2,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Spot + perp price APIs from multiple exchanges",
+          "configured": true,
+          "note": "Data source 'Spot + perp price APIs from multiple exchanges' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "Basis is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'basis' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "basis"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'all' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "all"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'premium' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "premium"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'discount' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "discount"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/basis",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "velo_data",
+          "url": "https://velo.xyz/basis",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "basis calculation",
+            "spread accuracy",
+            "cross-exchange sync"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 880 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "predictions_agent",
+      "agent_name": "Predictions Agent",
+      "page_name": "Predictions",
+      "category": "ANALYSIS",
+      "timestamp": "2026-03-17T09:13:54.952605",
+      "duration_seconds": 0.43,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.9,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 4.9,
+        "overall": 6.3
+      },
+      "ui_ux_findings": [
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        },
+        {
+          "type": "empty_state",
+          "severity": "medium",
+          "note": "No empty state handling \u2014 what shows when there is no data?"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/prediction-markets",
+          "status": 404,
+          "latency_ms": 129.2,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Polymarket API",
+          "configured": true,
+          "note": "Data source 'Polymarket API' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "Manifold API",
+          "configured": true,
+          "note": "Data source 'Manifold API' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "Predictions is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'arbitrage' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "arbitrage"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'browse' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "browse"
+        },
+        {
+          "type": "division_by_zero",
+          "severity": "low",
+          "note": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display"
+        }
+      ],
+      "security_issues": [],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "market accuracy",
+            "odds display",
+            "resolution tracking"
+          ],
+          "data_sources_count": 2,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "execution_costs_agent",
+      "agent_name": "Execution Costs Agent",
+      "page_name": "Execution Costs",
+      "category": "ANALYSIS",
+      "timestamp": "2026-03-17T09:13:54.952891",
+      "duration_seconds": 0.69,
+      "state": "completed",
+      "score": {
+        "ui_ux": 7.2,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 6.6,
+        "overall": 6.8
+      },
+      "ui_ux_findings": [
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/execution-costs",
+          "status": 404,
+          "latency_ms": 390.6,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Exchange fee schedules",
+          "configured": true,
+          "note": "Data source 'Exchange fee schedules' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "GMX/gTrade on-chain fees",
+          "configured": true,
+          "note": "Data source 'GMX/gTrade on-chain fees' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "Execution Costs is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "division_by_zero",
+          "severity": "low",
+          "note": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/exchange-comparison",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "fee accuracy",
+            "slippage estimation",
+            "total cost calculation"
+          ],
+          "data_sources_count": 2,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "funding_rates_agent",
+      "agent_name": "Funding Rates Agent",
+      "page_name": "Funding Rates",
+      "category": "FUNDING & OI",
+      "timestamp": "2026-03-17T09:13:54.953181",
+      "duration_seconds": 0.66,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.9,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 1.0,
+        "overall": 5.3
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 768 lines \u2014 consider splitting into sub-components",
+          "line_count": 768
+        },
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/funding",
+          "status": 404,
+          "latency_ms": 359.3,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "30 exchange funding rate APIs",
+          "configured": true,
+          "note": "Data source '30 exchange funding rate APIs' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "SWR (stale-while-revalidate)"
+          ],
+          "refresh_interval_ms": 30000,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'crypto' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "crypto"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'stocks' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "stocks"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'forex' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "forex"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'commodities' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "commodities"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'heatmap' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "heatmap"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'arbitrage' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "arbitrage"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'price' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "price"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'spread' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "spread"
+        },
+        {
+          "type": "division_by_zero",
+          "severity": "low",
+          "note": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display"
+        },
+        {
+          "type": "api_no_error_handling",
+          "severity": "high",
+          "note": "API route has no try/catch \u2014 unhandled errors crash the endpoint"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/funding-rate",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "velo_data",
+          "url": "https://velo.xyz/funding",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "rate accuracy vs source",
+            "update frequency",
+            "arbitrage calc math"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 768 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on Funding Rates.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "funding_heatmap_agent",
+      "agent_name": "Funding Heatmap Agent",
+      "page_name": "Funding Heatmap",
+      "category": "FUNDING & OI",
+      "timestamp": "2026-03-17T09:13:54.953469",
+      "duration_seconds": 0.44,
+      "state": "completed",
+      "score": {
+        "ui_ux": 7.2,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 5.9,
+        "overall": 6.7
+      },
+      "ui_ux_findings": [
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/funding",
+          "status": 404,
+          "latency_ms": 133.1,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Same as Funding Rates",
+          "configured": true,
+          "note": "Data source 'Same as Funding Rates' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "Funding Heatmap is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "division_by_zero",
+          "severity": "low",
+          "note": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display"
+        },
+        {
+          "type": "api_no_error_handling",
+          "severity": "high",
+          "note": "API route has no try/catch \u2014 unhandled errors crash the endpoint"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/funding-rate/heatmap",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "coinank",
+          "url": "https://coinank.com/fundingRate",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "color scale accuracy",
+            "cell rendering perf",
+            "tooltip data"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 450 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "open_interest_agent",
+      "agent_name": "Open Interest Agent",
+      "page_name": "Open Interest",
+      "category": "FUNDING & OI",
+      "timestamp": "2026-03-17T09:13:54.953779",
+      "duration_seconds": 0.43,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.1,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 6.2,
+        "overall": 6.5
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 502 lines \u2014 consider splitting into sub-components",
+          "line_count": 502
+        },
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/openinterest",
+          "status": 404,
+          "latency_ms": 110.1,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "26 exchange OI APIs",
+          "configured": true,
+          "note": "Data source '26 exchange OI APIs' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "setInterval polling"
+          ],
+          "refresh_interval_ms": null,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "api_no_error_handling",
+          "severity": "high",
+          "note": "API route has no try/catch \u2014 unhandled errors crash the endpoint"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [
+        {
+          "type": "missing_memoization",
+          "severity": "medium",
+          "note": "Array operations (.sort, .filter, .map) without useMemo \u2014 recalculates every render"
+        }
+      ],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/open-interest",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "coinank",
+          "url": "https://coinank.com/openInterest",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "OI aggregation accuracy",
+            "delta calculation",
+            "exchange coverage"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 502 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on Open Interest.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "oi_heatmap_agent",
+      "agent_name": "OI Heatmap Agent",
+      "page_name": "OI Heatmap",
+      "category": "FUNDING & OI",
+      "timestamp": "2026-03-17T09:13:54.954061",
+      "duration_seconds": 0.66,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.4,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 7.7,
+        "overall": 6.9
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 574 lines \u2014 consider splitting into sub-components",
+          "line_count": 574
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/oi-delta",
+          "status": 404,
+          "latency_ms": 339.4,
+          "data_size_bytes": 3053,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "OI delta snapshots",
+          "configured": true,
+          "note": "Data source 'OI delta snapshots' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "OI Heatmap is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/open-interest-heatmap",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "delta % accuracy",
+            "color scale",
+            "time window handling"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 574 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "liquidations_agent",
+      "agent_name": "Liquidations Agent",
+      "page_name": "Liquidations",
+      "category": "LIQUIDATIONS",
+      "timestamp": "2026-03-17T09:13:54.954331",
+      "duration_seconds": 0.44,
+      "state": "completed",
+      "score": {
+        "ui_ux": 5.3,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 7.4,
+        "overall": 6.6
+      },
+      "ui_ux_findings": [
+        {
+          "type": "error_handling",
+          "severity": "medium",
+          "note": "No error state UI detected \u2014 API failures show nothing to user"
+        },
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        },
+        {
+          "type": "empty_state",
+          "severity": "medium",
+          "note": "No empty state handling \u2014 what shows when there is no data?"
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/liquidations",
+          "status": 404,
+          "latency_ms": 112.4,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Binance (deprecated)",
+          "configured": true,
+          "note": "Data source 'Binance (deprecated)' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "OKX",
+          "configured": true,
+          "note": "Data source 'OKX' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "Bybit liquidation streams",
+          "configured": true,
+          "note": "Data source 'Bybit liquidation streams' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "SWR (stale-while-revalidate)"
+          ],
+          "refresh_interval_ms": 5000,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "division_by_zero",
+          "severity": "low",
+          "note": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/liquidations",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "hyblock",
+          "url": "https://www.hyblock.co/liquidations",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "liq event accuracy",
+            "total volume",
+            "feed latency"
+          ],
+          "data_sources_count": 3,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on Liquidations.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "liq_map_agent",
+      "agent_name": "Liq Map Agent",
+      "page_name": "Liq Map",
+      "category": "LIQUIDATIONS",
+      "timestamp": "2026-03-17T09:13:54.954610",
+      "duration_seconds": 0.67,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.9,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 6.9,
+        "overall": 6.8
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 654 lines \u2014 consider splitting into sub-components",
+          "line_count": 654
+        },
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/liquidation-map",
+          "status": 404,
+          "latency_ms": 339.3,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "OI data + leverage tier model",
+          "configured": true,
+          "note": "Data source 'OI data + leverage tier model' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "Liq Map is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/liquidation-map",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "hyblock",
+          "url": "https://www.hyblock.co/liquidation-map",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "leverage tier accuracy",
+            "volume estimation",
+            "price level mapping"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 654 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "liq_heatmap_agent",
+      "agent_name": "Liq Heatmap Agent",
+      "page_name": "Liq Heatmap",
+      "category": "LIQUIDATIONS",
+      "timestamp": "2026-03-17T09:13:54.955022",
+      "duration_seconds": 0.69,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.4,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 2.4,
+        "overall": 5.6
+      },
+      "ui_ux_findings": [
+        {
+          "type": "code_size",
+          "severity": "medium",
+          "note": "Page component is 699 lines \u2014 consider splitting into sub-components",
+          "line_count": 699
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/liquidation-heatmap",
+          "status": 404,
+          "latency_ms": 355.2,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "OKX live liqs",
+          "configured": true,
+          "note": "Data source 'OKX live liqs' is configured in API route"
+        },
+        {
+          "type": "data_source",
+          "source": "DB for 24h/7d timeframes",
+          "configured": true,
+          "note": "Data source 'DB for 24h/7d timeframes' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "SWR (stale-while-revalidate)"
+          ],
+          "refresh_interval_ms": null,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '4h' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "4h"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '24h' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "24h"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key '7d' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "7d"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/liquidation-heatmap",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "hyblock",
+          "url": "https://www.hyblock.co/heatmap",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "heatmap cell accuracy",
+            "timeframe switching",
+            "data freshness"
+          ],
+          "data_sources_count": 2,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 699 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on Liq Heatmap.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "longshort_agent",
+      "agent_name": "Long/Short Agent",
+      "page_name": "Long/Short",
+      "category": "FLOW",
+      "timestamp": "2026-03-17T09:13:54.955332",
+      "duration_seconds": 0.66,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.9,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 6.6,
+        "overall": 6.8
+      },
+      "ui_ux_findings": [
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/longshort",
+          "status": 404,
+          "latency_ms": 318.7,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Binance Long/Short Ratio API",
+          "configured": true,
+          "note": "Data source 'Binance Long/Short Ratio API' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "Long/Short is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "division_by_zero",
+          "severity": "low",
+          "note": "Multiple divisions without zero guards \u2014 risk of NaN/Infinity display"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/long-short",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "coinank",
+          "url": "https://coinank.com/longShort",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "ratio accuracy",
+            "symbol coverage",
+            "history depth"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "cvd_agent",
+      "agent_name": "CVD Agent",
+      "page_name": "CVD",
+      "category": "FLOW",
+      "timestamp": "2026-03-17T09:13:54.955667",
+      "duration_seconds": 0.42,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.9,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 6.9,
+        "overall": 6.8
+      },
+      "ui_ux_findings": [
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/aggtrades",
+          "status": 404,
+          "latency_ms": 83.0,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Binance aggTrades API",
+          "configured": true,
+          "note": "Data source 'Binance aggTrades API' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "setInterval polling"
+          ],
+          "refresh_interval_ms": null,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "tradinglite",
+          "url": "https://www.tradinglite.com/",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "bookmap",
+          "url": "https://bookmap.com/",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "CVD calculation",
+            "volume bar accuracy",
+            "trade classification"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on CVD.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "orderflow_agent",
+      "agent_name": "Order Flow Agent",
+      "page_name": "Order Flow",
+      "category": "FLOW",
+      "timestamp": "2026-03-17T09:13:54.955943",
+      "duration_seconds": 0.43,
+      "state": "completed",
+      "score": {
+        "ui_ux": 6.1,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 1.0,
+        "overall": 5.2
+      },
+      "ui_ux_findings": [
+        {
+          "type": "tooltips",
+          "severity": "low",
+          "note": "No tooltips detected \u2014 complex data may need hover explanations"
+        },
+        {
+          "type": "empty_state",
+          "severity": "medium",
+          "note": "No empty state handling \u2014 what shows when there is no data?"
+        },
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/orderbook",
+          "status": 404,
+          "latency_ms": 79.1,
+          "data_size_bytes": 3054,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "8 exchange orderbook APIs",
+          "configured": true,
+          "note": "Data source '8 exchange orderbook APIs' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "update_mechanism",
+          "mechanisms": [
+            "SWR (stale-while-revalidate)",
+            "setInterval polling"
+          ],
+          "refresh_interval_ms": 5000,
+          "has_realtime": true
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'depth' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "depth"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'comparison' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "comparison"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'orderbook' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "orderbook"
+        },
+        {
+          "type": "swr_static_key",
+          "severity": "high",
+          "note": "SWR key 'tape' is static but page has dynamic state \u2014 data won't refresh on param change",
+          "swr_key": "tape"
+        }
+      ],
+      "security_issues": [
+        {
+          "type": "no_rate_limit",
+          "severity": "medium",
+          "note": "API route has no rate limiting \u2014 vulnerable to abuse"
+        }
+      ],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "bookmap",
+          "url": "https://bookmap.com/",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "competitor": "tradinglite",
+          "url": "https://www.tradinglite.com/",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "depth aggregation",
+            "price formatting",
+            "cross-exchange sync"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": true
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 482 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "feature",
+          "priority": "high",
+          "title": "Add WebSocket for real-time updates",
+          "description": "Replace SWR polling with WebSocket connection for true real-time data on Order Flow.",
+          "effort": "high",
+          "code_hint": "\n// Example WebSocket integration:\nconst ws = useRef<WebSocket | null>(null);\nuseEffect(() => {\n  ws.current = new WebSocket('wss://stream.binance.com/ws');\n  ws.current.onmessage = (e) => {\n    const data = JSON.parse(e.data);\n    setData(prev => mergeUpdate(prev, data));\n  };\n  return () => ws.current?.close();\n}, []);"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    },
+    {
+      "agent_id": "rsi_heatmap_agent",
+      "agent_name": "RSI Heatmap Agent",
+      "page_name": "RSI Heatmap",
+      "category": "FLOW",
+      "timestamp": "2026-03-17T09:13:54.956220",
+      "duration_seconds": 0.44,
+      "state": "completed",
+      "score": {
+        "ui_ux": 7.2,
+        "data_accuracy": 6.5,
+        "real_time": 7.0,
+        "bug_risk": 7.4,
+        "overall": 7.0
+      },
+      "ui_ux_findings": [
+        {
+          "type": "accessibility",
+          "severity": "medium",
+          "note": "No ARIA attributes detected \u2014 screen readers cannot parse this page"
+        }
+      ],
+      "data_verification": [
+        {
+          "type": "api_check",
+          "endpoint": "https://bullvsbear.info/api/rsi",
+          "status": 404,
+          "latency_ms": 86.9,
+          "data_size_bytes": 3053,
+          "is_json": false,
+          "record_count": 0,
+          "error": null
+        },
+        {
+          "type": "api_error",
+          "severity": "critical",
+          "note": "API returned status 404 \u2014 data may be missing"
+        },
+        {
+          "type": "data_source",
+          "source": "Binance klines for RSI calculation",
+          "configured": true,
+          "note": "Data source 'Binance klines for RSI calculation' is configured in API route"
+        }
+      ],
+      "realtime_check": [
+        {
+          "type": "not_realtime",
+          "note": "RSI Heatmap is not expected to have real-time updates"
+        }
+      ],
+      "bugs_found": [
+        {
+          "type": "null_safety",
+          "severity": "medium",
+          "note": "Many property accesses without optional chaining (?.) \u2014 risk of 'Cannot read property of undefined'"
+        },
+        {
+          "type": "effect_deps",
+          "severity": "medium",
+          "note": "Some useEffect hooks may have missing dependency arrays \u2014 causes infinite re-renders or stale closures"
+        }
+      ],
+      "security_issues": [],
+      "performance_issues": [],
+      "competitor_comparison": [
+        {
+          "competitor": "coinglass",
+          "url": "https://www.coinglass.com/indicators/rsi",
+          "note": "Browser not available \u2014 skipped live comparison"
+        },
+        {
+          "type": "feature_comparison",
+          "our_features": [
+            "RSI-14 formula accuracy",
+            "color scale",
+            "timeframe sync"
+          ],
+          "data_sources_count": 1,
+          "is_realtime": false
+        }
+      ],
+      "improvement_proposals": [
+        {
+          "type": "refactor",
+          "priority": "medium",
+          "title": "Split into sub-components",
+          "description": "Page is 408 lines. Extract chart, table, filters into separate components for maintainability.",
+          "effort": "medium"
+        },
+        {
+          "type": "performance",
+          "priority": "medium",
+          "title": "Add virtualization for large data sets",
+          "description": "Use react-window or react-virtuoso to virtualize rows for better performance with 1000+ items.",
+          "effort": "medium"
+        },
+        {
+          "type": "accessibility",
+          "priority": "low",
+          "title": "Add keyboard navigation",
+          "description": "Support arrow keys for table navigation, Enter to select, Escape to close modals.",
+          "effort": "low"
+        }
+      ],
+      "screenshots": [],
+      "code_snippets": [],
+      "errors": []
+    }
+  ]
+}

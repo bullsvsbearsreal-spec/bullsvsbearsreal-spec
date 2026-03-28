@@ -1,0 +1,666 @@
+# InfoHub Backend — Auth, Middleware, Crons & Infrastructure
+
+> Authentication flows, middleware pipeline, cron schedules, rate limiting, error handling, environment variables
+
+---
+
+## Table of Contents
+
+1. [Middleware Pipeline](#middleware-pipeline)
+2. [Authentication System](#authentication-system)
+3. [Two-Factor Authentication](#two-factor-authentication)
+4. [Rate Limiting](#rate-limiting)
+5. [Cron Jobs](#cron-jobs)
+6. [Telegram Bot Integration](#telegram-bot-integration)
+7. [Push Notifications](#push-notifications)
+8. [Error Handling & Circuit Breaker](#error-handling--circuit-breaker)
+9. [Caching Architecture](#caching-architecture)
+10. [Environment Variables](#environment-variables)
+11. [Data Structures](#data-structures)
+
+---
+
+## Middleware Pipeline
+
+**File**: `src/middleware.ts`
+
+### Request Flow
+```
+Incoming Request
+    │
+    ├── Skip if: /api/chat, /api/admin/**, /api/cron/**, /api/telegram/webhook
+    │
+    ├── Auth Routes? (/api/auth/signup, check-credentials, forgot-password, etc.)
+    │   └── Rate limit: 5 req / 15 min per IP (strict)
+    │       └── Headers: Cache-Control: no-store
+    │
+    ├── API Routes? (/api/**)
+    │   └── Rate limit: 120 req / 1 min per IP (moderate)
+    │
+    ├── API v1 Routes? (/api/v1/**)
+    │   └── Bearer token format check: /^Bearer\s+ih_.+$/i
+    │       └── Full validation in route handlers (v1-auth.ts)
+    │
+    └── Public Pages (no auth required)
+        / /login /signup /forgot-password
+        /funding /open-interest /liquidations /options /basis
+        /screener /fear-greed /dominance /top-movers
+        /market-heatmap /spreads /orderflow /airdrops etc.
+```
+
+### Session Cookie Recognition
+```
+__Secure-next-auth.session-token    (production HTTPS)
+next-auth.session-token             (development HTTP)
+__Secure-authjs.session-token       (NextAuth v5 alt)
+authjs.session-token                (NextAuth v5 alt)
+```
+
+### Rate Limit Headers (set on every API response)
+```
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 87
+X-RateLimit-Reset: 1711584060
+```
+
+### Rate Limit Cleanup
+In-memory sliding window with cleanup every 5 minutes (removes expired entries).
+
+---
+
+## Authentication System
+
+**Framework**: NextAuth.js v5
+**Strategy**: JWT sessions (no DB lookups per request)
+**Adapter**: Custom PostgresAdapter (postgres.js driver)
+
+### OAuth Providers
+| Provider | Env Vars | Scopes |
+|----------|----------|--------|
+| Google | AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET | profile, email |
+| Discord | AUTH_DISCORD_ID, AUTH_DISCORD_SECRET | identify, email |
+| Twitter | AUTH_TWITTER_ID, AUTH_TWITTER_SECRET | users.read, tweet.read |
+
+### Credential Provider Flow
+```
+1. User submits email + password
+2. bcrypt.compare(password, user.password_hash)  // salt rounds: 12
+3. Check email_verified: if NULL → throw 'EMAIL_NOT_VERIFIED'
+4. Check user_2fa: if totp_enabled or email_2fa_enabled → require twoFactorValidated=true
+5. Return { id, name, email, image }
+```
+
+### JWT Token Payload
+```typescript
+{
+  id: string;          // User UUID
+  name: string;
+  email: string;
+  image: string | null;  // Avoid data URIs (Vercel 32KB header limit)
+  role: 'user' | 'admin' | 'advisor';
+  iat: number;
+  exp: number;
+}
+```
+
+### Signup Flow
+```
+POST /api/auth/signup
+  │
+  ├── Validate: email format, password (8+ chars, 1 upper, 1 lower, 1 digit)
+  ├── Rate limit: 5 / 15 min per IP
+  ├── bcrypt hash (salt rounds: 12)
+  ├── INSERT INTO users (email_verified = NULL)
+  ├── Generate 6-digit code (15 min TTL)
+  ├── INSERT INTO email_verification_codes
+  ├── Send verification email via Resend
+  └── Return { requiresVerification: true }
+```
+
+### Login Flow
+```
+POST /api/auth/check-credentials  (Step 1)
+  │
+  ├── Validate email + password
+  ├── Rate limit: 10 / 15 min per email
+  ├── Return { valid, emailVerified, requires2FA, methods }
+  │
+  ├── If requires2FA:
+  │   │
+  │   ├── POST /api/auth/2fa/challenge  (trigger email code if needed)
+  │   │
+  │   └── POST /api/auth/2fa/validate  (Step 2)
+  │       ├── TOTP: OTPAuth.TOTP.validate({ token, window: 1 })  // ±30s drift
+  │       ├── Email: Atomic claim from twofa_login_codes
+  │       └── Backup: Timing-safe compare + array_remove
+  │
+  └── NextAuth signIn() with credentials
+```
+
+### Password Reset Flow
+```
+POST /api/auth/forgot-password
+  │
+  ├── Always returns success (email enumeration protection)
+  ├── Generate SHA256 hex token (1h TTL)
+  ├── Invalidate prior unused tokens for same email
+  ├── Send reset email: ${BASE_URL}/reset-password?token=${token}
+  │
+POST /api/auth/reset-password
+  │
+  ├── Validate token (hash match + not expired + not used)
+  ├── Hash new password (bcrypt 12)
+  ├── Update users.password_hash
+  └── Mark token used
+```
+
+### Admin Authorization
+```typescript
+// Re-verifies DB on every call (prevents stale JWT exploits)
+async function isAdmin(userId: string): Promise<boolean>
+async function requireAdmin(): Promise<Response | null>          // admin only
+async function requireAdminOrAdvisor(): Promise<Response | null> // admin OR advisor
+```
+
+---
+
+## Two-Factor Authentication
+
+### TOTP Setup
+```
+POST /api/auth/2fa/setup  (session required)
+  │
+  ├── Block if TOTP already enabled
+  ├── Generate: OTPAuth.TOTP(20 bytes, 6 digits, 30s period, SHA1)
+  ├── Generate: 8 backup codes (4 random bytes each, uppercase hex)
+  ├── Store in user_2fa (totp_enabled = false)
+  ├── Return: { qrCode (data URL), secret (base32), backupCodes }
+  │
+POST /api/auth/2fa/verify  (confirm setup)
+  │
+  ├── Validate submitted code against stored secret
+  ├── Set totp_enabled = true
+  └── Store backup codes
+```
+
+### TOTP Validation Methods
+
+| Method | Validation | Anti-Replay |
+|--------|-----------|-------------|
+| TOTP | `OTPAuth.TOTP.validate({ token, window: 1 })` — allows ±30s clock drift | Time-based (window) |
+| Email | Atomic DB claim: `UPDATE ... SET used=true WHERE used=false RETURNING *` | Single-use flag |
+| Backup | Timing-safe comparison, then `array_remove(backup_codes, code)` | Array removal |
+
+### Rate Limits (per email, in-memory)
+- 2FA challenge: 10 / 15 min
+- 2FA validate: 5 / 15 min
+
+---
+
+## Rate Limiting
+
+### Middleware Rate Limits (In-Memory)
+
+| Target | Limit | Window | Key |
+|--------|-------|--------|-----|
+| Auth routes | 5 req | 15 min | IP address |
+| API routes | 120 req | 1 min | IP address |
+| Signup | 5 req | 15 min | IP address |
+| Forgot password | 5 req | 15 min | IP address |
+| Check credentials | 10 req | 15 min | Email (10K key cap) |
+| 2FA challenge | 10 req | 15 min | Email |
+| 2FA validate | 5 req | 15 min | Email |
+| Chat | Custom | Custom | Session/IP |
+
+Implementation: Sliding window with Map<string, {count, firstRequest}>. Cleanup every 5 minutes.
+
+### v1 API Rate Limits (Upstash Redis)
+
+| Tier | Per-Minute | Daily | Redis Prefix |
+|------|-----------|-------|-------------|
+| Free | 100 | 5,000 | `ih:rl:free` |
+| Pro | 500 | Unlimited | `ih:rl:pro` |
+
+Fallback: In-memory when Redis is down.
+
+### v1 API Key Cache
+- TTL: 1 minute
+- Max size: 1,000 keys (LRU eviction)
+- Lookup: Memory cache → DB hash comparison → fail
+
+---
+
+## Cron Jobs
+
+All cron jobs require: `Authorization: Bearer ${CRON_SECRET}`
+
+### Schedule Overview
+
+| Cron | Schedule | Duration | Tables Written |
+|------|----------|----------|---------------|
+| snapshot | Every 1 min (10-min full cycle) | ~25s | funding_snapshots, oi_snapshots, spread_snapshots |
+| liquidation-ingest | Every 1 min | ~15s | liquidation_snapshots |
+| alerts | Every 5 min | ~10s | alert_notifications |
+| arbitrage-alerts | Every 5 min | ~5s | (Telegram send) |
+| news-alerts | Every 15 min | ~5s | (Telegram send) |
+| calendar-alerts | Every 1 hour | ~3s | (Telegram send) |
+| portfolio-snapshot | 12:00 UTC daily | ~30s | portfolio_snapshots |
+| telegram-reports | 08:00 UTC daily | ~10s | (Telegram send) |
+| telegram-weekly | 10:00 UTC Sunday | ~10s | (Telegram send) |
+
+### Snapshot Cron (Most Important)
+```
+GET /api/cron/snapshot
+  │
+  ├── Check: minute % 10 === 0 (only full runs every 10 min)
+  ├── Fetch /api/funding (25s timeout)
+  ├── Fetch /api/openinterest (25s timeout)
+  ├── Pick top 200 symbols by exchange count
+  ├── INSERT INTO funding_snapshots (batch)
+  ├── INSERT INTO oi_snapshots (batch)
+  ├── Compute spreads from ticker data
+  ├── INSERT INTO spread_snapshots
+  ├── Track arb_opportunities (open/close)
+  └── Prune data older than 30 days
+```
+
+### Liquidation Ingestion Cron
+```
+GET /api/cron/liquidation-ingest
+  │
+  ├── Binance: GET /fapi/v1/allForceOrders?limit=200
+  ├── OKX: GET /api/v5/public/liquidation-orders (per-ULY, 2 req/2s rate limit)
+  ├── HTX: GET /linear-swap-api/v3/swap_liquidation_orders (batch 4 contracts)
+  ├── gTrade: GET /api/trading-history/24h (filter action='TradeClosedLIQ')
+  ├── Deribit: GET /api/v2/public/get_last_trades_by_currency (filter liquidation=true)
+  │
+  └── INSERT INTO liquidation_snapshots
+      ON CONFLICT (symbol, exchange, side, price, ts) DO NOTHING  // dedup
+```
+
+### Alerts Cron
+```
+GET /api/cron/alerts
+  │
+  ├── Fetch market data (funding, OI, prices)
+  ├── For each user with active alerts:
+  │   ├── Check cooldown (default 60 min)
+  │   ├── Evaluate alert conditions
+  │   ├── If triggered:
+  │   │   ├── Send email (Resend)
+  │   │   ├── Send Telegram (if connected)
+  │   │   ├── Send push notification (Web Push)
+  │   │   └── Log to alert_notifications
+  │   └── Update cooldown
+  └── Prune notifications older than 7 days
+```
+
+---
+
+## Telegram Bot Integration
+
+### Setup
+```
+GET /api/telegram/setup?secret={WEBHOOK_SECRET}
+  │
+  ├── Register webhook: POST https://api.telegram.org/bot{TOKEN}/setWebhook
+  │   └── URL: https://info-hub.io/api/telegram/webhook
+  └── Return: bot info, previous webhook, registration status
+```
+
+### Webhook Handler
+```
+POST /api/telegram/webhook
+  │
+  ├── Validate: x-telegram-bot-api-secret-token header
+  ├── Parse update (message.text)
+  │
+  ├── /start     → Register user, activate alerts
+  ├── /stop      → Pause alert subscription
+  ├── /scan      → Force immediate arbitrage scan
+  ├── /set threshold N → Set price spread threshold (0-10%)
+  ├── /set funding N   → Set funding rate threshold (0-10%)
+  ├── /watchlist BTC ETH SOL → Update watched symbols
+  ├── /price BTC    → Current price + 24h change
+  ├── /funding BTC  → Funding rates across exchanges
+  ├── /oi BTC       → Open interest breakdown
+  ├── /liq          → Top 24h liquidations
+  ├── /alert add|remove|list|clear → Custom alert management
+  └── Free text     → AI chat (Claude Haiku)
+```
+
+### AI Chat Configuration
+- Model: Claude Haiku (via Anthropic API)
+- Max tokens: 200
+- Rate limit: 10 questions / hour per chat_id (in-memory tracking)
+- System prompt: Crypto trading assistant persona
+
+---
+
+## Push Notifications
+
+### Web Push Setup
+```
+POST /api/push/subscribe  (session required)
+  │
+  ├── Extract: endpoint, p256dh, auth from subscription
+  ├── UPSERT into push_subscriptions (ON CONFLICT endpoint)
+  └── Return: { subscribed: true }
+```
+
+### Push Delivery (from alerts cron)
+```
+VAPID Authentication:
+  - VAPID_PUBLIC_KEY    (server + client)
+  - VAPID_PRIVATE_KEY   (server only)
+  - VAPID_SUBJECT       (mailto: URL)
+
+Payload: { title, body, icon, data: { url, symbol } }
+```
+
+---
+
+## Error Handling & Circuit Breaker
+
+### Circuit Breaker (Per-Exchange)
+
+```
+Configuration:
+  FAILURE_THRESHOLD:  5 failures
+  WINDOW:             10 minutes
+  INITIAL_COOLDOWN:   2 minutes
+  BACKOFF:            Exponential (2 → 4 → 8 → 16 → 30 min)
+  MAX_COOLDOWN:       30 minutes
+  LOG_THROTTLE:       Once per 10 min
+
+State Machine:
+  CLOSED (normal)
+    ├── Failure count < threshold → stay CLOSED
+    └── Failure count >= threshold → transition to OPEN
+
+  OPEN (skip exchange)
+    ├── Cooldown not expired → skip (return empty)
+    └── Cooldown expired → transition to HALF-OPEN
+
+  HALF-OPEN (retry)
+    ├── Success → reset to CLOSED
+    └── Failure → back to OPEN (double cooldown)
+```
+
+### Exchange Fetch Retry
+```
+Per-exchange:
+  - Attempt 1: Normal fetch
+  - On failure: Wait 500ms
+  - Attempt 2: Retry
+  - On second failure: Log error, return empty, increment circuit breaker
+```
+
+### Stale Data Fallback
+```
+Normal flow:
+  1. Try fresh fetch from exchanges
+  2. If all fail: serve last cached data (L1 memory)
+  3. If L1 empty: serve from L2 (database cache)
+  4. If L2 empty: return error response
+
+Response headers indicate staleness:
+  X-Cache: STALE         (served from expired L1 cache)
+  X-Cache: STALE-RAW     (served from raw cache, not filtered)
+```
+
+### Logging
+```typescript
+logExchangeError(exchange, error, context)   // Warning level + Sentry
+logApiError(route, error, context)           // Error level + Sentry
+logValidationError(route, issues, context)   // Warning level + Sentry
+```
+
+---
+
+## Caching Architecture
+
+### Three-Layer Cache Strategy
+
+```
+Layer 1: In-Memory (per serverless instance)
+  ├── Fastest, but lost on cold start
+  ├── TTL varies by data type (2s - 30min)
+  └── Map<string, { data, expiresAt }>
+
+Layer 2: Database (api_cache table)
+  ├── Survives cold starts
+  ├── Shared across all instances
+  ├── TTL varies (600s - 3600s)
+  └── PostgreSQL JSONB
+
+Layer 3: CDN Edge (Vercel)
+  ├── Cache-Control headers
+  ├── s-maxage (serve cached) + stale-while-revalidate (background refresh)
+  └── Closest to user
+```
+
+### TTL Configuration by Data Type
+
+| Data Type | L1 Memory | L2 Database | L3 Edge (s-maxage) | SWR |
+|-----------|-----------|-------------|-------------------|-----|
+| Funding (raw) | 2 min | — | 15s | 30s |
+| Funding (filtered) | 2 min | — | 10s | 20s |
+| Tickers | 3 sec | — | 2s | 5s |
+| Open Interest | ~5 min | — | 60s | 120s |
+| Options | 60 sec | — | 30s | — |
+| Klines | — | — | 30s | 60s |
+| Liquidations | 30 sec | — | 15s | — |
+| Fear & Greed | 30 min | 1 hr | — | — |
+| Dominance | 10 min | 10 min | — | — |
+| Top Movers | 30 min | 30 min | — | — |
+| Top 500 Symbols | 30 min | 30 min | — | — |
+| News | 5 min | — | 5 min | — |
+| ETF | 2 min | — | — | — |
+| Treasuries | 10 min | — | — | — |
+| Market Cycle | 30 min | — | — | — |
+| On-Chain | 10 min | — | — | — |
+| RSI | 5 min | — | — | — |
+| Orderbook | 5 sec | — | — | — |
+| Agg Trades | — | — | 5s | — |
+| Correlation | 60 sec | — | 120s | — |
+| Yields | — | — | 5 min | — |
+| Stablecoins | — | — | 5 min | — |
+| Reserves | — | — | 5 min | — |
+| Prediction Markets | 60 sec | — | — | — |
+| Spreads | 30 sec | — | — | — |
+
+### Request Deduplication
+```typescript
+// inflight.ts — prevents thundering herd
+dedupedFetch(key: string, fetcher: () => Promise<T>): Promise<T>
+  │
+  ├── If key in flight: return existing Promise
+  ├── If not in flight: execute fetcher, store Promise
+  └── Cleanup on Promise.finally()
+```
+
+---
+
+## Environment Variables
+
+### Required (App Won't Function Without)
+```env
+DATABASE_URL=postgres://user:pass@host:25060/db?sslmode=require
+NEXTAUTH_URL=https://info-hub.io
+NEXTAUTH_SECRET=<random-64-char-string>
+CRON_SECRET=<random-string-for-cron-auth>
+```
+
+### Authentication (OAuth Providers)
+```env
+AUTH_GOOGLE_ID=<google-oauth-client-id>
+AUTH_GOOGLE_SECRET=<google-oauth-secret>
+AUTH_DISCORD_ID=<discord-oauth-client-id>
+AUTH_DISCORD_SECRET=<discord-oauth-secret>
+AUTH_TWITTER_ID=<twitter-oauth-client-id>
+AUTH_TWITTER_SECRET=<twitter-oauth-secret>
+```
+
+### Email Service
+```env
+RESEND_API_KEY=<resend-api-key>
+```
+
+### External Data APIs
+```env
+CMC_API_KEY=<coinmarketcap-api-key>              # Top 500 symbols, dominance, global stats
+COINMARKETCAL_API_KEY=<coinmarketcal-api-key>    # Economic calendar, events
+CRYPTOPANIC_API_KEY=<cryptopanic-api-key>        # News with sentiment
+ETHERSCAN_API_KEY=<etherscan-api-key>            # Ethereum on-chain data
+```
+
+### AI Integration
+```env
+ANTHROPIC_API_KEY=<claude-api-key>               # Telegram AI chat (Haiku model)
+```
+
+### Rate Limiting (Upstash Redis)
+```env
+UPSTASH_REDIS_URL=<redis-url>                    # v1 API rate limiting
+UPSTASH_REDIS_TOKEN=<redis-auth-token>
+```
+
+### Push Notifications (Web Push VAPID)
+```env
+VAPID_PUBLIC_KEY=<vapid-public-key>
+VAPID_PRIVATE_KEY=<vapid-private-key>
+VAPID_SUBJECT=mailto:admin@info-hub.io
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=<same-as-VAPID_PUBLIC_KEY>  # Exposed to client
+```
+
+### Telegram Bot
+```env
+TELEGRAM_BOT_TOKEN=<telegram-bot-api-token>
+TELEGRAM_WEBHOOK_SECRET=<webhook-validation-secret>
+```
+
+### Proxy (CloudFlare bypass)
+```env
+PROXY_URL=https://<proxy-host>:<port>            # Routes blocked domains
+```
+
+### Runtime / Platform
+```env
+NODE_ENV=production                              # Set by Vercel
+VERCEL_URL=info-hub.io                          # Set by Vercel
+```
+
+---
+
+## Data Structures
+
+### Standard API Response Envelope
+```typescript
+interface APIResponse<T> {
+  data: T[];
+  health: ExchangeHealth[];
+  meta: {
+    totalExchanges: number;
+    activeExchanges: number;
+    totalEntries: number;
+    timestamp: number;
+    [key: string]: any;
+  };
+}
+```
+
+### Exchange Health
+```typescript
+interface ExchangeHealth {
+  name: string;
+  status: 'ok' | 'error' | 'empty' | 'circuit-open';
+  count: number;
+  latencyMs: number;
+  error?: string;
+}
+```
+
+### Funding Entry
+```typescript
+interface FundingEntry {
+  symbol: string;
+  exchange: string;
+  fundingRate: number;           // Native interval percentage
+  fundingInterval: '1h' | '4h' | '8h';
+  markPrice?: number;
+  indexPrice?: number;
+  nextFundingTime?: number;
+  predictedRate?: number;
+  type: 'cex' | 'dex';
+  assetClass?: 'crypto' | 'stocks' | 'forex';
+  marginType?: 'linear' | 'inverse';
+}
+```
+
+### OI Entry
+```typescript
+interface OIEntry {
+  symbol: string;
+  exchange: string;
+  openInterest: number;          // In contracts/native units
+  openInterestUsd: number;       // Normalized to USD
+  timestamp: number;
+}
+```
+
+### Liquidation Entry
+```typescript
+interface LiquidationEntry {
+  symbol: string;
+  exchange: string;
+  side: 'long' | 'short';
+  price: number;
+  quantity: number;
+  valueUsd: number;
+  timestamp: number;
+}
+```
+
+### Alert Rule
+```typescript
+interface AlertRule {
+  id: string;
+  symbol: string;
+  metric: 'price' | 'funding' | 'oi' | 'liquidations' | 'volume';
+  operator: 'gt' | 'lt' | 'eq';
+  threshold: number;
+  enabled: boolean;
+  channels: ('email' | 'telegram' | 'push' | 'toast')[];
+  cooldownMinutes: number;       // Default: 60
+}
+```
+
+### API Key
+```typescript
+interface APIKey {
+  id: string;                    // UUID
+  key: string;                   // ih_ + 32 random bytes (base62) — shown once
+  prefix: string;                // First 8 chars
+  name: string;
+  tier: 'free' | 'pro';
+  is_active: boolean;
+  last_used_at: Date | null;
+  requests_today: number;
+  created_at: Date;
+}
+```
+
+### Spread Entry
+```typescript
+interface SpreadEntry {
+  symbol: string;
+  spreadUsd: number;
+  spreadPct: number;
+  highExchange: string;
+  highPrice: number;
+  lowExchange: string;
+  lowPrice: number;
+  exchangeCount: number;
+}
+```

@@ -1,0 +1,558 @@
+# InfoHub Backend — Infrastructure, Droplets & External Services
+
+> Complete documentation of all servers, services, proxies, and external dependencies
+> beyond the Vercel deployment itself.
+
+---
+
+## Table of Contents
+
+1. [Architecture Overview](#architecture-overview)
+2. [Vercel Deployment](#vercel-deployment)
+3. [DigitalOcean Managed PostgreSQL](#digitalocean-managed-postgresql)
+4. [VPS Proxy Server (46.101.247.54)](#vps-proxy-server)
+5. [Cloudflare Worker Proxy](#cloudflare-worker-proxy)
+6. [InfoHub Collector (Standalone Process)](#infohub-collector)
+7. [Upstash Redis](#upstash-redis)
+8. [Sentry Error Tracking](#sentry-error-tracking)
+9. [Resend Email Service](#resend-email-service)
+10. [Telegram Bot](#telegram-bot)
+11. [Web Push Notifications](#web-push-notifications)
+12. [Anthropic Claude API](#anthropic-claude-api)
+13. [OAuth Providers](#oauth-providers)
+14. [External Data APIs](#external-data-apis)
+15. [Complete Service Map](#complete-service-map)
+16. [Environment Variables (All)](#environment-variables-all)
+
+---
+
+## Architecture Overview
+
+```
+                          ┌──────────────────┐
+                          │    Users / CDN    │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │   Vercel Edge     │
+                          │   Mumbai (bom1)   │
+                          │   Next.js 14.2    │
+                          └──┬────┬────┬──┬──┘
+                             │    │    │  │
+              ┌──────────────┘    │    │  └──────────────────┐
+              │                   │    │                      │
+    ┌─────────▼──────┐  ┌────────▼────┐  ┌─────────────┐  ┌─▼──────────────┐
+    │  DO Managed    │  │  VPS Proxy  │  │  Upstash    │  │  Sentry        │
+    │  PostgreSQL    │  │  46.101.*   │  │  Redis      │  │  Error Track   │
+    │  Port 25060    │  │  Port 3100  │  │  (Cloud)    │  │  (SaaS)        │
+    └────────────────┘  └──────┬──────┘  └─────────────┘  └────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  CloudFlare-Blocked  │
+                    │  Exchange APIs       │
+                    │  BitMEX, Gate.io,    │
+                    │  edgeX, Yahoo Finance│
+                    └─────────────────────┘
+
+    ┌──────────────────┐  ┌──────────────┐  ┌──────────────┐
+    │  Cloudflare      │  │  InfoHub     │  │  Resend      │
+    │  Worker Proxy    │  │  Collector   │  │  Email       │
+    │  (weur region)   │  │  (PM2/Node)  │  │  (SaaS)      │
+    └──────────────────┘  └──────────────┘  └──────────────┘
+```
+
+**Key Points**:
+- The main app runs on **Vercel** (serverless) — NOT on a DigitalOcean droplet
+- The database is **DigitalOcean Managed PostgreSQL** — NOT self-hosted
+- A separate **VPS at 46.101.247.54:3100** acts as a CloudFlare bypass proxy
+- A **Cloudflare Worker** provides an alternative proxy with SQLite caching
+- A standalone **InfoHub Collector** process runs on PM2 for data ingestion
+- **12+ external services** for email, monitoring, AI, notifications, etc.
+
+---
+
+## Vercel Deployment
+
+**Platform**: Vercel
+**Region**: Mumbai (`bom1`) — migrated from Dubai (`dxb1`) in March 2026
+**Runtime**: Node.js (default) + Edge for specific routes
+**Framework**: Next.js 14.2.0
+
+### Cron Jobs (vercel.json)
+
+| Path | Schedule | Description |
+|------|----------|-------------|
+| `/api/cron/snapshot` | Every 1 min | Funding + OI snapshots (10-min full cycle) |
+| `/api/cron/ingest-liquidations` | Every 1 min | Poll 5 exchanges for liquidations |
+| `/api/cron/alerts` | Every 5 min | Evaluate user alert rules |
+| `/api/cron/arbitrage-alerts` | Every 5 min | Detect arb opportunities → Telegram |
+| `/api/cron/news-alerts` | Every 15 min | Monitor crypto news |
+| `/api/cron/calendar-alerts` | Every 1 hour | Economic calendar events |
+| `/api/cron/telegram-reports` | Daily 08:00 UTC | Daily market summaries |
+| `/api/cron/telegram-weekly` | Sunday 10:00 UTC | Weekly reports |
+| `/api/cron/portfolio-snapshot` | Daily 12:00 UTC | User portfolio snapshots |
+
+### Function Limits
+- Timeout: 30 seconds (default), configurable per-route
+- Memory: 1024 MB (default)
+- Edge runtime: Limited API surface, no Node.js-specific modules
+- Serverless cold starts: Mitigated by L2 database cache
+
+---
+
+## DigitalOcean Managed PostgreSQL
+
+**Service**: DigitalOcean Managed Database — PostgreSQL
+**Connection Port**: 25060 (DO managed default)
+**Connection Mode**: PgBouncer transaction mode
+**SSL**: Required (`?sslmode=require`)
+
+### Connection Pool (per Vercel instance)
+```
+Max connections:       3
+Idle timeout:          5 seconds
+Connection timeout:    10 seconds
+Max lifetime:          120 seconds (recycle every 2 min)
+Prepare statements:    Disabled (required for PgBouncer)
+```
+
+### Why Managed (Not Self-Hosted Droplet)
+- Automatic backups, failover, and patching
+- PgBouncer built-in (critical for serverless — limits connection explosion)
+- SSL certificates managed automatically
+- Monitoring dashboard in DO console
+
+### Tables (22 total)
+See `backend-database-schema.txt` for full schema. Key tables:
+- `funding_snapshots` — 10-min interval, top 200 symbols
+- `oi_snapshots` — 10-min interval
+- `liquidation_snapshots` — continuous ingestion
+- `users`, `accounts`, `sessions` — NextAuth
+- `api_keys` — Public API v1
+- `api_cache` — L2 persistent cache (survives cold starts)
+
+### Data Retention
+- Snapshots: 30 days (auto-pruned by cron)
+- Alert notifications: 7 days
+- API cache: Per-entry TTL (600s–3600s)
+
+---
+
+## VPS Proxy Server
+
+**IP**: `46.101.247.54`
+**Port**: `3100`
+**Provider**: Likely DigitalOcean (46.101.x.x is a DO IP range)
+**Purpose**: CloudFlare bypass proxy for blocked exchange APIs
+
+### Why It Exists
+Vercel datacenter IPs are recognized and blocked by CloudFlare's bot protection on certain exchange APIs. A VPS with a residential-like or different IP range can bypass these blocks.
+
+### Blocked Domains Routed Through Proxy
+| Domain | Service | Impact |
+|--------|---------|--------|
+| `www.bitmex.com` | BitMEX API | ~$158M OI missing without proxy |
+| `api.gateio.ws` | Gate.io API | ~$1.5B OI missing without proxy |
+| `pro.edgex.exchange` | edgeX DEX API | All edgeX data |
+| `query1.finance.yahoo.com` | Yahoo Finance | ETF data, stock heatmap |
+| `query2.finance.yahoo.com` | Yahoo Finance (fallback) | ETF data backup |
+
+### How It's Used in Code
+```typescript
+// src/app/api/_shared/fetch.ts
+const PROXY_URL = process.env.PROXY_URL || '';
+
+const PROXIED_DOMAINS = new Set([
+  'www.bitmex.com',
+  'api.gateio.ws',
+  'pro.edgex.exchange',
+  'query1.finance.yahoo.com',
+  'query2.finance.yahoo.com',
+]);
+
+function maybeProxyUrl(url: string): string {
+  if (!PROXY_URL) return url;
+  const { hostname } = new URL(url);
+  if (PROXIED_DOMAINS.has(hostname)) {
+    return `${PROXY_URL}?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+```
+
+### Files Using Proxy
+- `src/app/api/funding/exchanges.ts` (4 usages)
+- `src/app/api/openinterest/exchanges.ts` (4 usages)
+- `src/app/api/spot-prices/exchanges.ts` (3 usages)
+- `src/app/api/tickers/exchanges.ts` (2+ usages)
+- `src/app/api/etf/route.ts` (Yahoo Finance)
+
+### Proxy Request Format
+```
+GET https://46.101.247.54:3100?url=https%3A%2F%2Fwww.bitmex.com%2Fapi%2Fv1%2Finstrument
+```
+The proxy fetches the target URL with its own IP and returns the response.
+
+---
+
+## Cloudflare Worker Proxy
+
+**Alternative/secondary proxy** deployed on Cloudflare Workers.
+
+### Configuration
+**Location**: `cf-proxy/worker.js` and `proxy/worker.js`
+**Name**: `infohub-proxy`
+**Region Hint**: Western Europe (`weur`)
+**Config File**: `proxy/wrangler.toml`
+**Deploy Command**: `wrangler deploy`
+
+### Features
+- **SQLite Response Cache**: 60-second TTL using Cloudflare Durable Objects
+- **Domain Whitelist**: Only allows BitMEX and Gate.io
+- **Authentication**: Optional `PROXY_TOKEN` env var for token-based auth
+- **Cache Headers**: `max-age=30, stale-while-revalidate=60`
+- **User-Agent**: Custom Mozilla string to appear as browser
+
+### Free Tier Limits
+- 100,000 requests/day on Cloudflare Workers free tier
+- Suitable for exchange APIs with moderate request volume
+
+### Usage
+Set `PROXY_URL` to your Cloudflare Worker URL:
+```
+PROXY_URL=https://infohub-proxy.your-subdomain.workers.dev
+```
+
+---
+
+## InfoHub Collector
+
+**Type**: Standalone Node.js application (NOT part of Vercel deployment)
+**Location**: `infohub-collector/` directory
+**Purpose**: Background data fetcher and database ingester
+
+### Process Management (PM2)
+```javascript
+// ecosystem.config.cjs
+module.exports = {
+  apps: [{
+    name: 'infohub-collector',
+    script: 'collector.mjs',
+    instances: 1,
+    max_memory_restart: '256M',
+    autorestart: true
+  }]
+};
+```
+
+### Configuration
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | required | PostgreSQL connection string |
+| `INFOHUB_BASE_URL` | `https://info-hub.io` | Main app URL for API calls |
+| `HEALTH_PORT` | `3001` | Health check HTTP server port |
+
+### What It Does
+- Fetches exchange data on schedules (separate from Vercel crons)
+- Ingests data directly to PostgreSQL
+- Provides health check endpoint at `http://localhost:3001/health`
+- Dependencies: `dotenv`, `node-cron`, `postgres`, `uuid`
+
+### Deployment
+Runs on a server (likely the same VPS at 46.101.247.54 or a separate droplet):
+```bash
+cd infohub-collector
+npm install
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup  # Auto-start on reboot
+```
+
+---
+
+## Upstash Redis
+
+**Service**: Upstash Serverless Redis
+**Purpose**: Distributed rate limiting for public API (v1)
+**Library**: `@upstash/ratelimit`, `@upstash/redis`
+
+### Configuration
+```env
+UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AXxxxx...
+```
+
+### Rate Limit Tiers
+| Tier | Per-Minute | Daily | Redis Key Prefix |
+|------|-----------|-------|-----------------|
+| Free | 100 | 5,000 | `ih:rl:free` |
+| Pro | 500 | Unlimited | `ih:rl:pro` |
+
+### Algorithm
+- Sliding window with analytics
+- Fallback: In-memory rate limiter when Redis is unreachable
+
+### Why Upstash (Not Self-Hosted Redis)
+- Serverless-compatible (HTTP-based, no persistent TCP connections)
+- Works with Vercel Edge runtime
+- Pay-per-request pricing
+- No infrastructure to manage
+
+---
+
+## Sentry Error Tracking
+
+**Service**: Sentry (SaaS)
+**Purpose**: Error monitoring, performance tracing
+
+### Configuration Files
+- `sentry.server.config.ts` — Server-side error capture
+- `sentry.edge.config.ts` — Edge runtime error capture
+
+### Settings
+```typescript
+{
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0.1,  // 10% of requests traced
+  environment: process.env.NODE_ENV,
+  enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN  // Only when DSN configured
+}
+```
+
+### What Gets Reported
+- Exchange fetch errors (with exchange name context)
+- API route errors (with route tagging)
+- Database connection failures
+- Unhandled promise rejections
+- Performance traces (10% sample)
+
+---
+
+## Resend Email Service
+
+**Service**: Resend (transactional email SaaS)
+**Variable**: `RESEND_API_KEY`
+
+### Emails Sent
+| Email Type | Trigger | Content |
+|-----------|---------|---------|
+| Email Verification | Signup | 6-digit code, 15-min expiry |
+| Verification Resend | User request | New 6-digit code |
+| Password Reset | Forgot password | Reset link with SHA256 token, 1-hr expiry |
+| 2FA Email Code | Login with email 2FA | 6-digit code, 15-min expiry |
+| Alert Notification | Alert cron trigger | Market data that matched alert rule |
+
+---
+
+## Telegram Bot
+
+**Service**: Telegram Bot API
+**Variables**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`
+
+### Webhook Registration
+```
+GET /api/telegram/setup?secret={WEBHOOK_SECRET}
+  → POST https://api.telegram.org/bot{TOKEN}/setWebhook
+    url: https://info-hub.io/api/telegram/webhook
+```
+
+### Commands (14)
+| Command | Function |
+|---------|----------|
+| `/start` | Register + activate |
+| `/stop` | Pause alerts |
+| `/scan` | Force arb scan |
+| `/set threshold N` | Price spread threshold |
+| `/set funding N` | Funding rate threshold |
+| `/watchlist BTC ETH` | Set watched symbols |
+| `/price BTC` | Current price |
+| `/funding BTC` | Funding per exchange |
+| `/oi BTC` | Open interest |
+| `/liq` | Top liquidations |
+| `/alert add/remove/list/clear` | Custom alerts |
+| Free text | AI chat (Haiku) |
+
+### Automated Reports
+- Daily at 08:00 UTC — market summary
+- Weekly on Sunday at 10:00 UTC — weekly recap
+- Real-time — arbitrage opportunities above threshold
+- Real-time — alert triggers
+
+### Database Tables
+- `telegram_users` — chat_id, active, thresholds, watchlist
+- `telegram_alerts` — custom alert definitions
+- `telegram_cooldowns` — per-symbol cooldown tracking
+- `telegram_report_schedule` — daily/weekly preferences
+
+---
+
+## Web Push Notifications
+
+**Standard**: Web Push API with VAPID authentication
+
+### Variables
+```env
+VAPID_PUBLIC_KEY=<65-byte uncompressed EC public key>
+VAPID_PRIVATE_KEY=<32-byte EC private key>
+VAPID_SUBJECT=mailto:admin@info-hub.io
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=<same as VAPID_PUBLIC_KEY>  # Client-side
+```
+
+### Flow
+```
+1. Client: navigator.serviceWorker.register()
+2. Client: PushManager.subscribe({ applicationServerKey: VAPID_PUBLIC_KEY })
+3. Client: POST /api/push/subscribe { endpoint, p256dh, auth }
+4. Server: UPSERT into push_subscriptions
+5. Alert cron: webpush.sendNotification(subscription, payload)
+```
+
+### Library
+`web-push` npm package for server-side push delivery.
+
+---
+
+## Anthropic Claude API
+
+**Service**: Anthropic API
+**Variable**: `ANTHROPIC_API_KEY`
+**Model**: Claude Haiku (fast, cost-effective)
+
+### Usage
+1. **Telegram Bot AI Chat**: Free-text questions answered by Haiku (200 token max, 10/hr rate limit)
+2. **Web Chat Widget** (`/api/chat`): Streaming multimodal responses with market context
+
+---
+
+## OAuth Providers
+
+| Provider | Client ID Var | Secret Var | Scopes |
+|----------|--------------|------------|--------|
+| Google | `AUTH_GOOGLE_ID` | `AUTH_GOOGLE_SECRET` | profile, email |
+| Discord | `AUTH_DISCORD_ID` | `AUTH_DISCORD_SECRET` | identify, email |
+| Twitter | `AUTH_TWITTER_ID` | `AUTH_TWITTER_SECRET` | users.read, tweet.read |
+
+---
+
+## External Data APIs
+
+| Service | API Key Variable | Endpoints Used | Purpose |
+|---------|-----------------|----------------|---------|
+| CoinMarketCap | `CMC_API_KEY` | `/v1/cryptocurrency/listings/latest`, `/v2/cryptocurrency/quotes/latest`, `/v1/global-metrics/quotes/latest` | Top 500 coins, dominance, global stats, coin search |
+| CoinGecko | (none — public tier) | `/api/v3/coins/markets`, `/api/v3/global`, `/api/v3/search`, `/api/v3/derivatives/exchanges` | Market data, historical prices, search, derivatives OI |
+| CoinMarketCal | `COINMARKETCAL_API_KEY` | Event calendar | Token unlocks, economic events |
+| CryptoPanic | `CRYPTOPANIC_API_KEY` | `/api/v1/posts/` | News with sentiment voting |
+| CryptoCompare | (none) | News API | Supplementary news |
+| Alternative.me | (none) | `/fng/` | Fear & Greed Index |
+| Yahoo Finance | (none — proxied) | `/v8/finance/chart/`, `/v7/finance/quote` | ETF prices, stock data |
+| DefiLlama | (none) | `/yields`, `/stablecoins`, `/protocols` | DeFi yields, stablecoins, reserves |
+| ForexFactory | (none — scraped) | Calendar page | Economic calendar events |
+| Polymarket | (none) | Market API | Prediction markets |
+| Kalshi | (none) | Trade API v2 | Prediction markets |
+| Manifold | (none) | Markets API | Prediction markets |
+| blockchain.info | (none) | `/q/hashrate`, `/q/getdifficulty` | Bitcoin on-chain metrics |
+| mempool.space | (none) | `/api/v1/fees/recommended` | Bitcoin mempool, fee estimates |
+| Etherscan | `ETHERSCAN_API_KEY` | Various | Ethereum on-chain data |
+
+---
+
+## Complete Service Map
+
+| # | Service | Type | Cost Model | Critical? |
+|---|---------|------|-----------|-----------|
+| 1 | **Vercel** | Hosting | Pro plan | YES — app won't run |
+| 2 | **DO Managed PostgreSQL** | Database | Monthly | YES — no data storage |
+| 3 | **VPS Proxy (46.101.*)** | Proxy Server | Monthly droplet | NO — only affects blocked exchanges |
+| 4 | **Cloudflare Worker** | Proxy (alt) | Free tier | NO — backup proxy |
+| 5 | **Upstash Redis** | Rate Limiting | Pay-per-request | NO — falls back to in-memory |
+| 6 | **Sentry** | Error Tracking | Free/paid tier | NO — app works without it |
+| 7 | **Resend** | Email | Pay-per-email | PARTIAL — no email verification/reset without it |
+| 8 | **Telegram Bot** | Notifications | Free | NO — app works without it |
+| 9 | **Anthropic API** | AI Chat | Pay-per-token | NO — chat widget disabled |
+| 10 | **Google OAuth** | Auth | Free | NO — credential login still works |
+| 11 | **Discord OAuth** | Auth | Free | NO — credential login still works |
+| 12 | **Twitter OAuth** | Auth | Free | NO — credential login still works |
+| 13 | **CoinMarketCap** | Data API | Free/paid tier | PARTIAL — fallback to CoinGecko |
+| 14 | **CoinGecko** | Data API | Free tier | PARTIAL — primary fallback for many features |
+| 15 | **CryptoPanic** | News API | Free tier | NO — other news sources available |
+| 16 | **Web Push (VAPID)** | Notifications | Free (self-hosted keys) | NO — other notification channels exist |
+
+### Minimum Viable Infrastructure
+To run InfoHub with core functionality, you need **only 3 services**:
+1. **Vercel** (hosting + crons)
+2. **DigitalOcean PostgreSQL** (data storage)
+3. **At least one data API** (CoinGecko free tier)
+
+Everything else degrades gracefully with fallbacks.
+
+---
+
+## Environment Variables (Complete)
+
+### Required (3)
+```env
+DATABASE_URL=postgresql://user:pass@host:25060/db?sslmode=require
+NEXTAUTH_URL=https://info-hub.io
+NEXTAUTH_SECRET=<64-char-random-string>
+```
+
+### Required for Crons (1)
+```env
+CRON_SECRET=<random-string>
+```
+
+### Auth Providers (6 — all optional)
+```env
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
+AUTH_DISCORD_ID=
+AUTH_DISCORD_SECRET=
+AUTH_TWITTER_ID=
+AUTH_TWITTER_SECRET=
+```
+
+### External Services (9)
+```env
+RESEND_API_KEY=
+CMC_API_KEY=
+COINMARKETCAL_API_KEY=
+CRYPTOPANIC_API_KEY=
+ETHERSCAN_API_KEY=
+ANTHROPIC_API_KEY=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+NEXT_PUBLIC_SENTRY_DSN=
+```
+
+### Proxy (1)
+```env
+PROXY_URL=https://46.101.247.54:3100
+```
+
+### Push Notifications (4)
+```env
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@info-hub.io
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+```
+
+### Telegram (2)
+```env
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
+```
+
+### Runtime (2 — set by Vercel)
+```env
+NODE_ENV=production
+VERCEL_URL=info-hub.io
+```
+
+### Collector (2)
+```env
+INFOHUB_BASE_URL=https://info-hub.io
+HEALTH_PORT=3001
+```
+
+**Total: 30 environment variables** (4 required, 26 optional)

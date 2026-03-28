@@ -1,0 +1,738 @@
+# InfoHub Backend — Exchange Integration Reference
+
+> Complete integration documentation for all 30+ exchanges
+> Each entry: API endpoints, symbol format, precision handling, data types, special rules
+
+---
+
+## Table of Contents
+
+### CEX Exchanges (16)
+1. [Binance](#1-binance)
+2. [Bybit](#2-bybit)
+3. [OKX](#3-okx)
+4. [Bitget](#4-bitget)
+5. [MEXC](#5-mexc)
+6. [Kraken](#6-kraken)
+7. [BingX](#7-bingx)
+8. [Phemex](#8-phemex)
+9. [KuCoin](#9-kucoin)
+10. [HTX (Huobi)](#10-htx-huobi)
+11. [Bitfinex](#11-bitfinex)
+12. [WhiteBIT](#12-whitebit)
+13. [Coinbase International](#13-coinbase-international)
+14. [CoinEx](#14-coinex)
+15. [Bitunix](#15-bitunix)
+16. [Gate.io (Blocked)](#16-gateio-blocked)
+
+### DEX Exchanges (12)
+17. [Hyperliquid](#17-hyperliquid)
+18. [dYdX V4](#18-dydx-v4)
+19. [Aster DEX](#19-aster-dex)
+20. [Lighter](#20-lighter)
+21. [Aevo](#21-aevo)
+22. [Drift Protocol](#22-drift-protocol)
+23. [GMX V2](#23-gmx-v2)
+24. [gTrade (Gains Network)](#24-gtrade-gains-network)
+25. [Extended](#25-extended)
+26. [edgeX](#26-edgex)
+27. [Variational](#27-variational)
+28. [Nado](#28-nado)
+
+### Blocked Exchanges
+29. [BitMEX (Blocked)](#29-bitmex-blocked)
+
+### Options Exchanges
+30. [Deribit (Options)](#30-deribit-options)
+
+### Additional Integrations
+31. [Backpack](#31-backpack)
+32. [Orderly Network](#32-orderly-network)
+33. [Paradex](#33-paradex)
+
+---
+
+## CEX EXCHANGES
+
+### 1. Binance
+
+**Type**: CEX | **Data**: Funding, OI, Tickers, Spot | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Funding (Linear) | `https://fapi.binance.com/fapi/v1/premiumIndex` | GET |
+| Funding (Inverse) | `https://dapi.binance.com/dapi/v1/premiumIndex` | GET |
+| Tickers | `https://fapi.binance.com/fapi/v1/ticker/24hr` | GET |
+| OI (per-symbol) | `https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}` | GET |
+| Spot Tickers | `https://api.binance.com/api/v3/ticker/24hr` | GET |
+| Klines | `https://fapi.binance.com/fapi/v1/klines` | GET |
+| Liquidations | `https://fapi.binance.com/fapi/v1/allForceOrders?limit=200` | GET |
+| Orderbook | `https://fapi.binance.com/fapi/v1/depth` | GET |
+| Agg Trades | `https://fapi.binance.com/fapi/v1/aggTrades` | GET |
+| L/S Ratio | `https://fapi.binance.com/futures/data/globalLongShortAccountRatio` | GET |
+| WebSocket | `wss://fstream.binance.com/ws/{pair}@aggTrade` | WS |
+
+**Symbol Format**: `BTCUSDT` → strip `USDT` = `BTC`
+**Precision**: Funding rates as decimals (multiply by 100 for %). Volumes as floats.
+**Funding Interval**: 8h
+**Fallback Domains**: `fapi.binance.me`, `fapi1.binance.com`, `fapi2.binance.com` + proxy
+**Auth**: None required for public endpoints
+**Rate Limits**: OI batched at 50 symbols per request
+**Special**: Two separate fetchers for USDT-M (linear) and COIN-M (inverse) perpetuals
+
+---
+
+### 2. Bybit
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| All Data | `https://api.bybit.com/v5/market/tickers?category=linear` | GET |
+| Klines | `https://api.bybit.com/v5/market/kline` | GET |
+
+**Symbol Format**: `BTCUSDT` → strip `USDT`
+**Precision**: Funding as decimal. `price24hPcnt` is ratio (multiply by 100 for %).
+**Funding Interval**: 8h
+**Validation**: `retCode` must be `0`
+**Fallback Domains**: `api.bybit.nl`, proxy support
+**Data Fields**: `fundingRate`, `markPrice`, `indexPrice`, `openInterest`, `openInterestValue`, `turnover24h`
+**Kline Intervals**: 1→1m, 60→1h, D→1d (custom mapping)
+
+---
+
+### 3. OKX
+
+**Type**: CEX | **Data**: Funding, OI, Tickers, Spot, Liquidations, Options | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Instruments | `https://www.okx.com/api/v5/public/instruments?instType=SWAP` | GET |
+| Funding (batch) | `https://www.okx.com/api/v5/public/funding-rate?instId={instId}` | GET |
+| OI | `https://www.okx.com/api/v5/public/open-interest?instType=SWAP` | GET |
+| Tickers (Perp) | `https://www.okx.com/api/v5/market/tickers?instType=SWAP` | GET |
+| Tickers (Spot) | `https://www.okx.com/api/v5/market/tickers?instType=SPOT` | GET |
+| Liquidations | `https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP` | GET |
+| Options | `https://www.okx.com/api/v5/public/option-instruments` | GET |
+
+**Symbol Format**: `BTC-USDT-SWAP` → strip `-USDT-SWAP`. Spot: `BTC-USDT` → strip `-USDT`
+**Precision**: All values as strings (parseFloat). Funding as decimal. `code='0'` validation.
+**Funding Interval**: 8h. Supports `nextFundingRate` (predicted).
+**Rate Limits**: Batch size 20 per funding fetch to avoid rate limits.
+**Liquidation Side**: OKX "buy" = short liquidated, "sell" = long liquidated.
+
+---
+
+### 4. Bitget
+
+**Type**: CEX | **Data**: Funding, OI, Tickers, Spot | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Perp Tickers | `https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES` | GET |
+| Spot Tickers | `https://api.bitget.com/api/v2/spot/market/tickers` | GET |
+
+**Symbol Format**: `BTCUSDT` → strip `USDT`
+**Precision**: `code='00000'` validation. Funding as decimal. `lastPr` for price.
+**Funding Interval**: 8h
+**OI**: Uses `holdingAmount` field (base currency coins, not USD)
+**Data Fields**: `fundingRate`, `markPrice`, `indexPrice`, `holdingAmount`
+
+---
+
+### 5. MEXC
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Tickers | `https://contract.mexc.com/api/v1/contract/ticker` | GET |
+| Contract Details | `https://contract.mexc.com/api/v1/contract/detail` | GET |
+
+**Symbol Format**: `BTC_USDT` → strip `_USDT`
+**Precision**: `success` validation. Funding as decimal. Symbol must end with `_USDT`.
+**Funding Interval**: 8h
+**OI**: In contracts → multiply by `contractSize` to get coins. Filters delisted pairs (state != 0).
+**Special**: Supports stock assets (suffix `*STOCK` → asset class classification).
+**Data Fields**: `fairPrice` (mark), `indexPrice`, `fundingRate`, `holdVol` (contracts)
+
+---
+
+### 6. Kraken
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Futures Tickers | `https://futures.kraken.com/derivatives/api/v3/tickers` | GET |
+
+**Symbol Format**: `PF_BTCUSD` → strip `PF_` and `USD`. XBT → BTC conversion.
+**Precision**: `fundingRate` is ABSOLUTE per-contract unit (NOT relative %). Divide by markPrice to get relative rate.
+**Funding Interval**: 4h (unique — most exchanges use 8h)
+**Special**: Filters by `symbol.startsWith('PF_') AND endsWith('USD')`. Supports `fundingRatePrediction`.
+**Data Fields**: `markPrice`, `indexPrice`, `fundingRate` (absolute), `fundingRatePrediction`
+
+---
+
+### 7. BingX
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Funding | `https://open-api.bingx.com/openApi/swap/v2/quote/premiumIndex` | GET |
+| Contracts | `https://open-api.bingx.com/openApi/swap/v2/quote/contracts` | GET |
+| OI (per-symbol) | `https://open-api.bingx.com/openApi/swap/v2/quote/openInterest?symbol={symbol}` | GET |
+| Tickers | `https://open-api.bingx.com/openApi/swap/v2/quote/ticker` | GET |
+
+**Symbol Format**: `BTC-USDT` → strip `-USDT`. Handles tokenized stocks (NCSK* prefix).
+**Precision**: `code=0` validation. Funding as decimal.
+**Funding Interval**: 8h
+**OI**: Already in USD (`openInterestValue`). Filters by `status=1` (active).
+**Rate Limits**: OI calls batched, capped at 50 symbols.
+**Asset Classes**: Stocks, commodities, forex via `normalizeSymbol` + NC-prefix.
+
+---
+
+### 8. Phemex
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Tickers | `https://api.phemex.com/md/v2/ticker/24hr/all` | GET |
+| Products | `https://api.phemex.com/public/products` | GET |
+
+**Symbol Format**: `BTCUSDT` → strip `USDT`. Supports stocks (TSLAUSDT, AAPLUSDT) and commodities.
+**Precision**: Array-based API response. Funding as decimal.
+**Funding Interval**: 8h
+**Special**: Filters delisted pairs (status='Listed' in products). Handles 200+ ghost/delisted pairs. Asset class normalization.
+**Data Fields**: `fundingRateRr`, `markPriceRp`, `indexPriceRp`
+
+---
+
+### 9. KuCoin
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Active Contracts | `https://api-futures.kucoin.com/api/v1/contracts/active` | GET |
+| Funding History | `https://api-futures.kucoin.com/api/v1/contract/funding-rates` | GET |
+
+**Symbol Format**: `BTCUSDTM` → strip `USDTM`. XBT → BTC conversion.
+**Precision**: `code='200000'` or `200000` validation. Funding as decimal.
+**Funding Interval**: 8h. Supports `nextFundingRateTime`.
+**Special**: Detects when `fundingFeeRate` is stuck at cap/floor; fetches historical settled rates as override.
+**OI**: Uses `multiplier` to convert lots → coins.
+**Data Fields**: `fundingFeeRate`, `fundingRateCap`, `fundingRateFloor`, `multiplier`
+
+---
+
+### 10. HTX (Huobi)
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Batch Funding | `https://api.hbdm.com/linear-swap-api/v1/swap_batch_funding_rate` | GET |
+| Contract Info | `https://api.hbdm.com/linear-swap-api/v1/swap_contract_info` | GET |
+| OI | `https://api.hbdm.com/linear-swap-api/v1/swap_open_interest?contract_type=swap` | GET |
+| Tickers | `https://api.hbdm.com/linear-swap-ex/market/detail/batch_merged` | GET |
+| Liquidations | `https://api.hbdm.com/linear-swap-api/v3/swap_liquidation_orders?contract={contract}` | GET |
+
+**Symbol Format**: `BTC-USDT` → strip `-USDT`. Excludes dated futures (regex: `/-\d{6}$/`).
+**Precision**: `status='ok'` validation. Funding as decimal.
+**Funding Interval**: 8h
+**Special**: Filters perpetual swaps only (not futures with expiry dates). Mark prices not always provided.
+**Liquidation Batch**: 4 contracts per request.
+
+---
+
+### 11. Bitfinex
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Derivatives Status | `https://api-pub.bitfinex.com/v2/status/deriv?keys=ALL` | GET |
+| All Tickers | `https://api-pub.bitfinex.com/v2/tickers?symbols=ALL` | GET |
+
+**Symbol Format**: Array-based. `tBTCF0:USTF0` → extract, strip `t` and `F0:USTF0`. XBT → BTC.
+**Precision**: Array indices: [0]=symbol, [12]=CURRENT_FUNDING, [15]=MARK_PRICE, [18]=OPEN_INTEREST, [3]=DERIV_PRICE, [4]=SPOT_PRICE.
+**Funding Interval**: 8h
+**Special**: All derivative tickers end with `F0:USTF0`. Handles inverse notation. No predicted rates.
+
+---
+
+### 12. WhiteBIT
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Futures | `https://whitebit.com/api/v4/public/futures` | GET |
+
+**Symbol Format**: `BTC_PERP` → strip `_PERP`
+**Precision**: Funding as decimal. Next funding in seconds (convert to ms).
+**Funding Interval**: 8h
+**Data Fields**: `funding_rate`, `last_price` (mark), `index_price`, `next_funding_rate_timestamp`, `open_interest`
+
+---
+
+### 13. Coinbase International
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Instruments | `https://api.international.coinbase.com/api/v1/instruments` | GET |
+
+**Symbol Format**: `BTC-PERP` → strip `-PERP`
+**Precision**: Funding as `predicted_funding` (hourly %). Native 1h interval.
+**Funding Interval**: 1h (unique — most CEXes use 8h)
+**Special**: Single endpoint for everything. Mark/index prices nested under `quote`.
+
+---
+
+### 14. CoinEx
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Tickers | `https://api.coinex.com/v2/futures/ticker?market=` | GET |
+| Funding (per-symbol) | `https://api.coinex.com/v2/futures/funding-rate?market={market}` | GET |
+
+**Symbol Format**: `BTCUSDT` → strip `USDT`
+**Precision**: `code=0` validation. Funding as decimal.
+**Funding Interval**: 8h. Supports `next_funding_rate` (predicted).
+**Rate Limits**: Top 40 symbols only (sorted by volume, then per-symbol funding fetch).
+
+---
+
+### 15. Bitunix
+
+**Type**: CEX | **Data**: Funding, Tickers (NO OI) | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Funding | `https://fapi.bitunix.com/api/v1/futures/market/funding_rate/batch` | GET |
+| Tickers | `https://fapi.bitunix.com/api/v1/futures/market/tickers` | GET |
+| Proxy Funding | `/api/proxy/bitunix?endpoint=funding` | GET |
+| Proxy Tickers | `/api/proxy/bitunix?endpoint=tickers` | GET |
+
+**Symbol Format**: `BTCUSDT` → strip `USDT`
+**Precision**: Funding is decimal (0.0005 = 0.05%). Multiply by 100 for percentage display.
+**Funding Interval**: Variable (1h/4h/8h per market, stored as `fundingInterval` number).
+**Special**: Edge runtime blocks direct access → routes through Node.js proxy with different IP pool.
+**OI**: NOT AVAILABLE via public API.
+**24h Change**: Calculated from `open` price field.
+
+---
+
+### 16. Gate.io (BLOCKED)
+
+**Type**: CEX | **Data**: Funding, OI, Tickers | **Status**: CloudFlare blocked on Vercel IPs
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Contracts | `https://api.gateio.ws/api/v4/futures/usdt/contracts` | GET |
+
+**Symbol Format**: `BTC_USDT` → strip `_USDT`
+**Precision**: Funding as decimal. `position_size` in contracts.
+**Funding Interval**: 8h
+**OI Calculation**: `position_size * quanto_multiplier * mark_price`
+**Estimated Missing OI**: ~$1.5B
+**Workaround**: Requires `PROXY_URL` environment variable for datacenter access.
+
+---
+
+## DEX EXCHANGES
+
+### 17. Hyperliquid
+
+**Type**: DEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Meta + Asset Contexts | `https://api.hyperliquid.xyz/info?_t={timestamp}` | POST |
+| Predicted Funding | Same URL | POST |
+
+**Request Bodies**:
+```json
+// Meta + contexts
+{"type": "metaAndAssetCtxs"}
+
+// Predicted rates
+{"type": "predictedFundings"}
+```
+
+**Symbol Format**: Universe array indexing (e.g., `universe[0].name = "BTC"`)
+**Precision**: Funding as native 1h fraction (multiply by 100 for %). OI in coins.
+**Funding Interval**: 1h
+**Special**: POST only. No-cache headers required. Predicted funding nested as `[venue, {fundingRate}]`. Cache busting via `_t` timestamp param.
+**Data Fields**: `funding` (1h fraction), `markPx`, `oraclePx`, `openInterest`
+
+---
+
+### 18. dYdX V4
+
+**Type**: DEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Perpetual Markets | `https://indexer.dydx.trade/v4/perpetualMarkets` | GET |
+
+**Symbol Format**: `BTC-USD` → strip `-USD`. Forex symbols (EUR-USD) classified as forex.
+**Precision**: Funding as native 1h fraction. OI in base currency.
+**Funding Interval**: 1h
+**Special**: Excludes 200+ forex pairs. Includes only ACTIVE markets. Zero-OI markets filtered out.
+**Data Fields**: `nextFundingRate` (1h %), `openInterest`, `oraclePrice`, `priceChange24H`, `volume24H`
+
+---
+
+### 19. Aster DEX
+
+**Type**: DEX | **Data**: Funding, Tickers (NO OI) | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Premium Index | `https://fapi.asterdex.com/fapi/v1/premiumIndex` | GET |
+| Tickers | `https://fapi.asterdex.com/fapi/v1/ticker/24hr` | GET |
+
+**Symbol Format**: Raw symbols. Supports stocks, forex, commodities via `normalizeSymbol`.
+**Precision**: Binance-compatible format. Funding as decimal.
+**Funding Interval**: 8h
+**Special**: Deduplication by seen set. Multi-asset-class normalization.
+
+---
+
+### 20. Lighter
+
+**Type**: DEX (zkLighter L2) | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Funding Rates | `https://mainnet.zklighter.elliot.ai/api/v1/funding-rates` | POST |
+| Order Book Details | `https://mainnet.zklighter.elliot.ai/api/v1/orderBookDetails` | POST |
+
+**Symbol Format**: Pre-normalized (AAPL, EURUSD, BTC) — no stripping needed.
+**Precision**: API returns 8h-normalized funding rates. Divide by 8 for native 1h rate.
+**Funding Interval**: 1h (native), API reports 8h-normalized.
+**Special**: Supports stocks, forex, commodities natively. Single endpoint per data type.
+**Data Fields**: `rate` (8h-normalized %), `symbol`, `last_trade_price`, `open_interest`, `market_type='perp'`
+
+---
+
+### 21. Aevo
+
+**Type**: DEX | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Markets | `https://api.aevo.xyz/markets` | GET |
+| Funding (per-instrument) | `https://api.aevo.xyz/funding?instrument_name={name}` | GET |
+
+**Symbol Format**: `underlying_asset` field. Strips 1000/10000-prefix tokens (1000PEPE → PEPE).
+**Precision**: Funding as decimal 1h fraction.
+**Funding Interval**: 1h
+**Rate Limits**: Batch size 20 with 1.2s delay between batches. Capped at 80 markets per route timeout.
+**Special**: Priority symbols (BTC, ETH, SOL, etc.) fetched first.
+**Data Fields**: `underlying_asset`, `mark_price`, `index_price`, `instrument_name`, `is_active`
+
+---
+
+### 22. Drift Protocol
+
+**Type**: DEX (Solana) | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Market Stats | `https://data.api.drift.trade/stats/markets` | GET |
+
+**Symbol Format**: `{symbol}-PERP`. Strips 1M prefix (1MBONK → BONK, 1MPEPE → PEPE).
+**Precision**: Data API returns human-readable values — no precision conversion needed.
+**Funding Interval**: 1h (hourly settlement)
+
+**Funding Formula** (from raw hex API, not data API):
+```
+hourlyRate% = (fundingRate / 1e9) / (oraclePriceTwap / 1e6) * 100
+```
+Constants: FUNDING_RATE_PRECISION=1e9, PRICE_PRECISION=1e6, BASE_PRECISION=1e9
+
+**Sign Convention**: API positive = longs receive → negate for InfoHub convention (positive = longs pay).
+**Stats**: 85 perp markets, 47 with >$10K OI, ~$150M total OI.
+**Data Fields**: `fundingRate.long`, `openInterest.long/short`, `oraclePrice`, `marketType='perp'`
+
+---
+
+### 23. GMX V2
+
+**Type**: DEX (Arbitrum) | **Data**: Funding, OI (NO Tickers) | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Markets Info | `https://arbitrum-api.gmxinfra.io/markets/info` | GET |
+
+**Symbol Format**: `BTC/USD [WBTC.b-USDC]` → `name.split('/')[0]` = `BTC`. Strip `.v\d+` suffix (XAUT.v2 → XAUT).
+**Precision**: ALL values are BigInt strings at 1e30 precision. MUST use `BigInt()` constructor.
+
+**Funding Formula**:
+```javascript
+// Annual rate at 1e30 → hourly percentage
+baseRate = Math.min(Math.abs(fundingRateLong), Math.abs(fundingRateShort))
+hourlyRate = Number(BigInt(baseRate)) / 1e30 / 8760 * 100
+
+// Direction: fundingRateLong < 0 → longs pay shorts
+```
+
+**OI Formula**:
+```javascript
+oiUsd = Number(BigInt(openInterestLong)) / 1e30  // Already in USD
+```
+
+**Funding Interval**: 1h (continuous accrual every second, reported as 1h)
+**Special**: Deduplicates by symbol (multiple collateral pools) — keeps highest OI pool. Multiple BTC markets: [WBTC.b-WBTC.b], [WBTC.b-USDC], [tBTC-tBTC].
+**Known API Changes (Mar 2026)**:
+- `longOpenInterest` → `openInterestLong`
+- `shortOpenInterest` → `openInterestShort`
+- `indexTokenPrice` field REMOVED — uses CoinGecko fallback
+**Stats**: 58 markets with >$10K OI, ~$70M total OI.
+
+---
+
+### 24. gTrade (Gains Network)
+
+**Type**: DEX (Arbitrum) | **Data**: Funding, OI (NO live Tickers) | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Trading Variables | `https://backend-arbitrum.gains.trade/trading-variables` | GET |
+
+**Symbol Format**: `pair.from` field. Handles expiry suffixes (INTC_24_5 → INTC).
+**Response Size**: ~2MB endpoint.
+**Funding Interval**: 8h (velocity-based model, normalized from continuous)
+
+**Funding Calculation** (extremely complex):
+```
+Velocity = skew_coefficient * net_exposure
+Rate = velocity * time_elapsed
+Capped by absoluteRatePerSecondCap
+Converted to 8h percentage
+```
+Supports V1 and V2 borrowing models.
+
+**Precision**: All values use custom per-field precision constants (15+ constants).
+**Special**: 200+ delisted pairs filtered. Asset class grouping by group index. Prices from DB history merge (no live price endpoint).
+**Known API Changes (Mar 2026)**:
+- `pairDepths`, `pairSkewDepths`, `prices`, `pairOis` REMOVED from top level
+- New: `pairInfos.pairDepthBands` (packed BigInt slot encoding)
+- New: `oiWindows` (windowed OI)
+- Pairs array still works (452 pairs, BTC=index 0)
+- CoinGecko fallback needed for prices
+
+---
+
+### 25. Extended
+
+**Type**: DEX (Starknet) | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Markets | `https://api.starknet.extended.exchange/api/v1/info/markets` | GET |
+
+**Symbol Format**: `assetName` field. Strips 1000-prefix.
+**Precision**: Funding as decimal.
+**Funding Interval**: 1h
+**Special**: Filters non-crypto (forex, equities, commodities by category). 105 markets total.
+**Data Fields**: `marketStats.fundingRate`, `marketStats.openInterest`, `marketStats.openInterestBase`, `markPrice`, `indexPrice`
+
+---
+
+### 26. edgeX
+
+**Type**: DEX (Arbitrum) | **Data**: Funding, OI, Tickers | **Status**: Active (Proxied)
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Metadata | `/meta/getMetaData` | GET |
+| Ticker (per-contract) | `/quote/getTicker?contractId={id}` | GET |
+
+**Symbol Format**: `contractName` → strip `USD.*` suffix.
+**Precision**: Funding as decimal.
+**Funding Interval**: 1h
+**Special**: Batches contract fetches (10 per batch). In PROXIED_DOMAINS list.
+**Data Fields**: `fundingRate`, `oraclePrice`, `markPrice`, `openInterest`
+
+---
+
+### 27. Variational
+
+**Type**: DEX (Arbitrum) | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Stats | `https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats` | GET |
+
+**Symbol Format**: `ticker` field. Strips 1000-prefix.
+**Precision**: Funding as ANNUALIZED decimal rate. Convert: `rate% = raw * 100 / periods_per_year`.
+**Funding Interval**: Variable per market (1h/2h/4h/8h), stored as `funding_interval_s` (seconds).
+**Special**: OI values in USD, converts to base via price. Different interval per market.
+**Data Fields**: `funding_rate` (annualized decimal), `funding_interval_s`, `mark_price`, `open_interest`
+
+---
+
+### 28. Nado
+
+**Type**: DEX (Ink L2 CLOB) | **Data**: Funding, OI, Tickers | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| All Products | `https://gateway.prod.nado.xyz/v1/query?type=all_products` | GET |
+| Tickers | `https://archive.prod.nado.xyz/v2/tickers?market=perp` | GET |
+| Funding Rates | `https://archive.prod.nado.xyz/v1` | POST |
+
+**Funding Request Body**:
+```json
+{"funding_rates": {"product_ids": [1, 2, 3]}}
+```
+
+**Symbol Format**: `base_currency` field. kPEPE → PEPE (strip `k` prefix).
+**Precision**: ALL values at 1e18 precision. Divide by 1e18 for decimal.
+**Funding Interval**: 1h (API returns 24h rate, divide by 24).
+**Special**: Three API calls required per fetch. Complex multi-step data assembly.
+**Data Fields**: `oracle_price_x18`, `open_interest` (x18), `funding_rate_x18` (24h), `product_id`
+
+---
+
+## BLOCKED EXCHANGES
+
+### 29. BitMEX (BLOCKED)
+
+**Type**: CEX | **Status**: CloudFlare blocked on Vercel datacenter IPs
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Instruments | `https://www.bitmex.com/api/v1/instrument?columns=...` | GET |
+
+**Symbol Format**: `XBTUSD` → strip `USD`. XBT → BTC.
+**Precision**: Funding as decimal. `openValue` encoding: inverse uses satoshis, linear uses USD.
+**Funding Interval**: Variable (stored per-instrument)
+**Special**: Filters by `state="Open"` and `typ="FFWCSX"`. Requires proxy.
+**Estimated Missing OI**: ~$158M
+
+---
+
+## OPTIONS EXCHANGES
+
+### 30. Deribit (Options)
+
+**Type**: CEX (Options specialist) | **Data**: Options, Funding (BTC/ETH perps) | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Options Summary | `https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency={BTC|ETH}&kind=option` | GET |
+| Perp Ticker | `https://www.deribit.com/api/v2/public/ticker?instrument_name=BTC-PERPETUAL` | GET |
+| Index Price | `https://www.deribit.com/api/v2/public/get_index_price?index_name={btc|eth}_usd` | GET |
+| Liquidations | `https://www.deribit.com/api/v2/public/get_last_trades_by_currency` | GET |
+
+**Options Symbol Parsing**: `BTC-28FEB25-50000-C` → expiry "28FEB25", strike 50000, type 'C' (call)
+**Options OI**: In USD (not base currency). `mark_iv` for implied volatility.
+**Funding Interval**: 8h for perpetuals. `funding_8h` field.
+**Market Share**: ~90% of all crypto options open interest.
+
+---
+
+## ADDITIONAL INTEGRATIONS
+
+### 31. Backpack
+
+**Type**: DEX (Solana) | **Data**: Funding | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Mark Prices | `https://api.backpack.exchange/api/v1/markPrices` | GET |
+
+**Symbol Format**: `{symbol}_USDC_PERP` → strip suffix
+**Funding Interval**: 1h
+**Data Fields**: `fundingRate`, `markPrice`, `indexPrice`, `nextFundingTimestamp`
+
+---
+
+### 32. Orderly Network
+
+**Type**: DEX | **Data**: Funding | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Futures | `https://api-evm.orderly.org/v1/public/futures` | GET |
+
+**Symbol Format**: `PERP_BTC_USDC` → extract `BTC`
+**Funding Interval**: 8h. Supports predicted rate.
+**Data Fields**: `last_funding_rate`, `est_funding_rate`, `mark_price`, `index_price`
+
+---
+
+### 33. Paradex
+
+**Type**: DEX (StarkNet) | **Data**: Funding | **Status**: Active
+
+| Endpoint | URL | Method |
+|----------|-----|--------|
+| Markets Summary | `https://api.prod.paradex.trade/v1/markets/summary?market=ALL` | GET |
+
+**Symbol Format**: `BTC-USD-PERP` → strip `-USD-PERP`
+**Funding Interval**: 8h
+**Data Fields**: `funding_rate`, `mark_price`, `underlying_price`
+
+---
+
+## SHARED INFRASTRUCTURE
+
+### Symbol Normalization Rules
+
+| Rule | From | To | Applies To |
+|------|------|----|------------|
+| Rebrand | RNDR | RENDER | All exchanges |
+| Rebrand | MATIC | POL | All exchanges |
+| Quantity prefix | 1000PEPE, 1MBONK | PEPE, BONK | All exchanges |
+| Quantity prefix | 1000000PEPE | PEPE | All exchanges |
+| BTC alias | XBT | BTC | KuCoin, Kraken, Bitfinex |
+| Stock suffix | AAPLX | AAPL | Gate.io stocks |
+| DEX prefix | kPEPE | PEPE | Nado |
+| Version suffix | XAUT.v2 | XAUT | GMX |
+
+### Asset Class Classification
+
+| Signal | Asset Class | Example |
+|--------|------------|---------|
+| MEXC `*STOCK` suffix | stocks | TSLA*STOCK → TSLA (stock) |
+| BingX NCSK prefix | stocks | NCSK_AAPL → AAPL (stock) |
+| BingX NCCO prefix | commodities | NCCO_GOLD → GOLD (commodity) |
+| BingX NCFX prefix | forex | NCFX_EURUSD → EURUSD (forex) |
+| dYdX bare base (EUR, GBP) | forex | EUR-USD → EURUSD (forex) |
+| Lighter pre-tagged | varies | AAPL (stock), EURUSD (forex) |
+
+### Circuit Breaker Configuration
+
+```
+FAILURE_THRESHOLD:  5 failures within window
+WINDOW:             10 minutes
+INITIAL_COOLDOWN:   2 minutes
+BACKOFF:            Exponential (2 → 4 → 8 → 16 → 30 min)
+MAX_COOLDOWN:       30 minutes
+RETRY_ON_FAIL:      1 retry after 500ms
+LOG_THROTTLE:       Once per 10 min (avoid spam)
+```
+
+States: Closed (normal) → Open (skip exchange) → Half-Open (retry after cooldown)
+
+### Fetch Configuration
+
+```
+DEFAULT_TIMEOUT:    8-12 seconds (exchange-dependent)
+MAX_TIMEOUT:        25 seconds (for slow exchanges)
+PROXY_DOMAINS:      edgeX, BitMEX, Gate.io, Yahoo Finance
+DEDUP:              dedupedFetch() prevents thundering herd
+```

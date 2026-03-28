@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "skills": {
+    "api-design": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "cd8dad9f9cf4eae8632a3969cd12f4e9ad1f9d58a9ed607c2d9ce51876d6dd13"
+    },
+    "backend-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "6456e45aca107569db0bf67910f58b60af891330864bfdb3fc1c7a9df1ceffbc"
+    },
+    "clickhouse-io": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "1889d9e98b577799c31ed44f6f0ff2549dc96b85bbe790dc02b37e1c8315bbf0"
+    },
+    "coding-standards": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "574803faf98d8a698c2b2151d7ed211208bb084320d411bd3a0919e6b08e48f6"
+    },
+    "configure-ecc": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "7365ec67e5b6a18665ee712ab08deee7f05c9b08008975d24edc08a5575273d0"
+    },
+    "content-hash-cache-pattern": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "87f3d3ddae326226e8638a6f6fd0402f35bed4131ef10070f9f9d84afeb86103"
+    },
+    "continuous-learning": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "71c895c557b37c8a92f51bdeb9add8609375a21597d8bb770be3356b16968385"
+    },
+    "continuous-learning-v2": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "98b8e5967158d515dd2e942511f93f291ff210d8663c2b88b998b72e8ed1cd18"
+    },
+    "cost-aware-llm-pipeline": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "405590f0e45cf4b8a4e99e409891ea1b76cb81185a31f51d63de71e84ac17358"
+    },
+    "cpp-coding-standards": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "78e483c066cbd04aabfff8d4d179494c6dd70140ce1dae4f8e53d8fdb080f7d0"
+    },
+    "cpp-testing": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "7140648b8ce5d620935b3c02d39b004d0f07e7739fa216d1a08bed2d7f85996e"
+    },
+    "database-migrations": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "5be50d1b88799b22a9a1fe0ea79408484ea9e20bd3a7ddce2ad6309c9a991dc7"
+    },
+    "deployment-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "1a8a000f5ca0d10119ecc332d6dfe14e10c275219b87e78aaa9436a38e0caa75"
+    },
+    "django-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "68b6f71bf032d7a2ed9a74bcf9c0732a7f2fe2d6126996d0d813baab9d7170d9"
+    },
+    "django-security": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "7d7a2cd3340482d1a99b5f0a5ab2929ad7a5259c81973d09e8676fb19565c624"
+    },
+    "django-tdd": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "60b9b893ef8931adcc996c3149ff69ac2a30efc6f21048d9e554ce780a1c1051"
+    },
+    "django-verification": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "1a229ce6d010e22d45be0436cbc4ab909ec9a0e0112a87adbcc03ea7b557313c"
+    },
+    "docker-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "a028783213034aee06d0aa0487c7e6096ae755d24bdd05de9475425306057fcd"
+    },
+    "e2e-testing": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "8e3ac8d268f7ccd4994fa3368e551df13fa48f489674ed57a6c764bcb31b7d00"
+    },
+    "eval-harness": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "f9d214022c55b1ee92d208e535b95662fb0730ef20030f02dde375fae30ead7c"
+    },
+    "foundation-models-on-device": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "ac531cd6bb94ecbb400ad8954a10030cf3f212c57bfda489efa91510fc1f5d90"
+    },
+    "frontend-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "d7a58ffcc4668e1521c5eb185f9283459b569fdcb708e2fa89f9686491b72f9a"
+    },
+    "golang-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "2168b141260f2c0c2c952afe22f0947cdc76f4339e823ab666933853e206e511"
+    },
+    "golang-testing": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "1f263c92e24067adcf574000dd078d3bd0baf9a6568becb2510df1af31c906ef"
+    },
+    "iterative-retrieval": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "e17d0597c92e9960673ee56fa52b03422a40daef52caac4a73f3327b8d3bdb9a"
+    },
+    "java-coding-standards": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "1a9fb2648f810758d8d102be8c3d0aa89ae8553a9a5f97434b6b0abb4e685341"
+    },
+    "jpa-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "9e81a5773027f8ea3079cbdd3fbbee01ec1e7891f8dd663a4cef3cf3ba208061"
+    },
+    "liquid-glass-design": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "18c81c59796c6280db62d5fb9ac544c094259c51a9c69cfc225ba6c428b9ed57"
+    },
+    "nutrient-document-processing": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "459943f4733291806a0e77fb27fc2ae6d6e8149c018c9791686bdc9aa9dd235e"
+    },
+    "postgres-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "5f34713206a8cb66ca39427602405a655447a60f8a6141bf1ff39f474b47c132"
+    },
+    "project-guidelines-example": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "dfa7d74f0656b6b18b77eb1ccdae4e824781386e702c666cb0b73ed8ba7ebf98"
+    },
+    "python-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "fb08a3345b09766c7423a837cd8a3e416abc4b71a51ff8c1901622bb73b999ef"
+    },
+    "python-testing": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "9bb9ccc595dbc4fd6ea1e70ba14e0d9c17f0ed0dc55331d593b1e0965d31df39"
+    },
+    "regex-vs-llm-structured-text": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "a44fb29cb58d4613e83d6d180914eceb293aa65d2b7345472d78cf06e73cb7b4"
+    },
+    "search-first": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "24b1d3f6380602d8d98ad9cda800a9a95e52cad1ce739d45c9131063f816af97"
+    },
+    "security-review": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "77465a6213cf679cac8aa50ee3b9ba8438b44fcf7bd7f082ed4f16e9db846acd"
+    },
+    "security-scan": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "da0906902dd47d54357b9d80d50c4dcc9c350137dbe5a7fb7fc9830245a57c1e"
+    },
+    "springboot-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "15fe91e6fdca18ec9a4322c78010fc6788ee2df0f6828b5fd07a05c869c8b79f"
+    },
+    "springboot-security": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "974845d84516b792408e7e9bccfe861e3b678423f90eea9b479d219c36f64cdd"
+    },
+    "springboot-tdd": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "ff44f4d2e2044957ec39f7f28b87fe4eda18531cbed47c9e9360f82fba676258"
+    },
+    "springboot-verification": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "4d3b3ad668a5f0a2806f65b345df6f7bb646e3a2d33c16309d13b8af88aa0345"
+    },
+    "strategic-compact": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "b662e43a0b26c9b3803dfbde24823be1b6a32263030f4d38551d59bba3b00f44"
+    },
+    "swift-actor-persistence": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "a5d98ca568b8eb29f8dc4a9b73f5c9687ebaaf437dcdfaeead76b7963ad7c89a"
+    },
+    "swift-concurrency-6-2": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "b16d9d55604976701e662494f9f4c8c0d26f860a3e6bf4e2f6679faad8c65d7a"
+    },
+    "swift-protocol-di-testing": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "128fda8f4fec3ce54aed84c4782ae8b8f51f8f8b890ed46621a403ac7ff5b4e6"
+    },
+    "swiftui-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "96b1b0c829f8dab31779c7c23183fb0c415676aa037a13ff5ce08f0e363c09fe"
+    },
+    "tdd-workflow": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "b043ab9a253352d5ab49d359cf8f92b9826f6008daf9a9831fd0445c09482df4"
+    },
+    "verification-loop": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "c936d8f1c28920133a6dd6b4c70e9784315f64f71b8d8bb69e61fa8e044cb175"
+    },
+    "visa-doc-translate": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "6704dc7fa167cfcb71e076708739148073c1968bf1206a9fd8491b9deec23189"
+    }
+  }
+}

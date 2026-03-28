@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfoHub Dashboard Audit — 20260317_091355</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; color: #e0e0e0; font-family: 'Inter', -apple-system, sans-serif; padding: 24px; }
+        .header { text-align: center; padding: 32px 0; border-bottom: 1px solid #1a1a2e; margin-bottom: 32px; }
+        .header h1 { font-size: 28px; color: #fff; margin-bottom: 8px; }
+        .header .subtitle { color: #888; font-size: 14px; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .summary-card { background: #12121f; border: 1px solid #1a1a2e; border-radius: 12px; padding: 20px; text-align: center; }
+        .summary-card .value { font-size: 32px; font-weight: 700; color: #fff; }
+        .summary-card .label { font-size: 12px; color: #888; text-transform: uppercase; margin-top: 4px; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+        .card { background: #12121f; border: 1px solid #1a1a2e; border-radius: 12px; padding: 20px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .card-header h3 { font-size: 18px; color: #fff; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 14px; color: #fff; }
+        .card-category { font-size: 11px; color: #666; text-transform: uppercase; margin-bottom: 12px; }
+        .scores-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+        .score-item { text-align: center; padding: 8px; background: #0a0a15; border-radius: 8px; }
+        .score-label { display: block; font-size: 10px; color: #666; text-transform: uppercase; }
+        .card h4 { font-size: 13px; color: #aaa; margin: 8px 0 4px; }
+        .card ul { font-size: 12px; padding-left: 16px; color: #999; }
+        .card li { margin-bottom: 4px; }
+        .sev-critical { color: #f44336 !important; font-weight: 600; }
+        .sev-high { color: #ff9800 !important; }
+        .sev-medium { color: #ffc107 !important; }
+        .card-footer { font-size: 11px; color: #444; margin-top: 12px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>InfoHub Dashboard Audit Report</h1>
+        <div class="subtitle">Generated 20260317_091355 | 17 pages audited | 18 AI agents</div>
+    </div>
+
+    <div class="summary">
+        <div class="summary-card"><div class="value">6.3</div><div class="label">Overall Score</div></div>
+        <div class="summary-card"><div class="value">6.5</div><div class="label">UI/UX</div></div>
+        <div class="summary-card"><div class="value">6.5</div><div class="label">Data Accuracy</div></div>
+        <div class="summary-card"><div class="value">7.0</div><div class="label">Real-time</div></div>
+        <div class="summary-card"><div class="value">5.3</div><div class="label">Bug Risk</div></div>
+        <div class="summary-card"><div class="value" style="color:#f44336">64</div><div class="label">Bugs Found</div></div>
+        <div class="summary-card"><div class="value" style="color:#ff9800">14</div><div class="label">Security Issues</div></div>
+        <div class="summary-card"><div class="value" style="color:#4caf50">54</div><div class="label">Improvements</div></div>
+    </div>
+
+    <div class="cards-grid">
+        
+            <div class="card">
+                <div class="card-header">
+                    <h3>Chart</h3>
+                    <span class="badge" style="background:#f44336">4.8</span>
+                </div>
+                <div class="card-category">ANALYSIS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>4.8</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>1.0</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-high">[HIGH] SWR key '1' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key '2' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key '3' is static but page has dynamic state — data won't refresh on param change</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 544 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on Chart.</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Order Flow</h3>
+                    <span class="badge" style="background:#f44336">5.2</span>
+                </div>
+                <div class="card-category">FLOW</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.1</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>1.0</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-high">[HIGH] SWR key 'depth' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'comparison' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'orderbook' is static but page has dynamic state — data won't refresh on param change</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 482 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on Order F</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Funding Rates</h3>
+                    <span class="badge" style="background:#f44336">5.3</span>
+                </div>
+                <div class="card-category">FUNDING & OI</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.9</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>1.0</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-high">[HIGH] SWR key 'crypto' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'stocks' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'forex' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'commodities' is static but page has dynamic state — data won't refresh on param change</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 768 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on Funding</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li></ul>
+                <div class="card-footer">Duration: 0.7s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Basis</h3>
+                    <span class="badge" style="background:#f44336">5.4</span>
+                </div>
+                <div class="card-category">ANALYSIS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.4</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>1.7</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-high">[HIGH] SWR key 'basis' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'all' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'premium' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'discount' is static but page has dynamic state — data won't refresh on param change</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 880 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.7s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Liq Heatmap</h3>
+                    <span class="badge" style="background:#f44336">5.6</span>
+                </div>
+                <div class="card-category">LIQUIDATIONS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.4</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>2.4</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-high">[HIGH] SWR key '4h' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key '24h' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key '7d' is static but page has dynamic state — data won't refresh on param change</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 699 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on Liq Hea</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li></ul>
+                <div class="card-footer">Duration: 0.7s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Predictions</h3>
+                    <span class="badge" style="background:#ff9800">6.3</span>
+                </div>
+                <div class="card-category">ANALYSIS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.9</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>4.9</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-high">[HIGH] SWR key 'arbitrage' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-high">[HIGH] SWR key 'browse' is static but page has dynamic state — data won't refresh on param change</li><li class="sev-low">[LOW] Multiple divisions without zero guards — risk of NaN/Infinity display</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Open Interest</h3>
+                    <span class="badge" style="background:#ff9800">6.5</span>
+                </div>
+                <div class="card-category">FUNDING & OI</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.1</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>6.2</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-high">[HIGH] API route has no try/catch — unhandled errors crash the endpoint</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 502 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on Open In</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Liquidations</h3>
+                    <span class="badge" style="background:#ff9800">6.6</span>
+                </div>
+                <div class="card-category">LIQUIDATIONS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>5.3</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>7.4</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-low">[LOW] Multiple divisions without zero guards — risk of NaN/Infinity display</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on Liquida</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Funding Heatmap</h3>
+                    <span class="badge" style="background:#ff9800">6.7</span>
+                </div>
+                <div class="card-category">FUNDING & OI</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>7.2</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>5.9</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-low">[LOW] Multiple divisions without zero guards — risk of NaN/Infinity display</li><li class="sev-high">[HIGH] API route has no try/catch — unhandled errors crash the endpoint</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 450 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Execution Costs</h3>
+                    <span class="badge" style="background:#ff9800">6.8</span>
+                </div>
+                <div class="card-category">ANALYSIS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>7.2</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>6.6</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-low">[LOW] Multiple divisions without zero guards — risk of NaN/Infinity display</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.7s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Liq Map</h3>
+                    <span class="badge" style="background:#ff9800">6.8</span>
+                </div>
+                <div class="card-category">LIQUIDATIONS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.9</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>6.9</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 654 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.7s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Long/Short</h3>
+                    <span class="badge" style="background:#ff9800">6.8</span>
+                </div>
+                <div class="card-category">FLOW</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.9</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>6.6</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li><li class="sev-low">[LOW] Multiple divisions without zero guards — risk of NaN/Infinity display</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.7s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>CVD</h3>
+                    <span class="badge" style="background:#ff9800">6.8</span>
+                </div>
+                <div class="card-category">FLOW</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.9</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>6.9</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on CVD.</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>OI Heatmap</h3>
+                    <span class="badge" style="background:#ff9800">6.9</span>
+                </div>
+                <div class="card-category">FUNDING & OI</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.4</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>7.7</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 574 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.7s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Options</h3>
+                    <span class="badge" style="background:#ff9800">7.0</span>
+                </div>
+                <div class="card-category">ANALYSIS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>6.4</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>8.2</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 1311 lines. Extract chart, table, filters into separate components for m</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>RSI Heatmap</h3>
+                    <span class="badge" style="background:#ff9800">7.0</span>
+                </div>
+                <div class="card-category">FLOW</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>7.2</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>7.4</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Many property accesses without optional chaining (?.) — risk of 'Cannot read property of undefined'</li><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 408 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li><li><strong>Add keyboard navigation</strong> — Support arrow keys for table navigation, Enter to select, Escape to close modals</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Screener</h3>
+                    <span class="badge" style="background:#ff9800">7.1</span>
+                </div>
+                <div class="card-category">ANALYSIS</div>
+                <div class="scores-grid">
+                    <div class="score-item"><span class="score-label">UI/UX</span><span>7.2</span></div>
+                    <div class="score-item"><span class="score-label">Data</span><span>6.5</span></div>
+                    <div class="score-item"><span class="score-label">RT</span><span>7.0</span></div>
+                    <div class="score-item"><span class="score-label">Bugs</span><span>7.7</span></div>
+                </div>
+                <h4>Issues</h4><ul><li class="sev-medium">[MEDIUM] Some useEffect hooks may have missing dependency arrays — causes infinite re-renders or stale closures</li></ul>
+                <h4>Improvements</h4><ul><li><strong>Split into sub-components</strong> — Page is 761 lines. Extract chart, table, filters into separate components for ma</li><li><strong>Add WebSocket for real-time updates</strong> — Replace SWR polling with WebSocket connection for true real-time data on Screene</li><li><strong>Add virtualization for large data sets</strong> — Use react-window or react-virtuoso to virtualize rows for better performance wit</li></ul>
+                <div class="card-footer">Duration: 0.4s</div>
+            </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1503 @@
+# InfoHub Backend — Complete API Route Reference
+
+> 114 API endpoints documented with request/response contracts
+> Runtime: Node.js (Vercel, Mumbai bom1 region) | Format: JSON | Auth: Varies by route
+
+---
+
+## Table of Contents
+
+### Market Data APIs
+1. [GET /api/funding](#get-apifunding)
+2. [GET /api/tickers](#get-apitickers)
+3. [GET /api/openinterest](#get-apiopeninterest)
+4. [GET /api/spreads/current](#get-apispreadscurrent)
+5. [GET /api/spreads/heatmap](#get-apispreadsheatmap)
+6. [GET /api/options](#get-apioptions)
+7. [GET /api/liquidations](#get-apiliquidations)
+8. [GET /api/liquidation-map](#get-apiliquidation-map)
+9. [GET /api/longshort](#get-apilongshort)
+10. [GET /api/correlation](#get-apicorrelation)
+11. [GET /api/rsi](#get-apirsi)
+12. [GET /api/top-movers](#get-apitop-movers)
+13. [GET /api/oi-delta](#get-apioi-delta)
+14. [GET /api/execution-costs](#get-apiexecution-costs)
+
+### Price & Chart Data
+15. [GET /api/klines](#get-apiklines)
+16. [GET /api/prices](#get-apiprices)
+17. [GET /api/spot-prices](#get-apispot-prices)
+18. [GET /api/orderbook](#get-apiorderbook)
+19. [GET /api/orderbook/multi](#get-apiorderbookmulti)
+20. [GET /api/aggtrades](#get-apiaggtrades)
+
+### Macro & Market Intelligence
+21. [GET /api/fear-greed](#get-apifear-greed)
+22. [GET /api/dominance](#get-apidominance)
+23. [GET /api/global-stats](#get-apiglobal-stats)
+24. [GET /api/market-cycle](#get-apimarket-cycle)
+25. [GET /api/onchain](#get-apionchain)
+26. [GET /api/news](#get-apinews)
+27. [GET /api/etf](#get-apietf)
+28. [GET /api/treasuries](#get-apitreasuries)
+29. [GET /api/stablecoins](#get-apistablecoins)
+30. [GET /api/reserves](#get-apireserves)
+31. [GET /api/token-unlocks](#get-apitoken-unlocks)
+32. [GET /api/yields](#get-apiyields)
+33. [GET /api/economic-calendar](#get-apieconomic-calendar)
+34. [GET /api/airdrops](#get-apiairdrops)
+35. [GET /api/prediction-markets](#get-apiprediction-markets)
+
+### Coin Data
+36. [GET /api/coin-data](#get-apicoin-data)
+37. [GET /api/coin-search](#get-apicoin-search)
+
+### Historical Data
+38. [GET /api/history/funding](#get-apihistoryfunding)
+39. [GET /api/history/funding-bulk](#get-apihistoryfunding-bulk)
+40. [GET /api/history/funding-heatmap](#get-apihistoryfunding-heatmap)
+41. [GET /api/history/oi](#get-apihistoryoi)
+42. [GET /api/history/oi-multi](#get-apihistoryoi-multi)
+43. [GET /api/history/price-multi](#get-apihistoryprice-multi)
+44. [GET /api/history/liquidations](#get-apihistoryliquidations)
+45. [GET /api/history/spreads](#get-apihistoryspreads)
+46. [GET /api/arb-history](#get-apiarb-history)
+
+### Authentication
+47. [POST /api/auth/signup](#post-apiauthsignup)
+48. [POST /api/auth/check-credentials](#post-apiauthcheck-credentials)
+49. [POST /api/auth/forgot-password](#post-apiauthforgot-password)
+50. [POST /api/auth/reset-password](#post-apiauthreset-password)
+51. [POST /api/auth/change-password](#post-apiauthchange-password)
+52. [POST /api/auth/verify-email](#post-apiauthverify-email)
+53. [POST /api/auth/verify-email/resend](#post-apiauthverify-emailresend)
+54. [POST /api/auth/2fa/setup](#post-apiauth2fasetup)
+55. [POST /api/auth/2fa/status](#post-apiauth2fastatus)
+56. [POST /api/auth/2fa/challenge](#post-apiauth2fachallenge)
+57. [POST /api/auth/2fa/validate](#post-apiauth2favalidate)
+58. [POST /api/auth/2fa/verify](#post-apiauth2faverify)
+59. [POST /api/auth/2fa/email](#post-apiauth2faemail)
+60. [GET|POST /api/auth/[...nextauth]](#nextauth-routes)
+
+### User Data
+61. [GET /api/user/data](#get-apiuserdata)
+62. [PUT /api/user/data](#put-apiuserdata)
+63. [DELETE /api/user/account](#delete-apiuseraccount)
+64. [POST /api/user/avatar](#post-apiuseravatar)
+
+### Public API (v1)
+65. [GET /api/v1/status](#get-apiv1status)
+66. [GET /api/v1/exchanges](#get-apiv1exchanges)
+67. [GET /api/v1/funding](#get-apiv1funding)
+68. [GET /api/v1/funding/history](#get-apiv1fundinghistory)
+69. [GET /api/v1/openinterest](#get-apiv1openinterest)
+70. [GET /api/v1/arbitrage](#get-apiv1arbitrage)
+71. [GET|POST|DELETE /api/v1/keys](#apiv1keys)
+
+### Integrations
+72. [POST /api/telegram/webhook](#post-apitelegramwebhook)
+73. [GET /api/telegram/setup](#get-apitelegramsetup)
+74. [POST /api/push/subscribe](#post-apipushsubscribe)
+75. [POST /api/chat](#post-apichat)
+
+### Cron Jobs
+76. [GET /api/cron/snapshot](#get-apicronsnapshot)
+77. [GET /api/cron/alerts](#get-apicronalerts)
+78. [GET /api/cron/arbitrage-alerts](#get-apicronarbitrage-alerts)
+79. [GET /api/cron/liquidation-ingest](#get-apicronliquidation-ingest)
+80. [GET /api/cron/portfolio-snapshot](#get-apicronportfolio-snapshot)
+81. [GET /api/cron/telegram-reports](#get-apicrontelegram-reports)
+
+### Admin
+82. [GET /api/admin/users](#get-apiadminusers)
+83. [POST /api/admin/actions/health-check](#post-apiadminactionshealth-check)
+84. [POST /api/admin/actions/flush-cache](#post-apiadminactionsflush-cache)
+85. [POST /api/admin/actions/trigger-snapshot](#post-apiadminactionstrigger-snapshot)
+86. [GET /api/admin/monitoring/database](#get-apiadminmonitoringdatabase)
+87. [GET /api/admin/monitoring/pipeline](#get-apiadminmonitoringpipeline)
+
+### Utility
+88. [GET /api/health](#get-apihealth)
+89. [GET /api/proxy/bitunix](#get-apiproxybitunix)
+
+---
+
+## Market Data APIs
+
+### GET /api/funding
+
+Aggregates perpetual futures funding rates from 30 exchanges.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `assetClass` | string | `crypto` | Filter: `crypto`, `stocks`, `forex` |
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "symbol": "BTC",
+      "exchange": "Binance",
+      "fundingRate": 0.01,
+      "fundingInterval": "8h",
+      "markPrice": 67432.5,
+      "indexPrice": 67428.3,
+      "nextFundingTime": 1711584000000,
+      "predictedRate": 0.0085,
+      "type": "cex",
+      "assetClass": "crypto",
+      "marginType": "linear"
+    }
+  ],
+  "health": [
+    {
+      "name": "Binance",
+      "status": "ok",
+      "count": 342,
+      "latencyMs": 234,
+      "error": null
+    }
+  ],
+  "meta": {
+    "totalExchanges": 30,
+    "activeExchanges": 28,
+    "totalEntries": 4521,
+    "timestamp": 1711584000000
+  }
+}
+```
+
+**Headers**
+- `X-Cache: HIT|MISS|FILTERED|STALE` — Cache status
+- `Cache-Control: public, s-maxage=15, stale-while-revalidate=30` (on MISS)
+- `Cache-Control: public, s-maxage=10, stale-while-revalidate=20` (on STALE)
+
+**Caching**: L1 2-min (raw) + per-assetClass response cache. Circuit breaker per exchange.
+
+---
+
+### GET /api/tickers
+
+Aggregates 24h ticker data from 28 exchanges.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbols` | string | all | Comma-separated symbols (BTC,ETH) |
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "symbol": "BTC",
+      "exchange": "Binance",
+      "lastPrice": 67432.5,
+      "quoteVolume24h": 12345678901,
+      "baseVolume24h": 183245,
+      "priceChangePercent24h": 2.34,
+      "fetchedAt": 1711584000000
+    }
+  ],
+  "meta": {
+    "totalExchanges": 28,
+    "activeExchanges": 26,
+    "totalEntries": 3800,
+    "timestamp": 1711584000000
+  }
+}
+```
+
+**Caching**: L1 3s, HTTP `s-maxage=2, stale-while-revalidate=5`. Deduped via `dedupedFetch()`.
+
+**Aggregation**: Per-symbol highest volume exchange wins. Volume capped at $100B per exchange per symbol.
+
+---
+
+### GET /api/openinterest
+
+Aggregates open interest from 26 exchanges.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `changes` | string | `0` | Set to `1` to include OI change percentages |
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "symbol": "BTC",
+      "exchange": "Binance",
+      "openInterest": 142350,
+      "openInterestUsd": 478234000,
+      "timestamp": 1711584000000
+    }
+  ],
+  "health": [...],
+  "meta": {
+    "totalExchanges": 26,
+    "activeExchanges": 24,
+    "totalEntries": 2800,
+    "timestamp": 1711584000000
+  }
+}
+```
+
+**Caching**: L1 ~5min, HTTP `s-maxage=60, stale-while-revalidate=120`.
+
+---
+
+### GET /api/spreads/current
+
+Real-time inter-exchange price spreads.
+
+**Parameters**: None
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "symbol": "BTC",
+      "spreadUsd": 12.3,
+      "spreadPct": 0.018,
+      "highExchange": "Bybit",
+      "highPrice": 67445.3,
+      "lowExchange": "Binance",
+      "lowPrice": 67433.0,
+      "exchangeCount": 14
+    }
+  ],
+  "count": 245,
+  "ts": 1711584000000
+}
+```
+
+**Logic**: Groups tickers by symbol, filters outliers >5% from median, requires >=2 exchanges, sorts by spread % descending.
+
+**Caching**: 30s in-memory. Max duration: 30s.
+
+---
+
+### GET /api/spreads/heatmap
+
+Historical spread heatmap (day-of-week x hour-of-day).
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbol` | string | `BTC` | Target symbol |
+| `days` | number | `30` | Lookback period (max 90) |
+
+**Response** (200)
+```json
+{
+  "symbol": "BTC",
+  "days": 30,
+  "grid": {
+    "0": {
+      "0": { "pct": 0.012, "usd": 8.2, "samples": 43 },
+      "1": { "pct": 0.015, "usd": 10.1, "samples": 41 }
+    }
+  },
+  "totalSamples": 7234
+}
+```
+
+Grid keys: `0-6` (Sun-Sat) × `0-23` (hours UTC).
+
+**Caching**: 5min via database query.
+
+---
+
+### GET /api/options
+
+Crypto options data from 4 exchanges (Deribit, Binance, Bybit, OKX).
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `currency` | string | `BTC` | `BTC`, `ETH`, or `SOL` |
+
+**Response** (200)
+```json
+{
+  "currency": "BTC",
+  "underlyingPrice": 67432.5,
+  "maxPain": 68000,
+  "putCallRatio": 0.73,
+  "totalCallOI": 12345,
+  "totalPutOI": 9012,
+  "totalOI": 21357,
+  "instrumentCount": 1234,
+  "strikeData": [
+    {
+      "strike": 70000,
+      "callOI": 1234,
+      "putOI": 892,
+      "totalOI": 2126,
+      "callOIUsd": 83245000,
+      "putOIUsd": 60123000
+    }
+  ],
+  "ivSmile": [
+    { "strike": 60000, "iv": 62.3 },
+    { "strike": 65000, "iv": 54.2 }
+  ],
+  "exchangeBreakdown": [
+    { "exchange": "Deribit", "callOI": 11000, "putOI": 8000, "share": 89.2 }
+  ],
+  "expiryBreakdown": [
+    { "expiry": "2026-03-28", "callOI": 500, "putOI": 300, "maxPain": 67000 }
+  ],
+  "exchangeStrikes": { "Deribit": [...], "Binance": [...] },
+  "health": [
+    { "name": "Deribit", "status": "ok", "count": 1100, "latencyMs": 340 }
+  ]
+}
+```
+
+Strike range: 70%-130% of spot price.
+Max pain: Strike minimizing sum of (call loss + put loss) across all strikes.
+
+**Caching**: L1 60s, HTTP `s-maxage=30`.
+
+---
+
+### GET /api/liquidations
+
+Recent liquidation events (OKX primary source).
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbol` | string | `BTC` | Trading pair |
+| `exchange` | string | `okx` | Source exchange |
+| `limit` | number | `100` | Max results |
+
+**Response** (200)
+```json
+{
+  "symbol": "BTC",
+  "exchange": "okx",
+  "data": [
+    {
+      "side": "long",
+      "size": 2.34,
+      "price": 66123.4,
+      "value": 154729,
+      "timestamp": 1711584000000
+    }
+  ],
+  "meta": { "count": 87, "timestamp": 1711584000000 }
+}
+```
+
+Side mapping: OKX "buy" = short liquidated, "sell" = long liquidated.
+
+**Caching**: 30s L1, evicts oldest when >100 keys.
+
+---
+
+### GET /api/liquidation-map
+
+Estimated liquidation price levels.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbol` | string | `BTC` | `BTC`, `ETH`, or `SOL` |
+
+**Response** (200)
+```json
+{
+  "symbol": "BTC",
+  "currentPrice": 67432.5,
+  "levels": [
+    {
+      "price": 65000,
+      "type": "long",
+      "leverage": "10x",
+      "estimatedVolume": 45000000,
+      "distancePercent": -3.61
+    }
+  ],
+  "totalLongLiq": 234000000,
+  "totalShortLiq": 189000000,
+  "timestamp": 1711584000000
+}
+```
+
+Leverage tiers: 2x, 3x, 5x, 10x, 20x, 25x, 50x, 75x, 100x.
+
+**Caching**: 60s L1.
+
+---
+
+### GET /api/longshort
+
+Binance/OKX long/short account ratios.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbol` | string | `BTCUSDT` | Trading pair |
+| `period` | string | `5m` | `5m/15m/30m/1h/2h/4h/6h/12h/1d` |
+| `limit` | number | `1` | Data points (max 500) |
+| `source` | string | `global` | `global/topTraders/taker` |
+| `exchange` | string | `binance` | `binance/okx` |
+
+**Response** — Flat mode (limit=1)
+```json
+{
+  "longRatio": 52.3,
+  "shortRatio": 47.7,
+  "symbol": "BTCUSDT",
+  "exchange": "binance",
+  "timestamp": 1711584000000
+}
+```
+
+**Response** — Array mode (limit>1)
+```json
+{
+  "symbol": "BTCUSDT",
+  "exchange": "binance",
+  "source": "global",
+  "period": "5m",
+  "points": [
+    { "longRatio": 52.3, "shortRatio": 47.7, "longShortRatio": 1.096, "timestamp": 1711584000000 }
+  ]
+}
+```
+
+**Caching**: 60s.
+
+---
+
+### GET /api/correlation
+
+24h price change correlation matrix.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `count` | number | `20` | Number of symbols (5-50) |
+
+**Response** (200)
+```json
+{
+  "symbols": [
+    {
+      "symbol": "BTC",
+      "changes": [
+        { "exchange": "Binance", "change24h": 2.34 },
+        { "exchange": "Bybit", "change24h": 2.31 }
+      ],
+      "avgChange": 2.32,
+      "avgPrice": 67432.5,
+      "totalVolume": 12345678901,
+      "exchangeCount": 14
+    }
+  ],
+  "totalExchanges": 28,
+  "timestamp": 1711584000000
+}
+```
+
+Minimum 3 exchanges per symbol to be included. Sorted by total volume descending.
+
+**Caching**: 60s L1, edge `s-maxage=120`.
+
+---
+
+### GET /api/rsi
+
+RSI-14 across 50 hardcoded symbols.
+
+**Parameters**: None
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "symbol": "BTC",
+      "rsi1h": 54.2,
+      "rsi4h": 62.1,
+      "rsi1d": 48.7,
+      "price": 67432.5,
+      "change24h": 2.34
+    }
+  ],
+  "timestamp": 1711584000000
+}
+```
+
+Calculation: Wilder's smoothing RSI-14 on kline closes.
+Sources: Binance Futures -> OKX -> Bybit -> Binance Spot (fallback chain).
+Rate limiting: 200ms pacing between batch requests.
+
+**Caching**: 5min L1.
+
+---
+
+### GET /api/top-movers
+
+Top gainers and losers.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mode` | string | (none) | `heatmap` returns all 500 coins |
+
+**Response** — Default mode
+```json
+{
+  "gainers": [
+    { "id": "pepe", "symbol": "PEPE", "name": "Pepe", "price": 0.0000123, "change24h": 34.2, "marketCap": 5200000000, "volume24h": 1234567890, "image": "https://..." }
+  ],
+  "losers": [...]
+}
+```
+
+**Response** — Heatmap mode
+```json
+{
+  "coins": [...]
+}
+```
+
+Quality filters: $500K+ volume, $10M+ market cap, +-500% max change, ASCII symbols only.
+Sources: CMC top 500 -> CoinGecko fallback.
+
+**Caching**: 30min L1/DB.
+
+---
+
+### GET /api/oi-delta
+
+OI change percentages from database snapshots.
+
+**Parameters**: None
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "symbol": "BTC",
+      "current": 478234000,
+      "change1h": 2.34,
+      "change4h": -1.12,
+      "change24h": 8.76
+    }
+  ],
+  "meta": { "count": 200, "timestamp": 1711584000000, "note": "From 10-min snapshots" }
+}
+```
+
+**Caching**: 5min L1.
+
+---
+
+### GET /api/execution-costs
+
+Fee and slippage analysis across exchanges.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `asset` | string | `BTC` | Target asset |
+| `size` | number | `100000` | Order size USD (1K-10M) |
+| `direction` | string | `long` | `long` or `short` |
+
+**Response** (200)
+```json
+{
+  "asset": "BTC",
+  "size": 100000,
+  "direction": "long",
+  "timestamp": 1711584000000,
+  "venues": [
+    {
+      "name": "Binance",
+      "cost": 52.3,
+      "slippage": 12.3,
+      "fee": 40.0,
+      "depth": 5000000,
+      "confidence": "high"
+    }
+  ]
+}
+```
+
+**Caching**: 10s.
+
+---
+
+## Price & Chart Data
+
+### GET /api/klines
+
+OHLCV candlestick data.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbol` | string | required | Trading pair (BTC) |
+| `interval` | string | `1h` | `1m/5m/15m/1h/4h/1d/1w` |
+| `limit` | number | `200` | Max candles (capped at 500) |
+
+**Response** (200)
+```json
+{
+  "symbol": "BTC",
+  "interval": "1h",
+  "data": [
+    {
+      "time": 1711584000,
+      "open": 67400,
+      "high": 67500,
+      "low": 67350,
+      "close": 67432.5,
+      "volume": 1234.56
+    }
+  ],
+  "source": "binance-futures"
+}
+```
+
+Fallback chain: Binance Futures -> Bybit (interval mapping: 1->1m, 60->1h, D->1d) -> OKX (reverse chronological) -> Binance Spot.
+
+**Caching**: `s-maxage=30, stale-while-revalidate=60`.
+
+---
+
+### GET /api/orderbook
+
+Single-exchange order book.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbol` | string | `BTC` | Trading pair |
+| `limit` | number | `25` | Depth levels (max 50) |
+
+**Response** (200)
+```json
+{
+  "symbol": "BTC",
+  "pair": "BTCUSDT",
+  "bids": [
+    { "price": 67430, "quantity": 2.5, "total": 168575, "cumulative": 168575 }
+  ],
+  "asks": [
+    { "price": 67435, "quantity": 1.8, "total": 121383, "cumulative": 121383 }
+  ],
+  "trades": [
+    { "price": 67432, "qty": 0.5, "isBuyerMaker": false, "time": 1711584000000 }
+  ],
+  "spread": 5.0,
+  "midPrice": 67432.5,
+  "bidDepth": 2345678,
+  "askDepth": 1987654,
+  "buyVolume": 123.4,
+  "sellVolume": 98.7,
+  "buySellRatio": 1.25,
+  "timestamp": 1711584000000,
+  "source": "binance"
+}
+```
+
+Sources: Binance Futures -> Bybit -> OKX. 30 recent trades included.
+
+**Caching**: 5s L1.
+
+---
+
+### GET /api/aggtrades
+
+Aggregate trades with CVD calculation.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `symbol` | string | required | Trading pair |
+| `limit` | number | `500` | Max trades (max 1000) |
+
+**Response** (200)
+```json
+{
+  "symbol": "BTC",
+  "pair": "BTCUSDT",
+  "tradeCount": 487,
+  "totalBuyVol": 234.5,
+  "totalSellVol": 198.3,
+  "netDelta": 36.2,
+  "buckets": [
+    { "time": 1711584000000, "buyVol": 12.3, "sellVol": 10.1, "delta": 2.2, "cvd": 2.2 }
+  ],
+  "recentTrades": [
+    { "time": 1711584000123, "price": 67432.5, "qty": 0.5, "isBuy": true, "usdValue": 33716 }
+  ],
+  "source": "binance"
+}
+```
+
+Buckets: 1-minute intervals. CVD is cumulative across all buckets.
+Sources: Binance Futures -> Bybit -> Binance Spot.
+
+**Caching**: 5s edge.
+
+---
+
+## Macro & Market Intelligence
+
+### GET /api/fear-greed
+
+Crypto Fear & Greed Index.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `history` | string | `false` | `true` for historical data |
+| `limit` | number | `30` | History length (7/30/90/365) |
+
+**Response** — Current
+```json
+{
+  "value": 72,
+  "classification": "Greed",
+  "timestamp": 1711584000000
+}
+```
+
+**Response** — Historical
+```json
+{
+  "current": { "value": 72, "classification": "Greed", "timestamp": 1711584000000 },
+  "history": [
+    { "value": 68, "classification": "Greed", "timestamp": 1711497600000 }
+  ]
+}
+```
+
+Classifications: 0-24 Extreme Fear, 25-44 Fear, 45-55 Neutral, 56-75 Greed, 76-100 Extreme Greed.
+Sources: CMC pro (primary) -> Alternative.me (fallback).
+
+**Caching**: 30min L1, 1hr DB.
+
+---
+
+### GET /api/dominance
+
+Market dominance breakdown.
+
+**Response** (200)
+```json
+{
+  "btcDominance": 54.2,
+  "ethDominance": 16.8,
+  "totalMarketCap": 2567890000000,
+  "totalVolume24h": 142345678901,
+  "activeCryptos": 12345,
+  "markets": 87654,
+  "marketCapChange24h": 1.23,
+  "updatedAt": "2026-03-27T12:00:00Z",
+  "dominanceBreakdown": { "btc": 54.2, "eth": 16.8, "usdt": 4.5, "bnb": 3.2, "sol": 2.8 },
+  "source": "cmc"
+}
+```
+
+Sources: CMC pro -> CoinGecko fallback. Caching: 10min DB.
+
+---
+
+### GET /api/global-stats
+
+Aggregate market statistics.
+
+**Response** (200)
+```json
+{
+  "total_market_cap": { "usd": 2567890000000 },
+  "total_volume": { "usd": 142345678901 },
+  "market_cap_percentage": { "btc": 54.2, "eth": 16.8 },
+  "market_cap_change_percentage_24h_usd": 1.23,
+  "active_cryptocurrencies": 12345,
+  "total_derivatives_oi": 58700000000,
+  "altcoin_season_index": 42
+}
+```
+
+Altcoin Season Index: % of top 100 altcoins outperforming BTC over 90 days (>75 = altseason).
+Sources: CMC pro -> CoinGecko, CoinGecko derivatives OI.
+
+**Caching**: 10min DB.
+
+---
+
+### GET /api/market-cycle
+
+Bitcoin cycle indicators.
+
+**Response** (200)
+```json
+{
+  "prices": [{ "time": "2025-03-27", "price": 67432 }],
+  "piCycle": {
+    "ma111": 62345,
+    "ma350x2": 58901,
+    "signal": "neutral"
+  },
+  "rainbow": {
+    "bands": [
+      { "name": "Fire Sale", "low": 15000, "high": 25000 },
+      { "name": "Maximum Bubble Territory", "low": 120000, "high": 200000 }
+    ],
+    "currentBand": "Is this a bubble?"
+  },
+  "weeklyMA200": {
+    "ma": 45678,
+    "rateOfChange": 2.3
+  },
+  "stockToFlow": {
+    "ratio": 120,
+    "modelPrice": 100000,
+    "actualPrice": 67432,
+    "deviation": -32.6
+  },
+  "timestamp": 1711584000000
+}
+```
+
+Pi Cycle signals: "approaching_top" (MA111 crossing above MA350x2), "approaching_bottom" (gap widening), "neutral".
+Rainbow: 8 bands via log-regression from BTC genesis date.
+S2F formula: price = exp(-1.84) * ratio^3.36 where ratio = current_supply / annual_flow.
+
+**Caching**: 30min.
+
+---
+
+### GET /api/onchain
+
+Bitcoin on-chain fundamentals.
+
+**Response** (200)
+```json
+{
+  "hashRate": { "current": 623000000, "unit": "TH/s", "change30d": 5.2, "history": [...] },
+  "difficulty": { "current": 83726283, "nextAdjustment": { "date": "2026-04-01", "estimated": 2.3 }, "history": [...] },
+  "minerRevenue": { "current": 45000000, "unit": "USD/day", "history": [...] },
+  "puellMultiple": { "current": 1.2, "signal": "neutral", "history": [...] },
+  "mvrv": { "current": 2.1, "signal": "neutral", "zScore": 1.5 },
+  "mempool": {
+    "pendingTxCount": 45678,
+    "totalFees": 12.3,
+    "recommendedFees": { "fastest": 45, "halfHour": 32, "hour": 18, "economy": 8 }
+  },
+  "transactionVolume": { "current": 12345678, "unit": "BTC", "history": [...] },
+  "supply": { "current": 19800000, "maxSupply": 21000000, "percentMined": 94.3 },
+  "timestamp": 1711584000000
+}
+```
+
+Signals: MVRV <1 = buy (green), >3 = sell (red). Puell <0.5 = buy, >4 = sell.
+Sources: blockchain.info, mempool.space, CoinGecko.
+
+**Caching**: 10min.
+
+---
+
+### GET /api/news
+
+Aggregated crypto news feed.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | number | `1` | Page number |
+| `filter` | string | `all` | `all/hot/rising/bullish/bearish` |
+| `currency` | string | | Filter by coin (BTC, ETH) |
+| `search` | string | | Full-text search |
+| `timeRange` | string | `all` | `1h/24h/7d/30d/all` |
+| `sourceType` | string | `all` | `all/news/exchange/blog/aggregator` |
+
+**Response** (200)
+```json
+{
+  "articles": [
+    {
+      "id": "abc123",
+      "title": "Bitcoin Surges Past $67K",
+      "body": "Short excerpt...",
+      "url": "https://source.com/article",
+      "imageUrl": "https://...",
+      "source": "CoinDesk",
+      "sourceType": "news",
+      "publishedAt": "2026-03-27T10:00:00Z",
+      "categories": ["BTC", "Markets"],
+      "currencies": [{ "code": "BTC", "title": "Bitcoin" }],
+      "sentiment": "bullish",
+      "votes": { "positive": 234, "negative": 12 },
+      "origin": "cryptopanic"
+    }
+  ],
+  "meta": {
+    "total": 1234,
+    "page": 1,
+    "perPage": 20,
+    "totalPages": 62,
+    "trending": ["BTC", "ETH", "SOL"],
+    "hasCryptoPanic": true,
+    "sources": ["CryptoPanic", "CryptoCompare", "RSS"],
+    "macroEvents": [...]
+  }
+}
+```
+
+Sources: CryptoCompare, CryptoPanic (with sentiment), 20 RSS feeds (CoinDesk, Cointelegraph, etc.), ForexFactory macro events.
+
+**Caching**: 5min.
+
+---
+
+### GET /api/etf
+
+Bitcoin/Ethereum ETF tracker.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | string | `btc` | `btc` or `eth` |
+
+**Response** (200)
+```json
+{
+  "type": "btc",
+  "asset": "Bitcoin",
+  "summary": {
+    "totalFunds": 11,
+    "dailyVolume": 4230000000,
+    "totalAum": 65000000000,
+    "liveQuotes": 10
+  },
+  "funds": [
+    {
+      "ticker": "IBIT",
+      "name": "iShares Bitcoin Trust",
+      "issuer": "BlackRock",
+      "fee": 0.25,
+      "price": 52.34,
+      "change24h": 1.2,
+      "volume": 42300000,
+      "marketCap": 45000000000
+    }
+  ],
+  "history": [
+    { "date": "2026-01-02", "close": 48.5, "volume": 38000000 }
+  ],
+  "timestamp": 1711584000000
+}
+```
+
+Sources: Yahoo Finance (proxied), SoSoValue (AUM, fallback domains).
+
+**Caching**: 2min L1.
+
+---
+
+### GET /api/treasuries
+
+Bitcoin treasury holdings (54 curated entities).
+
+**Response** (200)
+```json
+{
+  "price": 67432.5,
+  "priceSource": "yahoo",
+  "totalBTC": 2345678,
+  "totalValueUsd": 158234567890,
+  "holders": [
+    {
+      "name": "MicroStrategy",
+      "ticker": "MSTR",
+      "type": "company",
+      "btcHoldings": 478000,
+      "country": "US",
+      "estimatedValueUsd": 32234567890
+    }
+  ],
+  "entityCount": 54,
+  "dataAsOf": "2026-03-17",
+  "timestamp": 1711584000000
+}
+```
+
+Types: company, etf, government, miner.
+Price sources: Yahoo Finance -> CoinGecko -> fallback $68K.
+
+**Caching**: 10min L1.
+
+---
+
+### GET /api/stablecoins
+
+Stablecoin supply and chain distribution.
+
+**Response** (200)
+```json
+{
+  "stablecoins": [
+    {
+      "id": "tether",
+      "name": "Tether",
+      "symbol": "USDT",
+      "mcap": 123456789012,
+      "price": 1.0001,
+      "chains": { "Ethereum": 45000000000, "Tron": 55000000000, "Solana": 3000000000 },
+      "chainCount": 12,
+      "change7d": 0.5,
+      "change30d": 2.3
+    }
+  ],
+  "totalMcap": 234567890123,
+  "count": 45
+}
+```
+
+Source: DefiLlama stablecoins API (peggedUSD only).
+
+**Caching**: 5min edge.
+
+---
+
+### GET /api/reserves
+
+Exchange stablecoin/token reserves.
+
+**Response** (200)
+```json
+{
+  "totalReserves": 123456789012,
+  "exchangeCount": 15,
+  "exchanges": [
+    {
+      "name": "Binance",
+      "slug": "binance",
+      "totalReserve": 45000000000,
+      "change1d": 0.5,
+      "change7d": -1.2,
+      "logo": "https://...",
+      "chains": [
+        { "chain": "Ethereum", "value": 25000000000 },
+        { "chain": "Tron", "value": 15000000000 }
+      ]
+    }
+  ],
+  "updatedAt": "2026-03-27T12:00:00Z"
+}
+```
+
+Source: DefiLlama /protocols (CEX category only).
+
+**Caching**: 5min edge.
+
+---
+
+### GET /api/token-unlocks
+
+Upcoming token vesting/unlock events.
+
+**Response** (200)
+```json
+{
+  "unlocks": [
+    {
+      "token": "Arbitrum",
+      "symbol": "ARB",
+      "amount": 92650000,
+      "value": 123456789,
+      "date": "2026-04-15",
+      "percentage": 3.4,
+      "type": "cliff"
+    }
+  ],
+  "meta": {
+    "total": 24,
+    "timestamp": 1711584000000,
+    "priceSource": "coingecko",
+    "tokens": 18
+  }
+}
+```
+
+**Caching**: 5min.
+
+---
+
+### GET /api/yields
+
+DeFi lending/yield farming rates.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `project` | string | | Filter by project (e.g., aave-v3) |
+| `chain` | string | | Filter by chain (e.g., Ethereum) |
+| `stablecoin` | string | | `true` for stablecoin pools only |
+| `minTvl` | number | `100000` | Minimum TVL |
+| `minApy` | number | `0.1` | Minimum APY % |
+| `lending` | string | `true` | Lending protocols only |
+| `limit` | number | `200` | Max results (max 500) |
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "pool": "USDC",
+      "chain": "Ethereum",
+      "project": "aave-v3",
+      "symbol": "USDC",
+      "tvl": 1234567890,
+      "apy": 4.5,
+      "apyBase": 3.2,
+      "apyReward": 1.3,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "apyChange7d": 0.2,
+      "apyMean30d": 4.1,
+      "prediction": "stable",
+      "poolMeta": "Morpho Vault",
+      "exposure": "single",
+      "category": "Lending"
+    }
+  ],
+  "chains": ["Ethereum", "Arbitrum", "Base"],
+  "projects": ["aave-v3", "morpho-blue", "pendle"],
+  "count": 145
+}
+```
+
+30 curated lending projects (Aave, Morpho, Pendle, Spark, Venus, etc.).
+Source: DeFiLlama yields API.
+
+**Caching**: 5min edge.
+
+---
+
+### GET /api/economic-calendar
+
+Macro economic events.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `month` | string | current | `YYYY-MM` format |
+| `impact` | string | | `high/medium/low` |
+| `category` | string | | `monetary/employment/inflation/growth/other` |
+| `country` | string | | Country code (US, EU, etc.) |
+| `search` | string | | Text search |
+
+**Response** (200)
+```json
+{
+  "events": [
+    {
+      "id": "fomc-2026-03",
+      "name": "FOMC Interest Rate Decision",
+      "description": "Federal Reserve interest rate announcement",
+      "date": "2026-03-19",
+      "time": "18:00",
+      "impact": "high",
+      "category": "monetary",
+      "country": "US",
+      "previous": "4.50%",
+      "forecast": "4.25%",
+      "actual": null,
+      "source": "forexfactory"
+    }
+  ],
+  "meta": {
+    "total": 87,
+    "month": "2026-03",
+    "filters": { "impact": "high" },
+    "source": "forexfactory+static",
+    "live": true,
+    "liveCount": 12,
+    "scheduledCount": 75
+  }
+}
+```
+
+Sources: ForexFactory live (this week) + 600+ static events. Merged by name + date.
+
+**Caching**: 1hr ForexFactory.
+
+---
+
+### GET /api/airdrops
+
+Upcoming and active airdrop campaigns.
+
+**Parameters**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `status` | string | | `upcoming/active/ended` |
+| `category` | string | | `defi/l2/gaming/infrastructure/social` |
+
+**Response** (200)
+```json
+{
+  "data": [
+    {
+      "id": "opensea-2026",
+      "name": "OpenSea",
+      "ticker": "OS",
+      "network": "Ethereum",
+      "status": "active",
+      "estimatedDate": "2026-03-15",
+      "snapshotDate": "2026-02-28",
+      "totalAllocation": "10%",
+      "estimatedValue": "$500-2000",
+      "requirements": ["Historical NFT trading on OpenSea", "Gemstone holders"],
+      "eligibilityCriteria": "Past users and active traders",
+      "website": "https://opensea.io",
+      "category": "defi",
+      "difficulty": "medium",
+      "riskLevel": "low",
+      "guide": "Check eligibility at opensea.io/airdrop"
+    }
+  ],
+  "total": 24,
+  "dataAsOf": "2026-03-09",
+  "timestamp": 1711584000000
+}
+```
+
+24 curated airdrops as of 2026-03-09.
+
+**Caching**: 5min edge.
+
+---
+
+### GET /api/prediction-markets
+
+Cross-platform prediction market data.
+
+**Response** (200)
+```json
+{
+  "arbitrage": [
+    {
+      "id": "match-123",
+      "matchType": "curated",
+      "question": "Will BTC hit $100K by end of 2026?",
+      "category": "Crypto",
+      "platformA": { "name": "Polymarket", "yesPrice": 0.72, "noPrice": 0.28, "volume": 5000000, "url": "https://..." },
+      "platformB": { "name": "Kalshi", "yesPrice": 0.68, "noPrice": 0.32, "volume": 2000000, "url": "https://..." },
+      "spread": 4.0,
+      "spreadPercent": 5.56,
+      "direction": "buy_A_sell_B"
+    }
+  ],
+  "markets": {
+    "polymarket": [...],
+    "kalshi": [...],
+    "manifold": [...]
+  },
+  "meta": {
+    "counts": { "polymarket": 500, "kalshi": 200, "manifold": 200 },
+    "matchedCount": 45,
+    "timestamp": 1711584000000,
+    "errors": []
+  }
+}
+```
+
+Matching: Pass 1 (curated regex), Pass 2 (keyword fuzzy 22% similarity threshold).
+Sources: Polymarket (500), Kalshi (70+ series), Manifold (200).
+
+**Caching**: 60s.
+
+---
+
+## Authentication Routes
+
+### POST /api/auth/signup
+
+**Body**
+```json
+{ "name": "John", "email": "john@example.com", "password": "SecureP4ss!" }
+```
+
+**Validation**: Email format, password 8+ chars with 1 upper, 1 lower, 1 digit.
+**Rate Limit**: 5 attempts / 15 min per IP.
+**Response**: `{ "requiresVerification": true }`
+**Side Effects**: Creates unverified user, generates 6-digit code (15min TTL), sends email via Resend.
+
+### POST /api/auth/check-credentials
+
+Login step 1 — validates without issuing session.
+
+**Body**: `{ "email": "...", "password": "..." }`
+**Rate Limit**: 10 attempts / 15 min per email (10K key cap).
+**Response**: `{ "valid": true, "emailVerified": true, "requires2FA": true, "methods": ["totp", "email"] }`
+
+### POST /api/auth/2fa/validate
+
+Login step 2 — validates 2FA code.
+
+**Body**: `{ "email": "...", "code": "123456", "method": "totp" }`
+**Methods**: totp (OTPAuth +-30s window), email (atomic claim), backup (timing-safe compare + array_remove).
+**Rate Limit**: 5 attempts / 15 min per email.
+**Response**: `{ "valid": true }`
+
+### POST /api/auth/2fa/setup
+
+Enable TOTP 2FA (auth required).
+
+**Response**: `{ "qrCode": "data:image/png;base64,...", "secret": "JBSWY3DPEHPK3PXP", "backupCodes": ["A1B2C3D4", ...] }`
+**Details**: 20-byte secret, 6 digits, 30s period, SHA1. 8 backup codes (4 bytes each).
+
+---
+
+## Public API (v1)
+
+All v1 routes require: `Authorization: Bearer ih_xxxxx` or `X-API-Key: ih_xxxxx`
+
+**Key Format**: `ih_` + 32 random bytes (base62)
+**Rate Limits**: Free tier: 100/min + 5000/day. Pro tier: 500/min.
+**Redis**: Upstash for rate limiting. Fallback: in-memory.
+
+### GET /api/v1/status
+**Auth**: None
+**Response**: `{ "status": "ok", "version": "1.0", "timestamp": ... }`
+
+### GET /api/v1/exchanges
+**Response**: `{ "exchanges": [{ "name": "Binance", "type": "cex", "funding": true, "oi": true, "tickers": true }] }`
+
+### GET /api/v1/funding
+**Response**: Same format as /api/funding
+
+### GET /api/v1/openinterest
+**Response**: Same format as /api/openinterest
+
+### GET /api/v1/arbitrage
+**Response**: Funding rate arbitrage opportunities
+
+### POST /api/v1/keys
+**Auth**: Session (not API key)
+**Body**: `{ "name": "My Key" }`
+**Limit**: Max 5 keys per user.
+**Response**: `{ "id": "uuid", "key": "ih_xxxxx", "prefix": "ih_xxxxx", "name": "My Key", "tier": "free" }`
+Note: Raw key shown only once on creation.
+
+---
+
+## Integrations
+
+### POST /api/telegram/webhook
+
+Telegram bot webhook handler.
+
+**Header**: `x-telegram-bot-api-secret-token: {TELEGRAM_WEBHOOK_SECRET}`
+
+**Commands**:
+| Command | Description |
+|---------|-------------|
+| `/start` | Register & activate alerts |
+| `/stop` | Pause alerts |
+| `/scan` | Force immediate arb scan |
+| `/set threshold N` | Price threshold (0-10%) |
+| `/set funding N` | Funding threshold (0-10%) |
+| `/watchlist BTC ETH SOL` | Set symbol watchlist |
+| `/price BTC` | Current price + 24h change |
+| `/funding BTC` | Funding rates per exchange |
+| `/oi BTC` | Open interest breakdown |
+| `/liq` | Top liquidations (24h) |
+| `/alert add/remove/list/clear` | Custom alerts |
+| Free text | AI chat (Claude Haiku, 200 tokens, 10/hr limit) |
+
+### POST /api/chat
+
+LLM chat integration (streaming).
+
+**Body**: `{ "messages": [...], "symbol": "BTC" }`
+**Model**: Claude Haiku (streaming response).
+**Rate Limit**: Own limiter (separate from middleware).
+
+---
+
+## Cron Jobs
+
+All require: `Authorization: Bearer ${CRON_SECRET}`
+
+### GET /api/cron/snapshot
+**Schedule**: Every minute (processes every 10 min for full run)
+**Logic**: Fetches /api/funding + /api/openinterest (25s timeout), picks top 200 symbols, saves to DB, computes spreads, prunes >30 day data.
+
+### GET /api/cron/alerts
+**Schedule**: Every 5 minutes
+**Logic**: Fetches market data, checks user alert rules, sends email/Telegram/push, logs to alert_notifications, prunes >7 day notifications.
+
+### GET /api/cron/arbitrage-alerts
+**Schedule**: Every 5 minutes
+**Logic**: Detects price/funding arbs above threshold, sends Telegram to subscribers with cooldown.
+
+### GET /api/cron/liquidation-ingest
+**Schedule**: Every minute
+**Logic**: Polls Binance (`/fapi/v1/allForceOrders`), OKX (per-ULY, 2 req/2s), HTX (batch 4), gTrade (24h history filter), Deribit (filter liquidation=true). Dedup via unique index.
+
+### GET /api/cron/portfolio-snapshot
+**Schedule**: 12:00 UTC daily
+**Logic**: Snapshots all user portfolio values with current prices.
+
+### GET /api/cron/telegram-reports
+**Schedule**: 08:00 UTC daily, 10:00 UTC Sunday (weekly)
+**Logic**: Sends market summary reports to subscribed Telegram users.
+
+---
+
+## Admin Routes
+
+All require: `await requireAdminOrAdvisor()` (DB re-verify, not JWT-only)
+
+### GET /api/admin/users
+Returns all users with: id, email, role, provider_count, watchlist count, alert count, portfolio count, notifications_sent.
+
+### POST /api/admin/users/[id]/role
+Updates user role (admin/user/advisor).
+
+### POST /api/admin/actions/health-check
+Tests exchange connectivity.
+
+### POST /api/admin/actions/flush-cache
+Clears all API cache entries.
+
+### POST /api/admin/actions/trigger-snapshot
+Forces immediate data snapshot.
+
+### GET /api/admin/monitoring/database
+Returns: DB size, table stats, row counts, growth rates.
+
+### GET /api/admin/monitoring/pipeline
+Exchange health, circuit breaker status, latencies.
+
+---
+
+## Utility
+
+### GET /api/health
+**Response**: `{ "status": "ok", "timestamp": ... }`
+No auth required.
+
+### GET /api/proxy/bitunix
+Proxies Bitunix API calls through Node.js runtime (different IP pool than Edge).
+**Params**: `endpoint=funding|tickers`

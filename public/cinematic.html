@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>InfoHub — Cinematic Trailer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;color:#fff;font-family:'Inter',sans-serif;overflow:hidden;
+    width:1920px;height:1080px;position:relative}
+
+  /* ─── CINEMATIC BARS ─── */
+  .bar-t,.bar-b{position:fixed;left:0;right:0;background:#000;z-index:90;height:80px}
+  .bar-t{top:0}.bar-b{bottom:0}
+
+  /* ─── VIGNETTE ─── */
+  .vig{position:fixed;inset:0;z-index:80;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,0.8)100%)}
+
+  /* ─── SCENE CONTAINER ─── */
+  .scene{position:absolute;inset:80px 0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;opacity:0;pointer-events:none}
+
+  /* ─── TEXT SLAM (movie trailer style) ─── */
+  .slam{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:160px;
+    letter-spacing:12px;
+    text-transform:uppercase;
+    color:#fff;
+    opacity:0;
+    text-align:center;
+    line-height:1;
+  }
+  .slam.orange{color:#ea9214}
+  .slam.red{color:#ef4444}
+  .slam.sm{font-size:100px;letter-spacing:8px}
+  .slam.xs{font-size:72px;letter-spacing:6px;color:#71717a}
+  .scene.active .slam{animation:slamIn .15s ease-out forwards}
+  .scene.active .slam.d1{animation-delay:.3s}
+  .scene.active .slam.d2{animation-delay:.6s}
+  .scene.active .slam.d3{animation-delay:.9s}
+  .scene.active .slam.d4{animation-delay:1.2s}
+
+  @keyframes slamIn{
+    0%{opacity:0;transform:scale(1.3);filter:blur(8px)}
+    100%{opacity:1;transform:scale(1);filter:blur(0)}
+  }
+
+  /* ─── FADE TEXT ─── */
+  .fade-text{opacity:0;font-size:32px;color:#52525b;letter-spacing:4px;
+    text-transform:uppercase;text-align:center}
+  .scene.active .fade-text{animation:fadeUp .6s ease forwards}
+  .scene.active .fade-text.d1{animation-delay:.2s}
+  .scene.active .fade-text.d2{animation-delay:.5s}
+  .scene.active .fade-text.d3{animation-delay:.8s}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ─── BIG MONO NUMBERS ─── */
+  .mono-big{font-family:'JetBrains Mono',monospace;font-size:180px;font-weight:700;
+    letter-spacing:-8px;line-height:1;opacity:0;color:#fff}
+  .mono-big.orange{color:#ea9214}
+  .mono-big.red{color:#ef4444}
+  .scene.active .mono-big{animation:numSlam .2s ease-out forwards}
+  .scene.active .mono-big.d1{animation-delay:.25s}
+  @keyframes numSlam{
+    0%{opacity:0;transform:scale(1.5);filter:blur(6px)}
+    100%{opacity:1;transform:scale(1);filter:blur(0)}
+  }
+
+  /* ─── LOGO ─── */
+  .logo{display:flex;align-items:center;opacity:0}
+  .logo .i{font-family:'Inter',sans-serif;font-size:140px;font-weight:900;color:#fff;letter-spacing:-4px}
+  .logo .h{font-family:'Inter',sans-serif;font-size:140px;font-weight:900;color:#000;
+    background:#ea9214;padding:0 20px;border-radius:14px;margin-left:4px;letter-spacing:-4px;
+    box-shadow:0 0 80px rgba(234,146,20,0.4)}
+  .scene.active .logo{animation:logoSlam .6s cubic-bezier(.22,1,.36,1) forwards}
+  @keyframes logoSlam{
+    0%{opacity:0;transform:scale(2.5);filter:blur(20px)}
+    50%{opacity:1;transform:scale(.96);filter:blur(0)}
+    70%{transform:scale(1.02)}
+    100%{opacity:1;transform:scale(1)}
+  }
+
+  /* ─── PULSE LINE ─── */
+  .pulse-line{width:0;height:2px;background:#ea9214;margin:24px 0;opacity:0}
+  .scene.active .pulse-line{animation:lineGrow .8s .3s ease forwards}
+  @keyframes lineGrow{from{width:0;opacity:0}to{width:120px;opacity:1}}
+
+  /* ─── STAT BLOCKS ─── */
+  .stat-row{display:flex;gap:24px;margin-top:28px}
+  .stat-block{text-align:center;opacity:0;min-width:200px;
+    border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:24px 32px;
+    background:rgba(255,255,255,0.02)}
+  .stat-block .v{font-family:'JetBrains Mono',monospace;font-size:44px;font-weight:700}
+  .stat-block .l{font-size:14px;color:#3f3f46;text-transform:uppercase;letter-spacing:3px;margin-top:4px}
+  .scene.active .stat-block{animation:blockIn .3s ease forwards}
+  .scene.active .stat-block.d1{animation-delay:.3s}
+  .scene.active .stat-block.d2{animation-delay:.45s}
+  .scene.active .stat-block.d3{animation-delay:.6s}
+  .scene.active .stat-block.d4{animation-delay:.75s}
+  .scene.active .stat-block.d5{animation-delay:.9s}
+  .scene.active .stat-block.d6{animation-delay:1.05s}
+  @keyframes blockIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ─── LIQ BAR ─── */
+  .lbar{width:900px;height:48px;border-radius:24px;overflow:hidden;display:flex;
+    margin-top:24px;border:1px solid rgba(255,255,255,0.04)}
+  .lbar .rl{background:linear-gradient(90deg,#991b1b,#ef4444);width:0%;
+    animation:gL 1s .3s cubic-bezier(.22,1,.36,1) forwards;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+  .lbar .gs{background:linear-gradient(90deg,#166534,#22c55e);flex:1;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#000}
+  @keyframes gL{from{width:0%}to{width:52.8%}}
+
+  /* ─── EXCHANGE CHIPS ─── */
+  .ex-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:1100px;margin-top:20px}
+  .ex-chip{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);
+    border-radius:6px;padding:6px 14px;font-size:15px;color:#52525b;opacity:0;
+    animation:chipIn .15s ease forwards}
+  @keyframes chipIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+
+  /* ─── CTA URL ─── */
+  .cta-url{font-family:'JetBrains Mono',monospace;font-size:72px;font-weight:700;
+    color:#ea9214;margin-top:20px;opacity:0;letter-spacing:-2px;
+    text-shadow:0 0 60px rgba(234,146,20,0.3)}
+  .scene.active .cta-url{animation:fadeUp .5s .4s ease forwards}
+
+  .cta-sub{font-size:28px;color:#ea9214;font-weight:700;margin-top:20px;opacity:0}
+  .scene.active .cta-sub{animation:fadeUp .5s .7s ease forwards}
+
+  /* ─── FLASH + SHAKE ─── */
+  .flash-overlay{position:fixed;inset:0;z-index:85;opacity:0;pointer-events:none;background:#fff}
+  .flash-overlay.go{animation:wFlash .12s ease-out}
+  @keyframes wFlash{0%{opacity:.3}100%{opacity:0}}
+
+  .shaker{width:100%;height:100%;position:relative}
+  .shaker.shake{animation:shk .25s ease}
+  @keyframes shk{0%{transform:translate(0)}25%{transform:translate(-3px,2px)}
+    50%{transform:translate(3px,-1px)}75%{transform:translate(-1px,3px)}100%{transform:translate(0)}}
+
+  /* ─── BLACK FLASH (cut to black between scenes) ─── */
+  .black-cut{position:fixed;inset:0;background:#000;z-index:75;opacity:0;pointer-events:none}
+  .black-cut.go{animation:blackCut .35s ease}
+  @keyframes blackCut{0%{opacity:1}40%{opacity:1}100%{opacity:0}}
+
+  /* ─── PARTICLES ─── */
+  .pts{position:fixed;inset:0;z-index:-1;overflow:hidden}
+  .pt{position:absolute;width:1px;height:1px;background:rgba(234,146,20,.15);
+    border-radius:50%;animation:riseP linear infinite}
+  @keyframes riseP{from{transform:translateY(1100px)}to{transform:translateY(-10px)}}
+
+  /* ─── PROGRESS ─── */
+  .prog{position:fixed;bottom:80px;left:0;height:2px;background:#ea9214;z-index:95;
+    animation:progBar 50s linear forwards;box-shadow:0 0 6px rgba(234,146,20,.4)}
+  @keyframes progBar{from{width:0%}to{width:100%}}
+</style>
+</head>
+<body>
+
+<div class="bar-t"></div>
+<div class="bar-b"></div>
+<div class="vig"></div>
+<div class="flash-overlay" id="flash"></div>
+<div class="black-cut" id="blackCut"></div>
+<div class="pts" id="pts"></div>
+<div class="prog"></div>
+
+<div class="shaker" id="shaker">
+
+<!-- S1: Black + Single Word (0-2s) -->
+<div class="scene" id="s1">
+  <div class="fade-text" style="font-size:24px;letter-spacing:8px">EVERY TRADER KNOWS THE FEELING</div>
+</div>
+
+<!-- S2: Scattered (2-4s) -->
+<div class="scene" id="s2">
+  <div class="slam xs">29 exchanges</div>
+  <div class="slam xs d1">thousands of pairs</div>
+  <div class="slam xs d2">scattered everywhere</div>
+</div>
+
+<!-- S3: Question slam (4-6s) -->
+<div class="scene" id="s3">
+  <div class="slam sm">Where's the</div>
+  <div class="slam orange d1">EDGE?</div>
+</div>
+
+<!-- S4: BLACK + Beat (6-7.5s) -->
+<div class="scene" id="s4">
+  <div class="fade-text" style="font-size:20px;letter-spacing:10px">INTRODUCING</div>
+</div>
+
+<!-- S5: LOGO SLAM (7.5-11s) -->
+<div class="scene" id="s5">
+  <div class="logo">
+    <span class="i">Info</span><span class="h">Hub</span>
+  </div>
+  <div class="pulse-line"></div>
+  <div class="fade-text d2">THE TRADING TERMINAL DEGENS DESERVE</div>
+</div>
+
+<!-- S6: 29 EXCHANGES (11-14s) -->
+<div class="scene" id="s6">
+  <div class="mono-big orange">29</div>
+  <div class="fade-text d1" style="margin-top:8px">EXCHANGES CONNECTED</div>
+  <div class="ex-row" id="exWall"></div>
+</div>
+
+<!-- S7: FUNDING (14-17.5s) -->
+<div class="scene" id="s7">
+  <div class="slam sm" style="color:#71717a">FUNDING RATES</div>
+  <div class="mono-big orange d1" style="font-size:140px">8,230</div>
+  <div class="fade-text d2">PERPETUAL PAIRS TRACKED</div>
+  <div class="stat-row">
+    <div class="stat-block d3"><div class="v" style="color:#22c55e">+2.87%</div><div class="l">Highest</div></div>
+    <div class="stat-block d4"><div class="v" style="color:#ef4444">-15.84%</div><div class="l">Lowest</div></div>
+  </div>
+</div>
+
+<!-- S8: OI (17.5-21s) -->
+<div class="scene" id="s8">
+  <div class="slam sm" style="color:#71717a">OPEN INTEREST</div>
+  <div class="mono-big orange d1">$67.7B</div>
+  <div class="fade-text d2">24 EXCHANGES &bull; 719 SYMBOLS</div>
+  <div class="stat-row">
+    <div class="stat-block d3"><div class="v" style="color:#ea9214">$13.9B</div><div class="l">Binance</div></div>
+    <div class="stat-block d4"><div class="v" style="color:#ea9214">$8.7B</div><div class="l">Bybit</div></div>
+    <div class="stat-block d5"><div class="v" style="color:#ea9214">$7.1B</div><div class="l">MEXC</div></div>
+  </div>
+</div>
+
+<!-- S9: BLACK BEAT (21-22s) -->
+<div class="scene" id="s9">
+</div>
+
+<!-- S10: LIQUIDATIONS (22-26s) -->
+<div class="scene" id="s10">
+  <div class="slam red">$208M</div>
+  <div class="fade-text d1" style="color:#52525b">REKT IN 4 HOURS</div>
+  <div class="slam sm d2" style="color:#ef4444;font-size:80px">2,196 LIQUIDATIONS</div>
+  <div class="lbar">
+    <div class="rl">52.8% LONGS</div>
+    <div class="gs">47.2% SHORTS</div>
+  </div>
+</div>
+
+<!-- S11: OPTIONS (26-29s) -->
+<div class="scene" id="s11">
+  <div class="slam sm" style="color:#71717a">OPTIONS</div>
+  <div class="mono-big orange d1" style="font-size:140px">$35.2B</div>
+  <div class="fade-text d2">4,020 INSTRUMENTS</div>
+  <div class="stat-row">
+    <div class="stat-block d3"><div class="v" style="color:#ea9214">$74K</div><div class="l">Max Pain</div></div>
+    <div class="stat-block d4"><div class="v" style="color:#22c55e">0.74</div><div class="l">Put/Call</div></div>
+  </div>
+</div>
+
+<!-- S12: RAPID FIRE STATS (29-33s) -->
+<div class="scene" id="s12">
+  <div class="slam sm" style="color:#71717a">YOUR COMMAND CENTER</div>
+  <div class="pulse-line"></div>
+  <div class="stat-row" style="flex-wrap:wrap;justify-content:center">
+    <div class="stat-block d1"><div class="v" style="color:#ea9214">$70,438</div><div class="l">BTC</div></div>
+    <div class="stat-block d2"><div class="v" style="color:#ef4444">28</div><div class="l">Fear &amp; Greed</div></div>
+    <div class="stat-block d3"><div class="v" style="color:#22c55e">$2.41T</div><div class="l">Market Cap</div></div>
+    <div class="stat-block d4"><div class="v" style="color:#a1a1aa">58.9%</div><div class="l">BTC Dom</div></div>
+  </div>
+  <div class="fade-text d5" style="margin-top:20px;font-size:18px">DRAG &amp; DROP WIDGETS &bull; CUSTOM LAYOUTS &bull; REAL-TIME</div>
+</div>
+
+<!-- S13: FAST TEXT SEQUENCE (33-38s) -->
+<div class="scene" id="s13">
+  <div class="slam" style="font-size:80px">REAL-TIME DATA</div>
+  <div class="slam orange d1" style="font-size:80px">NO SIGNUP</div>
+  <div class="slam d2" style="font-size:80px">29 EXCHANGES</div>
+  <div class="slam d3" style="font-size:80px;color:#71717a">ONE TERMINAL</div>
+</div>
+
+<!-- S14: BLACK (38-39s) -->
+<div class="scene" id="s14">
+</div>
+
+<!-- S15: FINAL LOGO + CTA (39-47s) -->
+<div class="scene" id="s15">
+  <div class="logo">
+    <span class="i">Info</span><span class="h">Hub</span>
+  </div>
+  <div class="cta-url">info-hub.io</div>
+  <div class="pulse-line"></div>
+  <div class="cta-sub">The edge you've been sleeping on.</div>
+</div>
+
+</div><!-- /shaker -->
+
+<script>
+  // ─── AUDIO ───
+  const A=new(window.AudioContext||window.webkitAudioContext)();
+  (async()=>{try{await A.resume()}catch(e){}
+    const b=A.createBuffer(1,A.sampleRate*.01,A.sampleRate);
+    const s=A.createBufferSource();s.buffer=b;s.connect(A.destination);s.start()})();
+
+  // Deep cinema bass hit
+  function bassHit(){
+    const o=A.createOscillator(),g=A.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(60,A.currentTime);
+    o.frequency.exponentialRampToValueAtTime(18,A.currentTime+.8);
+    g.gain.setValueAtTime(.35,A.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,A.currentTime+.9);
+    o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+1);
+  }
+
+  // Trailer BRAAAM
+  function braaam(){
+    [40,80,120].forEach(freq=>{
+      const o=A.createOscillator(),g=A.createGain();
+      o.type='sawtooth';
+      o.frequency.setValueAtTime(freq,A.currentTime);
+      o.frequency.exponentialRampToValueAtTime(freq*.4,A.currentTime+1.5);
+      g.gain.setValueAtTime(.08,A.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,A.currentTime+1.8);
+      o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+2);
+    });
+  }
+
+  // Sharp impact
+  function impact(){
+    const buf=A.createBuffer(1,A.sampleRate*.08,A.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*.04));
+    const s=A.createBufferSource(),g=A.createGain(),f=A.createBiquadFilter();
+    s.buffer=buf;f.type='lowpass';f.frequency.value=250;
+    g.gain.setValueAtTime(.2,A.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,A.currentTime+.1);
+    s.connect(f).connect(g).connect(A.destination);s.start();
+  }
+
+  // Tension drone
+  function drone(dur){
+    const o=A.createOscillator(),g=A.createGain();
+    o.type='sawtooth';o.frequency.value=55;
+    const f=A.createBiquadFilter();f.type='lowpass';f.frequency.value=200;
+    g.gain.setValueAtTime(0,A.currentTime);
+    g.gain.linearRampToValueAtTime(.04,A.currentTime+dur*.3);
+    g.gain.linearRampToValueAtTime(0,A.currentTime+dur);
+    o.connect(f).connect(g).connect(A.destination);o.start();o.stop(A.currentTime+dur);
+  }
+
+  // Rising tension
+  function riser(dur){
+    const o=A.createOscillator(),g=A.createGain();
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(80,A.currentTime);
+    o.frequency.exponentialRampToValueAtTime(800,A.currentTime+dur);
+    const f=A.createBiquadFilter();f.type='lowpass';
+    f.frequency.setValueAtTime(200,A.currentTime);
+    f.frequency.exponentialRampToValueAtTime(2000,A.currentTime+dur);
+    g.gain.setValueAtTime(.01,A.currentTime);
+    g.gain.linearRampToValueAtTime(.06,A.currentTime+dur*.8);
+    g.gain.linearRampToValueAtTime(0,A.currentTime+dur);
+    o.connect(f).connect(g).connect(A.destination);o.start();o.stop(A.currentTime+dur);
+  }
+
+  // Alarm siren (for liquidations)
+  function siren(){
+    const o=A.createOscillator(),g=A.createGain();
+    o.type='square';
+    o.frequency.setValueAtTime(380,A.currentTime);
+    o.frequency.setValueAtTime(460,A.currentTime+.06);
+    o.frequency.setValueAtTime(380,A.currentTime+.12);
+    o.frequency.setValueAtTime(460,A.currentTime+.18);
+    g.gain.setValueAtTime(.04,A.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,A.currentTime+.3);
+    o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+.35);
+  }
+
+  // Final BOOM
+  function finalBoom(){
+    braaam();
+    setTimeout(()=>{impact();bassHit()},50);
+  }
+
+  // Text slam sound
+  function slamSfx(){
+    impact();
+    const o=A.createOscillator(),g=A.createGain();
+    o.type='sine';o.frequency.setValueAtTime(80,A.currentTime);
+    o.frequency.exponentialRampToValueAtTime(30,A.currentTime+.3);
+    g.gain.setValueAtTime(.15,A.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,A.currentTime+.35);
+    o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+.4);
+  }
+
+  // Scene sound map
+  const sfx=[
+    ()=>{drone(2)},                        // s1 feeling
+    ()=>{slamSfx()},                       // s2 scattered
+    ()=>{slamSfx()},                       // s3 edge?
+    ()=>{},                                 // s4 black beat
+    ()=>{braaam();setTimeout(impact,200)},  // s5 logo slam
+    ()=>{slamSfx()},                       // s6 29 exchanges
+    ()=>{slamSfx()},                       // s7 funding
+    ()=>{slamSfx();riser(3)},              // s8 OI
+    ()=>{},                                 // s9 black
+    ()=>{siren();slamSfx()},               // s10 liquidations
+    ()=>{slamSfx()},                       // s11 options
+    ()=>{slamSfx()},                       // s12 command center
+    ()=>{riser(4)},                         // s13 rapid text
+    ()=>{},                                 // s14 black
+    ()=>{finalBoom()},                      // s15 final CTA
+  ];
+
+  // ─── EFFECTS ───
+  const fl=document.getElementById('flash');
+  const bc=document.getElementById('blackCut');
+  const sk=document.getElementById('shaker');
+
+  function doFlash(){fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go')}
+  function doBlack(){bc.classList.remove('go');void bc.offsetWidth;bc.classList.add('go')}
+  function doShake(){sk.classList.remove('shake');void sk.offsetWidth;sk.classList.add('shake')}
+
+  // Flash scenes (big impact moments)
+  const flashScenes=new Set([2,3,5,10,15]);
+  // Shake scenes
+  const shakeScenes=new Set([3,5,10,15]);
+  // Black cut scenes (dramatic pause)
+  const blackScenes=new Set([4,9,14]);
+
+  // ─── PARTICLES ───
+  const pts=document.getElementById('pts');
+  for(let i=0;i<20;i++){
+    const d=document.createElement('div');d.className='pt';
+    d.style.left=Math.random()*100+'%';
+    d.style.animationDuration=(8+Math.random()*16)+'s';
+    d.style.animationDelay=Math.random()*12+'s';
+    d.style.opacity=(.03+Math.random()*.1)+'';
+    pts.appendChild(d);
+  }
+
+  // ─── EXCHANGE WALL ───
+  const exs=['Binance','Bybit','OKX','Bitget','MEXC','Kraken','KuCoin','Coinbase',
+    'Hyperliquid','dYdX','GMX','Drift','Gate.io','BingX','HTX','Phemex','CoinEx',
+    'WhiteBIT','Bitfinex','Bitunix','Aevo','gTrade','Lighter','Aster DEX',
+    'Deribit','BitMEX','Crypto.com','CoinEx','Aevo'];
+  const ew=document.getElementById('exWall');
+  exs.forEach((n,i)=>{
+    const c=document.createElement('div');c.className='ex-chip';c.textContent=n;
+    c.style.animationDelay=(i*.035)+'s';ew.appendChild(c);
+  });
+
+  // ─── SCENE SEQUENCER ───
+  const scenes=[
+    {id:'s1', start:0,     end:2000 },   // feeling
+    {id:'s2', start:2000,  end:4000 },   // scattered
+    {id:'s3', start:4000,  end:6000 },   // edge?
+    {id:'s4', start:6000,  end:7500 },   // black
+    {id:'s5', start:7500,  end:11000},   // logo
+    {id:'s6', start:11000, end:14000},   // 29 exchanges
+    {id:'s7', start:14000, end:17500},   // funding
+    {id:'s8', start:17500, end:21000},   // OI
+    {id:'s9', start:21000, end:22000},   // black beat
+    {id:'s10',start:22000, end:26000},   // liquidations
+    {id:'s11',start:26000, end:29000},   // options
+    {id:'s12',start:29000, end:33000},   // command center
+    {id:'s13',start:33000, end:38000},   // rapid text
+    {id:'s14',start:38000, end:39000},   // black
+    {id:'s15',start:39000, end:47000},   // final CTA
+  ];
+
+  let cur=-1;const t0=Date.now();
+
+  function loop(){
+    const el=Date.now()-t0;
+    let idx=scenes.findIndex(s=>el>=s.start&&el<s.end);
+    if(idx===-1&&el>=47000)idx=scenes.length-1;
+
+    if(idx!==cur){
+      // Exit old
+      if(cur>=0){
+        const o=document.getElementById(scenes[cur].id);
+        o.classList.remove('active');
+        o.style.opacity='0';
+      }
+      // Enter new
+      if(idx>=0){
+        const el2=document.getElementById(scenes[idx].id);
+        el2.classList.add('active');
+
+        // Sound
+        if(sfx[idx])sfx[idx]();
+
+        // Effects
+        if(flashScenes.has(idx))doFlash();
+        if(shakeScenes.has(idx))doShake();
+        if(blackScenes.has(idx))doBlack();
+      }
+      cur=idx;
+    }
+    if(el<48000)requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+</script>
+</body>
+</html>

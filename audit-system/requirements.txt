@@ -1,0 +1,28 @@
+# 18-Agent Dashboard Auditor - Dependencies
+# Python 3.11+ required
+
+# Browser automation
+playwright==1.49.1
+
+# Beautiful console output
+rich==13.9.4
+
+# Async HTTP
+aiohttp==3.11.11
+aiofiles==24.1.0
+
+# Report generation
+markdown==3.7
+jinja2==3.1.4
+
+# Dashboard visualization
+streamlit==1.41.1
+plotly==5.24.1
+pandas==2.2.3
+
+# Screenshot & image handling
+Pillow==11.1.0
+
+# Utilities
+python-dotenv==1.0.1
+pyyaml==6.0.2

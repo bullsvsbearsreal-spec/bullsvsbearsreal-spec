@@ -1,0 +1,391 @@
+# InfoHub Backend — Database Schema Reference
+
+> Complete PostgreSQL schema documentation for info-hub.io
+> Provider: DigitalOcean Managed PostgreSQL | Driver: postgres.js (3-pool, PgBouncer transaction mode)
+> SSL: Required | Prepare: Disabled (PgBouncer) | Idle: 5s | Connection timeout: 10s | Max lifetime: 120s
+
+---
+
+## Table of Contents
+
+1. [Authentication & User Tables](#authentication--user-tables)
+2. [Two-Factor Authentication Tables](#two-factor-authentication-tables)
+3. [Market Data Snapshot Tables](#market-data-snapshot-tables)
+4. [User Feature Tables](#user-feature-tables)
+5. [API & Integration Tables](#api--integration-tables)
+6. [Admin & Monitoring Tables](#admin--monitoring-tables)
+7. [Cache Tables](#cache-tables)
+8. [Indexes Summary](#indexes-summary)
+
+---
+
+## Authentication & User Tables
+
+### users (NextAuth core)
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PK | Auto-generated user ID |
+| name | TEXT | | Display name |
+| email | TEXT | UNIQUE | User email address |
+| email_verified | TIMESTAMPTZ | NULL | When email was verified (NULL = unverified) |
+| image | TEXT | NULL | Avatar URL (NULL for data URIs >32KB — Vercel header limit) |
+| password_hash | TEXT | NULL | bcrypt hash (salt rounds: 12). NULL for OAuth-only accounts |
+| role | TEXT | DEFAULT 'user' | 'user', 'admin', or 'advisor' |
+
+Seed admin: ocelotcex1638a@gmail.com → role='admin'
+
+### accounts (NextAuth OAuth links)
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| user_id | UUID | FK → users.id | Owning user |
+| provider | TEXT | | OAuth provider (google, discord, twitter) |
+| provider_account_id | TEXT | | Provider's user ID |
+| type | TEXT | | Account type (oauth) |
+| access_token | TEXT | | OAuth access token |
+| refresh_token | TEXT | | OAuth refresh token |
+| expires_at | INTEGER | | Token expiry (Unix seconds) |
+| scope | TEXT | | OAuth scopes granted |
+| id_token | TEXT | | OIDC ID token |
+| session_state | TEXT | | Provider session state |
+
+### sessions (NextAuth session tokens)
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| session_token | TEXT | UNIQUE | Random session identifier |
+| user_id | UUID | FK → users.id | Session owner |
+| expires | TIMESTAMPTZ | | Session expiry time |
+
+### verification_tokens (NextAuth)
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| identifier | TEXT | | Email or phone number |
+| token | TEXT | | Verification token |
+| expires | TIMESTAMPTZ | | Token expiry |
+
+---
+
+## Two-Factor Authentication Tables
+
+### email_verification_codes
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment ID |
+| user_id | UUID | FK → users.id | User being verified |
+| email | TEXT | | Email address |
+| code | TEXT | | 6-digit verification code |
+| expires_at | TIMESTAMPTZ | | 15 minutes from creation |
+| used | BOOLEAN | DEFAULT false | Claimed flag |
+
+Index: `idx_evc_user (user_id, used)`
+
+### twofa_login_codes
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment ID |
+| email | TEXT | | User email |
+| code | TEXT | | 6-digit 2FA code |
+| expires_at | TIMESTAMPTZ | | 15 minutes from creation |
+| used | BOOLEAN | DEFAULT false | Atomic claim flag (prevents TOCTOU race) |
+
+### user_2fa
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| user_id | UUID | PK, FK → users.id | One row per user |
+| totp_secret | TEXT | | Base32-encoded TOTP secret (20 bytes) |
+| totp_enabled | BOOLEAN | DEFAULT false | Whether TOTP is active |
+| email_2fa_enabled | BOOLEAN | DEFAULT false | Whether email 2FA is active |
+| backup_codes | TEXT[] | | Array of 8 backup codes (4 random bytes each, uppercase hex) |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Setup time |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last modification |
+
+### password_reset_tokens
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment ID |
+| token | TEXT | | SHA256 hex token |
+| email | TEXT | | Target email |
+| expires_at | TIMESTAMPTZ | | 1 hour from creation |
+| used | BOOLEAN | DEFAULT false | Claimed flag |
+
+Index: `idx_prt_email (email)`
+
+---
+
+## Market Data Snapshot Tables
+
+### funding_snapshots
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| symbol | TEXT | | Normalized symbol (BTC, ETH, etc.) |
+| exchange | TEXT | | Exchange name |
+| rate | REAL | | Funding rate (native interval %) |
+| predicted | REAL | NULL | Predicted next funding rate |
+| mark_price | REAL | NULL | Mark price at snapshot time |
+| ts | TIMESTAMPTZ | | Snapshot timestamp |
+
+Indexes:
+- `idx_funding_sym_ts (symbol, ts)`
+- `idx_funding_sym_ex_ts (symbol, exchange, ts)`
+- `idx_funding_ts_symbol (ts, symbol)`
+- `idx_funding_mark_price (mark_price)` — used for price lookups
+
+Population: Cron every 10 minutes, top 200 symbols by exchange count.
+Retention: 30 days (auto-pruned).
+
+### oi_snapshots
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| symbol | TEXT | | Normalized symbol |
+| exchange | TEXT | | Exchange name |
+| oi_usd | REAL | | Open interest in USD |
+| ts | TIMESTAMPTZ | | Snapshot timestamp |
+
+Indexes:
+- `idx_oi_sym_ts (symbol, ts)`
+- `idx_oi_sym_ex_ts (symbol, exchange, ts)`
+- `idx_oi_ts_symbol (ts, symbol)`
+
+Population: Cron every 10 minutes, top 200 symbols.
+Retention: 30 days.
+
+### spread_snapshots
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| symbol | TEXT | | Normalized symbol |
+| spread_usd | REAL | | High price - low price |
+| spread_pct | REAL | | Spread as percentage |
+| high_exchange | TEXT | | Exchange with highest price |
+| low_exchange | TEXT | | Exchange with lowest price |
+| high_price | REAL | | Highest price |
+| low_price | REAL | | Lowest price |
+| exchange_count | INTEGER | | Number of exchanges with this pair |
+| ts | TIMESTAMPTZ | | Snapshot timestamp |
+
+Index: `idx_spread_sym_ts (symbol, ts)`
+
+### arb_opportunities
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| symbol | TEXT | | Trading pair |
+| spread_usd | REAL | | Current spread USD |
+| spread_pct | REAL | | Current spread % |
+| high_exchange | TEXT | | Exchange with higher price |
+| low_exchange | TEXT | | Exchange with lower price |
+| max_spread_usd | REAL | | Peak spread USD during opportunity |
+| max_spread_pct | REAL | | Peak spread % |
+| opened_at | TIMESTAMPTZ | | When opportunity was first detected |
+| closed_at | TIMESTAMPTZ | NULL | When opportunity closed (NULL = still open) |
+| status | TEXT | DEFAULT 'open' | 'open' or 'closed' |
+
+Indexes:
+- `idx_arb_opp_sym_status (symbol, status)`
+- `idx_arb_opp_opened (opened_at)`
+
+### liquidation_snapshots
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| symbol | TEXT | | Trading pair |
+| exchange | TEXT | | Source exchange |
+| side | TEXT | | 'long' or 'short' |
+| price | REAL | | Bankruptcy/liquidation price |
+| quantity | REAL | | Position size |
+| value_usd | REAL | | USD value of liquidation |
+| ts | TIMESTAMPTZ | | Event timestamp |
+
+Unique index: `idx_liq_dedup (symbol, exchange, side, price, ts)` — prevents duplicate ingestion.
+
+Population: Continuous via WebSocket ingestion + REST polling cron.
+
+---
+
+## User Feature Tables
+
+### watchlists
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| user_id | UUID | FK → users.id | Watchlist owner |
+| symbol | TEXT | | Watched symbol |
+
+Constraint: `UNIQUE(user_id, symbol)`
+
+### user_prefs
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| user_id | UUID | PK, FK → users.id | Preference owner |
+| prefs | JSONB | DEFAULT '{}' | JSON blob: watchlist[], alerts[], portfolio[], dashboard layout, theme |
+
+### alert_notifications
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| user_id | UUID | FK → users.id | Alert recipient |
+| alert_id | TEXT | | Alert rule ID |
+| symbol | TEXT | | Triggered symbol |
+| metric | TEXT | | Metric type (price, funding, oi, liquidations, volume) |
+| threshold | REAL | | Alert threshold value |
+| actual_value | REAL | | Value that triggered the alert |
+| channel | TEXT | | Delivery channel (email, telegram, push, toast) |
+| sent_at | TIMESTAMPTZ | DEFAULT NOW() | Delivery time |
+
+Indexes:
+- `idx_alert_notif_user (user_id)`
+- `idx_alert_notif_sent_at (sent_at)`
+- `idx_alert_notif_sent_symbol (sent_at, symbol)`
+- `idx_alert_notif_sent_channel (sent_at, channel)`
+
+Retention: 7 days (auto-pruned by alerts cron).
+
+### portfolio_snapshots
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| user_id | UUID | FK → users.id | Portfolio owner |
+| total_value | REAL | | Total portfolio USD value |
+| total_pnl | REAL | | Total profit/loss |
+| holdings | JSONB | | Per-coin holdings detail |
+| ts | TIMESTAMPTZ | DEFAULT NOW() | Snapshot time |
+
+Index: `idx_portfolio_user_ts (user_id, ts)`
+
+Population: Daily at 12:00 UTC via cron.
+
+### push_subscriptions
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| user_id | UUID | FK → users.id | Subscription owner |
+| endpoint | TEXT | UNIQUE | Web Push endpoint URL |
+| p256dh | TEXT | | P-256 Diffie-Hellman public key |
+| auth | TEXT | | Auth secret |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Subscription time |
+
+Index: `idx_push_sub_user (user_id)`
+
+---
+
+## API & Integration Tables
+
+### api_keys
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PK | Key identifier |
+| user_id | UUID | FK → users.id | Key owner |
+| key_hash | TEXT | UNIQUE | SHA256(raw key) — raw key never stored |
+| key_prefix | TEXT | | First 8 chars of key (display only) |
+| name | TEXT | | User-assigned key name |
+| tier | TEXT | DEFAULT 'free' | 'free' or 'pro' |
+| is_active | BOOLEAN | DEFAULT true | Whether key is active |
+| last_used_at | TIMESTAMPTZ | NULL | Last API call timestamp |
+| requests_today | INTEGER | DEFAULT 0 | Daily request counter |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation time |
+
+Indexes:
+- `idx_api_keys_hash (key_hash)` — fast lookup
+- `idx_api_keys_user (user_id)` — list user's keys
+
+Key format: `ih_` + 32 random bytes (base62), max 5 keys per user.
+
+### Telegram Tables (initialized via initTelegramTables)
+
+**telegram_users**
+| Column | Type | Description |
+|--------|------|-------------|
+| chat_id | BIGINT | PK, Telegram chat ID |
+| active | BOOLEAN | Alert subscription status |
+| price_threshold | REAL | Min spread % for arb alerts |
+| funding_threshold | REAL | Min funding rate for alerts |
+| watchlist | TEXT[] | Symbols to monitor |
+| created_at | TIMESTAMPTZ | Registration time |
+
+**telegram_alerts**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | PK |
+| chat_id | BIGINT | FK → telegram_users |
+| type | TEXT | Alert type |
+| symbol | TEXT | Target symbol |
+| threshold | REAL | Trigger threshold |
+| enabled | BOOLEAN | Active flag |
+
+**telegram_cooldowns**
+| Column | Type | Description |
+|--------|------|-------------|
+| chat_id | BIGINT | User |
+| symbol | TEXT | Symbol |
+| last_sent | TIMESTAMPTZ | Last alert time |
+
+**telegram_report_schedule**
+| Column | Type | Description |
+|--------|------|-------------|
+| chat_id | BIGINT | User |
+| daily | BOOLEAN | Receive daily reports |
+| weekly | BOOLEAN | Receive weekly reports |
+
+---
+
+## Admin & Monitoring Tables
+
+### admin_monitoring
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PK | Auto-increment |
+| metric | TEXT | | Metric name |
+| value | REAL | | Metric value |
+| details | JSONB | NULL | Additional context |
+| recorded_at | TIMESTAMPTZ | DEFAULT NOW() | Recording time |
+
+Index: `idx_admin_mon_metric_ts (metric, recorded_at)`
+
+---
+
+## Cache Tables
+
+### api_cache (L2 persistent cache)
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| key | TEXT | PK | Cache key (e.g., 'top500_symbols', 'fear_greed') |
+| data | JSONB | | Cached response payload |
+| expires_at | TIMESTAMPTZ | | Cache expiry (entry-specific TTL) |
+
+Index: `idx_api_cache_expires_at (expires_at DESC)`
+
+Purpose: Survives Vercel Edge cold starts (L1 memory cache is lost). TTL varies by data type:
+- top500 symbols: 1800s (30 min)
+- fear & greed: 3600s (1 hr)
+- dominance: 600s (10 min)
+- top movers: 1800s (30 min)
+
+---
+
+## Indexes Summary
+
+| Table | Index | Columns | Purpose |
+|-------|-------|---------|---------|
+| email_verification_codes | idx_evc_user | (user_id, used) | Lookup active codes |
+| password_reset_tokens | idx_prt_email | (email) | Lookup by email |
+| funding_snapshots | idx_funding_sym_ts | (symbol, ts) | Time-series per symbol |
+| funding_snapshots | idx_funding_sym_ex_ts | (symbol, exchange, ts) | Per-exchange time-series |
+| funding_snapshots | idx_funding_ts_symbol | (ts, symbol) | Recent snapshots lookup |
+| funding_snapshots | idx_funding_mark_price | (mark_price) | Price range queries |
+| oi_snapshots | idx_oi_sym_ts | (symbol, ts) | Time-series per symbol |
+| oi_snapshots | idx_oi_sym_ex_ts | (symbol, exchange, ts) | Per-exchange time-series |
+| oi_snapshots | idx_oi_ts_symbol | (ts, symbol) | Recent snapshots |
+| spread_snapshots | idx_spread_sym_ts | (symbol, ts) | Spread history |
+| arb_opportunities | idx_arb_opp_sym_status | (symbol, status) | Active arb lookup |
+| arb_opportunities | idx_arb_opp_opened | (opened_at) | Time-ordered arbs |
+| liquidation_snapshots | idx_liq_dedup | (symbol, exchange, side, price, ts) | Dedup + lookup |
+| alert_notifications | idx_alert_notif_user | (user_id) | User's alerts |
+| alert_notifications | idx_alert_notif_sent_at | (sent_at) | Pruning old alerts |
+| alert_notifications | idx_alert_notif_sent_symbol | (sent_at, symbol) | Symbol-specific audit |
+| alert_notifications | idx_alert_notif_sent_channel | (sent_at, channel) | Channel audit |
+| portfolio_snapshots | idx_portfolio_user_ts | (user_id, ts) | User portfolio history |
+| push_subscriptions | idx_push_sub_user | (user_id) | User's subscriptions |
+| api_keys | idx_api_keys_hash | (key_hash) | Fast key validation |
+| api_keys | idx_api_keys_user | (user_id) | User's keys |
+| admin_monitoring | idx_admin_mon_metric_ts | (metric, recorded_at) | Metric history |
+| api_cache | idx_api_cache_expires_at | (expires_at DESC) | Cache pruning |
