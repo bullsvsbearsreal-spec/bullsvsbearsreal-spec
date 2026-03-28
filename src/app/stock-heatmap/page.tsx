@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
+import ReferralBanner from '@/components/ReferralBanner';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -146,6 +147,9 @@ export default function StockHeatmapPage() {
       {/* Heatmap widget — fills all remaining space */}
       <div className="flex-1 min-h-0">
         <StockHeatmapWidget dataSource={dataSource} blockColor={blockColor} />
+      </div>
+      <div className="shrink-0">
+        <ReferralBanner />
       </div>
     </div>
   );

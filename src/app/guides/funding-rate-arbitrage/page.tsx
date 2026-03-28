@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import Link from 'next/link';
 import { ArrowLeft, ArrowLeftRight, Clock, BookOpen, AlertTriangle, CheckCircle2, ExternalLink, TrendingUp, TrendingDown, Zap } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -41,7 +42,7 @@ export default function FundingRateArbitragePage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="max-w-3xl mx-auto">
 
           {/* Back link + breadcrumb */}
@@ -260,7 +261,7 @@ export default function FundingRateArbitragePage() {
 
           <Section id="real-numbers" title="5. Real numbers: what to expect">
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden mb-4">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" aria-label="Funding rate arbitrage scenarios">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">Scenario</th>
@@ -395,6 +396,7 @@ export default function FundingRateArbitragePage() {
 
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

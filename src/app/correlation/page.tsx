@@ -3,7 +3,9 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
+import DataFreshness from '@/components/DataFreshness';
 import { RefreshCw, AlertTriangle, Info } from 'lucide-react';
 import { savePriceSnapshot } from '@/lib/storage/priceHistory';
 
@@ -168,7 +170,7 @@ export default function CorrelationPage() {
   const NON_CRYPTO_CORR = new Set(['XAU', 'XAG', 'XAUT', 'PAXG', 'XPT', 'XPD', 'EUR', 'GBP', 'JPY', 'USOIL', 'UKOIL', 'CL']);
   const symbols = useMemo(() => {
     if (!data?.symbols) return [];
-    return data.symbols.filter((s: any) => !NON_CRYPTO_CORR.has(s.symbol?.toUpperCase())).slice(0, count);
+    return data.symbols.filter((s: { symbol?: string }) => !NON_CRYPTO_CORR.has(s.symbol?.toUpperCase() ?? '')).slice(0, count);
   }, [data, count]);
 
   // Compute correlation matrix
@@ -243,7 +245,7 @@ export default function CorrelationPage() {
   return (
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
@@ -253,11 +255,7 @@ export default function CorrelationPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-[11px] text-neutral-600">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <DataFreshness exchangeCount={data?.totalExchanges ?? 1} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={isRefreshing}
@@ -542,7 +540,7 @@ export default function CorrelationPage() {
               </p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs" aria-label="Price correlation matrix">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
                     <th className="text-left text-neutral-500 font-medium px-4 py-2">Symbol</th>
@@ -608,6 +606,7 @@ export default function CorrelationPage() {
           </div>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

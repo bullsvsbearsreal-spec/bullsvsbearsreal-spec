@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Calendar, Info, Search } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
@@ -59,36 +61,22 @@ function formatDay(day: string): string {
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function FundingHeatmapPage() {
-  const [data, setData] = useState<HeatmapResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(7);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [searchTerm, setSearchTerm] = useState('');
   const [hoveredCell, setHoveredCell] = useState<{ symbol: string; day: string; rate: number; x: number; y: number } | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`/api/history/funding-heatmap?days=${days}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-      setLastUpdate(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load data');
-    } finally {
-      setLoading(false);
-    }
+  const fetcher = useCallback(async () => {
+    const res = await fetch(`/api/history/funding-heatmap?days=${days}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<HeatmapResponse>;
   }, [days]);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5 * 60 * 1000); // 5 min refresh
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: `funding-heatmap-${days}`,
+    fetcher,
+    refreshInterval: 300000,
+  });
 
   // Build uniform day columns across all symbols
   const allDays = useMemo(() => {
@@ -197,7 +185,7 @@ export default function FundingHeatmapPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
+      <main id="main-content" className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -211,6 +199,7 @@ export default function FundingHeatmapPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
               {/* Day selector */}
               <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5">
                 {[7, 14, 30].map((d) => (
@@ -333,7 +322,7 @@ export default function FundingHeatmapPage() {
           {data && allDays.length > 0 && (
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse min-w-[600px]">
+                <table className="w-full border-collapse min-w-[600px]" aria-label="Funding rate heatmap">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
                       <th className="sticky left-0 z-10 bg-hub-darker px-3 py-2.5 text-left text-xs font-semibold text-neutral-400 w-[120px]">
@@ -423,7 +412,7 @@ export default function FundingHeatmapPage() {
               </div>
               <span className="text-xs text-neutral-500">Positive</span>
             </div>
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
           </div>
 
           {/* Info footer */}
@@ -448,6 +437,7 @@ export default function FundingHeatmapPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </>
   );

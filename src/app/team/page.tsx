@@ -51,7 +51,7 @@ export default function TeamPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6">
         {/* ── Hero Section ── */}
         <section className="relative py-16 sm:py-24 text-center overflow-hidden">
           {/* Background glow */}
@@ -108,6 +108,7 @@ export default function TeamPage() {
                         <img
                           src={member.image}
                           alt={member.name}
+                          loading="lazy"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       </div>

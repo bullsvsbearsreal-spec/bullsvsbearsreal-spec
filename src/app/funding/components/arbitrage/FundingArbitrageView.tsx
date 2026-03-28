@@ -13,6 +13,7 @@ import { computeGrade, GRADE_COLORS, ROWS_PER_PAGE, formatUSD, formatPnl, format
 import { GradeBadge } from './GradeBadge';
 import { ComparisonDrawer } from './ComparisonDrawer';
 import { ExchangeSide, ExpandedPanel } from './ExpandedPanel';
+import WatchlistStar from '@/components/WatchlistStar';
 
 export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices, indexPrices, intervalMap, fundingPeriod, historicalSpreads }: FundingArbitrageViewProps) {
   const periodScale = PERIOD_HOURS[fundingPeriod] / 8;
@@ -526,31 +527,31 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
 
         {/* Table — Desktop */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full" aria-label="Funding rate arbitrage opportunities">
             <thead>
               <tr className="border-b border-white/[0.06]">
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 w-8">#</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('symbol')}>
+                <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => handleSort('symbol')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('symbol'); } }}>
                   <div className="flex items-center gap-1">Symbol <SortIcon k="symbol" /></div>
                 </th>
-                <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('grade')}>
+                <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => handleSort('grade')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('grade'); } }}>
                   <div className="flex items-center gap-1 justify-center">Grade <SortIcon k="grade" /></div>
                 </th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Price</th>
-                <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('spread')}>
+                <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => handleSort('spread')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('spread'); } }}>
                   <div className="flex items-center gap-1 justify-end">Spread /{periodLabel} <SortIcon k="spread" /></div>
                 </th>
-                <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('annualized')}>
+                <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => handleSort('annualized')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('annualized'); } }}>
                   <div className="flex items-center gap-1 justify-end">Net Ann.% <SortIcon k="annualized" /></div>
                 </th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Short Side</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Long Side</th>
-                <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('dailyPnl')}>
+                <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => handleSort('dailyPnl')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('dailyPnl'); } }}>
                   <div className="flex items-center gap-1 justify-end">Daily PnL <SortIcon k="dailyPnl" /></div>
                 </th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500">30d PnL</th>
                 {hasOI && (
-                  <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" onClick={() => handleSort('oi')}>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => handleSort('oi')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('oi'); } }}>
                     <div className="flex items-center gap-1 justify-end">OI (S/L) <SortIcon k="oi" /></div>
                   </th>
                 )}
@@ -581,6 +582,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
+                        <WatchlistStar symbol={item.symbol} />
                         <TokenIconSimple symbol={item.symbol} size={20} />
                         <span className="text-white font-semibold text-sm">{item.symbol}</span>
                         <span className="text-neutral-600 text-[10px]">{item.exchanges.length} exch</span>

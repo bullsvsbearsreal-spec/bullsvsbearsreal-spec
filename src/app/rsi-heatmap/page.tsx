@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { RefreshCw, Info, Search, Activity, Hash, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 import Link from 'next/link';
+import WatchlistStar from '@/components/WatchlistStar';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -78,37 +82,25 @@ const fmtPrice = (p: number) => {
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function RSIHeatmapPage() {
-  const [data, setData] = useState<RSIData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [sortField, setSortField] = useState<SortField>('rsi1d');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch('/api/rsi');
-      if (!res.ok) throw new Error(`Failed: ${res.status}`);
-      const json = await res.json();
-      setData(json.data || []);
-      setLastUpdate(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load RSI data');
-    } finally {
-      setLoading(false);
-    }
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/rsi');
+    if (!res.ok) throw new Error(`Failed: ${res.status}`);
+    const json = await res.json();
+    return (json.data || []) as RSIData[];
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data: rawData, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'rsi-heatmap',
+    fetcher,
+    refreshInterval: 300000,
+  });
+  const data = rawData ?? [];
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
@@ -165,7 +157,7 @@ export default function RSIHeatmapPage() {
       className={`px-2 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors ${
         sortField === field ? 'text-hub-yellow' : 'text-neutral-500'
       } ${className}`}
-      onClick={() => handleSort(field)}
+      role="button" tabIndex={0} onClick={() => handleSort(field)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(field); } }}
     >
       <div className={`flex items-center gap-1 ${className.includes('text-left') ? '' : 'justify-center'}`}>
         {label}
@@ -190,7 +182,7 @@ export default function RSIHeatmapPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3">
@@ -206,11 +198,7 @@ export default function RSIHeatmapPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-[10px] text-neutral-600 font-mono">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
             <button
               onClick={fetchData}
               disabled={loading}
@@ -327,7 +315,7 @@ export default function RSIHeatmapPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" aria-label="RSI heatmap across timeframes">
                 <thead>
                   <tr className="border-b border-white/[0.04]">
                     <SortHeader field="symbol" label="Symbol" className="text-left px-3 sticky left-0 bg-hub-darker z-10" />
@@ -351,10 +339,13 @@ export default function RSIHeatmapPage() {
                     return (
                       <tr key={d.symbol} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
                         <td className="px-3 py-1.5 sticky left-0 bg-hub-darker z-10">
-                          <Link href={`/funding/${d.symbol}`} className="flex items-center gap-1.5 no-underline group">
-                            <TokenIconSimple symbol={d.symbol} size={18} />
-                            <span className="text-white font-medium text-xs group-hover:text-hub-yellow transition-colors">{d.symbol}</span>
-                          </Link>
+                          <div className="flex items-center gap-1">
+                            <WatchlistStar symbol={d.symbol} />
+                            <Link href={`/funding/${d.symbol}`} className="flex items-center gap-1.5 no-underline group">
+                              <TokenIconSimple symbol={d.symbol} size={18} />
+                              <span className="text-white font-medium text-xs group-hover:text-hub-yellow transition-colors">{d.symbol}</span>
+                            </Link>
+                          </div>
                         </td>
                         <td className="px-2 py-1.5 text-center text-xs font-mono tabular-nums text-white/80">
                           {fmtPrice(d.price)}
@@ -401,6 +392,7 @@ export default function RSIHeatmapPage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

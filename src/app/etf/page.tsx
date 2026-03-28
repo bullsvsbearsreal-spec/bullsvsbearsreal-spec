@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
 import { formatUSD, formatPercent, formatCompact } from '@/lib/utils/format';
+import { useFlash } from '@/hooks/useFlash';
 import {
   RefreshCw, Info, Landmark, TrendingUp, TrendingDown,
   ChevronUp, ChevronDown, BarChart3, DollarSign, Percent, Activity,
@@ -94,31 +97,20 @@ function SortHeader({
 
 export default function ETFPage() {
   const [type, setType] = useState<'btc' | 'eth'>('btc');
-  const [data, setData] = useState<ETFResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('volume');
   const [sortAsc, setSortAsc] = useState(false);
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/etf?type=${type}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-      setLastUpdate(new Date());
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
+
+  const fetcher = useCallback(async () => {
+    const res = await fetch(`/api/etf?type=${type}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<ETFResponse>;
   }, [type]);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5 * 60_000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: `etf-${type}`,
+    fetcher,
+    refreshInterval: 300000,
+  });
 
   /* Comparison ETFs removed — Yahoo Finance blocks client-side CORS */
 
@@ -194,13 +186,16 @@ export default function ETFPage() {
     return { leadFund, avgFee, lowestFee, lowestFeeTicker };
   }, [data]);
 
+  const priceFlash = useFlash(stats?.leadFund.price);
+  const volumeFlash = useFlash(data?.summary.dailyVolume);
+
   const hasLiveData = data && data.summary.liveQuotes > 0;
   const maxFee = data ? Math.max(...data.funds.map((f) => f.fee)) : 1;
 
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title + Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -237,7 +232,7 @@ export default function ETFPage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
           </div>
         </div>
 
@@ -268,7 +263,7 @@ export default function ETFPage() {
                 </div>
                 {stats.leadFund.price ? (
                   <>
-                    <p className="text-xl font-bold text-white font-mono">${stats.leadFund.price.toFixed(2)}</p>
+                    <p className={`text-xl font-bold text-white font-mono ${priceFlash}`}>${stats.leadFund.price.toFixed(2)}</p>
                     {stats.leadFund.change24h !== null && (
                       <span className={`delta-badge text-[11px] mt-1 ${
                         Math.abs(stats.leadFund.change24h) >= 5
@@ -290,7 +285,7 @@ export default function ETFPage() {
                   <Activity className="w-3.5 h-3.5 text-blue-400" />
                   <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Daily Volume</p>
                 </div>
-                <p className="text-xl font-bold text-white font-mono">
+                <p className={`text-xl font-bold text-white font-mono ${volumeFlash}`}>
                   {data.summary.dailyVolume ? formatUSD(data.summary.dailyVolume) : '—'}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -390,7 +385,7 @@ export default function ETFPage() {
                 )}
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full" aria-label="ETF fund data">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-left w-8">
@@ -559,6 +554,7 @@ export default function ETFPage() {
           </>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

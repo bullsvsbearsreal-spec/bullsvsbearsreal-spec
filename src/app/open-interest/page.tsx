@@ -10,10 +10,11 @@ import { OpenInterestData } from '@/lib/api/types';
 import { RefreshCw, ArrowUpDown, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import { getExchangeBadgeColor } from '@/lib/constants';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { formatUSD } from '@/lib/utils/format';
-import UpdatedAgo from '@/components/UpdatedAgo';
 import DataFreshness from '@/components/DataFreshness';
 import WatchlistStar from '@/components/WatchlistStar';
+import { useFlash } from '@/hooks/useFlash';
 import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import ShowMoreToggle from '@/components/ShowMoreToggle';
 import MobileCard from '@/components/MobileCard';
@@ -70,7 +71,6 @@ export default function OpenInterestPage() {
         .catch(() => {}); // silently fail — deltas are optional
     } catch (err) {
       setError('Unable to reach exchange APIs — check your connection or try again shortly.');
-      console.error(err);
       setLoading(false);
     }
   };
@@ -152,6 +152,7 @@ export default function OpenInterestPage() {
 
   // Calculate total OI
   const totalOI = openInterest.reduce((sum, oi) => sum + oi.openInterestValue, 0);
+  const totalOIFlash = useFlash(totalOI);
 
   // Compute biggest OI movers (24h) from deltas
   const oiMovers = (() => {
@@ -207,7 +208,7 @@ export default function OpenInterestPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Total OI</span>
-            <div className="text-xl font-black text-white font-mono mt-0.5 tracking-tight">{formatUSD(totalOI)}</div>
+            <div className={`text-xl font-black text-white font-mono mt-0.5 tracking-tight ${totalOIFlash}`}>{formatUSD(totalOI)}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Symbols</span>
@@ -366,6 +367,7 @@ export default function OpenInterestPage() {
           />
           {viewMode === 'all' && (
             <select
+              aria-label="Filter by exchange"
               value={exchangeFilter}
               onChange={(e) => setExchangeFilter(e.target.value)}
               className="px-3 py-1.5 bg-hub-darker border border-white/[0.06] rounded-md text-white text-xs focus:outline-none focus:border-hub-yellow/30"
@@ -427,14 +429,14 @@ export default function OpenInterestPage() {
             </div>
             {/* Desktop table (md and above) */}
             <div className="hidden md:block overflow-x-auto scrollbar-accent">
-              <table className="w-full">
+              <table className="w-full" aria-label="Open interest by symbol">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Rank</th>
                     <th className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Symbol</th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('openInterestValue')}
+                      role="button" tabIndex={0} onClick={() => handleSort('openInterestValue')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('openInterestValue'); } }}
                     >
                       <div className="flex items-center gap-1 justify-end">
                         Total OI Value
@@ -443,7 +445,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('change1h')}
+                      role="button" tabIndex={0} onClick={() => handleSort('change1h')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change1h'); } }}
                     >
                       <div className="flex items-center gap-1 justify-end">
                         1h Δ
@@ -452,7 +454,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('change4h')}
+                      role="button" tabIndex={0} onClick={() => handleSort('change4h')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change4h'); } }}
                     >
                       <div className="flex items-center gap-1 justify-end">
                         4h Δ
@@ -461,7 +463,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('change24h')}
+                      role="button" tabIndex={0} onClick={() => handleSort('change24h')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change24h'); } }}
                     >
                       <div className="flex items-center gap-1 justify-end">
                         24h Δ
@@ -530,12 +532,12 @@ export default function OpenInterestPage() {
           /* All Data View */
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" aria-label="Open interest by exchange">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
                     <th
                       className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('symbol')}
+                      role="button" tabIndex={0} onClick={() => handleSort('symbol')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('symbol'); } }}
                     >
                       <div className="flex items-center gap-2">
                         Symbol
@@ -544,7 +546,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('exchange')}
+                      role="button" tabIndex={0} onClick={() => handleSort('exchange')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('exchange'); } }}
                     >
                       <div className="flex items-center gap-2">
                         Exchange
@@ -556,7 +558,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('openInterestValue')}
+                      role="button" tabIndex={0} onClick={() => handleSort('openInterestValue')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('openInterestValue'); } }}
                     >
                       <div className="flex items-center gap-2 justify-end">
                         OI Value
@@ -565,7 +567,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('change1h')}
+                      role="button" tabIndex={0} onClick={() => handleSort('change1h')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change1h'); } }}
                     >
                       <div className="flex items-center gap-1 justify-end">
                         1h Δ
@@ -574,7 +576,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('change4h')}
+                      role="button" tabIndex={0} onClick={() => handleSort('change4h')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change4h'); } }}
                     >
                       <div className="flex items-center gap-1 justify-end">
                         4h Δ
@@ -583,7 +585,7 @@ export default function OpenInterestPage() {
                     </th>
                     <th
                       className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-                      onClick={() => handleSort('change24h')}
+                      role="button" tabIndex={0} onClick={() => handleSort('change24h')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change24h'); } }}
                     >
                       <div className="flex items-center gap-1 justify-end">
                         24h Δ
@@ -607,9 +609,11 @@ export default function OpenInterestPage() {
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-1.5">
                           <ExchangeLogo exchange={oi.exchange.toLowerCase()} size={16} />
-                          <span className={`text-xs font-medium ${getExchangeBadgeColor(oi.exchange)}`}>
-                            {oi.exchange}
-                          </span>
+                          {(() => { const ref = getExchangeReferralUrl(oi.exchange); return ref ? (
+                            <a href={ref} target="_blank" rel="noopener noreferrer" className={`text-xs font-medium ${getExchangeBadgeColor(oi.exchange)} hover:text-hub-yellow transition`}>{oi.exchange}</a>
+                          ) : (
+                            <span className={`text-xs font-medium ${getExchangeBadgeColor(oi.exchange)}`}>{oi.exchange}</span>
+                          ); })()}
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right">

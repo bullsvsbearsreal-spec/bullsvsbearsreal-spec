@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { ArrowLeftRight, ChevronDown, RefreshCw, Calculator, Info, Wifi, WifiOff, X, Activity } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
 import { getCoinIcon } from '@/lib/coinIcons';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 
 // ── Lib ──
-import { fp } from './lib/spread-math';
 import { getExchangeColor } from './lib/exchange-colors';
 import { ALL_EXCHANGES, CEX_EXCHANGES, DEX_EXCHANGES } from './lib/symbols';
-import { TFS } from './lib/types';
 
 // ── Hooks ──
 import { useSpreadState } from './hooks/useSpreadState';
@@ -93,7 +93,7 @@ export default function SpreadsPage() {
   return (
     <div className="min-h-screen bg-background text-white flex flex-col">
       <Header />
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6 relative">
+      <main id="main-content" className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6 relative">
 
         {/* Toast */}
         {state.toast && <AlertToast message={state.toast} onDismiss={() => actions.setToast(null)} />}
@@ -113,7 +113,11 @@ export default function SpreadsPage() {
             {state.chartLoading ? (
               <span className="flex items-center gap-1.5 text-xs text-neutral-600"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Loading...</span>
             ) : (
-              <span className="flex items-center gap-1.5 text-xs text-neutral-500"><span className="w-1.5 h-1.5 rounded-full bg-green-400" /> {state.sel.length} selected · {exs.length} with data</span>
+              <DataFreshness
+                exchangeCount={exs.length}
+                lastUpdated={wsHistory.length > 0 ? wsHistory[wsHistory.length - 1].t : null}
+                sources={exs.slice(0, 5)}
+              />
             )}
             <button onClick={actions.toggleCalc}
               className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-neutral-400 hover:text-white transition flex items-center gap-1.5">
@@ -159,7 +163,7 @@ export default function SpreadsPage() {
           <div className="relative" data-sym-picker>
             <button onClick={actions.toggleSymPicker} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-hub-yellow/30 transition">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={getCoinIcon(state.sym)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              <img src={getCoinIcon(state.sym)} alt={`${state.sym} icon`} className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <span className="text-lg font-bold">{state.sym}</span>
               <span className="text-neutral-500 text-sm"> Perp</span>
               <ChevronDown className="w-4 h-4 text-neutral-500" />
@@ -239,7 +243,7 @@ export default function SpreadsPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={getCoinIcon(state.sym)} alt="" className="w-6 h-6 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              <img src={getCoinIcon(state.sym)} alt={`${state.sym} icon`} className="w-6 h-6 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <div>
                 <h2 className="text-sm font-semibold">{state.sym} Perp Price by Exchange</h2>
                 <p className="text-[11px] text-neutral-500">
@@ -325,50 +329,17 @@ export default function SpreadsPage() {
 
             {/* Sidebar Arb Calculator (always visible) */}
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5">
-              <h3 className="text-sm font-semibold mb-1">Arb Calculator</h3>
-              <p className="text-[11px] text-neutral-500 mb-4">Estimate net profit from cross-exchange arbitrage</p>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] text-neutral-500">Trade size</label>
-                    <div className="flex items-center gap-[2px] p-[2px] rounded-md bg-white/[0.03] border border-white/[0.06]">
-                      <button onClick={() => actions.setCalcMode('usd')}
-                        className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${state.calcMode === 'usd' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600'}`}>USD</button>
-                      <button onClick={() => actions.setCalcMode('coin')}
-                        className={`px-2 py-0.5 rounded text-[9px] font-semibold transition ${state.calcMode === 'coin' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-600'}`}>{state.sym}</button>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <input value={state.calcAmt} onChange={e => actions.setCalcAmt(e.target.value)} type="number"
-                      className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono outline-none focus:border-hub-yellow/30" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-neutral-600">{state.calcMode === 'usd' ? 'USD' : state.sym}</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[11px] text-neutral-500 block mb-1">Fee per side (%)</label>
-                  <input value={state.calcFee} onChange={e => actions.setCalcFee(e.target.value)} type="number" step="0.01"
-                    className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono outline-none focus:border-hub-yellow/30" />
-                </div>
-                {stats && (() => {
-                  const rawAmt = Number(state.calcAmt) || 0;
-                  const midPrice = stats.prices.length > 0 ? stats.prices.reduce((s, p) => s + p.p, 0) / stats.prices.length : 1;
-                  const size = state.calcMode === 'coin' ? rawAmt * midPrice : rawAmt;
-                  const fee = Number(state.calcFee) || 0;
-                  const net = stats.pct - fee * 2;
-                  const profit = size * (net / 100);
-                  return (
-                    <div className={`p-4 rounded-xl ${profit > 0 ? 'bg-green-500/[0.05] border border-green-500/10' : 'bg-red-500/[0.05] border border-red-500/10'}`}>
-                      <p className="text-[11px] text-neutral-500 mb-1">Estimated net profit</p>
-                      <p className={`text-2xl font-bold font-mono ${profit > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {profit >= 0 ? '+' : '-'}${fp(Math.abs(profit))}
-                      </p>
-                      <p className="text-[11px] text-neutral-500 mt-1">
-                        Gross {stats.pct.toFixed(3)}% − fees {(fee * 2).toFixed(2)}% = net {net.toFixed(3)}%
-                      </p>
-                    </div>
-                  );
-                })()}
-              </div>
+              <ArbCalculator
+                stats={stats}
+                calcAmt={state.calcAmt}
+                calcFee={state.calcFee}
+                calcMode={state.calcMode}
+                onAmtChange={actions.setCalcAmt}
+                onFeeChange={actions.setCalcFee}
+                onModeChange={actions.setCalcMode}
+                onClose={() => {}}
+                variant="sidebar"
+              />
             </div>
           </div>
         )}
@@ -388,6 +359,7 @@ export default function SpreadsPage() {
         </div>
 
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

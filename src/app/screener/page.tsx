@@ -7,8 +7,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import UpdatedAgo from '@/components/UpdatedAgo';
 import DataFreshness from '@/components/DataFreshness';
 import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import { formatPrice, formatNumber, formatPercent, formatFundingRate, formatCompact } from '@/lib/utils/format';
@@ -113,11 +113,16 @@ export default function ScreenerPage() {
   const SKIP_VOLUME = useRef(new Set(['Gate.io', 'BitMEX', 'WhiteBIT', 'Coinbase']));
   const MAX_SANE_VOL = 10_000_000_000;
 
+  interface RawTicker { symbol: string; exchange: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number; quoteVolume24h?: number }
+  interface RawFunding { symbol: string; fundingRate?: number }
+  interface RawOI { symbol: string; openInterestValue?: number }
+  interface RawDelta { symbol: string; change24h?: number }
+
   const buildRows = useCallback((
-    tickers: any[], funding: any[], oi: any[], deltas: any[]
+    tickers: RawTicker[], funding: RawFunding[], oi: RawOI[], deltas: RawDelta[]
   ): ScreenerRow[] => {
     const tickerMap = new Map<string, { price: number; change: number; vol: number; count: number; volByExchange: Map<string, number> }>();
-    tickers.forEach((t: any) => {
+    tickers.forEach((t: RawTicker) => {
       const sym = t.symbol;
       const cur = tickerMap.get(sym) || { price: 0, change: 0, vol: 0, count: 0, volByExchange: new Map() };
       cur.price += t.lastPrice || 0;
@@ -137,7 +142,7 @@ export default function ScreenerPage() {
     });
 
     const fundingMap = new Map<string, { total: number; count: number }>();
-    funding.forEach((f: any) => {
+    funding.forEach((f: RawFunding) => {
       const cur = fundingMap.get(f.symbol) || { total: 0, count: 0 };
       cur.total += f.fundingRate || 0;
       cur.count++;
@@ -145,7 +150,7 @@ export default function ScreenerPage() {
     });
 
     const oiMap = new Map<string, { total: number; count: number }>();
-    oi.forEach((o: any) => {
+    oi.forEach((o: RawOI) => {
       const cur = oiMap.get(o.symbol) || { total: 0, count: 0 };
       cur.total += o.openInterestValue || 0;
       cur.count++;
@@ -153,8 +158,7 @@ export default function ScreenerPage() {
     });
 
     const deltaMap = new Map<string, number>();
-    interface RawDelta { symbol?: string; change24h?: number }
-    (deltas as RawDelta[]).forEach((d) => {
+    deltas.forEach((d) => {
       if (d.symbol && d.change24h != null) deltaMap.set(d.symbol, d.change24h);
     });
 
@@ -236,7 +240,6 @@ export default function ScreenerPage() {
       setLastUpdate(new Date());
     } catch (err) {
       setError('Unable to fetch screener data — check your connection or try again shortly.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -394,6 +397,9 @@ export default function ScreenerPage() {
     return { avgFunding, totalOI, totalVol, symbols: rows.length, gainers, losers: rows.length - gainers };
   }, [rows]);
 
+  const oiFlash = useFlash(stats?.totalOI);
+  const volFlash = useFlash(stats?.totalVol);
+
   /* ─── Render ──────────────────────────────────────────────────── */
 
   return (
@@ -434,11 +440,11 @@ export default function ScreenerPage() {
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Total OI</div>
-              <div className="text-sm font-bold text-white font-mono">{formatNumber(stats.totalOI)}</div>
+              <div className={`text-sm font-bold text-white font-mono ${oiFlash || ''}`}>{formatNumber(stats.totalOI)}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Combined Volume</div>
-              <div className="text-sm font-bold text-white font-mono">{formatNumber(stats.totalVol)}</div>
+              <div className={`text-sm font-bold text-white font-mono ${volFlash || ''}`}>{formatNumber(stats.totalVol)}</div>
               <div className="text-[9px] text-neutral-500 mt-0.5">Sum across all exchange-pairs</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
@@ -505,9 +511,12 @@ export default function ScreenerPage() {
                     {!isDefault && (
                       <span
                         role="button"
+                        tabIndex={0}
                         onClick={(e) => { e.stopPropagation(); handleDeletePreset(p.name); }}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleDeletePreset(p.name); } }}
                         className="ml-0.5 text-neutral-600 hover:text-red-400 transition-colors"
                         title="Delete preset"
+                        aria-label={`Delete ${p.name} preset`}
                       >
                         <X className="w-3 h-3" />
                       </span>
@@ -548,6 +557,7 @@ export default function ScreenerPage() {
             {conditions.map((c, idx) => (
               <div key={idx} className="flex flex-wrap items-center gap-2 mb-2">
                 <select
+                  aria-label="Filter field"
                   value={c.field}
                   onChange={(e) => updateCondition(idx, { field: e.target.value as FilterCondition['field'] })}
                   className="bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
@@ -557,6 +567,7 @@ export default function ScreenerPage() {
                   ))}
                 </select>
                 <select
+                  aria-label="Filter operator"
                   value={c.operator}
                   onChange={(e) => updateCondition(idx, { operator: e.target.value as 'gt' | 'lt' })}
                   className="bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
@@ -626,7 +637,7 @@ export default function ScreenerPage() {
 
         {/* Table (desktop) */}
         <div className="overflow-x-auto scrollbar-accent rounded-xl border border-white/[0.06] hidden md:block">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" aria-label="Cryptocurrency screener">
             <thead>
               <tr className="bg-hub-darker border-b border-white/[0.06] sticky top-0 z-10">
                 <th className="text-left px-3 py-2.5 text-[11px] font-medium text-neutral-500 w-8">#</th>

@@ -44,7 +44,7 @@ export default function DangerZoneSection() {
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Delete account confirmation">
           <div className="bg-hub-darker border border-white/[0.08] rounded-xl max-w-sm w-full p-6">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-2">
               <AlertTriangle className="w-5 h-5 text-red-400" />

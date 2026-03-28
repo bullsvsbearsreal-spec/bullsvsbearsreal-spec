@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import {
   RefreshCw,
   AlertTriangle,
@@ -22,6 +23,10 @@ import {
   Plus,
   X,
 } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
+import { useFlash } from '@/hooks/useFlash';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
+import WatchlistStar from '@/components/WatchlistStar';
 import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD } from '@/lib/utils/format';
 
@@ -153,6 +158,7 @@ function PositionRow({ pos }: { pos: WhalePosition }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-xs">
       <div className="w-16 sm:w-20 flex items-center gap-1.5">
+        <WatchlistStar symbol={pos.coin} />
         <span className="font-semibold text-white">{pos.coin}</span>
         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${sideBg} ${sideColor}`}>
           {pos.side}
@@ -461,6 +467,9 @@ export default function HLWhalesPage() {
     return { totalAV, totalNotional, totalPositions, totalPnl };
   }, [allWhales]);
 
+  const avFlash = useFlash(stats?.totalAV);
+  const pnlFlash = useFlash(stats?.totalPnl);
+
   /* ---- sorting ------------------------------------------------------ */
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -489,7 +498,7 @@ export default function HLWhalesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h1 className="heading-page flex items-center gap-2">
-              <img src="/exchanges/hyperliquid.png" alt="" className="w-6 h-6 rounded" />
+              <img src="/exchanges/hyperliquid.png" alt="Hyperliquid" className="w-6 h-6 rounded" />
               Hyperliquid Whale Tracker
             </h1>
             <p className="text-neutral-600 text-xs mt-0.5">
@@ -497,11 +506,15 @@ export default function HLWhalesPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-neutral-600 text-[11px]">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            {(() => {
+              const ref = getExchangeReferralUrl('Hyperliquid');
+              return ref ? (
+                <a href={ref} target="_blank" rel="noopener noreferrer" className="text-xs text-hub-yellow hover:underline">
+                  Trade on Hyperliquid
+                </a>
+              ) : null;
+            })()}
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Hyperliquid']} />
             <button
               onClick={refresh}
               disabled={isLoading || isRefreshing}
@@ -542,7 +555,7 @@ export default function HLWhalesPage() {
                 <DollarSign className="w-3 h-3" />
                 Total Account Value
               </span>
-              <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(stats.totalAV)}</div>
+              <div className={`text-lg font-bold text-white font-mono mt-0.5 ${avFlash}`}>{formatUSD(stats.totalAV)}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-4 py-3">
               <span className="text-neutral-500 text-[11px] uppercase tracking-wider flex items-center gap-1">
@@ -556,7 +569,7 @@ export default function HLWhalesPage() {
                 {stats.totalPnl >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 Total uPnL
               </span>
-              <span className={`delta-badge text-sm mt-0.5 ${
+              <span className={`delta-badge text-sm mt-0.5 ${pnlFlash} ${
                 Math.abs(stats.totalPnl) >= 1000000
                   ? (stats.totalPnl >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
                   : (stats.totalPnl >= 0 ? 'delta-badge-up' : 'delta-badge-down')
@@ -697,6 +710,7 @@ export default function HLWhalesPage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

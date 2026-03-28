@@ -24,7 +24,7 @@ export default function ApiDocsPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main className="max-w-[900px] mx-auto px-4 sm:px-6">
+      <main id="main-content" className="max-w-[900px] mx-auto px-4 sm:px-6">
         {/* Hero */}
         <section className="relative py-16 sm:py-24 text-center overflow-hidden">
           <div className="absolute inset-0 hero-mesh opacity-60 pointer-events-none" />

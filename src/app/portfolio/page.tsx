@@ -4,8 +4,11 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Plus, X, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
+import { useFlash } from '@/hooks/useFlash';
 import { formatUSD, formatPercent, formatQty, formatPrice } from '@/lib/utils/format';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
@@ -118,6 +121,9 @@ export default function PortfolioPage() {
     return { totalValue, totalCost, totalPnl, totalPnlPct, best, worst };
   }, [enriched]);
 
+  const valueFlash = useFlash(totals.totalValue);
+  const pnlFlash = useFlash(totals.totalPnl);
+
   // ----- sorted holdings -----
   const sorted = useMemo(() => {
     const copy = [...enriched];
@@ -203,7 +209,7 @@ export default function PortfolioPage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -214,11 +220,7 @@ export default function PortfolioPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-neutral-600 text-xs font-mono">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={isRefreshing}
@@ -271,7 +273,7 @@ export default function PortfolioPage() {
               {/* Total Value */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total Value</p>
-                <p className="text-xl font-bold font-mono">
+                <p className={`text-xl font-bold font-mono ${valueFlash}`}>
                   {formatUSD(totals.totalValue)}
                 </p>
               </div>
@@ -282,7 +284,7 @@ export default function PortfolioPage() {
                 <p
                   className={`text-xl font-bold font-mono ${
                     totals.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`}
+                  } ${pnlFlash}`}
                 >
                   {totals.totalPnl >= 0 ? '+' : ''}{formatUSD(totals.totalPnl)}
                 </p>
@@ -366,7 +368,7 @@ export default function PortfolioPage() {
 
                 {/* Table */}
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" aria-label="Portfolio holdings">
                     <thead>
                       <tr className="border-b border-white/[0.06]">
                         <th className="text-left px-4 py-2.5 text-neutral-500 text-xs font-medium">Symbol</th>
@@ -484,6 +486,7 @@ export default function PortfolioPage() {
         </div>
       </main>
 
+      <ReferralBanner />
       <Footer />
 
       {/* Modal overlay */}

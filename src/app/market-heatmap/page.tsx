@@ -3,9 +3,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils/format';
+import DataFreshness from '@/components/DataFreshness';
 
 interface CoinData {
   symbol: string;
@@ -132,10 +134,10 @@ export default function MarketHeatmapPage() {
   });
 
   const coins = useMemo(() => {
-    const d = data as any;
-    const raw: typeof data extends { coins: infer C } ? C : any[] = d?.coins || [...(d?.gainers || []), ...(d?.losers || [])];
+    const d = data as Record<string, CoinData[]> | null;
+    const raw: CoinData[] = d?.coins || [...(d?.gainers || []), ...(d?.losers || [])];
     if (!raw || raw.length === 0) return [];
-    return (raw as any[])
+    return raw
       .filter(c => c.marketCap > 0 && c.change24h != null)
       .sort((a, b) => b.marketCap - a.marketCap)
       .slice(0, count);
@@ -162,7 +164,7 @@ export default function MarketHeatmapPage() {
   return (
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
@@ -172,14 +174,11 @@ export default function MarketHeatmapPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-[11px] text-neutral-600">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <DataFreshness exchangeCount={count} lastUpdated={lastUpdate} sources={['CoinGecko']} />
             <button
               onClick={refresh}
               disabled={isRefreshing}
+              aria-label="Refresh data"
               className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -351,6 +350,7 @@ export default function MarketHeatmapPage() {
           </div>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

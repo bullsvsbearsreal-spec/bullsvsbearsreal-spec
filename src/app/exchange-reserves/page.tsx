@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, Building2, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
+import { useFlash } from '@/hooks/useFlash';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { formatCompact } from '@/lib/utils/format';
+import { useApi } from '@/hooks/useSWRApi';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -118,34 +123,24 @@ function getChainColor(chain: string, index: number): string {
 type SortKey = 'totalReserve' | 'change1d' | 'change7d' | 'name';
 
 export default function ExchangeReservesPage() {
-  const [data, setData] = useState<ReservesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/reserves');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json as ReservesResponse;
+  }, []);
+
+  const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'reserves',
+    fetcher,
+    refreshInterval: 300000,
+  });
+
   const [sortKey, setSortKey] = useState<SortKey>('totalReserve');
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch('/api/reserves');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      setData(json);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5 * 60_000); // 5-min refresh
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const totalFlash = useFlash(data?.totalReserves);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -195,7 +190,7 @@ export default function ExchangeReservesPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="text-white">
+      <main id="main-content" className="text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -208,13 +203,16 @@ export default function ExchangeReservesPage() {
                 Total assets held by major centralized exchanges — proof of reserves transparency
               </p>
             </div>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              <DataFreshness exchangeCount={data?.exchangeCount ?? 0} lastUpdated={lastUpdate} sources={['DefiLlama']} />
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {loading && !data && (
@@ -237,7 +235,7 @@ export default function ExchangeReservesPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
                 <div className="bg-hub-darker border border-hub-yellow/20 rounded-xl px-4 py-3">
                   <p className="text-xs text-neutral-500">Total CEX Reserves</p>
-                  <p className="text-xl font-bold text-hub-yellow">${formatCompact(data.totalReserves)}</p>
+                  <p className={`text-xl font-bold text-hub-yellow ${totalFlash}`}>${formatCompact(data.totalReserves)}</p>
                   <p className="text-xs text-neutral-500">{data.exchangeCount} exchanges tracked</p>
                 </div>
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
@@ -314,31 +312,31 @@ export default function ExchangeReservesPage() {
               {/* Exchange Table */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" aria-label="Exchange reserve balances">
                     <thead>
                       <tr className="border-b border-white/[0.06]">
                         <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500">#</th>
                         <th
                           className="text-left px-4 py-3 text-xs font-medium text-neutral-500 cursor-pointer hover:text-white transition-colors"
-                          onClick={() => handleSort('name')}
+                          role="button" tabIndex={0} onClick={() => handleSort('name')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('name'); } }}
                         >
                           <span className="flex items-center gap-1">Exchange <SortIcon col="name" /></span>
                         </th>
                         <th
                           className="text-right px-4 py-3 text-xs font-medium text-neutral-500 cursor-pointer hover:text-white transition-colors"
-                          onClick={() => handleSort('totalReserve')}
+                          role="button" tabIndex={0} onClick={() => handleSort('totalReserve')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('totalReserve'); } }}
                         >
                           <span className="flex items-center justify-end gap-1">Total Reserves <SortIcon col="totalReserve" /></span>
                         </th>
                         <th
                           className="text-right px-4 py-3 text-xs font-medium text-neutral-500 cursor-pointer hover:text-white transition-colors"
-                          onClick={() => handleSort('change1d')}
+                          role="button" tabIndex={0} onClick={() => handleSort('change1d')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change1d'); } }}
                         >
                           <span className="flex items-center justify-end gap-1">24h Δ <SortIcon col="change1d" /></span>
                         </th>
                         <th
                           className="text-right px-4 py-3 text-xs font-medium text-neutral-500 cursor-pointer hover:text-white transition-colors"
-                          onClick={() => handleSort('change7d')}
+                          role="button" tabIndex={0} onClick={() => handleSort('change7d')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('change7d'); } }}
                         >
                           <span className="flex items-center justify-end gap-1">7d Δ <SortIcon col="change7d" /></span>
                         </th>
@@ -364,13 +362,20 @@ export default function ExchangeReservesPage() {
                                 {ex.logo && (
                                   <img
                                     src={ex.logo}
-                                    alt=""
+                                    alt={`${ex.name} logo`}
                                     className="w-5 h-5 rounded-full bg-white/10"
                                     loading="lazy"
                                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                   />
                                 )}
-                                <span className="font-medium text-white text-sm">{ex.name}</span>
+                                {(() => {
+                                  const ref = getExchangeReferralUrl(ex.name);
+                                  return ref ? (
+                                    <a href={ref} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="font-medium text-white text-sm hover:text-hub-yellow transition-colors">{ex.name}</a>
+                                  ) : (
+                                    <span className="font-medium text-white text-sm">{ex.name}</span>
+                                  );
+                                })()}
                                 <ChevronDown className={`w-3 h-3 text-neutral-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                               </button>
 
@@ -462,6 +467,7 @@ export default function ExchangeReservesPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

@@ -47,7 +47,7 @@ function CopyButton({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <button onClick={copy} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+    <button onClick={copy} aria-label="Copy color value" className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
       {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-neutral-600" />}
     </button>
   );
@@ -99,7 +99,7 @@ export default function BrandPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">

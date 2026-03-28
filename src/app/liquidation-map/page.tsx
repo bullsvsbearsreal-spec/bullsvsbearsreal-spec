@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
 import { formatUSD, formatPrice } from '@/lib/utils/format';
 import {
   RefreshCw,
@@ -326,37 +328,22 @@ function SkeletonTable() {
 // ---------------------------------------------------------------------------
 export default function LiquidationMapPage() {
   const [symbol, setSymbol] = useState<string>('BTC');
-  const [data, setData] = useState<LiquidationMapData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const fetchData = useCallback(async (sym: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`/api/liquidation-map?symbol=${sym}`);
-      if (!res.ok) throw new Error(`API returned ${res.status}`);
-      const json: LiquidationMapData = await res.json();
-      if (json.currentPrice === 0 || json.levels.length === 0) {
-        throw new Error('No liquidation data available');
-      }
-      setData(json);
-      setLastUpdate(new Date());
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch data';
-      setError(msg);
-      console.error('Liquidation map fetch error:', msg);
-    } finally {
-      setLoading(false);
+  const fetcher = useCallback(async () => {
+    const res = await fetch(`/api/liquidation-map?symbol=${symbol}`);
+    if (!res.ok) throw new Error(`API returned ${res.status}`);
+    const json: LiquidationMapData = await res.json();
+    if (json.currentPrice === 0 || json.levels.length === 0) {
+      throw new Error('No liquidation data available');
     }
-  }, []);
+    return json;
+  }, [symbol]);
 
-  useEffect(() => {
-    fetchData(symbol);
-    const interval = setInterval(() => fetchData(symbol), 60000);
-    return () => clearInterval(interval);
-  }, [symbol, fetchData]);
+  const { data, error, isLoading: loading, lastUpdate, refresh } = useApi({
+    key: `liquidation-map-${symbol}`,
+    fetcher,
+    refreshInterval: 60000,
+  });
 
   // Derived data
   const nearestLong = useMemo(() => {
@@ -423,9 +410,9 @@ export default function LiquidationMapPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
             <button
-              onClick={() => fetchData(symbol)}
+              onClick={refresh}
               disabled={loading}
               className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-white/[0.04] text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
               aria-label="Refresh data"
@@ -568,7 +555,7 @@ export default function LiquidationMapPage() {
                 </div>
               </div>
               <div className="overflow-x-auto scrollbar-accent">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" aria-label="Liquidation levels">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
                       <th className="text-left text-neutral-500 font-medium px-4 py-3">Leverage</th>
@@ -650,6 +637,7 @@ export default function LiquidationMapPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

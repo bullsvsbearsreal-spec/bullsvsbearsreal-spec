@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import LiquidationTopBar from './components/LiquidationTopBar';
 import LiquidationTreemap from './components/LiquidationTreemap';
 import LiquidationFeed from './components/LiquidationFeed';
@@ -248,6 +250,8 @@ export default function LiquidationsPage() {
         exchangeFilter={exchangeFilter}
         onExchangeFilterChange={setExchangeFilter}
       />
+      <ReferralBanner />
+      <Footer />
     </div>
   );
 }

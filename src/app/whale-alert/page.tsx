@@ -3,10 +3,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useMultiExchangeLiquidations } from '@/hooks/useMultiExchangeLiquidations';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { AlertTriangle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { formatLiqValue, formatPrice, formatRelativeTime } from '@/lib/utils/format';
+import { useFlash } from '@/hooks/useFlash';
+import DataFreshness from '@/components/DataFreshness';
 
 const AVAILABLE_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX'] as const;
 
@@ -70,6 +74,9 @@ export default function WhaleAlertPage() {
     return { count: filteredLiqs.length, totalValue, longCount, shortCount, longValue, shortValue, biggest };
   }, [filteredLiqs]);
 
+  const countFlash = useFlash(whaleStats.count);
+  const totalFlash = useFlash(whaleStats.totalValue);
+
   const connectedCount = connections.filter(c => c.connected).length;
 
   const toggleExchange = (exchange: string) => {
@@ -89,7 +96,7 @@ export default function WhaleAlertPage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Page Title */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
@@ -103,13 +110,16 @@ export default function WhaleAlertPage() {
           </div>
 
           {/* Global connection status */}
-          <div className="flex items-center gap-2 text-sm text-neutral-500">
-            {connectedCount > 0 ? (
-              <Wifi className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <WifiOff className="w-4 h-4 text-red-400" />
-            )}
-            <span>{connectedCount}/{connections.length} connected</span>
+          <div className="flex items-center gap-3 text-sm text-neutral-500">
+            <DataFreshness exchangeCount={connectedCount} lastUpdated={Date.now()} />
+            <div className="flex items-center gap-2">
+              {connectedCount > 0 ? (
+                <Wifi className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <WifiOff className="w-4 h-4 text-red-400" />
+              )}
+              <span>{connectedCount}/{connections.length} connected</span>
+            </div>
           </div>
         </div>
 
@@ -118,7 +128,7 @@ export default function WhaleAlertPage() {
           {/* Whale Count */}
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Whale Liquidations</p>
-            <p className="text-2xl font-bold tabular-nums">{whaleStats.count}</p>
+            <p className={`text-2xl font-bold tabular-nums ${countFlash}`}>{whaleStats.count}</p>
             <p className="text-xs text-neutral-500 mt-1">
               {whaleStats.longCount} longs / {whaleStats.shortCount} shorts
             </p>
@@ -127,7 +137,7 @@ export default function WhaleAlertPage() {
           {/* Total Value */}
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
             <p className="text-xs text-neutral-500 mb-1">Total Value</p>
-            <p className="text-2xl font-bold tabular-nums">{formatLiqValue(whaleStats.totalValue)}</p>
+            <p className={`text-2xl font-bold tabular-nums ${totalFlash}`}>{formatLiqValue(whaleStats.totalValue)}</p>
             <p className="text-xs text-neutral-500 mt-1">above {VALUE_THRESHOLDS.find(t => t.value === minValue)?.label}</p>
           </div>
 
@@ -282,6 +292,7 @@ export default function WhaleAlertPage() {
         </div>
       </main>
 
+      <ReferralBanner />
       <Footer />
 
       {/* Fade-in animation keyframes */}
@@ -321,7 +332,11 @@ function LiquidationRow({ liq, isNew }: { liq: { id: string; symbol: string; sid
       {/* Symbol */}
       <div className="flex items-center gap-2 min-w-0">
         <span className="font-semibold text-sm truncate">{liq.symbol}</span>
-        <span className="text-[10px] text-neutral-600 hidden sm:inline">{liq.exchange}</span>
+        {(() => { const ref = getExchangeReferralUrl(liq.exchange); return ref ? (
+          <a href={ref} target="_blank" rel="noopener noreferrer" className="text-[10px] text-neutral-600 hidden sm:inline hover:text-hub-yellow transition">{liq.exchange}</a>
+        ) : (
+          <span className="text-[10px] text-neutral-600 hidden sm:inline">{liq.exchange}</span>
+        ); })()}
       </div>
 
       {/* Side Badge */}

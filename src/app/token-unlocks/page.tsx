@@ -4,10 +4,14 @@ import { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import WatchlistStar from '@/components/WatchlistStar';
 import { useApi } from '@/hooks/useSWRApi';
 import { TokenUnlock, UNLOCK_TYPES, formatUnlockAmount, formatUnlockValue, getDaysUntilUnlock, formatUnlockDate } from '@/lib/api/tokenunlocks';
 import { RefreshCw, AlertTriangle, Calendar, List, Filter, Search, ChevronLeft, ChevronRight, X, ExternalLink, Zap } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
+import { useFlash } from '@/hooks/useFlash';
 import Image from 'next/image';
 
 const WeeklyChart = dynamic(() => import('./components/WeeklyChart'), { ssr: false });
@@ -54,11 +58,11 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /* ------------------------------------------------------------------ */
 /*  Stats card component                                               */
 /* ------------------------------------------------------------------ */
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function StatCard({ label, value, sub, flash }: { label: string; value: string; sub?: string; flash?: string }) {
   return (
     <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
       <p className="text-xs text-neutral-500 mb-1">{label}</p>
-      <p className="text-xl font-bold tabular-nums text-white">{value}</p>
+      <p className={`text-xl font-bold tabular-nums text-white ${flash || ''}`}>{value}</p>
       {sub && <p className="text-xs text-neutral-500 mt-1">{sub}</p>}
     </div>
   );
@@ -96,7 +100,7 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
         <div className="absolute right-0 top-0 bottom-0 w-[130px] sm:w-[160px] pointer-events-none opacity-[0.4] group-hover:opacity-60 transition-opacity">
           <Image
             src="/vesting-cliff.jpg"
-            alt=""
+            alt="Token vesting cliff illustration"
             fill
             className="object-cover object-center"
             sizes="160px"
@@ -107,6 +111,7 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
       <div className="flex items-start justify-between gap-3 relative z-[1]">
         {/* Left: token info */}
         <div className="flex items-center gap-3 min-w-0">
+          <WatchlistStar symbol={unlock.coinSymbol} />
           {/* Token icon */}
           <div className="flex-shrink-0">
             <TokenIconSimple symbol={unlock.coinSymbol} size={36} />
@@ -223,11 +228,11 @@ function CalendarView({
     <div>
       {/* Month nav */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white/[0.06] text-neutral-400 hover:text-white transition-colors">
+        <button onClick={prevMonth} aria-label="Previous month" className="p-2 rounded-lg hover:bg-white/[0.06] text-neutral-400 hover:text-white transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <h3 className="text-white font-semibold">{MONTH_NAMES[viewMonth]} {viewYear}</h3>
-        <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-white/[0.06] text-neutral-400 hover:text-white transition-colors">
+        <button onClick={nextMonth} aria-label="Next month" className="p-2 rounded-lg hover:bg-white/[0.06] text-neutral-400 hover:text-white transition-colors">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
@@ -292,7 +297,7 @@ function CalendarView({
             <h4 className="text-sm font-semibold text-white">
               {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </h4>
-            <button onClick={() => onSelectDate(null)} className="p-1 rounded hover:bg-white/[0.06] text-neutral-500 hover:text-white transition-colors">
+            <button onClick={() => onSelectDate(null)} aria-label="Clear date filter" className="p-1 rounded hover:bg-white/[0.06] text-neutral-500 hover:text-white transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -375,6 +380,9 @@ export default function TokenUnlocksPage() {
     return { count: upcoming.length, totalValue, largest, avgPct };
   }, [allUnlocks]);
 
+  const countFlash = useFlash(stats.count);
+  const tvlFlash = useFlash(stats.totalValue);
+
   const toggleType = (t: UnlockType) => {
     setSelectedTypes(prev => {
       const next = new Set(prev);
@@ -426,9 +434,7 @@ export default function TokenUnlocksPage() {
           </div>
           <div className="flex items-center gap-3">
             {lastUpdate && (
-              <span className="text-neutral-600 text-xs">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['TokenUnlocks']} />
             )}
             <button
               onClick={refresh}
@@ -483,8 +489,8 @@ export default function TokenUnlocksPage() {
           <>
             {/* Stats row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-              <StatCard label="Upcoming Unlocks" value={String(stats.count)} sub={`across ${new Set(allUnlocks.map(u => u.coinSymbol)).size} tokens`} />
-              <StatCard label="Total Value Locked" value={formatUnlockValue(stats.totalValue)} />
+              <StatCard label="Upcoming Unlocks" value={String(stats.count)} sub={`across ${new Set(allUnlocks.map(u => u.coinSymbol)).size} tokens`} flash={countFlash} />
+              <StatCard label="Total Value Locked" value={formatUnlockValue(stats.totalValue)} flash={tvlFlash} />
               <StatCard
                 label="Largest Upcoming"
                 value={stats.largest ? formatUnlockValue(stats.largest.unlockValue) : '--'}
@@ -531,7 +537,7 @@ export default function TokenUnlocksPage() {
                   className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
                 />
                 {search && (
-                  <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/[0.08] text-neutral-500">
+                  <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/[0.08] text-neutral-500">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -673,6 +679,7 @@ export default function TokenUnlocksPage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

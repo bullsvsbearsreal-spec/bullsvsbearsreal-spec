@@ -7,7 +7,8 @@ import { fetchExecutionCosts } from '@/lib/api/aggregator';
 import { Direction, ExecutionCostResponse } from '@/lib/execution-costs/types';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
 import AssetSelector from './components/AssetSelector';
 import SizeSelector from './components/SizeSelector';
 import DirectionToggle from './components/DirectionToggle';
@@ -123,7 +124,7 @@ function ExecutionCostsInner() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
             <button
               onClick={handleShare}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors text-xs font-medium"
@@ -294,6 +295,7 @@ function ExecutionCostsInner() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

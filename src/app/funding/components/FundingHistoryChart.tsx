@@ -57,7 +57,8 @@ const SYMBOL_COLORS = [
 
 // ── Custom tooltip ──
 
-function CustomTooltip({ active, payload, label }: any) {
+interface TooltipPayloadEntry { name: string; value: number | null; color: string }
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
@@ -69,18 +70,18 @@ function CustomTooltip({ active, payload, label }: any) {
       }}
     >
       <p className="text-neutral-400 mb-1.5 font-medium">
-        {new Date(label).toLocaleString(undefined, {
+        {label ? new Date(label).toLocaleString(undefined, {
           month: 'short',
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        })}
+        }) : ''}
       </p>
       <div className="flex flex-col gap-1">
         {payload
-          .filter((entry: any) => entry.value != null)
-          .sort((a: any, b: any) => Math.abs(b.value) - Math.abs(a.value))
-          .map((entry: any) => (
+          .filter((entry: TooltipPayloadEntry) => entry.value != null)
+          .sort((a: TooltipPayloadEntry, b: TooltipPayloadEntry) => Math.abs(b.value!) - Math.abs(a.value!))
+          .map((entry: TooltipPayloadEntry) => (
             <div key={entry.name} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5">
                 <span
@@ -92,12 +93,12 @@ function CustomTooltip({ active, payload, label }: any) {
               <span
                 className="font-mono tabular-nums font-semibold"
                 style={{
-                  color: entry.value >= 0
+                  color: (entry.value ?? 0) >= 0
                     ? 'rgb(52, 211, 153)'
                     : 'rgb(251, 113, 133)',
                 }}
               >
-                {entry.value >= 0 ? '+' : ''}{entry.value.toFixed(4)}%
+                {(entry.value ?? 0) >= 0 ? '+' : ''}{(entry.value ?? 0).toFixed(4)}%
               </span>
             </div>
           ))}
@@ -131,8 +132,8 @@ export default function FundingHistoryChart() {
       }
       const json: BulkFundingResponse = await res.json();
       setRawData(json);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load funding history');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load funding history');
     } finally {
       setLoading(false);
     }

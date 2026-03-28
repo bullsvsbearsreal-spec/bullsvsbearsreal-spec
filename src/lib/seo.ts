@@ -208,6 +208,34 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Developers',
     description: 'InfoHub developer portal — create and manage API keys, view usage, and access real-time crypto derivatives data programmatically.',
   },
+  '/spreads': {
+    title: 'Price Spreads',
+    description: 'Real-time cross-exchange price spread tracker for crypto perpetual futures. Compare bid/ask prices across 30 exchanges to find arbitrage opportunities.',
+  },
+  '/spread-scanner': {
+    title: 'Spread Scanner',
+    description: 'Scan for the largest price spreads across crypto exchanges in real time. Identify arbitrage opportunities across CEX and DEX venues.',
+  },
+  '/dashboard': {
+    title: 'Dashboard',
+    description: 'InfoHub crypto derivatives dashboard — funding rates, open interest, liquidations, spreads, and market data from 30+ exchanges at a glance.',
+  },
+  '/referrals': {
+    title: 'Referrals',
+    description: 'Earn rewards by referring traders to InfoHub. Share your link and get credit when friends sign up and use the platform.',
+  },
+  '/guides/funding-rate-arbitrage': {
+    title: 'Funding Rate Arbitrage Guide',
+    description: 'Learn how to profit from funding rate arbitrage across crypto derivatives exchanges. Step-by-step strategy guide with real examples.',
+  },
+  '/login': {
+    title: 'Log In',
+    description: 'Sign in to your InfoHub account to access watchlists, alerts, portfolio tracking, and personalized derivatives data.',
+  },
+  '/signup': {
+    title: 'Sign Up',
+    description: 'Create a free InfoHub account. Get access to real-time crypto derivatives data, alerts, watchlists, and more.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

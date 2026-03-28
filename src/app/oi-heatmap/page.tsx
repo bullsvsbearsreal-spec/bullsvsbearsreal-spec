@@ -3,7 +3,8 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD, formatPercent, formatCompact } from '@/lib/utils/format';
 import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Activity, Info } from 'lucide-react';
@@ -286,7 +287,7 @@ export default function OIHeatmapPage() {
   return (
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
@@ -296,7 +297,7 @@ export default function OIHeatmapPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && <UpdatedAgo date={lastUpdate} />}
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={isRefreshing}
@@ -389,6 +390,7 @@ export default function OIHeatmapPage() {
           <div className="flex items-center gap-2 p-3 mb-4 bg-red-500/10 border border-red-500/20 rounded-xl">
             <AlertTriangle className="w-4 h-4 text-red-400" />
             <span className="text-sm text-red-400">{error}</span>
+            <button onClick={refresh} className="ml-auto text-xs text-hub-yellow hover:underline">Retry</button>
           </div>
         )}
 
@@ -591,6 +593,7 @@ export default function OIHeatmapPage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

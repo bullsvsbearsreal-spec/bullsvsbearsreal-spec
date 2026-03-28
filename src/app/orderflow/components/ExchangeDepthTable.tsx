@@ -95,7 +95,7 @@ export default function ExchangeDepthTable({ venues, depthSizes }: ExchangeDepth
   const SortHeader = ({ label, sKey, className = '' }: { label: string; sKey: SortKey; className?: string }) => (
     <th
       className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 cursor-pointer hover:text-neutral-300 transition-colors ${className}`}
-      onClick={() => handleSort(sKey)}
+      role="button" tabIndex={0} onClick={() => handleSort(sKey)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(sKey); } }}
     >
       {label} {sortKey === sKey ? (sortAsc ? '↑' : '↓') : ''}
     </th>

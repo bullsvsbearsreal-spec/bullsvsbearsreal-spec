@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp, LayoutGrid, List, Calendar, AlertTriangle, Bookmark, BookmarkCheck, Eye, EyeOff } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -153,6 +155,7 @@ export default function NewsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [macroEvents, setMacroEvents] = useState<MacroEvent[]>([]);
   const [newCount, setNewCount] = useState(0);
+  const [lastFetched, setLastFetched] = useState<number | null>(null);
   const latestIdRef = useRef<string>('');
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -204,6 +207,7 @@ export default function NewsPage() {
         latestIdRef.current = data.articles[0].id;
       }
       setNewCount(0);
+      setLastFetched(Date.now());
     } catch {
       setArticles([]);
     } finally {
@@ -283,6 +287,7 @@ export default function NewsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <DataFreshness exchangeCount={sources.length} lastUpdated={lastFetched} />
             {/* View toggle */}
             <div className="flex items-center bg-white/[0.04] rounded-md overflow-hidden border border-white/[0.06]">
               <button
@@ -349,7 +354,7 @@ export default function NewsPage() {
               className="w-full pl-9 pr-8 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/[0.08] text-neutral-500">
+              <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/[0.08] text-neutral-500">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -702,6 +707,7 @@ export default function NewsPage() {
         </div>
       </main>
 
+      <ReferralBanner />
       <Footer />
     </div>
   );
@@ -731,8 +737,9 @@ function FeaturedArticle({ article, onCurrencyClick, isRead, isBookmarked, onArt
           <div className="flex-shrink-0 w-full md:w-56 h-40 rounded-xl overflow-hidden bg-white/[0.04]">
             <img
               src={article.imageUrl}
-              alt=""
+              alt={article.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           </div>
@@ -822,8 +829,9 @@ function NewsCard({ article, onCurrencyClick, isRead, isBookmarked, onArticleCli
           <div className="flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden bg-white/[0.04]">
             <img
               src={article.imageUrl}
-              alt=""
+              alt={article.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           </div>

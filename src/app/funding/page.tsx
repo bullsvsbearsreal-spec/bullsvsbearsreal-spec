@@ -5,7 +5,6 @@ import Header from '@/components/Header';
 import { fetchAllFundingRates, fetchFundingArbitrage, fetchAllOpenInterest, fetchArbHistory, type AssetClassFilter } from '@/lib/api/aggregator';
 import { detectPriceArbitrage, type PriceArb } from '@/lib/arbitrage-detector';
 import { RefreshCw, AlertTriangle, Check, Settings2, TrendingUp, DollarSign, BarChart3, Gem as CommodityIcon, Layers } from 'lucide-react';
-import UpdatedAgo from '@/components/UpdatedAgo';
 import DataFreshness from '@/components/DataFreshness';
 import StaleIndicator from '@/components/StaleIndicator';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -131,6 +130,7 @@ export default function FundingPage() {
   );
 
   // Per-tab data cache: instantly show previously loaded tab data while fetching fresh data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type FundingData = { fundingRates: any[]; arbitrageData: any[]; priceArbs: PriceArb[]; oiMap: Map<string, number>; arbHistory: Map<string, { avg7d: number; avg24h: number; avg6d: number }>; _assetClass: string };
   const tabCacheRef = useRef<Map<string, FundingData>>(new Map());
 
@@ -145,15 +145,15 @@ export default function FundingPage() {
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
     // Build OI lookup: "SYMBOL|EXCHANGE" → openInterestValue (USD)
     const oiMap = new Map<string, number>();
-    (Array.isArray(oiData) ? oiData : []).forEach((oi: any) => {
-      if (oi.openInterestValue > 0) {
+    (Array.isArray(oiData) ? oiData : []).forEach((oi: { symbol?: string; exchange?: string; openInterestValue?: number }) => {
+      if (oi.openInterestValue && oi.openInterestValue > 0) {
         oiMap.set(`${oi.symbol}|${oi.exchange}`, oi.openInterestValue);
       }
     });
     // Detect cross-exchange price arbs from raw tickers
     const priceArbs = detectPriceArbitrage(tickerData as any[]);
     // Fetch arb history for stability/trend (non-blocking — don't delay page load)
-    const arbSymbols = (Array.isArray(arbData) ? arbData : []).map((a: any) => a.symbol);
+    const arbSymbols = (Array.isArray(arbData) ? arbData : []).map((a: { symbol?: string }) => a.symbol).filter((s): s is string => !!s);
     const arbHistory = await fetchArbHistory(arbSymbols).catch(() => new Map());
     const result: FundingData = { fundingRates: validData, arbitrageData: arbData, priceArbs, oiMap, arbHistory, _assetClass: assetClass };
     // Cache this tab's data for instant switching

@@ -92,7 +92,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-hub-black">
         <Header />
-        <main className="text-white">
+        <main id="main-content" className="text-white">
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
             {/* Header skeleton */}
             <div className="mb-5">
@@ -129,7 +129,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="text-white">
+      <main id="main-content" className="text-white">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
           <DashboardHeader userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />
 

@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { GitCompareArrows, Plus, X, RefreshCw } from 'lucide-react';
 import { formatPrice, formatNumber, formatPercent, formatFundingRate, formatUSD } from '@/lib/utils/format';
 
@@ -30,39 +33,38 @@ function normalizeSymbol(raw: string): string {
   return raw.toUpperCase().replace(/[-_]/g, '').replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '').replace(/^1000/, '');
 }
 
+interface CompareData {
+  tickers: TickerEntry[];
+  funding: FundingEntry[];
+  oi: OIEntry[];
+}
+
 export default function ComparePage() {
   const [selected, setSelected] = useState<string[]>(['BTC', 'ETH']);
   const [inputValue, setInputValue] = useState('');
-  const [tickers, setTickers] = useState<TickerEntry[]>([]);
-  const [funding, setFunding] = useState<FundingEntry[]>([]);
-  const [oi, setOI] = useState<OIEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [tickerRes, fundingRes, oiRes] = await Promise.all([
-        fetch('/api/tickers').then(r => r.ok ? r.json() : { data: [] }),
-        fetch('/api/funding?assetClass=crypto').then(r => r.ok ? r.json() : { data: [] }),
-        fetch('/api/openinterest').then(r => r.ok ? r.json() : { data: [] }),
-      ]);
-      setTickers(Array.isArray(tickerRes) ? tickerRes : Array.isArray(tickerRes?.data) ? tickerRes.data : []);
-      setFunding(Array.isArray(fundingRes?.data) ? fundingRes.data : []);
-      setOI(Array.isArray(oiRes?.data) ? oiRes.data : []);
-      setLastUpdate(new Date());
-    } catch (err) {
-      console.error('Compare fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
+  const fetcher = useCallback(async () => {
+    const [tickerRes, fundingRes, oiRes] = await Promise.all([
+      fetch('/api/tickers').then(r => r.ok ? r.json() : { data: [] }),
+      fetch('/api/funding?assetClass=crypto').then(r => r.ok ? r.json() : { data: [] }),
+      fetch('/api/openinterest').then(r => r.ok ? r.json() : { data: [] }),
+    ]);
+    return {
+      tickers: Array.isArray(tickerRes) ? tickerRes : Array.isArray(tickerRes?.data) ? tickerRes.data : [],
+      funding: Array.isArray(fundingRes?.data) ? fundingRes.data : [],
+      oi: Array.isArray(oiRes?.data) ? oiRes.data : [],
+    } as CompareData;
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'compare',
+    fetcher,
+    refreshInterval: 60000,
+  });
+
+  const tickers = data?.tickers ?? [];
+  const funding = data?.funding ?? [];
+  const oi = data?.oi ?? [];
 
   const coinData = useMemo((): CoinData[] => {
     return selected.map(sym => {
@@ -136,7 +138,7 @@ export default function ComparePage() {
   return (
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -149,10 +151,11 @@ export default function ComparePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
+              aria-label="Refresh data"
               className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -264,7 +267,11 @@ export default function ComparePage() {
                         <div key={f.exchange} className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
                             <ExchangeLogo exchange={f.exchange.toLowerCase()} size={12} />
-                            <span className="text-neutral-400 text-[11px]">{f.exchange}</span>
+                            {(() => { const url = getExchangeReferralUrl(f.exchange); return url ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-hub-yellow text-[11px] transition-colors">{f.exchange}</a>
+                            ) : (
+                              <span className="text-neutral-400 text-[11px]">{f.exchange}</span>
+                            ); })()}
                           </div>
                           <span className={`delta-badge text-[10px] ${f.rate >= 0 ? 'delta-badge-up' : 'delta-badge-down'}`}>
                             {f.rate >= 0 ? '+' : ''}{f.rate.toFixed(4)}%
@@ -285,7 +292,11 @@ export default function ComparePage() {
                             <div className="flex items-center justify-between mb-0.5">
                               <div className="flex items-center gap-1.5">
                                 <ExchangeLogo exchange={o.exchange.toLowerCase()} size={12} />
-                                <span className="text-neutral-400 text-[11px]">{o.exchange}</span>
+                                {(() => { const url = getExchangeReferralUrl(o.exchange); return url ? (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-hub-yellow text-[11px] transition-colors">{o.exchange}</a>
+                                ) : (
+                                  <span className="text-neutral-400 text-[11px]">{o.exchange}</span>
+                                ); })()}
                               </div>
                               <span className="text-white font-mono text-[11px]">{formatUSD(o.value)}</span>
                             </div>
@@ -394,6 +405,7 @@ export default function ComparePage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

@@ -4,6 +4,7 @@ import { memo, useState, useEffect, useMemo } from 'react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { fp } from '../../lib/spread-math';
+import { getFundingSlang, getDeviationSlang, getOISlang } from '../../lib/trader-slang';
 import type { SpreadStats, WsPrice, Candle, TickerEntry, FundingEntry, OIEntry } from '../../lib/types';
 
 interface ExchangeTableProps {
@@ -31,9 +32,9 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
         const tData = (tRes.status === 'fulfilled' && tRes.value?.data) || [];
         const fData = (fRes.status === 'fulfilled' && fRes.value?.data) || [];
         const oData = (oRes.status === 'fulfilled' && oRes.value?.data) || [];
-        setTickers(tData.filter((t: any) => t.symbol === sym));
-        setFunding(fData.filter((f: any) => f.symbol === sym));
-        setOI(oData.filter((o: any) => o.symbol === sym));
+        setTickers(tData.filter((t: Record<string, unknown>) => t.symbol === sym));
+        setFunding(fData.filter((f: Record<string, unknown>) => f.symbol === sym));
+        setOI(oData.filter((o: Record<string, unknown>) => o.symbol === sym));
       });
     };
     const delay = setTimeout(load, 1000);
@@ -129,19 +130,20 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                       ? <span title={`Bid: $${fp(ws.bid)} / Ask: $${fp(ws.ask)}`}>{((ws.ask - ws.bid) / ws.bid * 10000).toFixed(1)} bp</span>
                       : '—'}
                   </td>
-                  <td className={`px-3 py-2.5 text-right font-mono ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <td className={`px-3 py-2.5 text-right font-mono ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`} title={getDeviationSlang(dev)}>
                     {dev >= 0 ? '+' : ''}{dev.toFixed(3)}%
                   </td>
                   <td className={`px-3 py-2.5 text-right font-mono ${r.change !== undefined ? (r.change >= 0 ? 'text-green-400' : 'text-red-400') : 'text-neutral-600'}`}>
                     {r.change !== undefined ? (r.change >= 0 ? '+' : '') + r.change.toFixed(2) + '%' : '—'}
                   </td>
-                  <td className={`px-3 py-2.5 text-right font-mono ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400') : 'text-neutral-600'}`}>
+                  <td className={`px-3 py-2.5 text-right font-mono ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400') : 'text-neutral-600'}`}
+                    title={r.fundingRate !== undefined ? getFundingSlang(r.fundingRate) : undefined}>
                     {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100).toFixed(4) + '%' : '—'}
                   </td>
                   <td className={`px-3 py-2.5 text-right font-mono text-[10px] ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400/70' : 'text-red-400/70') : 'text-neutral-600'}`}>
                     {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100 * 3 * 365).toFixed(1) + '%' : '—'}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-neutral-300">
+                  <td className="px-3 py-2.5 text-right font-mono text-neutral-300" title={r.oiValue ? getOISlang(r.oiValue) : undefined}>
                     {r.oiValue ? '$' + (r.oiValue >= 1e9 ? (r.oiValue / 1e9).toFixed(2) + 'B' : r.oiValue >= 1e6 ? (r.oiValue / 1e6).toFixed(1) + 'M' : (r.oiValue / 1e3).toFixed(0) + 'K') : '—'}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono text-neutral-300">

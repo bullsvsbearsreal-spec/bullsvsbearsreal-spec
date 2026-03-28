@@ -4,8 +4,10 @@ import { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
 
 const FearGreedChart = dynamic(() => import('./components/FearGreedChart'), { ssr: false });
 
@@ -136,6 +138,7 @@ export default function FearGreedPage() {
 
   const currentValue = data?.current?.value ?? 50;
   const currentClassification = getClassification(currentValue);
+  const indexFlash = useFlash(currentValue);
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -231,7 +234,7 @@ export default function FearGreedPage() {
               <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-5">
                   <span className="text-neutral-500 text-sm">Current Value</span>
-                  <div className="text-2xl font-bold font-mono mt-1" style={{ color: currentClassification.color }}>
+                  <div className={`text-2xl font-bold font-mono mt-1 ${indexFlash}`} style={{ color: currentClassification.color }}>
                     {currentValue}
                   </div>
                   <div className="text-xs mt-0.5" style={{ color: currentClassification.color }}>
@@ -350,7 +353,7 @@ export default function FearGreedPage() {
                 <p className="text-neutral-600 text-sm">Individual daily readings</p>
               </div>
               <div className="max-h-[400px] overflow-y-auto">
-                <table className="w-full">
+                <table className="w-full" aria-label="Fear and greed index history">
                   <thead className="sticky top-0 bg-hub-darker z-10">
                     <tr className="border-b border-white/[0.06]">
                       <th className="text-left text-neutral-500 text-xs font-medium px-4 py-3">Date</th>
@@ -396,6 +399,7 @@ export default function FearGreedPage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

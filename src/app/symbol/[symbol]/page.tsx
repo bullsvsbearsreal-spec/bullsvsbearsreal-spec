@@ -5,10 +5,14 @@ import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, Star, ArrowLeft, TrendingUp, TrendingDown, Info } from 'lucide-react';
 import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { formatPrice, formatCompact, formatFundingRate } from '@/lib/utils/format';
+import { useFlash } from '@/hooks/useFlash';
+import { useApi } from '@/hooks/useSWRApi';
+import DataFreshness from '@/components/DataFreshness';
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
 import { useTheme } from '@/hooks/useTheme';
 import type { Time } from 'lightweight-charts';
@@ -75,91 +79,88 @@ export default function SymbolPage() {
   const theme = useTheme();
 
   const [interval, setInterval_] = useState<Interval>('1h');
-  const [candles, setCandles] = useState<Candle[]>([]);
-  const [tickers, setTickers] = useState<TickerInfo[]>([]);
-  const [funding, setFunding] = useState<FundingInfo[]>([]);
-  const [oi, setOI] = useState<OIInfo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [klinesRes, tickerRes, fundingRes, oiRes] = await Promise.all([
-        fetch(`/api/klines?symbol=${symbol}&interval=${interval}&limit=200`)
-          .then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch('/api/tickers').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch('/api/funding').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch('/api/openinterest').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      ]);
+  interface SymbolBundle {
+    candles: Candle[];
+    tickers: TickerInfo[];
+    funding: FundingInfo[];
+    oi: OIInfo[];
+  }
 
-      if (klinesRes?.candles) setCandles(klinesRes.candles);
+  const fetcher = useCallback(async (): Promise<SymbolBundle> => {
+    const [klinesRes, tickerRes, fundingRes, oiRes] = await Promise.all([
+      fetch(`/api/klines?symbol=${symbol}&interval=${interval}&limit=200`)
+        .then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/tickers').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/funding').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/openinterest').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
 
-      if (tickerRes?.data) {
-        interface RawTicker { symbol: string; exchange: string; lastPrice?: number; volume24h?: number; quoteVolume24h?: number; priceChangePercent24h?: number; change24h?: number }
-        const raw = (tickerRes.data as RawTicker[])
-          .filter((t) => t.symbol === symbol)
-          .map((t) => ({
-            exchange: t.exchange,
-            lastPrice: t.lastPrice || 0,
-            volume24h: t.quoteVolume24h || t.volume24h || 0,
-            change24h: t.priceChangePercent24h ?? t.change24h ?? 0,
-          }))
-          // Filter out bad data: >500% change is almost certainly an error
-          .filter((t) => Math.abs(t.change24h) < 500);
-        // Deduplicate by exchange — keep highest volume entry per exchange
-        const byExchange = new Map<string, typeof raw[0]>();
-        for (const t of raw) {
-          const existing = byExchange.get(t.exchange);
-          if (!existing || t.volume24h > existing.volume24h) {
-            byExchange.set(t.exchange, t);
-          }
-        }
-        setTickers(Array.from(byExchange.values()));
+    const candles: Candle[] = klinesRes?.candles ?? [];
+
+    let tickers: TickerInfo[] = [];
+    if (tickerRes?.data) {
+      interface RawTicker { symbol: string; exchange: string; lastPrice?: number; volume24h?: number; quoteVolume24h?: number; priceChangePercent24h?: number; change24h?: number }
+      const raw = (tickerRes.data as RawTicker[])
+        .filter((t) => t.symbol === symbol)
+        .map((t) => ({
+          exchange: t.exchange,
+          lastPrice: t.lastPrice || 0,
+          volume24h: t.quoteVolume24h || t.volume24h || 0,
+          change24h: t.priceChangePercent24h ?? t.change24h ?? 0,
+        }))
+        .filter((t) => Math.abs(t.change24h) < 500);
+      const byExchange = new Map<string, typeof raw[0]>();
+      for (const t of raw) {
+        const existing = byExchange.get(t.exchange);
+        if (!existing || t.volume24h > existing.volume24h) byExchange.set(t.exchange, t);
       }
-
-      if (fundingRes?.data) {
-        interface RawFunding { symbol: string; exchange: string; rate?: number; fundingRate?: number; interval?: string; fundingInterval?: string }
-        const rawFunding = (fundingRes.data as RawFunding[])
-          .filter((f) => f.symbol === symbol)
-          .map((f) => ({
-            exchange: f.exchange,
-            rate: f.rate ?? f.fundingRate ?? 0,
-            interval: f.interval || f.fundingInterval,
-          }));
-        // Deduplicate by exchange — keep first entry (some exchanges have multiple contract types)
-        const seenExchanges = new Set<string>();
-        const dedupedFunding = rawFunding.filter((f) => {
-          if (seenExchanges.has(f.exchange)) return false;
-          seenExchanges.add(f.exchange);
-          return true;
-        });
-        setFunding(dedupedFunding);
-      }
-
-      if (oiRes?.data) {
-        interface RawOI { symbol: string; exchange: string; openInterest?: number; openInterestValue?: number }
-        setOI(
-          (oiRes.data as RawOI[])
-            .filter((o) => o.symbol === symbol)
-            .map((o) => ({
-              exchange: o.exchange,
-              openInterest: o.openInterestValue || o.openInterest || 0,
-            })),
-        );
-      }
-    } catch {
-      // Silently handle
-    } finally {
-      setLoading(false);
+      tickers = Array.from(byExchange.values());
     }
+
+    let funding: FundingInfo[] = [];
+    if (fundingRes?.data) {
+      interface RawFunding { symbol: string; exchange: string; rate?: number; fundingRate?: number; interval?: string; fundingInterval?: string }
+      const rawFunding = (fundingRes.data as RawFunding[])
+        .filter((f) => f.symbol === symbol)
+        .map((f) => ({
+          exchange: f.exchange,
+          rate: f.rate ?? f.fundingRate ?? 0,
+          interval: f.interval || f.fundingInterval,
+        }));
+      const seenExchanges = new Set<string>();
+      funding = rawFunding.filter((f) => {
+        if (seenExchanges.has(f.exchange)) return false;
+        seenExchanges.add(f.exchange);
+        return true;
+      });
+    }
+
+    let oiList: OIInfo[] = [];
+    if (oiRes?.data) {
+      interface RawOI { symbol: string; exchange: string; openInterest?: number; openInterestValue?: number }
+      oiList = (oiRes.data as RawOI[])
+        .filter((o) => o.symbol === symbol)
+        .map((o) => ({
+          exchange: o.exchange,
+          openInterest: o.openInterestValue || o.openInterest || 0,
+        }));
+    }
+
+    return { candles, tickers, funding, oi: oiList };
   }, [symbol, interval]);
 
-  useEffect(() => {
-    fetchData();
-    const timer = setInterval(fetchData, 60_000); // 60s (was 30s)
-    return () => clearInterval(timer);
-  }, [fetchData]);
+  const { data: bundle, isLoading: loading, lastUpdate, refresh: fetchData } = useApi<SymbolBundle>({
+    key: `symbol-${symbol}-${interval}`,
+    fetcher,
+    refreshInterval: 60000,
+  });
+
+  const candles = bundle?.candles ?? [];
+  const tickers = bundle?.tickers ?? [];
+  const funding = bundle?.funding ?? [];
+  const oi = bundle?.oi ?? [];
 
   useEffect(() => {
     setWatched(isInWatchlist(symbol));
@@ -192,10 +193,14 @@ export default function SymbolPage() {
     return tickers.reduce((s, t) => s + t.change24h, 0) / tickers.length;
   }, [tickers]);
 
+  const priceFlash = useFlash(avgPrice);
+  const volFlash = useFlash(totalVolume);
+  const oiFlash = useFlash(totalOI);
+
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-hub-dark text-white">
+      <main id="main-content" className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
           {/* Back + Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -226,6 +231,7 @@ export default function SymbolPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleWatch}
+                aria-label={watched ? 'Remove from watchlist' : 'Add to watchlist'}
                 className={`p-2 rounded-lg transition-colors ${
                   watched
                     ? 'bg-hub-yellow/20 text-hub-yellow'
@@ -237,10 +243,12 @@ export default function SymbolPage() {
               <button
                 onClick={fetchData}
                 disabled={loading}
+                aria-label="Refresh data"
                 className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
+              {lastUpdate && <DataFreshness exchangeCount={tickers.length} lastUpdated={lastUpdate} />}
             </div>
           </div>
 
@@ -248,7 +256,7 @@ export default function SymbolPage() {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Price</p>
-              <p className="text-lg font-bold text-white">{avgPrice > 0 ? formatPrice(avgPrice) : '-'}</p>
+              <p className={`text-lg font-bold text-white ${priceFlash}`}>{avgPrice > 0 ? formatPrice(avgPrice) : '-'}</p>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">24h Change</p>
@@ -263,11 +271,11 @@ export default function SymbolPage() {
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Volume 24h</p>
-              <p className="text-lg font-bold text-white">${formatCompact(totalVolume)}</p>
+              <p className={`text-lg font-bold text-white ${volFlash}`}>${formatCompact(totalVolume)}</p>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Open Interest</p>
-              <p className="text-lg font-bold text-white">${formatCompact(totalOI)}</p>
+              <p className={`text-lg font-bold text-white ${oiFlash}`}>${formatCompact(totalOI)}</p>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
               <p className="text-xs text-neutral-500">Avg Funding</p>
@@ -300,9 +308,7 @@ export default function SymbolPage() {
             </div>
 
             {loading && candles.length === 0 ? (
-              <div className="flex items-center justify-center h-[300px]">
-                <RefreshCw className="w-5 h-5 animate-spin text-hub-yellow" />
-              </div>
+              <div className="animate-pulse h-[300px] bg-hub-darker border border-white/[0.06] rounded-xl" />
             ) : candles.length > 0 ? (
               <LightweightChart
                 series={[
@@ -384,7 +390,7 @@ export default function SymbolPage() {
               <p className="text-xs text-neutral-500 py-4 text-center">No ticker data</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs" aria-label="Exchange data for symbol">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
                       <th className="text-left py-2 text-neutral-500 font-medium">Exchange</th>
@@ -430,6 +436,7 @@ export default function SymbolPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </>
   );

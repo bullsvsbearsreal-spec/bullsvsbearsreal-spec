@@ -3,11 +3,13 @@
 import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { Search, ChevronDown, ChevronUp, Shield, Coins, AlertTriangle, TrendingUp, Zap, Landmark, ExternalLink } from 'lucide-react';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
 import { formatCompact } from '@/lib/utils/format';
 import { useApi } from '@/hooks/useSWRApi';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import WatchlistStar from '@/components/WatchlistStar';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -255,7 +257,7 @@ export default function YieldsPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Title */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -263,7 +265,7 @@ export default function YieldsPage() {
             <h1 className="text-xl font-semibold">DeFi Yields</h1>
             {data && <span className="text-xs text-neutral-500">{filtered.length} pools</span>}
           </div>
-          {lastUpdate && <UpdatedAgo date={lastUpdate} />}
+          {lastUpdate && <DataFreshness exchangeCount={filtered.length} lastUpdated={lastUpdate} sources={['DefiLlama']} />}
         </div>
 
         {/* Stats Bar */}
@@ -328,6 +330,7 @@ export default function YieldsPage() {
             />
           </div>
           <select
+            aria-label="Filter by chain"
             value={chainFilter}
             onChange={e => { setChainFilter(e.target.value); setPage(0); }}
             className="bg-[#141419] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none cursor-pointer [&>option]:bg-[#141419] [&>option]:text-white"
@@ -336,6 +339,7 @@ export default function YieldsPage() {
             {chains.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select
+            aria-label="Filter by protocol"
             value={projectFilter}
             onChange={e => { setProjectFilter(e.target.value); setPage(0); }}
             className="bg-[#141419] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none cursor-pointer [&>option]:bg-[#141419] [&>option]:text-white"
@@ -352,32 +356,32 @@ export default function YieldsPage() {
           ) : error ? (
             <div className="flex items-center justify-center py-20 text-red-400">Failed to load yield data</div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="DeFi yield pools">
               <thead className="sticky top-0 z-10 bg-[#0d0d14]">
                 <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-neutral-500">
-                  <th className="text-left px-4 py-3 cursor-pointer select-none" onClick={() => toggleSort('symbol')}>
+                  <th className="text-left px-4 py-3 cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('symbol')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('symbol'); } }}>
                     <div className="flex items-center gap-1">Token <SortIcon field="symbol" /></div>
                   </th>
-                  <th className="text-left px-3 py-3 cursor-pointer select-none" onClick={() => toggleSort('project')}>
+                  <th className="text-left px-3 py-3 cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('project')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('project'); } }}>
                     <div className="flex items-center gap-1">Protocol <SortIcon field="project" /></div>
                   </th>
-                  <th className="text-left px-3 py-3 cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort('chain')}>
+                  <th className="text-left px-3 py-3 cursor-pointer select-none hidden md:table-cell" role="button" tabIndex={0} onClick={() => toggleSort('chain')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('chain'); } }}>
                     <div className="flex items-center gap-1">Chain <SortIcon field="chain" /></div>
                   </th>
-                  <th className="text-right px-3 py-3 cursor-pointer select-none" onClick={() => toggleSort('apy')}>
+                  <th className="text-right px-3 py-3 cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('apy')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('apy'); } }}>
                     <div className="flex items-center justify-end gap-1">APY <SortIcon field="apy" /></div>
                   </th>
-                  <th className="text-right px-3 py-3 cursor-pointer select-none hidden sm:table-cell" onClick={() => toggleSort('apyBase')}>
+                  <th className="text-right px-3 py-3 cursor-pointer select-none hidden sm:table-cell" role="button" tabIndex={0} onClick={() => toggleSort('apyBase')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('apyBase'); } }}>
                     <div className="flex items-center justify-end gap-1">Base <SortIcon field="apyBase" /></div>
                   </th>
                   <th className="text-right px-3 py-3 hidden sm:table-cell">Reward</th>
-                  <th className="text-right px-3 py-3 cursor-pointer select-none hidden lg:table-cell" onClick={() => toggleSort('apyMean30d')}>
+                  <th className="text-right px-3 py-3 cursor-pointer select-none hidden lg:table-cell" role="button" tabIndex={0} onClick={() => toggleSort('apyMean30d')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('apyMean30d'); } }}>
                     <div className="flex items-center justify-end gap-1">30D Avg <SortIcon field="apyMean30d" /></div>
                   </th>
-                  <th className="text-right px-3 py-3 cursor-pointer select-none" onClick={() => toggleSort('tvl')}>
+                  <th className="text-right px-3 py-3 cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('tvl')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('tvl'); } }}>
                     <div className="flex items-center justify-end gap-1">TVL <SortIcon field="tvl" /></div>
                   </th>
-                  <th className="text-right px-3 py-3 cursor-pointer select-none hidden lg:table-cell" onClick={() => toggleSort('apyChange7d')}>
+                  <th className="text-right px-3 py-3 cursor-pointer select-none hidden lg:table-cell" role="button" tabIndex={0} onClick={() => toggleSort('apyChange7d')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('apyChange7d'); } }}>
                     <div className="flex items-center justify-end gap-1">7D <SortIcon field="apyChange7d" /></div>
                   </th>
                   <th className="text-center px-3 py-3 hidden xl:table-cell">Risk</th>
@@ -399,6 +403,7 @@ export default function YieldsPage() {
                       {/* Token */}
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2.5">
+                          <WatchlistStar symbol={token} />
                           <TokenIconSimple symbol={token} size={24} />
                           <div>
                             <div className="font-medium flex items-center gap-1.5">
@@ -543,12 +548,13 @@ export default function YieldsPage() {
         {/* Source */}
         <div className="mt-6 text-center text-xs text-neutral-600 flex items-center justify-center gap-1">
           Data from{' '}
-          <a href="https://defillama.com/yields" target="_blank" rel="noopener" className="text-neutral-500 hover:text-neutral-400 inline-flex items-center gap-0.5">
+          <a href="https://defillama.com/yields" target="_blank" rel="noopener noreferrer" className="text-neutral-500 hover:text-neutral-400 inline-flex items-center gap-0.5">
             DeFiLlama <ExternalLink className="w-3 h-3" />
           </a>
           {' '}· Updated every 5 minutes
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

@@ -87,7 +87,7 @@ export default function GuidesPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="max-w-4xl mx-auto py-4 sm:py-10">
 
           {/* ─── Hero section ─── */}

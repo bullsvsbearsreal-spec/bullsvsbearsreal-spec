@@ -50,7 +50,7 @@ export default function ChatMessages({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
+    <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin" aria-live="polite" aria-label="Chat messages">
       {messages.map((msg) => (
         <ChatMessage
           key={msg.id}

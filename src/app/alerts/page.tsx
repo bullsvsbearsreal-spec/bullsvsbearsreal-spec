@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2, LogIn, Smartphone } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import Link from 'next/link';
@@ -194,9 +195,9 @@ export default function AlertsPage() {
           notificationPrefs: { email, cooldownMinutes: cooldown },
         }),
       });
-      if (!res.ok) console.warn('Failed to save notification prefs:', res.status);
-    } catch (e) {
-      console.warn('Failed to save notification prefs:', e);
+      // Silently handle save failures — prefs are non-critical
+    } catch {
+      // Silently handle
     }
     setPrefsSaving(false);
   };
@@ -206,7 +207,7 @@ export default function AlertsPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="text-white">
+      <main id="main-content" className="text-white">
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -548,6 +549,7 @@ export default function AlertsPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

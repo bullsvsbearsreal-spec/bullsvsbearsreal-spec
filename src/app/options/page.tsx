@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatCompact, formatPrice } from '@/lib/utils/format';
 import {
@@ -11,6 +12,8 @@ import {
   DollarSign, Activity, Globe, TrendingUp, TrendingDown, Calendar,
   Shield, ChevronRight, Zap,
 } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
+import { useApi } from '@/hooks/useSWRApi';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -744,13 +747,14 @@ function IVSmileChart({
 
 /* ─── Metric Card ────────────────────────────────────────────────── */
 
-function MetricCard({ icon, label, value, sub, accent, className = '' }: {
+function MetricCard({ icon, label, value, sub, accent, className = '', flash }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub?: React.ReactNode;
   accent?: string;
   className?: string;
+  flash?: string;
 }) {
   return (
     <div className={`relative overflow-hidden bg-hub-darker border border-white/[0.06] rounded-2xl px-4 py-4 ${className}`}>
@@ -761,7 +765,7 @@ function MetricCard({ icon, label, value, sub, accent, className = '' }: {
         {icon}
         <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">{label}</span>
       </div>
-      <p className="text-2xl font-bold text-white font-mono leading-none">{value}</p>
+      <p className={`text-2xl font-bold text-white font-mono leading-none ${flash || ''}`}>{value}</p>
       {sub && <div className="mt-2">{sub}</div>}
     </div>
   );
@@ -771,52 +775,53 @@ function MetricCard({ icon, label, value, sub, accent, className = '' }: {
 
 export default function OptionsPage() {
   const [currency, setCurrency] = useState<'BTC' | 'ETH' | 'SOL'>('BTC');
-  const [data, setData] = useState<OptionsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [activeExchange, setActiveExchange] = useState<string>('all');
   const [liveSpot, setLiveSpot] = useState<number>(0);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [res, tickerRes] = await Promise.all([
-        fetch(`/api/options?currency=${currency}`),
-        fetch('/api/tickers').then(r => r.ok ? r.json() : null).catch(() => null),
-      ]);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      setData(json);
-      setLastUpdate(new Date());
-      setActiveExchange('all');
-      // Use live spot price from tickers API (more accurate than Deribit index)
-      if (tickerRes) {
-        const tickers = Array.isArray(tickerRes) ? tickerRes : tickerRes.data ?? [];
-        let bestPrice = 0, bestVol = 0;
-        for (const t of tickers) {
-          const sym = (t.symbol || '').replace(/(USDT|USD|USDC|PERP|SWAP)$/i, '');
-          if (sym === currency) {
-            const vol = Number(t.quoteVolume24h) || 0;
-            if (vol > bestVol) { bestPrice = t.lastPrice || 0; bestVol = vol; }
-          }
+  interface OptionsBundle { options: OptionsResponse; spot: number }
+
+  const fetcher = useCallback(async (): Promise<OptionsBundle> => {
+    const [res, tickerRes] = await Promise.all([
+      fetch(`/api/options?currency=${currency}`),
+      fetch('/api/tickers').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    // Use live spot price from tickers API (more accurate than Deribit index)
+    let bestPrice = 0, bestVol = 0;
+    if (tickerRes) {
+      const tickers = Array.isArray(tickerRes) ? tickerRes : tickerRes.data ?? [];
+      for (const t of tickers) {
+        const sym = (t.symbol || '').replace(/(USDT|USD|USDC|PERP|SWAP)$/i, '');
+        if (sym === currency) {
+          const vol = Number(t.quoteVolume24h) || 0;
+          if (vol > bestVol) { bestPrice = t.lastPrice || 0; bestVol = vol; }
         }
-        if (bestPrice > 0) setLiveSpot(bestPrice);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
     }
+    return { options: json as OptionsResponse, spot: bestPrice };
   }, [currency]);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data: bundle, error: fetchError, isLoading: loading, lastUpdate, refresh: fetchData } = useApi<OptionsBundle>({
+    key: `options-${currency}`,
+    fetcher,
+    refreshInterval: 60000,
+  });
+
+  const data = bundle?.options ?? null;
+  const error = fetchError;
+
+  // Sync live spot from bundle
+  const prevSpotRef = useRef(0);
+  if (bundle && bundle.spot > 0 && bundle.spot !== prevSpotRef.current) {
+    prevSpotRef.current = bundle.spot;
+    if (bundle.spot !== liveSpot) setLiveSpot(bundle.spot);
+  }
+
+  const pcRatioFlash = useFlash(data?.putCallRatio);
+  const totalOIFlash = useFlash(data?.totalOI);
+  const spotFlash = useFlash(liveSpot || data?.underlyingPrice);
 
   const filteredStrikes = useMemo(() => {
     if (!data) return [];
@@ -845,7 +850,7 @@ export default function OptionsPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
 
         {/* ─── Page Header ─── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
@@ -879,14 +884,15 @@ export default function OptionsPage() {
               ))}
             </div>
 
+            <DataFreshness exchangeCount={activeCount} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
+              aria-label="Refresh data"
               className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <UpdatedAgo date={lastUpdate} />
           </div>
         </div>
 
@@ -949,6 +955,7 @@ export default function OptionsPage() {
                 label="Put/Call Ratio"
                 value={(data.putCallRatio || 0).toFixed(2)}
                 accent={data.putCallRatio > 1 ? '#ef4444' : '#22c55e'}
+                flash={pcRatioFlash}
                 sub={
                   <span className="text-xs text-neutral-500">
                     {data.putCallRatio > 1 ? 'Bearish hedging' : data.putCallRatio < 0.7 ? 'Bullish bias' : 'Balanced'}
@@ -962,6 +969,7 @@ export default function OptionsPage() {
                 label="Total Options OI"
                 value={`$${formatCompact(data.totalOI)}`}
                 accent="#3b82f6"
+                flash={totalOIFlash}
                 sub={
                   <span className="text-xs text-neutral-500">{data.instrumentCount.toLocaleString()} instruments</span>
                 }
@@ -972,6 +980,7 @@ export default function OptionsPage() {
                 icon={<DollarSign className="w-4 h-4 text-neutral-400" />}
                 label={`${currency} Spot`}
                 value={formatPrice(liveSpot || data.underlyingPrice)}
+                flash={spotFlash}
                 sub={
                   <span className="text-xs text-neutral-500">Live spot price</span>
                 }
@@ -1321,6 +1330,7 @@ export default function OptionsPage() {
           </div>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

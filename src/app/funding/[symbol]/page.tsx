@@ -5,9 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Percent, Activity, DollarSign } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
+import { useFlash } from '@/hooks/useFlash';
 import { useApi } from '@/hooks/useSWRApi';
 import { fetchAllFundingRates, fetchAllOpenInterest } from '@/lib/api/aggregator';
 import { FundingRateData, OpenInterestData } from '@/lib/api/types';
@@ -50,12 +53,13 @@ type TimeRange = '7d' | '30d';
 
 // ── Custom tooltip — compact, sorted, max 8 visible ──
 
-function FundingChartTooltip({ active, payload, label }: any) {
+interface ChartTooltipEntry { name: string; value: number | null; color: string }
+function FundingChartTooltip({ active, payload, label }: { active?: boolean; payload?: ChartTooltipEntry[]; label?: string }) {
   if (!active || !payload?.length) return null;
 
   const entries = payload
-    .filter((e: any) => e.value != null)
-    .sort((a: any, b: any) => b.value - a.value); // highest rate first
+    .filter((e: ChartTooltipEntry) => e.value != null)
+    .sort((a: ChartTooltipEntry, b: ChartTooltipEntry) => b.value! - a.value!);
 
   const visible = entries.slice(0, 8);
   const remaining = entries.length - visible.length;
@@ -66,12 +70,12 @@ function FundingChartTooltip({ active, payload, label }: any) {
       style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}
     >
       <p className="text-neutral-400 mb-1.5 font-medium">
-        {new Date(label).toLocaleString(undefined, {
+        {label ? new Date(label).toLocaleString(undefined, {
           month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-        })}
+        }) : ''}
       </p>
       <div className="flex flex-col gap-0.5">
-        {visible.map((entry: any) => (
+        {visible.map((entry: ChartTooltipEntry) => (
           <div key={entry.name} className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5 min-w-0">
               <span
@@ -82,9 +86,9 @@ function FundingChartTooltip({ active, payload, label }: any) {
             </div>
             <span
               className="font-mono tabular-nums font-semibold text-[11px] flex-shrink-0"
-              style={{ color: entry.value >= 0 ? '#34D399' : '#FB7185' }}
+              style={{ color: (entry.value ?? 0) >= 0 ? '#34D399' : '#FB7185' }}
             >
-              {entry.value >= 0 ? '+' : ''}{entry.value.toFixed(4)}%
+              {(entry.value ?? 0) >= 0 ? '+' : ''}{(entry.value ?? 0).toFixed(4)}%
             </span>
           </div>
         ))}
@@ -166,6 +170,9 @@ export default function SymbolFundingPage() {
     oiMap.forEach(v => { totalOI += v; });
     return { avg, highest, lowest, totalOI, count: symbolRates.length };
   }, [symbolRates, oiMap]);
+
+  const avgRateFlash = useFlash(stats?.avg);
+  const totalOIFlash = useFlash(stats?.totalOI);
 
   // History data for chart — per-exchange lines from DB
   const liveExchanges = useMemo(() => {
@@ -287,7 +294,7 @@ export default function SymbolFundingPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Back nav */}
         <Link
           href="/funding"
@@ -319,11 +326,34 @@ export default function SymbolFundingPage() {
               )}
             </p>
           </div>
+          {lastUpdate && <DataFreshness exchangeCount={symbolRates.length} lastUpdated={lastUpdate} />}
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
+          <div className="animate-pulse space-y-6">
+            {/* Stat cards skeleton */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 space-y-2">
+                  <div className="h-3 w-16 bg-white/[0.06] rounded" />
+                  <div className="h-6 w-24 bg-white/[0.06] rounded" />
+                  <div className="h-3 w-20 bg-white/[0.04] rounded" />
+                </div>
+              ))}
+            </div>
+            {/* Chart skeleton */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl h-64" />
+            {/* Table skeleton */}
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.03]">
+                  <div className="h-5 w-5 bg-white/[0.06] rounded-full" />
+                  <div className="h-4 w-20 bg-white/[0.06] rounded" />
+                  <div className="flex-1" />
+                  <div className="h-4 w-16 bg-white/[0.06] rounded" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : error ? (
           <div className="text-center py-20 text-neutral-600">
@@ -346,7 +376,7 @@ export default function SymbolFundingPage() {
                     <Percent className="w-3.5 h-3.5" />
                     Avg Rate
                   </div>
-                  <div className={`text-lg font-bold font-mono ${getRateColor(stats.avg)}`}>
+                  <div className={`text-lg font-bold font-mono ${getRateColor(stats.avg)} ${avgRateFlash || ''}`}>
                     {formatRate(stats.avg)}
                   </div>
                   <div className="text-neutral-600 text-xs mt-1">
@@ -387,7 +417,7 @@ export default function SymbolFundingPage() {
                     <Activity className="w-3.5 h-3.5" />
                     Total OI
                   </div>
-                  <div className="text-lg font-bold font-mono text-white">
+                  <div className={`text-lg font-bold font-mono text-white ${totalOIFlash || ''}`}>
                     {stats.totalOI > 0 ? formatUSD(stats.totalOI) : '—'}
                   </div>
                   <div className="text-neutral-600 text-xs mt-1">
@@ -551,7 +581,7 @@ export default function SymbolFundingPage() {
                 </p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full" aria-label="Funding rates by exchange">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-left">Exchange</th>
@@ -709,6 +739,7 @@ export default function SymbolFundingPage() {
           </>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

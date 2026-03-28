@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import {
   EVENT_CATEGORIES,
@@ -414,7 +415,7 @@ export default function EconomicCalendarPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Page header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
@@ -564,7 +565,7 @@ export default function EconomicCalendarPage() {
               className="w-full pl-9 pr-8 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/[0.08] text-neutral-500">
+              <button onClick={() => setSearchQuery('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/[0.08] text-neutral-500">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -682,6 +683,7 @@ export default function EconomicCalendarPage() {
           {/* Category dropdown */}
           <div className="relative">
             <select
+              aria-label="Filter by category"
               value={categoryFilter}
               onChange={(e) =>
                 setCategoryFilter(
@@ -1077,6 +1079,7 @@ export default function EconomicCalendarPage() {
           </p>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

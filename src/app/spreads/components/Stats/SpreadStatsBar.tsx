@@ -2,8 +2,9 @@
 
 import { memo } from 'react';
 import { Zap, BarChart3, TrendingUp, TrendingDown, Activity } from 'lucide-react';
-import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { fp } from '../../lib/spread-math';
+import { useFlash } from '../../hooks/useFlash';
+import { getSpreadSlang } from '../../lib/trader-slang';
 import type { SpreadStats, TfKey, WsPrice } from '../../lib/types';
 import { TFS } from '../../lib/types';
 
@@ -17,11 +18,14 @@ interface SpreadStatsBarProps {
 
 function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarProps) {
   const tfLabel = TFS.find(t => t.key === tf)?.label || tf;
+  const spreadFlash = useFlash(stats.cur);
+  const hiFlash = useFlash(stats.hi?.p);
+  const loFlash = useFlash(stats.lo?.p);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
       {/* Current Spread */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
+      <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4" title={getSpreadSlang(stats.pct)}>
         <div className="flex items-center gap-2 mb-2">
           <Zap className="w-4 h-4 text-hub-yellow" />
           <span className="text-xs text-neutral-500">
@@ -41,7 +45,7 @@ function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarPr
               </div>
             </div>
             <div className="border-t border-white/[0.06] pt-1.5">
-              <p className="text-xl font-bold font-mono text-hub-yellow">${fp(stats.cur)}</p>
+              <p className={`text-xl font-bold font-mono text-hub-yellow ${spreadFlash}`}>${fp(stats.cur)}</p>
               <p className="text-[11px] text-neutral-500">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
               {stats.percentile !== null && (
                 <p className="text-[10px] text-neutral-600 mt-0.5">
@@ -52,7 +56,7 @@ function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarPr
           </>
         ) : (
           <>
-            <p className="text-2xl font-bold font-mono text-hub-yellow">${fp(stats.cur)}</p>
+            <p className={`text-2xl font-bold font-mono text-hub-yellow ${spreadFlash}`}>${fp(stats.cur)}</p>
             <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
             <div className="flex items-center gap-2 mt-1">
               {stats.percentile !== null && (
@@ -97,7 +101,7 @@ function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarPr
           <TrendingUp className="w-4 h-4 text-green-400" />
           <span className="text-xs text-neutral-500">{tf === 'live' ? 'Highest Price' : 'Last Highest'}</span>
         </div>
-        <p className="text-2xl font-bold font-mono text-white">${stats.hi ? fp(stats.hi.p) : '—'}</p>
+        <p className={`text-2xl font-bold font-mono text-white ${hiFlash}`}>${stats.hi ? fp(stats.hi.p) : '—'}</p>
         <p className="text-[11px] text-green-400 mt-1">{stats.hi?.e}</p>
       </div>
 
@@ -107,7 +111,7 @@ function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarPr
           <TrendingDown className="w-4 h-4 text-red-400" />
           <span className="text-xs text-neutral-500">{tf === 'live' ? 'Lowest Price' : 'Last Lowest'}</span>
         </div>
-        <p className="text-2xl font-bold font-mono text-white">${stats.lo ? fp(stats.lo.p) : '—'}</p>
+        <p className={`text-2xl font-bold font-mono text-white ${loFlash}`}>${stats.lo ? fp(stats.lo.p) : '—'}</p>
         <p className="text-[11px] text-red-400 mt-1">{stats.lo?.e}</p>
       </div>
 

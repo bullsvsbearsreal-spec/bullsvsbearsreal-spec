@@ -134,7 +134,7 @@ export default function PriceArbitrageView({ priceArbs }: PriceArbitrageViewProp
         <>
           {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs" aria-label="Price arbitrage opportunities">
               <thead>
                 <tr className="text-neutral-500 text-[10px] uppercase tracking-wider" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <th className="text-left px-4 py-2.5 font-semibold">

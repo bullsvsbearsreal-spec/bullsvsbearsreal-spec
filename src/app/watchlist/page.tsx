@@ -3,9 +3,10 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Plus, X, Star, Copy, Check, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { getWatchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
 import { formatPrice, formatNumber, formatFundingRate, formatPercent } from '@/lib/utils/format';
@@ -80,7 +81,7 @@ export default function WatchlistPage() {
 
   /* ---- data fetchers (useCallback-wrapped to prevent infinite loop) */
   const tickerFetcher = useCallback(
-    () => fetch('/api/tickers').then((r) => r.ok ? r.json() : { data: [] }).then((j: any) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
+    () => fetch('/api/tickers').then((r) => r.ok ? r.json() : { data: [] }).then((j: TickerEntry[] | { data?: TickerEntry[] }) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
     [],
   );
 
@@ -247,7 +248,7 @@ export default function WatchlistPage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* ---------- title bar --------------------------------------- */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -280,7 +281,7 @@ export default function WatchlistPage() {
               Refresh
             </button>
 
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={watchlist.length} lastUpdated={lastUpdate} />
           </div>
         </div>
 
@@ -387,7 +388,7 @@ export default function WatchlistPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
+                <table className="w-full text-[13px]" aria-label="Watchlist symbols">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
                       {([
@@ -400,7 +401,7 @@ export default function WatchlistPage() {
                       ] as [SortField, string][]).map(([field, label]) => (
                         <th
                           key={field}
-                          onClick={() => handleSort(field)}
+                          role="button" tabIndex={0} onClick={() => handleSort(field)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(field); } }}
                           className={`px-4 py-3 text-left font-medium cursor-pointer select-none transition-colors whitespace-nowrap ${
                             sortField === field ? 'text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300'
                           } ${field !== 'symbol' ? 'text-right' : ''}`}
@@ -491,6 +492,7 @@ export default function WatchlistPage() {
         </div>
       </main>
 
+      <ReferralBanner />
       <Footer />
     </div>
   );

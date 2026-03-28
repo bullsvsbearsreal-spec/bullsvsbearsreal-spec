@@ -88,7 +88,7 @@ export default function DevelopersPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Header />
-      <main className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+      <main id="main-content" className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">
           <span className="text-white">Developer</span>{' '}
           <span className="text-amber-400">API</span>
@@ -155,7 +155,7 @@ export default function DevelopersPage() {
                   {loading ? 'Creating...' : 'Generate Key'}
                 </button>
               </div>
-              {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+              {error && <p role="alert" className="text-red-400 text-sm mt-2">{error}</p>}
             </div>
 
             {/* Existing keys */}
@@ -243,7 +243,7 @@ console.log(data);`}
             </Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="API endpoints">
               <thead>
                 <tr className="text-gray-400 border-b border-gray-800">
                   <th className="text-left py-2 pr-4">Method</th>

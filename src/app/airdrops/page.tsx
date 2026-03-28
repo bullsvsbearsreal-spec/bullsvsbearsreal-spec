@@ -3,12 +3,14 @@
 import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import {
   Search, Filter, ChevronDown, ChevronLeft, ChevronRight,
   ExternalLink, Star, Clock, CheckCircle2, AlertCircle,
   Sparkles, Shield, Zap, Globe2, Users, Gamepad2, Wrench,
 } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -114,6 +116,7 @@ function TrackerTab({ airdrops }: { airdrops: Airdrop[] }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
           <input
             type="text"
+            aria-label="Search airdrops"
             placeholder="Search airdrops..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -335,11 +338,11 @@ function CalendarTab({ airdrops }: { airdrops: Airdrop[] }) {
     <div className="space-y-4">
       {/* Month navigation */}
       <div className="flex items-center justify-between">
-        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white/[0.04] text-neutral-400 hover:text-white transition-colors">
+        <button onClick={prevMonth} aria-label="Previous month" className="p-2 rounded-lg hover:bg-white/[0.04] text-neutral-400 hover:text-white transition-colors">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <h2 className="text-sm font-bold text-white">{monthLabel}</h2>
-        <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-white/[0.04] text-neutral-400 hover:text-white transition-colors">
+        <button onClick={nextMonth} aria-label="Next month" className="p-2 rounded-lg hover:bg-white/[0.04] text-neutral-400 hover:text-white transition-colors">
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -545,7 +548,7 @@ export default function AirdropsPage() {
     <div className="min-h-screen bg-black flex flex-col">
       <Header />
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 py-6 space-y-6">
+      <main id="main-content" className="flex-1 max-w-[1400px] mx-auto w-full px-4 py-6 space-y-6">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
@@ -564,9 +567,7 @@ export default function AirdropsPage() {
               <span className="text-neutral-400">{counts.upcoming} Upcoming</span>
             </div>
             <span className="text-neutral-600">{counts.total} Total</span>
-            {data?.dataAsOf && (
-              <span className="text-neutral-700">Updated {data.dataAsOf}</span>
-            )}
+            <DataFreshness exchangeCount={1} lastUpdated={data?.dataAsOf ? new Date(data.dataAsOf).getTime() : null} />
           </div>
         </div>
 
@@ -602,6 +603,7 @@ export default function AirdropsPage() {
         {!isLoading && activeTab === 'guides' && <GuidesTab airdrops={airdrops} />}
       </main>
 
+      <ReferralBanner />
       <Footer />
     </div>
   );

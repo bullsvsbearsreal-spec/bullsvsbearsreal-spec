@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import {
   RefreshCw, Info, Activity, ArrowDownUp, AlertTriangle, BarChart3, Table2, BookOpen,
 } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
 import MultiDepthChart from './components/MultiDepthChart';
 import ExchangeDepthTable from './components/ExchangeDepthTable';
 import TapeView from './components/TapeView';
@@ -137,7 +139,7 @@ export default function OrderflowPage() {
       const json = await res.json();
       setObData(json);
     } catch (err) {
-      console.error('[OrderFlow] orderbook fetch error:', err);
+      // Error handled via obData === null check in UI
     } finally {
       setObLoading(false);
     }
@@ -164,6 +166,10 @@ export default function OrderflowPage() {
     return { totalBid, totalAsk, avgMid, ratio, exchangeCount: available.length };
   })() : null;
 
+  const avgMidFlash = useFlash(multiSummary?.avgMid);
+  const totalBidFlash = useFlash(multiSummary?.totalBid);
+  const totalAskFlash = useFlash(multiSummary?.totalAsk);
+
   const obMaxCum = obData
     ? Math.max(
         obData.bids.length > 0 ? obData.bids[obData.bids.length - 1].cumulative : 0,
@@ -177,7 +183,7 @@ export default function OrderflowPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -195,11 +201,12 @@ export default function OrderflowPage() {
             <button
               onClick={() => activeTab === 'orderbook' ? fetchOrderbook() : multiRefresh()}
               disabled={isLoading}
+              aria-label="Refresh data"
               className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
-            {lastUpdate && <UpdatedAgo date={lastUpdate} />}
+            {lastUpdate && <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />}
           </div>
         </div>
 
@@ -259,15 +266,15 @@ export default function OrderflowPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Avg Mid Price</p>
-                      <p className="text-lg font-bold text-white font-mono">{formatPrice(multiSummary.avgMid)}</p>
+                      <p className={`text-lg font-bold text-white font-mono ${avgMidFlash || ''}`}>{formatPrice(multiSummary.avgMid)}</p>
                     </div>
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Total Bid Depth</p>
-                      <p className="text-lg font-bold text-green-400 font-mono">{formatUsd(multiSummary.totalBid)}</p>
+                      <p className={`text-lg font-bold text-green-400 font-mono ${totalBidFlash || ''}`}>{formatUsd(multiSummary.totalBid)}</p>
                     </div>
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Total Ask Depth</p>
-                      <p className="text-lg font-bold text-red-400 font-mono">{formatUsd(multiSummary.totalAsk)}</p>
+                      <p className={`text-lg font-bold text-red-400 font-mono ${totalAskFlash || ''}`}>{formatUsd(multiSummary.totalAsk)}</p>
                     </div>
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Bid/Ask Ratio</p>
@@ -421,7 +428,7 @@ export default function OrderflowPage() {
                       <p className="text-xs text-neutral-600 mt-0.5">Last 30 trades</p>
                     </div>
                     <div className="overflow-y-auto max-h-[500px]">
-                      <table className="w-full">
+                      <table className="w-full" aria-label="Recent trades">
                         <thead>
                           <tr className="border-b border-white/[0.06]">
                             <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 text-left">Price</th>
@@ -479,6 +486,7 @@ export default function OrderflowPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
+import { useFlash } from '@/hooks/useFlash';
 import { RefreshCw, TrendingUp, TrendingDown, PieChart, DollarSign, BarChart3, Coins, Globe } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 
@@ -80,32 +83,20 @@ const COLORS = [
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function DominancePage() {
-  const [data, setData] = useState<DominanceData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch('/api/dominance');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-      setLastUpdate(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/dominance');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<DominanceData>;
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5 * 60 * 1000); // 5 min refresh
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'dominance',
+    fetcher,
+    refreshInterval: 300000,
+  });
+
+  const mcapFlash = useFlash(data?.totalMarketCap);
+  const volFlash = useFlash(data?.totalVolume24h);
 
   // Breakdown sorted by dominance
   const breakdown = useMemo(() => {
@@ -127,7 +118,7 @@ export default function DominancePage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="text-white">
+      <main id="main-content" className="text-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -141,10 +132,11 @@ export default function DominancePage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <UpdatedAgo date={lastUpdate} />
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['CoinGecko']} />
               <button
                 onClick={fetchData}
                 disabled={loading}
+                aria-label="Refresh data"
                 className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -185,7 +177,7 @@ export default function DominancePage() {
                     <DollarSign className="w-3.5 h-3.5 text-hub-yellow" />
                     <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Total Market Cap</p>
                   </div>
-                  <p className="text-lg font-bold text-white font-mono">
+                  <p className={`text-lg font-bold text-white font-mono ${mcapFlash}`}>
                     {data.totalMarketCap != null ? `$${formatCompact(data.totalMarketCap)}` : '-'}
                   </p>
                   {data.marketCapChange24h != null && (
@@ -200,7 +192,7 @@ export default function DominancePage() {
                     <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
                     <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">24h Volume</p>
                   </div>
-                  <p className="text-lg font-bold text-white font-mono">
+                  <p className={`text-lg font-bold text-white font-mono ${volFlash}`}>
                     {data.totalVolume24h != null ? `$${formatCompact(data.totalVolume24h)}` : '-'}
                   </p>
                   <span className="text-neutral-700 text-[8px]">Global spot+deriv · {data.source === 'cmc' ? 'CoinMarketCap' : 'CoinGecko'}</span>
@@ -309,6 +301,7 @@ export default function DominancePage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

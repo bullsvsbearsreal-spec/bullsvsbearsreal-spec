@@ -78,8 +78,8 @@ export default function ComparisonCharts({ oiChartData, fundingForSymbol, select
             <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={85} />
             <Tooltip content={<OITooltip />} />
             <Bar dataKey="totalOI" radius={[0, 4, 4, 0]} barSize={18} label={{ position: 'right', formatter: formatUSD, fill: '#737373', fontSize: 10 }}>
-              {oiChartData.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              {oiChartData.map((entry, i) => (
+                <Cell key={entry.exchange} fill={CHART_COLORS[i % CHART_COLORS.length]} />
               ))}
             </Bar>
           </BarChart>
@@ -110,8 +110,8 @@ export default function ComparisonCharts({ oiChartData, fundingForSymbol, select
               <YAxis type="category" dataKey="exchange" tick={{ fill: '#a3a3a3', fontSize: 11 }} axisLine={false} tickLine={false} width={75} />
               <Tooltip content={<FundingTooltip />} />
               <Bar dataKey="rate" radius={[0, 4, 4, 0]} barSize={18}>
-                {fundingForSymbol.map((d, i) => (
-                  <Cell key={i} fill={d.rate >= 0 ? '#22c55e' : '#ef4444'} />
+                {fundingForSymbol.map((d) => (
+                  <Cell key={d.exchange} fill={d.rate >= 0 ? '#22c55e' : '#ef4444'} />
                 ))}
               </Bar>
             </BarChart>

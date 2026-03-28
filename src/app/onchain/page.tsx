@@ -4,8 +4,10 @@ import { useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
+import { useFlash } from '@/hooks/useFlash';
 import { formatUSD, formatCompact } from '@/lib/utils/format';
 import {
   RefreshCw,
@@ -152,6 +154,7 @@ function SummaryCard({
   value,
   sub,
   accent,
+  flash,
   children,
 }: {
   icon: React.ReactNode;
@@ -159,6 +162,7 @@ function SummaryCard({
   value: string;
   sub?: string;
   accent?: string;
+  flash?: string;
   children?: React.ReactNode;
 }) {
   return (
@@ -167,7 +171,7 @@ function SummaryCard({
         <div className="text-neutral-500">{icon}</div>
         <span className="text-xs text-neutral-500 font-medium">{label}</span>
       </div>
-      <div className="text-xl font-bold font-mono" style={accent ? { color: accent } : undefined}>
+      <div className={`text-xl font-bold font-mono ${flash || ''}`} style={accent ? { color: accent } : undefined}>
         <span className={accent ? '' : 'text-white'}>{value}</span>
       </div>
       {sub && <p className="text-[11px] text-neutral-500 mt-1">{sub}</p>}
@@ -212,6 +216,10 @@ export default function OnChainPage() {
     [data],
   );
 
+  const hashFlash = useFlash(data?.hashRate?.current);
+  const mvrvFlash = useFlash(data?.mvrv?.current);
+  const puellFlash = useFlash(data?.puellMultiple?.current);
+
   const hashRateChange = data?.hashRate?.change30d;
   const supplyPercent = data?.supply?.percentMined ?? (data?.supply ? (data.supply.current / data.supply.maxSupply) * 100 : 0);
 
@@ -228,7 +236,7 @@ export default function OnChainPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Blockchain']} />
             <button
               onClick={refresh}
               disabled={isRefreshing}
@@ -280,6 +288,7 @@ export default function OnChainPage() {
                 icon={<Cpu className="w-4 h-4" />}
                 label="Hash Rate"
                 value={formatHashRate(data.hashRate.current)}
+                flash={hashFlash}
                 sub={
                   hashRateChange != null
                     ? `${hashRateChange >= 0 ? '+' : ''}${hashRateChange.toFixed(1)}% (30d)`
@@ -310,6 +319,7 @@ export default function OnChainPage() {
                 label="MVRV Z-Score"
                 value={data.mvrv.current.toFixed(2)}
                 accent={mvrvColor(data.mvrv.current)}
+                flash={mvrvFlash}
               >
                 {data.mvrv.signal && (
                   <span
@@ -325,6 +335,7 @@ export default function OnChainPage() {
                 label="Puell Multiple"
                 value={data.puellMultiple.current.toFixed(2)}
                 accent={puellColor(data.puellMultiple.current)}
+                flash={puellFlash}
               >
                 {data.puellMultiple.signal && (
                   <span
@@ -535,6 +546,7 @@ export default function OnChainPage() {
           </>
         ) : null}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

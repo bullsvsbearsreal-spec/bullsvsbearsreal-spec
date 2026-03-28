@@ -104,7 +104,7 @@ export default function SecuritySection() {
                 required
               />
             </div>
-            {pwError && <p className="text-xs text-red-400">{pwError}</p>}
+            {pwError && <p role="alert" className="text-xs text-red-400">{pwError}</p>}
             {pwSuccess && (
               <p className="text-xs text-green-400 flex items-center gap-1">
                 <Check className="w-3 h-3" /> Password changed

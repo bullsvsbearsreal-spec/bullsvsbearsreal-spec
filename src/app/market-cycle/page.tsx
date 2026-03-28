@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Activity, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 
 const PiCycleChart = dynamic(() => import('./components/MarketCycleCharts').then(m => ({ default: m.PiCycleChart })), { ssr: false });
@@ -121,35 +123,19 @@ function CardSkeleton() {
 /* ─── Main Page Component ────────────────────────────────────────── */
 
 export default function MarketCyclePage() {
-  const [data, setData] = useState<MarketCycleData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchData = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) setRefreshing(true);
-      const res = await fetch('/api/market-cycle');
-      if (!res.ok) throw new Error(`API returned ${res.status}`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      setData(json);
-      setLastUpdated(new Date());
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/market-cycle');
+    if (!res.ok) throw new Error(`API returned ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json as MarketCycleData;
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(() => fetchData(true), REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data, error, isLoading: loading, isRefreshing: refreshing, lastUpdate: lastUpdated, refresh } = useApi({
+    key: 'market-cycle',
+    fetcher,
+    refreshInterval: REFRESH_INTERVAL,
+  });
 
   const signalConfig = data ? getSignalConfig(data.piCycle.signal) : null;
 
@@ -173,9 +159,9 @@ export default function MarketCyclePage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <UpdatedAgo date={lastUpdated} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdated} sources={['CoinGecko']} />
             <button
-              onClick={() => fetchData(true)}
+              onClick={refresh}
               disabled={refreshing}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-500 hover:text-white transition-colors text-xs"
             >
@@ -191,7 +177,7 @@ export default function MarketCyclePage() {
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
             <button
-              onClick={() => fetchData(true)}
+              onClick={refresh}
               className="ml-auto text-xs text-hub-yellow hover:underline whitespace-nowrap"
             >
               Retry
@@ -456,6 +442,7 @@ export default function MarketCyclePage() {
           </div>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

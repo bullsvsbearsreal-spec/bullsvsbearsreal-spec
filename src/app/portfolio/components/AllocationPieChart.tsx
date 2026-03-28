@@ -37,8 +37,8 @@ export default function AllocationPieChart({ pieData }: { pieData: PieDataItem[]
             dataKey="value"
             stroke="none"
           >
-            {pieData.map((_, i) => (
-              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+            {pieData.map((entry, i) => (
+              <Cell key={entry.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
             ))}
           </Pie>
           <Tooltip

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import CoinCard from '@/components/CoinCard';
 import EventsCalendar from '@/components/EventsCalendar';
 import { getCoinData, CoinData, formatPrice, formatNumber, formatPercent } from '@/lib/api/coingecko';
@@ -38,7 +40,7 @@ export default function CoinPage() {
     return (
       <div className="min-h-screen bg-hub-black">
         <Header />
-        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse space-y-6">
             <div className="h-8 w-32 bg-white/[0.04] rounded-lg" />
             <div className="h-64 bg-white/[0.04] rounded-xl" />
@@ -53,7 +55,7 @@ export default function CoinPage() {
     return (
       <div className="min-h-screen bg-hub-black">
         <Header />
-        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-20">
             <h1 className="text-2xl font-bold text-white mb-4">Coin not found</h1>
             <p className="text-neutral-600 mb-6">The coin "{coinId}" could not be found.</p>
@@ -80,7 +82,7 @@ export default function CoinPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
@@ -116,10 +118,10 @@ export default function CoinPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-              <button className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
+              <button aria-label="Set price alert" className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
                 <Bell className="w-5 h-5 text-neutral-600" />
               </button>
-              <button className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
+              <button aria-label="Share" className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
                 <Share2 className="w-5 h-5 text-neutral-600" />
               </button>
               <a
@@ -313,6 +315,8 @@ export default function CoinPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
+      <Footer />
     </div>
   );
 }

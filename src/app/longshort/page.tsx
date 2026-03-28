@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import DataFreshness from '@/components/DataFreshness';
 
 const LSChart = dynamic(() => import('./components/LSChart'), { ssr: false });
 
@@ -69,26 +70,26 @@ export default function LongShortPage() {
   });
 
   // Multi-symbol table data
-  const [multiData, setMultiData] = useState<Record<string, { longRatio: number; shortRatio: number }>>({});
-
-  useEffect(() => {
-    async function fetchMulti() {
-      const results: Record<string, { longRatio: number; shortRatio: number }> = {};
-      const promises = MULTI_SYMBOLS.map(async (sym) => {
-        try {
-          const res = await fetch(`/api/longshort?symbol=${sym}&limit=1`);
-          if (!res.ok) return;
-          const d = await res.json();
-          results[sym] = { longRatio: d.longRatio, shortRatio: d.shortRatio };
-        } catch { /* skip */ }
-      });
-      await Promise.all(promises);
-      setMultiData(results);
-    }
-    fetchMulti();
-    const interval = setInterval(fetchMulti, 60000); // 60s (was 30s)
-    return () => clearInterval(interval);
+  const multiFetcher = useCallback(async () => {
+    const results: Record<string, { longRatio: number; shortRatio: number }> = {};
+    const promises = MULTI_SYMBOLS.map(async (sym) => {
+      try {
+        const res = await fetch(`/api/longshort?symbol=${sym}&limit=1`);
+        if (!res.ok) return;
+        const d = await res.json();
+        results[sym] = { longRatio: d.longRatio, shortRatio: d.shortRatio };
+      } catch { /* skip */ }
+    });
+    await Promise.all(promises);
+    return results;
   }, []);
+
+  const { data: rawMultiData } = useApi({
+    key: 'longshort-multi',
+    fetcher: multiFetcher,
+    refreshInterval: 60000,
+  });
+  const multiData = rawMultiData ?? {};
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -120,7 +121,7 @@ export default function LongShortPage() {
   return (
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
@@ -130,7 +131,7 @@ export default function LongShortPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
@@ -251,7 +252,7 @@ export default function LongShortPage() {
             <h2 className="text-sm font-medium text-neutral-400">All Symbols — Current Ratio</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs" aria-label="Long/short ratios by symbol">
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   <th className="text-left px-4 py-2 text-neutral-500 font-medium">Symbol</th>
@@ -309,6 +310,7 @@ export default function LongShortPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

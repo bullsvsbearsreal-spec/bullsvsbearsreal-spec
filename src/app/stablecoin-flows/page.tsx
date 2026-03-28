@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
 import { formatCompact } from '@/lib/utils/format';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -51,31 +55,20 @@ function getChainColor(chain: string): string {
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function StablecoinFlowsPage() {
-  const [data, setData] = useState<Response | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch('/api/stablecoins');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/stablecoins');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<Response>;
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'stablecoins',
+    fetcher,
+    refreshInterval: 300000,
+  });
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const mcapFlash = useFlash(data?.totalMcap);
 
   // Chain aggregation across all stablecoins
   const chainTotals = useMemo(() => {
@@ -100,7 +93,7 @@ export default function StablecoinFlowsPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="text-white">
+      <main id="main-content" className="text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
           {/* Title */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -113,9 +106,11 @@ export default function StablecoinFlowsPage() {
                 Track stablecoin market caps, chain distribution, and weekly/monthly changes
               </p>
             </div>
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['DefiLlama']} />
             <button
               onClick={fetchData}
               disabled={loading}
+              aria-label="Refresh data"
               className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -123,9 +118,10 @@ export default function StablecoinFlowsPage() {
           </div>
 
           {loading && !data && (
-            <div className="flex items-center justify-center py-20">
-              <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
-              <span className="ml-3 text-neutral-400">Loading stablecoin data...</span>
+            <div className="space-y-4">
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl h-24 animate-pulse" />
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl h-[200px] animate-pulse" />
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl h-[400px] animate-pulse" />
             </div>
           )}
 
@@ -141,7 +137,7 @@ export default function StablecoinFlowsPage() {
               {/* Total Market Cap */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-6 py-5 mb-6">
                 <p className="text-xs text-neutral-500 mb-1">Total Stablecoin Market Cap</p>
-                <p className="text-3xl font-bold text-white">${formatCompact(data.totalMcap)}</p>
+                <p className={`text-3xl font-bold text-white ${mcapFlash}`}>${formatCompact(data.totalMcap)}</p>
                 <p className="text-xs text-neutral-500 mt-1">{data.count} USD-pegged stablecoins tracked</p>
               </div>
 
@@ -198,7 +194,7 @@ export default function StablecoinFlowsPage() {
               {/* Stablecoin Table */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full" aria-label="Stablecoin market data">
                     <thead>
                       <tr className="border-b border-white/[0.06]">
                         <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">#</th>
@@ -294,6 +290,7 @@ export default function StablecoinFlowsPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

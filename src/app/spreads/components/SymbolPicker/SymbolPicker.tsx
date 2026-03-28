@@ -3,6 +3,7 @@
 import { memo, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { getCoinIcon } from '@/lib/coinIcons';
+import WatchlistStar from '@/components/WatchlistStar';
 import { SYMBOLS } from '../../lib/symbols';
 import type { AssetClass } from '../../lib/symbols';
 
@@ -93,12 +94,15 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={getCoinIcon(s)}
-                  alt=""
+                  alt={`${s} icon`}
                   className="w-4 h-4 rounded-full"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
                 {s}
-                {s === current && <span className="ml-auto text-hub-yellow text-xs">✓</span>}
+                <span className="ml-auto flex items-center gap-1">
+                  <WatchlistStar symbol={s} />
+                  {s === current && <span className="text-hub-yellow text-xs">✓</span>}
+                </span>
               </button>
             ))}
           </div>
@@ -125,12 +129,15 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={getCoinIcon(s)}
-                  alt=""
+                  alt={`${s} icon`}
                   className="w-4 h-4 rounded-full"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
                 {s}
-                {s === current && <span className="ml-auto text-hub-yellow text-xs">✓</span>}
+                <span className="ml-auto flex items-center gap-1">
+                  <WatchlistStar symbol={s} />
+                  {s === current && <span className="text-hub-yellow text-xs">✓</span>}
+                </span>
               </button>
             ))}
             {!query && filtered.length > 20 && (

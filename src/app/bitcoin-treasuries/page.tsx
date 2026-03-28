@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
+import DataFreshness from '@/components/DataFreshness';
+import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
 import { formatUSD, formatCompact } from '@/lib/utils/format';
+import { useFlash } from '@/hooks/useFlash';
 import {
   RefreshCw, Info, Bitcoin, ChevronUp, ChevronDown,
   DollarSign, Building2, Landmark, HardHat, TrendingUp,
@@ -190,33 +193,25 @@ function TopHoldersChart({ holders, maxBTC }: { holders: Holder[]; maxBTC: numbe
 /* --- Main component ------------------------------------------------------- */
 
 export default function BitcoinTreasuriesPage() {
-  const [data, setData] = useState<TreasuryResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/treasuries');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<TreasuryResponse>;
+  }, []);
+
+  const { data, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'treasuries',
+    fetcher,
+    refreshInterval: 600000,
+  });
+
+  const btcFlash = useFlash(data?.totalBTC);
+  const valueFlash = useFlash(data?.totalValueUsd);
+  const priceFlash = useFlash(data?.price);
+
   const [sortKey, setSortKey] = useState<SortKey>('btcHoldings');
   const [sortAsc, setSortAsc] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/treasuries');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-      setLastUpdate(new Date());
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 10 * 60_000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
 
   /* Sort handler */
   const handleSort = useCallback(
@@ -288,7 +283,7 @@ export default function BitcoinTreasuriesPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title + Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -310,7 +305,7 @@ export default function BitcoinTreasuriesPage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
           </div>
         </div>
 
@@ -339,7 +334,7 @@ export default function BitcoinTreasuriesPage() {
                     Total BTC Held
                   </p>
                 </div>
-                <p className="text-xl font-bold text-white font-mono">
+                <p className={`text-xl font-bold text-white font-mono ${btcFlash}`}>
                   {data.totalBTC.toLocaleString()}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -355,7 +350,7 @@ export default function BitcoinTreasuriesPage() {
                     Total Value
                   </p>
                 </div>
-                <p className="text-xl font-bold text-white font-mono">
+                <p className={`text-xl font-bold text-white font-mono ${valueFlash}`}>
                   {formatUSD(data.totalValueUsd)}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -371,7 +366,7 @@ export default function BitcoinTreasuriesPage() {
                     BTC Price
                   </p>
                 </div>
-                <p className="text-xl font-bold text-white font-mono">
+                <p className={`text-xl font-bold text-white font-mono ${priceFlash}`}>
                   ${data.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -462,7 +457,7 @@ export default function BitcoinTreasuriesPage() {
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full" aria-label="Bitcoin treasury holdings">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
                       <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 text-left w-8">
@@ -562,6 +557,7 @@ export default function BitcoinTreasuriesPage() {
           </>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

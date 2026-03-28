@@ -60,7 +60,7 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">

@@ -55,7 +55,7 @@ export default function DocsPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Header />
-      <main className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+      <main id="main-content" className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/developers" className="text-gray-400 hover:text-white text-sm">← Dashboard</Link>
         </div>

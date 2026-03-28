@@ -3,10 +3,12 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import ShareButton from '@/components/ShareButton';
 import { useApi } from '@/hooks/useSWRApi';
 import { fetchPredictionMarkets } from '@/lib/api/aggregator';
 import { RefreshCw, AlertTriangle, Crosshair, Search, Info } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
 import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
 import StatsCards from './components/StatsCards';
 import ArbitrageView from './components/ArbitrageView';
@@ -71,7 +73,7 @@ export default function PredictionMarketsPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Page header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -93,11 +95,7 @@ export default function PredictionMarketsPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-xs text-neutral-600 font-mono">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <DataFreshness exchangeCount={activePlatforms.length} lastUpdated={lastUpdate} />
             <ShareButton text="Prediction market arbitrage on InfoHub" />
             <button
               onClick={refresh}
@@ -229,6 +227,7 @@ export default function PredictionMarketsPage() {
           </div>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

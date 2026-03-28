@@ -1,7 +1,11 @@
+'use client';
+
 import { FundingRateData } from '@/lib/api/types';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { formatRateAdaptive, getRateColor, type FundingPeriod, periodMultiplier, PERIOD_LABELS } from '../utils';
 import { Activity, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
 
 interface FundingStatsProps {
   fundingRates: FundingRateData[];
@@ -39,6 +43,9 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
   const lowestNorm = lowestRate ? normDisplay(lowestRate) : 0;
   const highSlang = getFundingSlang(highestNorm, 'highest');
   const lowSlang = getFundingSlang(lowestNorm, 'lowest');
+  const highFlash = useFlash(highestNorm);
+  const lowFlash = useFlash(lowestNorm);
+  const avgFlash = useFlash(avgRate);
 
   return (
     <div className="space-y-2.5 mb-5">
@@ -65,7 +72,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
               <span className="text-neutral-500 text-[10px] font-semibold uppercase tracking-[0.1em]">Avg Rate /{periodLabel}</span>
               <Activity className="w-3.5 h-3.5 text-neutral-600" />
             </div>
-            <div className={`text-2xl font-black font-mono tracking-tight ${getRateColor(avgRate)}`}>
+            <div className={`text-2xl font-black font-mono tracking-tight ${getRateColor(avgRate)} ${avgFlash}`}>
               {formatRateAdaptive(avgRate)}
             </div>
             <span className="text-neutral-600 text-[9px] mt-1 block" title="Simple average across all exchange-pair combos — not weighted by open interest">Unweighted avg · all pairs</span>
@@ -85,7 +92,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
                 <div className="flex items-baseline gap-2">
                   <span className={`text-2xl font-black font-mono tracking-tight ${
                     Math.abs(highestNorm) >= 0.1 ? 'text-pump-hot' : 'text-emerald-400'
-                  }`} style={Math.abs(highestNorm) >= 0.1 ? { textShadow: '0 0 6px rgba(0, 230, 118, 0.3)' } : undefined}>
+                  } ${highFlash}`} style={Math.abs(highestNorm) >= 0.1 ? { textShadow: '0 0 6px rgba(0, 230, 118, 0.3)' } : undefined}>
                     {formatRateAdaptive(highestNorm)}
                   </span>
                   <span className="text-emerald-400/50 text-[11px] font-medium">{highestRate.symbol}</span>
@@ -112,7 +119,7 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
                 <div className="flex items-baseline gap-2">
                   <span className={`text-2xl font-black font-mono tracking-tight ${
                     Math.abs(lowestNorm) >= 0.1 ? 'text-rekt-hot' : 'text-rose-400'
-                  }`} style={Math.abs(lowestNorm) >= 0.1 ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
+                  } ${lowFlash}`} style={Math.abs(lowestNorm) >= 0.1 ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
                     {formatRateAdaptive(lowestNorm)}
                   </span>
                   <span className="text-rose-400/50 text-[11px] font-medium">{lowestRate.symbol}</span>
@@ -143,7 +150,11 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
                   <span className="text-emerald-500/40 text-[11px] font-mono font-bold w-4">{idx + 1}</span>
                   <ExchangeLogo exchange={fr.exchange.toLowerCase()} size={14} />
                   <span className="text-white text-xs font-semibold flex-1">{fr.symbol}</span>
-                  <span className="text-neutral-600 text-[10px]">{fr.exchange}</span>
+                  {(() => { const ref = getExchangeReferralUrl(fr.exchange); return ref ? (
+                    <a href={ref} target="_blank" rel="noopener noreferrer" className="text-neutral-600 text-[10px] hover:text-hub-yellow transition">{fr.exchange}</a>
+                  ) : (
+                    <span className="text-neutral-600 text-[10px]">{fr.exchange}</span>
+                  ); })()}
                   <span className={`font-mono text-xs font-bold ${
                     Math.abs(rate) >= 0.1 ? 'text-pump-hot' : 'text-emerald-400'
                   }`} style={Math.abs(rate) >= 0.1 ? { textShadow: '0 0 4px rgba(0, 230, 118, 0.2)' } : undefined}>
@@ -172,7 +183,11 @@ export default function FundingStats({ fundingRates, avgRate, highestRate, lowes
                   <span className="text-rose-500/40 text-[11px] font-mono font-bold w-4">{idx + 1}</span>
                   <ExchangeLogo exchange={fr.exchange.toLowerCase()} size={14} />
                   <span className="text-white text-xs font-semibold flex-1">{fr.symbol}</span>
-                  <span className="text-neutral-600 text-[10px]">{fr.exchange}</span>
+                  {(() => { const ref = getExchangeReferralUrl(fr.exchange); return ref ? (
+                    <a href={ref} target="_blank" rel="noopener noreferrer" className="text-neutral-600 text-[10px] hover:text-hub-yellow transition">{fr.exchange}</a>
+                  ) : (
+                    <span className="text-neutral-600 text-[10px]">{fr.exchange}</span>
+                  ); })()}
                   <span className={`font-mono text-xs font-bold ${
                     Math.abs(rate) >= 0.1 ? 'text-rekt-hot' : 'text-rose-400'
                   }`} style={Math.abs(rate) >= 0.1 ? { textShadow: '0 0 4px rgba(255, 23, 68, 0.2)' } : undefined}>

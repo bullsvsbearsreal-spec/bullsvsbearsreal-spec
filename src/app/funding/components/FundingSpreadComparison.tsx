@@ -158,7 +158,8 @@ function ExchangeDropdown({
 
 // ── Tooltip ──
 
-function SpreadTooltip({ active, payload, label, exchangeA, exchangeB }: any) {
+interface TooltipProps { active?: boolean; payload?: { payload?: ChartPoint | PriceChartPoint }[]; label?: string; exchangeA: string; exchangeB: string }
+function SpreadTooltip({ active, payload, label, exchangeA, exchangeB }: TooltipProps) {
   if (!active || !payload?.length) return null;
   const pt = payload[0]?.payload as ChartPoint | undefined;
   if (!pt) return null;
@@ -166,7 +167,7 @@ function SpreadTooltip({ active, payload, label, exchangeA, exchangeB }: any) {
   return (
     <div className="rounded-lg px-3 py-2.5 text-xs shadow-xl" style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
       <p className="text-neutral-400 mb-1.5 font-medium">
-        {new Date(label).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        {label ? new Date(label).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
       </p>
       {pt.rateA != null && (
         <div className="flex items-center justify-between gap-4">
@@ -204,7 +205,7 @@ function SpreadTooltip({ active, payload, label, exchangeA, exchangeB }: any) {
 
 // ── Price Gap Tooltip ──
 
-function PriceGapTooltip({ active, payload, label, exchangeA, exchangeB }: any) {
+function PriceGapTooltip({ active, payload, label, exchangeA, exchangeB }: TooltipProps) {
   if (!active || !payload?.length) return null;
   const pt = payload[0]?.payload as PriceChartPoint | undefined;
   if (!pt) return null;
@@ -218,7 +219,7 @@ function PriceGapTooltip({ active, payload, label, exchangeA, exchangeB }: any) 
   return (
     <div className="rounded-lg px-3 py-2.5 text-xs shadow-xl" style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
       <p className="text-neutral-400 mb-1.5 font-medium">
-        {new Date(label).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        {label ? new Date(label).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
       </p>
       {pt.priceA != null && (
         <div className="flex items-center justify-between gap-4">
@@ -330,8 +331,8 @@ export default function FundingSpreadComparison() {
         setExchangeA(keys[0]);
         setExchangeB('');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       setLoading(false);
     }

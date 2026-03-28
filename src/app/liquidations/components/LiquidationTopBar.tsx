@@ -2,6 +2,7 @@
 
 import { Zap } from 'lucide-react';
 import { formatLiqValue } from '@/lib/utils/format';
+import { useFlash } from '@/hooks/useFlash';
 
 type Timeframe = '4h' | '8h' | '12h' | '24h';
 
@@ -41,6 +42,7 @@ export default function LiquidationTopBar({
   const shortPct = 100 - longPct;
   const isHeavy = stats.total >= 50_000_000;
   const slang = getRektSlang(stats.total, longPct);
+  const totalFlash = useFlash(stats.total);
 
   return (
     <div className="px-4 py-2 border-b border-white/[0.06] bg-white/[0.01] flex-shrink-0">
@@ -48,13 +50,13 @@ export default function LiquidationTopBar({
         {/* Left: Title */}
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-hub-yellow" />
-          <span className="text-white font-bold text-base tracking-tight">Liquidations</span>
+          <h1 className="text-white font-bold text-base tracking-tight">Liquidations</h1>
           <span className="heartbeat-dot" style={{ width: 6, height: 6 }} />
         </div>
 
         {/* Center: Inline stats — upgraded with intensity */}
         <div className="hidden md:flex items-center gap-1.5 text-xs font-mono">
-          <span className={`font-black ${isHeavy ? 'text-base text-rekt-hot' : 'text-sm text-white'}`}
+          <span className={`font-black ${isHeavy ? 'text-base text-rekt-hot' : 'text-sm text-white'} ${totalFlash}`}
             style={isHeavy ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
             {formatLiqValue(stats.total)}
           </span>
@@ -97,7 +99,7 @@ export default function LiquidationTopBar({
 
       {/* Mobile stats row */}
       <div className="flex md:hidden items-center gap-1.5 text-[10px] font-mono mt-1">
-        <span className={`font-bold ${isHeavy ? 'text-rekt-hot' : 'text-white'}`}>{formatLiqValue(stats.total)}</span>
+        <span className={`font-bold ${isHeavy ? 'text-rekt-hot' : 'text-white'} ${totalFlash}`}>{formatLiqValue(stats.total)}</span>
         <span className="text-neutral-600">|</span>
         <span className="text-neutral-300 font-bold">{stats.count.toLocaleString()}</span>
         <span className="text-neutral-600">liqs</span>

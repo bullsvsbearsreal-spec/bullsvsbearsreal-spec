@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import ReferralBanner from '@/components/ReferralBanner';
+import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import { formatUSD, formatPrice, formatRelativeTime } from '@/lib/utils/format';
 import {
@@ -15,6 +17,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -133,7 +136,7 @@ function HeatmapVisualization({
         <p className="text-neutral-400 text-sm font-medium mb-1">No liquidation data for this period</p>
         <p className="text-neutral-600 text-xs max-w-md">
           The heatmap populates as liquidation events are recorded. Short timeframes (4H) fill quickly during volatile markets. Try the 24H or 7D view for more data, or check the{' '}
-          <a href="/liquidations" className="text-hub-yellow hover:underline">regular liquidations page</a> for live events.
+          <Link href="/liquidations" className="text-hub-yellow hover:underline">regular liquidations page</Link> for live events.
         </p>
       </div>
     );
@@ -355,11 +358,13 @@ function StatCard({
   label,
   value,
   color,
+  flash,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   color?: string;
+  flash?: string;
 }) {
   return (
     <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4">
@@ -367,7 +372,7 @@ function StatCard({
         <div className="text-neutral-500">{icon}</div>
         <span className="text-xs text-neutral-500 font-medium">{label}</span>
       </div>
-      <span className={`text-xl font-bold font-mono ${color ?? 'text-white'}`}>{value}</span>
+      <span className={`text-xl font-bold font-mono ${color ?? 'text-white'} ${flash || ''}`}>{value}</span>
     </div>
   );
 }
@@ -392,7 +397,7 @@ function RecentLiquidationsTable({ events }: { events: LiquidationEvent[] }) {
         <p className="text-[11px] text-neutral-600 mt-0.5">Latest forced liquidation events</p>
       </div>
       <div className="max-h-[500px] overflow-y-auto">
-        <table className="w-full">
+        <table className="w-full" aria-label="Recent liquidation events">
           <thead className="sticky top-0 bg-hub-darker z-10">
             <tr className="border-b border-white/[0.06]">
               <th className="text-left text-neutral-500 text-[11px] font-medium px-4 py-2.5">Time</th>
@@ -501,6 +506,11 @@ export default function LiquidationHeatmapPage() {
 
   const recentEvents = useMemo(() => data?.summary?.recentEvents ?? [], [data]);
 
+  const totalLiqFlash = useFlash(data?.summary?.totalLiquidations);
+  const totalVolFlash = useFlash(data?.summary?.totalVolume);
+  const longLiqFlash = useFlash(data?.summary?.longLiqVolume);
+  const shortLiqFlash = useFlash(data?.summary?.shortLiqVolume);
+
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
@@ -517,7 +527,7 @@ export default function LiquidationHeatmapPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <UpdatedAgo date={lastUpdate} />
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
             <span className="text-[10px] font-mono text-green-400 bg-green-400/10 px-2 py-0.5 rounded">
               Auto-refresh {timeframe === '7d' ? '5m' : '30s'}
             </span>
@@ -612,23 +622,27 @@ export default function LiquidationHeatmapPage() {
                 icon={<Flame className="w-4 h-4" />}
                 label="Total Liquidations"
                 value={data.summary.totalLiquidations.toLocaleString()}
+                flash={totalLiqFlash}
               />
               <StatCard
                 icon={<DollarSign className="w-4 h-4" />}
                 label="Total Volume"
                 value={formatUSD(data.summary.totalVolume)}
+                flash={totalVolFlash}
               />
               <StatCard
                 icon={<TrendingDown className="w-4 h-4" />}
                 label="Long Liquidated"
                 value={formatUSD(data.summary.longLiqVolume)}
                 color="text-red-400"
+                flash={longLiqFlash}
               />
               <StatCard
                 icon={<TrendingUp className="w-4 h-4" />}
                 label="Short Liquidated"
                 value={formatUSD(data.summary.shortLiqVolume)}
                 color="text-green-400"
+                flash={shortLiqFlash}
               />
             </div>
 
@@ -692,6 +706,7 @@ export default function LiquidationHeatmapPage() {
           </>
         ) : null}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

@@ -3,8 +3,10 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3, Globe } from 'lucide-react';
+import DataFreshness from '@/components/DataFreshness';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
 import { useApi } from '@/hooks/useSWRApi';
@@ -269,7 +271,7 @@ export default function WalletTrackerPage() {
 
   /* ---- fetch prices for USD conversion ------------------------------ */
   const priceFetcher = useCallback(
-    () => fetch('/api/tickers').then((r) => r.json()).then((j: any) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
+    () => fetch('/api/tickers').then((r) => r.json()).then((j: TickerEntry[] | { data?: TickerEntry[] }) => (Array.isArray(j) ? j : j.data ?? [])) as Promise<TickerEntry[]>,
     [],
   );
 
@@ -497,7 +499,7 @@ export default function WalletTrackerPage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* ---------- title bar --------------------------------------- */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -520,11 +522,7 @@ export default function WalletTrackerPage() {
                 Refresh
               </button>
             )}
-            {lastUpdate && (
-              <span className="text-[11px] text-neutral-600 hidden sm:inline">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
           </div>
         </div>
 
@@ -605,7 +603,10 @@ export default function WalletTrackerPage() {
                   </span>
                   <span
                     role="button"
+                    tabIndex={0}
+                    aria-label="Remove wallet"
                     onClick={(e) => { e.stopPropagation(); handleRemoveWallet(w.address); }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleRemoveWallet(w.address); } }}
                     className="p-0.5 rounded hover:bg-white/[0.1] text-neutral-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                   >
                     <X className="w-3 h-3" />
@@ -1531,6 +1532,7 @@ export default function WalletTrackerPage() {
         </div>
       </main>
 
+      <ReferralBanner />
       <Footer />
     </div>
   );

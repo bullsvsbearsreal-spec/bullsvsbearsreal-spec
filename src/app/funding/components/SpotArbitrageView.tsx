@@ -356,7 +356,7 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
           />
           {search && (
             <button onClick={() => { setSearch(''); setCurrentPage(1); }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-neutral-500 hover:text-white hover:bg-white/[0.08] transition-colors">
+              aria-label="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-neutral-500 hover:text-white hover:bg-white/[0.08] transition-colors">
               <X className="w-3 h-3" />
             </button>
           )}
@@ -454,7 +454,7 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
 
       {/* Desktop Table */}
       <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-[12px]" style={{ borderCollapse: 'separate', borderSpacing: '0 2px' }}>
+        <table className="w-full text-[12px]" style={{ borderCollapse: 'separate', borderSpacing: '0 2px' }} aria-label="Spot price arbitrage opportunities">
           <thead>
             <tr>
               <th className="text-left px-3 py-2 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider">

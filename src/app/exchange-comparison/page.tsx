@@ -4,15 +4,22 @@ import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { RefreshCw, AlertTriangle, BarChart3, Table } from 'lucide-react';
 import { formatUSD } from '@/lib/utils/format';
+import DataFreshness from '@/components/DataFreshness';
 
 const ComparisonCharts = dynamic(() => import('./components/ComparisonCharts'), { ssr: false });
 
 type ViewMode = 'chart' | 'table';
 type SortKey = 'oi' | 'funding' | 'volume' | 'symbols';
+
+interface OIEntry { exchange: string; symbol: string; openInterestValue?: number }
+interface FundingEntry { exchange: string; symbol: string; fundingRate: number }
+interface TickerEntry { exchange: string; symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number; quoteVolume24h?: number }
 
 interface ExchangeStats {
   exchange: string;
@@ -33,9 +40,9 @@ export default function ExchangeComparisonPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC');
 
   const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApi<{
-    oi: any[];
-    funding: any[];
-    tickers: any[];
+    oi: OIEntry[];
+    funding: FundingEntry[];
+    tickers: TickerEntry[];
   }>({
     key: 'exchange-comparison',
     fetcher: useCallback(async () => {
@@ -65,7 +72,7 @@ export default function ExchangeComparisonPage() {
     const statsMap = new Map<string, ExchangeStats>();
 
     // OI per exchange
-    oi.forEach((item: any) => {
+    oi.forEach((item: OIEntry) => {
       const ex = item.exchange || 'Unknown';
       if (!statsMap.has(ex)) {
         statsMap.set(ex, {
@@ -82,7 +89,7 @@ export default function ExchangeComparisonPage() {
 
     // Funding per exchange
     const fundingCounts = new Map<string, { sum: number; count: number }>();
-    funding.forEach((fr: any) => {
+    funding.forEach((fr: FundingEntry) => {
       const ex = fr.exchange || 'Unknown';
       if (!statsMap.has(ex)) {
         statsMap.set(ex, {
@@ -109,7 +116,7 @@ export default function ExchangeComparisonPage() {
 
     // Symbol count and volume from tickers
     const tickerSymbolSets = new Map<string, Set<string>>();
-    tickers.forEach((t: any) => {
+    tickers.forEach((t: TickerEntry) => {
       const ex = t.exchange || 'Unknown';
       if (!statsMap.has(ex)) {
         statsMap.set(ex, {
@@ -161,7 +168,7 @@ export default function ExchangeComparisonPage() {
   const availableSymbols = useMemo(() => {
     if (!data) return ['BTC', 'ETH'];
     const symSet = new Set<string>();
-    (Array.isArray(data.funding) ? data.funding : []).forEach((fr: any) => symSet.add(fr.symbol));
+    (Array.isArray(data.funding) ? data.funding : []).forEach((fr: FundingEntry) => symSet.add(fr.symbol));
     return Array.from(symSet).sort();
   }, [data]);
 
@@ -179,7 +186,7 @@ export default function ExchangeComparisonPage() {
   return (
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
@@ -189,11 +196,7 @@ export default function ExchangeComparisonPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-[11px] text-neutral-600">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+            <DataFreshness exchangeCount={sorted.length} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={isRefreshing}
@@ -279,18 +282,18 @@ export default function ExchangeComparisonPage() {
               /* Table view */
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs" aria-label="Exchange comparison">
                     <thead>
                       <tr className="border-b border-white/[0.06]">
                         <th className="text-left px-4 py-2.5 text-neutral-500 font-medium">#</th>
                         <th className="text-left px-4 py-2.5 text-neutral-500 font-medium">Exchange</th>
-                        <th className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white" onClick={() => setSortKey('oi')}>
+                        <th className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => setSortKey('oi')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSortKey('oi'); } }}>
                           Open Interest {sortKey === 'oi' && '↓'}
                         </th>
-                        <th className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white" onClick={() => setSortKey('funding')}>
+                        <th className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => setSortKey('funding')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSortKey('funding'); } }}>
                           Avg Funding {sortKey === 'funding' && '↓'}
                         </th>
-                        <th className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white" onClick={() => setSortKey('symbols')}>
+                        <th className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => setSortKey('symbols')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSortKey('symbols'); } }}>
                           Symbols {sortKey === 'symbols' && '↓'}
                         </th>
                         <th className="px-4 py-2.5 text-neutral-500 font-medium">OI Share</th>
@@ -306,7 +309,11 @@ export default function ExchangeComparisonPage() {
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
                                 <ExchangeLogo exchange={s.exchange.toLowerCase()} size={16} />
-                                <span className="font-medium text-white">{s.exchange}</span>
+                                {(() => { const ref = getExchangeReferralUrl(s.exchange); return ref ? (
+                                  <a href={ref} target="_blank" rel="noopener noreferrer" className="font-medium text-white hover:text-hub-yellow transition">{s.exchange}</a>
+                                ) : (
+                                  <span className="font-medium text-white">{s.exchange}</span>
+                                ); })()}
                               </div>
                             </td>
                             <td className="text-right px-4 py-2.5 text-white font-mono">{formatUSD(s.totalOI)}</td>
@@ -336,6 +343,7 @@ export default function ExchangeComparisonPage() {
           </>
         )}
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

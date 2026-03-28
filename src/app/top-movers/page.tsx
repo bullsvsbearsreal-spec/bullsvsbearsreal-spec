@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import UpdatedAgo from '@/components/UpdatedAgo';
 import DataFreshness from '@/components/DataFreshness';
 import WatchlistStar from '@/components/WatchlistStar';
 import ShowMoreToggle from '@/components/ShowMoreToggle';
 import MobileCard from '@/components/MobileCard';
 import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
+import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Search, ChevronDown, ChevronUp, TrendingUp, TrendingDown, BarChart3, Coins, Info } from 'lucide-react';
+import { useFlash } from '@/hooks/useFlash';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -51,12 +53,14 @@ const fmtPrice = (p: number) => {
 
 /* ─── Component ──────────────────────────────────────────────────── */
 
+interface TopMoversResponse {
+  coins?: Coin[];
+  gainers?: Coin[];
+  losers?: Coin[];
+}
+
 export default function TopMoversPage() {
   const authLimit = useAuthLimit(20);
-  const [coins, setCoins] = useState<Coin[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   // Tab, sort, search, pagination
   const [tab, setTab] = useState<Tab>('gainers');
@@ -68,30 +72,19 @@ export default function TopMoversPage() {
 
   /* ─── Data Fetching ───────────────────────────────────────────── */
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch('/api/top-movers?mode=heatmap');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      // Handle both response formats: { coins: [...] } or { gainers: [...], losers: [...] }
-      const coins = json.coins || [...(json.gainers || []), ...(json.losers || [])];
-      setCoins(coins);
-      setLastUpdate(new Date());
-    } catch (err) {
-      setError('Failed to fetch top movers data.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/top-movers?mode=heatmap');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json: TopMoversResponse = await res.json();
+    return json.coins || [...(json.gainers || []), ...(json.losers || [])];
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data: rawCoins, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: 'top-movers',
+    fetcher,
+    refreshInterval: 60000,
+  });
+  const coins = rawCoins ?? [];
 
   /* ─── Stats ────────────────────────────────────────────────────── */
 
@@ -102,6 +95,8 @@ export default function TopMoversPage() {
     const worst = coins.reduce((a, b) => ((b.change24h ?? 0) < (a.change24h ?? 0) ? b : a), coins[0]);
     return { total: coins.length, avgChange, best, worst };
   }, [coins]);
+
+  const avgFlash = useFlash(stats?.avgChange);
 
   /* ─── Filter + Sort ────────────────────────────────────────────── */
 
@@ -179,7 +174,7 @@ export default function TopMoversPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title Row */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
@@ -216,7 +211,7 @@ export default function TopMoversPage() {
                 <BarChart3 className="w-3 h-3 text-neutral-500" />
                 <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Average Change</span>
               </div>
-              <span className={`delta-badge text-sm ${
+              <span className={`delta-badge text-sm ${avgFlash} ${
                 Math.abs(stats.avgChange) >= 5
                   ? (stats.avgChange >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
                   : (stats.avgChange >= 0 ? 'delta-badge-up' : 'delta-badge-down')
@@ -295,9 +290,13 @@ export default function TopMoversPage() {
 
         {/* Loading State */}
         {loading && coins.length === 0 && (
-          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-12 text-center">
-            <RefreshCw className="w-5 h-5 text-hub-yellow animate-spin mx-auto mb-2" />
-            <span className="text-neutral-500 text-sm">Loading top movers...</span>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-hub-darker border border-white/[0.06] rounded-xl h-20 animate-pulse" />
+              ))}
+            </div>
+            <div className="bg-hub-darker border border-white/[0.06] rounded-xl h-[400px] animate-pulse" />
           </div>
         )}
 
@@ -366,7 +365,7 @@ export default function TopMoversPage() {
 
             {/* Desktop Table (md and above) */}
             <div className="hidden md:block overflow-x-auto scrollbar-accent">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" aria-label="Top movers by 24h change">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
                     <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider w-10">#</th>
@@ -380,7 +379,7 @@ export default function TopMoversPage() {
                     ] as [SortField, string, string][]).map(([field, label, align]) => (
                       <th
                         key={field}
-                        onClick={() => handleSort(field)}
+                        role="button" tabIndex={0} onClick={() => handleSort(field)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(field); } }}
                         className={`px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none ${align} ${
                           sortField === field ? 'text-hub-yellow' : 'text-neutral-500'
                         }`}
@@ -472,6 +471,7 @@ export default function TopMoversPage() {
 
         <SoftAuthGate freeLimit={20} totalCount={filtered.length} dataLabel="coins" />
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

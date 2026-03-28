@@ -63,7 +63,7 @@ export default function CostBreakdownTable({ venues, asset }: Props) {
                 <td className="px-3 py-2 font-mono text-xs font-semibold text-white">{v.available ? fmt(v.totalCost) : '\u2014'}</td>
                 <td className="px-3 py-2 text-neutral-400 font-mono text-xs">{v.available ? fmtUsd(v.maxFillableSize) : '\u2014'}</td>
                 <td className="px-3 py-2 text-neutral-600 text-[10px] uppercase">{v.method.replace('_', ' ')}</td>
-                <td className="px-3 py-2">{tradeUrl && v.available && <a href={tradeUrl} target="_blank" rel="noopener noreferrer" className="text-hub-yellow/60 hover:text-hub-yellow"><ExternalLink className="w-3.5 h-3.5" /></a>}</td>
+                <td className="px-3 py-2">{tradeUrl && v.available && <a href={tradeUrl} target="_blank" rel="noopener noreferrer" aria-label={`Trade on ${v.exchange}`} className="text-hub-yellow/60 hover:text-hub-yellow"><ExternalLink className="w-3.5 h-3.5" /></a>}</td>
               </tr>
             );
           })}

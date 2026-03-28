@@ -17,7 +17,7 @@ function AlertToastInner({ message, onDismiss }: AlertToastProps) {
           <p className="text-sm font-medium text-amber-300">Spread Alert</p>
           <p className="text-xs text-neutral-300 mt-0.5">{message}</p>
         </div>
-        <button onClick={onDismiss} className="text-neutral-500 hover:text-white p-1">
+        <button onClick={onDismiss} aria-label="Dismiss alert" className="text-neutral-500 hover:text-white p-1">
           <X className="w-4 h-4" />
         </button>
       </div>

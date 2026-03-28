@@ -94,7 +94,7 @@ export default function ProfileHeroSection({ session, avatar, accountStats }: Pr
                 Member since {new Date(accountStats.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
               </p>
             )}
-            {avatar.error && <p className="text-xs text-red-400 mt-1">{avatar.error}</p>}
+            {avatar.error && <p role="alert" className="text-xs text-red-400 mt-1">{avatar.error}</p>}
             {/* Avatar Save / Cancel buttons */}
             {avatar.hasUnsaved && (
               <div className="flex items-center gap-2 mt-2 justify-center sm:justify-start">

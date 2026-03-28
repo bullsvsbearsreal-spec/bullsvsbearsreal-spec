@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getCoinIcon } from '@/lib/coinIcons';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { useApi } from '@/hooks/useSWRApi';
 
 function fp(v: number) {
   if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -26,22 +27,20 @@ interface SpreadData {
 export default function SpreadEmbedPage() {
   const params = useSearchParams();
   const symbol = params.get('s') || 'BTC';
-  const [data, setData] = useState<SpreadData | null>(null);
 
-  useEffect(() => {
-    const poll = () => {
-      fetch('/api/spreads/current')
-        .then(r => r.ok ? r.json() : null)
-        .then(json => {
-          const found = json?.data?.find((d: SpreadData) => d.symbol === symbol.toUpperCase());
-          if (found) setData(found);
-        })
-        .catch(() => {});
-    };
-    poll();
-    const timer = setInterval(poll, 10_000);
-    return () => clearInterval(timer);
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/spreads/current');
+    if (!res.ok) return null;
+    const json = await res.json();
+    const found = json?.data?.find((d: SpreadData) => d.symbol === symbol.toUpperCase());
+    return found as SpreadData | null;
   }, [symbol]);
+
+  const { data } = useApi<SpreadData | null>({
+    key: `spread-embed-${symbol}`,
+    fetcher,
+    refreshInterval: 10000,
+  });
 
   if (!data) return (
     <div className="flex items-center justify-center h-screen bg-[#0a0a0f] text-neutral-500 text-sm">Loading...</div>
@@ -53,9 +52,9 @@ export default function SpreadEmbedPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={getCoinIcon(data.symbol)} alt="" className="w-8 h-8 rounded-full" />
+            <img src={getCoinIcon(data.symbol)} alt={`${data.symbol} icon`} className="w-8 h-8 rounded-full" />
             <div>
-              <h2 className="text-lg font-bold">{data.symbol} Spread</h2>
+              <h1 className="text-lg font-bold">{data.symbol} Spread</h1>
               <p className="text-[11px] text-neutral-500">{data.exchangeCount} exchanges</p>
             </div>
           </div>

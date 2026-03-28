@@ -25,6 +25,7 @@ export default function SizeSelector({ value, onChange }: Props) {
       <input
         type="text"
         inputMode="numeric"
+        aria-label="Custom position size"
         value={showCustom ? custom : ''}
         onFocus={() => setShowCustom(true)}
         onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setCustom(val); const num = parseInt(val); if (num >= 1000) onChange(num); }}

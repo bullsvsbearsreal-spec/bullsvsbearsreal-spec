@@ -3,10 +3,12 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import WatchlistStar from '@/components/WatchlistStar';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import UpdatedAgo from '@/components/UpdatedAgo';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import DataFreshness from '@/components/DataFreshness';
 import StaleIndicator from '@/components/StaleIndicator';
 import {
@@ -524,7 +526,7 @@ export default function BasisPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
 
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
 
         {/* ─── Page Header ─── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
@@ -825,7 +827,7 @@ export default function BasisPage() {
                 {/* Table */}
                 <Section className="p-0 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm" aria-label="Basis and funding rate data">
                       <thead>
                         <tr className="border-b border-white/[0.06]">
                           {([
@@ -867,6 +869,7 @@ export default function BasisPage() {
                             >
                               <td className="px-4 py-2.5">
                                 <div className="flex items-center gap-2">
+                                  <WatchlistStar symbol={entry.symbol} />
                                   <TokenIconSimple symbol={entry.symbol} size={20} />
                                   <span className="text-white font-medium text-xs">{entry.symbol}</span>
                                 </div>
@@ -874,7 +877,11 @@ export default function BasisPage() {
                               <td className="px-4 py-2.5">
                                 <div className="flex items-center gap-1.5">
                                   <ExchangeLogo exchange={entry.exchange.toLowerCase()} size={16} />
-                                  <span className="text-neutral-400 text-xs">{entry.exchange}</span>
+                                  {(() => { const ref = getExchangeReferralUrl(entry.exchange); return ref ? (
+                                    <a href={ref} target="_blank" rel="noopener noreferrer" className="text-neutral-400 text-xs hover:text-hub-yellow transition">{entry.exchange}</a>
+                                  ) : (
+                                    <span className="text-neutral-400 text-xs">{entry.exchange}</span>
+                                  ); })()}
                                 </div>
                               </td>
                               <td className="px-4 py-2.5 text-right">
@@ -949,6 +956,7 @@ export default function BasisPage() {
 
         <SoftAuthGate freeLimit={20} totalCount={filteredAndSorted.length} dataLabel="pairs" />
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );

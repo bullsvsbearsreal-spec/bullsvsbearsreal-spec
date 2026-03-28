@@ -68,16 +68,21 @@ function TickerStripInner({ stats, exs, wsPrices, wsSpread, wsCount, sym }: Tick
             <span className={`font-mono text-[10px] ${dev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {dev >= 0 ? '▲' : '▼'}{Math.abs(dev).toFixed(3)}%
             </span>
-            {i < stats.prices.length - 1 && <span className="text-neutral-800 mx-1">│</span>}
+            {i < stats.prices.length - 1 && <span className="text-neutral-600 mx-1" aria-hidden="true">│</span>}
           </div>
         );
       })}
-      <div className="flex-shrink-0 ml-auto pl-4 border-l border-white/[0.06]">
-        <span className="text-[10px] text-neutral-600">SPREAD </span>
-        <span className="font-mono text-[12px] text-hub-yellow font-bold">
-          ${fp(wsSpread?.spread ?? stats.cur)}
+      <div className="flex-shrink-0 ml-auto pl-4 border-l border-white/[0.06] flex items-center gap-2">
+        <div>
+          <span className="text-[10px] text-neutral-600">SPREAD </span>
+          <span className="font-mono text-[12px] text-hub-yellow font-bold">
+            ${fp(wsSpread?.spread ?? stats.cur)}
+          </span>
+        </div>
+        <span className="text-[10px] font-mono text-neutral-500" title="Spread in basis points">
+          {((wsSpread?.pct ?? stats.pct) * 100).toFixed(1)} bps
         </span>
-        {wsCount > 0 && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />}
+        {wsCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />}
       </div>
     </div>
   );

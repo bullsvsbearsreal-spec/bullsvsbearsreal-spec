@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatLiqValue } from '@/lib/utils/format';
+import { getExchangeReferralUrl } from '@/lib/referralLinks';
 
 interface FeedRowProps {
   symbol: string;
@@ -103,9 +104,14 @@ function LiquidationFeedRowInner({
       {/* Exchange — hidden on small screens */}
       <div className="hidden sm:flex items-center gap-1 w-16 lg:w-[72px] shrink-0 overflow-hidden">
         <ExchangeLogo exchange={exchange} size={12} />
-        <span className="text-neutral-500 font-mono truncate" style={{ fontSize: 10 }}>
-          {exchange}
-        </span>
+        {(() => {
+          const ref = getExchangeReferralUrl(exchange);
+          return ref ? (
+            <a href={ref} target="_blank" rel="noopener noreferrer" className="text-neutral-500 hover:text-hub-yellow font-mono truncate transition-colors" style={{ fontSize: 10 }}>{exchange}</a>
+          ) : (
+            <span className="text-neutral-500 font-mono truncate" style={{ fontSize: 10 }}>{exchange}</span>
+          );
+        })()}
       </div>
 
       {/* Time ago */}

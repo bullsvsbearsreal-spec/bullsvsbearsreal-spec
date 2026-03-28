@@ -177,7 +177,7 @@ export async function GET(request: Request) {
 
       // Cascade: if Binance failed (geo-blocked), try OKX as fallback
       if (!points || points.length === 0) {
-        console.log(`[longshort] Binance failed for ${symbol}, trying OKX fallback`);
+        console.warn(`[longshort] Binance failed for ${symbol}, trying OKX fallback`);
         if (source === 'global' || source === 'topTraders') {
           points = await fetchOKXLongShortRatio(bareSymbol, period);
         } else if (source === 'taker') {
@@ -191,7 +191,7 @@ export async function GET(request: Request) {
 
       // Cascade: if OKX failed, try Binance as fallback
       if (!points || points.length === 0) {
-        console.log(`[longshort] OKX failed for ${symbol}, trying Binance fallback`);
+        console.warn(`[longshort] OKX failed for ${symbol}, trying Binance fallback`);
         if (source === 'global') {
           points = await fetchBinanceGlobalLS(symbol, period, limit);
         } else if (source === 'taker') {

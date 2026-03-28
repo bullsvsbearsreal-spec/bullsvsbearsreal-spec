@@ -57,11 +57,11 @@ export default function WidgetPicker({ open, onClose, onAdd, activeTypes }: Widg
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Add widget">
       <div className="bg-hub-darker border border-white/[0.08] rounded-xl max-w-lg w-full p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-white">Add Widget</h3>
-          <button onClick={onClose} className="p-1 text-neutral-500 hover:text-white transition-colors">
+          <button onClick={onClose} aria-label="Close" className="p-1 text-neutral-500 hover:text-white transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -71,6 +71,7 @@ export default function WidgetPicker({ open, onClose, onAdd, activeTypes }: Widg
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
           <input
             type="text"
+            aria-label="Search widgets"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search widgets..."

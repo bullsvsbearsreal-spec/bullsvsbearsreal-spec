@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, Info, Activity, TrendingUp, TrendingDown, Hash, BarChart3, ArrowLeftRight } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
+import { useFlash } from '@/hooks/useFlash';
+import { useApi } from '@/hooks/useSWRApi';
+import DataFreshness from '@/components/DataFreshness';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -99,30 +103,22 @@ function VolumeBars({ buckets, width = 800, height = 80 }: { buckets: CVDBucket[
 
 export default function CVDPage() {
   const [symbol, setSymbol] = useState('BTC');
-  const [data, setData] = useState<CVDResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`/api/aggtrades?symbol=${symbol}&limit=1000`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
+  const fetcher = useCallback(async () => {
+    const res = await fetch(`/api/aggtrades?symbol=${symbol}&limit=1000`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<CVDResponse>;
   }, [symbol]);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 15_000); // 15s refresh
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data, error, isLoading: loading, lastUpdate, refresh: fetchData } = useApi({
+    key: `cvd-${symbol}`,
+    fetcher,
+    refreshInterval: 15000,
+  });
+
+  const buyVolFlash = useFlash(data?.totalBuyVol);
+  const sellVolFlash = useFlash(data?.totalSellVol);
+  const deltaFlash = useFlash(data?.netDelta);
 
   const buyPct = useMemo(() => {
     if (!data) return 50;
@@ -133,7 +129,7 @@ export default function CVDPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -153,13 +149,17 @@ export default function CVDPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center gap-2">
+            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              aria-label="Refresh data"
+              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* Symbol selector */}
@@ -204,7 +204,7 @@ export default function CVDPage() {
                   </div>
                   <div>
                     <p className="text-xs text-neutral-500">Buy Volume</p>
-                    <p className="text-lg font-bold text-green-400">${formatCompact(data.totalBuyVol)}</p>
+                    <p className={`text-lg font-bold text-green-400 ${buyVolFlash}`}>${formatCompact(data.totalBuyVol)}</p>
                   </div>
                 </div>
               </div>
@@ -215,7 +215,7 @@ export default function CVDPage() {
                   </div>
                   <div>
                     <p className="text-xs text-neutral-500">Sell Volume</p>
-                    <p className="text-lg font-bold text-red-400">${formatCompact(data.totalSellVol)}</p>
+                    <p className={`text-lg font-bold text-red-400 ${sellVolFlash}`}>${formatCompact(data.totalSellVol)}</p>
                   </div>
                 </div>
               </div>
@@ -226,7 +226,7 @@ export default function CVDPage() {
                   </div>
                   <div>
                     <p className="text-xs text-neutral-500">Net Delta</p>
-                    <p className={`text-lg font-bold ${data.netDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className={`text-lg font-bold ${data.netDelta >= 0 ? 'text-green-400' : 'text-red-400'} ${deltaFlash}`}>
                       {data.netDelta >= 0 ? '+' : '-'}${formatCompact(Math.abs(data.netDelta))}
                     </p>
                   </div>
@@ -318,6 +318,7 @@ export default function CVDPage() {
           </div>
         </div>
       </main>
+      <ReferralBanner />
       <Footer />
     </div>
   );
