@@ -170,15 +170,17 @@ function createHyperliquid() {
 // ── Kraken Futures ──
 function createKraken() {
   const ws = new WebSocket('wss://futures.kraken.com/ws/v1');
-  const symbols = ['BTC','ETH','SOL','XRP','ADA','DOT','LINK','AVAX','DOGE','LTC'];
+  // Kraken uses XBT for Bitcoin, not BTC
+  const products = ['PI_XBTUSD','PI_ETHUSD','PI_SOLUSD','PI_XRPUSD','PI_ADAUSD','PI_DOTUSD','PI_LINKUSD','PI_AVAXUSD','PI_DOGEUSD','PI_LTCUSD'];
   ws.on('open', () => {
-    ws.send(JSON.stringify({ event: 'subscribe', feed: 'ticker', product_ids: symbols.map(s => `PI_${s}USD`) }));
+    ws.send(JSON.stringify({ event: 'subscribe', feed: 'ticker', product_ids: products }));
   });
   ws.on('message', (data) => {
     try {
       const d = JSON.parse(data);
       if (d.feed === 'ticker' && d.product_id) {
-        const sym = d.product_id.replace('PI_', '').replace('USD', '');
+        let sym = d.product_id.replace('PI_', '').replace('USD', '');
+        if (sym === 'XBT') sym = 'BTC';
         const last = +(d.last || d.markPrice || 0);
         const bid = +(d.bid || last);
         const ask = +(d.ask || last);
@@ -215,9 +217,11 @@ function createCoinbase() {
 const REST_EXCHANGES = [
   // ── CEX ──
   { name: 'KuCoin', url: 'https://api-futures.kucoin.com/api/v1/contracts/active', parse: (data) => {
-    return (data?.data || []).filter(c => c.quoteCurrency === 'USDT').map(c => ({
-      sym: c.baseCurrency, price: +(c.markPrice || 0), bid: +(c.markPrice || 0), ask: +(c.markPrice || 0)
-    })).filter(c => c.price > 0);
+    return (data?.data || []).filter(c => c.quoteCurrency === 'USDT').map(c => {
+      let sym = c.baseCurrency;
+      if (sym === 'XBT') sym = 'BTC'; // KuCoin uses XBT for Bitcoin
+      return { sym, price: +(c.markPrice || 0), bid: +(c.markPrice || 0), ask: +(c.markPrice || 0) };
+    }).filter(c => c.price > 0);
   }},
   { name: 'HTX', url: 'https://api.hbdm.com/linear-swap-ex/market/detail/batch_merged?contract_type=swap&business_type=all', parse: (data) => {
     return (data?.ticks || []).filter(t => t.contract_code?.endsWith('-USDT')).map(t => ({
@@ -406,7 +410,7 @@ async function pollFromInfoHub() {
     const r = await fetch('https://info-hub.io/api/tickers', { signal: AbortSignal.timeout(10000) });
     if (!r.ok) return;
     const data = await r.json();
-    const target = ['edgeX', 'Variational'];
+    const target = ['edgeX', 'Variational', 'BitMEX', 'Gate.io'];
     for (const t of (data?.data || data || [])) {
       if (target.includes(t.exchange) && t.lastPrice > 0) {
         updatePrice(t.exchange, t.symbol, t.lastPrice, t.lastPrice, t.lastPrice);
@@ -484,7 +488,7 @@ setInterval(pollREST, 5000);        // All REST exchanges every 5s
 setInterval(pollGTrade, 10000);     // gTrade via InfoHub funding every 10s
 setInterval(pollGMX, 10000);        // GMX via InfoHub funding every 10s
 setInterval(pollCoinbase, 5000);    // Coinbase individual tickers every 5s
-setInterval(pollFromInfoHub, 10000);// edgeX + Variational via InfoHub tickers every 10s
+setInterval(pollFromInfoHub, 10000);// edgeX, Variational, BitMEX, Gate.io via InfoHub tickers every 10s
 pollREST();
 pollGTrade();
 pollGMX();

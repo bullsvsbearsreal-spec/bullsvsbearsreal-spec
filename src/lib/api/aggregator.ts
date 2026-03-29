@@ -398,9 +398,6 @@ export async function fetchMarketStats(): Promise<{
   // serverTotalVolume from /api/tickers meta is unreliable (may include base-unit volumes)
   // CoinGecko's global total_volume includes all spot markets, not just our perp coverage
   const totalVolume = tickers.reduce((sum, t) => {
-    // Skip Gate.io + BitMEX (CloudFlare-blocked, report broken volumes in satoshis)
-    const ex = ((t.exchange as string) || '').toLowerCase();
-    if (ex.includes('gate') || ex.includes('bitmex')) return sum;
     const qVol = Number(t.quoteVolume24h) || 0;
     return sum + qVol;
   }, 0);

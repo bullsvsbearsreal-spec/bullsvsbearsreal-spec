@@ -85,7 +85,7 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
         <span className="text-[10px] text-neutral-600">{tickers.length} exchanges reporting</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+        <table className="w-full text-xs" data-testid="exchange-table">
           <thead>
             <tr className="text-[10px] text-neutral-500 uppercase tracking-wider border-b border-white/[0.06]">
               <th className="px-4 py-2 text-left">Exchange</th>

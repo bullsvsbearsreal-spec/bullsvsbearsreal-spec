@@ -83,7 +83,7 @@ export default function ArbitrageWidget({ wide }: { wide?: boolean }) {
   if (!arbs) return <WidgetSkeleton variant="list" />;
 
   return (
-    <div>
+    <div data-testid="widget-arbitrage">
       <div className="space-y-1.5">
         {arbs.length === 0 && (
           <p className="text-xs text-neutral-600 py-2">No significant arb opportunities</p>

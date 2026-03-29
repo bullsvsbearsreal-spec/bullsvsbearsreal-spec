@@ -286,8 +286,6 @@ export default function FundingSpreadComparison() {
   const fetchData = useCallback(async (sym: string) => {
     setLoading(true);
     setError(null);
-    setRawData({});
-    setPriceData({});
     try {
       const [fundingRes, priceRes] = await Promise.all([
         fetch(`/api/history/funding-multi?symbol=${sym}&days=30`),

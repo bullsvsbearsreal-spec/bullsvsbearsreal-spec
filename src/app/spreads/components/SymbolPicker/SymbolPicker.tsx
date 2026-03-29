@@ -47,6 +47,7 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
     <div
       className="absolute top-full mt-1 left-0 z-50 w-64 max-h-[28rem] overflow-y-auto rounded-xl bg-[#141418] border border-white/[0.08] shadow-2xl"
       data-sym-picker
+      data-testid="symbol-picker"
       onKeyDown={handleKeyDown}
     >
       {/* Search */}

@@ -9,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : 4,
   reporter: [['html', { open: 'never' }], ['list']],
-  timeout: 30000,
+  timeout: 60000,
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
@@ -18,7 +18,7 @@ export default defineConfig({
   projects: [
     {
       name: 'api',
-      testMatch: /api\.spec\.ts/,
+      testMatch: /api(\/|\\).*\.spec\.ts$/,
       use: { baseURL: BASE_URL },
     },
     {

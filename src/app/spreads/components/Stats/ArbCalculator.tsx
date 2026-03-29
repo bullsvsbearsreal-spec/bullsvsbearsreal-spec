@@ -104,7 +104,7 @@ function ArbCalculatorInner({ stats, calcAmt, calcFee, calcMode, onAmtChange, on
   }
 
   return (
-    <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 mb-5">
+    <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 mb-5" data-testid="arb-calculator">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Calculator className="w-4 h-4 text-hub-yellow" />

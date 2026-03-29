@@ -10,7 +10,7 @@ export const chartOptions: DeepPartial<ChartOptions> = {
     background: { color: CHART_BG },
     textColor: TEXT_COLOR,
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-    fontSize: 10,
+    fontSize: 9,
   },
   grid: {
     vertLines: { color: GRID_COLOR },
@@ -45,6 +45,7 @@ export const chartOptions: DeepPartial<ChartOptions> = {
 export function makeLineOptions(
   color: string,
   lineWidth: 1 | 2 | 3 | 4 = 2,
+  title?: string,
 ): DeepPartial<LineStyleOptions & SeriesOptionsCommon> {
   return {
     color,
@@ -53,5 +54,6 @@ export function makeLineOptions(
     crosshairMarkerRadius: 3,
     lastValueVisible: true,
     priceLineVisible: false,
+    ...(title ? { title } : {}),
   };
 }

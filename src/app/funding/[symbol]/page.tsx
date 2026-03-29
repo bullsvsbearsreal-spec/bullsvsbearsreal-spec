@@ -109,7 +109,7 @@ export default function SymbolFundingPage() {
   // Fetch all funding rates (same as main page)
   const fetcher = useCallback(async () => {
     const [rates, oi] = await Promise.all([
-      fetchAllFundingRates('crypto'),
+      fetchAllFundingRates('all'),
       fetchAllOpenInterest(),
     ]);
     return { rates, oi };

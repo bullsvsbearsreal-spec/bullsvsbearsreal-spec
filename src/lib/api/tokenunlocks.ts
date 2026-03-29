@@ -210,7 +210,7 @@ const TOKEN_DATABASE: TokenDef[] = [
     ],
   },
   {
-    coinId: 'berachain', symbol: 'BERA', name: 'Berachain', price: 5.80, totalSupply: 500_000_000,
+    coinId: 'berachain-bera', symbol: 'BERA', name: 'Berachain', price: 5.80, totalSupply: 500_000_000,
     unlocks: [
       { date: '2026-04-10', amount: 7_500_000, type: 'ecosystem', description: 'Ecosystem & community fund release', source: 'https://docs.berachain.com/' },
       { date: '2026-07-10', amount: 15_000_000, type: 'investor', description: 'Framework & Polychain unlock', source: 'https://docs.berachain.com/' },
@@ -220,7 +220,7 @@ const TOKEN_DATABASE: TokenDef[] = [
 
   // ─── Solana Ecosystem ────────────────────────────────────────────────
   {
-    coinId: 'jupiter', symbol: 'JUP', name: 'Jupiter', price: 0.82, totalSupply: 10_000_000_000,
+    coinId: 'jupiter-exchange-solana', symbol: 'JUP', name: 'Jupiter', price: 0.82, totalSupply: 10_000_000_000,
     unlocks: [
       { date: '2026-01-31', amount: 125_000_000, type: 'cliff', description: 'Jupuary airdrop distribution', source: 'https://www.jup.ag/blog/jupuary' },
       { date: '2026-03-31', amount: 50_000_000, type: 'team', description: 'Core team vesting release', source: 'https://www.jup.ag/blog/token' },
@@ -243,7 +243,7 @@ const TOKEN_DATABASE: TokenDef[] = [
     ],
   },
   {
-    coinId: 'jito', symbol: 'JTO', name: 'Jito', price: 3.20, totalSupply: 1_000_000_000,
+    coinId: 'jito-governance-token', symbol: 'JTO', name: 'Jito', price: 3.20, totalSupply: 1_000_000_000,
     unlocks: [
       { date: '2026-03-25', amount: 11_310_000, type: 'investor', description: 'Framework & Multicoin unlock', source: 'https://www.jito.network/blog/jto-token/' },
       { date: '2026-06-25', amount: 22_620_000, type: 'team', description: 'Core team monthly vest', source: 'https://www.jito.network/blog/jto-token/' },
@@ -251,7 +251,7 @@ const TOKEN_DATABASE: TokenDef[] = [
     ],
   },
   {
-    coinId: 'io-net', symbol: 'IO', name: 'io.net', price: 2.10, totalSupply: 800_000_000,
+    coinId: 'io', symbol: 'IO', name: 'io.net', price: 2.10, totalSupply: 800_000_000,
     unlocks: [
       { date: '2026-03-11', amount: 8_000_000, type: 'ecosystem', description: 'Node operator rewards', source: 'https://docs.io.net/docs/tokenomics' },
       { date: '2026-06-11', amount: 12_000_000, type: 'investor', description: 'Hack VC & a16z unlock', source: 'https://docs.io.net/docs/tokenomics' },
@@ -268,7 +268,7 @@ const TOKEN_DATABASE: TokenDef[] = [
     ],
   },
   {
-    coinId: 'ethfi', symbol: 'ETHFI', name: 'ether.fi', price: 1.85, totalSupply: 1_000_000_000,
+    coinId: 'ether-fi', symbol: 'ETHFI', name: 'ether.fi', price: 1.85, totalSupply: 1_000_000_000,
     unlocks: [
       { date: '2026-03-18', amount: 11_530_000, type: 'investor', description: 'Seed round investor vesting', source: 'https://etherfi.gitbook.io/etherfi/' },
       { date: '2026-06-18', amount: 5_770_000, type: 'team', description: 'Core team monthly unlock', source: 'https://etherfi.gitbook.io/etherfi/' },
@@ -292,7 +292,7 @@ const TOKEN_DATABASE: TokenDef[] = [
     ],
   },
   {
-    coinId: 'aevo', symbol: 'AEVO', name: 'Aevo', price: 0.72, totalSupply: 1_000_000_000,
+    coinId: 'aevo-exchange', symbol: 'AEVO', name: 'Aevo', price: 0.72, totalSupply: 1_000_000_000,
     unlocks: [
       { date: '2026-04-13', amount: 15_000_000, type: 'investor', description: 'Paradigm investor cliff', source: 'https://governance.aevo.xyz/' },
       { date: '2026-07-13', amount: 10_000_000, type: 'team', description: 'Team vesting monthly release', source: 'https://governance.aevo.xyz/' },
@@ -315,7 +315,7 @@ const TOKEN_DATABASE: TokenDef[] = [
 
   // ─── New L1/L2 & Airdrop Tokens ─────────────────────────────────────
   {
-    coinId: 'worldcoin', symbol: 'WLD', name: 'Worldcoin', price: 1.70, totalSupply: 10_000_000_000,
+    coinId: 'worldcoin-wld', symbol: 'WLD', name: 'Worldcoin', price: 1.70, totalSupply: 10_000_000_000,
     unlocks: [
       { date: '2026-02-24', amount: 65_000_000, type: 'linear', description: 'Community allocation linear unlock', source: 'https://worldcoin.org/blog/announcements/new-tokenomics' },
       { date: '2026-03-24', amount: 65_000_000, type: 'linear', description: 'Community linear vesting tranche', source: 'https://worldcoin.org/blog/announcements/new-tokenomics' },
@@ -374,7 +374,7 @@ const TOKEN_DATABASE: TokenDef[] = [
     ],
   },
   {
-    coinId: 'lista-dao', symbol: 'LISTA', name: 'Lista DAO', price: 0.42, totalSupply: 1_000_000_000,
+    coinId: 'lista', symbol: 'LISTA', name: 'Lista DAO', price: 0.42, totalSupply: 1_000_000_000,
     unlocks: [
       { date: '2026-04-01', amount: 20_000_000, type: 'ecosystem', description: 'Liquidity incentives unlock', source: 'https://docs.lista.org/' },
       { date: '2026-07-01', amount: 15_000_000, type: 'investor', description: 'Binance Labs & investor vest', source: 'https://docs.lista.org/' },

@@ -527,7 +527,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
 
         {/* Table — Desktop */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full" aria-label="Funding rate arbitrage opportunities">
+          <table className="w-full" aria-label="Funding rate arbitrage opportunities" data-testid="arb-table">
             <thead>
               <tr className="border-b border-white/[0.06]">
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500 w-8">#</th>
@@ -562,6 +562,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                 <React.Fragment key={item.symbol}>
                   <tr
                     className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer"
+                    data-testid={`arb-row-${item.symbol}`}
                     onClick={() => setExpandedRow(expandedRow === item.symbol ? null : item.symbol)}
                   >
                     <td className="px-3 py-2 text-neutral-600 text-xs font-mono">

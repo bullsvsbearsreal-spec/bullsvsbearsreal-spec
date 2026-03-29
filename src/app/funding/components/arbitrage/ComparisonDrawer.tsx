@@ -21,7 +21,7 @@ export function ComparisonDrawer({ items, periodScale, onClear }: {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-hub-darker border-t border-white/[0.1] shadow-2xl z-50 max-h-[300px] overflow-y-auto">
+    <div className="fixed bottom-0 left-0 right-0 bg-hub-darker border-t border-white/[0.1] shadow-2xl z-50 max-h-[300px] overflow-y-auto" data-testid="comparison-drawer">
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-white text-sm font-semibold">Comparing {items.length} Opportunities</h4>

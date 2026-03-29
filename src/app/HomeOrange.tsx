@@ -80,8 +80,8 @@ export default function HomeOrange() {
 
   const cexExchanges = ALL_EXCHANGES.filter(e => !isExchangeDex(e));
   const dexExchanges = ALL_EXCHANGES.filter(e => isExchangeDex(e));
-  // Exchanges known to be CloudFlare-blocked on Vercel datacenter IPs
-  const KNOWN_BLOCKED = new Set(['BitMEX', 'Gate.io', 'edgeX']);
+  // Exchanges known to be CloudFlare-blocked on Vercel datacenter IPs (now proxied via proxy.info-hub.io)
+  const KNOWN_BLOCKED = new Set<string>([]);
   // Before health data loads, assume all exchanges are active (except known-blocked)
   const healthLoaded = exchangeHealth.length > 0;
   const isExchangeActive = (name: string) => {

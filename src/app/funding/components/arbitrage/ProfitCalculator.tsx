@@ -21,7 +21,7 @@ export function ProfitCalculator({ grossSpread8h, roundTripFee, highExchange, lo
   const breakEvenDays = dailyGross > 0 ? feeCost / dailyGross : Infinity;
 
   return (
-    <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3 mt-2">
+    <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3 mt-2" data-testid="profit-calculator">
       <div className="flex items-center gap-2 mb-3">
         <Calculator className="w-3.5 h-3.5 text-hub-yellow" />
         <span className="text-white text-xs font-semibold">Profit Calculator</span>
@@ -76,7 +76,7 @@ export function ProfitCalculator({ grossSpread8h, roundTripFee, highExchange, lo
         ))}
       </div>
       <div className="text-neutral-700 text-[9px] mt-2">
-        Margin required: {formatUSD(requiredMargin)} ({leverage}x on ${formatUSD(size)} × 2 sides)
+        Margin required: {formatUSD(requiredMargin)} ({leverage}x on {formatUSD(size)} × 2 sides)
       </div>
     </div>
   );

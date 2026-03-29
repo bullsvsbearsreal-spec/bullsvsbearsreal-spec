@@ -9,8 +9,8 @@ interface ExchangeInfo {
   count: number;
 }
 
-// Exchanges known to be CloudFlare-blocked on Vercel datacenter IPs
-const KNOWN_BLOCKED = ['BitMEX', 'Gate.io', 'edgeX'];
+// Exchanges previously CloudFlare-blocked — now proxied via proxy.info-hub.io
+const KNOWN_BLOCKED: string[] = [];
 
 export default function ExchangeStatusWidget() {
   const [exchanges, setExchanges] = useState<ExchangeInfo[] | null>(null);

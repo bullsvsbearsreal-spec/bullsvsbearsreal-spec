@@ -1,14 +1,15 @@
 name = "infohub-proxy"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# Custom domain route (bypasses workers.dev blocking)
+routes = [
+  { pattern = "proxy.info-hub.io/*", zone_name = "info-hub.io" }
+]
 
 [vars]
 # Comma-separated list of allowed origin domains (for CORS)
-ALLOWED_ORIGINS = "https://info-hub.io,https://www.info-hub.io"
+ALLOWED_ORIGINS = "https://info-hub.io,https://www.info-hub.io,https://infohub-nine.vercel.app,*"
 # Comma-separated list of allowed target domains to proxy to
 ALLOWED_TARGETS = "www.bitmex.com,api.gateio.ws,pro.edgex.exchange,query1.finance.yahoo.com,query2.finance.yahoo.com"
-
-# Remove the old Durable Object from the previous version
-[[migrations]]
-tag = "v2"
-deleted_classes = ["ProxyDO"]

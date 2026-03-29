@@ -7,6 +7,17 @@ import { getExchangeColor } from '../../lib/exchange-colors';
 import { fp } from '../../lib/spread-math';
 import type { Pt, ViewMode } from '../../lib/types';
 
+/** Short labels so price-scale tags don't overlap */
+const SHORT: Record<string, string> = {
+  Binance: 'Bin', Bybit: 'Byb', Bitget: 'Btg', Kraken: 'Kra',
+  Hyperliquid: 'HL', Coinbase: 'CB', Bitfinex: 'Bfx', WhiteBIT: 'WB',
+  BingX: 'BgX', Phemex: 'Phx', Bitunix: 'Bux', KuCoin: 'KC',
+  Deribit: 'Drb', BitMEX: 'BMX', 'Gate.io': 'Gte',
+  Extended: 'Ext', Variational: 'Var', Lighter: 'Ltr',
+  Paradex: 'Pdx', Backpack: 'Bpk', Orderly: 'Ord',
+};
+function shortName(ex: string) { return SHORT[ex] || ex.slice(0, 3); }
+
 interface SpreadChartProps {
   data: Pt[];
   exchanges: string[];
@@ -64,7 +75,7 @@ function SpreadChartInner({ data, exchanges, viewMode, height = 420 }: SpreadCha
       let series = seriesRef.current.get(ex);
 
       if (!series) {
-        series = chart.addLineSeries(makeLineOptions(getExchangeColor(ex, i)));
+        series = chart.addLineSeries(makeLineOptions(getExchangeColor(ex, i), 2, shortName(ex)));
         seriesRef.current.set(ex, series);
       }
 
@@ -93,7 +104,7 @@ function SpreadChartInner({ data, exchanges, viewMode, height = 420 }: SpreadCha
   }, [data, exchanges, viewMode]);
 
   return (
-    <div ref={containerRef} className="w-full" style={{ height }} />
+    <div ref={containerRef} className="w-full" data-testid="spread-chart" style={{ height }} />
   );
 }
 

@@ -763,7 +763,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
       if (!proxyUrl) return [];
-      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,openInterest,openValue,lastPrice,typ,state,rootSymbol,quoteCurrency&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
+      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,openInterest,openValue,lastPrice,typ,state,rootSymbol,quoteCurrency,settlCurrency,isInverse&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
       const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
@@ -777,18 +777,23 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           if (!symbol || !isCryptoSymbol(symbol)) return null;
 
           const lastPrice = parseFloat(i.lastPrice) || 0;
-          // openValue is in satoshis for inverse perps (XBT-quoted), USD for linear
-          const isInverse = i.quoteCurrency === 'XBt' || i.quoteCurrency === 'XBT';
-          const oiValue = isInverse
-            ? (parseFloat(i.openValue) || 0) / 1e8 * lastPrice  // satoshis → BTC → USD
-            : (parseFloat(i.openValue) || 0) / 1e8;             // already in USD (scaled by 1e8)
-          const oiContracts = parseFloat(i.openInterest) || 0;
+          const rawOV = parseFloat(i.openValue) || 0;
+          // Use the API's isInverse flag (most reliable), fall back to settlCurrency
+          const isInverse = i.isInverse === true || i.settlCurrency === 'XBt' || i.settlCurrency === 'XBT';
+          let oiValue: number;
+          if (isInverse) {
+            // openValue is in satoshis → divide by 1e8 for BTC → multiply by price for USD
+            oiValue = (rawOV / 1e8) * lastPrice;
+          } else {
+            // USDt-settled: openValue is in smallest unit of USDT (6 decimals)
+            oiValue = rawOV / 1e6;
+          }
 
           return {
             symbol,
             exchange: 'BitMEX',
-            openInterest: oiContracts,
-            openInterestValue: oiValue > 0 ? oiValue : oiContracts * lastPrice,
+            openInterest: parseFloat(i.openInterest) || 0,
+            openInterestValue: oiValue,
           };
         })
         .filter((i: any): i is OIData => i !== null && i.openInterestValue > 1000);
@@ -813,7 +818,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           if (!isCryptoSymbol(symbol)) return null;
           const markPrice = parseFloat(c.mark_price) || 0;
           const positionSize = parseFloat(c.position_size) || 0;
-          const multiplier = parseFloat(c.quanto_multiplier) || 1;
+          const rawMultiplier = parseFloat(c.quanto_multiplier);
+          const multiplier = isNaN(rawMultiplier) || rawMultiplier <= 0 ? 1 : rawMultiplier;
           // OI = position_size * quanto_multiplier * mark_price
           const oiValue = positionSize * multiplier * markPrice;
           return {

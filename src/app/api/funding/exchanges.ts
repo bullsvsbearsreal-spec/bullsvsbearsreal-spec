@@ -1565,16 +1565,29 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const active = contracts.filter((c: any) => c.enableTrade);
       if (active.length === 0) return [];
 
-      const batchSize = 10;
+      // Fetch tickers in small sequential batches to avoid overwhelming the proxy
+      // edgeX has no bulk ticker endpoint — each contract needs a separate call
+      const batchSize = 25;
       const results: FundingData[] = [];
       for (let i = 0; i < active.length; i += batchSize) {
         const batch = active.slice(i, i + batchSize);
-        const tickerPromises = batch.map((c: any) =>
-          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 8000)
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null)
+        const tickerResults = await Promise.all(
+          batch.map((c: any) =>
+            fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 6000)
+              .then(async r => {
+                if (!r.ok) {
+                  const body = await r.text().catch(() => '');
+                  console.warn(`[edgeX] ticker ${c.contractId} HTTP ${r.status} url=${r.url?.slice(0, 80)} body=${body.slice(0, 120)}`);
+                  return null;
+                }
+                return r.json();
+              })
+              .catch((e: Error) => {
+                if (i === 0) console.warn(`[edgeX] ticker ${c.contractId} err: ${e.message}`);
+                return null;
+              })
+          )
         );
-        const tickerResults = await Promise.all(tickerPromises);
 
         for (let j = 0; j < batch.length; j++) {
           const contract = batch[j];
