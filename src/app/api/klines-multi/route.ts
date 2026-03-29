@@ -25,6 +25,17 @@ function sym(ex: string, s: string): string {
   return map[ex] || `${u}USDT`;
 }
 
+const AGGREGATOR_URL = 'https://prices.info-hub.io';
+
+async function fetchAggregatorKlines(exchange: string, s: string, iv: string, n: number): Promise<Candle[]> {
+  try {
+    const r = await f(`${AGGREGATOR_URL}/klines?exchange=${encodeURIComponent(exchange)}&symbol=${s.toUpperCase()}&interval=${iv}&limit=${n}`, 8000);
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.candles || []).filter((c: Candle) => c.c > 0 && c.o > 0);
+  } catch { return []; }
+}
+
 const fetchers: Record<string, (s: string, iv: string, n: number) => Promise<Candle[]>> = {
   Binance: async (s, iv, n) => {
     const r = await f(`https://fapi.binance.com/fapi/v1/klines?symbol=${sym('binance',s)}&interval=${iv}&limit=${n}`);
@@ -171,26 +182,11 @@ const fetchers: Record<string, (s: string, iv: string, n: number) => Promise<Can
     const j = await r.json();
     return (j || []).map((k: any) => ({ t: +k.time * 1000, o: +k.open, h: +k.high, l: +k.low, c: +k.close })).filter((c: Candle) => c.c > 0 && c.o > 0);
   },
-  Drift: async (s, iv, n) => {
-    // Drift doesn't have a public klines API - use mark price from stats
-    return [];
-  },
-  GMX: async (s, iv, n) => {
-    // GMX is AMM-based, no traditional klines
-    return [];
-  },
-  gTrade: async (s, iv, n) => {
-    // gTrade uses oracle prices, no klines API
-    return [];
-  },
-  Aster: async (s, iv, n) => {
-    // Aster: no public klines endpoint known
-    return [];
-  },
-  Lighter: async (s, iv, n) => {
-    // Lighter: no public klines endpoint known
-    return [];
-  },
+  Drift: async (s, iv, n) => fetchAggregatorKlines('Drift', s, iv, n),
+  GMX: async (s, iv, n) => fetchAggregatorKlines('GMX', s, iv, n),
+  gTrade: async (s, iv, n) => fetchAggregatorKlines('gTrade', s, iv, n),
+  Aster: async (s, iv, n) => fetchAggregatorKlines('Aster', s, iv, n),
+  Lighter: async (s, iv, n) => fetchAggregatorKlines('Lighter', s, iv, n),
 };
 
 const cache = new Map<string, { data: any; ts: number }>();

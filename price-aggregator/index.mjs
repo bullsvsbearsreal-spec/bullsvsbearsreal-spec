@@ -16,6 +16,58 @@ function updatePrice(exchange, symbol, price, bid, ask) {
   if (!health[exchange]) health[exchange] = { connected: true, lastUpdate: 0, errors: 0 };
   health[exchange].connected = true;
   health[exchange].lastUpdate = Date.now();
+  // Feed into kline builder
+  klineUpdate(exchange, symbol, price);
+}
+
+// ─── Kline Builder ─────────────────────────────────────────────────────────
+// Builds 1h candles from live price ticks, keeps up to 31 days (744 candles)
+// { "exchange:symbol" -> [ { t, o, h, l, c }, ... ] }
+const klines = {};
+const MAX_KLINE_CANDLES = 744; // 31 days of 1h candles
+
+function klineBucket(ts) {
+  // Floor to current hour
+  return Math.floor(ts / 3600000) * 3600000;
+}
+
+function klineUpdate(exchange, symbol, price) {
+  const key = `${exchange}:${symbol}`;
+  if (!klines[key]) klines[key] = [];
+  const arr = klines[key];
+  const bucket = klineBucket(Date.now());
+
+  if (arr.length > 0 && arr[arr.length - 1].t === bucket) {
+    // Update current candle
+    const c = arr[arr.length - 1];
+    if (price > c.h) c.h = price;
+    if (price < c.l) c.l = price;
+    c.c = price;
+  } else {
+    // New candle
+    arr.push({ t: bucket, o: price, h: price, l: price, c: price });
+    if (arr.length > MAX_KLINE_CANDLES) arr.shift();
+  }
+}
+
+function aggregateCandles(hourly, factor) {
+  if (hourly.length === 0) return [];
+  const ms = factor * 3600000;
+  const result = [];
+  let cur = null;
+  for (const c of hourly) {
+    const bucket = Math.floor(c.t / ms) * ms;
+    if (!cur || cur.t !== bucket) {
+      if (cur) result.push(cur);
+      cur = { t: bucket, o: c.o, h: c.h, l: c.l, c: c.c };
+    } else {
+      if (c.h > cur.h) cur.h = c.h;
+      if (c.l < cur.l) cur.l = c.l;
+      cur.c = c.c;
+    }
+  }
+  if (cur) result.push(cur);
+  return result;
 }
 
 // ─── WebSocket Connections ──────────────────────────────────────────────────
@@ -463,6 +515,33 @@ const server = http.createServer((req, res) => {
       spreads[sym] = { spread, pct: (spread / low[1].price) * 100, high: high[0], low: low[0], highPrice: high[1].price, lowPrice: low[1].price, exchanges: entries.length };
     }
     res.end(JSON.stringify({ data: spreads, ts: Date.now() }));
+  } else if (url.pathname === '/klines') {
+    // /klines?exchange=Drift&symbol=BTC&interval=1h&limit=24
+    const ex = url.searchParams.get('exchange');
+    const sym = url.searchParams.get('symbol')?.toUpperCase();
+    const interval = url.searchParams.get('interval') || '1h';
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 168, MAX_KLINE_CANDLES);
+
+    if (!ex || !sym) {
+      res.end(JSON.stringify({ error: 'Required: ?exchange=...&symbol=...' }));
+      return;
+    }
+
+    const raw = klines[`${ex}:${sym}`] || [];
+
+    // Aggregate 1h candles into larger intervals if needed
+    let candles;
+    if (interval === '4h') {
+      candles = aggregateCandles(raw, 4);
+    } else if (interval === '1d') {
+      candles = aggregateCandles(raw, 24);
+    } else {
+      candles = raw;
+    }
+
+    // Return last N candles
+    const result = candles.slice(-limit);
+    res.end(JSON.stringify({ exchange: ex, symbol: sym, interval, candles: result }));
   } else if (url.pathname === '/health') {
     res.end(JSON.stringify({ health, symbolCount: Object.keys(prices).length, uptime: process.uptime() }));
   } else {
