@@ -51,8 +51,8 @@ export function useSpreadData({
       return { ...transformLiveData(wsHistory, sel), available: undefined };
     }
     if (!klineData) return { data: [] as Pt[], exs: [] as string[], available: undefined };
-    return transformKlineData(klineData, sel, tf);
-  }, [klineData, sel, tf, wsHistory]);
+    return transformKlineData(klineData, sel, tf, wsPrices);
+  }, [klineData, sel, tf, wsHistory, wsPrices]);
 
   // ── Stats ──
   const stats = useMemo<SpreadStats | null>(() => computeStats(data, exs), [data, exs]);

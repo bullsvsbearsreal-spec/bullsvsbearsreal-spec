@@ -67,14 +67,13 @@ function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarPr
               {(() => {
                 const fresh = Object.values(wsPrices).filter(p => p.price > 0 && (Date.now() - p.ts) < 20000).length;
                 const total = sel.length;
-                const pct = total > 0 ? Math.round((fresh / total) * 100) : 0;
                 return (
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                    pct >= 80 ? 'bg-green-500/10 text-green-400'
-                    : pct >= 50 ? 'bg-amber-500/10 text-amber-400'
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium tabular-nums ${
+                    fresh >= total ? 'bg-green-500/10 text-green-400'
+                    : fresh >= total * 0.7 ? 'bg-amber-500/10 text-amber-400'
                     : 'bg-red-500/10 text-red-400'
                   }`}>
-                    {pct}% accurate
+                    {fresh}/{total} live
                   </span>
                 );
               })()}

@@ -116,11 +116,12 @@ export function transformLiveData(
   return { data: rows, exs: wsExs };
 }
 
-/** Transform kline data into chart data points */
+/** Transform kline data into chart data points, with optional live price stitch */
 export function transformKlineData(
   kd: Record<string, Candle[]>,
   selectedExchanges: string[],
   tf: string,
+  livePrices?: Record<string, { price: number }>,
 ): { data: Pt[]; exs: string[]; available: string[] } {
   const av = Object.keys(kd);
   let active = selectedExchanges.filter(e => av.includes(e));
@@ -187,6 +188,32 @@ export function transformKlineData(
       : tf === '7d' ? (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0')
       : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     rows.push(pt);
+  }
+
+  // Stitch live prices as the latest data point so chart extends to "now"
+  if (livePrices && Object.keys(livePrices).length > 0 && active.length >= 2) {
+    const now = Date.now();
+    const pt: Pt = { time: now, label: '' };
+    const entries: { e: string; p: number }[] = [];
+    for (const e of active) {
+      const lp = livePrices[e]?.price;
+      if (lp && lp > 0) entries.push({ e, p: lp });
+    }
+    if (entries.length >= 2) {
+      const sane = filterOutliers(entries);
+      const useExs = sane.length >= 2 ? sane : entries;
+      const avg = useExs.reduce((s, x) => s + x.p, 0) / useExs.length;
+      for (const x of useExs) {
+        pt[x.e] = x.p;
+        pt[x.e + '_dev'] = ((x.p - avg) / avg) * 100;
+      }
+      const usePrices = useExs.map(x => x.p);
+      pt._spread = Math.max(...usePrices) - Math.min(...usePrices);
+      pt._spreadPct = usePrices.length >= 2 ? ((Math.max(...usePrices) - Math.min(...usePrices)) / Math.min(...usePrices)) * 100 : 0;
+      const d = new Date(now);
+      pt.label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      rows.push(pt);
+    }
   }
 
   return { data: rows, exs: active, available: av };

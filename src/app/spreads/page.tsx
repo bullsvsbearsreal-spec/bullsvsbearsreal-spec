@@ -5,7 +5,6 @@ import { ArrowLeftRight, ChevronDown, RefreshCw, Calculator, Info, Wifi, WifiOff
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import DataFreshness from '@/components/DataFreshness';
 import { getCoinIcon } from '@/lib/coinIcons';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 
@@ -109,31 +108,30 @@ export default function SpreadsPage() {
               Cross-exchange price comparison across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span> ({CEX_EXCHANGES.length} CEX + {DEX_EXCHANGES.length} DEX)
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {state.chartLoading ? (
+          <div className="flex items-center gap-2">
+            {state.chartLoading && (
               <span className="flex items-center gap-1.5 text-xs text-neutral-600"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Loading...</span>
-            ) : (
-              <DataFreshness
-                exchangeCount={exs.length}
-                lastUpdated={wsHistory.length > 0 ? wsHistory[wsHistory.length - 1].t : null}
-                sources={exs.slice(0, 5)}
-              />
             )}
-            <button onClick={actions.toggleCalc}
-              className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-neutral-400 hover:text-white transition flex items-center gap-1.5">
-              <Calculator className="w-3.5 h-3.5" /> Arb Calc
-            </button>
-            <ExportCSV data={data} exchanges={exs} symbol={state.sym} />
-            {/* WS toggle */}
+            {/* WS status — most important, shown first */}
             <button onClick={actions.toggleWs}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition ${
+              className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition ${
                 state.wsEnabled && wsCount > 0
-                  ? 'bg-green-500/[0.06] border-green-500/20 text-green-400'
-                  : 'bg-white/[0.04] border-white/[0.08] text-neutral-500'
+                  ? 'bg-green-500/[0.08] border-green-500/20 text-green-400 hover:bg-green-500/[0.12]'
+                  : 'bg-white/[0.04] border-white/[0.08] text-neutral-500 hover:text-white'
               }`}>
               {state.wsEnabled ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              {state.wsEnabled ? `Live ${wsCount}/${state.sel.length}` : 'Paused'}
+              {state.wsEnabled ? <><span className="tabular-nums">{wsCount}/{state.sel.length}</span> Live</> : 'Paused'}
             </button>
+            <div className="w-px h-5 bg-white/[0.06]" />
+            <button onClick={actions.toggleCalc}
+              className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition ${
+                state.showCalc
+                  ? 'bg-hub-yellow/10 border-hub-yellow/20 text-hub-yellow'
+                  : 'bg-white/[0.04] border-white/[0.08] text-neutral-400 hover:text-white hover:border-white/[0.15]'
+              }`}>
+              <Calculator className="w-3.5 h-3.5" /> Arb
+            </button>
+            <ExportCSV data={data} exchanges={exs} symbol={state.sym} />
             <AlertConfig
               active={state.alertActive}
               threshold={state.alertThreshold}
@@ -210,6 +208,7 @@ export default function SpreadsPage() {
                 klineData={state.klineData}
                 tf={state.tf}
                 onToggle={actions.toggleExchange}
+                onSetExchanges={actions.setExchanges}
               />
             )}
           </div>
@@ -345,17 +344,19 @@ export default function SpreadsPage() {
         )}
 
         {/* ── Info Footer ── */}
-        <div className="p-4 rounded-2xl bg-hub-yellow/5 border border-hub-yellow/10 border-l-2 border-l-hub-yellow/40">
-          <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
-            <span>
-              <span className="text-hub-yellow font-medium">Chart</span>: historical candle close prices from exchange APIs (5-min cache).{' '}
-              <span className="text-hub-yellow font-medium">Table</span>: live prices, bid/ask, funding rates, OI, and volume from /api/tickers, /api/funding, /api/openinterest (15s refresh).{' '}
-              <span className="text-hub-yellow font-medium">Spread</span> = highest minus lowest price across selected exchanges.{' '}
-              Chart data from: {exs.length > 0 ? exs.join(', ') : 'no exchanges selected'}.{' '}
-              <span className="text-neutral-500">Keyboard: 1-4 timeframes · / search · C calc · W live toggle · Esc close</span>
+        <div className="px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-neutral-500">
+            <span className="flex items-center gap-1.5"><Info className="w-3.5 h-3.5 text-neutral-600" /> <span className="text-neutral-400 font-medium">Chart</span> candle close prices (5m cache)</span>
+            <span><span className="text-neutral-400 font-medium">Table</span> live prices, funding, OI (15s)</span>
+            <span><span className="text-neutral-400 font-medium">Spread</span> = max - min price</span>
+            <span className="text-neutral-600">{exs.length} exchanges active</span>
+            <span className="ml-auto text-neutral-600 hidden sm:block">
+              <kbd className="px-1 py-0.5 bg-white/[0.04] rounded text-[9px]">1-4</kbd> timeframes
+              {' '}<kbd className="px-1 py-0.5 bg-white/[0.04] rounded text-[9px]">/</kbd> search
+              {' '}<kbd className="px-1 py-0.5 bg-white/[0.04] rounded text-[9px]">C</kbd> calc
+              {' '}<kbd className="px-1 py-0.5 bg-white/[0.04] rounded text-[9px]">W</kbd> live
             </span>
-          </p>
+          </div>
         </div>
 
       </main>
