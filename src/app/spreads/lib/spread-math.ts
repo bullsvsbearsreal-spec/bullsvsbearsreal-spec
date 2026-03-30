@@ -94,22 +94,22 @@ export function transformLiveData(
       const p = snap.prices[e];
       if (p && p > 0) entries.push({ e, p });
     }
-    if (entries.length < 1) continue;
+    if (entries.length < 2) continue; // need 2+ exchanges to draw meaningful lines
 
     const sane = filterOutliers(entries);
-    // Remove outliers from pt
-    for (const entry of entries) {
-      if (!sane.some(s => s.e === entry.e)) continue;
+    if (sane.length < 2) continue; // skip if outlier removal leaves < 2
+
+    // Only include sane entries in the data point
+    for (const entry of sane) {
       pt[entry.e] = entry.p;
     }
 
     const sanePrices = sane.map(x => x.p);
-    if (sanePrices.length < 1) continue;
 
     const avg = sanePrices.reduce((s, p) => s + p, 0) / sanePrices.length;
     for (const x of sane) pt[x.e + '_dev'] = ((x.p - avg) / avg) * 100;
-    pt._spread = sanePrices.length >= 2 ? Math.max(...sanePrices) - Math.min(...sanePrices) : 0;
-    pt._spreadPct = sanePrices.length >= 2 ? ((Math.max(...sanePrices) - Math.min(...sanePrices)) / Math.min(...sanePrices)) * 100 : 0;
+    pt._spread = Math.max(...sanePrices) - Math.min(...sanePrices);
+    pt._spreadPct = ((Math.max(...sanePrices) - Math.min(...sanePrices)) / Math.min(...sanePrices)) * 100;
     pt.label = new Date(snap.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     rows.push(pt);
   }
