@@ -42,7 +42,7 @@ function Sparkline({ data, width = 60, height = 20 }: { data: number[]; width?: 
   );
 }
 
-type SortKey = 'exchange' | 'price' | 'deviation' | 'change' | 'funding' | 'oi' | 'volume';
+type SortKey = 'exchange' | 'price' | 'spreadFromMin' | 'deviation' | 'change' | 'funding' | 'oi' | 'volume';
 type SortDir = 'asc' | 'desc';
 type FilterTab = 'all' | 'cex' | 'dex';
 
@@ -173,6 +173,12 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
       switch (sortKey) {
         case 'exchange': return dir * a.exchange.localeCompare(b.exchange);
         case 'price': return dir * (a.price - b.price);
+        case 'spreadFromMin': {
+          const low = rows.length > 0 ? Math.min(...rows.map(r => r.price)) : 0;
+          const sa = low > 0 ? (a.price - low) / low : 0;
+          const sb = low > 0 ? (b.price - low) / low : 0;
+          return dir * (sa - sb);
+        }
         case 'deviation': {
           const da = med > 0 ? (a.price - med) / med : 0;
           const db = med > 0 ? (b.price - med) / med : 0;
@@ -289,6 +295,9 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
               <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('deviation')}>
                 vs Median <SortIcon col="deviation" />
               </th>
+              <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('spreadFromMin')}>
+                vs Low <SortIcon col="spreadFromMin" />
+              </th>
               <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('change')}>
                 24h <SortIcon col="change" />
               </th>
@@ -362,6 +371,18 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                   <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${dev >= 0.001 ? 'text-green-400' : dev <= -0.001 ? 'text-red-400' : 'text-neutral-400'}`} title={getDeviationSlang(dev)}>
                     {dev >= 0 ? '+' : ''}{dev.toFixed(3)}%
                   </td>
+                  {/* Spread from Min */}
+                  {(() => {
+                    const fromLow = lowPrice > 0 ? ((r.price - lowPrice) / lowPrice) * 100 : 0;
+                    const bps = fromLow * 100;
+                    return (
+                      <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${
+                        fromLow < 0.001 ? 'text-neutral-400' : fromLow < 0.01 ? 'text-yellow-400/60' : fromLow < 0.05 ? 'text-yellow-400' : 'text-orange-400'
+                      }`} title={`${bps.toFixed(1)} bps from lowest price`}>
+                        {fromLow < 0.001 ? '—' : `+${fromLow.toFixed(3)}%`}
+                      </td>
+                    );
+                  })()}
                   {/* 24h Change */}
                   <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${r.change !== undefined ? (r.change >= 0 ? 'text-green-400/80' : 'text-red-400/80') : ''}`}>
                     {r.change !== undefined ? (r.change >= 0 ? '+' : '') + r.change.toFixed(2) + '%' : <span className="text-neutral-700">—</span>}
