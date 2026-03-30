@@ -291,15 +291,20 @@ export default function SpreadsPage() {
               <Activity className="w-8 h-8 mb-2 text-neutral-700" />
               {state.tf === 'live' ? (
                 <>
-                  <p className="text-sm">Loading live prices...</p>
+                  <p className="text-sm text-neutral-400">Loading live prices...</p>
                   <p className="text-[10px] text-neutral-500 mt-1">
-                    {wsCount > 0 ? `${wsCount} exchanges reporting. Chart builds every 1.5 seconds.` : 'Fetching prices from exchanges...'}
+                    {wsCount > 0 ? `${wsCount} exchanges reporting. Chart builds every 1.5 seconds.` : 'Connecting to exchanges...'}
                   </p>
-                  {wsHistory.length > 0 && <p className="text-[10px] text-neutral-600 mt-1">{wsHistory.length} snapshots collected, need 2+ to render</p>}
+                  {wsHistory.length > 0 && <p className="text-[10px] text-neutral-600 mt-1">{wsHistory.length} snapshot{wsHistory.length !== 1 ? 's' : ''} collected, need 2+ to render</p>}
+                  {wsCount === 0 && (
+                    <div className="mt-3 flex gap-1">
+                      {[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-neutral-600 animate-pulse" style={{ animationDelay: `${i * 200}ms` }} />)}
+                    </div>
+                  )}
                 </>
               ) : available && available.length > 0 ? (
                 <>
-                  <p className="text-sm">Selected exchanges don&apos;t list {state.sym}</p>
+                  <p className="text-sm text-neutral-400">Selected exchanges don&apos;t list {state.sym}</p>
                   <p className="text-[10px] text-neutral-500 mt-2">Available on: {available.join(', ')}</p>
                   <button onClick={() => actions.setExchanges(available.slice(0, 5))}
                     className="mt-3 px-3 py-1.5 rounded-lg bg-hub-yellow/10 border border-hub-yellow/20 text-hub-yellow text-xs hover:bg-hub-yellow/20 transition">
@@ -308,8 +313,14 @@ export default function SpreadsPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm">No price data for {state.sym}</p>
-                  <p className="text-[10px] text-neutral-700 mt-1">Try a different symbol or timeframe</p>
+                  <p className="text-sm text-neutral-400">No chart data for {state.sym} ({state.tf.toUpperCase()})</p>
+                  <p className="text-[10px] text-neutral-600 mt-1.5 max-w-xs text-center">
+                    Historical kline data is limited for some exchanges. Try switching to Live mode for real-time prices.
+                  </p>
+                  <button onClick={() => actions.setTimeframe('live')}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-hub-yellow/10 border border-hub-yellow/20 text-hub-yellow text-xs hover:bg-hub-yellow/20 transition">
+                    Switch to Live
+                  </button>
                 </>
               )}
             </div>

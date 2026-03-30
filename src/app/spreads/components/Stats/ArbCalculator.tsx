@@ -118,6 +118,11 @@ function ArbCalculatorInner({ stats, calcAmt, calcFee, calcMode, onAmtChange, on
           </div>
 
           {/* Result */}
+          {!calc && stats && (
+            <div className="p-3 rounded-xl border border-white/[0.04] bg-white/[0.01] text-center">
+              <p className="text-[10px] text-neutral-600">Need 2+ exchanges with price data to calculate arbitrage</p>
+            </div>
+          )}
           {calc && (
             <div className={`p-3.5 rounded-xl border ${isProfit
               ? 'bg-green-500/[0.04] border-green-500/10'
