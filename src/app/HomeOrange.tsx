@@ -18,7 +18,7 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe, Lock, Crosshair } from 'lucide-react';
+import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe, Lock, Crosshair, ArrowLeftRight } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
@@ -102,6 +102,7 @@ export default function HomeOrange() {
     { name: 'Screener', href: '/screener', icon: TrendingUp, desc: 'Market scanner', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
     { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange', color: '#ffa500', bg: 'rgba(255,165,0,0.08)' },
     { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+    { name: 'Spreads', href: '/spreads', icon: ArrowLeftRight, desc: 'Price spreads', color: '#ffa726', bg: 'rgba(255,167,38,0.08)' },
     { name: 'Predictions', href: '/prediction-markets', icon: Crosshair, desc: 'Arb scanner', color: '#e040fb', bg: 'rgba(224,64,251,0.08)' },
   ];
 

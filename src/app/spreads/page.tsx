@@ -76,6 +76,23 @@ export default function SpreadsPage() {
     onSetDynamicSymbols: actions.setDynamicSymbols,
   });
 
+  // ── Auto-select available exchanges when current selection has no data ──
+  useEffect(() => {
+    if (
+      !state.chartLoading &&
+      data.length === 0 &&
+      available && available.length > 0 &&
+      state.tf !== 'live' &&
+      exs.length === 0
+    ) {
+      // Auto-switch to top 5 available exchanges after a short delay
+      const timer = setTimeout(() => {
+        actions.setExchanges(available.slice(0, 5));
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [data.length, available, state.chartLoading, state.tf, exs.length, actions]);
+
   // ── Alert system ──
   useAlertSystem({
     wsSpread,
@@ -252,7 +269,7 @@ export default function SpreadsPage() {
 
         {/* ── Price Chart ── */}
         <div className="rounded-2xl bg-[#0c0e14] border border-white/[0.06] p-4 sm:p-5 mb-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={getCoinIcon(state.sym)} alt={`${state.sym} icon`} className="w-6 h-6 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -265,7 +282,7 @@ export default function SpreadsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-start sm:justify-end">
               <ViewModeToggle
                 current={state.viewMode}
                 onChange={actions.setViewMode}
@@ -273,10 +290,10 @@ export default function SpreadsPage() {
                 onHintClick={() => actions.setViewMode('pct')}
               />
               {exs.map((e, i) => (
-                <span key={e} className="flex items-center gap-1 text-[10px]">
+                <span key={e} className="flex items-center gap-1 text-[10px]" title={e}>
                   <span className="w-3 h-[2px] rounded-full" style={{ background: getExchangeColor(e, i) }} />
                   <ExchangeLogo exchange={e} size={12} />
-                  <span className="text-neutral-400">{e}</span>
+                  <span className="text-neutral-400 hidden sm:inline">{e}</span>
                 </span>
               ))}
             </div>

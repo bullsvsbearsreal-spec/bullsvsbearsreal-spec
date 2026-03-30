@@ -5,6 +5,7 @@ type PageMeta = {
   title: string;
   description: string;
   ogDesc?: string;
+  noIndex?: boolean;
 };
 
 export const PAGE_META: Record<string, PageMeta> = {
@@ -33,8 +34,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Screen and filter perpetual futures across all exchanges. Sort by funding rate, open interest, volume, and price change.',
   },
   '/prediction-markets': {
-    title: 'Prediction Markets',
-    description: 'Compare prediction market odds from Polymarket and Kalshi. Find arbitrage between platforms and track market sentiment.',
+    title: 'Prediction Market Arbitrage Scanner',
+    description: 'Find mispriced bets across Polymarket, Kalshi & Manifold. Real-time arbitrage scanner with liquidity scoring, quality filters, and cross-platform spread detection.',
   },
   '/funding-heatmap': {
     title: 'Funding Heatmap',
@@ -236,13 +237,33 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Sign Up',
     description: 'Create a free InfoHub account. Get access to real-time crypto derivatives data, alerts, watchlists, and more.',
   },
+  '/profile': {
+    title: 'Profile',
+    description: 'Manage your InfoHub profile, account settings, and preferences.',
+    noIndex: true,
+  },
+  '/settings': {
+    title: 'Settings',
+    description: 'Configure your InfoHub account settings, notifications, and display preferences.',
+    noIndex: true,
+  },
+  '/forgot-password': {
+    title: 'Forgot Password',
+    description: 'Reset your InfoHub account password. Enter your email to receive a password reset link.',
+    noIndex: true,
+  },
+  '/reset-password': {
+    title: 'Reset Password',
+    description: 'Set a new password for your InfoHub account.',
+    noIndex: true,
+  },
 };
 
 export function pageMetadata(path: string): Metadata {
   const meta = PAGE_META[path];
   if (!meta) return {};
 
-  return {
+  const result: Metadata = {
     title: meta.title,
     description: meta.description,
     alternates: {
@@ -259,4 +280,10 @@ export function pageMetadata(path: string): Metadata {
       images: [`/api/og?title=${encodeURIComponent(meta.title)}&desc=${encodeURIComponent(meta.ogDesc || meta.description)}`],
     },
   };
+
+  if (meta.noIndex) {
+    result.robots = { index: false, follow: false };
+  }
+
+  return result;
 }

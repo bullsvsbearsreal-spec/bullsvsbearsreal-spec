@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/', '/trailer'],
+        disallow: ['/api/', '/trailer', '/admin', '/admin-panel', '/profile', '/settings', '/reset-password', '/forgot-password'],
       },
     ],
     sitemap: 'https://info-hub.io/sitemap.xml',

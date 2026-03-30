@@ -51,6 +51,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/terms', priority: 0.2, changeFrequency: 'monthly' as const },
     { path: '/privacy', priority: 0.2, changeFrequency: 'monthly' as const },
     { path: '/execution-costs', priority: 0.6, changeFrequency: 'hourly' as const },
+    { path: '/spreads', priority: 0.8, changeFrequency: 'hourly' as const },
+    { path: '/spread-scanner', priority: 0.7, changeFrequency: 'hourly' as const },
+    { path: '/stock-heatmap', priority: 0.6, changeFrequency: 'hourly' as const },
+    { path: '/dashboard', priority: 0.6, changeFrequency: 'daily' as const },
+    { path: '/airdrops', priority: 0.6, changeFrequency: 'daily' as const },
+    { path: '/yields', priority: 0.6, changeFrequency: 'hourly' as const },
+    { path: '/developers', priority: 0.5, changeFrequency: 'weekly' as const },
+    { path: '/referrals', priority: 0.4, changeFrequency: 'monthly' as const },
+    { path: '/guides/funding-rate-arbitrage', priority: 0.5, changeFrequency: 'monthly' as const },
+    { path: '/login', priority: 0.3, changeFrequency: 'monthly' as const },
+    { path: '/signup', priority: 0.3, changeFrequency: 'monthly' as const },
   ];
 
   return pages.map(({ path, priority, changeFrequency }) => ({

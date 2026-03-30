@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState, useEffect, useMemo, useRef } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, Globe, Layers } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Globe, Layers, SlidersHorizontal } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { fp } from '../../lib/spread-math';
@@ -46,6 +46,20 @@ type SortKey = 'exchange' | 'price' | 'spreadFromMin' | 'deviation' | 'change' |
 type SortDir = 'asc' | 'desc';
 type FilterTab = 'all' | 'cex' | 'dex';
 
+// Columns that can be toggled on/off
+type ColumnKey = 'trend' | 'bidask' | 'median' | 'vslow' | 'change' | 'funding' | 'annrate' | 'oi' | 'volume';
+const ALL_COLUMNS: { key: ColumnKey; label: string; defaultOn: boolean }[] = [
+  { key: 'trend', label: 'Trend', defaultOn: true },
+  { key: 'bidask', label: 'Bid/Ask', defaultOn: true },
+  { key: 'median', label: 'vs Median', defaultOn: true },
+  { key: 'vslow', label: 'vs Low', defaultOn: true },
+  { key: 'change', label: '24h', defaultOn: true },
+  { key: 'funding', label: 'Funding', defaultOn: true },
+  { key: 'annrate', label: 'Ann. Rate', defaultOn: false },
+  { key: 'oi', label: 'OI', defaultOn: true },
+  { key: 'volume', label: 'Volume', defaultOn: true },
+];
+
 interface EnrichedEntry {
   exchange: string;
   lastPrice: number;
@@ -73,6 +87,36 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
   const [sortKey, setSortKey] = useState<SortKey>('price');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [filter, setFilter] = useState<FilterTab>('all');
+  const [visibleCols, setVisibleCols] = useState<Set<ColumnKey>>(() => {
+    if (typeof window === 'undefined') return new Set(ALL_COLUMNS.filter(c => c.defaultOn).map(c => c.key));
+    try {
+      const saved = localStorage.getItem('spreads-cols');
+      if (saved) return new Set(JSON.parse(saved) as ColumnKey[]);
+    } catch {}
+    return new Set(ALL_COLUMNS.filter(c => c.defaultOn).map(c => c.key));
+  });
+  const [showColPicker, setShowColPicker] = useState(false);
+  const colPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close column picker on outside click
+  useEffect(() => {
+    if (!showColPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (colPickerRef.current && !colPickerRef.current.contains(e.target as Node)) setShowColPicker(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showColPicker]);
+
+  const toggleCol = (key: ColumnKey) => {
+    setVisibleCols(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      try { localStorage.setItem('spreads-cols', JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
+  };
+  const col = (key: ColumnKey) => visibleCols.has(key);
 
   // Price history for sparklines (last 30 snapshots per exchange)
   const priceHistoryRef = useRef<Record<string, number[]>>({});
@@ -262,25 +306,103 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
             )}
           </p>
         </div>
-        {/* CEX / DEX filter tabs */}
-        <div className="flex items-center gap-[2px] p-[2px] rounded-lg bg-white/[0.03] border border-white/[0.06]">
-          <button onClick={() => setFilter('all')}
-            className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition ${filter === 'all' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300'}`}>
-            All <span className="tabular-nums">{rows.length}</span>
-          </button>
-          <button onClick={() => setFilter('cex')}
-            className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition flex items-center gap-1 ${filter === 'cex' ? 'bg-blue-500/15 text-blue-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-            <Globe className="w-2.5 h-2.5" /> CEX <span className="tabular-nums">{cexCount}</span>
-          </button>
-          <button onClick={() => setFilter('dex')}
-            className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition flex items-center gap-1 ${filter === 'dex' ? 'bg-purple-500/15 text-purple-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-            <Layers className="w-2.5 h-2.5" /> DEX <span className="tabular-nums">{dexCount}</span>
-          </button>
+        <div className="flex items-center gap-2">
+          {/* Column picker */}
+          <div className="relative" ref={colPickerRef}>
+            <button onClick={() => setShowColPicker(!showColPicker)}
+              className={`p-1.5 rounded-lg border text-[10px] transition ${
+                showColPicker ? 'bg-hub-yellow/10 border-hub-yellow/20 text-hub-yellow' : 'bg-white/[0.03] border-white/[0.06] text-neutral-500 hover:text-neutral-300'
+              }`} title="Toggle columns">
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+            </button>
+            {showColPicker && (
+              <div className="absolute right-0 top-full mt-1 z-20 p-2 rounded-xl bg-[#141619] border border-white/[0.1] shadow-xl min-w-[140px]">
+                <p className="text-[9px] text-neutral-500 uppercase tracking-wider px-1 mb-1.5">Columns</p>
+                {ALL_COLUMNS.map(c => (
+                  <label key={c.key} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-white/[0.04] cursor-pointer text-[11px]">
+                    <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)}
+                      className="w-3 h-3 rounded accent-hub-yellow" />
+                    <span className={visibleCols.has(c.key) ? 'text-neutral-200' : 'text-neutral-600'}>{c.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* CEX / DEX filter tabs */}
+          <div className="flex items-center gap-[2px] p-[2px] rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <button onClick={() => setFilter('all')}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition ${filter === 'all' ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300'}`}>
+              All <span className="tabular-nums">{rows.length}</span>
+            </button>
+            <button onClick={() => setFilter('cex')}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition flex items-center gap-1 ${filter === 'cex' ? 'bg-blue-500/15 text-blue-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
+              <Globe className="w-2.5 h-2.5" /> CEX <span className="tabular-nums">{cexCount}</span>
+            </button>
+            <button onClick={() => setFilter('dex')}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition flex items-center gap-1 ${filter === 'dex' ? 'bg-purple-500/15 text-purple-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
+              <Layers className="w-2.5 h-2.5" /> DEX <span className="tabular-nums">{dexCount}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* ── Mobile card layout ── */}
+      <div className="sm:hidden divide-y divide-white/[0.04]">
+        {sorted.map((r, idx) => {
+          const fromLow = lowPrice > 0 ? ((r.price - lowPrice) / lowPrice) * 100 : 0;
+          const ref = getExchangeReferralUrl(r.exchange);
+          const isHigh = r.price === highPrice && rows.length > 1;
+          const isLow = r.price === lowPrice && rows.length > 1;
+          const annMultiplier = r.fundingInterval === '1h' ? 8760 : r.fundingInterval === '4h' ? 2190 : 1095;
+          return (
+            <div key={r.exchange} className={`px-4 py-3 ${
+              isHigh ? 'bg-green-500/[0.04]' : isLow ? 'bg-red-500/[0.04]' : idx % 2 === 1 ? 'bg-white/[0.015]' : ''
+            }`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="flex items-center gap-2">
+                  <ExchangeLogo exchange={r.exchange} size={18} />
+                  {ref ? (
+                    <a href={ref} target="_blank" rel="noopener noreferrer" className="font-medium text-white hover:text-hub-yellow transition text-sm">{r.exchange}</a>
+                  ) : (
+                    <span className="font-medium text-white text-sm">{r.exchange}</span>
+                  )}
+                  {r.isDex && <span className="text-[7px] px-1 py-[0.5px] rounded-full bg-purple-500/10 text-purple-400/70 font-medium">DEX</span>}
+                  {isHigh && <span className="text-[7px] px-1.5 py-[1px] rounded-full bg-green-500/10 text-green-400 font-bold">HIGH</span>}
+                  {isLow && <span className="text-[7px] px-1.5 py-[1px] rounded-full bg-red-500/10 text-red-400 font-bold">LOW</span>}
+                  {r.isLive && <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
+                </span>
+                <span className="font-mono text-white text-sm font-semibold tabular-nums">${fp(r.price)}</span>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-mono tabular-nums">
+                {fromLow >= 0.001 && (
+                  <span className={fromLow < 0.01 ? 'text-yellow-400/60' : fromLow < 0.05 ? 'text-yellow-400' : 'text-orange-400'}>
+                    vs Low +{fromLow.toFixed(3)}%
+                  </span>
+                )}
+                {r.fundingRate !== undefined && (
+                  <span className={r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    F: {r.fundingRate >= 0 ? '+' : ''}{(r.fundingRate * 100).toFixed(4)}%
+                  </span>
+                )}
+                {r.change !== undefined && (
+                  <span className={r.change >= 0 ? 'text-green-400/70' : 'text-red-400/70'}>
+                    24h {r.change >= 0 ? '+' : ''}{r.change.toFixed(2)}%
+                  </span>
+                )}
+                {r.oiValue && r.oiValue > 0 && (
+                  <span className="text-neutral-500">OI {fmtUsd(r.oiValue)}</span>
+                )}
+                {r.volume && r.volume > 0 && (
+                  <span className="text-neutral-500">Vol {fmtUsd(r.volume)}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Desktop table ── */}
+      <div className="overflow-x-auto hidden sm:block">
         <table className="w-full text-xs" data-testid="exchange-table">
           <thead>
             <tr className="text-[10px] text-neutral-500 uppercase tracking-wider border-b border-white/[0.06]">
@@ -290,31 +412,31 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
               <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('price')}>
                 Price <SortIcon col="price" />
               </th>
-              <th className="px-2 py-2.5 text-center font-medium">Trend</th>
-              <th className="px-3 py-2.5 text-right font-medium">Bid/Ask</th>
-              <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('deviation')}>
+              {col('trend') && <th className="px-2 py-2.5 text-center font-medium">Trend</th>}
+              {col('bidask') && <th className="px-3 py-2.5 text-right font-medium">Bid/Ask</th>}
+              {col('median') && <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('deviation')}>
                 vs Median <SortIcon col="deviation" />
-              </th>
-              <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('spreadFromMin')}>
+              </th>}
+              {col('vslow') && <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('spreadFromMin')}>
                 vs Low <SortIcon col="spreadFromMin" />
-              </th>
-              <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('change')}>
+              </th>}
+              {col('change') && <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('change')}>
                 24h <SortIcon col="change" />
-              </th>
-              <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('funding')}>
+              </th>}
+              {col('funding') && <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('funding')}>
                 Funding (8h) <SortIcon col="funding" />
-              </th>
-              <th className="px-3 py-2.5 text-right font-medium">Ann. Rate</th>
-              <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('oi')}>
+              </th>}
+              {col('annrate') && <th className="px-3 py-2.5 text-right font-medium">Ann. Rate</th>}
+              {col('oi') && <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('oi')}>
                 Open Interest <SortIcon col="oi" />
-              </th>
-              <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('volume')}>
+              </th>}
+              {col('volume') && <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('volume')}>
                 Volume 24h <SortIcon col="volume" />
-              </th>
+              </th>}
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r) => {
+            {sorted.map((r, idx) => {
               const dev = median > 0 ? ((r.price - median) / median) * 100 : 0;
               const ws = wsPrices[r.exchange];
               const hasBidAsk = ws && ws.bid > 0 && ws.ask > 0 && ws.ask > ws.bid && Math.abs(ws.ask - ws.bid) / ws.bid < 0.01;
@@ -325,8 +447,8 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
               const annMultiplier = r.fundingInterval === '1h' ? 8760 : r.fundingInterval === '4h' ? 2190 : 1095; // 1h=8760, 4h=2190, 8h=1095
               return (
                 <tr key={r.exchange}
-                  className={`border-b border-white/[0.03] transition-colors hover:bg-white/[0.02] ${
-                    isHigh ? 'bg-green-500/[0.03]' : isLow ? 'bg-red-500/[0.03]' : ''
+                  className={`border-b border-white/[0.03] transition-colors hover:bg-white/[0.03] ${
+                    isHigh ? 'bg-green-500/[0.04]' : isLow ? 'bg-red-500/[0.04]' : idx % 2 === 1 ? 'bg-white/[0.015]' : ''
                   }`}>
                   {/* Exchange */}
                   <td className="px-4 py-2.5">
@@ -352,11 +474,11 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                   {/* Price */}
                   <td className="px-3 py-2.5 text-right font-mono text-white tabular-nums">${fp(r.price)}</td>
                   {/* Sparkline */}
-                  <td className="px-2 py-2.5 text-center">
+                  {col('trend') && <td className="px-2 py-2.5 text-center">
                     <Sparkline data={r.sparkData} />
-                  </td>
+                  </td>}
                   {/* Bid/Ask */}
-                  <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                  {col('bidask') && <td className="px-3 py-2.5 text-right font-mono tabular-nums">
                     {hasBidAsk ? (
                       <span className="text-neutral-300" title={`Bid $${fp(ws.bid)} / Ask $${fp(ws.ask)}`}>
                         <span className="text-green-400/70">{fp(ws.bid)}</span>
@@ -366,13 +488,13 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                     ) : (
                       <span className="text-neutral-700">—</span>
                     )}
-                  </td>
+                  </td>}
                   {/* vs Median */}
-                  <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${dev >= 0.001 ? 'text-green-400' : dev <= -0.001 ? 'text-red-400' : 'text-neutral-400'}`} title={getDeviationSlang(dev)}>
+                  {col('median') && <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${dev >= 0.001 ? 'text-green-400' : dev <= -0.001 ? 'text-red-400' : 'text-neutral-400'}`} title={getDeviationSlang(dev)}>
                     {dev >= 0 ? '+' : ''}{dev.toFixed(3)}%
-                  </td>
+                  </td>}
                   {/* Spread from Min */}
-                  {(() => {
+                  {col('vslow') && (() => {
                     const fromLow = lowPrice > 0 ? ((r.price - lowPrice) / lowPrice) * 100 : 0;
                     const bps = fromLow * 100;
                     return (
@@ -384,26 +506,26 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                     );
                   })()}
                   {/* 24h Change */}
-                  <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${r.change !== undefined ? (r.change >= 0 ? 'text-green-400/80' : 'text-red-400/80') : ''}`}>
+                  {col('change') && <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${r.change !== undefined ? (r.change >= 0 ? 'text-green-400/80' : 'text-red-400/80') : ''}`}>
                     {r.change !== undefined ? (r.change >= 0 ? '+' : '') + r.change.toFixed(2) + '%' : <span className="text-neutral-700">—</span>}
-                  </td>
+                  </td>}
                   {/* Funding 8h */}
-                  <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400') : ''}`}
+                  {col('funding') && <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400') : ''}`}
                     title={r.fundingRate !== undefined ? getFundingSlang(r.fundingRate) : undefined}>
                     {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100).toFixed(4) + '%' : <span className="text-neutral-700">—</span>}
-                  </td>
+                  </td>}
                   {/* Annualized */}
-                  <td className={`px-3 py-2.5 text-right font-mono tabular-nums text-[10px] ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400/60' : 'text-red-400/60') : ''}`}>
+                  {col('annrate') && <td className={`px-3 py-2.5 text-right font-mono tabular-nums text-[10px] ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400/60' : 'text-red-400/60') : ''}`}>
                     {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100 * annMultiplier).toFixed(1) + '%' : <span className="text-neutral-700">—</span>}
-                  </td>
+                  </td>}
                   {/* OI */}
-                  <td className="px-3 py-2.5 text-right font-mono text-neutral-300 tabular-nums" title={r.oiValue ? getOISlang(r.oiValue) : undefined}>
+                  {col('oi') && <td className="px-3 py-2.5 text-right font-mono text-neutral-300 tabular-nums" title={r.oiValue ? getOISlang(r.oiValue) : undefined}>
                     {fmtUsd(r.oiValue || 0)}
-                  </td>
+                  </td>}
                   {/* Volume */}
-                  <td className="px-3 py-2.5 text-right font-mono text-neutral-300 tabular-nums">
+                  {col('volume') && <td className="px-3 py-2.5 text-right font-mono text-neutral-300 tabular-nums">
                     {fmtUsd(r.volume || 0)}
-                  </td>
+                  </td>}
                 </tr>
               );
             })}

@@ -63,55 +63,80 @@ async function fetchPolymarket(): Promise<PredictionMarket[]> {
 }
 
 // ─── Kalshi ──────────────────────────────────────────────────
-// Curated series with actual volume — skip dead daily tickers (KXBTCD, KXETHD)
+// Hybrid fetch strategy:
+// 1) series_ticker queries for crypto/sports (not in events API)
+// 2) events API for politics/economics/tech (series_ticker broken for these)
+
+// Series that still work via series_ticker param (crypto + sports)
 const KALSHI_SERIES = [
-  // Crypto (yearly targets — high volume)
   'KXBTCMAXY', 'KXBTCMINY', 'KXBTC2026200', 'KXETHMAXMON', 'KXETHMINY',
-  'KXETHFLIP', 'KXBCH', 'KXDJTCHAIN', 'KXTEXASBTC', 'KXETHE', 'KXETHETF',
-  'KXCRYPTODAY1', 'KXSOL', 'KXRP', 'KXDOGE', 'KXADA',
-  // Economics
-  'KXFED', 'KXRATECUTCOUNT', 'CPIYOY', 'KXAVGTARIFF', 'KXGDPYEAR',
-  'KXACPICORE-', 'FXEURO', 'KXGASD', 'KXFEDDISSENT', 'KXFEDEMPLOYEES',
-  'KXCPICN', 'CPIAR', 'TNOTED', 'KXREVSOL', 'CPIGAS',
-  // Politics
-  'GOVSHUT', 'KXTARIFFSGLOBAL', 'KXTARIFFSEU', 'KXTARIFFSMEX',
-  'KXTARIFFRATEPRC', 'KXTARIFFSCOPPER', 'KXVOTESHUTDOWNH', 'KXGOVREOPEN2025',
-  'KXTRUMPMOSCOW', 'KXTRUMPZELENSKYY', 'KXUSAIRANAGREEMENT', 'KXCONTEMPT',
-  'KXFULLLIDBEFORE8PM', 'KXLEAVEADMIN', 'KXAISECURITY', 'KXDEPORTATIONS',
-  'KXPRESNOMFEDCHAIR',
-  // Tech / Science
-  'KXOPENAIPROFIT', 'KXDEEPSEEKR2RELEASE', 'AITURING', 'KXAIOPEN',
-  'KXCOMPBANCHINESEAI', 'KXANTITRUSTOAIMSFT', 'GOOGLECEOCHANGE', 'APPLEAI',
-  // Iran / Geopolitics
-  'KXUSAIRANAGREEMENT', 'KXIRANREGIME', 'KXIRANHORMUZ', 'KXUSIRAN',
-  'KXIRANLEADER', 'KXUKRAINECEASE', 'KXIRANSTRIKE',
-  // Events
-  'KXNEWPOPE', 'KXELONMARS',
-  // Financials
-  'KXOAIANTH', 'KXRAMPBREX', 'KXDEELRIP',
-  // Sports — FIFA World Cup 2026
-  'KXFIFAWC', 'KXWCWINNER', 'KXFIFAWINNER', 'FIFAWC',
-  // Sports — NBA 2026
-  'KXNBACHAMP', 'KXNBA', 'NBACHAMP',
-  // Sports — F1 2026
-  'KXF1WDC', 'KXF1', 'F1WDC',
-  // Sports — esports
-  'KXLPL', 'KXLOL',
-  // Crypto FDV / launches
-  'KXMETAMASK', 'KXPREDICTFUN', 'KXSTANDX', 'KXBASED',
+  'KXSOL', 'KXRP', 'KXDOGE', 'KXADA',
+  'KXNBA', 'KXF1', 'KXELONMARS', 'KXNEWPOPE',
 ];
+
+// Categories worth fetching from events API
+const KALSHI_USEFUL_CATEGORIES = new Set([
+  'Politics', 'Elections', 'Economics', 'Financials', 'Companies',
+  'Science and Technology', 'World', 'Social',
+]);
+
+function categorizeKalshi(eventTicker: string, title: string, eventCategory?: string): string {
+  const et = eventTicker || '';
+  const t = title || '';
+  if (/BTC|ETH|CRYPTO|SOL|XRP|DOGE|ADA/i.test(et) || /bitcoin|ethereum|crypto|solana/i.test(t)) return 'Crypto';
+  if (/CPI|GDP|FED|RATE|TARIFF|FXEURO|TNOTE|GAS|INFLATION/i.test(et) || /fed.*rate|inflation|recession|tariff|gdp|cpi/i.test(t)) return 'Economics';
+  if (/TRUMP|GOV|SHUTDOWN|ADMIN|VOTE|DEPORT|ELECTION|PRESIDENT/i.test(et) || /trump|biden|president|congress|government|election/i.test(t)) return 'Politics';
+  if (/AI|OPENAI|DEEP|GOOGLE|APPLE|TURING/i.test(et) || /openai|deepseek|agi|artificial/i.test(t)) return 'Tech';
+  if (/IRAN|UKRAINE|RUSSIA|CHINA|HORMUZ|REGIME|CEASEFIRE/i.test(et) || /iran|ukraine|russia|ceasefire|invade|regime/i.test(t)) return 'Geopolitics';
+  if (/NBA|NFL|FIFA|F1|MLB|NHL|FINALS|CHAMPION/i.test(et) || /\b(?:finals|championship|nba|nfl|f1|fifa)\b/i.test(t)) return 'Sports';
+  if (/POPE|MARS|ELON/i.test(et) || /pope|mars|elon/i.test(t)) return 'World';
+  if (eventCategory === 'Economics' || eventCategory === 'Financials') return 'Economics';
+  if (eventCategory === 'Politics' || eventCategory === 'Elections') return 'Politics';
+  if (eventCategory === 'Science and Technology' || eventCategory === 'Companies') return 'Tech';
+  if (eventCategory === 'Sports') return 'Sports';
+  if (eventCategory === 'World') return 'World';
+  return 'Other';
+}
+
+function parseKalshiMarket(m: any, eventCategory?: string): PredictionMarket | null {
+  if (!m.ticker) return null;
+
+  const yesBid = parseFloat(m.yes_bid_dollars) || parseFloat(m.last_price_dollars) || 0;
+  const noBid = parseFloat(m.no_bid_dollars) || (1 - yesBid);
+  if (yesBid === 0 && parseFloat(m.last_price_dollars || '0') === 0) return null;
+
+  const category = categorizeKalshi(m.event_ticker || m.ticker || '', m.title || '', eventCategory);
+
+  return {
+    id: m.ticker,
+    platform: 'kalshi' as const,
+    question: m.title || m.ticker,
+    slug: m.ticker,
+    yesPrice: Math.max(0, Math.min(1, yesBid)),
+    noPrice: Math.max(0, Math.min(1, noBid)),
+    volume24h: parseFloat(m.volume_24h_fp) || 0,
+    totalVolume: parseFloat(m.volume_fp) || 0,
+    liquidity: parseFloat(m.liquidity_dollars) || 0,
+    openInterest: parseFloat(m.open_interest_fp) || 0,
+    endDate: m.close_time || '',
+    category,
+    active: true,
+    url: `https://kalshi.com/markets/${m.ticker}`,
+  };
+}
 
 async function fetchKalshi(): Promise<PredictionMarket[]> {
   const allMarkets: PredictionMarket[] = [];
   const seen = new Set<string>();
 
-  const batchSize = 10;
+  // ── Strategy A: Series ticker queries for crypto/sports ──
+  const batchSize = 6;
   for (let i = 0; i < KALSHI_SERIES.length; i += batchSize) {
     const batch = KALSHI_SERIES.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map(series =>
         fetchWithTimeout(
-          `https://api.elections.kalshi.com/trade-api/v2/markets?limit=20&series_ticker=${series}&status=open`,
+          `https://api.elections.kalshi.com/trade-api/v2/markets?limit=30&series_ticker=${series}&status=open`,
           {},
           10000
         ).then(r => r.ok ? r.json() : { markets: [] })
@@ -120,42 +145,66 @@ async function fetchKalshi(): Promise<PredictionMarket[]> {
 
     for (const result of results) {
       if (result.status !== 'fulfilled') continue;
-      const markets: any[] = result.value.markets || [];
-      for (const m of markets) {
-        if (!m.ticker || seen.has(m.ticker)) continue;
-        if ((m.yes_bid === 0 || m.yes_bid == null) && (m.last_price === 0 || m.last_price == null)) continue;
-        seen.add(m.ticker);
-
-        const yesBid = (m.yes_bid ?? m.last_price ?? 50) / 100;
-        const noBid = (m.no_bid ?? (100 - (m.last_price ?? 50))) / 100;
-
-        const seriesTicker = m.series_ticker || m.ticker || '';
-        let category = m.category || 'Other';
-        if (!category || category === 'Other') {
-          if (/BTC|ETH|CRYPTO|BCH|DJT/i.test(seriesTicker)) category = 'Crypto';
-          else if (/CPI|GDP|FED|RATE|TARIFF|FXEURO|TNOTE|GAS|INFLATION/i.test(seriesTicker)) category = 'Economics';
-          else if (/TRUMP|GOV|SHUTDOWN|IRAN|ADMIN|VOTE|LEAV|DEPORT/i.test(seriesTicker)) category = 'Politics';
-          else if (/AI|OPENAI|DEEP|GOOGLE|APPLE|TURING/i.test(seriesTicker)) category = 'Tech';
-        }
-
-        allMarkets.push({
-          id: m.ticker,
-          platform: 'kalshi' as const,
-          question: m.title || m.ticker,
-          slug: m.ticker,
-          yesPrice: Math.max(0, Math.min(1, yesBid)),
-          noPrice: Math.max(0, Math.min(1, noBid)),
-          volume24h: m.volume_24h || 0,
-          totalVolume: m.volume || 0,
-          liquidity: 0,
-          openInterest: m.open_interest || 0,
-          endDate: m.close_time || '',
-          category,
-          active: true,
-          url: `https://kalshi.com/markets/${m.ticker}`,
-        });
+      for (const m of (result.value.markets || [])) {
+        if (seen.has(m.ticker)) continue;
+        const parsed = parseKalshiMarket(m);
+        if (parsed) { seen.add(m.ticker); allMarkets.push(parsed); }
       }
     }
+  }
+
+  // ── Strategy B: Events API for politics/economics/tech ──
+  const eventTickers: { ticker: string; category: string }[] = [];
+  let eventCursor: string | undefined;
+  for (let page = 0; page < 4; page++) {
+    const url = new URL('https://api.elections.kalshi.com/trade-api/v2/events');
+    url.searchParams.set('limit', '200');
+    url.searchParams.set('status', 'open');
+    if (eventCursor) url.searchParams.set('cursor', eventCursor);
+
+    const res = await fetchWithTimeout(url.toString(), {}, 10000);
+    if (!res.ok) break;
+
+    const data = await res.json();
+    const events: any[] = data.events || [];
+    if (events.length === 0) break;
+
+    for (const e of events) {
+      if (!e.event_ticker || e.event_ticker.startsWith('KXMVE')) continue;
+      if (!KALSHI_USEFUL_CATEGORIES.has(e.category || '')) continue;
+      eventTickers.push({ ticker: e.event_ticker, category: e.category || '' });
+    }
+
+    eventCursor = data.cursor;
+    if (!eventCursor) break;
+  }
+
+  // Fetch markets for discovered events
+  for (let i = 0; i < eventTickers.length; i += batchSize) {
+    const batch = eventTickers.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map(({ ticker, category }) =>
+        fetchWithTimeout(
+          `https://api.elections.kalshi.com/trade-api/v2/markets?limit=30&event_ticker=${ticker}&status=open`,
+          {},
+          10000
+        )
+        .then(r => r.ok ? r.json() : { markets: [] })
+        .then(data => ({ markets: data.markets || [], eventCategory: category }))
+      )
+    );
+
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue;
+      const { markets, eventCategory } = result.value;
+      for (const m of markets) {
+        if (seen.has(m.ticker)) continue;
+        const parsed = parseKalshiMarket(m, eventCategory);
+        if (parsed) { seen.add(m.ticker); allMarkets.push(parsed); }
+      }
+    }
+
+    if (allMarkets.length >= 600) break;
   }
 
   allMarkets.sort((a, b) => b.totalVolume - a.totalVolume);

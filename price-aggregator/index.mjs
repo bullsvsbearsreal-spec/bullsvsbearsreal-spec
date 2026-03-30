@@ -1,5 +1,9 @@
 import http from 'http';
 import WebSocket from 'ws';
+import { gunzipSync } from 'zlib';
+import fs from 'fs';
+import path from 'path';
+import { EventEmitter } from 'events';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3100;
@@ -50,6 +54,65 @@ function klineUpdate(exchange, symbol, price) {
   }
 }
 
+// ─── Kline Persistence ─────────────────────────────────────────────────────
+const KLINE_FILE = path.join(process.cwd(), 'klines.json');
+
+function saveKlines() {
+  try {
+    // Only save symbols from ALL_SYMS to avoid bloating the file
+    const important = new Set(ALL_SYMS.map(s => s.toUpperCase()));
+    const filtered = {};
+    for (const [key, candles] of Object.entries(klines)) {
+      const sym = key.split(':')[1];
+      if (important.has(sym) && candles.length > 0) {
+        filtered[key] = candles;
+      }
+    }
+    fs.writeFileSync(KLINE_FILE, JSON.stringify(filtered));
+  } catch (e) { console.error('[Klines] save error:', e.message); }
+}
+
+function loadKlines() {
+  try {
+    if (!fs.existsSync(KLINE_FILE)) return;
+    const data = JSON.parse(fs.readFileSync(KLINE_FILE, 'utf8'));
+    let loaded = 0;
+    for (const [key, candles] of Object.entries(data)) {
+      if (Array.isArray(candles) && candles.length > 0) {
+        klines[key] = candles;
+        loaded++;
+      }
+    }
+    console.log(`[Klines] loaded ${loaded} series from disk`);
+  } catch (e) { console.error('[Klines] load error:', e.message); }
+}
+
+// ─── Memory Pruning ────────────────────────────────────────────────────────
+// Remove price entries older than 5 minutes for symbols NOT in ALL_SYMS
+const IMPORTANT_SYMS = new Set();
+function pruneMemory() {
+  const now = Date.now();
+  const staleMs = 300_000; // 5 min
+  let pruned = 0;
+  for (const [sym, exPrices] of Object.entries(prices)) {
+    if (IMPORTANT_SYMS.has(sym)) continue;
+    // Check if all entries for this symbol are stale
+    const allStale = Object.values(exPrices).every(p => now - p.ts > staleMs);
+    if (allStale && !IMPORTANT_SYMS.has(sym)) {
+      delete prices[sym];
+      pruned++;
+    }
+  }
+  // Prune kline entries for non-important symbols with no recent updates
+  for (const key of Object.keys(klines)) {
+    const sym = key.split(':')[1];
+    if (!IMPORTANT_SYMS.has(sym) && !prices[sym]) {
+      delete klines[key];
+    }
+  }
+  if (pruned > 0) console.log(`[Prune] removed ${pruned} stale symbols, tracking ${Object.keys(prices).length}`);
+}
+
 function aggregateCandles(hourly, factor) {
   if (hourly.length === 0) return [];
   const ms = factor * 3600000;
@@ -88,9 +151,19 @@ function connectWithRetry(name, createFn, retryMs = 5000) {
   return () => { if (retryTimer) clearTimeout(retryTimer); if (ws) try { ws.close(); } catch {} };
 }
 
-// ── Binance Futures ──
+// ─── All crypto symbols to subscribe (covers SYMBOLS from symbols.ts) ──────
+const ALL_SYMS = [
+  'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','AVAX','LINK','TON','LTC','BCH','ETC','TRX',
+  'ARB','OP','MATIC','STRK','ZK','IMX','MANTA','STX','SEI','METIS','BLAST',
+  'TAO','FET','RENDER','RNDR','ARKM','WLD','OCEAN','AGIX','AKT','NEAR','AR',
+  'SUI','APT','DOT','FIL','ATOM','INJ','HBAR','TIA','ALGO','VET','FTM','KAS','JASMY','IOTA','EOS','XLM','THETA','EGLD','GRT','SAND',
+  'AAVE','UNI','MKR','CRV','DYDX','SNX','COMP','LDO','EIGEN','ENA','ONDO','JUP','PYTH','PENDLE','CAKE','SUSHI','1INCH','GMX','RSR',
+  'PEPE','WIF','BONK','FLOKI','SHIB','POPCAT','BRETT','MOG','MEW','TRUMP','PENGU','TURBO','NEIRO','DEGEN','BOME','MYRO','MOODENG',
+  'MANA','AXS','GALA','BLUR','ENS','W','ZRO','PIXEL','PORTAL','PRIME','RONIN','BEAM',
+];
+
+// ── Binance Futures (bulk stream — ALL USDT-M tickers) ──
 function createBinance() {
-  // Subscribe to all USDT-M futures mini tickers
   const ws = new WebSocket('wss://fstream.binance.com/ws/!miniTicker@arr');
   ws.on('message', (data) => {
     try {
@@ -106,10 +179,16 @@ function createBinance() {
   return ws;
 }
 
-// ── Bybit ──
+// ── Bybit (bulk stream — ALL linear tickers) ──
 function createBybit() {
   const ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-  ws.on('open', () => { ws.send(JSON.stringify({ op: 'subscribe', args: ['tickers.BTCUSDT', 'tickers.ETHUSDT', 'tickers.SOLUSDT', 'tickers.XRPUSDT', 'tickers.DOGEUSDT', 'tickers.BNBUSDT', 'tickers.ADAUSDT', 'tickers.AVAXUSDT', 'tickers.LINKUSDT', 'tickers.DOTUSDT', 'tickers.SUIUSDT', 'tickers.APTUSDT', 'tickers.ARBUSDT', 'tickers.OPUSDT', 'tickers.PEPEUSDT', 'tickers.WIFUSDT', 'tickers.BONKUSDT', 'tickers.TAOUSDT'] })); });
+  ws.on('open', () => {
+    // Subscribe in batches of 10 (Bybit limit per message)
+    const args = ALL_SYMS.map(s => `tickers.${s}USDT`);
+    for (let i = 0; i < args.length; i += 10) {
+      ws.send(JSON.stringify({ op: 'subscribe', args: args.slice(i, i + 10) }));
+    }
+  });
   ws.on('message', (data) => {
     try {
       const d = JSON.parse(data);
@@ -128,12 +207,15 @@ function createBybit() {
   return ws;
 }
 
-// ── OKX ──
+// ── OKX (all symbols) ──
 function createOKX() {
   const ws = new WebSocket('wss://ws.okx.com:8443/ws/v5/public');
-  const symbols = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK','TAO'];
   ws.on('open', () => {
-    ws.send(JSON.stringify({ op: 'subscribe', args: symbols.map(s => ({ channel: 'tickers', instId: `${s}-USDT-SWAP` })) }));
+    // OKX allows large subscription batches
+    const args = ALL_SYMS.map(s => ({ channel: 'tickers', instId: `${s}-USDT-SWAP` }));
+    for (let i = 0; i < args.length; i += 30) {
+      ws.send(JSON.stringify({ op: 'subscribe', args: args.slice(i, i + 30) }));
+    }
   });
   ws.on('message', (data) => {
     try {
@@ -151,12 +233,14 @@ function createOKX() {
   return ws;
 }
 
-// ── Bitget ──
+// ── Bitget (all symbols) ──
 function createBitget() {
   const ws = new WebSocket('wss://ws.bitget.com/v2/ws/public');
-  const symbols = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK','TAO'];
   ws.on('open', () => {
-    ws.send(JSON.stringify({ op: 'subscribe', args: symbols.map(s => ({ instType: 'USDT-FUTURES', channel: 'ticker', instId: `${s}USDT` })) }));
+    const args = ALL_SYMS.map(s => ({ instType: 'USDT-FUTURES', channel: 'ticker', instId: `${s}USDT` }));
+    for (let i = 0; i < args.length; i += 30) {
+      ws.send(JSON.stringify({ op: 'subscribe', args: args.slice(i, i + 30) }));
+    }
   });
   ws.on('message', (data) => {
     try {
@@ -176,12 +260,14 @@ function createBitget() {
   return ws;
 }
 
-// ── MEXC ──
+// ── MEXC (all symbols) ──
 function createMEXC() {
   const ws = new WebSocket('wss://contract.mexc.com/edge');
-  const symbols = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK','TAO'];
   ws.on('open', () => {
-    for (const s of symbols) ws.send(JSON.stringify({ method: 'sub.ticker', param: { symbol: `${s}_USDT` } }));
+    // MEXC requires individual subscribe messages
+    for (const s of ALL_SYMS) {
+      ws.send(JSON.stringify({ method: 'sub.ticker', param: { symbol: `${s}_USDT` } }));
+    }
   });
   ws.on('message', (data) => {
     try {
@@ -201,7 +287,7 @@ function createMEXC() {
   return ws;
 }
 
-// ── Hyperliquid ──
+// ── Hyperliquid (bulk stream — ALL mids) ──
 function createHyperliquid() {
   const ws = new WebSocket('wss://api.hyperliquid.xyz/ws');
   ws.on('open', () => { ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'allMids' } })); });
@@ -219,11 +305,16 @@ function createHyperliquid() {
   return ws;
 }
 
-// ── Kraken Futures ──
+// ── Kraken Futures (all available products) ──
 function createKraken() {
   const ws = new WebSocket('wss://futures.kraken.com/ws/v1');
-  // Kraken uses XBT for Bitcoin, not BTC
-  const products = ['PI_XBTUSD','PI_ETHUSD','PI_SOLUSD','PI_XRPUSD','PI_ADAUSD','PI_DOTUSD','PI_LINKUSD','PI_AVAXUSD','PI_DOGEUSD','PI_LTCUSD'];
+  const products = [
+    'PI_XBTUSD','PI_ETHUSD','PI_SOLUSD','PI_XRPUSD','PI_ADAUSD','PI_DOTUSD',
+    'PI_LINKUSD','PI_AVAXUSD','PI_DOGEUSD','PI_LTCUSD','PI_BCHUSD','PI_ATOMUSD',
+    'PI_UNIUSD','PI_FILUSD','PI_MATICUSD','PI_NEARUSD','PI_OPUSD','PI_ARBUSD',
+    'PI_AAVEUSD','PI_PEPEUSD','PI_SHIBUSD','PI_SUIUSD','PI_APTUSD','PI_INJUSD',
+    'PI_TRXUSD','PI_TONUSD','PI_SEIUSD','PI_TIAUSD','PI_FTMUSD',
+  ];
   ws.on('open', () => {
     ws.send(JSON.stringify({ event: 'subscribe', feed: 'ticker', product_ids: products }));
   });
@@ -243,10 +334,18 @@ function createKraken() {
   return ws;
 }
 
-// ── Coinbase ──
+// ── Coinbase (expanded symbols) ──
 function createCoinbase() {
   const ws = new WebSocket('wss://advanced-trade-ws.coinbase.com');
-  const symbols = ['BTC-USD','ETH-USD','SOL-USD','XRP-USD','DOGE-USD','ADA-USD','AVAX-USD','LINK-USD','DOT-USD','LTC-USD'];
+  const symbols = [
+    'BTC-USD','ETH-USD','SOL-USD','XRP-USD','DOGE-USD','ADA-USD','AVAX-USD',
+    'LINK-USD','DOT-USD','LTC-USD','UNI-USD','AAVE-USD','NEAR-USD','SUI-USD',
+    'APT-USD','ARB-USD','OP-USD','FIL-USD','ATOM-USD','SHIB-USD','PEPE-USD',
+    'BONK-USD','MATIC-USD','INJ-USD','SEI-USD','TIA-USD','FET-USD','GRT-USD',
+    'RENDER-USD','HBAR-USD','EOS-USD','XLM-USD','ALGO-USD','VET-USD','SAND-USD',
+    'MANA-USD','AXS-USD','COMP-USD','SNX-USD','MKR-USD','CRV-USD','LDO-USD',
+    'ENS-USD','BLUR-USD','IMX-USD','JASMY-USD','ETC-USD','BCH-USD','FTM-USD',
+  ];
   ws.on('open', () => {
     ws.send(JSON.stringify({ type: 'subscribe', product_ids: symbols, channels: ['ticker'] }));
   });
@@ -262,6 +361,270 @@ function createCoinbase() {
       }
     } catch {}
   });
+  return ws;
+}
+
+// ── BingX (WebSocket — all symbols) ──
+function createBingX() {
+  const ws = new WebSocket('wss://open-api-swap.bingx.com/swap-market');
+  ws.on('open', () => {
+    for (const s of ALL_SYMS.slice(0, 50)) { // top 50 symbols
+      ws.send(JSON.stringify({ id: s, reqType: 'sub', dataType: `${s}-USDT@ticker` }));
+    }
+  });
+  ws.on('message', (raw) => {
+    try {
+      // BingX sends gzipped data
+      let text;
+      if (raw instanceof Buffer) {
+        try {
+          // gunzipSync imported at top level
+          text = gunzipSync(raw).toString();
+        } catch { text = raw.toString(); }
+      } else { text = raw.toString(); }
+      if (text === 'Ping') { ws.send('Pong'); return; }
+      const d = JSON.parse(text);
+      if (d.data && d.dataType?.includes('@ticker')) {
+        const sym = d.dataType.split('-USDT')[0];
+        const last = +(d.data.c || d.data.lastPrice || 0);
+        const bid = +(d.data.bestBidPrice || last);
+        const ask = +(d.data.bestAskPrice || last);
+        if (last > 0 && sym) updatePrice('BingX', sym, last, bid, ask);
+      }
+    } catch {}
+  });
+  const ping = setInterval(() => { try { ws.send('Ping'); } catch {} }, 15000);
+  ws.on('close', () => clearInterval(ping));
+  return ws;
+}
+
+// ── HTX / Huobi Futures (WebSocket — all symbols) ──
+function createHTX() {
+  const ws = new WebSocket('wss://api.hbdm.com/linear-swap-ws');
+  ws.on('open', () => {
+    for (const s of ALL_SYMS.slice(0, 50)) {
+      ws.send(JSON.stringify({ sub: `market.${s}-USDT.trade.detail`, id: s }));
+    }
+  });
+  ws.on('message', (raw) => {
+    try {
+      // HTX sends gzipped data
+      // gunzipSync imported at top level
+      const text = gunzipSync(raw).toString();
+      const d = JSON.parse(text);
+      if (d.ping) { ws.send(JSON.stringify({ pong: d.ping })); return; }
+      if (d.ch && d.tick?.data?.[0]) {
+        const sym = d.ch.split('.')[1].replace('-USDT', '');
+        const last = +(d.tick.data[0].price || 0);
+        if (last > 0) updatePrice('HTX', sym, last, last, last);
+      }
+    } catch {}
+  });
+  return ws;
+}
+
+// ── Phemex (WebSocket — all symbols) ──
+function createPhemex() {
+  const ws = new WebSocket('wss://ws.phemex.com');
+  ws.on('open', () => {
+    const syms = ALL_SYMS.slice(0, 40).map(s => `${s}USDT`);
+    ws.send(JSON.stringify({ id: 1, method: 'tick.subscribe', params: syms }));
+  });
+  ws.on('message', (data) => {
+    try {
+      const d = JSON.parse(data);
+      if (d.tick?.symbol) {
+        const sym = d.tick.symbol.replace('USDT', '');
+        const last = +(d.tick.close || 0) / 1e4;
+        const bid = +(d.tick.bid || 0) / 1e4;
+        const ask = +(d.tick.ask || 0) / 1e4;
+        if (last > 0) updatePrice('Phemex', sym, last, bid || last, ask || last);
+      }
+    } catch {}
+  });
+  const ping = setInterval(() => { try { ws.send(JSON.stringify({ id: 0, method: 'server.ping', params: [] })); } catch {} }, 10000);
+  ws.on('close', () => clearInterval(ping));
+  return ws;
+}
+
+// ── Bitfinex (WebSocket — all symbols) ──
+function createBitfinex() {
+  const ws = new WebSocket('wss://api-pub.bitfinex.com/ws/2');
+  const chanMap = {}; // chanId -> symbol
+  ws.on('open', () => {
+    const bfxSyms = ALL_SYMS.slice(0, 40).map(s => `t${s}USD`);
+    for (const sym of bfxSyms) {
+      ws.send(JSON.stringify({ event: 'subscribe', channel: 'ticker', symbol: sym }));
+    }
+  });
+  ws.on('message', (data) => {
+    try {
+      const d = JSON.parse(data);
+      if (d.event === 'subscribed' && d.chanId && d.symbol) {
+        chanMap[d.chanId] = d.symbol.replace(/^t/, '').replace(/USD$/, '').replace(/F0$/, '');
+        return;
+      }
+      if (Array.isArray(d) && d.length === 2 && Array.isArray(d[1]) && d[1].length >= 10) {
+        const sym = chanMap[d[0]];
+        if (!sym) return;
+        const [bid, , ask, , , , last] = d[1];
+        if (+last > 0) updatePrice('Bitfinex', sym, +last, +bid || +last, +ask || +last);
+      }
+    } catch {}
+  });
+  return ws;
+}
+
+// ── dYdX v4 (WebSocket) ──
+function createDYDX() {
+  const ws = new WebSocket('wss://indexer.dydx.trade/v4/ws');
+  ws.on('open', () => {
+    for (const s of ALL_SYMS.slice(0, 50)) {
+      ws.send(JSON.stringify({ type: 'subscribe', channel: 'v4_markets', id: `${s}-USD` }));
+    }
+  });
+  ws.on('message', (data) => {
+    try {
+      const d = JSON.parse(data);
+      if (d.type === 'channel_data' && d.contents?.markets) {
+        for (const [ticker, m] of Object.entries(d.contents.markets)) {
+          const sym = ticker.replace('-USD', '');
+          const price = +(m.oraclePrice || 0);
+          if (price > 0) updatePrice('dYdX', sym, price, price, price);
+        }
+      }
+      if (d.type === 'subscribed' && d.contents?.markets) {
+        for (const [ticker, m] of Object.entries(d.contents.markets)) {
+          const sym = ticker.replace('-USD', '');
+          const price = +(m.oraclePrice || 0);
+          if (price > 0) updatePrice('dYdX', sym, price, price, price);
+        }
+      }
+    } catch {}
+  });
+  return ws;
+}
+
+// ── CoinEx (WebSocket) ──
+function createCoinEx() {
+  const ws = new WebSocket('wss://perpetual.coinex.com/');
+  ws.on('open', () => {
+    const params = ALL_SYMS.slice(0, 40).map(s => `${s}USDT`);
+    ws.send(JSON.stringify({ method: 'state.subscribe', params, id: 1 }));
+  });
+  ws.on('message', (data) => {
+    try {
+      const d = JSON.parse(data);
+      if (d.method === 'state.update' && d.params?.[0]) {
+        for (const [pair, info] of Object.entries(d.params[0])) {
+          const sym = pair.replace('USDT', '');
+          const last = +(info.last || 0);
+          if (last > 0) updatePrice('CoinEx', sym, last, last, last);
+        }
+      }
+    } catch {}
+  });
+  const ping = setInterval(() => { try { ws.send(JSON.stringify({ method: 'server.ping', params: [], id: 0 })); } catch {} }, 15000);
+  ws.on('close', () => clearInterval(ping));
+  return ws;
+}
+
+// ── Deribit (WebSocket — BTC, ETH, SOL perpetuals) ──
+function createDeribit() {
+  const ws = new WebSocket('wss://www.deribit.com/ws/api/v2');
+  ws.on('open', () => {
+    ws.send(JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'public/subscribe',
+      params: { channels: ['ticker.BTC-PERPETUAL.100ms', 'ticker.ETH-PERPETUAL.100ms', 'ticker.SOL_USDC-PERPETUAL.100ms'] }
+    }));
+  });
+  ws.on('message', (data) => {
+    try {
+      const d = JSON.parse(data);
+      if (d.params?.channel?.startsWith('ticker.') && d.params?.data) {
+        const t = d.params.data;
+        let sym = t.instrument_name?.split('-')[0] || '';
+        if (sym === 'SOL_USDC') sym = 'SOL';
+        const last = +(t.last_price || t.mark_price || 0);
+        const bid = +(t.best_bid_price || last);
+        const ask = +(t.best_ask_price || last);
+        if (last > 0 && sym) updatePrice('Deribit', sym, last, bid, ask);
+      }
+    } catch {}
+  });
+  const hb = setInterval(() => {
+    try { ws.send(JSON.stringify({ jsonrpc: '2.0', id: 9999, method: 'public/test', params: {} })); } catch {}
+  }, 15000);
+  ws.on('close', () => clearInterval(hb));
+  return ws;
+}
+
+// ── KuCoin Futures (WebSocket — needs token first) ──
+function createKuCoin() {
+  // KuCoin requires fetching a WS token via REST before connecting
+  let ws;
+  const init = async () => {
+    try {
+      const r = await fetch('https://api-futures.kucoin.com/api/v1/bullet-public', { method: 'POST', signal: AbortSignal.timeout(5000) });
+      const j = await r.json();
+      const endpoint = j?.data?.instanceServers?.[0]?.endpoint;
+      const token = j?.data?.token;
+      if (!endpoint || !token) throw new Error('No KuCoin WS token');
+
+      ws = new WebSocket(`${endpoint}?token=${token}`);
+      ws.on('open', () => {
+        // Subscribe to ticker for top symbols
+        for (const s of ALL_SYMS.slice(0, 40)) {
+          const pair = s === 'BTC' ? 'XBTUSDTM' : `${s}USDTM`;
+          ws.send(JSON.stringify({ id: Date.now(), type: 'subscribe', topic: `/contractMarket/tickerV2:${pair}`, privateChannel: false, response: true }));
+        }
+      });
+      ws.on('message', (data) => {
+        try {
+          const d = JSON.parse(data);
+          if (d.type === 'message' && d.topic?.includes('tickerV2') && d.data) {
+            let sym = d.data.symbol?.replace('USDTM', '') || '';
+            if (sym === 'XBT') sym = 'BTC';
+            const last = +(d.data.price || d.data.bestBidPrice || 0);
+            const bid = +(d.data.bestBidPrice || last);
+            const ask = +(d.data.bestAskPrice || last);
+            if (last > 0 && sym) updatePrice('KuCoin', sym, last, bid, ask);
+          }
+        } catch {}
+      });
+      const ping = setInterval(() => { try { ws.send(JSON.stringify({ id: Date.now(), type: 'ping' })); } catch {} }, 20000);
+      ws.on('close', () => clearInterval(ping));
+    } catch (e) { console.error('[KuCoin WS] init error:', e.message); }
+  };
+  init();
+  // Return a dummy object for connectWithRetry compatibility
+  const dummy = new EventEmitter();
+  setTimeout(() => dummy.emit('open'), 2000);
+  return dummy;
+}
+
+// ── WhiteBIT (WebSocket) ──
+function createWhiteBIT() {
+  const ws = new WebSocket('wss://api.whitebit.com/ws');
+  ws.on('open', () => {
+    const pairs = ALL_SYMS.slice(0, 40).map(s => `${s}_PERP`);
+    ws.send(JSON.stringify({ id: 1, method: 'lastprice_subscribe', params: pairs }));
+  });
+  ws.on('message', (data) => {
+    try {
+      const d = JSON.parse(data);
+      if (d.method === 'lastprice_update' && d.params) {
+        const [pair, price] = d.params;
+        if (pair && price) {
+          const sym = pair.replace('_PERP', '');
+          const p = +price;
+          if (p > 0) updatePrice('WhiteBIT', sym, p, p, p);
+        }
+      }
+    } catch {}
+  });
+  const ping = setInterval(() => { try { ws.send(JSON.stringify({ id: 0, method: 'ping', params: [] })); } catch {} }, 15000);
+  ws.on('close', () => clearInterval(ping));
   return ws;
 }
 
@@ -330,11 +693,6 @@ const REST_EXCHANGES = [
       sym: (m.ticker || '').replace('-USD', ''), price: +(m.oraclePrice || 0), bid: +(m.oraclePrice || 0), ask: +(m.oraclePrice || 0)
     })).filter(c => c.price > 0 && c.sym);
   }},
-  { name: 'Phemex', url: 'https://api.phemex.com/md/v2/ticker/24hr/all', parse: (data) => {
-    return (data?.result || []).filter(t => t.symbol?.endsWith('USDT')).map(t => ({
-      sym: t.symbol.replace('USDT', ''), price: +(t.closeRp || t.markPriceRp || 0), bid: +(t.closeRp || 0), ask: +(t.closeRp || 0)
-    })).filter(c => c.price > 0);
-  }},
   { name: 'Aster', url: 'https://fapi.asterdex.com/fapi/v1/ticker/24hr', parse: (data) => {
     return (data || []).filter(t => t.symbol?.endsWith('USDT')).map(t => ({
       sym: t.symbol.replace(/USDT$/, ''), price: +(t.lastPrice || 0), bid: +(t.lastPrice || 0), ask: +(t.lastPrice || 0)
@@ -395,11 +753,33 @@ const REST_EXCHANGES = [
       sym: m.symbol.replace('-USD-PERP', ''), price: +(m.mark_price || m.last_traded_price || 0), bid: +(m.mark_price || 0), ask: +(m.mark_price || 0)
     })).filter(c => c.price > 0 && c.sym);
   }},
-  // ── Bybit REST fallback (WS only covers subscribed pairs) ──
+  // ── REST fallbacks for WS exchanges (WS only covers subscribed pairs) ──
   { name: 'Bybit', url: 'https://api.bybit.com/v5/market/tickers?category=linear', parse: (data) => {
     return (data?.result?.list || []).filter(t => t.symbol?.endsWith('USDT')).map(t => ({
       sym: t.symbol.replace('USDT', ''), price: +(t.lastPrice || 0), bid: +(t.bid1Price || 0), ask: +(t.ask1Price || 0)
     })).filter(c => c.price > 0);
+  }},
+  { name: 'OKX', url: 'https://www.okx.com/api/v5/market/tickers?instType=SWAP', parse: (data) => {
+    return (data?.data || []).filter(t => t.instId?.endsWith('-USDT-SWAP')).map(t => ({
+      sym: t.instId.split('-')[0], price: +(t.last || 0), bid: +(t.bidPx || 0), ask: +(t.askPx || 0)
+    })).filter(c => c.price > 0 && c.sym);
+  }},
+  { name: 'Bitget', url: 'https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES', parse: (data) => {
+    return (data?.data || []).filter(t => t.symbol?.endsWith('USDT')).map(t => ({
+      sym: t.symbol.replace('USDT', ''), price: +(t.lastPr || t.last || 0), bid: +(t.bidPr || 0), ask: +(t.askPr || 0)
+    })).filter(c => c.price > 0 && c.sym);
+  }},
+  { name: 'MEXC', url: 'https://contract.mexc.com/api/v1/contract/ticker', parse: (data) => {
+    return (data?.data || []).filter(t => t.symbol?.endsWith('_USDT')).map(t => ({
+      sym: t.symbol.replace('_USDT', ''), price: +(t.lastPrice || t.fairPrice || 0), bid: +(t.bid1 || 0), ask: +(t.ask1 || 0)
+    })).filter(c => c.price > 0 && c.sym);
+  }},
+  { name: 'Kraken', url: 'https://futures.kraken.com/derivatives/api/v3/tickers', parse: (data) => {
+    return (data?.tickers || []).filter(t => t.pair?.startsWith('PF_') && t.pair?.endsWith('USD')).map(t => {
+      let sym = t.pair.replace('PF_', '').replace('USD', '');
+      if (sym === 'XBT') sym = 'BTC';
+      return { sym, price: +(t.last || t.markPrice || 0), bid: +(t.bid || 0), ask: +(t.ask || 0) };
+    }).filter(c => c.price > 0 && c.sym);
   }},
   // Coinbase handled separately via pollCoinbase() with per-coin tickers
   // ── edgeX (simplified — just meta for now) ──
@@ -553,25 +933,45 @@ const server = http.createServer((req, res) => {
 // ─── Start Everything ───────────────────────────────────────────────────────
 console.log('Starting InfoHub Price Aggregator...');
 
-// WebSocket connections with auto-reconnect (instant updates)
-connectWithRetry('Binance', createBinance);   // ~200ms
-connectWithRetry('OKX', createOKX);           // ~200ms
-connectWithRetry('Bitget', createBitget);     // ~200ms
-connectWithRetry('MEXC', createMEXC);         // ~200ms
-connectWithRetry('Hyperliquid', createHyperliquid); // ~200ms
-connectWithRetry('Kraken', createKraken);     // ~500ms
-// Bybit + Coinbase moved to REST (WS subscription issues)
+// Populate important symbols set for memory pruning
+for (const s of ALL_SYMS) IMPORTANT_SYMS.add(s.toUpperCase());
 
-// REST polling every 5s
-setInterval(pollREST, 5000);        // All REST exchanges every 5s
-setInterval(pollGTrade, 10000);     // gTrade via InfoHub funding every 10s
-setInterval(pollGMX, 10000);        // GMX via InfoHub funding every 10s
-setInterval(pollCoinbase, 5000);    // Coinbase individual tickers every 5s
-setInterval(pollFromInfoHub, 10000);// edgeX, Variational, BitMEX, Gate.io via InfoHub tickers every 10s
+// Load persisted klines from disk
+loadKlines();
+
+// WebSocket connections with auto-reconnect (instant updates)
+connectWithRetry('Binance', createBinance);       // bulk stream, all USDT-M
+connectWithRetry('Bybit', createBybit);           // all symbols
+connectWithRetry('OKX', createOKX);               // all symbols
+connectWithRetry('Bitget', createBitget);         // all symbols
+connectWithRetry('MEXC', createMEXC);             // all symbols
+connectWithRetry('Hyperliquid', createHyperliquid); // bulk allMids
+connectWithRetry('Kraken', createKraken);         // expanded products
+connectWithRetry('Coinbase', createCoinbase);     // expanded symbols
+connectWithRetry('BingX', createBingX);           // top 50 symbols
+connectWithRetry('HTX', createHTX);               // top 50 symbols
+connectWithRetry('Phemex', createPhemex);         // top 40 symbols
+connectWithRetry('Bitfinex', createBitfinex);     // top 40 symbols
+connectWithRetry('dYdX', createDYDX);             // all markets
+connectWithRetry('CoinEx', createCoinEx);         // top 40 symbols
+connectWithRetry('Deribit', createDeribit);       // BTC, ETH, SOL perps
+connectWithRetry('KuCoin', createKuCoin);         // top 40 symbols
+connectWithRetry('WhiteBIT', createWhiteBIT);     // top 40 symbols
+
+// REST polling (fallback for symbols not covered by WS, and REST-only exchanges)
+setInterval(pollREST, 2000);        // All REST exchanges every 2s
+setInterval(pollGTrade, 8000);      // gTrade via InfoHub funding every 8s
+setInterval(pollGMX, 8000);         // GMX via InfoHub funding every 8s
+setInterval(pollFromInfoHub, 5000); // edgeX, Variational, BitMEX, Gate.io via InfoHub tickers every 5s
+
+// Kline persistence every 5 minutes
+setInterval(saveKlines, 300_000);
+// Memory pruning every 2 minutes
+setInterval(pruneMemory, 120_000);
+
 pollREST();
 pollGTrade();
 pollGMX();
-pollCoinbase();
 pollFromInfoHub();
 
 server.listen(PORT, () => {
