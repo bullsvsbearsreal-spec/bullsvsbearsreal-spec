@@ -32,6 +32,7 @@ import { TickerStrip } from './components/Table/TickerStrip';
 import { ExchangeTable } from './components/Table/ExchangeTable';
 import { ExportCSV } from './components/Toolbar/ExportCSV';
 import { AlertToast } from './components/Alerts/AlertToast';
+import { StickySpreadBar } from './components/Stats/StickySpreadBar';
 
 export default function SpreadsPage() {
   const { state, actions } = useSpreadState();
@@ -213,6 +214,18 @@ export default function SpreadsPage() {
             )}
           </div>
         </div>
+
+        {/* ── Sticky Summary Bar (appears on scroll) ── */}
+        {stats && (
+          <StickySpreadBar
+            stats={stats}
+            sym={state.sym}
+            tf={state.tf}
+            wsPrices={wsPrices}
+            wsCount={wsCount}
+            selCount={state.sel.length}
+          />
+        )}
 
         {/* ── Stats Cards ── */}
         {stats && (

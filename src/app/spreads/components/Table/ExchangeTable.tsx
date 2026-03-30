@@ -1,13 +1,13 @@
 'use client';
 
-import { memo, useState, useEffect, useMemo } from 'react';
+import { memo, useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, Globe, Layers } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { fp } from '../../lib/spread-math';
 import { getFundingSlang, getDeviationSlang, getOISlang } from '../../lib/trader-slang';
 import { CEX_EXCHANGES, DEX_EXCHANGES } from '../../lib/symbols';
-import type { SpreadStats, WsPrice, Candle, TickerEntry, FundingEntry, OIEntry } from '../../lib/types';
+import type { SpreadStats, WsPrice, Candle } from '../../lib/types';
 
 /** Format large USD values: $1.23B, $456.7M, $12.3K */
 function fmtUsd(v: number): string {
@@ -20,9 +20,42 @@ function fmtUsd(v: number): string {
   return '$' + v.toFixed(0);
 }
 
+/** Tiny inline sparkline SVG from price history */
+function Sparkline({ data, width = 60, height = 20 }: { data: number[]; width?: number; height?: number }) {
+  if (data.length < 2) return <span className="w-[60px]" />;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 2) - 1;
+    return `${x},${y}`;
+  }).join(' ');
+  const last = data[data.length - 1];
+  const first = data[0];
+  const color = last >= first ? '#22c55e' : '#ef4444';
+  return (
+    <svg width={width} height={height} className="inline-block align-middle">
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      <circle cx={(data.length - 1) / (data.length - 1) * width} cy={height - ((last - min) / range) * (height - 2) - 1} r="1.5" fill={color} />
+    </svg>
+  );
+}
+
 type SortKey = 'exchange' | 'price' | 'deviation' | 'change' | 'funding' | 'oi' | 'volume';
 type SortDir = 'asc' | 'desc';
 type FilterTab = 'all' | 'cex' | 'dex';
+
+interface EnrichedEntry {
+  exchange: string;
+  lastPrice: number;
+  change24h?: number;
+  quoteVolume24h?: number;
+  fundingRate?: number;
+  fundingInterval?: string;
+  markPrice?: number;
+  openInterestValue?: number;
+}
 
 interface ExchangeTableProps {
   sym: string;
@@ -35,45 +68,55 @@ const cexSet = new Set(CEX_EXCHANGES);
 const dexSet = new Set(DEX_EXCHANGES);
 
 function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTableProps) {
-  const [tickers, setTickers] = useState<TickerEntry[]>([]);
-  const [funding, setFunding] = useState<FundingEntry[]>([]);
-  const [oi, setOI] = useState<OIEntry[]>([]);
+  const [enriched, setEnriched] = useState<EnrichedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>('price');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [filter, setFilter] = useState<FilterTab>('all');
 
+  // Price history for sparklines (last 30 snapshots per exchange)
+  const priceHistoryRef = useRef<Record<string, number[]>>({});
+
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      Promise.allSettled([
-        fetch('/api/tickers').then(r => r.ok ? r.json() : null),
-        fetch('/api/funding').then(r => r.ok ? r.json() : null),
-        fetch('/api/openinterest').then(r => r.ok ? r.json() : null),
-      ]).then(([tRes, fRes, oRes]) => {
-        if (cancelled) return;
-        const tData = (tRes.status === 'fulfilled' && tRes.value?.data) || [];
-        const fData = (fRes.status === 'fulfilled' && fRes.value?.data) || [];
-        const oData = (oRes.status === 'fulfilled' && oRes.value?.data) || [];
-        setTickers(tData.filter((t: Record<string, unknown>) => t.symbol === sym));
-        setFunding(fData.filter((f: Record<string, unknown>) => f.symbol === sym));
-        setOI(oData.filter((o: Record<string, unknown>) => o.symbol === sym));
-        setLoading(false);
-      });
+      fetch(`/api/enriched?symbol=${sym}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(json => {
+          if (cancelled) return;
+          setEnriched(json?.data || []);
+          setLoading(false);
+        })
+        .catch(() => { if (!cancelled) setLoading(false); });
     };
     setLoading(true);
-    const delay = setTimeout(load, 800);
+    priceHistoryRef.current = {}; // reset on symbol change
+    const delay = setTimeout(load, 500);
     const iv = setInterval(load, 15000);
     return () => { cancelled = true; clearTimeout(delay); clearInterval(iv); };
   }, [sym]);
 
+  // Track price history from WS for sparklines
+  useEffect(() => {
+    const hist = priceHistoryRef.current;
+    for (const [ex, ws] of Object.entries(wsPrices)) {
+      if (ws.price > 0) {
+        if (!hist[ex]) hist[ex] = [];
+        const arr = hist[ex];
+        // Only push if price actually changed
+        if (arr.length === 0 || arr[arr.length - 1] !== ws.price) {
+          arr.push(ws.price);
+          if (arr.length > 30) arr.shift();
+        }
+      }
+    }
+  }, [wsPrices]);
+
   const rows = useMemo(() => {
-    const tickerMap = new Map(tickers.map(t => [t.exchange, t]));
-    const fundingMap = new Map(funding.map(f => [f.exchange, f]));
-    const oiMap = new Map(oi.map(o => [o.exchange, o]));
-    // Merge all data sources: tickers + stats.prices + wsPrices
+    const enrichedMap = new Map(enriched.map(e => [e.exchange, e]));
+    // Merge all sources: enriched API + stats.prices + wsPrices
     const allExchanges = new Set([
-      ...tickers.map(t => t.exchange),
+      ...enriched.map(e => e.exchange),
       ...stats.prices.map(p => p.e),
       ...Object.keys(wsPrices).filter(e => wsPrices[e].price > 0),
     ]);
@@ -89,29 +132,30 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
       }
     }
 
-    const list = Array.from(allExchanges).map(e => {
-      // Price: prefer WS live price > ticker API > stats
+    return Array.from(allExchanges).map(e => {
+      const en = enrichedMap.get(e);
       const wsP = wsPrices[e];
+      // Price: prefer live WS > enriched API > stats
       const price = (wsP?.price && wsP.price > 0 ? wsP.price : 0)
-        || tickerMap.get(e)?.lastPrice
+        || en?.lastPrice
         || stats.prices.find(p => p.e === e)?.p
         || 0;
 
       return {
         exchange: e,
         price,
-        change: changeMap.get(e) ?? tickerMap.get(e)?.change24h,
-        fundingRate: fundingMap.get(e)?.fundingRate,
-        oiValue: oiMap.get(e)?.openInterestValue,
-        volume: tickerMap.get(e)?.quoteVolume24h,
+        change: changeMap.get(e) ?? en?.change24h,
+        fundingRate: en?.fundingRate,
+        fundingInterval: en?.fundingInterval,
+        oiValue: en?.openInterestValue,
+        volume: en?.quoteVolume24h,
         isCex: cexSet.has(e),
         isDex: dexSet.has(e),
         isLive: !!(wsP?.price && wsP.price > 0 && (Date.now() - wsP.ts) < 30000),
+        sparkData: priceHistoryRef.current[e] || [],
       };
     }).filter(r => r.price > 0);
-
-    return list;
-  }, [tickers, funding, oi, stats.prices, klineData, wsPrices]);
+  }, [enriched, stats.prices, klineData, wsPrices]);
 
   // Apply filter
   const filtered = useMemo(() => {
@@ -124,12 +168,12 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
   const sorted = useMemo(() => {
     const list = [...filtered];
     const dir = sortDir === 'asc' ? 1 : -1;
+    const med = rows.length > 0 ? rows.reduce((s, r) => s + r.price, 0) / rows.length : 0;
     list.sort((a, b) => {
       switch (sortKey) {
         case 'exchange': return dir * a.exchange.localeCompare(b.exchange);
         case 'price': return dir * (a.price - b.price);
         case 'deviation': {
-          const med = rows.length > 0 ? rows.reduce((s, r) => s + r.price, 0) / rows.length : 0;
           const da = med > 0 ? (a.price - med) / med : 0;
           const db = med > 0 ? (b.price - med) / med : 0;
           return dir * (da - db);
@@ -176,13 +220,11 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
           <div className="h-3 w-32 bg-white/[0.03] rounded animate-pulse mt-1.5" />
         </div>
         <div className="p-1">
-          {/* Header skeleton */}
           <div className="flex gap-3 px-4 py-2.5 border-b border-white/[0.04]">
             {[80, 60, 70, 50, 60, 55, 65, 55].map((w, i) => (
               <div key={i} className="h-3 bg-white/[0.03] rounded animate-pulse" style={{ width: w }} />
             ))}
           </div>
-          {/* Row skeletons */}
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.02]">
               <div className="w-[18px] h-[18px] rounded-full bg-white/[0.04] animate-pulse" />
@@ -209,7 +251,7 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
           <h3 className="text-sm font-semibold">{sym} Across Exchanges</h3>
           <p className="text-[10px] text-neutral-500 mt-0.5">
             {sorted.length} exchange{sorted.length !== 1 ? 's' : ''} · refreshes every 15s
-            {highPrice > 0 && lowPrice > 0 && (
+            {highPrice > 0 && lowPrice > 0 && rows.length > 1 && (
               <> · spread <span className="text-hub-yellow font-medium">${fp(highPrice - lowPrice)}</span></>
             )}
           </p>
@@ -242,6 +284,7 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
               <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('price')}>
                 Price <SortIcon col="price" />
               </th>
+              <th className="px-2 py-2.5 text-center font-medium">Trend</th>
               <th className="px-3 py-2.5 text-right font-medium">Bid/Ask</th>
               <th className="px-3 py-2.5 text-right font-medium cursor-pointer hover:text-neutral-300 transition select-none" onClick={() => handleSort('deviation')}>
                 vs Median <SortIcon col="deviation" />
@@ -269,6 +312,8 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
               const ref = getExchangeReferralUrl(r.exchange);
               const isHigh = r.price === highPrice && rows.length > 1;
               const isLow = r.price === lowPrice && rows.length > 1;
+              // Funding annualized: adjust for interval
+              const annMultiplier = r.fundingInterval === '1h' ? 8760 : r.fundingInterval === '4h' ? 2190 : 1095; // 1h=8760, 4h=2190, 8h=1095
               return (
                 <tr key={r.exchange}
                   className={`border-b border-white/[0.03] transition-colors hover:bg-white/[0.02] ${
@@ -297,6 +342,10 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                   </td>
                   {/* Price */}
                   <td className="px-3 py-2.5 text-right font-mono text-white tabular-nums">${fp(r.price)}</td>
+                  {/* Sparkline */}
+                  <td className="px-2 py-2.5 text-center">
+                    <Sparkline data={r.sparkData} />
+                  </td>
                   {/* Bid/Ask */}
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums">
                     {hasBidAsk ? (
@@ -324,7 +373,7 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                   </td>
                   {/* Annualized */}
                   <td className={`px-3 py-2.5 text-right font-mono tabular-nums text-[10px] ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400/60' : 'text-red-400/60') : ''}`}>
-                    {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100 * 3 * 365).toFixed(1) + '%' : <span className="text-neutral-700">—</span>}
+                    {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100 * annMultiplier).toFixed(1) + '%' : <span className="text-neutral-700">—</span>}
                   </td>
                   {/* OI */}
                   <td className="px-3 py-2.5 text-right font-mono text-neutral-300 tabular-nums" title={r.oiValue ? getOISlang(r.oiValue) : undefined}>
@@ -341,12 +390,12 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
         </table>
       </div>
 
-      {/* Table footer with data summary */}
+      {/* Table footer */}
       {rows.length > 1 && (
         <div className="px-4 py-2 border-t border-white/[0.04] flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-neutral-600">
           <span>Median: <span className="text-neutral-400 font-mono tabular-nums">${fp(median)}</span></span>
           <span>Spread: <span className="text-hub-yellow font-mono tabular-nums">${fp(highPrice - lowPrice)}</span></span>
-          <span>Spread: <span className="text-hub-yellow font-mono tabular-nums">{median > 0 ? (((highPrice - lowPrice) / lowPrice) * 100).toFixed(3) : '0.000'}%</span></span>
+          <span>Spread: <span className="text-hub-yellow font-mono tabular-nums">{lowPrice > 0 ? (((highPrice - lowPrice) / lowPrice) * 100).toFixed(3) : '0.000'}%</span></span>
           {(() => {
             const totalOI = rows.reduce((s, r) => s + (r.oiValue || 0), 0);
             return totalOI > 0 ? <span>Total OI: <span className="text-neutral-400 font-mono tabular-nums">{fmtUsd(totalOI)}</span></span> : null;
