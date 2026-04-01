@@ -57,7 +57,7 @@ export function formatCompact(num: SafeNumber): string {
  * Format percentage with sign
  */
 export function formatPercent(num: SafeNumber, decimals: number = 2): string {
-  if (num === undefined || num === null || isNaN(num)) return '0.00%';
+  if (num === undefined || num === null || !isFinite(num)) return '0.00%';
   const sign = num >= 0 ? '+' : '';
   return `${sign}${num.toFixed(decimals)}%`;
 }
@@ -66,7 +66,7 @@ export function formatPercent(num: SafeNumber, decimals: number = 2): string {
  * Format funding rate (typically small percentages)
  */
 export function formatFundingRate(num: SafeNumber): string {
-  if (num === undefined || num === null || isNaN(num)) return '0.0000%';
+  if (num === undefined || num === null || !isFinite(num)) return '0.0000%';
   const sign = num >= 0 ? '+' : '';
   return `${sign}${num.toFixed(4)}%`;
 }
@@ -75,7 +75,7 @@ export function formatFundingRate(num: SafeNumber): string {
  * Safe number getter with default
  */
 export function safeNumber(num: SafeNumber, defaultValue: number = 0): number {
-  if (num === undefined || num === null || isNaN(num)) return defaultValue;
+  if (num === undefined || num === null || !isFinite(num)) return defaultValue;
   return num;
 }
 
@@ -107,7 +107,7 @@ export function formatTime(timestamp: number): string {
  * Replaces: formatOI, fmtUSD, formatValue, fmt across 11+ files
  */
 export function formatUSD(num: SafeNumber, decimals?: number): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0';
+  if (num === undefined || num === null || !isFinite(num)) return '$0';
   const abs = Math.abs(num);
   const sign = num < 0 ? '-' : '';
   if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(decimals ?? 2)}B`;
@@ -120,7 +120,7 @@ export function formatUSD(num: SafeNumber, decimals?: number): string {
  * Format quantity (no $ sign, adaptive decimals)
  */
 export function formatQty(n: SafeNumber): string {
-  if (n === undefined || n === null || isNaN(n)) return '0';
+  if (n === undefined || n === null || !isFinite(n)) return '0';
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(4) + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(4) + 'K';
   if (n >= 1) return n.toFixed(4);
@@ -131,7 +131,7 @@ export function formatQty(n: SafeNumber): string {
  * Format liquidation value with tiered decimals
  */
 export function formatLiqValue(num: SafeNumber): string {
-  if (num === undefined || num === null || isNaN(num)) return '$0';
+  if (num === undefined || num === null || !isFinite(num)) return '$0';
   if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
   if (num >= 1e3) return `$${(num / 1e3).toFixed(1)}K`;
   return `$${num.toFixed(0)}`;
@@ -141,7 +141,9 @@ export function formatLiqValue(num: SafeNumber): string {
  * Format ISO date string to relative time (e.g. "5m ago", "2d ago")
  */
 export function formatTimeAgo(dateStr: string): string {
-  const ms = Date.now() - new Date(dateStr).getTime();
+  const ts = new Date(dateStr).getTime();
+  if (!isFinite(ts)) return 'unknown';
+  const ms = Date.now() - ts;
   const mins = Math.floor(ms / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;

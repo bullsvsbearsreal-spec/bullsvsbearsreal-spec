@@ -309,12 +309,11 @@ function CalendarTab({ airdrops }: { airdrops: Airdrop[] }) {
       if (!dateStr) continue;
       // Handle full dates (2026-04-15) and quarters (2026-Q2)
       const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (match) {
-        const [, y, m, d] = match;
-        const key = `${y}-${m}-${d}`;
-        if (!map[key]) map[key] = [];
-        map[key].push(a);
-      }
+      if (!match) continue;
+      const [, y, m, d] = match;
+      const key = `${y}-${m}-${d}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(a);
     }
     return map;
   }, [airdrops]);

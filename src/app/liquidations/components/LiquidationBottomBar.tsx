@@ -17,7 +17,8 @@ export default function LiquidationBottomBar({
   exchangeFilter,
   onExchangeFilterChange,
 }: LiquidationBottomBarProps) {
-  const longPct = stats.total > 0 ? (stats.longValue / stats.total) * 100 : 50;
+  const rawLongPct = stats.total > 0 ? (stats.longValue / stats.total) * 100 : 50;
+  const longPct = isFinite(rawLongPct) ? rawLongPct : 50;
   const shortPct = 100 - longPct;
 
   return (

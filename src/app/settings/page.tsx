@@ -37,9 +37,11 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   const sessionImage = session?.user?.image ?? null;
+  const avatarHasUnsaved = avatar.hasUnsaved;
+  const avatarSetUrl = avatar.setUrl;
   useEffect(() => {
-    if (sessionImage && !avatar.hasUnsaved) avatar.setUrl(sessionImage);
-  }, [sessionImage]);
+    if (sessionImage && !avatarHasUnsaved) avatarSetUrl(sessionImage);
+  }, [sessionImage, avatarHasUnsaved, avatarSetUrl]);
 
   const userId = session?.user?.id;
   useEffect(() => {

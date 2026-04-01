@@ -158,24 +158,21 @@ export default function WatchlistPage() {
 
     const wlSet = new Set(watchlist);
 
-    // -- tickers: group by normalized symbol, pick highest-volume entry for price
-    const tickerMap = new Map<string, { price: number; change: number; vol: number }>();
+    // -- tickers: group by normalized symbol, pick highest-volume entry for price, accumulate total volume
+    const tickerMap = new Map<string, { price: number; change: number; vol: number; bestVol: number }>();
     (Array.isArray(tickers) ? tickers : []).forEach((t) => {
       const sym = normalizeSymbol(t.symbol);
       if (!wlSet.has(sym)) return;
       const prev = tickerMap.get(sym);
       const vol = t.volume24h ?? 0;
-      if (!prev || vol > prev.vol) {
-        tickerMap.set(sym, { price: t.lastPrice, change: t.priceChangePercent24h, vol });
-      }
-      // accumulate volume
-      if (prev) {
-        tickerMap.set(sym, {
-          price: vol > prev.vol ? t.lastPrice : prev.price,
-          change: vol > prev.vol ? t.priceChangePercent24h : prev.change,
-          vol: prev.vol + vol,
-        });
-      }
+      const totalVol = (prev?.vol ?? 0) + vol;
+      const isBest = !prev || vol > prev.bestVol;
+      tickerMap.set(sym, {
+        price: isBest ? t.lastPrice : prev!.price,
+        change: isBest ? t.priceChangePercent24h : prev!.change,
+        vol: totalVol,
+        bestVol: isBest ? vol : prev!.bestVol,
+      });
     });
 
     // -- funding: average across exchanges

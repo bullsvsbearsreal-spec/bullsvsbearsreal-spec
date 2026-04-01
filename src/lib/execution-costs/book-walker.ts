@@ -77,7 +77,7 @@ export function buildDepthCurve(
 
   for (const level of levels) {
     cumulative += level.size * level.price;
-    const offset = Math.abs(level.price - midPrice) / midPrice * 100;
+    const offset = midPrice > 0 ? Math.abs(level.price - midPrice) / midPrice * 100 : 0;
     points.push({
       exchange,
       priceOffset: Math.round(offset * 1000) / 1000,

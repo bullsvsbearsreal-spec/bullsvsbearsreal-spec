@@ -184,6 +184,7 @@ export function parseBinanceLiq(data: any): Liquidation | null {
   const o = data.o;
   const price = parseFloat(o.p);
   const qty = parseFloat(o.q);
+  if (!isFinite(price) || !isFinite(qty) || price <= 0 || qty <= 0) return null;
   return {
     id: `bin-${o.s}-${o.T}`,
     symbol: o.s.replace(/USD[_]?UM$/, '').replace(/\d{6}$/, '').replace(/USDT$/, '').replace(/USDC$/, '').replace(/USD$/, '').replace(/^1000/, ''),
@@ -212,7 +213,7 @@ export function parseBybitLiqAll(data: any): Liquidation[] {
     const price = parseFloat(d.price || d.p || '0');
     const size = parseFloat(d.size || d.v || '0');
     const symbol = (d.symbol || d.s || '').replace('USDT', '').replace('USDC', '');
-    if (!symbol || price <= 0 || size <= 0) continue;
+    if (!symbol || !isFinite(price) || !isFinite(size) || price <= 0 || size <= 0) continue;
     results.push({
       id: `byb-${symbol}-${d.updatedTime || d.T || Date.now()}-${results.length}`,
       symbol,
@@ -238,6 +239,7 @@ export function parseOKXLiq(data: any): Liquidation | null {
   const detail = details[0];
   const price = parseFloat(detail.bkPx);
   const size = parseFloat(detail.sz);
+  if (!isFinite(price) || !isFinite(size) || price <= 0 || size <= 0) return null;
   const instId = d.instId || '';
   // Handle all OKX swap formats: BTC-USDT-SWAP, BTC-USDC-SWAP, BTC-USD-SWAP
   const symbol = instId.replace(/-USDT-SWAP$/, '').replace(/-USDC-SWAP$/, '').replace(/-USD-SWAP$/, '').replace(/-SWAP$/, '').replace(/-/g, '');
@@ -258,6 +260,7 @@ export function parseBitgetLiq(data: any): Liquidation | null {
   const d = data.data[0];
   const price = parseFloat(d.bkPx || d.fillPx || '0');
   const size = parseFloat(d.sz || d.fillSz || '0');
+  if (!isFinite(price) || !isFinite(size) || price <= 0 || size <= 0) return null;
   const instId = d.instId || d.symbol || '';
   const symbol = instId.replace('USDT', '').replace('USDC', '').replace('_UMCBL', '');
   return {
@@ -285,6 +288,7 @@ export function parseDeribitLiq(data: any): Liquidation | null {
     if (!symbol) return null;
     const price = parseFloat(d.price || '0');
     const quantity = parseFloat(d.quantity || d.amount || '0');
+    if (!isFinite(price) || !isFinite(quantity) || price <= 0 || quantity <= 0) return null;
     // Inverse contracts (BTC-PERPETUAL): quantity is in USD, no multiplication needed.
     // Linear contracts (BTC-USDC-PERPETUAL): quantity is in base currency, multiply by price.
     const isLinear = instrument.includes('USDC') || instrument.includes('USDT');
@@ -309,6 +313,7 @@ export function parseDeribitLiq(data: any): Liquidation | null {
       if (!symbol) return null;
       const price = parseFloat(d.price || '0');
       const quantity = parseFloat(d.quantity || d.amount || '0');
+      if (!isFinite(price) || !isFinite(quantity) || price <= 0 || quantity <= 0) continue;
       const isLinear = instrument.includes('USDC') || instrument.includes('USDT');
       return {
         id: `drb-${instrument}-${d.timestamp || Date.now()}`,
@@ -332,6 +337,7 @@ export function parseMexcLiq(data: any): Liquidation | null {
   const symbol = rawSymbol.replace('_USDT', '').replace('_USDC', '');
   const price = parseFloat(d.price || d.liquidationPrice || '0');
   const quantity = parseFloat(d.vol || d.quantity || '0');
+  if (!isFinite(price) || !isFinite(quantity) || price <= 0 || quantity <= 0) return null;
   return {
     id: `mexc-${rawSymbol}-${d.createTime || Date.now()}`,
     symbol,
@@ -351,6 +357,7 @@ export function parseBingxLiq(data: any): Liquidation | null {
   const symbol = rawSymbol.replace('-USDT', '').replace('-USDC', '');
   const price = parseFloat(d.p || d.price || '0');
   const quantity = parseFloat(d.q || d.quantity || '0');
+  if (!isFinite(price) || !isFinite(quantity) || price <= 0 || quantity <= 0) return null;
   return {
     id: `bx-${rawSymbol}-${d.T || d.timestamp || Date.now()}`,
     symbol,
@@ -373,6 +380,7 @@ export function parseHTXLiq(data: any): Liquidation | null {
   if (!symbol) return null;
   const price = parseFloat(d.price || '0');
   const amount = parseFloat(d.amount || '0'); // amount is in tokens
+  if (!isFinite(price) || !isFinite(amount) || price <= 0 || amount <= 0) return null;
   const direction = d.direction; // 'sell' or 'buy'
   const offset = d.offset; // 'close' means liquidation
   // direction === 'sell' + offset === 'close' -> long liquidation (forced sell of long)
@@ -431,12 +439,13 @@ export function parseGTradeLiq(data: any): Liquidation | null {
   const side: 'long' | 'short' = isLong ? 'long' : 'short';
 
   // Calculate value
-  const positionSize = parseFloat(trade.positionSizeStable || trade.positionSizeDai || '0');
-  const collateral = parseFloat(trade.collateralAmount || trade.initialPosToken || '0');
-  const leverage = parseFloat(trade.leverage || '1');
+  const positionSize = parseFloat(trade.positionSizeStable || trade.positionSizeDai || '0') || 0;
+  const collateral = parseFloat(trade.collateralAmount || trade.initialPosToken || '0') || 0;
+  const leverage = parseFloat(trade.leverage || '1') || 1;
   const value = positionSize > 0 ? positionSize : collateral * leverage;
-  const price = parseFloat(trade.closePrice || trade.currentPrice || trade.openPrice || '0');
-  const quantity = price > 0 ? value / price : 0;
+  const price = parseFloat(trade.closePrice || trade.currentPrice || trade.openPrice || '0') || 0;
+  if (!isFinite(value) || !isFinite(price) || value <= 0 || price <= 0) return null;
+  const quantity = value / price;
 
   return {
     id: `gt-${symbol}-${trade.tradeId || trade.orderId || Date.now()}-${Date.now()}`,
@@ -464,7 +473,7 @@ export function parseDydxLiq(data: any): Liquidation | null {
     if (!symbol) continue;
     const price = parseFloat(t.price || '0');
     const size = parseFloat(t.size || '0');
-    if (price <= 0 || size <= 0) continue;
+    if (!isFinite(price) || !isFinite(size) || price <= 0 || size <= 0) continue;
     return {
       id: `dydx-${t.id || Date.now()}-${Date.now()}`,
       symbol,
@@ -501,7 +510,7 @@ export function parseBitfinexLiq(data: any): Liquidation | null {
 
     const amount = parseFloat(item[5] || '0'); // negative = short position liquidated
     const price = parseFloat(item[11] || item[6] || '0'); // liq price or entry price
-    if (price <= 0) continue;
+    if (!isFinite(price) || !isFinite(amount) || price <= 0 || amount === 0) continue;
 
     const absAmount = Math.abs(amount);
     return {

@@ -26,7 +26,8 @@ export const SYMBOLS: Record<string, string[]> = {
 
 export const CEX_EXCHANGES = [
   'Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex',
-  'KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit','BitMEX','Gate.io',
+  'KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit',
+  // BitMEX, Gate.io removed — CloudFlare-blocked on datacenter IPs
 ];
 
 export const DEX_EXCHANGES = [

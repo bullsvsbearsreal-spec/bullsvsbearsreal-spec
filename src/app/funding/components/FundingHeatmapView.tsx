@@ -51,7 +51,7 @@ function rateToColors(rate: number | undefined, clamp = 0.3, colored = false): {
   if (rate === 0) return { bg: 'rgba(255,255,255,0.02)', text: 'rgba(255,255,255,0.35)', glow: 'transparent' };
 
   const abs = Math.min(Math.abs(rate), clamp);
-  const t = Math.pow(abs / clamp, 0.55); // gamma for perceptual linearity
+  const t = clamp > 0 ? Math.pow(abs / clamp, 0.55) : 0; // gamma for perceptual linearity
 
   if (rate > 0) {
     return {
@@ -73,7 +73,7 @@ function rateToTreemapColor(rate: number, clamp = 0.25): string {
   const abs = Math.min(Math.abs(rate), clamp);
   // Near-zero: neutral charcoal
   if (abs < 0.002 * clamp) return 'rgb(35, 38, 42)';
-  const t = Math.pow(abs / clamp, 0.6); // aggressive ramp
+  const t = clamp > 0 ? Math.pow(abs / clamp, 0.6) : 0; // aggressive ramp
   if (rate >= 0) {
     const r = Math.round(15 + (22 - 15) * t);
     const g = Math.round(45 + (200 - 45) * t);

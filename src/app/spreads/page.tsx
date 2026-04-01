@@ -30,8 +30,9 @@ import { SpreadStatsBar } from './components/Stats/SpreadStatsBar';
 import { ArbCalculator } from './components/Stats/ArbCalculator';
 import { TickerStrip } from './components/Table/TickerStrip';
 import { ExchangeTable } from './components/Table/ExchangeTable';
-import { ExportCSV } from './components/Toolbar/ExportCSV';
+import { ExportActions } from './components/Toolbar/ExportActions';
 import { AlertToast } from './components/Alerts/AlertToast';
+import { ConnectionBanner } from './components/Alerts/ConnectionBanner';
 import { StickySpreadBar } from './components/Stats/StickySpreadBar';
 
 export default function SpreadsPage() {
@@ -62,7 +63,7 @@ export default function SpreadsPage() {
 
   // ── Data orchestration ──
   const {
-    wsPrices, wsCount, wsSpread, wsHistory,
+    wsPrices, wsCount, wsSpread, wsHistory, wsStatus,
     data, exs, available, stats,
   } = useSpreadData({
     sym: state.sym,
@@ -115,6 +116,9 @@ export default function SpreadsPage() {
         {/* Toast */}
         {state.toast && <AlertToast message={state.toast} onDismiss={() => actions.setToast(null)} />}
 
+        {/* Connection status banner */}
+        {state.wsEnabled && <ConnectionBanner status={wsStatus} wsCount={wsCount} selCount={state.sel.length} />}
+
         {/* ── Title ── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
@@ -133,12 +137,16 @@ export default function SpreadsPage() {
             {/* WS status — most important, shown first */}
             <button onClick={actions.toggleWs}
               className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition ${
-                state.wsEnabled && wsCount > 0
+                state.wsEnabled && wsStatus === 'connected'
                   ? 'bg-green-500/[0.08] border-green-500/20 text-green-400 hover:bg-green-500/[0.12]'
+                  : state.wsEnabled && wsStatus === 'degraded'
+                  ? 'bg-yellow-500/[0.08] border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/[0.12]'
+                  : state.wsEnabled && wsStatus === 'disconnected'
+                  ? 'bg-red-500/[0.08] border-red-500/20 text-red-400 hover:bg-red-500/[0.12]'
                   : 'bg-white/[0.04] border-white/[0.08] text-neutral-500 hover:text-white'
               }`}>
-              {state.wsEnabled ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              {state.wsEnabled ? <><span className="tabular-nums">{wsCount}/{state.sel.length}</span> Live</> : 'Paused'}
+              {state.wsEnabled && wsStatus !== 'disconnected' ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              {state.wsEnabled ? <><span className="tabular-nums">{wsCount}/{state.sel.length}</span> {wsStatus === 'connected' ? 'Live' : wsStatus === 'degraded' ? 'Polling' : 'Offline'}</> : 'Paused'}
             </button>
             <div className="w-px h-5 bg-white/[0.06]" />
             <button onClick={actions.toggleCalc}
@@ -149,7 +157,7 @@ export default function SpreadsPage() {
               }`}>
               <Calculator className="w-3.5 h-3.5" /> Arb
             </button>
-            <ExportCSV data={data} exchanges={exs} symbol={state.sym} />
+            <ExportActions data={data} exchanges={exs} symbol={state.sym} stats={stats} tf={state.tf} />
             <AlertConfig
               active={state.alertActive}
               threshold={state.alertThreshold}
@@ -211,7 +219,7 @@ export default function SpreadsPage() {
               }`}>
                 <ExchangeLogo exchange={e} size={14} />
                 {e}
-                {state.tf !== 'live' && !hasChart && <span className="text-[7px] text-neutral-600 px-1 py-[0.5px] rounded bg-white/[0.03]">table</span>}
+                {state.tf !== 'live' && !hasChart && <span className="w-1.5 h-1.5 rounded-full bg-neutral-700 shrink-0" title="No chart data — table only" />}
                 <button onClick={() => actions.toggleExchange(e)} className="text-neutral-600 hover:text-white"><X className="w-3 h-3" /></button>
               </span>
             );
@@ -241,6 +249,7 @@ export default function SpreadsPage() {
             wsPrices={wsPrices}
             wsCount={wsCount}
             selCount={state.sel.length}
+            status={wsStatus}
           />
         )}
 
@@ -379,6 +388,8 @@ export default function SpreadsPage() {
                 onModeChange={actions.setCalcMode}
                 onClose={() => {}}
                 variant="sidebar"
+                tf={state.tf}
+                data={data}
               />
             </div>
           </div>

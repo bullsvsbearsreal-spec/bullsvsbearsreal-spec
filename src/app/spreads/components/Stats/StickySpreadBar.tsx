@@ -5,8 +5,10 @@ import { ArrowLeftRight } from 'lucide-react';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getCoinIcon } from '@/lib/coinIcons';
 import { fp } from '../../lib/spread-math';
+import { getFreshness, getFreshnessColor } from '../../lib/freshness';
 import { useFlash } from '../../hooks/useFlash';
 import type { SpreadStats, WsPrice, TfKey } from '../../lib/types';
+import type { ConnectionStatus } from '@/hooks/useMultiExchangeWS';
 
 interface StickySpreadBarProps {
   stats: SpreadStats;
@@ -15,9 +17,10 @@ interface StickySpreadBarProps {
   wsPrices: Record<string, WsPrice>;
   wsCount: number;
   selCount: number;
+  status?: ConnectionStatus;
 }
 
-function StickySpreadBarInner({ stats, sym, tf, wsPrices, wsCount, selCount }: StickySpreadBarProps) {
+function StickySpreadBarInner({ stats, sym, tf, wsPrices, wsCount, selCount, status = 'connected' }: StickySpreadBarProps) {
   const [stuck, setStuck] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const spreadFlash = useFlash(stats.cur);
@@ -92,17 +95,24 @@ function StickySpreadBarInner({ stats, sym, tf, wsPrices, wsCount, selCount }: S
 
           {/* Live status */}
           <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
-            {wsCount > 0 && (
+            {wsCount > 0 && status !== 'disconnected' && (
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-50" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-50 ${status === 'degraded' ? 'bg-yellow-400' : 'bg-green-400'}`} />
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${status === 'degraded' ? 'bg-yellow-400' : 'bg-green-400'}`} />
               </span>
+            )}
+            {status === 'disconnected' && (
+              <span className="w-2 h-2 rounded-full bg-red-400" />
             )}
             <span className="text-[10px] text-neutral-500 tabular-nums">
               {wsCount}/{selCount} live
             </span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-neutral-500 font-medium">
-              {tf === 'live' ? 'LIVE' : tf.toUpperCase()}
+            <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+              status === 'connected' ? 'bg-white/[0.04] text-neutral-500'
+                : status === 'degraded' ? 'bg-yellow-500/10 text-yellow-400'
+                : 'bg-red-500/10 text-red-400'
+            }`}>
+              {tf === 'live' ? (status === 'connected' ? 'WS' : status === 'degraded' ? 'POLL' : 'OFF') : tf.toUpperCase()}
             </span>
           </div>
         </div>

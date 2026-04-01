@@ -483,7 +483,7 @@ export default function ETFPage() {
                 {[...data.funds]
                   .sort((a, b) => a.fee - b.fee)
                   .map((fund) => {
-                    const pct = (fund.fee / maxFee) * 100;
+                    const pct = maxFee > 0 ? (fund.fee / maxFee) * 100 : 0;
                     return (
                       <div key={fund.ticker} className="flex items-center gap-3 group">
                         <span className="text-xs text-hub-yellow font-bold w-12 text-right font-mono">

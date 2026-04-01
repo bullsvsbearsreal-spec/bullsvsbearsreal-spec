@@ -59,9 +59,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // Binance COIN-M (inverse/token-margined perps) — separate from USDT-M
+  // Binance COIN-M (inverse/token-margined perps) — separate circuit breaker from USDT-M
   {
-    name: 'Binance',
+    name: 'Binance-COINM',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
       const urls = [

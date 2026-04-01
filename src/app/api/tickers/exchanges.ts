@@ -194,18 +194,23 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       if (!json.markets) return [];
       return Object.entries(json.markets)
         .filter(([key]: [string, any]) => key.endsWith('-USD'))
-        .map(([key, market]: [string, any]) => ({
+        .map(([key, market]: [string, any]) => {
+          const price = parseFloat(market.oraclePrice);
+          const change24h = parseFloat(market.priceChange24H) || 0; // dollar amount, not ratio
+          const changePct = price > 0 ? (change24h / (price - change24h)) * 100 : 0;
+          return {
           symbol: key.replace('-USD', ''),
           exchange: 'dYdX',
-          lastPrice: parseFloat(market.oraclePrice),
-          price: parseFloat(market.oraclePrice),
-          priceChangePercent24h: (parseFloat(market.priceChange24H) || 0) * 100, // dYdX returns decimal ratio
-          changePercent24h: (parseFloat(market.priceChange24H) || 0) * 100,
+          lastPrice: price,
+          price,
+          priceChangePercent24h: changePct,
+          changePercent24h: changePct,
           high24h: 0,
           low24h: 0,
           volume24h: parseFloat(market.volume24H),
           quoteVolume24h: parseFloat(market.volume24H),
-        }));
+        };
+        });
     },
   },
 

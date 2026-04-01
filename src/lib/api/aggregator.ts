@@ -494,6 +494,7 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
     } else {
       effectiveRate = fr.fundingRate;
     }
+    if (!isFinite(effectiveRate)) effectiveRate = 0;
     existing.push({ exchange: fr.exchange, rate: effectiveRate * mult });
     symbolMap.set(canonicalSymbol, existing);
 

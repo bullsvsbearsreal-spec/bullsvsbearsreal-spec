@@ -102,10 +102,10 @@ export async function fetchMarketDataServer(
       if (prices.length < 2) return;
       const sorted = prices.sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
-      const sane = sorted.filter(p => Math.abs(p - median) / median < 0.05);
+      const sane = sorted.filter(p => median > 0 ? Math.abs(p - median) / median < 0.05 : true);
       if (sane.length < 2) return;
       const spread = sane[sane.length - 1] - sane[0];
-      const spreadPct = (spread / sane[0]) * 100;
+      const spreadPct = sane[0] > 0 ? (spread / sane[0]) * 100 : 0;
       const entry = map.get(sym);
       if (entry) { entry.spread = spread; entry.spreadPct = spreadPct; }
     });

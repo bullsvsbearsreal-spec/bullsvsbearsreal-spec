@@ -228,13 +228,13 @@ export default function YieldsPage() {
     const avgStableApy = stables.length > 0
       ? stables.reduce((s, p) => s + p.apy, 0) / stables.length
       : 0;
-    const topYield = pools.reduce((max, p) => p.apy > max.apy ? p : max, pools[0]);
+    const topYield = pools.length > 0 ? pools.reduce((max, p) => p.apy > max.apy ? p : max, pools[0]) : null;
     const medianApy = (() => {
       const sorted = [...pools].sort((a, b) => a.apy - b.apy);
       const mid = Math.floor(sorted.length / 2);
       return sorted.length % 2 ? sorted[mid].apy : (sorted[mid - 1].apy + sorted[mid].apy) / 2;
     })();
-    return { totalTvl, avgStableApy, topYield, poolCount: pools.length, medianApy };
+    return { totalTvl, avgStableApy, topYield, poolCount: pools.length, medianApy } as { totalTvl: number; avgStableApy: number; topYield: YieldPool | null; poolCount: number; medianApy: number };
   }, [pools]);
 
   /* ─── Sort Handler ──────────────────────────────────────────────── */
@@ -289,8 +289,14 @@ export default function YieldsPage() {
             </div>
             <div className="bg-white/[0.03] rounded-lg px-4 py-3 border border-white/[0.06] col-span-2 md:col-span-1">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Top Yield</div>
-              <div className="text-lg font-semibold text-amber-400">{stats.topYield.apy.toFixed(1)}%</div>
-              <div className="text-[10px] text-neutral-500">{stats.topYield.symbol} · {PROJECT_DISPLAY[stats.topYield.project] || stats.topYield.project}</div>
+              {stats.topYield ? (
+                <>
+                  <div className="text-lg font-semibold text-amber-400">{stats.topYield.apy.toFixed(1)}%</div>
+                  <div className="text-[10px] text-neutral-500">{stats.topYield.symbol} · {PROJECT_DISPLAY[stats.topYield.project] || stats.topYield.project}</div>
+                </>
+              ) : (
+                <div className="text-lg font-semibold text-neutral-600">—</div>
+              )}
             </div>
           </div>
         )}

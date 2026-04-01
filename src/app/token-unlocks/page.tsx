@@ -493,10 +493,10 @@ export default function TokenUnlocksPage() {
               <StatCard label="Total Value Locked" value={formatUnlockValue(stats.totalValue)} flash={tvlFlash} />
               <StatCard
                 label="Largest Upcoming"
-                value={stats.largest ? formatUnlockValue(stats.largest.unlockValue) : '--'}
-                sub={stats.largest ? `${stats.largest.coinSymbol} - ${stats.largest.percentOfSupply.toFixed(2)}% of supply` : undefined}
+                value={stats?.largest ? formatUnlockValue(stats.largest.unlockValue) : '--'}
+                sub={stats?.largest ? `${stats.largest.coinSymbol} - ${stats.largest.percentOfSupply?.toFixed(2) ?? '0.00'}% of supply` : undefined}
               />
-              <StatCard label="Avg % of Supply" value={`${stats.avgPct.toFixed(2)}%`} sub="per unlock event" />
+              <StatCard label="Avg % of Supply" value={`${isFinite(stats.avgPct) ? stats.avgPct.toFixed(2) : '0.00'}%`} sub="per unlock event" />
             </div>
 
             {/* Weekly chart */}

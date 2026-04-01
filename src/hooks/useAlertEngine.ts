@@ -169,7 +169,7 @@ export function useAlertEngine(intervalMs: number = 60_000) {
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           const opLabel = alert.operator === 'gt' ? 'above' : 'below';
           new Notification(`InfoHub Alert: ${alert.symbol}`, {
-            body: `${alert.metric} is ${opLabel} ${alert.value} (current: ${actualValue.toFixed(4)})`,
+            body: `${alert.metric} is ${opLabel} ${alert.value} (current: ${isFinite(actualValue) ? actualValue.toFixed(4) : '?'})`,
             icon: '/favicon.png',
           });
         }

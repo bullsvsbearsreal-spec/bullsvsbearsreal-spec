@@ -18,7 +18,8 @@ const CHART_COLORS = [
 ];
 
 function formatRate(r: number): string {
-  return `${r >= 0 ? '+' : ''}${(r * 100).toFixed(4)}%`;
+  if (!isFinite(r)) return '—';
+  return `${r >= 0 ? '+' : ''}${r.toFixed(4)}%`;
 }
 
 function OITooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: { exchange: string; totalOI: number; symbolCount: number } }> }) {

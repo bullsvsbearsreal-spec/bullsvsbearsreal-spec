@@ -25,12 +25,16 @@ export default function CoinPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [coinData, eventsData] = await Promise.all([
-        getCoinData(coinId),
-        fetchCoinEvents(coinId),
-      ]);
-      setCoin(coinData);
-      setEvents(eventsData);
+      try {
+        const [coinData, eventsData] = await Promise.all([
+          getCoinData(coinId),
+          fetchCoinEvents(coinId),
+        ]);
+        setCoin(coinData);
+        setEvents(eventsData);
+      } catch (err) {
+        console.error('Failed to load coin data:', err);
+      }
       setLoading(false);
     }
     if (coinId) loadData();
@@ -252,11 +256,11 @@ export default function CoinPage() {
                       <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-hub-yellow to-hub-orange rounded-full"
-                          style={{ width: `${(coin.circulating_supply / coin.max_supply) * 100}%` }}
+                          style={{ width: `${coin.circulating_supply && coin.max_supply > 0 ? (coin.circulating_supply / coin.max_supply) * 100 : 0}%` }}
                         />
                       </div>
                       <div className="flex justify-between text-xs mt-2 text-neutral-600">
-                        <span>{((coin.circulating_supply / coin.max_supply) * 100).toFixed(1)}%</span>
+                        <span>{coin.circulating_supply && coin.max_supply > 0 ? ((coin.circulating_supply / coin.max_supply) * 100).toFixed(1) : '0.0'}%</span>
                         <span>Max: {coin.max_supply.toLocaleString()}</span>
                       </div>
                     </>
@@ -366,7 +370,7 @@ function EventCard({ event }: { event: CryptoEvent }) {
             {event.vote_count > 0 && (
               <span className="text-sm text-neutral-600">{event.vote_count} votes</span>
             )}
-            {event.source && (
+            {event.proof && (
               <a href={event.proof} target="_blank" rel="noopener noreferrer" className="text-sm text-hub-yellow hover:underline ml-auto flex items-center gap-1">
                 Source <ExternalLink className="w-3 h-3" />
               </a>

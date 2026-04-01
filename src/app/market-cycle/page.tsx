@@ -316,7 +316,7 @@ export default function MarketCyclePage() {
                       className="text-sm font-mono font-semibold"
                       style={{ color: getRocColor(latestRoc) }}
                     >
-                      {latestRoc >= 0 ? '+' : ''}{latestRoc.toFixed(2)}%
+                      {latestRoc != null && isFinite(latestRoc) ? `${latestRoc >= 0 ? '+' : ''}${latestRoc.toFixed(2)}%` : '—'}
                     </span>
                     <div className="flex items-center gap-1 ml-2">
                       {[
@@ -394,29 +394,29 @@ export default function MarketCyclePage() {
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
                     <p className="text-xs text-neutral-500 mb-1">Deviation</p>
                     <div className="flex items-center gap-2">
-                      {data.stockToFlow.deviation >= 0 ? (
+                      {(data.stockToFlow?.deviation ?? 0) >= 0 ? (
                         <TrendingUp className="w-5 h-5 text-green-400" />
                       ) : (
                         <TrendingDown className="w-5 h-5 text-red-400" />
                       )}
                       <p
                         className="text-3xl font-bold font-mono"
-                        style={{ color: data.stockToFlow.deviation >= 0 ? '#4ade80' : '#ef4444' }}
+                        style={{ color: (data.stockToFlow?.deviation ?? 0) >= 0 ? '#4ade80' : '#ef4444' }}
                       >
-                        {data.stockToFlow.deviation >= 0 ? '+' : ''}{data.stockToFlow.deviation.toFixed(1)}%
+                        {(data.stockToFlow?.deviation ?? 0) >= 0 ? '+' : ''}{(data.stockToFlow?.deviation ?? 0).toFixed(1)}%
                       </p>
                     </div>
                     <span className={`inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      data.stockToFlow.deviation < -50 ? 'bg-green-500/15 text-green-400'
-                      : data.stockToFlow.deviation < -20 ? 'bg-amber-500/15 text-amber-400'
-                      : data.stockToFlow.deviation < 20 ? 'bg-white/[0.06] text-neutral-400'
-                      : data.stockToFlow.deviation < 100 ? 'bg-amber-500/15 text-amber-400'
+                      (data.stockToFlow?.deviation ?? 0) < -50 ? 'bg-green-500/15 text-green-400'
+                      : (data.stockToFlow?.deviation ?? 0) < -20 ? 'bg-amber-500/15 text-amber-400'
+                      : (data.stockToFlow?.deviation ?? 0) < 20 ? 'bg-white/[0.06] text-neutral-400'
+                      : (data.stockToFlow?.deviation ?? 0) < 100 ? 'bg-amber-500/15 text-amber-400'
                       : 'bg-red-500/15 text-red-400'
                     }`}>
-                      {data.stockToFlow.deviation < -50 ? 'Deeply undervalued'
-                      : data.stockToFlow.deviation < -20 ? 'Below model'
-                      : data.stockToFlow.deviation < 20 ? 'Near model'
-                      : data.stockToFlow.deviation < 100 ? 'Above model'
+                      {(data.stockToFlow?.deviation ?? 0) < -50 ? 'Deeply undervalued'
+                      : (data.stockToFlow?.deviation ?? 0) < -20 ? 'Below model'
+                      : (data.stockToFlow?.deviation ?? 0) < 20 ? 'Near model'
+                      : (data.stockToFlow?.deviation ?? 0) < 100 ? 'Above model'
                       : 'Overextended'}
                     </span>
                   </div>

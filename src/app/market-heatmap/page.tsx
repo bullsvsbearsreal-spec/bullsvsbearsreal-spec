@@ -152,7 +152,7 @@ export default function MarketHeatmapPage() {
     if (coins.length === 0) return { gainers: 0, losers: 0, avgChange: 0, totalMcap: 0 };
     const gainers = coins.filter(c => c.change24h > 0).length;
     const losers = coins.filter(c => c.change24h < 0).length;
-    const avgChange = coins.reduce((s, c) => s + c.change24h, 0) / coins.length;
+    const avgChange = coins.length > 0 ? coins.reduce((s, c) => s + c.change24h, 0) / coins.length : 0;
     const totalMcap = coins.reduce((s, c) => s + c.marketCap, 0);
     return { gainers, losers, avgChange, totalMcap };
   }, [coins]);

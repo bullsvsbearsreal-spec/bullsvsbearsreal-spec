@@ -239,6 +239,7 @@ export default function OrderbookHeatmapCanvas({
 
       // Find nearest level
       const allLevels = [...col.bids, ...col.asks];
+      if (allLevels.length === 0) { setTooltip(null); return; }
       let nearest = allLevels[0];
       let nearestDist = Infinity;
       for (const l of allLevels) {

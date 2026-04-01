@@ -112,6 +112,7 @@ export async function getGlobalData(): Promise<any> {
 
 // Format large numbers
 export function formatNumber(num: number): string {
+  if (!isFinite(num)) return '$0';
   if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
   if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
   if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
@@ -121,6 +122,7 @@ export function formatNumber(num: number): string {
 
 // Format price with appropriate decimals
 export function formatPrice(price: number): string {
+  if (!isFinite(price)) return '$0.00';
   if (price >= 1000) return `$${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if (price >= 1) return `$${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   if (price >= 0.01) return `$${price.toFixed(4)}`;
@@ -131,7 +133,7 @@ export function formatPrice(price: number): string {
 
 // Format percentage
 export function formatPercent(percent: number | undefined): string {
-  if (percent === undefined || percent === null) return '0.00%';
+  if (percent === undefined || percent === null || !isFinite(percent)) return '0.00%';
   const sign = percent >= 0 ? '+' : '';
   return `${sign}${percent.toFixed(2)}%`;
 }

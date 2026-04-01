@@ -301,8 +301,10 @@ function FooterInner() {
                 </div>
               ))
             ) : stats?.topCoins?.map(coin => {
-              const isUp = coin.change >= 0;
-              const fmtPrice = coin.price >= 1000
+              const change = isFinite(coin.change) ? coin.change : 0;
+              const isUp = change >= 0;
+              const fmtPrice = !isFinite(coin.price) ? '$0'
+                : coin.price >= 1000
                 ? `$${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                 : coin.price >= 1
                 ? `$${coin.price.toFixed(2)}`
@@ -312,7 +314,7 @@ function FooterInner() {
                   <span className="text-white text-[10px] font-semibold">{coin.symbol}</span>
                   <span className="text-neutral-300 text-[10px] font-mono">{fmtPrice}</span>
                   <span className={`text-[9px] font-mono font-semibold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                    {isUp ? '+' : ''}{coin.change.toFixed(2)}%
+                    {isUp ? '+' : ''}{change.toFixed(2)}%
                   </span>
                 </div>
               );
@@ -385,7 +387,7 @@ function FooterInner() {
             ) : stats?.topGainer ? (
               <>
                 <span className="text-white text-[11px] font-semibold font-mono">{stats.topGainer.symbol}</span>
-                <span className={`delta-badge text-[9px] ${stats.topGainer.change24h >= 15 ? 'delta-badge-extreme-up' : 'delta-badge-up'}`}>+{stats.topGainer.change24h.toFixed(1)}%</span>
+                <span className={`delta-badge text-[9px] ${stats.topGainer.change24h >= 15 ? 'delta-badge-extreme-up' : 'delta-badge-up'}`}>{stats.topGainer.change24h >= 0 ? '+' : ''}{stats.topGainer.change24h.toFixed(1)}%</span>
               </>
             ) : (
               <span className="text-white text-[11px] font-semibold font-mono">--</span>
@@ -503,10 +505,12 @@ function FooterInner() {
             <Link href="/faq" className="text-neutral-600 hover:text-neutral-300 text-[11px] transition-colors">
               FAQ
             </Link>
-            <div className="flex items-center gap-1.5 pl-2 border-l border-white/[0.06]">
-              <span className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]" />
-              <span className="text-green-500/80 text-[11px] font-medium">All Systems Operational</span>
-            </div>
+            <Link href="/funding" className="flex items-center gap-1.5 pl-2 border-l border-white/[0.06] hover:opacity-80 transition-opacity">
+              <span className={`h-2 w-2 rounded-full ${stats ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]' : 'bg-neutral-600'}`} />
+              <span className={`text-[11px] font-medium ${stats ? 'text-green-500/80' : 'text-neutral-600'}`}>
+                {stats ? `${stats.activePairs.toLocaleString()} Live Pairs` : 'Loading...'}
+              </span>
+            </Link>
           </div>
         </div>
       </div>

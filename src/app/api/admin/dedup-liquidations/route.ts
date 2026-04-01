@@ -28,18 +28,16 @@ export async function POST(request: NextRequest) {
   try {
     const sql = getSQL();
 
-    // Skip counting — just truncate fast
+    // Count before truncate for accurate reporting
+    const [{ count: beforeCount }] = await sql`SELECT count(*)::int AS count FROM liquidation_snapshots`;
     await sql`TRUNCATE liquidation_snapshots RESTART IDENTITY`;
-    const totalDeleted = -1; // unknown, table was truncated
-    const before = -1;
-    const after = 0;
 
     return NextResponse.json({
       ok: true,
-      before: Number(before),
-      after: Number(after),
-      deleted: totalDeleted,
-      pctRemoved: ((totalDeleted / Math.max(1, Number(before))) * 100).toFixed(1) + '%',
+      before: beforeCount,
+      after: 0,
+      deleted: beforeCount,
+      pctRemoved: beforeCount > 0 ? '100.0%' : '0.0%',
     });
   } catch (e: any) {
     console.error('[admin/dedup-liquidations] error:', e);

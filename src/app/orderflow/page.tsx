@@ -408,13 +408,13 @@ export default function OrderflowPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-medium text-green-400 w-16 text-right">
-                      {(obData.buySellRatio * 100).toFixed(1)}%
+                      {(isFinite(obData.buySellRatio) ? (obData.buySellRatio * 100).toFixed(1) : '50.0')}%
                     </span>
                     <div className="flex-1 h-4 rounded-full overflow-hidden bg-red-500/30 flex">
-                      <div className="h-full bg-green-500/80 transition-all duration-500" style={{ width: `${obData.buySellRatio * 100}%` }} />
+                      <div className="h-full bg-green-500/80 transition-all duration-500" style={{ width: `${isFinite(obData.buySellRatio) ? obData.buySellRatio * 100 : 50}%` }} />
                     </div>
                     <span className="text-xs font-medium text-red-400 w-16">
-                      {((1 - obData.buySellRatio) * 100).toFixed(1)}%
+                      {(isFinite(obData.buySellRatio) ? ((1 - obData.buySellRatio) * 100).toFixed(1) : '50.0')}%
                     </span>
                   </div>
                   <div className="flex justify-between mt-1.5">

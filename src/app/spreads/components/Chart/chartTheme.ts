@@ -22,7 +22,8 @@ export const chartOptions: DeepPartial<ChartOptions> = {
   },
   rightPriceScale: {
     borderVisible: false,
-    scaleMargins: { top: 0.05, bottom: 0.05 },
+    borderColor: 'rgba(255,255,255,0.06)',
+    scaleMargins: { top: 0.08, bottom: 0.08 },
   },
   timeScale: {
     borderVisible: false,
@@ -32,7 +33,10 @@ export const chartOptions: DeepPartial<ChartOptions> = {
     barSpacing: 6,
   },
   handleScale: {
+    mouseWheel: true,
+    pinch: true,
     axisPressedMouseMove: { time: true, price: true },
+    axisDoubleClickReset: { time: true, price: true },
   },
   handleScroll: {
     mouseWheel: true,
@@ -46,10 +50,12 @@ export function makeLineOptions(
   color: string,
   lineWidth: 1 | 2 | 3 | 4 = 2,
   title?: string,
+  lineStyle?: 0 | 2,
 ): DeepPartial<LineStyleOptions & SeriesOptionsCommon> {
   return {
     color,
     lineWidth,
+    lineStyle: lineStyle ?? 0,
     crosshairMarkerVisible: true,
     crosshairMarkerRadius: 3,
     lastValueVisible: true,

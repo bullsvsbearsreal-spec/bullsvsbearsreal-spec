@@ -24,7 +24,7 @@ export function useSpreadData({
   klineData, onSetKlineData, onMergeKlineData, onSetChartLoading, onSetDynamicSymbols,
 }: UseSpreadDataOptions) {
   // ── WebSocket real-time prices ──
-  const { prices: wsPrices, connected: wsConnected, history: wsHistory } = useMultiExchangeWS(sym, sel, wsEnabled);
+  const { prices: wsPrices, connected: wsConnected, history: wsHistory, status: wsStatus } = useMultiExchangeWS(sym, sel, wsEnabled);
   const wsCount = Object.values(wsConnected).filter(Boolean).length;
 
   // ── Compute live spread from WS prices ──
@@ -70,7 +70,7 @@ export function useSpreadData({
     const interval = (t as any).interval || '1h';
     const limit = (t as any).limit || 168;
 
-    // Fast exchanges first
+    // All exchanges from VPS aggregator in one request
     fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}`)
       .then(r => r.ok ? r.json() : null)
       .then(json => {
@@ -80,21 +80,9 @@ export function useSpreadData({
           onSetKlineData(klines);
           onSetChartLoading(false);
         }
-        // Slow exchanges
-        const FAST = ['Binance','Bybit','OKX','Bitget','MEXC','HTX','Hyperliquid','dYdX'];
-        const slow = selRef.current.filter(e => !FAST.includes(e));
-        if (slow.length > 0) {
-          fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}&exchanges=${slow.join(',')}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(sj => {
-              if (cancelled) return;
-              const extra = sj?.exchanges || {};
-              if (Object.keys(extra).length > 0) onMergeKlineData(extra);
-            }).catch(() => {});
-        }
       }).catch(() => {});
 
-    // DB sources in background
+    // DB sources in background — merge (don't replace) to supplement VPS data
     Promise.allSettled([
       fetch(`/api/history/price-multi?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/history/spreads?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
@@ -149,7 +137,8 @@ export function useSpreadData({
     const interval = (t as any)?.interval || '1h';
     const limit = (t as any)?.limit || 168;
     let cancelled = false;
-    fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}&exchanges=${missing.join(',')}`)
+    // VPS returns all exchanges — re-fetch and merge any new ones
+    fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}`)
       .then(r => r.ok ? r.json() : null)
       .then(json => {
         if (cancelled) return;
@@ -180,6 +169,7 @@ export function useSpreadData({
     wsHistory,
     wsCount,
     wsSpread,
+    wsStatus,
     data,
     exs,
     available,

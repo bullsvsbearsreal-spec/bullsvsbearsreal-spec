@@ -80,19 +80,31 @@ async function run(req: NextRequest) {
         if (entries.length < 2) continue;
         const high = entries[0], low = entries[entries.length - 1];
         const spread = high[1] - low[1];
-        const pct = (spread / low[1]) * 100;
+        const pct = low[1] > 0 ? (spread / low[1]) * 100 : 0;
         rows.push([sym, spread, pct, high[0], low[0], high[1], low[1], entries.length, new Date(bucket).toISOString()]);
       }
 
-      // Single bulk insert
+      // Single bulk insert using parameterized queries (safe from SQL injection)
       if (rows.length > 0) {
-        const values = rows.map(r =>
-          `('${r[0]}', ${r[1]}, ${r[2]}, '${r[3]}', '${r[4]}', ${r[5]}, ${r[6]}, ${r[7]}, '${r[8]}'::timestamptz)`
-        ).join(',\n');
-        await sql.unsafe(`
-          INSERT INTO spread_snapshots (symbol, spread_usd, spread_pct, high_exchange, low_exchange, high_price, low_price, exchange_count, ts)
-          VALUES ${values}
-        `);
+        // Insert in batches of 50 using parameterized values
+        const BATCH = 50;
+        for (let b = 0; b < rows.length; b += BATCH) {
+          const batch = rows.slice(b, b + BATCH);
+          await sql`
+            INSERT INTO spread_snapshots (symbol, spread_usd, spread_pct, high_exchange, low_exchange, high_price, low_price, exchange_count, ts)
+            SELECT * FROM UNNEST(
+              ${sql.array(batch.map(r => r[0]))}::text[],
+              ${sql.array(batch.map(r => r[1]))}::double precision[],
+              ${sql.array(batch.map(r => r[2]))}::double precision[],
+              ${sql.array(batch.map(r => r[3]))}::text[],
+              ${sql.array(batch.map(r => r[4]))}::text[],
+              ${sql.array(batch.map(r => r[5]))}::double precision[],
+              ${sql.array(batch.map(r => r[6]))}::double precision[],
+              ${sql.array(batch.map(r => r[7]))}::int[],
+              ${sql.array(batch.map(r => r[8]))}::timestamptz[]
+            )
+          `;
+        }
         inserted = rows.length;
       }
     } catch (err: any) {

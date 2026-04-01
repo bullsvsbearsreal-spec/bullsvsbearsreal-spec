@@ -358,7 +358,7 @@ export default function AlertsPage() {
                         <p className="text-sm font-medium text-white">
                           {t.symbol} — {METRIC_LABELS[t.metric]}{' '}
                           <span className={t.operator === 'gt' ? 'text-green-400' : 'text-red-400'}>
-                            {t.operator === 'gt' ? '>' : '<'} {t.threshold}
+                            {t.operator === 'gt' ? '>' : '<'} {formatMetricValue(t.metric, t.threshold)}
                           </span>
                         </p>
                         <p className="text-xs text-neutral-500">

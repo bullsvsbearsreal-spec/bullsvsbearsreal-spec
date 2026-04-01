@@ -27,7 +27,8 @@ interface DominanceData {
 
 /* ─── Donut Chart (SVG) ──────────────────────────────────────────── */
 
-function DonutChart({ value, label, color, size = 160 }: { value: number; label: string; color: string; size?: number }) {
+function DonutChart({ value: rawValue, label, color, size = 160 }: { value: number; label: string; color: string; size?: number }) {
+  const value = isFinite(rawValue) ? rawValue : 0;
   const radius = (size - 16) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;

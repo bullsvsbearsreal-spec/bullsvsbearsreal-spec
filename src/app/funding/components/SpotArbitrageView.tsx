@@ -188,10 +188,10 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
 
       // Withdrawal info
       const withdrawal = getWithdrawalInfo(symbol);
-      const tradeSize = 1000; // $1000 reference size for USD calculations
-      const wdFeePct = (withdrawal.feeUsd / tradeSize) * 100;
+      const effectiveTradeSize = tradeSize || 1000; // use user's selected trade size
+      const wdFeePct = (withdrawal.feeUsd / effectiveTradeSize) * 100;
       const netAfterWdPct = netSpreadPct - wdFeePct;
-      const netAfterWdUsd = (netAfterWdPct / 100) * tradeSize;
+      const netAfterWdUsd = (netAfterWdPct / 100) * effectiveTradeSize;
 
       // Volume
       let totalVol = 0, volCount = 0;

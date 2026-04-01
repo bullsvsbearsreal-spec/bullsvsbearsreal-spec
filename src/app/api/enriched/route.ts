@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         exchange: t.exchange,
         symbol: sym,
         lastPrice: t.lastPrice || 0,
-        change24h: t.change24h,
+        change24h: t.changePercent24h ?? t.priceChangePercent24h ?? t.change24h,
         quoteVolume24h: t.quoteVolume24h,
       });
     }

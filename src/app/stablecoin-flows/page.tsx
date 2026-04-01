@@ -151,13 +151,13 @@ export default function StablecoinFlowsPage() {
                       key={c.chain}
                       className="h-full relative group"
                       style={{
-                        width: `${(c.value / totalChainValue) * 100}%`,
+                        width: `${totalChainValue > 0 ? (c.value / totalChainValue) * 100 : 0}%`,
                         backgroundColor: getChainColor(c.chain),
                         minWidth: '2px',
                       }}
                       title={`${c.chain}: $${formatCompact(c.value)}`}
                     >
-                      {(c.value / totalChainValue) * 100 > 8 && (
+                      {totalChainValue > 0 && (c.value / totalChainValue) * 100 > 8 && (
                         <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white/90">
                           {c.chain}
                         </span>
@@ -175,7 +175,7 @@ export default function StablecoinFlowsPage() {
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{
-                            width: `${(c.value / totalChainValue) * 100}%`,
+                            width: `${totalChainValue > 0 ? (c.value / totalChainValue) * 100 : 0}%`,
                             backgroundColor: getChainColor(c.chain),
                           }}
                         />
@@ -184,7 +184,7 @@ export default function StablecoinFlowsPage() {
                         ${formatCompact(c.value)}
                       </span>
                       <span className="text-xs text-neutral-600 w-12 text-right">
-                        {((c.value / totalChainValue) * 100).toFixed(1)}%
+                        {(totalChainValue > 0 ? (c.value / totalChainValue) * 100 : 0).toFixed(1)}%
                       </span>
                     </div>
                   ))}

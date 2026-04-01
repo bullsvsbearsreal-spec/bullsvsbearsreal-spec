@@ -213,8 +213,9 @@ export function middleware(request: NextRequest) {
 
   cleanup();
 
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || request.headers.get('x-real-ip')
+  // Prefer x-real-ip (set by Vercel, not spoofable) over x-forwarded-for (client-controlled leftmost value)
+  const ip = request.headers.get('x-real-ip')
+    || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || 'unknown';
 
   // Auth routes — strict limits + no-store cache

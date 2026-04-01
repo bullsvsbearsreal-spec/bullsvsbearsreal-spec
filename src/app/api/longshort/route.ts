@@ -49,9 +49,9 @@ async function fetchBinanceGlobalLS(symbol: string, period: string, limit: numbe
   );
   if (!data) return null;
   return data.map((d: any) => ({
-    longRatio: parseFloat(d.longAccount) * 100,
-    shortRatio: parseFloat(d.shortAccount) * 100,
-    longShortRatio: parseFloat(d.longShortRatio),
+    longRatio: (parseFloat(d.longAccount) || 0) * 100,
+    shortRatio: (parseFloat(d.shortAccount) || 0) * 100,
+    longShortRatio: parseFloat(d.longShortRatio) || 0,
     timestamp: d.timestamp,
   }));
 }
@@ -62,9 +62,9 @@ async function fetchBinanceTopTraderLS(symbol: string, period: string, limit: nu
   );
   if (!data) return null;
   return data.map((d: any) => ({
-    longRatio: parseFloat(d.longPosition ?? d.longAccount) * 100,
-    shortRatio: parseFloat(d.shortPosition ?? d.shortAccount) * 100,
-    longShortRatio: parseFloat(d.longShortRatio),
+    longRatio: (parseFloat(d.longPosition ?? d.longAccount) || 0) * 100,
+    shortRatio: (parseFloat(d.shortPosition ?? d.shortAccount) || 0) * 100,
+    longShortRatio: parseFloat(d.longShortRatio) || 0,
     timestamp: d.timestamp,
   }));
 }
@@ -97,15 +97,17 @@ async function fetchOKXLongShortRatio(symbol: string, period: string) {
   // Each row is [timestamp, longShortRatio]
   return rows.map((r: any) => {
     const ratio = parseFloat(r[1]);
-    const longRatio = (ratio / (1 + ratio)) * 100;
-    const shortRatio = (1 / (1 + ratio)) * 100;
+    if (!isFinite(ratio) || ratio <= 0) return null;
+    const denom = 1 + ratio;
+    const longRatio = denom > 0 ? (ratio / denom) * 100 : 50;
+    const shortRatio = denom > 0 ? (1 / denom) * 100 : 50;
     return {
       longRatio,
       shortRatio,
       longShortRatio: ratio,
       timestamp: parseInt(r[0], 10),
     };
-  });
+  }).filter(Boolean);
 }
 
 async function fetchOKXTakerVolume(symbol: string, period: string) {

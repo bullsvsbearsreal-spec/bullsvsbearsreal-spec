@@ -4,6 +4,7 @@ import type { Pt, SpreadStats, Candle } from './types';
 
 /** Format price for display — adaptive decimal places */
 export function fp(v: number): string {
+  if (!isFinite(v)) return '—';
   if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   if (v >= 1) return v.toFixed(2);
   if (v >= 0.01) return v.toFixed(4);

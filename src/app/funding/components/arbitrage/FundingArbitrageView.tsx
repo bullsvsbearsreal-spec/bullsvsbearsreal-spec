@@ -23,7 +23,8 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   const [portfolio, setPortfolio] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ih_arb_portfolio');
-      return saved ? parseInt(saved, 10) : 10000;
+      const val = parseInt(saved ?? '', 10);
+      return isFinite(val) && val > 0 ? val : 10000;
     }
     return 10000;
   });

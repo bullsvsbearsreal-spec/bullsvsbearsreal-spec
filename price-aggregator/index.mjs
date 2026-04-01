@@ -1,5 +1,5 @@
 import http from 'http';
-import WebSocket from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import { gunzipSync } from 'zlib';
 import fs from 'fs';
 import path from 'path';
@@ -16,13 +16,41 @@ const health = {}; // { exchange: { connected, lastUpdate, errors } }
 
 function updatePrice(exchange, symbol, price, bid, ask) {
   if (!prices[symbol]) prices[symbol] = {};
-  prices[symbol][exchange] = { price, bid, ask, ts: Date.now() };
+  const ts = Date.now();
+  prices[symbol][exchange] = { price, bid, ask, ts };
   if (!health[exchange]) health[exchange] = { connected: true, lastUpdate: 0, errors: 0 };
   health[exchange].connected = true;
-  health[exchange].lastUpdate = Date.now();
+  health[exchange].lastUpdate = ts;
   // Feed into kline builder
   klineUpdate(exchange, symbol, price);
+  // Broadcast to WebSocket subscribers
+  wsBroadcast(symbol, exchange, price, bid, ask, ts);
 }
+
+// ─── WebSocket Push Server ─────────────────────────────────────────────────
+// Clients connect via ws:// and subscribe to symbols for real-time push updates
+// Protocol: client sends { subscribe: "BTC" } or { subscribe: ["BTC","ETH"] }
+//           server pushes { s: symbol, e: exchange, p: price, b: bid, a: ask, t: ts }
+//           server sends heartbeat { heartbeat: ts } every 5s
+const wsClients = new Map(); // ws -> Set<symbol>
+
+function wsBroadcast(symbol, exchange, price, bid, ask, ts) {
+  if (wsClients.size === 0) return;
+  const msg = JSON.stringify({ s: symbol, e: exchange, p: price, b: bid, a: ask, t: ts });
+  for (const [ws, subs] of wsClients) {
+    if (ws.readyState === WebSocket.OPEN && (subs.has('*') || subs.has(symbol))) {
+      ws.send(msg);
+    }
+  }
+}
+
+function wsHeartbeat() {
+  const msg = JSON.stringify({ heartbeat: Date.now() });
+  for (const [ws] of wsClients) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(msg);
+  }
+}
+setInterval(wsHeartbeat, 5000);
 
 // ─── Kline Builder ─────────────────────────────────────────────────────────
 // Builds 1h candles from live price ticks, keeps up to 31 days (744 candles)
@@ -922,6 +950,49 @@ const server = http.createServer((req, res) => {
     // Return last N candles
     const result = candles.slice(-limit);
     res.end(JSON.stringify({ exchange: ex, symbol: sym, interval, candles: result }));
+  } else if (url.pathname === '/klines-multi') {
+    // /klines-multi?symbol=BTC&interval=1h&limit=168
+    // Returns klines for ALL exchanges that have data for this symbol
+    const sym = url.searchParams.get('symbol')?.toUpperCase();
+    const interval = url.searchParams.get('interval') || '1h';
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 168, MAX_KLINE_CANDLES);
+
+    if (!sym) {
+      res.end(JSON.stringify({ error: 'Required: ?symbol=...' }));
+      return;
+    }
+
+    const exchanges = {};
+    const suffix = `:${sym}`;
+    for (const [key, raw] of Object.entries(klines)) {
+      if (!key.endsWith(suffix)) continue;
+      const ex = key.split(':')[0];
+      let candles;
+      if (interval === '4h') {
+        candles = aggregateCandles(raw, 4);
+      } else if (interval === '1d') {
+        candles = aggregateCandles(raw, 24);
+      } else {
+        candles = raw;
+      }
+      const sliced = candles.slice(-limit);
+      if (sliced.length > 0) {
+        exchanges[ex] = sliced;
+      }
+    }
+
+    res.end(JSON.stringify({
+      symbol: sym, interval, limit,
+      exchanges,
+      meta: { success: Object.keys(exchanges).length, ts: Date.now() }
+    }));
+  } else if (url.pathname === '/reset-klines') {
+    // Wipe all kline data and start collecting fresh
+    const count = Object.keys(klines).length;
+    for (const key of Object.keys(klines)) delete klines[key];
+    try { fs.writeFileSync(KLINE_FILE, '{}'); } catch (e) { /* ignore */ }
+    console.log(`[Klines] RESET — wiped ${count} series`);
+    res.end(JSON.stringify({ ok: true, wiped: count, message: 'All kline data cleared. Fresh collection starts now.' }));
   } else if (url.pathname === '/health') {
     res.end(JSON.stringify({ health, symbolCount: Object.keys(prices).length, uptime: process.uptime() }));
   } else {
@@ -974,7 +1045,55 @@ pollGTrade();
 pollGMX();
 pollFromInfoHub();
 
+// ─── WebSocket Upgrade Handler ─────────────────────────────────────────────
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws) => {
+  wsClients.set(ws, new Set());
+  console.log(`[WS] Client connected (${wsClients.size} total)`);
+
+  ws.on('message', (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+      const subs = wsClients.get(ws);
+      if (!subs) return;
+
+      // Subscribe: { subscribe: "BTC" } or { subscribe: ["BTC","ETH"] } or { subscribe: "*" }
+      if (msg.subscribe) {
+        const syms = Array.isArray(msg.subscribe) ? msg.subscribe : [msg.subscribe];
+        for (const s of syms) subs.add(s.toUpperCase());
+        // Send initial snapshot for subscribed symbols
+        const snapshot = {};
+        for (const s of subs) {
+          if (s === '*') {
+            Object.assign(snapshot, prices);
+            break;
+          }
+          if (prices[s]) snapshot[s] = prices[s];
+        }
+        ws.send(JSON.stringify({ snapshot, ts: Date.now() }));
+      }
+
+      // Unsubscribe: { unsubscribe: "BTC" } or { unsubscribe: ["BTC"] }
+      if (msg.unsubscribe) {
+        const syms = Array.isArray(msg.unsubscribe) ? msg.unsubscribe : [msg.unsubscribe];
+        for (const s of syms) subs.delete(s.toUpperCase());
+      }
+
+      // Ping/pong for keepalive
+      if (msg.ping) ws.send(JSON.stringify({ pong: Date.now() }));
+    } catch { /* ignore malformed messages */ }
+  });
+
+  ws.on('close', () => {
+    wsClients.delete(ws);
+    console.log(`[WS] Client disconnected (${wsClients.size} total)`);
+  });
+
+  ws.on('error', () => wsClients.delete(ws));
+});
+
 server.listen(PORT, () => {
   console.log(`Price aggregator running on port ${PORT}`);
-  console.log(`Endpoints: /prices, /spreads, /health`);
+  console.log(`Endpoints: /prices, /spreads, /health, ws://`);
 });

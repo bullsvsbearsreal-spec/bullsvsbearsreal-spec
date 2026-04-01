@@ -287,8 +287,8 @@ export default function LongShortPage() {
                       <td className={`px-4 py-2.5 font-medium ${isActive ? 'text-hub-yellow' : 'text-white'}`}>
                         {label}
                       </td>
-                      <td className="text-right px-4 py-2.5 text-green-400 font-mono">{d.longRatio.toFixed(2)}%</td>
-                      <td className="text-right px-4 py-2.5 text-red-400 font-mono">{d.shortRatio.toFixed(2)}%</td>
+                      <td className="text-right px-4 py-2.5 text-green-400 font-mono">{(d.longRatio ?? 0).toFixed(2)}%</td>
+                      <td className="text-right px-4 py-2.5 text-red-400 font-mono">{(d.shortRatio ?? 0).toFixed(2)}%</td>
                       <td className="text-right px-4 py-2.5 text-white font-mono">{ratio}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex h-2 rounded-full overflow-hidden bg-white/[0.04]">

@@ -27,6 +27,7 @@ interface SpreadRow {
 type SortKey = 'symbol' | 'spreadUsd' | 'spreadPct' | 'exchangeCount';
 
 function fp(v: number) {
+  if (!isFinite(v)) return '—';
   if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   if (v >= 1) return v.toFixed(2);
   if (v >= 0.01) return v.toFixed(4);

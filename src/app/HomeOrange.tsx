@@ -61,9 +61,9 @@ export default function HomeOrange() {
           .sort((a, b) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
           .slice(0, isAuthed ? 5 : 3);
         setTopFunding(validFunding);
-        setLatestNews(newsData.slice(0, isAuthed ? 4 : 2));
-        setExchangeHealth(healthData.funding);
-        setActiveExchangeCount(healthData.meta.activeExchanges);
+        setLatestNews((newsData ?? []).slice(0, isAuthed ? 4 : 2));
+        setExchangeHealth(healthData?.funding ?? []);
+        setActiveExchangeCount(healthData?.meta?.activeExchanges ?? 0);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -150,7 +150,7 @@ export default function HomeOrange() {
             </div>
 
             {/* Quick access grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
               {quickLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -323,7 +323,7 @@ export default function HomeOrange() {
                     ))}
                   </div>
                   {!isAuthed && (
-                    <Link href="/funding" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
+                    <Link href="/news" className="flex items-center justify-center gap-1.5 py-2 mt-1 text-[11px] text-hub-yellow/60 hover:text-hub-yellow transition-colors">
                       <ChevronRight size={10} />
                       View all
                     </Link>

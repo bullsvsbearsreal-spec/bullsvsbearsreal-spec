@@ -85,7 +85,8 @@ export function useRealtimeTrades(symbol: string) {
     }
 
     const oldest = filtered.length > 0 ? filtered[filtered.length - 1].time : now;
-    const spanSec = Math.max((now - oldest) / 1000, 1);
+    const rawSpan = (now - oldest) / 1000;
+    const spanSec = isFinite(rawSpan) && rawSpan > 0 ? rawSpan : 1;
 
     setStats({
       buyVolume: buyVol,

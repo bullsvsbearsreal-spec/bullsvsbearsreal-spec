@@ -73,7 +73,7 @@ function signalFromRSI(d: RSIData): { text: string; color: string } {
 }
 
 const fmtPrice = (p: number) => {
-  if (!p && p !== 0) return '—';
+  if (!isFinite(p) || (!p && p !== 0)) return '—';
   return p >= 1
     ? `$${p.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
     : p >= 0.001 ? `$${p.toFixed(4)}` : `$${p.toFixed(6)}`;
@@ -353,7 +353,7 @@ export default function RSIHeatmapPage() {
                         <td className={`px-2 py-1.5 text-center text-xs font-mono tabular-nums ${
                           d.change24h >= 0 ? 'text-success' : 'text-danger'
                         }`}>
-                          {d.change24h != null ? `${d.change24h >= 0 ? '+' : ''}${d.change24h.toFixed(2)}%` : '—'}
+                          {d.change24h != null && isFinite(d.change24h) ? `${d.change24h >= 0 ? '+' : ''}${d.change24h.toFixed(2)}%` : '—'}
                         </td>
                         <RSICell rsi={d.rsi1h} />
                         <RSICell rsi={d.rsi4h} />

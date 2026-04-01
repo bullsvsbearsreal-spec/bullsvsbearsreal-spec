@@ -179,7 +179,7 @@ export default function ExchangeReservesPage() {
   const top5Pct = useMemo(() => {
     if (!data || data.exchanges.length === 0) return 0;
     const top5 = data.exchanges.slice(0, 5).reduce((s, e) => s + e.totalReserve, 0);
-    return (top5 / data.totalReserves) * 100;
+    return data.totalReserves > 0 ? (top5 / data.totalReserves) * 100 : 0;
   }, [data]);
 
   const SortIcon = ({ col }: { col: SortKey }) => {
@@ -266,7 +266,7 @@ export default function ExchangeReservesPage() {
                 <h2 className="text-sm font-semibold text-white mb-3">Market Share</h2>
                 <div className="h-10 rounded-lg overflow-hidden flex">
                   {data.exchanges.slice(0, 8).map((ex, i) => {
-                    const pct = (ex.totalReserve / data.totalReserves) * 100;
+                    const pct = data.totalReserves > 0 ? (ex.totalReserve / data.totalReserves) * 100 : 0;
                     return (
                       <div
                         key={ex.slug}
@@ -287,7 +287,7 @@ export default function ExchangeReservesPage() {
                   })}
                   {(() => {
                     const top8 = data.exchanges.slice(0, 8).reduce((s, e) => s + e.totalReserve, 0);
-                    const othersPct = ((data.totalReserves - top8) / data.totalReserves) * 100;
+                    const othersPct = data.totalReserves > 0 ? ((data.totalReserves - top8) / data.totalReserves) * 100 : 0;
                     return othersPct > 1 ? (
                       <div
                         className="h-full bg-neutral-600"
@@ -302,7 +302,7 @@ export default function ExchangeReservesPage() {
                     <div key={ex.slug} className="flex items-center gap-1.5">
                       <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: getChainColor(ex.name, i) }} />
                       <span className="text-[10px] text-neutral-400">
-                        {ex.name} {((ex.totalReserve / data.totalReserves) * 100).toFixed(1)}%
+                        {ex.name} {(data.totalReserves > 0 ? (ex.totalReserve / data.totalReserves) * 100 : 0).toFixed(1)}%
                       </span>
                     </div>
                   ))}
@@ -346,7 +346,7 @@ export default function ExchangeReservesPage() {
                     </thead>
                     <tbody>
                       {sorted.map((ex, idx) => {
-                        const pct = (ex.totalReserve / data.totalReserves) * 100;
+                        const pct = data.totalReserves > 0 ? (ex.totalReserve / data.totalReserves) * 100 : 0;
                         const isExpanded = expandedRow === ex.slug;
 
                         return (
@@ -383,7 +383,7 @@ export default function ExchangeReservesPage() {
                               {isExpanded && ex.chains.length > 0 && (
                                 <div className="mt-2 ml-7 space-y-1.5">
                                   {ex.chains.map((c, ci) => {
-                                    const chainPct = (c.value / ex.totalReserve) * 100;
+                                    const chainPct = ex.totalReserve > 0 ? (c.value / ex.totalReserve) * 100 : 0;
                                     return (
                                       <div key={c.chain} className="flex items-center gap-2">
                                         <span className="text-[11px] text-neutral-500 w-20 truncate">{c.chain}</span>
@@ -441,7 +441,7 @@ export default function ExchangeReservesPage() {
                                     key={c.chain}
                                     className="h-full"
                                     style={{
-                                      width: `${(c.value / ex.totalReserve) * 100}%`,
+                                      width: `${ex.totalReserve > 0 ? (c.value / ex.totalReserve) * 100 : 0}%`,
                                       backgroundColor: getChainColor(c.chain, ci),
                                     }}
                                     title={`${c.chain}: $${formatCompact(c.value)}`}

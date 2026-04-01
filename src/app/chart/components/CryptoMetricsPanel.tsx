@@ -225,7 +225,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
               Vol ${fmt(metrics.totalVolume)}
             </span>
           )}
-          {metrics.change24h !== null && (
+          {metrics.change24h !== null && isFinite(metrics.change24h) && (
             <span className={`flex-shrink-0 ${metrics.change24h >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
               {metrics.change24h >= 0 ? '+' : ''}{metrics.change24h.toFixed(2)}%
             </span>

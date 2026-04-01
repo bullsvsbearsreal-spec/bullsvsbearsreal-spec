@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
@@ -435,8 +435,9 @@ function OIByExpiryChart({
           const callH = (e.callOI / maxOI) * chartH;
           const putH = (e.putOI / maxOI) * chartH;
           const d = new Date(e.expiry);
-          const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const year = d.getFullYear().toString().slice(2);
+          const isValidDate = !isNaN(d.getTime());
+          const label = isValidDate ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+          const year = isValidDate ? d.getFullYear().toString().slice(2) : '';
           const isHovered = i === hovered;
           const pct = ((e.totalOI / totalOI) * 100);
 
@@ -812,12 +813,14 @@ export default function OptionsPage() {
   const data = bundle?.options ?? null;
   const error = fetchError;
 
-  // Sync live spot from bundle
+  // Sync live spot from bundle (in useEffect to avoid setState during render)
   const prevSpotRef = useRef(0);
-  if (bundle && bundle.spot > 0 && bundle.spot !== prevSpotRef.current) {
-    prevSpotRef.current = bundle.spot;
-    if (bundle.spot !== liveSpot) setLiveSpot(bundle.spot);
-  }
+  useEffect(() => {
+    if (bundle && bundle.spot > 0 && bundle.spot !== prevSpotRef.current) {
+      prevSpotRef.current = bundle.spot;
+      setLiveSpot(bundle.spot);
+    }
+  }, [bundle?.spot]);
 
   const pcRatioFlash = useFlash(data?.putCallRatio);
   const totalOIFlash = useFlash(data?.totalOI);

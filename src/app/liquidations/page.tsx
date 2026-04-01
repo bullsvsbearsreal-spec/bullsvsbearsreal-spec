@@ -11,6 +11,7 @@ import LiquidationFeed from './components/LiquidationFeed';
 import LiquidationBottomBar from './components/LiquidationBottomBar';
 import { isLiqCryptoSymbol, normalizeLiqSymbol } from '@/lib/liquidation-parsers';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import TweetButton from '@/components/TweetButton';
 import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import dynamic from 'next/dynamic';
 
@@ -183,6 +184,7 @@ export default function LiquidationsPage() {
       {/* Connection status indicator — per-exchange dots */}
       {connections.length > 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.01] border-b border-white/[0.04] overflow-x-auto scrollbar-hide">
+          <TweetButton compact text={`Real-time liquidations from ${connections.length} exchanges — @infikiofficial`} />
           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${connectedCount > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
           <span className="text-[10px] text-neutral-500 flex-shrink-0">
             {connectedCount}/{connections.length} exchanges connected
