@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
   }
 
   const cacheControl = result.cacheStatus.startsWith('STALE')
-    ? 'public, s-maxage=10, stale-while-revalidate=20'
-    : 'public, s-maxage=15, stale-while-revalidate=30';
+    ? 'public, s-maxage=15, stale-while-revalidate=30'
+    : 'public, s-maxage=30, stale-while-revalidate=60';
 
   return NextResponse.json(result.result, {
     headers: { 'X-Cache': result.cacheStatus, 'Cache-Control': cacheControl },

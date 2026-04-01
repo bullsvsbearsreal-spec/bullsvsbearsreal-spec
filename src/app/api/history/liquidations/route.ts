@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const treemapLimit = Math.min(parseInt(searchParams.get('limit') || '30') || 30, 100);
     const data = await getLiquidationTreemap(hours, treemapLimit);
     return NextResponse.json({ mode: 'treemap', hours, data, count: data.length }, {
-      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
+      headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
     });
   }
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const validSide = sideParam === 'long' || sideParam === 'short' ? sideParam : undefined;
     const data = await getLiquidationFeedFiltered(hours, feedLimit, exchange, validSide, symbol || undefined);
     return NextResponse.json({ mode: 'feed', hours, data, count: data.length }, {
-      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
+      headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
     });
   }
 

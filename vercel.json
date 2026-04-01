@@ -1,4 +1,10 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "dependabot/*": false,
+      "dependabot/**": false
+    }
+  },
   "functions": {
     "app/api/**/*": {
       "maxDuration": 30,

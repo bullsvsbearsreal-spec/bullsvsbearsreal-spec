@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       { data, meta: { symbol: sym, count: data.length, timestamp: Date.now() } },
-      { headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15' } },
+      { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' } },
     );
   } catch {
     return NextResponse.json({ data: [], meta: { symbol: sym, count: 0, timestamp: Date.now(), error: true } }, { status: 500 });
