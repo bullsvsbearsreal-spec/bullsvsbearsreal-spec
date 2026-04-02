@@ -183,7 +183,7 @@ export default function LiquidationsPage() {
       <main className="flex-1">
         {/* ─── Page Header ──────────────────────────── */}
         <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-5">
             {/* Title & status */}
             <div>
               <div className="flex items-center gap-2.5 mb-1">
@@ -208,7 +208,7 @@ export default function LiquidationsPage() {
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Exchange filter */}
               <div className="flex items-center bg-hub-dark/60 border border-hub-subtle rounded-lg p-0.5">
                 {EXCHANGE_FILTERS.map(f => (
