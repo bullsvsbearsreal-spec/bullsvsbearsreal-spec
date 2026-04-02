@@ -10,7 +10,7 @@ import LiquidationFeed from './components/LiquidationFeed';
 import { isLiqCryptoSymbol, normalizeLiqSymbol } from '@/lib/liquidation-parsers';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatLiqValue } from '@/lib/utils/format';
-import { Zap, TrendingDown, TrendingUp, Activity } from 'lucide-react';
+import { Zap, TrendingDown, TrendingUp, Activity, Flame } from 'lucide-react';
 import { useFlash } from '@/hooks/useFlash';
 import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import dynamic from 'next/dynamic';
@@ -20,7 +20,7 @@ const LiquidationChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[240px] bg-[#0a0a0a] border border-white/[0.06] rounded-xl flex items-center justify-center">
+      <div className="h-[280px] bg-hub-dark/50 border border-hub-subtle rounded-2xl flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
       </div>
     ),
@@ -57,22 +57,20 @@ interface TreemapItem {
   count: number;
 }
 
-// DEX exchanges for CEX/DEX filtering
 const DEX_EXCHANGES = new Set(['gTrade', 'dYdX', 'Hyperliquid', 'GMX', 'Drift', 'Aevo', 'Lighter']);
-
-// All WebSocket-supported exchanges
 const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'HTX', 'gTrade', 'dYdX', 'Bitfinex'];
 
-const EXCHANGE_FILTERS = [
-  { key: 'all', label: 'All' },
+type ExchangeFilterKey = 'all' | 'cex' | 'dex';
+
+const EXCHANGE_FILTERS: { key: ExchangeFilterKey; label: string }[] = [
+  { key: 'all', label: 'All Venues' },
   { key: 'cex', label: 'CEX' },
   { key: 'dex', label: 'DEX' },
-] as const;
+];
 
 // ─── SWR Fetcher ────────────────────────────────────
 const fetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null);
 
-// Convert WS Liquidation to FeedItem
 function liqToFeedItem(liq: Liquidation): FeedItem {
   return {
     symbol: normalizeLiqSymbol(liq.symbol),
@@ -85,20 +83,20 @@ function liqToFeedItem(liq: Liquidation): FeedItem {
   };
 }
 
-/** Trader slang based on rekt volume */
-function getRektSlang(total: number, longPct: number): string | null {
-  if (total >= 1_000_000_000) return 'Unprecedented liquidation event';
-  if (total >= 500_000_000) return 'Total bloodbath';
-  if (total >= 200_000_000) return 'Absolute carnage';
+/** Market sentiment label based on liquidation volume */
+function getMarketLabel(total: number, longPct: number): { text: string; color: string } | null {
+  if (total >= 1_000_000_000) return { text: 'Unprecedented liquidation event', color: 'text-red-400' };
+  if (total >= 500_000_000) return { text: 'Extreme market turbulence', color: 'text-red-400' };
+  if (total >= 200_000_000) return { text: 'Heavy liquidation activity', color: 'text-orange-400' };
   if (total >= 100_000_000) {
-    if (longPct >= 75) return 'Longs destroyed';
-    if (longPct <= 25) return 'Short squeeze';
-    return 'Major liquidation wave';
+    if (longPct >= 75) return { text: 'Long positions under pressure', color: 'text-red-400' };
+    if (longPct <= 25) return { text: 'Short squeeze in progress', color: 'text-green-400' };
+    return { text: 'Significant liquidation wave', color: 'text-amber-400' };
   }
   if (total >= 50_000_000) {
-    if (longPct >= 70) return 'Bulls getting rekt';
-    if (longPct <= 30) return 'Bears squeezed';
-    return 'Both sides rekt';
+    if (longPct >= 70) return { text: 'Longs getting liquidated', color: 'text-red-400/80' };
+    if (longPct <= 30) return { text: 'Shorts getting squeezed', color: 'text-green-400/80' };
+    return { text: 'Elevated liquidation activity', color: 'text-amber-400/80' };
   }
   return null;
 }
@@ -107,7 +105,7 @@ function getRektSlang(total: number, longPct: number): string | null {
 export default function LiquidationsPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
   const [sideFilter, setSideFilter] = useState<'all' | 'long' | 'short'>('all');
-  const [exchangeFilter, setExchangeFilter] = useState<string>('all');
+  const [exchangeFilter, setExchangeFilter] = useState<ExchangeFilterKey>('all');
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const hours = TIMEFRAME_HOURS[timeframe];
 
@@ -135,7 +133,6 @@ export default function LiquidationsPage() {
       .sort((a, b) => b.ts - a.ts);
   }, [wsLiqs]);
 
-  // Normalize + merge treemap symbols
   const treemapItems: TreemapItem[] = useMemo(() => {
     const raw: TreemapItem[] = treemapRaw?.data ?? [];
     const merged = new Map<string, TreemapItem>();
@@ -162,7 +159,6 @@ export default function LiquidationsPage() {
     return allFeedItems.filter(i => !DEX_EXCHANGES.has(i.exchange));
   }, [allFeedItems, exchangeFilter]);
 
-  // Stats from treemap
   const stats = useMemo(() => {
     let longValue = 0, shortValue = 0, count = 0;
     for (const item of treemapItems) {
@@ -177,179 +173,237 @@ export default function LiquidationsPage() {
   const longPct = stats.total > 0 ? (stats.longValue / stats.total) * 100 : 50;
   const shortPct = 100 - longPct;
   const totalFlash = useFlash(stats.total);
-  const slang = getRektSlang(stats.total, longPct);
+  const marketLabel = getMarketLabel(stats.total, longPct);
 
   // ─── Render ─────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col bg-hub-black">
       <Header />
 
-      {/* ─── Dashboard Header ──────────────────────── */}
-      <div className="px-3 sm:px-4 lg:px-6 pt-3 pb-2">
-        {/* Title row */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-hub-yellow" />
-            <h1 className="text-white font-bold text-lg tracking-tight">Liquidations</h1>
-            {connectedCount > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-mono text-green-500/70 bg-green-500/10 px-1.5 py-0.5 rounded">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                {connectedCount} live
+      <main className="flex-1">
+        {/* ─── Page Header ──────────────────────────── */}
+        <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+            {/* Title & status */}
+            <div>
+              <div className="flex items-center gap-2.5 mb-1">
+                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Liquidations
+                </h1>
+                {connectedCount > 0 && (
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-green-400/90 bg-green-500/10 border border-green-500/15 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    {connectedCount} live
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-neutral-500">
+                Real-time liquidation data across {WS_EXCHANGES.length} exchanges
+                {marketLabel && (
+                  <span className={`ml-2 ${marketLabel.color}`}>
+                    &mdash; {marketLabel.text}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-2">
+              {/* Exchange filter */}
+              <div className="flex items-center bg-hub-dark/60 border border-hub-subtle rounded-lg p-0.5">
+                {EXCHANGE_FILTERS.map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setExchangeFilter(f.key)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                      exchangeFilter === f.key
+                        ? f.key === 'dex'
+                          ? 'bg-purple-500/15 text-purple-400 shadow-sm'
+                          : 'bg-white/[0.08] text-white shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-300'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Timeframe pills */}
+              <div className="flex items-center bg-hub-dark/60 border border-hub-subtle rounded-lg p-0.5" role="tablist">
+                {TIMEFRAMES.map(tf => (
+                  <button
+                    key={tf}
+                    role="tab"
+                    aria-selected={timeframe === tf}
+                    onClick={() => setTimeframe(tf)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-all ${
+                      timeframe === tf
+                        ? 'bg-hub-yellow/15 text-hub-yellow shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-300'
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ─── Stats Overview ────────────────────────── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {/* Total Volume */}
+            <div className="group bg-hub-dark/40 border border-hub-subtle rounded-xl p-4 hover:border-hub-hover transition-colors">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 rounded-lg bg-white/[0.04]">
+                  <Activity className="w-3.5 h-3.5 text-neutral-400" />
+                </div>
+                <span className="text-xs text-neutral-500 font-medium">Total Volume</span>
+              </div>
+              <span className={`text-xl font-mono font-bold text-white tracking-tight ${totalFlash}`}>
+                {formatLiqValue(stats.total)}
               </span>
-            )}
-            {slang && (
-              <span className="hidden md:inline text-[10px] italic text-amber-500/70 ml-1">{slang}</span>
-            )}
-          </div>
+              <div className="mt-1.5 text-[11px] text-neutral-600 font-medium">
+                {timeframe} window
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {/* Exchange filter */}
-            <div className="hidden sm:flex items-center gap-0.5 bg-white/[0.03] rounded-lg p-0.5">
-              {EXCHANGE_FILTERS.map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setExchangeFilter(f.key)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-colors ${
-                    exchangeFilter === f.key
-                      ? f.key === 'dex' ? 'bg-purple-500/20 text-purple-400' : 'bg-white/[0.08] text-white'
-                      : 'text-neutral-600 hover:text-neutral-400'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+            {/* Liquidation Count */}
+            <div className="group bg-hub-dark/40 border border-hub-subtle rounded-xl p-4 hover:border-hub-hover transition-colors">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 rounded-lg bg-white/[0.04]">
+                  <Flame className="w-3.5 h-3.5 text-neutral-400" />
+                </div>
+                <span className="text-xs text-neutral-500 font-medium">Liquidations</span>
+              </div>
+              <span className="text-xl font-mono font-bold text-white tracking-tight">
+                {stats.count.toLocaleString()}
+              </span>
+              <div className="mt-1.5 text-[11px] text-neutral-600 font-medium">
+                total events
+              </div>
             </div>
-            {/* Timeframe pills */}
-            <div className="flex items-center gap-0.5 bg-white/[0.03] rounded-lg p-0.5" role="tablist">
-              {TIMEFRAMES.map(tf => (
-                <button
-                  key={tf}
-                  role="tab"
-                  aria-selected={timeframe === tf}
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-2 sm:px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
-                    timeframe === tf
-                      ? 'bg-hub-yellow/20 text-hub-yellow'
-                      : 'text-neutral-600 hover:text-neutral-400'
-                  }`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* ─── Stat Cards ────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-          {/* Total Volume */}
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Activity className="w-3 h-3 text-neutral-500" />
-              <span className="text-[10px] text-neutral-500 font-medium uppercase tracking-wide">Total Volume</span>
+            {/* Longs Liquidated */}
+            <div className="group bg-hub-dark/40 border border-hub-subtle rounded-xl p-4 hover:border-hub-hover transition-colors relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/[0.04] to-transparent pointer-events-none" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-red-500/10">
+                    <TrendingDown className="w-3.5 h-3.5 text-red-400/80" />
+                  </div>
+                  <span className="text-xs text-neutral-500 font-medium">Longs Liquidated</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-mono font-bold text-red-400 tracking-tight">
+                    {formatLiqValue(stats.longValue)}
+                  </span>
+                </div>
+                <div className="mt-1.5 text-[11px] text-red-400/50 font-mono font-medium">
+                  {longPct.toFixed(1)}% of total
+                </div>
+              </div>
             </div>
-            <span className={`text-lg font-mono font-bold text-white ${totalFlash}`}>
-              {formatLiqValue(stats.total)}
-            </span>
-          </div>
 
-          {/* Liquidation Count */}
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Zap className="w-3 h-3 text-neutral-500" />
-              <span className="text-[10px] text-neutral-500 font-medium uppercase tracking-wide">Liquidations</span>
-            </div>
-            <span className="text-lg font-mono font-bold text-white">
-              {stats.count.toLocaleString()}
-            </span>
-          </div>
-
-          {/* Longs Liquidated */}
-          <div className="bg-red-500/[0.06] border border-red-500/10 rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingDown className="w-3 h-3 text-red-500/60" />
-              <span className="text-[10px] text-red-400/60 font-medium uppercase tracking-wide">Longs Rekt</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg font-mono font-bold text-red-400">{formatLiqValue(stats.longValue)}</span>
-              <span className="text-[10px] font-mono text-red-400/50">{longPct.toFixed(1)}%</span>
+            {/* Shorts Liquidated */}
+            <div className="group bg-hub-dark/40 border border-hub-subtle rounded-xl p-4 hover:border-hub-hover transition-colors relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/[0.04] to-transparent pointer-events-none" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-green-500/10">
+                    <TrendingUp className="w-3.5 h-3.5 text-green-400/80" />
+                  </div>
+                  <span className="text-xs text-neutral-500 font-medium">Shorts Liquidated</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-mono font-bold text-green-400 tracking-tight">
+                    {formatLiqValue(stats.shortValue)}
+                  </span>
+                </div>
+                <div className="mt-1.5 text-[11px] text-green-400/50 font-mono font-medium">
+                  {shortPct.toFixed(1)}% of total
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Shorts Liquidated */}
-          <div className="bg-green-500/[0.06] border border-green-500/10 rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingUp className="w-3 h-3 text-green-500/60" />
-              <span className="text-[10px] text-green-400/60 font-medium uppercase tracking-wide">Shorts Rekt</span>
+          {/* Long/Short ratio bar */}
+          <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-sm bg-red-500/70" />
+              <span className="text-[11px] font-mono text-red-400/80 font-semibold">{longPct.toFixed(1)}% Long</span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg font-mono font-bold text-green-400">{formatLiqValue(stats.shortValue)}</span>
-              <span className="text-[10px] font-mono text-green-400/50">{shortPct.toFixed(1)}%</span>
+            <div className="h-2 rounded-full overflow-hidden bg-white/[0.04] flex-1 flex">
+              <div
+                className="bg-gradient-to-r from-red-500/60 to-red-500/80 h-full transition-all duration-700 rounded-l-full"
+                style={{ width: `${longPct}%` }}
+              />
+              <div
+                className="bg-gradient-to-r from-green-500/80 to-green-500/60 h-full transition-all duration-700 rounded-r-full"
+                style={{ width: `${shortPct}%` }}
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-mono text-green-400/80 font-semibold">{shortPct.toFixed(1)}% Short</span>
+              <span className="w-2 h-2 rounded-sm bg-green-500/70" />
             </div>
           </div>
         </div>
 
-        {/* Long/Short ratio bar */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] font-mono text-red-400 font-bold shrink-0">{longPct.toFixed(1)}% L</span>
-          <div className="h-1.5 rounded-full overflow-hidden bg-white/[0.04] flex-1 flex">
-            <div className="bg-red-500/70 h-full transition-all duration-700" style={{ width: `${longPct}%` }} />
-            <div className="bg-green-500/70 h-full transition-all duration-700" style={{ width: `${shortPct}%` }} />
-          </div>
-          <span className="text-[10px] font-mono text-green-400 font-bold shrink-0">S {shortPct.toFixed(1)}%</span>
-        </div>
-      </div>
-
-      {/* ─── Main Content ──────────────────────────── */}
-      <div className="flex-1 px-3 sm:px-4 lg:px-6 pb-3">
-        {/* Treemap — full width, dominant visual */}
-        <div className="mb-3">
+        {/* ─── Main Content ──────────────────────────── */}
+        <div className="px-4 sm:px-6 lg:px-8 pb-6 space-y-4">
+          {/* Treemap */}
           <LiquidationTreemap
             data={treemapItems}
             isLoading={treemapLoading}
             onSymbolClick={setSelectedSymbol}
           />
-        </div>
 
-        {/* Chart + Feed side by side */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-3">
-          {/* Chart */}
-          <LiquidationChart
-            timeframeHours={hours}
-            symbol={selectedSymbol}
-            topSymbols={treemapItems.slice(0, 10).map(i => i.symbol)}
-          />
-
-          {/* Live Feed */}
-          <div className="h-[360px] lg:h-auto">
-            <LiquidationFeed
-              data={feedItems}
-              isLoading={allFeedItems.length === 0 && connectedCount === 0}
-              sideFilter={sideFilter}
-              onSideFilterChange={setSideFilter}
+          {/* Chart + Feed side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4">
+            <LiquidationChart
+              timeframeHours={hours}
+              symbol={selectedSymbol}
+              topSymbols={treemapItems.slice(0, 10).map(i => i.symbol)}
             />
+
+            <div className="h-[400px] lg:h-auto">
+              <LiquidationFeed
+                data={feedItems}
+                isLoading={allFeedItems.length === 0 && connectedCount === 0}
+                sideFilter={sideFilter}
+                onSideFilterChange={setSideFilter}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ─── Connection status (subtle footer) ─────── */}
-      {connections.length > 0 && (
-        <div className="flex items-center gap-1.5 px-3 sm:px-4 lg:px-6 py-1 border-t border-white/[0.04] overflow-x-auto scrollbar-hide">
-          <span className="text-[9px] text-neutral-600 font-mono shrink-0">Sources:</span>
-          {connections.map(c => (
-            <span
-              key={c.exchange}
-              className={`text-[9px] font-mono flex items-center gap-0.5 shrink-0 ${
-                c.connected ? (c.eventCount ? 'text-neutral-500' : 'text-neutral-600') : 'text-red-500/40'
-              }`}
-              title={c.connected ? `${c.eventCount || 0} events` : 'Disconnected'}
-            >
-              <ExchangeLogo exchange={c.exchange} size={10} />
-              {c.exchange}
-            </span>
-          ))}
-        </div>
-      )}
+        {/* ─── Connection Status ─────────────────────── */}
+        {connections.length > 0 && (
+          <div className="px-4 sm:px-6 lg:px-8 pb-4">
+            <div className="flex items-center gap-2 py-2 px-3 bg-hub-dark/30 border border-hub-subtle rounded-lg overflow-x-auto scrollbar-hide">
+              <span className="text-[10px] text-neutral-600 font-medium shrink-0 uppercase tracking-wider">Sources</span>
+              <div className="w-px h-3 bg-white/[0.06] shrink-0" />
+              {connections.map(c => (
+                <span
+                  key={c.exchange}
+                  className={`flex items-center gap-1 text-[10px] font-medium shrink-0 px-1.5 py-0.5 rounded ${
+                    c.connected
+                      ? c.eventCount ? 'text-neutral-400 bg-white/[0.02]' : 'text-neutral-600'
+                      : 'text-red-500/50'
+                  }`}
+                  title={c.connected ? `${c.eventCount || 0} events` : 'Disconnected'}
+                >
+                  <ExchangeLogo exchange={c.exchange} size={11} />
+                  {c.exchange}
+                  {c.connected && c.eventCount ? (
+                    <span className="text-[8px] text-neutral-600 ml-0.5">{c.eventCount}</span>
+                  ) : null}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
 
       <ReferralBanner />
       <Footer />

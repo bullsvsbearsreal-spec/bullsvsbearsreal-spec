@@ -23,7 +23,6 @@ interface LiquidationFeedProps {
 
 const SIDE_OPTIONS = ['all', 'long', 'short'] as const;
 
-
 export default function LiquidationFeed({
   data,
   isLoading,
@@ -40,17 +39,14 @@ export default function LiquidationFeed({
     return () => clearInterval(id);
   }, []);
 
-  // Filter data by side
   const filteredData = useMemo(() => {
     if (sideFilter === 'all') return data;
     return data.filter((item) => item.side === sideFilter);
   }, [data, sideFilter]);
 
-  // Track the latest timestamp to detect genuinely new items
   const latestTs = data.length > 0 ? data[0].ts : 0;
   const hasNewItems = latestTs > prevLatestTs.current && prevLatestTs.current > 0;
 
-  // Auto-scroll to top when new items arrive
   useEffect(() => {
     if (latestTs > prevLatestTs.current && scrollRef.current) {
       scrollRef.current.scrollTop = 0;
@@ -59,31 +55,35 @@ export default function LiquidationFeed({
   }, [latestTs]);
 
   return (
-    <div className="flex flex-col h-full border border-white/[0.06] rounded-xl bg-[#0a0a0a] overflow-hidden">
+    <div className="flex flex-col h-full border border-hub-subtle rounded-2xl bg-hub-dark/30 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white/[0.02] border-b border-white/[0.06] shrink-0">
-        <div className="flex items-center gap-2">
-          <Zap className="w-3.5 h-3.5 text-hub-yellow" />
-          <span className="text-xs font-medium text-neutral-400">Live Feed</span>
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-hub-subtle shrink-0">
+        <div className="flex items-center gap-2.5">
+          <Zap className="w-4 h-4 text-hub-yellow" />
+          <span className="text-sm font-medium text-neutral-300">Live Feed</span>
           {filteredData.length > 0 && (
-            <span className="text-[10px] font-mono bg-white/[0.06] text-neutral-400 px-1.5 py-0.5 rounded tabular-nums">
+            <span className="text-[10px] font-mono bg-white/[0.04] text-neutral-500 px-1.5 py-0.5 rounded-md tabular-nums">
               {filteredData.length}
             </span>
           )}
         </div>
 
-        {/* Side filter pills */}
-        <div className="flex items-center gap-1" role="tablist" aria-label="Side filter">
+        {/* Side filter */}
+        <div className="flex items-center bg-hub-dark/60 border border-hub-subtle rounded-lg p-0.5" role="tablist" aria-label="Side filter">
           {SIDE_OPTIONS.map((opt) => (
             <button
               key={opt}
               role="tab"
               aria-selected={sideFilter === opt}
               onClick={() => onSideFilterChange(opt)}
-              className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
                 sideFilter === opt
-                  ? 'bg-hub-yellow/20 text-hub-yellow'
-                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                  ? opt === 'long'
+                    ? 'bg-red-500/10 text-red-400'
+                    : opt === 'short'
+                      ? 'bg-green-500/10 text-green-400'
+                      : 'bg-white/[0.06] text-white'
+                  : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
               {opt[0].toUpperCase() + opt.slice(1)}
@@ -92,33 +92,35 @@ export default function LiquidationFeed({
         </div>
       </div>
 
-      {/* Scrollable body */}
+      {/* Body */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full py-12 gap-3">
+          <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
             <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
-            <span className="text-xs text-neutral-600">Connecting to live feeds...</span>
-            <span className="text-[10px] text-neutral-700">Streaming from 9 exchanges in real-time</span>
+            <p className="text-sm text-neutral-500">Connecting to live feeds...</p>
+            <p className="text-xs text-neutral-600">Streaming from 8 exchanges in real-time</p>
           </div>
         ) : filteredData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full py-12 gap-3">
-            <Zap className="w-5 h-5 text-neutral-700" />
-            <span className="text-xs text-neutral-500">No recent liquidations — market conditions are calm</span>
-            <span className="text-[10px] text-neutral-700">Live feed from 9 exchanges. Liquidations appear here in real-time.</span>
+          <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
+            <Zap className="w-6 h-6 text-neutral-700" />
+            <p className="text-sm text-neutral-500">No recent liquidations</p>
+            <p className="text-xs text-neutral-600">Market conditions are calm. Liquidations appear here in real-time.</p>
           </div>
         ) : (
-          filteredData.map((item, idx) => (
-            <LiquidationFeedRow
-              key={`${item.exchange}-${item.symbol}-${item.ts}-${idx}`}
-              symbol={item.symbol}
-              side={item.side}
-              value={item.valueUsd}
-              exchange={item.exchange}
-              timestamp={item.ts}
-              isNew={idx === 0 && hasNewItems}
-              tick={tick}
-            />
-          ))
+          <div className="divide-y divide-white/[0.03]">
+            {filteredData.map((item, idx) => (
+              <LiquidationFeedRow
+                key={`${item.exchange}-${item.symbol}-${item.ts}-${idx}`}
+                symbol={item.symbol}
+                side={item.side}
+                value={item.valueUsd}
+                exchange={item.exchange}
+                timestamp={item.ts}
+                isNew={idx === 0 && hasNewItems}
+                tick={tick}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -17,7 +17,6 @@ const DEFAULT_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'PEPE', 'WIF', 'SUI
 interface LiquidationChartProps {
   timeframeHours: number;
   symbol?: string | null;
-  /** Additional symbols to show in the selector (e.g. from treemap top symbols) */
   topSymbols?: string[];
 }
 
@@ -105,23 +104,23 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
       : label ?? '';
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#141414] px-3 py-2 shadow-xl">
-      <p className="text-[10px] text-neutral-500 mb-1.5">{timeLabel}</p>
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
+    <div className="rounded-xl border border-hub-subtle bg-hub-dark px-3.5 py-2.5 shadow-xl">
+      <p className="text-[11px] text-neutral-500 mb-2 font-medium">{timeLabel}</p>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-sm bg-red-500/70" />
           <span className="text-[11px] text-neutral-400">Long</span>
-          <span className="text-[11px] font-mono text-red-400 ml-auto">{formatVol(longVal)}</span>
+          <span className="text-[11px] font-mono text-red-400 ml-auto font-semibold">{formatVol(longVal)}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-sm bg-green-500/70" />
           <span className="text-[11px] text-neutral-400">Short</span>
-          <span className="text-[11px] font-mono text-green-400 ml-auto">{formatVol(shortVal)}</span>
+          <span className="text-[11px] font-mono text-green-400 ml-auto font-semibold">{formatVol(shortVal)}</span>
         </div>
-        <div className="border-t border-white/[0.06] pt-1 mt-1">
+        <div className="border-t border-hub-subtle pt-1.5 mt-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-neutral-500">Total</span>
-            <span className="text-[11px] font-mono text-white">{formatVol(longVal + shortVal)}</span>
+            <span className="text-[11px] font-mono text-white font-bold">{formatVol(longVal + shortVal)}</span>
           </div>
         </div>
       </div>
@@ -134,7 +133,6 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 // ---------------------------------------------------------------------------
 
 export default function LiquidationChart({ timeframeHours, symbol, topSymbols }: LiquidationChartProps) {
-  // Build dynamic symbol list: merge defaults with top symbols from treemap
   const symbols = useMemo(() => {
     const set = new Set(DEFAULT_SYMBOLS);
     if (topSymbols) topSymbols.forEach(s => set.add(s));
@@ -142,18 +140,12 @@ export default function LiquidationChart({ timeframeHours, symbol, topSymbols }:
     return Array.from(set).slice(0, 15);
   }, [topSymbols, symbol]);
 
-  const [selected, setSelected] = useState<string>(
-    symbol || 'BTC',
-  );
+  const [selected, setSelected] = useState<string>(symbol || 'BTC');
 
-  // Sync with external symbol prop (e.g. treemap clicks)
   useEffect(() => {
-    if (symbol) {
-      setSelected(symbol);
-    }
+    if (symbol) setSelected(symbol);
   }, [symbol]);
 
-  // Always fetch 1 day of data, then filter to timeframe window
   const swrKey = `/api/history/liquidations?symbol=${selected}&days=1`;
 
   const { data: rawData, isLoading } = useSWR<ChartDatum[]>(swrKey, fetcher, {
@@ -161,7 +153,6 @@ export default function LiquidationChart({ timeframeHours, symbol, topSymbols }:
     revalidateOnFocus: false,
   });
 
-  // Filter to only show data within the selected timeframe
   const data = useMemo(() => {
     if (!rawData || rawData.length === 0) return rawData;
     const cutoff = new Date(Date.now() - timeframeHours * 60 * 60 * 1000).toISOString();
@@ -171,12 +162,12 @@ export default function LiquidationChart({ timeframeHours, symbol, topSymbols }:
   const hasData = data && data.length > 0;
 
   return (
-    <div className="border border-white/[0.06] rounded-xl bg-[#0a0a0a] overflow-hidden">
-      {/* Header with scrollable symbol picker */}
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
-        <div className="flex items-center gap-2 shrink-0">
-          <BarChart3 className="w-3.5 h-3.5 text-neutral-500" />
-          <span className="text-xs font-medium text-neutral-400">History</span>
+    <div className="border border-hub-subtle rounded-2xl bg-hub-dark/30 overflow-hidden">
+      {/* Header with symbol picker */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-hub-subtle">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <BarChart3 className="w-4 h-4 text-neutral-500" />
+          <span className="text-sm font-medium text-neutral-300">History</span>
         </div>
         <div className="flex-1 overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-0.5">
@@ -184,10 +175,10 @@ export default function LiquidationChart({ timeframeHours, symbol, topSymbols }:
               <button
                 key={sym}
                 onClick={() => setSelected(sym)}
-                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap transition-colors ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
                   selected === sym
-                    ? 'bg-white/[0.1] text-white'
-                    : 'text-neutral-600 hover:text-neutral-400'
+                    ? 'bg-white/[0.08] text-white shadow-sm'
+                    : 'text-neutral-600 hover:text-neutral-300 hover:bg-white/[0.03]'
                 }`}
               >
                 {sym}
@@ -197,28 +188,28 @@ export default function LiquidationChart({ timeframeHours, symbol, topSymbols }:
         </div>
       </div>
 
-      {/* Chart area */}
-      <div className="px-3 pt-3 pb-2">
+      {/* Chart */}
+      <div className="px-3 pt-4 pb-3">
         {isLoading ? (
-          <div className="h-[180px] flex items-center justify-center">
+          <div className="h-[200px] flex items-center justify-center">
             <div className="w-5 h-5 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
           </div>
         ) : !hasData ? (
-          <div className="h-[180px] flex flex-col items-center justify-center gap-1">
-            <BarChart3 className="w-6 h-6 text-neutral-800" />
-            <p className="text-xs text-neutral-600">No historical data for {selected}</p>
-            <p className="text-[10px] text-neutral-700">Try a different token or longer timeframe</p>
+          <div className="h-[200px] flex flex-col items-center justify-center gap-2">
+            <BarChart3 className="w-7 h-7 text-neutral-800" />
+            <p className="text-sm text-neutral-500">No historical data for {selected}</p>
+            <p className="text-xs text-neutral-600">Try a different token or longer timeframe</p>
           </div>
         ) : (
           <>
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={200}>
               <BarChart data={data} barCategoryGap="20%" barGap={1}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
                 <XAxis
                   dataKey="time"
                   tickFormatter={(v: string) => formatAxisTime(v, timeframeHours)}
                   tick={{ fill: '#525252', fontSize: 10 }}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
                   tickLine={false}
                   minTickGap={40}
                 />
@@ -227,26 +218,26 @@ export default function LiquidationChart({ timeframeHours, symbol, topSymbols }:
                   tick={{ fill: '#525252', fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
-                  width={48}
+                  width={50}
                 />
                 <RechartsTooltip
                   content={<CustomTooltip />}
-                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                  cursor={{ fill: 'rgba(255,255,255,0.02)' }}
                 />
-                <Bar dataKey="long" stackId="liq" fill="#ef4444" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="short" stackId="liq" fill="#22c55e" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="long" stackId="liq" fill="#ef4444" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="short" stackId="liq" fill="#22c55e" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-4 mt-1.5">
+            <div className="flex items-center justify-center gap-5 mt-2">
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
-                <span className="text-[10px] text-neutral-600">Long</span>
+                <span className="w-2.5 h-2.5 rounded-sm bg-red-500/60" />
+                <span className="text-[11px] text-neutral-500 font-medium">Long</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
-                <span className="text-[10px] text-neutral-600">Short</span>
+                <span className="w-2.5 h-2.5 rounded-sm bg-green-500/60" />
+                <span className="text-[11px] text-neutral-500 font-medium">Short</span>
               </div>
             </div>
           </>
