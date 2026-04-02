@@ -1,5 +1,7 @@
 'use client';
 
+import { formatLiqValue } from '@/lib/utils/format';
+
 interface LiquidationBottomBarProps {
   stats: { longValue: number; shortValue: number; total: number; count: number };
   exchangeFilter: string;
@@ -22,17 +24,19 @@ export default function LiquidationBottomBar({
   const shortPct = 100 - longPct;
 
   return (
-    <div className="px-3 py-1.5 border-t border-white/[0.06] bg-[#0a0a0a] flex-shrink-0">
-      <div className="flex items-center gap-2 sm:gap-4 h-[28px]">
-        {/* Left: Long/Short ratio bar */}
-        <div className="flex-1 flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-          <span className="text-red-400 text-[10px] font-mono font-bold whitespace-nowrap shrink-0">
-            <span className="hidden sm:inline">{longPct.toFixed(1)}% </span>
-            <span className="sm:hidden">{longPct.toFixed(0)}%</span>
-            <span className="hidden sm:inline">Long</span>
-            <span className="sm:hidden"> L</span>
-          </span>
-          <div className="h-2 rounded-full overflow-hidden bg-white/[0.06] flex-1 flex min-w-0" role="meter" aria-label="Long vs Short ratio" aria-valuenow={Math.round(longPct)} aria-valuemin={0} aria-valuemax={100}>
+    <div className="px-3 py-2 border-t border-white/[0.06] bg-[#0a0a0a] flex-shrink-0">
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Left: Long/Short ratio bar with dollar values */}
+        <div className="flex-1 flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <div className="shrink-0 text-right">
+            <span className="text-red-400 text-[10px] font-mono font-bold block leading-tight">
+              {longPct.toFixed(1)}% <span className="hidden sm:inline">Long</span><span className="sm:hidden">L</span>
+            </span>
+            {stats.longValue > 0 && (
+              <span className="text-red-400/50 text-[9px] font-mono hidden sm:block leading-tight">{formatLiqValue(stats.longValue)}</span>
+            )}
+          </div>
+          <div className="h-2.5 rounded-full overflow-hidden bg-white/[0.06] flex-1 flex min-w-0" role="meter" aria-label="Long vs Short ratio" aria-valuenow={Math.round(longPct)} aria-valuemin={0} aria-valuemax={100}>
             <div
               className="bg-red-500/80 transition-all duration-700 rounded-l-full"
               style={{ width: `${longPct}%` }}
@@ -42,16 +46,18 @@ export default function LiquidationBottomBar({
               style={{ width: `${shortPct}%` }}
             />
           </div>
-          <span className="text-green-400 text-[10px] font-mono font-bold whitespace-nowrap shrink-0">
-            <span className="hidden sm:inline">{shortPct.toFixed(1)}% </span>
-            <span className="sm:hidden">{shortPct.toFixed(0)}%</span>
-            <span className="hidden sm:inline">Short</span>
-            <span className="sm:hidden"> S</span>
-          </span>
+          <div className="shrink-0">
+            <span className="text-green-400 text-[10px] font-mono font-bold block leading-tight">
+              {shortPct.toFixed(1)}% <span className="hidden sm:inline">Short</span><span className="sm:hidden">S</span>
+            </span>
+            {stats.shortValue > 0 && (
+              <span className="text-green-400/50 text-[9px] font-mono hidden sm:block leading-tight">{formatLiqValue(stats.shortValue)}</span>
+            )}
+          </div>
         </div>
 
         {/* Divider */}
-        <div className="h-4 w-px bg-white/[0.06] shrink-0" />
+        <div className="h-5 w-px bg-white/[0.06] shrink-0" />
 
         {/* Right: Exchange filter chips */}
         <div className="flex items-center gap-1 shrink-0" role="tablist" aria-label="Exchange type filter">
@@ -63,7 +69,7 @@ export default function LiquidationBottomBar({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => onExchangeFilterChange(f.key)}
-                className={`px-1.5 sm:px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase transition-colors ${
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase transition-colors ${
                   isActive
                     ? f.key === 'dex'
                       ? 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/30'

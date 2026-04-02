@@ -24,7 +24,6 @@ const FundingSpreadComparison = dynamic(() => import('./components/FundingSpread
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 const CorrelationMatrix = dynamic(() => import('./components/CorrelationMatrix'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
-import TweetButton from '@/components/TweetButton';
 // ShowMoreToggle removed — always show all symbols
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
@@ -432,7 +431,6 @@ export default function FundingPage() {
             <DataFreshness exchangeCount={activeExchangeCount || ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
             <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
             <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — real-time data from ${activeExchangeCount || ALL_EXCHANGES.length} exchanges`} />
-            <TweetButton text={`${assetClass === 'all' ? 'Crypto' : assetClass.charAt(0).toUpperCase() + assetClass.slice(1)} funding rates across ${activeExchangeCount || ALL_EXCHANGES.length} exchanges — real-time on @infikiofficial`} />
             <button
               onClick={fetchData}
               disabled={loading}

@@ -4,7 +4,7 @@ import { Zap } from 'lucide-react';
 import { formatLiqValue } from '@/lib/utils/format';
 import { useFlash } from '@/hooks/useFlash';
 
-type Timeframe = '4h' | '8h' | '12h' | '24h';
+type Timeframe = '1h' | '4h' | '8h' | '12h' | '24h';
 
 interface LiquidationTopBarProps {
   stats: { longValue: number; shortValue: number; total: number; count: number };
@@ -12,7 +12,7 @@ interface LiquidationTopBarProps {
   onTimeframeChange: (tf: Timeframe) => void;
 }
 
-const TIMEFRAMES: Timeframe[] = ['4h', '8h', '12h', '24h'];
+const TIMEFRAMES: Timeframe[] = ['1h', '4h', '8h', '12h', '24h'];
 
 /** Trader slang based on rekt volume */
 function getRektSlang(total: number, longPct: number): string | null {
@@ -45,47 +45,54 @@ export default function LiquidationTopBar({
   const totalFlash = useFlash(stats.total);
 
   return (
-    <div className="px-4 py-2 border-b border-white/[0.06] bg-white/[0.01] flex-shrink-0">
-      <div className="flex items-center justify-between">
+    <div className="px-3 sm:px-4 py-2 border-b border-white/[0.06] bg-white/[0.01] flex-shrink-0">
+      <div className="flex items-center justify-between gap-3">
         {/* Left: Title */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Zap className="w-4 h-4 text-hub-yellow" />
           <h1 className="text-white font-bold text-base tracking-tight">Liquidations</h1>
           <span className="heartbeat-dot" style={{ width: 6, height: 6 }} />
         </div>
 
-        {/* Center: Inline stats — upgraded with intensity */}
-        <div className="hidden md:flex items-center gap-1.5 text-xs font-mono">
-          <span className={`font-black ${isHeavy ? 'text-base text-rekt-hot' : 'text-sm text-white'} ${totalFlash}`}
-            style={isHeavy ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
-            {formatLiqValue(stats.total)}
-          </span>
-          <span className="text-neutral-600">total</span>
-          <span className="text-neutral-700">|</span>
-          <span className="text-neutral-300 font-bold">{stats.count.toLocaleString()}</span>
-          <span className="text-neutral-600">liqs</span>
-          <span className="text-neutral-700">|</span>
-          <span className={`delta-badge ${longPct >= 60 ? 'delta-badge-extreme-down' : 'delta-badge-down'} text-[10px]`}>
-            L {longPct.toFixed(1)}%
-          </span>
-          <span className="text-neutral-700">/</span>
-          <span className={`delta-badge ${shortPct >= 60 ? 'delta-badge-extreme-up' : 'delta-badge-up'} text-[10px]`}>
-            S {shortPct.toFixed(1)}%
-          </span>
+        {/* Center: Stat cards */}
+        <div className="hidden md:flex items-center gap-3 text-xs font-mono">
+          {/* Total value */}
+          <div className="flex items-center gap-1.5 bg-white/[0.03] rounded-lg px-2.5 py-1">
+            <span className="text-neutral-500 text-[10px]">Vol</span>
+            <span className={`font-black ${isHeavy ? 'text-base text-rekt-hot' : 'text-sm text-white'} ${totalFlash}`}
+              style={isHeavy ? { textShadow: '0 0 6px rgba(255, 23, 68, 0.3)' } : undefined}>
+              {formatLiqValue(stats.total)}
+            </span>
+          </div>
+          {/* Count */}
+          <div className="flex items-center gap-1.5 bg-white/[0.03] rounded-lg px-2.5 py-1">
+            <span className="text-neutral-500 text-[10px]">Liqs</span>
+            <span className="text-white font-bold">{stats.count.toLocaleString()}</span>
+          </div>
+          {/* Long / Short split */}
+          <div className="flex items-center gap-1 bg-white/[0.03] rounded-lg px-2.5 py-1">
+            <span className={`font-bold ${longPct >= 60 ? 'text-red-400' : 'text-red-400/70'}`}>
+              L {longPct.toFixed(1)}%
+            </span>
+            <span className="text-neutral-700">/</span>
+            <span className={`font-bold ${shortPct >= 60 ? 'text-green-400' : 'text-green-400/70'}`}>
+              S {shortPct.toFixed(1)}%
+            </span>
+          </div>
           {slang && (
-            <span className="text-[9px] italic ml-1" style={{ color: 'var(--highlight-hot)', opacity: 0.7 }}>{slang}</span>
+            <span className="text-[10px] italic text-amber-500/70">{slang}</span>
           )}
         </div>
 
-        {/* Right: Timeframe pills + Sound toggle */}
-        <div className="flex items-center gap-1" role="tablist" aria-label="Timeframe">
+        {/* Right: Timeframe pills */}
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0" role="tablist" aria-label="Timeframe">
           {TIMEFRAMES.map((tf) => (
             <button
               key={tf}
               role="tab"
               aria-selected={timeframe === tf}
               onClick={() => onTimeframeChange(tf)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-colors ${
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-colors ${
                 timeframe === tf
                   ? 'bg-hub-yellow/20 text-hub-yellow ring-1 ring-hub-yellow/30'
                   : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.04]'
@@ -98,15 +105,12 @@ export default function LiquidationTopBar({
       </div>
 
       {/* Mobile stats row */}
-      <div className="flex md:hidden items-center gap-1.5 text-[10px] font-mono mt-1">
-        <span className={`font-bold ${isHeavy ? 'text-rekt-hot' : 'text-white'} ${totalFlash}`}>{formatLiqValue(stats.total)}</span>
-        <span className="text-neutral-600">|</span>
-        <span className="text-neutral-300 font-bold">{stats.count.toLocaleString()}</span>
-        <span className="text-neutral-600">liqs</span>
-        <span className="text-neutral-600">|</span>
-        <span className="text-red-400">L {longPct.toFixed(1)}%</span>
+      <div className="flex md:hidden items-center gap-2 text-[10px] font-mono mt-1.5">
+        <span className={`font-bold px-1.5 py-0.5 rounded bg-white/[0.04] ${isHeavy ? 'text-rekt-hot' : 'text-white'} ${totalFlash}`}>{formatLiqValue(stats.total)}</span>
+        <span className="text-neutral-400 font-bold">{stats.count.toLocaleString()} liqs</span>
+        <span className="ml-auto text-red-400 font-bold">L {longPct.toFixed(0)}%</span>
         <span className="text-neutral-700">/</span>
-        <span className="text-green-400">S {shortPct.toFixed(1)}%</span>
+        <span className="text-green-400 font-bold">S {shortPct.toFixed(0)}%</span>
       </div>
 
       {/* Low-data recovery notice */}

@@ -13,7 +13,6 @@ import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { formatUSD } from '@/lib/utils/format';
 import DataFreshness from '@/components/DataFreshness';
-import TweetButton from '@/components/TweetButton';
 import WatchlistStar from '@/components/WatchlistStar';
 import { useFlash } from '@/hooks/useFlash';
 import SoftAuthGate, { useAuthLimit } from '@/components/SoftAuthGate';
@@ -194,7 +193,6 @@ export default function OpenInterestPage() {
           </div>
           <div className="flex items-center gap-2">
             <DataFreshness exchangeCount={exchanges.length} lastUpdated={lastUpdate} />
-            <TweetButton text={`Open Interest across ${exchanges.length} exchanges — real-time on @infikiofficial`} />
             <button
               onClick={fetchData}
               disabled={loading}

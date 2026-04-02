@@ -64,10 +64,12 @@ export default function LiquidationFeed({
       <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white/[0.02] border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-hub-yellow" />
-          <span className="text-sm font-medium text-white">Live Feed</span>
-          <span className="text-[10px] font-mono bg-white/[0.06] text-neutral-400 px-1.5 py-0.5 rounded-full">
-            {filteredData.length}
-          </span>
+          <span className="text-xs font-medium text-neutral-400">Live Feed</span>
+          {filteredData.length > 0 && (
+            <span className="text-[10px] font-mono bg-white/[0.06] text-neutral-400 px-1.5 py-0.5 rounded tabular-nums">
+              {filteredData.length}
+            </span>
+          )}
         </div>
 
         {/* Side filter pills */}
