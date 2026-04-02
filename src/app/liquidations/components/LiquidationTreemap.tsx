@@ -80,20 +80,21 @@ export default function LiquidationTreemap({
         {/* Hero tiles — top 3 largest */}
         {heroItems.length > 0 && (() => {
           const heroTotal = heroItems.reduce((s, i) => s + i.totalValue, 0);
+          // Compute flex grow proportions, capped so the dominant tile doesn't crush others
+          const rawPcts = heroItems.map(i => heroTotal > 0 ? (i.totalValue / heroTotal) * 100 : 33);
+          // Cap any tile at 65% and ensure min 15% — use flex-grow for proportional sizing
+          const flexValues = rawPcts.map(p => Math.max(15, Math.min(65, p)));
           return (
             <div className="flex gap-2 mb-2">
-              {heroItems.map((item) => {
-                const widthPct = heroTotal > 0 ? Math.max(22, (item.totalValue / heroTotal) * 100) : 33;
-                return (
-                  <HeroTile
-                    key={item.symbol}
-                    item={item}
-                    maxValue={maxValue}
-                    widthPct={widthPct}
-                    onClick={() => onSymbolClick?.(item.symbol)}
-                  />
-                );
-              })}
+              {heroItems.map((item, idx) => (
+                <HeroTile
+                  key={item.symbol}
+                  item={item}
+                  maxValue={maxValue}
+                  flexGrow={flexValues[idx]}
+                  onClick={() => onSymbolClick?.(item.symbol)}
+                />
+              ))}
             </div>
           );
         })()}
@@ -145,12 +146,12 @@ function TreemapHeader({ count }: { count: number }) {
 function HeroTile({
   item,
   maxValue,
-  widthPct,
+  flexGrow,
   onClick,
 }: {
   item: TreemapItem;
   maxValue: number;
-  widthPct: number;
+  flexGrow: number;
   onClick: () => void;
 }) {
   const total = item.longValue + item.shortValue;
@@ -162,8 +163,8 @@ function HeroTile({
   return (
     <button
       onClick={onClick}
-      style={{ width: `${widthPct}%`, background: getTileBg(item, maxValue) }}
-      className="relative h-[110px] rounded-xl border border-white/[0.06] p-3 flex flex-col justify-between hover:border-white/[0.12] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-hub-yellow/50 focus-visible:outline-none transition-all text-left flex-shrink-0 group"
+      style={{ flex: `${flexGrow} 1 0%`, background: getTileBg(item, maxValue) }}
+      className="relative h-[110px] min-w-0 rounded-xl border border-white/[0.06] p-3 flex flex-col justify-between hover:border-white/[0.12] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-hub-yellow/50 focus-visible:outline-none transition-all text-left group overflow-hidden"
     >
       {/* Top: Token info */}
       <div className="flex items-center justify-between">

@@ -366,7 +366,7 @@ export default function LiquidationsPage() {
               topSymbols={treemapItems.slice(0, 10).map(i => i.symbol)}
             />
 
-            <div className="h-[400px] lg:h-auto">
+            <div className="h-[460px]">
               <LiquidationFeed
                 data={feedItems}
                 isLoading={allFeedItems.length === 0 && connectedCount === 0}
