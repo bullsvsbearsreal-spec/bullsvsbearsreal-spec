@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FundingRateData } from '@/lib/api/types';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -27,6 +27,10 @@ interface FundingTableViewProps {
 
 export default function FundingTableView({ data, sortField, sortOrder, onSort, oiMap }: FundingTableViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when data changes (filter/search)
+  const dataLen = data.length;
+  useEffect(() => { setCurrentPage(1); }, [dataLen]);
 
   const hasOI = oiMap && oiMap.size > 0;
 

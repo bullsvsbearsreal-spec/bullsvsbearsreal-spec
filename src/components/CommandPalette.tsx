@@ -246,8 +246,6 @@ export default function CommandPalette({ onClose, onShowShortcuts }: CommandPale
     onClose();
   };
 
-  let itemIndex = -1;
-
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm">
       <div ref={listRef} className="bg-[#0d0d0d] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 w-full max-w-[560px] mx-4 overflow-hidden">
@@ -334,9 +332,8 @@ export default function CommandPalette({ onClose, onShowShortcuts }: CommandPale
               <div className="px-2 py-1.5">
                 <span className="text-[10px] text-neutral-600 uppercase tracking-widest">Pages</span>
               </div>
-              {pageResults.map((page) => {
-                itemIndex++;
-                const idx = itemIndex;
+              {pageResults.map((page, i) => {
+                const idx = i;
                 return (
                   <button
                     key={page.href}
@@ -365,9 +362,8 @@ export default function CommandPalette({ onClose, onShowShortcuts }: CommandPale
               <div className="px-2 py-1.5">
                 <span className="text-[10px] text-neutral-600 uppercase tracking-widest">Coins</span>
               </div>
-              {coinResults.map((coin) => {
-                itemIndex++;
-                const idx = itemIndex;
+              {coinResults.map((coin, i) => {
+                const idx = pageResults.length + i;
                 return (
                   <button
                     key={coin.id}

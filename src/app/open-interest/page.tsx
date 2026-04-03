@@ -123,6 +123,8 @@ export default function OpenInterestPage() {
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
+  const displayData = authLimit ? filteredAndSorted.slice(0, authLimit) : filteredAndSorted;
+
   // Aggregated by symbol, sorted
   const aggregatedSorted = Array.from(symbolAggregated.entries())
     .filter(([symbol]) => !searchTerm || symbol.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -602,7 +604,7 @@ export default function OpenInterestPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(authLimit ? filteredAndSorted.slice(0, authLimit) : filteredAndSorted).slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((oi, index) => (
+                  {displayData.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((oi, index) => (
                     <tr
                       key={`${oi.symbol}-${oi.exchange}-${index}`}
                       className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
@@ -653,10 +655,10 @@ export default function OpenInterestPage() {
             </div>
 
             {/* Pagination */}
-            {filteredAndSorted.length > PAGE_SIZE && (
+            {displayData.length > PAGE_SIZE && (
               <div className="px-4 py-2.5 border-t border-white/[0.06] flex items-center justify-between">
                 <span className="text-neutral-500 text-xs">
-                  Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, filteredAndSorted.length)} of {filteredAndSorted.length}
+                  Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, displayData.length)} of {displayData.length}
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -667,11 +669,11 @@ export default function OpenInterestPage() {
                     Prev
                   </button>
                   <span className="text-neutral-500 text-xs px-2">
-                    {page + 1} / {Math.ceil(filteredAndSorted.length / PAGE_SIZE)}
+                    {page + 1} / {Math.ceil(displayData.length / PAGE_SIZE)}
                   </span>
                   <button
-                    onClick={() => setPage(p => Math.min(Math.ceil(filteredAndSorted.length / PAGE_SIZE) - 1, p + 1))}
-                    disabled={(page + 1) * PAGE_SIZE >= filteredAndSorted.length}
+                    onClick={() => setPage(p => Math.min(Math.ceil(displayData.length / PAGE_SIZE) - 1, p + 1))}
+                    disabled={(page + 1) * PAGE_SIZE >= displayData.length}
                     className="px-2.5 py-1 rounded text-xs text-neutral-400 hover:text-white bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     Next

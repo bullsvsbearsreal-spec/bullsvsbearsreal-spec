@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { X, LogIn, Cloud, Mail, Key, Shield } from 'lucide-react';
 
@@ -49,10 +49,11 @@ export default function AuthPromptBanner({
   className = '',
 }: AuthPromptBannerProps) {
   const storageKey = `infohub-auth-prompt-${dismissKey || variant}`;
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem(storageKey) === '1';
-  });
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(storageKey) === '1') setDismissed(true);
+  }, [storageKey]);
 
   if (dismissed) return null;
 

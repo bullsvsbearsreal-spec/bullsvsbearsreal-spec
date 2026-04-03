@@ -81,9 +81,6 @@ export default function MetricTooltip({ term, children }: MetricTooltipProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  const def = definitions[term];
-  if (!def) return <>{children}</>;
-
   const show = useCallback(() => {
     timerRef.current = setTimeout(() => setVisible(true), 1500);
   }, []);
@@ -93,6 +90,9 @@ export default function MetricTooltip({ term, children }: MetricTooltipProps) {
     timerRef.current = null;
     setVisible(false);
   }, []);
+
+  const def = definitions[term];
+  if (!def) return <>{children}</>;
 
   return (
     <span

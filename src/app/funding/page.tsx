@@ -813,7 +813,7 @@ export default function FundingPage() {
 
         <div className="mt-5 p-3.5 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,165,0,0.04) 0%, rgba(255,165,0,0.01) 100%)', border: '1px solid rgba(255,165,0,0.08)' }}>
           <p className="text-neutral-500 text-xs leading-relaxed">
-            {assetClass === 'crypto' && (
+            {(assetClass === 'all' || assetClass === 'crypto') && (
               <>
                 <span className="text-green-400 font-medium">Positive rate</span> = longs pay shorts.{' '}
                 <span className="text-red-400 font-medium">Negative rate</span> = shorts pay longs.{' '}
