@@ -363,7 +363,7 @@ export default function FearGreedPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.04]">
-                    {data?.history.map((entry, i) => {
+                    {data?.history?.map((entry, i) => {
                       const cls = getClassification(entry.value);
                       const d = new Date(entry.timestamp);
                       return (

@@ -228,7 +228,7 @@ function getSeasonTheme(month: number): {
 /* ------------------------------------------------------------------ */
 
 export default function EconomicCalendarPage() {
-  const today = useMemo(() => new Date(), []);
+  const [today] = useState(() => new Date());
   const [viewMonth, setViewMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
@@ -288,13 +288,8 @@ export default function EconomicCalendarPage() {
       });
     }
     if (quickFilter === 'next') {
-      const nextMonth = new Date(
-        viewMonth.getFullYear(),
-        viewMonth.getMonth() + 1,
-        1
-      );
-      const nextKey = formatMonthKey(nextMonth);
-      return filteredEvents.filter((e) => e.date.startsWith(nextKey));
+      // viewMonth is auto-advanced to next month when 'next' is selected
+      return filteredEvents;
     }
     // "month" filter or default
     if (selectedDate) {

@@ -310,5 +310,5 @@ function parseExpiryStr(s: string): Date | null {
   const month = MONTHS[match[2]];
   const year = 2000 + parseInt(match[3]);
   if (month === undefined || isNaN(day) || isNaN(year)) return null;
-  return new Date(year, month, day, 8, 0, 0); // 08:00 UTC standard expiry
+  return new Date(Date.UTC(year, month, day, 8, 0, 0)); // 08:00 UTC standard expiry
 }

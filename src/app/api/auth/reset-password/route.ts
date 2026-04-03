@@ -4,10 +4,14 @@ export const preferredRegion = 'bom1';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { validatePassword } from '@/lib/auth/password';
-import { getSQL } from '@/lib/db';
+import { getSQL, isDBConfigured } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
+    if (!isDBConfigured()) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    }
+
     const { token, password } = await req.json();
 
     if (!token || !password) {

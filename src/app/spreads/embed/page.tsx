@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { Suspense, useCallback, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getCoinIcon } from '@/lib/coinIcons';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -24,9 +24,16 @@ interface SpreadData {
   exchangeCount: number;
 }
 
-export default function SpreadEmbedPage() {
+function SpreadEmbedInner() {
   const params = useSearchParams();
   const symbol = params.get('s') || 'BTC';
+  const [timeStr, setTimeStr] = useState('');
+
+  useEffect(() => {
+    setTimeStr(new Date().toLocaleTimeString());
+    const iv = setInterval(() => setTimeStr(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(iv);
+  }, []);
 
   const fetcher = useCallback(async () => {
     const res = await fetch('/api/spreads/current');
@@ -85,9 +92,17 @@ export default function SpreadEmbedPage() {
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
           <span className="text-[10px] text-neutral-600">info-hub.io/spreads</span>
-          <span className="text-[10px] text-neutral-600">{new Date().toLocaleTimeString()}</span>
+          <span className="text-[10px] text-neutral-600" suppressHydrationWarning>{timeStr}</span>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SpreadEmbedPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0a0a0f] text-neutral-500 text-sm">Loading...</div>}>
+      <SpreadEmbedInner />
+    </Suspense>
   );
 }

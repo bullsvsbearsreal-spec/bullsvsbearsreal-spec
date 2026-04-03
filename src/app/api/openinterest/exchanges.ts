@@ -624,8 +624,11 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       const bestBySymbol = new Map<string, { symbol: string; oiLong: number; oiShort: number; totalOi: number }>();
       for (const m of perpMarkets) {
         const symbol = m.name.split('/')[0].replace(/\.v\d+$/i, ''); // XAUT.v2 → XAUT
-        const oiLong = Number(BigInt(m.openInterestLong || '0')) / 1e30;
-        const oiShort = Number(BigInt(m.openInterestShort || '0')) / 1e30;
+        let oiLong: number, oiShort: number;
+        try {
+          oiLong = Number(BigInt(m.openInterestLong || '0')) / 1e30;
+          oiShort = Number(BigInt(m.openInterestShort || '0')) / 1e30;
+        } catch { continue; }
         const totalOi = oiLong + oiShort;
         const existing = bestBySymbol.get(symbol);
         if (!existing || totalOi > existing.totalOi) {

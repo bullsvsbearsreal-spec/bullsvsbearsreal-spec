@@ -391,7 +391,7 @@ export default function ScreenerPage() {
   const stats = useMemo(() => {
     if (rows.length === 0) return null;
     const fundingRows = rows.filter((r) => r.avgFunding !== 0);
-    const avgFunding = fundingRows.length > 0 ? rows.reduce((s, r) => s + r.avgFunding, 0) / fundingRows.length : 0;
+    const avgFunding = fundingRows.length > 0 ? fundingRows.reduce((s, r) => s + r.avgFunding, 0) / fundingRows.length : 0;
     const totalOI = rows.reduce((s, r) => s + r.totalOI, 0);
     const totalVol = rows.reduce((s, r) => s + r.volume24h, 0);
     const gainers = rows.filter((r) => r.change24h > 0).length;

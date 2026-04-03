@@ -243,9 +243,10 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
     widgetContainer.appendChild(script);
     containerRef.current.appendChild(widgetContainer);
 
+    const container = containerRef.current;
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
+      if (container) {
+        container.innerHTML = '';
       }
     };
   }, [tvSymbol, interval]);

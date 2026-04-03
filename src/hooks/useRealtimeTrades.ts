@@ -58,6 +58,8 @@ export function useRealtimeTrades(symbol: string) {
   const [connected, setConnected] = useState(false);
   const [statsWindow, setStatsWindow] = useState<StatsWindow>('5m');
   const wsRef = useRef<WebSocket | null>(null);
+  const destroyedRef = useRef(false);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const allTradesRef = useRef<RealtimeTrade[]>([]);
   const statsWindowRef = useRef<StatsWindow>('5m');
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -110,6 +112,8 @@ export function useRealtimeTrades(symbol: string) {
     setTrades([]);
     setStats({ buyVolume: 0, sellVolume: 0, netDelta: 0, tradeCount: 0, tradeSpeed: 0, bigBuys: 0, bigSells: 0 });
 
+    destroyedRef.current = false;
+
     const connect = () => {
       const ws = new WebSocket(url);
       wsRef.current = ws;
@@ -139,8 +143,10 @@ export function useRealtimeTrades(symbol: string) {
 
       ws.onclose = () => {
         setConnected(false);
-        // Reconnect after 3s
-        setTimeout(connect, 3000);
+        // Reconnect after 3s unless destroyed
+        if (!destroyedRef.current) {
+          reconnectTimerRef.current = setTimeout(connect, 3000);
+        }
       };
 
       ws.onerror = () => ws.close();
@@ -152,6 +158,8 @@ export function useRealtimeTrades(symbol: string) {
     statsTimerRef.current = setInterval(computeStats, 2000);
 
     return () => {
+      destroyedRef.current = true;
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (wsRef.current) {
         wsRef.current.onclose = null; // prevent reconnect
         wsRef.current.close();

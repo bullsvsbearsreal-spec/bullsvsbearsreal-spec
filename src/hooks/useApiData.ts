@@ -65,6 +65,8 @@ export function useApiData<T>({
         setLastUpdate(new Date());
         retriesRef.current = 0;
         onSuccessRef.current?.(result);
+        setIsLoading(false);
+        setIsRefreshing(false);
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -82,9 +84,6 @@ export function useApiData<T>({
 
         setError(errorMessage);
         onErrorRef.current?.(err instanceof Error ? err : new Error(errorMessage));
-      }
-    } finally {
-      if (mountedRef.current) {
         setIsLoading(false);
         setIsRefreshing(false);
       }
