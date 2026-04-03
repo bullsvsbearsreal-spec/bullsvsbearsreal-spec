@@ -19,6 +19,7 @@ import { formatRate, getRateColor } from '../utils';
 import { isValidNumber, formatUSD } from '@/lib/utils/format';
 import { saveFundingSnapshot, getFundingHistory, getAccumulatedFundingBatch, type HistoryPoint, type AccumulatedFunding } from '@/lib/storage/fundingHistory';
 import FundingSparkline from '../components/FundingSparkline';
+import { useTrackPageView } from '@/hooks/useTrackPageView';
 import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend,
@@ -104,6 +105,7 @@ export default function SymbolFundingPage() {
   const params = useParams();
   const router = useRouter();
   const symbol = (params.symbol as string || '').toUpperCase();
+  useTrackPageView(`${symbol} Funding`, symbol);
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
 
   // Fetch all funding rates (same as main page)

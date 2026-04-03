@@ -15,6 +15,13 @@ export const getRateColor = (rate: number) => {
   return 'text-neutral-500';
 };
 
+/** Rate color + directional pip class combined */
+export const getRateColorWithPip = (rate: number) => {
+  if (rate > 0) return 'text-success pip-up';
+  if (rate < 0) return 'text-danger pip-down';
+  return 'text-neutral-500';
+};
+
 export const getHeatmapColor = (rate: number | undefined) => {
   if (rate === undefined) return 'bg-hub-gray/20';
   if (rate > 0.1) return 'bg-green-500';

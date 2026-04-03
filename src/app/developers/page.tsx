@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import AuthPromptBanner from '@/components/AuthPromptBanner';
 
 interface ApiKeyInfo {
   id: string;
@@ -99,15 +100,7 @@ export default function DevelopersPage() {
 
         {/* Not signed in */}
         {!session?.user && (
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
-            <p className="text-gray-300 mb-4">Sign in to generate your API key</p>
-            <Link
-              href="/auth/signin"
-              className="inline-block bg-amber-500 hover:bg-amber-400 text-black font-semibold px-6 py-2.5 rounded-lg transition-colors"
-            >
-              Sign In
-            </Link>
-          </div>
+          <AuthPromptBanner variant="api-key" dismissible={false} className="mb-6" />
         )}
 
         {/* Signed in */}

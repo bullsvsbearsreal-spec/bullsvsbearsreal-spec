@@ -451,6 +451,7 @@ export default function OIHeatmapPage() {
                       strokeWidth={0.12}
                       rx={0.3}
                       ry={0.3}
+                      style={{ transition: 'fill 500ms ease, stroke 500ms ease' }}
                     />
                     {/* Hover highlight */}
                     <rect

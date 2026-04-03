@@ -24,6 +24,8 @@ const FundingSpreadComparison = dynamic(() => import('./components/FundingSpread
 const FundingHistoryChart = dynamic(() => import('./components/FundingHistoryChart'), { ssr: false });
 const CorrelationMatrix = dynamic(() => import('./components/CorrelationMatrix'), { ssr: false });
 import ShareButton from '@/components/ShareButton';
+import FeatureHint from '@/components/FeatureHint';
+import RelatedPages from '@/components/RelatedPages';
 // ShowMoreToggle removed — always show all symbols
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
@@ -410,6 +412,7 @@ export default function FundingPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+        <FeatureHint page="/funding" />
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -666,6 +669,25 @@ export default function FundingPage() {
                   </div>
 
                   <div className="p-3 max-h-[70vh] overflow-y-auto scrollbar-accent">
+                    {/* Quick presets */}
+                    <div className="flex flex-wrap gap-1 mb-3 pb-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      {[
+                        { label: 'All', fn: () => setSelectedExchanges(new Set(ALL_EXCHANGES)) },
+                        { label: 'Top 5 CEX', fn: () => setSelectedExchanges(new Set(['Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC'])) },
+                        { label: 'All CEX', fn: () => setSelectedExchanges(new Set(ALL_EXCHANGES.filter(e => !isExchangeDex(e)))) },
+                        { label: 'All DEX', fn: () => setSelectedExchanges(new Set(ALL_EXCHANGES.filter(e => isExchangeDex(e)))) },
+                        { label: 'Top 3 DEX', fn: () => setSelectedExchanges(new Set(['Hyperliquid', 'dYdX', 'Drift'])) },
+                      ].map(({ label, fn }) => (
+                        <button
+                          key={label}
+                          onClick={fn}
+                          className="px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all duration-150 bg-white/[0.04] text-neutral-500 hover:text-white hover:bg-white/[0.08] ring-1 ring-white/[0.06] hover:ring-white/[0.12]"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
                     {/* CEX Section */}
                     <div className="mb-2">
                       <div className="flex items-center gap-2 px-1 mb-1.5">
@@ -822,6 +844,7 @@ export default function FundingPage() {
           </p>
         </div>
       </main>
+      <RelatedPages />
       <ReferralBanner />
       <Footer />
     </div>

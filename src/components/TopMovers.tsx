@@ -115,8 +115,8 @@ export default function TopMovers() {
                 <div className="relative has-tooltip">
                   <span className={`delta-badge ${
                     isExtreme
-                      ? (item.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
-                      : (item.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                      ? (item.change24h >= 0 ? 'delta-badge-extreme-up pip-up' : 'delta-badge-extreme-down pip-down')
+                      : (item.change24h >= 0 ? 'delta-badge-up pip-up' : 'delta-badge-down pip-down')
                   }`}>
                     {item.change24h >= 0 ? '+' : ''}
                     {item.change24h.toFixed(2)}%

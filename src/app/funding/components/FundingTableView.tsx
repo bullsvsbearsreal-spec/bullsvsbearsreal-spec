@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { FundingRateData } from '@/lib/api/types';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import MetricTooltip from '@/components/MetricTooltip';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { formatRate, getRateColor, getExchangeColor } from '../utils';
+import { formatRate, getRateColor, getRateColorWithPip, getExchangeColor } from '../utils';
 import { isValidNumber, formatUSD } from '@/lib/utils/format';
 import { isExchangeDex, getExchangeTradeUrl } from '@/lib/constants';
 import Pagination from './Pagination';
@@ -41,14 +42,14 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
       : <ArrowDown className="w-3 h-3 text-hub-yellow" />;
   };
 
-  type ColumnDef = { field: SortField | null; label: string; align: string };
+  type ColumnDef = { field: SortField | null; label: string; align: string; tooltip?: string };
   const columns: ColumnDef[] = [
     { field: 'symbol', label: 'Symbol', align: 'left' },
     { field: 'exchange', label: 'Exchange', align: 'left' },
     { field: null, label: 'Interval', align: 'center' },
-    { field: 'fundingRate', label: 'Funding Rate', align: 'right' },
-    { field: null, label: 'Annualized', align: 'right' },
-    ...(hasOI ? [{ field: null as SortField | null, label: 'Open Interest', align: 'right' }] : []),
+    { field: 'fundingRate', label: 'Funding Rate', align: 'right', tooltip: 'Funding Rate' },
+    { field: null, label: 'Annualized', align: 'right', tooltip: 'Annualized Rate' },
+    ...(hasOI ? [{ field: null as SortField | null, label: 'Open Interest', align: 'right', tooltip: 'Open Interest' }] : []),
     { field: null, label: 'Mark Price', align: 'right' },
   ];
 
@@ -58,7 +59,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
         <table className="w-full" aria-label="Funding rates by symbol and exchange">
           <thead>
             <tr className="border-b border-white/[0.06]">
-              {columns.map(({ field, label, align }) => (
+              {columns.map(({ field, label, align, tooltip }) => (
                 <th
                   key={label}
                   scope="col"
@@ -72,7 +73,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                   aria-sort={field && sortField === field ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
                 >
                   <div className={`flex items-center gap-1.5 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : ''}`}>
-                    {label}
+                    {tooltip ? <MetricTooltip term={tooltip}>{label}</MetricTooltip> : label}
                     {field && <SortIcon field={field} />}
                   </div>
                 </th>
@@ -130,7 +131,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                   </td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex flex-col items-end">
-                      <span className={`font-mono font-semibold text-sm ${getRateColor(fr.fundingRate)}`}>
+                      <span className={`font-mono font-semibold text-sm ${getRateColorWithPip(fr.fundingRate)}`}>
                         {formatRate(fr.fundingRate)}
                       </span>
                       {fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined && (
@@ -150,7 +151,7 @@ export default function FundingTableView({ data, sortField, sortOrder, onSort, o
                     </div>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <span className={`font-mono text-xs ${getRateColor(annualized)}`}>
+                    <span className={`font-mono text-xs ${getRateColorWithPip(annualized)}`}>
                       {annualized >= 0 ? '+' : ''}{annualized.toFixed(2)}%
                     </span>
                   </td>

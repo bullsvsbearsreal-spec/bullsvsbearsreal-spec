@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import RelatedPages from '@/components/RelatedPages';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import DataFreshness from '@/components/DataFreshness';
@@ -213,8 +214,8 @@ export default function TopMoversPage() {
               </div>
               <span className={`delta-badge text-sm ${avgFlash} ${
                 Math.abs(stats.avgChange) >= 5
-                  ? (stats.avgChange >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
-                  : (stats.avgChange >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                  ? (stats.avgChange >= 0 ? 'delta-badge-extreme-up pip-up' : 'delta-badge-extreme-down pip-down')
+                  : (stats.avgChange >= 0 ? 'delta-badge-up pip-up' : 'delta-badge-down pip-down')
               }`}>
                 {stats.avgChange >= 0 ? '+' : ''}{stats.avgChange.toFixed(2)}%
               </span>
@@ -226,7 +227,7 @@ export default function TopMoversPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-lg font-semibold text-white">{stats.best.symbol}</span>
-                <span className={`delta-badge text-[11px] ${(stats.best.change24h ?? 0) >= 15 ? 'delta-badge-extreme-up' : 'delta-badge-up'}`}>
+                <span className={`delta-badge text-[11px] pip-up ${(stats.best.change24h ?? 0) >= 15 ? 'delta-badge-extreme-up' : 'delta-badge-up'}`}>
                   +{(stats.best.change24h ?? 0).toFixed(2)}%
                 </span>
               </div>
@@ -238,7 +239,7 @@ export default function TopMoversPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-lg font-semibold text-white">{stats.worst.symbol}</span>
-                <span className={`delta-badge text-[11px] ${Math.abs(stats.worst.change24h ?? 0) >= 15 ? 'delta-badge-extreme-down' : 'delta-badge-down'}`}>
+                <span className={`delta-badge text-[11px] pip-down ${Math.abs(stats.worst.change24h ?? 0) >= 15 ? 'delta-badge-extreme-down' : 'delta-badge-down'}`}>
                   {(stats.worst.change24h ?? 0).toFixed(2)}%
                 </span>
               </div>
@@ -349,13 +350,15 @@ export default function TopMoversPage() {
                       value: coin.change24h != null ? (
                         <span className={`delta-badge text-[10px] ${
                           Math.abs(coin.change24h) >= 15
-                            ? (coin.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
-                            : (coin.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                            ? (coin.change24h >= 0 ? 'delta-badge-extreme-up pip-up' : 'delta-badge-extreme-down pip-down')
+                            : (coin.change24h >= 0 ? 'delta-badge-up pip-up' : 'delta-badge-down pip-down')
                         }`}>
                           {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
                         </span>
                       ) : <span className="text-neutral-600">—</span>,
                     },
+                  ]}
+                  expandedRows={[
                     { label: 'Market Cap', value: <span className="text-neutral-400">{fmt(coin.marketCap)}</span> },
                     { label: 'Volume 24h', value: <span className="text-neutral-400">{fmt(coin.volume24h)}</span> },
                   ]}
@@ -419,8 +422,8 @@ export default function TopMoversPage() {
                         {coin.change24h != null ? (
                           <span className={`delta-badge text-[11px] ${
                             Math.abs(coin.change24h) >= 15
-                              ? (coin.change24h >= 0 ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
-                              : (coin.change24h >= 0 ? 'delta-badge-up' : 'delta-badge-down')
+                              ? (coin.change24h >= 0 ? 'delta-badge-extreme-up pip-up' : 'delta-badge-extreme-down pip-down')
+                              : (coin.change24h >= 0 ? 'delta-badge-up pip-up' : 'delta-badge-down pip-down')
                           }`}>
                             {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
                           </span>
@@ -471,6 +474,7 @@ export default function TopMoversPage() {
 
         <SoftAuthGate freeLimit={20} totalCount={filtered.length} dataLabel="coins" />
       </main>
+      <RelatedPages />
       <ReferralBanner />
       <Footer />
     </div>

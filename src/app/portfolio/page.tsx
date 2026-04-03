@@ -11,6 +11,7 @@ import DataFreshness from '@/components/DataFreshness';
 import { useFlash } from '@/hooks/useFlash';
 import { formatUSD, formatPercent, formatQty, formatPrice } from '@/lib/utils/format';
 import { TokenIconSimple } from '@/components/TokenIcon';
+import { SamplePortfolioTable } from '@/components/SampleDataPreview';
 
 const AllocationPieChart = dynamic(() => import('./components/AllocationPieChart'), { ssr: false });
 import {
@@ -263,6 +264,7 @@ export default function PortfolioPage() {
               <Plus className="w-4 h-4" />
               Add Position
             </button>
+            <SamplePortfolioTable />
           </div>
         )}
 

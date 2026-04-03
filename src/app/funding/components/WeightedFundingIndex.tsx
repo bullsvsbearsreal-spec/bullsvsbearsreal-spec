@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
+import MetricTooltip from '@/components/MetricTooltip';
 
 interface FundingEntry {
   symbol: string;
@@ -145,9 +146,11 @@ export default function WeightedFundingIndex({ fundingRates }: WeightedFundingIn
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Activity className="w-3.5 h-3.5 text-hub-yellow/50" />
-            <span className="text-hub-yellow text-[10px] font-semibold uppercase tracking-[0.1em]">
-              {hasOI ? 'OI-Weighted Avg Funding' : 'Avg Funding Rate'}
-            </span>
+            <MetricTooltip term="Weighted Index">
+              <span className="text-hub-yellow text-[10px] font-semibold uppercase tracking-[0.1em]">
+                {hasOI ? 'OI-Weighted Avg Funding' : 'Avg Funding Rate'}
+              </span>
+            </MetricTooltip>
           </div>
           {hasOI && totalOI > 0 && (
             <span className="text-[9px] text-neutral-700 font-mono">

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import RelatedPages from '@/components/RelatedPages';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { useFlash } from '@/hooks/useFlash';
@@ -399,6 +400,7 @@ export default function FearGreedPage() {
           </p>
         </div>
       </main>
+      <RelatedPages />
       <ReferralBanner />
       <Footer />
     </div>

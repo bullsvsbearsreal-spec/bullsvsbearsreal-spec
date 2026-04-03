@@ -266,7 +266,7 @@ export default function MarketHeatmapPage() {
                 return (
                   <div
                     key={rect.coin.symbol}
-                    className={`absolute ${getChangeColor(rect.coin.change24h)} border border-black/30 cursor-pointer transition-opacity hover:opacity-90 flex flex-col items-center justify-center overflow-hidden`}
+                    className={`absolute ${getChangeColor(rect.coin.change24h)} border border-black/30 cursor-pointer transition-all duration-500 hover:opacity-90 flex flex-col items-center justify-center overflow-hidden`}
                     style={{
                       left: `${rect.x}%`,
                       top: `${rect.y}%`,

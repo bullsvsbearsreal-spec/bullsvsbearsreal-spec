@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import FeatureHint from '@/components/FeatureHint';
+import RelatedPages from '@/components/RelatedPages';
 import { fetchAllOpenInterest, aggregateOpenInterestBySymbol, aggregateOpenInterestByExchange } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
 import { RefreshCw, ArrowUpDown, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
@@ -183,6 +185,7 @@ export default function OpenInterestPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
+        <FeatureHint page="/open-interest" />
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -408,9 +411,10 @@ export default function OpenInterestPage() {
                 const delta = oiDeltas.get(symbol);
                 const fmtMobile = (v: number | null) => {
                   if (v == null) return <span className="text-neutral-700">--</span>;
-                  const color = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-neutral-500';
+                  const color = v > 0 ? 'text-green-400 pip-up' : v < 0 ? 'text-red-400 pip-down' : 'text-neutral-500';
                   return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
                 };
+                const percentage = totalOI > 0 ? (value / totalOI) * 100 : 0;
                 return (
                   <MobileCard
                     key={symbol}
@@ -418,9 +422,12 @@ export default function OpenInterestPage() {
                     href={`/symbol/${symbol}`}
                     rows={[
                       { label: 'Total OI', value: <span className="text-white">{formatUSD(value)}</span> },
+                      { label: '24h Δ', value: fmtMobile(delta?.change24h ?? null) },
+                    ]}
+                    expandedRows={[
                       { label: '1h Δ', value: fmtMobile(delta?.change1h ?? null) },
                       { label: '4h Δ', value: fmtMobile(delta?.change4h ?? null) },
-                      { label: '24h Δ', value: fmtMobile(delta?.change24h ?? null) },
+                      { label: '% of Total', value: <span className="text-neutral-400">{percentage.toFixed(2)}%</span> },
                     ]}
                     actions={<WatchlistStar symbol={symbol} />}
                   />
@@ -480,7 +487,7 @@ export default function OpenInterestPage() {
                     const delta = oiDeltas.get(symbol);
                     const fmt = (v: number | null) => {
                       if (v == null) return <span className="text-neutral-700">—</span>;
-                      const color = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-neutral-500';
+                      const color = v > 0 ? 'text-green-400 pip-up' : v < 0 ? 'text-red-400 pip-down' : 'text-neutral-500';
                       return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
                     };
                     return (
@@ -691,6 +698,7 @@ export default function OpenInterestPage() {
           Data refreshes automatically every 60 seconds
         </div>
       </main>
+      <RelatedPages />
       <ReferralBanner />
       <Footer />
     </div>

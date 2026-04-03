@@ -371,7 +371,7 @@ export default function FundingHeatmapPage() {
                                 onMouseLeave={() => setHoveredCell(null)}
                               >
                                 <div
-                                  className={`w-full h-7 rounded-sm ${getHeatColor(rate)} transition-colors cursor-default`}
+                                  className={`w-full h-7 rounded-sm ${getHeatColor(rate)} transition-colors duration-500 cursor-default`}
                                   title={rate !== undefined ? `${symbol} ${formatDay(day)}: ${formatRate(rate)}` : undefined}
                                 />
                               </td>

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, BarChart3, Briefcase, Layers } from 'lucide-react';
+import { ChevronDown, BarChart3, Briefcase, Layers, Zap, Repeat, Eye, Globe } from 'lucide-react';
 import { type WidgetLayout } from './types';
 
-interface Preset {
+export interface Preset {
   id: string;
   name: string;
   description: string;
@@ -12,7 +12,28 @@ interface Preset {
   layout: WidgetLayout[];
 }
 
-const PRESETS: Preset[] = [
+/** Get a preset's layout by ID, with unique widget IDs */
+export function getPresetLayout(presetId: string): WidgetLayout[] | null {
+  const preset = PRESETS.find((p) => p.id === presetId);
+  if (!preset) return null;
+  return preset.layout.map((w) => ({ ...w, id: `w_${Date.now()}_${w.id}` }));
+}
+
+export const PRESETS: Preset[] = [
+  {
+    id: 'market-pulse',
+    name: 'Market Pulse',
+    description: 'Curated overview — great starting point for everyone',
+    icon: <Zap className="w-3.5 h-3.5" />,
+    layout: [
+      { id: 'p1', type: 'btc-price', w: 1, h: 1 },
+      { id: 'p2', type: 'market-overview', w: 1, h: 1 },
+      { id: 'p3', type: 'fear-greed', w: 1, h: 1 },
+      { id: 'p4', type: 'top-movers', w: 1, h: 1 },
+      { id: 'p5', type: 'funding-heatmap', w: 2, h: 1 },
+      { id: 'p6', type: 'liquidations', w: 1, h: 1 },
+    ],
+  },
   {
     id: 'trader',
     name: 'Trader',
@@ -61,6 +82,54 @@ const PRESETS: Preset[] = [
       { id: 'p8', type: 'token-unlocks', w: 1, h: 1 },
     ],
   },
+  {
+    id: 'funding-arb',
+    name: 'Funding Arb',
+    description: 'Funding rate arbitrage across exchanges',
+    icon: <Repeat className="w-3.5 h-3.5" />,
+    layout: [
+      { id: 'p1', type: 'funding-heatmap', w: 2, h: 1 },
+      { id: 'p2', type: 'arbitrage', w: 2, h: 1 },
+      { id: 'p3', type: 'btc-price', w: 1, h: 1 },
+      { id: 'p4', type: 'long-short', w: 1, h: 1 },
+      { id: 'p5', type: 'slippage', w: 1, h: 1 },
+      { id: 'p6', type: 'exchange-status', w: 1, h: 1 },
+      { id: 'p7', type: 'oi-chart', w: 2, h: 1 },
+    ],
+  },
+  {
+    id: 'whale-watcher',
+    name: 'Whale Watcher',
+    description: 'Track large positions, liquidations & CVD',
+    icon: <Eye className="w-3.5 h-3.5" />,
+    layout: [
+      { id: 'p1', type: 'btc-price', w: 1, h: 1 },
+      { id: 'p2', type: 'liquidations', w: 1, h: 1 },
+      { id: 'p3', type: 'long-short', w: 1, h: 1 },
+      { id: 'p4', type: 'cvd', w: 2, h: 1 },
+      { id: 'p5', type: 'oi-chart', w: 2, h: 1 },
+      { id: 'p6', type: 'stablecoin-flows', w: 1, h: 1 },
+      { id: 'p7', type: 'top-movers', w: 1, h: 1 },
+      { id: 'p8', type: 'news', w: 1, h: 1 },
+    ],
+  },
+  {
+    id: 'macro-monitor',
+    name: 'Macro Monitor',
+    description: 'Economic events, sentiment & market structure',
+    icon: <Globe className="w-3.5 h-3.5" />,
+    layout: [
+      { id: 'p1', type: 'btc-price', w: 1, h: 1 },
+      { id: 'p2', type: 'fear-greed', w: 1, h: 1 },
+      { id: 'p3', type: 'altseason', w: 1, h: 1 },
+      { id: 'p4', type: 'dominance', w: 2, h: 1 },
+      { id: 'p5', type: 'economic-calendar', w: 1, h: 1 },
+      { id: 'p6', type: 'fear-greed-chart', w: 2, h: 1 },
+      { id: 'p7', type: 'news', w: 1, h: 1 },
+      { id: 'p8', type: 'token-unlocks', w: 1, h: 1 },
+      { id: 'p9', type: 'stablecoin-flows', w: 1, h: 1 },
+    ],
+  },
 ];
 
 interface LayoutPresetsProps {
@@ -106,7 +175,7 @@ export default function LayoutPresets({ onApply }: LayoutPresetsProps) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-64 bg-hub-darker border border-white/[0.08] rounded-lg shadow-xl z-50 overflow-hidden">
+        <div className="absolute top-full left-0 mt-1.5 w-64 bg-hub-darker border border-white/[0.08] rounded-lg shadow-xl z-50 overflow-y-auto max-h-[420px] scrollbar-accent">
           {PRESETS.map((preset) => (
             <button
               key={preset.id}

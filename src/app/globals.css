@@ -498,6 +498,26 @@ body {
     box-shadow: 0 0 8px rgba(255, 23, 68, 0.2);
   }
 
+  /* --- Directional pips (▲/▼ inline arrows) --- */
+  .pip-up::before {
+    content: '▲';
+    font-size: 0.55em;
+    margin-right: 2px;
+    vertical-align: 1px;
+  }
+  .pip-down::before {
+    content: '▼';
+    font-size: 0.55em;
+    margin-right: 2px;
+    vertical-align: 1px;
+  }
+  .pip-neutral::before {
+    content: '–';
+    font-size: 0.7em;
+    margin-right: 2px;
+    opacity: 0.5;
+  }
+
   /* --- Intensity text (funding/liq extremes) --- */
   .text-rekt-nuclear {
     color: var(--rekt-nuclear);

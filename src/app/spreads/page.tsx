@@ -5,6 +5,8 @@ import { ArrowLeftRight, ChevronDown, RefreshCw, Calculator, Info, Wifi, WifiOff
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import FeatureHint from '@/components/FeatureHint';
+import RelatedPages from '@/components/RelatedPages';
 import { getCoinIcon } from '@/lib/coinIcons';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 
@@ -112,6 +114,7 @@ export default function SpreadsPage() {
     <div className="min-h-screen bg-background text-white flex flex-col">
       <Header />
       <main id="main-content" className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6 relative">
+        <FeatureHint page="/spreads" />
 
         {/* Toast */}
         {state.toast && <AlertToast message={state.toast} onDismiss={() => actions.setToast(null)} />}
@@ -412,6 +415,7 @@ export default function SpreadsPage() {
         </div>
 
       </main>
+      <RelatedPages />
       <ReferralBanner />
       <Footer />
     </div>

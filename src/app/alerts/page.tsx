@@ -5,9 +5,10 @@ import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2, LogIn, Smartphone } from 'lucide-react';
+import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2, Smartphone } from 'lucide-react';
+import { SampleAlertsList } from '@/components/SampleDataPreview';
+import AuthPromptBanner from '@/components/AuthPromptBanner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import {
   type Alert,
@@ -236,20 +237,7 @@ export default function AlertsPage() {
 
           {/* Sign-in banner for email alerts */}
           {!session && (
-            <div className="flex items-center gap-3 bg-hub-yellow/5 border border-hub-yellow/15 rounded-xl px-4 py-3 mb-6">
-              <Mail className="w-5 h-5 text-hub-yellow flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white font-medium">Get email alerts</p>
-                <p className="text-xs text-neutral-500">Sign in to receive email notifications when your alerts trigger.</p>
-              </div>
-              <Link
-                href="/login"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-hub-yellow text-black text-xs font-semibold hover:bg-hub-yellow-light transition-colors flex-shrink-0"
-              >
-                <LogIn className="w-3 h-3" />
-                Sign in
-              </Link>
-            </div>
+            <AuthPromptBanner variant="email-alerts" dismissKey="alerts" className="mb-6" />
           )}
 
           {/* Create Alert Form */}
@@ -390,6 +378,7 @@ export default function AlertsPage() {
                 <p className="text-neutral-600 text-xs mt-1">
                   Click &quot;New Alert&quot; to create your first condition-based alert.
                 </p>
+                <SampleAlertsList />
               </div>
             ) : (
               <div className="space-y-2">

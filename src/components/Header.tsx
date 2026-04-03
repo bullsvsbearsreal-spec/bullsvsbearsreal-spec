@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Menu, X, Search, ChevronDown,
-  Activity, BarChart3, Heart, Briefcase, MoreHorizontal,
+  Activity, BarChart3, Briefcase,
   SlidersHorizontal, Percent, Grid3X3, PieChart, Zap, ArrowLeftRight,
   LineChart, Shield, Gauge as GaugeIcon, BarChart2, Crosshair,
   Rocket, Map, Crown, Building2, Landmark, Coins, GitCompareArrows, Unlock, Bitcoin, TrendingUp,
@@ -16,9 +16,13 @@ import {
 } from 'lucide-react';
 import Logo from './Logo';
 import CoinSearch from './CoinSearch';
+import CommandPalette from './CommandPalette';
 import ThemeToggle from './ThemeToggle';
 import SoundToggle from './SoundToggle';
 import UserMenu from './UserMenu';
+import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
+import Breadcrumbs from './Breadcrumbs';
+import { useTrackPageView } from '@/hooks/useTrackPageView';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 
 /* ------------------------------------------------------------------ */
@@ -46,132 +50,142 @@ interface NavCategory {
 
 const navCategories: NavCategory[] = [
   {
-    label: 'Trading',
+    label: 'Scan & Trade',
     icon: Activity,
     columns: [
+      {
+        heading: 'Funding & Arb',
+        items: [
+          { name: 'Funding Rates', href: '/funding', icon: Percent, desc: '33 exchanges live', badge: '33' },
+          { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3, desc: 'Visual rate comparison' },
+          { name: 'Price Spreads', href: '/spreads', icon: ArrowLeftRight, desc: 'Cross-exchange gaps' },
+          { name: 'Spread Scanner', href: '/spread-scanner', icon: ArrowLeftRight, desc: 'Multi-coin arb scanner' },
+          { name: 'Basis', href: '/basis', icon: BarChart2, desc: 'Spot-perp premium' },
+          { name: 'Execution Costs', href: '/execution-costs', icon: Crosshair, desc: 'Slippage & fee ranking' },
+        ],
+      },
       {
         heading: 'Analysis',
         items: [
           { name: 'Chart', href: '/chart', icon: LineChart, desc: 'TradingView charts' },
           { name: 'Screener', href: '/screener', icon: SlidersHorizontal, desc: 'Filter & scan markets' },
           { name: 'Options', href: '/options', icon: Shield, desc: 'Options flow & greeks' },
-          { name: 'Basis', href: '/basis', icon: BarChart2, desc: 'Spot-perp premium' },
-          { name: 'Predictions', href: '/prediction-markets', icon: Eye },
-          { name: 'Price Spreads', href: '/spreads', icon: ArrowLeftRight },
-          { name: 'Spread Scanner', href: '/spread-scanner', icon: ArrowLeftRight, desc: 'Multi-coin spreads' },
-          { name: 'Execution Costs', href: '/execution-costs', icon: Crosshair },
-        ],
-      },
-      {
-        heading: 'Funding & OI',
-        items: [
-          { name: 'Funding Rates', href: '/funding', icon: Percent, desc: '33 exchanges live', badge: '33' },
-          { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
-          { name: 'Open Interest', href: '/open-interest', icon: PieChart, desc: 'Aggregated OI' },
-          { name: 'OI Heatmap', href: '/oi-heatmap', icon: Grid3X3 },
-        ],
-      },
-      {
-        heading: 'Liquidations',
-        items: [
-          { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time liqs' },
-          { name: 'Liq Map', href: '/liquidation-map', icon: Crosshair },
-          { name: 'Liq Heatmap', href: '/liquidation-heatmap', icon: Grid3X3 },
-        ],
-      },
-      {
-        heading: 'Flow',
-        items: [
-          { name: 'Long/Short', href: '/longshort', icon: ArrowLeftRight },
-          { name: 'CVD', href: '/cvd', icon: LineChart },
-          { name: 'Order Flow', href: '/orderflow', icon: Activity },
-          { name: 'RSI Heatmap', href: '/rsi-heatmap', icon: GaugeIcon },
+          { name: 'Predictions', href: '/prediction-markets', icon: Eye, desc: 'Prediction markets' },
         ],
       },
     ],
   },
   {
-    label: 'Markets',
+    label: 'Monitor',
     icon: BarChart3,
     columns: [
       {
-        heading: 'Overview',
+        heading: 'Market Overview',
         items: [
           { name: 'Top Movers', href: '/top-movers', icon: Rocket, desc: 'Biggest gainers & losers' },
-          { name: 'Heatmap', href: '/market-heatmap', icon: Map, desc: 'Crypto market map' },
-          { name: 'Stock Heatmap', href: '/stock-heatmap', icon: Map },
-          { name: 'Dominance', href: '/dominance', icon: Crown },
-          { name: 'Market Cycle', href: '/market-cycle', icon: Activity },
-          { name: 'Correlation', href: '/correlation', icon: GitCompareArrows },
+          { name: 'Market Heatmap', href: '/market-heatmap', icon: Map, desc: 'Crypto market map' },
+          { name: 'Stock Heatmap', href: '/stock-heatmap', icon: Map, desc: 'Equity market map' },
+          { name: 'Dominance', href: '/dominance', icon: Crown, desc: 'BTC/ETH/alt share' },
+          { name: 'Market Cycle', href: '/market-cycle', icon: Activity, desc: 'Macro trend phase' },
+          { name: 'Correlation', href: '/correlation', icon: GitCompareArrows, desc: 'Cross-asset correlation' },
+          { name: 'RSI Heatmap', href: '/rsi-heatmap', icon: GaugeIcon, desc: 'Overbought/oversold scan' },
+        ],
+      },
+      {
+        heading: 'On-Chain & Flows',
+        items: [
+          { name: 'Exchange Reserves', href: '/exchange-reserves', icon: Landmark, desc: 'Exchange balances' },
+          { name: 'Stablecoin Flows', href: '/stablecoin-flows', icon: Coins, desc: 'Mint/burn tracker' },
+          { name: 'On-Chain', href: '/onchain', icon: BarChart3, desc: 'Blockchain metrics' },
+          { name: 'DeFi Yields', href: '/yields', icon: TrendingUp, desc: 'Protocol yield rates' },
+          { name: 'Exchanges', href: '/exchange-comparison', icon: Building2, desc: 'Exchange comparison' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Risk',
+    icon: Zap,
+    columns: [
+      {
+        heading: 'Liquidations',
+        items: [
+          { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time forced closures' },
+          { name: 'Liq Map', href: '/liquidation-map', icon: Crosshair, desc: 'Price-level density' },
+          { name: 'Liq Heatmap', href: '/liquidation-heatmap', icon: Grid3X3, desc: 'Visual liq clusters' },
+        ],
+      },
+      {
+        heading: 'Positioning',
+        items: [
+          { name: 'Open Interest', href: '/open-interest', icon: PieChart, desc: 'Aggregated OI data' },
+          { name: 'OI Heatmap', href: '/oi-heatmap', icon: Grid3X3, desc: 'Visual OI by coin' },
+          { name: 'Long/Short', href: '/longshort', icon: ArrowLeftRight, desc: 'L/S ratio by exchange' },
+          { name: 'CVD', href: '/cvd', icon: LineChart, desc: 'Volume delta analysis' },
+          { name: 'Order Flow', href: '/orderflow', icon: Activity, desc: 'Tape & aggressor flow' },
+        ],
+      },
+      {
+        heading: 'Whales',
+        items: [
+          { name: 'Whale Alert', href: '/whale-alert', icon: Fish, desc: 'Large on-chain txns' },
+          { name: 'HL Whales', href: '/hl-whales', icon: Eye, desc: 'Hyperliquid top traders' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Research',
+    icon: BookOpen,
+    columns: [
+      {
+        heading: 'News & Events',
+        items: [
+          { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news feed' },
+          { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar, desc: 'Macro data releases' },
+          { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock, desc: 'Vesting schedules' },
+          { name: 'Airdrops', href: '/airdrops', icon: Gift, desc: 'Upcoming airdrops' },
         ],
       },
       {
         heading: 'Institutional',
         items: [
           { name: 'ETF Tracker', href: '/etf', icon: LineChart, desc: 'BTC & ETH ETF flows' },
-          { name: 'BTC Treasuries', href: '/bitcoin-treasuries', icon: Bitcoin },
-          { name: 'Token Unlocks', href: '/token-unlocks', icon: Unlock },
-          { name: 'Airdrops', href: '/airdrops', icon: Gift },
-        ],
-      },
-      {
-        heading: 'On-Chain',
-        items: [
-          { name: 'Exchange Reserves', href: '/exchange-reserves', icon: Landmark },
-          { name: 'Stablecoin Flows', href: '/stablecoin-flows', icon: Coins },
-          { name: 'On-Chain', href: '/onchain', icon: BarChart3 },
-          { name: 'DeFi Yields', href: '/yields', icon: TrendingUp },
-          { name: 'Exchanges', href: '/exchange-comparison', icon: Building2 },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Sentiment',
-    icon: Heart,
-    columns: [
-      {
-        heading: '',
-        items: [
+          { name: 'BTC Treasuries', href: '/bitcoin-treasuries', icon: Bitcoin, desc: 'Corporate holdings' },
           { name: 'Fear & Greed', href: '/fear-greed', icon: Thermometer, desc: 'Market sentiment index' },
-          { name: 'Whale Alert', href: '/whale-alert', icon: Fish, desc: 'Large transactions' },
-          { name: 'HL Whales', href: '/hl-whales', icon: Eye, desc: 'Hyperliquid top traders' },
-          { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news feed' },
+        ],
+      },
+      {
+        heading: 'Learn',
+        items: [
+          { name: 'Guides', href: '/guides', icon: BookOpen, desc: 'Trading guides' },
+          { name: 'Developers', href: '/developers', icon: BookOpen, desc: 'API & integrations' },
+          { name: 'API Docs', href: '/api-docs', icon: BookOpen, desc: 'Endpoint reference' },
         ],
       },
     ],
   },
   {
-    label: 'Portfolio',
+    label: 'My Tools',
     icon: Briefcase,
     columns: [
       {
         heading: '',
         items: [
+          { name: 'Dashboard', href: '/dashboard', icon: BarChart3, desc: 'Custom widget dashboard' },
           { name: 'Watchlist', href: '/watchlist', icon: Star, desc: 'Track your coins' },
-          { name: 'Compare', href: '/compare', icon: GitCompare },
+          { name: 'Portfolio', href: '/portfolio', icon: Wallet, desc: 'Holdings & P&L' },
           { name: 'Alerts', href: '/alerts', icon: Bell, desc: 'Price & funding alerts' },
-          { name: 'Portfolio', href: '/portfolio', icon: Wallet },
-          { name: 'Wallet Tracker', href: '/wallet-tracker', icon: SearchIcon },
-          { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+          { name: 'Compare', href: '/compare', icon: GitCompare, desc: 'Side-by-side analysis' },
+          { name: 'Wallet Tracker', href: '/wallet-tracker', icon: SearchIcon, desc: 'Track any wallet' },
         ],
       },
-    ],
-  },
-  {
-    label: 'More',
-    icon: MoreHorizontal,
-    columns: [
       {
         heading: '',
         items: [
-          { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar },
-          { name: 'Guides', href: '/guides', icon: BookOpen },
-          { name: 'Brand Kit', href: '/brand', icon: Palette },
-          { name: 'Team', href: '/team', icon: Users },
-          { name: 'Referrals', href: '/referrals', icon: Gift },
-          { name: 'Developers', href: '/developers', icon: BookOpen },
-          { name: 'API Docs', href: '/api-docs', icon: BookOpen },
+          { name: 'Brand Kit', href: '/brand', icon: Palette, desc: 'Logos & assets' },
+          { name: 'Team', href: '/team', icon: Users, desc: 'Meet the team' },
+          { name: 'Referrals', href: '/referrals', icon: Gift, desc: 'Earn rewards' },
         ],
       },
     ],
@@ -189,8 +203,12 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Auto-track page views for recently-viewed history
+  useTrackPageView();
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
 
@@ -235,12 +253,21 @@ export default function Header() {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSearchOpen(false);
+        setShortcutsOpen(false);
         setMobileOpen(false);
         setOpenDropdown(null);
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(true);
+      }
+      // ? key — only when not typing in an input
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !(e.target as HTMLElement)?.isContentEditable) {
+          e.preventDefault();
+          setShortcutsOpen((prev) => !prev);
+        }
       }
     };
     window.addEventListener('keydown', handler);
@@ -368,6 +395,7 @@ export default function Header() {
   /* ------------------------------------------------------------------ */
 
   return (
+    <>
     <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-sm border-b border-white/[0.06]">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-12">
@@ -426,30 +454,27 @@ export default function Header() {
           <div className="flex items-center gap-2" ref={searchRef}>
             <SoundToggle />
             <ThemeToggle />
+            <button
+              onClick={() => setShortcutsOpen(true)}
+              className="hidden sm:flex items-center justify-center w-7 h-7 rounded-md text-neutral-600 hover:text-white hover:bg-white/[0.06] transition-colors text-[13px] font-medium"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+            >
+              ?
+            </button>
             <UserMenu />
 
-            {searchOpen ? (
-              <div className="relative">
-                <CoinSearch
-                  onSelect={handleCoinSelect}
-                  placeholder="Search coins..."
-                  className="w-60"
-                  autoFocus
-                />
-              </div>
-            ) : (
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-[13px]"
-                aria-label="Search coins"
-              >
-                <Search className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Search</span>
-                <kbd className="hidden sm:inline text-[10px] text-neutral-600 bg-white/[0.06] px-1.5 py-0.5 rounded ml-2">
-                  Ctrl K
-                </kbd>
-              </button>
-            )}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-[13px]"
+              aria-label="Search pages and coins"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Search</span>
+              <kbd className="hidden sm:inline text-[10px] text-neutral-600 bg-white/[0.06] px-1.5 py-0.5 rounded ml-2">
+                Ctrl K
+              </kbd>
+            </button>
 
             <button
               className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
@@ -549,5 +574,15 @@ export default function Header() {
         </div>
       )}
     </header>
+    <Breadcrumbs />
+
+    {searchOpen && (
+      <CommandPalette
+        onClose={() => setSearchOpen(false)}
+        onShowShortcuts={() => { setSearchOpen(false); setShortcutsOpen(true); }}
+      />
+    )}
+    {shortcutsOpen && <KeyboardShortcutsOverlay onClose={() => setShortcutsOpen(false)} />}
+    </>
   );
 }

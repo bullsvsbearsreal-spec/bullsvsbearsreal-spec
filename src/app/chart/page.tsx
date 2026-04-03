@@ -9,6 +9,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import CryptoMetricsPanel from './components/CryptoMetricsPanel';
 import ChartErrorBoundary from './components/ChartErrorBoundary';
 import SoundToggle from '@/components/SoundToggle';
+import FeatureHint from '@/components/FeatureHint';
 import dynamic from 'next/dynamic';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), {
@@ -648,6 +649,11 @@ function ChartPageInner() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ─── Feature hint (first visit only) ────── */}
+      <div className="flex-shrink-0 px-2">
+        <FeatureHint page="/chart" />
       </div>
 
       {/* ─── TradingView Chart + Tape Sidebar + Metrics Panel ────── */}

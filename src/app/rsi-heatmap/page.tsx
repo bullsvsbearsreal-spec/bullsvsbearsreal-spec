@@ -170,7 +170,7 @@ export default function RSIHeatmapPage() {
 
   const RSICell = ({ rsi }: { rsi: number | null }) => (
     <td className="px-1 py-0.5">
-      <div className={`${rsiColor(rsi)} rounded px-2 py-1.5 text-center`} title={rsi !== null ? `RSI ${rsi.toFixed(1)} — ${rsiLabel(rsi)}` : 'No data'}>
+      <div className={`${rsiColor(rsi)} rounded px-2 py-1.5 text-center transition-colors duration-500`} title={rsi !== null ? `RSI ${rsi.toFixed(1)} — ${rsiLabel(rsi)}` : 'No data'}>
         <span className={`text-[11px] font-mono tabular-nums font-medium ${rsiTextColor(rsi)}`}>
           {rsi !== null ? rsi.toFixed(1) : '—'}
         </span>

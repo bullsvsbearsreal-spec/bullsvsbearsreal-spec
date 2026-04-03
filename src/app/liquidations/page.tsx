@@ -5,6 +5,8 @@ import useSWR from 'swr';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import FeatureHint from '@/components/FeatureHint';
+import RelatedPages from '@/components/RelatedPages';
 import LiquidationTreemap from './components/LiquidationTreemap';
 import LiquidationFeed from './components/LiquidationFeed';
 import { isLiqCryptoSymbol, normalizeLiqSymbol } from '@/lib/liquidation-parsers';
@@ -181,6 +183,9 @@ export default function LiquidationsPage() {
       <Header />
 
       <main className="flex-1">
+        <div className="px-4 sm:px-6 lg:px-8 pt-4">
+          <FeatureHint page="/liquidations" />
+        </div>
         {/* ─── Page Header ──────────────────────────── */}
         <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-5">
@@ -405,6 +410,7 @@ export default function LiquidationsPage() {
         )}
       </main>
 
+      <RelatedPages />
       <ReferralBanner />
       <Footer />
     </div>

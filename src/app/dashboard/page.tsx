@@ -9,17 +9,33 @@ import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { DashboardProvider } from '@/components/dashboard/DashboardContext';
 import { type WidgetLayout, DEFAULT_LAYOUT } from '@/components/dashboard/types';
+import { getPresetLayout } from '@/components/dashboard/LayoutPresets';
+import PersonaSelector from '@/components/dashboard/PersonaSelector';
+import FeatureHint from '@/components/FeatureHint';
+import AuthPromptBanner from '@/components/AuthPromptBanner';
+import { UserCircle2 } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'infohub-dashboard-layout';
+const PERSONA_SET_KEY = 'infohub-persona-set';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [layout, setLayout] = useState<WidgetLayout[]>(DEFAULT_LAYOUT);
   const [loaded, setLoaded] = useState(false);
+  const [showPersona, setShowPersona] = useState(false);
+  const [isFirstVisit, setIsFirstVisit] = useState(false);
+
+  // Fallback: if auth status stays 'loading' for too long, proceed without session
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+  useEffect(() => {
+    if (status !== 'loading') return;
+    const t = setTimeout(() => setAuthTimedOut(true), 2000);
+    return () => clearTimeout(t);
+  }, [status]);
 
   // Load layout from user prefs (DB) or localStorage
   useEffect(() => {
-    if (status === 'loading') return;
+    if (status === 'loading' && !authTimedOut) return;
 
     const loadLayout = async () => {
       // Try DB first (logged-in users)
@@ -50,13 +66,28 @@ export default function DashboardPage() {
         }
       } catch {}
 
+      // First-time user: apply Market Pulse and show persona selector
+      const personaSet = localStorage.getItem(PERSONA_SET_KEY);
+      if (!personaSet) {
+        const marketPulse = getPresetLayout('market-pulse');
+        if (marketPulse) {
+          setLayout(marketPulse);
+          setIsFirstVisit(true);
+          setShowPersona(true);
+        } else {
+          setLayout([...DEFAULT_LAYOUT]);
+        }
+        setLoaded(true);
+        return;
+      }
+
       // Default
       setLayout([...DEFAULT_LAYOUT]);
       setLoaded(true);
     };
 
     loadLayout();
-  }, [session, status]);
+  }, [session, status, authTimedOut]);
 
   // Debounced DB save — localStorage is immediate, DB save waits 1.5s
   const dbSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,6 +118,19 @@ export default function DashboardPage() {
       }
     },
     [session],
+  );
+
+  const handlePersonaSelect = useCallback(
+    (presetId: string | null) => {
+      if (presetId) {
+        const presetLayout = getPresetLayout(presetId);
+        if (presetLayout) handleLayoutChange(presetLayout);
+      }
+      localStorage.setItem(PERSONA_SET_KEY, 'true');
+      setShowPersona(false);
+      setIsFirstVisit(false);
+    },
+    [handleLayoutChange],
   );
 
   if (!loaded) {
@@ -133,12 +177,44 @@ export default function DashboardPage() {
       <main id="main-content" className="text-white">
         <DashboardProvider>
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-            <DashboardHeader userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />
+            <div className="flex items-start justify-between gap-4">
+              <DashboardHeader userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />
+              <button
+                onClick={() => setShowPersona(true)}
+                className="flex items-center gap-1.5 mt-1 px-2.5 py-1.5 text-[11px] text-neutral-500 hover:text-white rounded-lg border border-white/[0.06] hover:border-white/[0.12] bg-white/[0.02] hover:bg-white/[0.04] transition-all shrink-0"
+                title="Change dashboard persona"
+              >
+                <UserCircle2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Persona</span>
+              </button>
+            </div>
+
+            <FeatureHint page="/dashboard" />
+
+            {isFirstVisit && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-hub-yellow/[0.06] border border-hub-yellow/20 flex items-center justify-between gap-3">
+                <p className="text-xs text-neutral-300">
+                  <span className="text-hub-yellow font-semibold">Welcome!</span>{' '}
+                  This is your default dashboard. Customize it anytime — drag widgets, add new ones, or pick a preset.
+                </p>
+                <button
+                  onClick={() => setIsFirstVisit(false)}
+                  className="text-[10px] text-neutral-500 hover:text-white shrink-0 px-2 py-1 rounded hover:bg-white/[0.06] transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {status !== 'authenticated' && (
+              <AuthPromptBanner variant="cloud-sync" dismissKey="dashboard" className="mb-4" />
+            )}
 
             <DashboardGrid layout={layout} onLayoutChange={handleLayoutChange} />
           </div>
         </DashboardProvider>
       </main>
+      {showPersona && <PersonaSelector onSelect={handlePersonaSelect} />}
       <ReferralBanner />
       <Footer />
     </div>

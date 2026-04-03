@@ -10,6 +10,7 @@ import DataFreshness from '@/components/DataFreshness';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { getWatchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
 import { formatPrice, formatNumber, formatFundingRate, formatPercent } from '@/lib/utils/format';
+import { SampleWatchlistTable } from '@/components/SampleDataPreview';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -361,6 +362,7 @@ export default function WatchlistPage() {
                 Add Top 5
               </button>
             </div>
+            <SampleWatchlistTable />
           </div>
         )}
 

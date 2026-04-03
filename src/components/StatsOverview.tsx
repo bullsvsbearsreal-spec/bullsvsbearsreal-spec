@@ -123,8 +123,8 @@ export default function StatsOverview() {
                 {item.sub && (
                   <span className={`delta-badge ${
                     item.isExtremeSub
-                      ? (item.subColor === 'delta-badge-up' ? 'delta-badge-extreme-up' : 'delta-badge-extreme-down')
-                      : item.subColor
+                      ? (item.subColor === 'delta-badge-up' ? 'delta-badge-extreme-up pip-up' : 'delta-badge-extreme-down pip-down')
+                      : `${item.subColor} ${item.subColor === 'delta-badge-up' ? 'pip-up' : 'pip-down'}`
                   } text-[10px]`}>
                     {item.sub}
                   </span>

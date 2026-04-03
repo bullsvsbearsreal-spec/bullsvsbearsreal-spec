@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { RefreshCw, Star, ArrowLeft, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { RefreshCw, Star, ArrowLeft, TrendingUp, TrendingDown, Info, Percent, LineChart, GitCompareArrows } from 'lucide-react';
 import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { formatPrice, formatCompact, formatFundingRate } from '@/lib/utils/format';
@@ -15,6 +15,7 @@ import { useApi } from '@/hooks/useSWRApi';
 import DataFreshness from '@/components/DataFreshness';
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
 import { useTheme } from '@/hooks/useTheme';
+import { useTrackPageView } from '@/hooks/useTrackPageView';
 import type { Time } from 'lightweight-charts';
 
 const LightweightChart = dynamic(() => import('@/components/charts/LightweightChart'), { ssr: false });
@@ -77,6 +78,7 @@ export default function SymbolPage() {
   const params = useParams();
   const symbol = (params.symbol as string)?.toUpperCase() || 'BTC';
   const theme = useTheme();
+  useTrackPageView(`${symbol} Overview`, symbol);
 
   const [interval, setInterval_] = useState<Interval>('1h');
   const [watched, setWatched] = useState(false);
@@ -283,6 +285,25 @@ export default function SymbolPage() {
                 {formatFundingRate(avgFunding)}
               </p>
             </div>
+          </div>
+
+          {/* Context quick-links for this symbol */}
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <span className="text-[10px] text-neutral-500 uppercase tracking-wider mr-1">Explore {symbol}:</span>
+            {[
+              { label: 'Funding History', href: `/funding/${symbol}`, icon: Percent },
+              { label: 'Chart', href: `/chart?s=${symbol}`, icon: LineChart },
+              { label: 'Compare', href: `/compare?coins=${symbol}`, icon: GitCompareArrows },
+            ].map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs text-neutral-400 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.1] transition-colors"
+              >
+                <link.icon className="w-3 h-3" />
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           {/* Chart Section */}
