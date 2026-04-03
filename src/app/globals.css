@@ -734,6 +734,11 @@ body {
   }
 }
 
+/* ═══ Dark Theme — Accessibility Overrides ═══ */
+
+/* Boost neutral-600 from #525252 to #737373 for WCAG AA contrast on dark backgrounds */
+.text-neutral-600 { color: #737373 !important; }
+
 /* ═══ Light Theme — Visual Overrides ═══ */
 
 /* --- Text color remaps (dark text on light bg) --- */

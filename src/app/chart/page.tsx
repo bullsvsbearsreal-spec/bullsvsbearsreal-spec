@@ -424,7 +424,7 @@ function ChartPageInner() {
   }, [symbolOpen]);
 
   return (
-    <div className="h-screen w-screen bg-black flex flex-col overflow-hidden">
+    <div id="main-content" className="h-screen w-screen bg-black flex flex-col overflow-hidden">
       <h1 className="sr-only">Chart</h1>
       {/* ─── Header ─────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-b border-white/[0.08] bg-[#060606] relative z-20">

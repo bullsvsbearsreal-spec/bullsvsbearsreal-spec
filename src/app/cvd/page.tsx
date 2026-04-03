@@ -9,7 +9,10 @@ import { formatCompact } from '@/lib/utils/format';
 import { useFlash } from '@/hooks/useFlash';
 import { useApi } from '@/hooks/useSWRApi';
 import DataFreshness from '@/components/DataFreshness';
-import CVDChart, { type CVDBucket } from './components/CVDChart';
+import dynamic from 'next/dynamic';
+import { type CVDBucket } from './components/CVDChart';
+
+const CVDChart = dynamic(() => import('./components/CVDChart'), { ssr: false });
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 

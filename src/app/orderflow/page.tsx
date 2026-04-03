@@ -10,10 +10,13 @@ import {
   RefreshCw, Info, Activity, ArrowDownUp, BarChart3, Table2, BookOpen,
 } from 'lucide-react';
 import { useFlash } from '@/hooks/useFlash';
-import MultiDepthChart from './components/MultiDepthChart';
-import ExchangeDepthTable from './components/ExchangeDepthTable';
-import TapeView from './components/TapeView';
-import OrderbookHeatmapCanvas, { type HeatmapColumn } from './components/OrderbookHeatmapCanvas';
+import dynamic from 'next/dynamic';
+import { type HeatmapColumn } from './components/OrderbookHeatmapCanvas';
+
+const MultiDepthChart = dynamic(() => import('./components/MultiDepthChart'), { ssr: false });
+const ExchangeDepthTable = dynamic(() => import('./components/ExchangeDepthTable'), { ssr: false });
+const TapeView = dynamic(() => import('./components/TapeView'), { ssr: false });
+const OrderbookHeatmapCanvas = dynamic(() => import('./components/OrderbookHeatmapCanvas'), { ssr: false });
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 

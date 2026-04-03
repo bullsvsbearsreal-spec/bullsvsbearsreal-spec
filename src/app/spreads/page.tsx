@@ -22,7 +22,9 @@ import { useSpreadData } from './hooks/useSpreadData';
 import { useAlertSystem } from './hooks/useAlertSystem';
 
 // ── Components ──
-import { SpreadChart } from './components/Chart/SpreadChart';
+import dynamic from 'next/dynamic';
+
+const SpreadChart = dynamic(() => import('./components/Chart/SpreadChart').then(m => m.SpreadChart), { ssr: false });
 import { SymbolPicker } from './components/SymbolPicker/SymbolPicker';
 import { ExchangePicker } from './components/ExchangePicker/ExchangePicker';
 import { TimeframeBar } from './components/Controls/TimeframeBar';

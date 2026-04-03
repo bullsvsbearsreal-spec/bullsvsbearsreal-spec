@@ -4,16 +4,10 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import MarketTicker from '@/components/MarketTicker';
 import TopStatsBar from '@/components/TopStatsBar';
-import StatsOverview from '@/components/StatsOverview';
-import FearGreedIndex from '@/components/FearGreedIndex';
-import LiquidationHeatmap from '@/components/LiquidationHeatmap';
-import TopMovers from '@/components/TopMovers';
-import OIChangeWidget from '@/components/OIChangeWidget';
-import LongShortRatio from '@/components/LongShortRatio';
-import MarketIndices from '@/components/MarketIndices';
 import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -21,10 +15,30 @@ import { CoinSearchResult } from '@/lib/api/coingecko';
 import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe, Lock, Crosshair, ArrowLeftRight } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
-import { fetchAllFundingRates, fetchExchangeHealth, ExchangeHealthInfo } from '@/lib/api/aggregator';
-import { FundingRateData } from '@/lib/api/types';
-import { fetchCryptoNews, NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
+import { type ExchangeHealthInfo } from '@/lib/api/aggregator';
+import { type FundingRateData } from '@/lib/api/types';
+import { type NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
 import Footer from '@/components/Footer';
+
+// Dynamic imports — below-the-fold widgets + heavy data modules
+const StatsOverview = dynamic(() => import('@/components/StatsOverview'));
+const FearGreedIndex = dynamic(() => import('@/components/FearGreedIndex'));
+const LiquidationHeatmap = dynamic(() => import('@/components/LiquidationHeatmap'));
+const TopMovers = dynamic(() => import('@/components/TopMovers'));
+const OIChangeWidget = dynamic(() => import('@/components/OIChangeWidget'));
+const LongShortRatio = dynamic(() => import('@/components/LongShortRatio'));
+const MarketIndices = dynamic(() => import('@/components/MarketIndices'));
+
+const QUICK_LINKS = [
+  { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
+  { name: 'Open Interest', href: '/open-interest', icon: BarChart3, desc: 'Position sizing', color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' },
+  { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time rekt', color: '#ff1744', bg: 'rgba(255,23,68,0.08)' },
+  { name: 'Screener', href: '/screener', icon: TrendingUp, desc: 'Market scanner', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
+  { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange', color: '#ffa500', bg: 'rgba(255,165,0,0.08)' },
+  { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+  { name: 'Spreads', href: '/spreads', icon: ArrowLeftRight, desc: 'Price spreads', color: '#ffa726', bg: 'rgba(255,167,38,0.08)' },
+  { name: 'Predictions', href: '/prediction-markets', icon: Crosshair, desc: 'Arb scanner', color: '#e040fb', bg: 'rgba(224,64,251,0.08)' },
+];
 
 export default function HomeOrange() {
   const { status } = useSession();
@@ -50,6 +64,10 @@ export default function HomeOrange() {
   useEffect(() => {
     async function loadData() {
       try {
+        const [{ fetchAllFundingRates, fetchExchangeHealth }, { fetchCryptoNews }] = await Promise.all([
+          import('@/lib/api/aggregator'),
+          import('@/lib/api/coinmarketcal'),
+        ]);
         const [fundingData, newsData, healthData] = await Promise.all([
           fetchAllFundingRates(),
           fetchCryptoNews(4),
@@ -95,16 +113,7 @@ export default function HomeOrange() {
     ? dexExchanges.filter(isExchangeActive).length
     : dexExchanges.filter(e => !KNOWN_BLOCKED.has(e)).length;
 
-  const quickLinks = [
-    { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
-    { name: 'Open Interest', href: '/open-interest', icon: BarChart3, desc: 'Position sizing', color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' },
-    { name: 'Liquidations', href: '/liquidations', icon: Zap, desc: 'Real-time rekt', color: '#ff1744', bg: 'rgba(255,23,68,0.08)' },
-    { name: 'Screener', href: '/screener', icon: TrendingUp, desc: 'Market scanner', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
-    { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange', color: '#ffa500', bg: 'rgba(255,165,0,0.08)' },
-    { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-    { name: 'Spreads', href: '/spreads', icon: ArrowLeftRight, desc: 'Price spreads', color: '#ffa726', bg: 'rgba(255,167,38,0.08)' },
-    { name: 'Predictions', href: '/prediction-markets', icon: Crosshair, desc: 'Arb scanner', color: '#e040fb', bg: 'rgba(224,64,251,0.08)' },
-  ];
+  // QUICK_LINKS defined at module scope for stable references
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -151,7 +160,7 @@ export default function HomeOrange() {
 
             {/* Quick access grid */}
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-              {quickLinks.map((link) => (
+              {QUICK_LINKS.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

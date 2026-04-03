@@ -31,7 +31,7 @@ export default function WatchlistStar({ symbol }: { symbol: string }) {
   return (
     <button
       onClick={toggle}
-      className={`p-0.5 rounded transition-colors ${
+      className={`p-2 -m-1.5 rounded transition-colors ${
         starred
           ? 'text-hub-yellow hover:text-hub-yellow/70'
           : 'text-neutral-700 hover:text-neutral-400'

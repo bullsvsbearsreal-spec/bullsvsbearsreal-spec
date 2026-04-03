@@ -64,10 +64,34 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/signup', priority: 0.3, changeFrequency: 'monthly' as const },
   ];
 
-  return pages.map(({ path, priority, changeFrequency }) => ({
+  const staticEntries = pages.map(({ path, priority, changeFrequency }) => ({
     url: `${base}${path}`,
     lastModified: new Date(),
     changeFrequency,
     priority,
   }));
+
+  // Dynamic routes for top symbols
+  const topSymbols = [
+    'BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'PEPE', 'WIF', 'ADA', 'AVAX', 'LINK',
+    'DOT', 'MATIC', 'UNI', 'NEAR', 'ARB', 'OP', 'SUI', 'APT', 'FIL', 'ATOM',
+    'RENDER', 'INJ', 'SEI', 'TIA', 'JUP', 'WLD', 'BONK', 'FLOKI', 'FET', 'TAO',
+  ];
+
+  const symbolEntries = topSymbols.flatMap((s) => [
+    { url: `${base}/symbol/${s}`, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 0.6 },
+    { url: `${base}/funding/${s}`, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 0.7 },
+  ]);
+
+  const coinEntries = [
+    'bitcoin', 'ethereum', 'solana', 'ripple', 'dogecoin', 'cardano', 'avalanche-2',
+    'chainlink', 'polkadot', 'uniswap', 'near', 'arbitrum', 'optimism', 'sui', 'aptos',
+  ].map((id) => ({
+    url: `${base}/coin/${id}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.5,
+  }));
+
+  return [...staticEntries, ...symbolEntries, ...coinEntries];
 }

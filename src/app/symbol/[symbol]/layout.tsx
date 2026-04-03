@@ -9,6 +9,7 @@ export async function generateMetadata({ params }: { params: { symbol: string } 
   return {
     title,
     description,
+    alternates: { canonical: `https://info-hub.io/symbol/${symbol}` },
     openGraph: {
       title: `${title} | InfoHub`,
       description,
