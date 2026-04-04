@@ -67,7 +67,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
                 return {
                   symbol: ticker.symbol.replace('USDT', ''),
                   exchange: 'Binance',
-                  openInterest: parseFloat(oiData.openInterest),
+                  openInterest: parseFloat(oiData.openInterest) || 0,
                   openInterestValue: (parseFloat(oiData.openInterest) || 0) * (parseFloat(ticker.lastPrice) || 0),
                 };
               }
@@ -197,7 +197,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         .map((item: any, index: number) => ({
           symbol: json[0].universe[index]?.name || `ASSET${index}`,
           exchange: 'Hyperliquid',
-          openInterest: parseFloat(item.openInterest),
+          openInterest: parseFloat(item.openInterest) || 0,
           openInterestValue: (parseFloat(item.openInterest) || 0) * (parseFloat(item.markPx) || 0),
         }))
         .filter((item: any) => !isNaN(item.openInterestValue) && item.openInterestValue > 0);
@@ -219,7 +219,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         .map(([key, market]: [string, any]) => ({
           symbol: key.replace('-USD', ''),
           exchange: 'dYdX',
-          openInterest: parseFloat(market.openInterest),
+          openInterest: parseFloat(market.openInterest) || 0,
           openInterestValue: (parseFloat(market.openInterest) || 0) * (parseFloat(market.oraclePrice) || 0),
         }))
         .filter((item: any) => item.openInterestValue > 0);

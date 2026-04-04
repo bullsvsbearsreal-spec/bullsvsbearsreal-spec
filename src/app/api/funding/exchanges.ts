@@ -50,8 +50,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           exchange: 'Binance',
           fundingRate: parseFloat(item.lastFundingRate) * 100,
           fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.markPrice),
-          indexPrice: parseFloat(item.indexPrice),
+          markPrice: parseFloat(item.markPrice) || 0,
+          indexPrice: parseFloat(item.indexPrice) || 0,
           nextFundingTime: item.nextFundingTime,
           type: 'cex' as const,
         }))
@@ -129,8 +129,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           exchange: 'Bybit',
           fundingRate: parseFloat(item.fundingRate) * 100,
           fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.markPrice),
-          indexPrice: parseFloat(item.indexPrice),
+          markPrice: parseFloat(item.markPrice) || 0,
+          indexPrice: parseFloat(item.indexPrice) || 0,
           nextFundingTime: Number(item.nextFundingTime) || Date.now(),
           type: 'cex' as const,
         }))
@@ -511,7 +511,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 fundingInterval: '1h' as const,
                 markPrice: prices?.mark || 0,
                 indexPrice: prices?.index || 0,
-                nextFundingTime: parseInt(data.next_epoch) / 1e6 || Date.now() + 3600000,
+                nextFundingTime: (parseInt(data.next_epoch) || 0) / 1e6 || Date.now() + 3600000,
                 type: 'dex' as const,
                 assetClass: isStock ? ('stocks' as AssetClass) : (norm.assetClass !== 'crypto' ? norm.assetClass : undefined),
               };
@@ -856,7 +856,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice: parseFloat(r.mark_price) || 0,
             indexPrice: parseFloat(r.index_price) || 0,
-            nextFundingTime: Date.now() + 3600000,
+            nextFundingTime: Date.now() + 28800000, // 8h settlement
             type: 'cex' as const,
           };
         } catch { return null; }
