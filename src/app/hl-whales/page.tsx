@@ -438,7 +438,7 @@ export default function HLWhalesPage() {
           w.positions.some((p) => p.coin.toLowerCase().includes(q)),
       );
     }
-    return list.sort((a, b) => {
+    return [...list].sort((a, b) => {
       const mul = sortOrder === 'asc' ? 1 : -1;
       switch (sortField) {
         case 'accountValue':
