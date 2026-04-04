@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { setWebhook } from '@/lib/telegram';
+import { timingSafeEqual } from 'crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,10 +14,15 @@ export const dynamic = 'force-dynamic';
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
 
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
 export async function GET(req: NextRequest) {
   // Simple auth: require the webhook secret as query param
   const secret = req.nextUrl.searchParams.get('secret');
-  if (!secret || secret !== WEBHOOK_SECRET) {
+  if (!secret || !WEBHOOK_SECRET || !safeCompare(secret, WEBHOOK_SECRET)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

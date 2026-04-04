@@ -82,7 +82,8 @@ export async function authenticateV1Request(request: NextRequest): Promise<
       // Enforce max cache size — evict oldest entry if at cap
       if (apiKeyCache.size >= API_KEY_CACHE_MAX) {
         const firstKey = apiKeyCache.keys().next().value;
-        if (firstKey) apiKeyCache.delete(firstKey);
+        if (firstKey !== undefined) apiKeyCache.delete(firstKey);
+        else apiKeyCache.clear(); // fallback: clear all if iterator fails
       }
       apiKeyCache.set(rawKey, keyData);
     } catch (e) {

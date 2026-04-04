@@ -35,7 +35,14 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
+import { timingSafeEqual } from 'crypto';
+
 const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 // ─── AI Chat (Haiku — cheap & fast) ────────────────────────────────────────
 const AI_RATE_LIMIT = new Map<number, number[]>(); // chatId → timestamps
@@ -1840,7 +1847,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     const token = request.headers.get('x-telegram-bot-api-secret-token');
-    if (token !== WEBHOOK_SECRET) {
+    if (!token || !safeCompare(token, WEBHOOK_SECRET)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
