@@ -39,7 +39,7 @@ export function normalizeLiqSymbol(sym: string): string {
     .replace(/USD[_]?UM$/, '')           // Binance UM futures (BTCUSDUM, BTCUSD_UM)
     .replace(/\d{6}$/, '')               // Quarterly expiry dates (BTC260327, ETH260626)
     .replace(/-USDT$/, '').replace(/-USDC$/, '').replace(/-USD$/, '')
-    .replace(/USDT$/, '').replace(/USDC$/, '').replace(/USD$/, '')
+    .replace(/(?:USDT|USDC|USD)$/, '')
     .replace(/^1000000/, '').replace(/^10000/, '').replace(/^1000/, '').replace(/^1M/, '')
     .replace(/-/g, '');
   return LIQ_SYMBOL_ALIASES[s] || s;
@@ -187,7 +187,7 @@ export function parseBinanceLiq(data: any): Liquidation | null {
   if (!isFinite(price) || !isFinite(qty) || price <= 0 || qty <= 0) return null;
   return {
     id: `bin-${o.s}-${o.T}`,
-    symbol: o.s.replace(/USD[_]?UM$/, '').replace(/\d{6}$/, '').replace(/USDT$/, '').replace(/USDC$/, '').replace(/USD$/, '').replace(/^1000/, ''),
+    symbol: o.s.replace(/USD[_]?UM$/, '').replace(/\d{6}$/, '').replace(/(?:USDT|USDC|USD)$/, '').replace(/^1000/, ''),
     side: o.S === 'BUY' ? 'short' : 'long',
     price,
     quantity: qty,
@@ -212,7 +212,7 @@ export function parseBybitLiqAll(data: any): Liquidation[] {
   for (const d of items) {
     const price = parseFloat(d.price || d.p || '0');
     const size = parseFloat(d.size || d.v || '0');
-    const symbol = (d.symbol || d.s || '').replace('USDT', '').replace('USDC', '');
+    const symbol = (d.symbol || d.s || '').replace(/(?:USDT|USDC)$/, '');
     if (!symbol || !isFinite(price) || !isFinite(size) || price <= 0 || size <= 0) continue;
     results.push({
       id: `byb-${symbol}-${d.updatedTime || d.T || Date.now()}-${results.length}`,
@@ -262,7 +262,7 @@ export function parseBitgetLiq(data: any): Liquidation | null {
   const size = parseFloat(d.sz || d.fillSz || '0');
   if (!isFinite(price) || !isFinite(size) || price <= 0 || size <= 0) return null;
   const instId = d.instId || d.symbol || '';
-  const symbol = instId.replace('USDT', '').replace('USDC', '').replace('_UMCBL', '');
+  const symbol = instId.replace('_UMCBL', '').replace(/(?:USDT|USDC)$/, '');
   return {
     id: `bg-${instId}-${d.uTime || d.ts || Date.now()}`,
     symbol,

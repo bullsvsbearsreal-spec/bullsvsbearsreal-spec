@@ -72,8 +72,13 @@ async function flushBuffer() {
     totalFlushed += batch.length;
   } catch (e) {
     console.error(`[FLUSH] Error writing ${batch.length} events:`, e);
-    // Put failed items back at end of buffer for retry
+    // Put failed items back for retry, but cap buffer to prevent OOM under persistent DB failure
     buffer.push(...batch);
+    if (buffer.length > 10_000) {
+      const dropped = buffer.length - 5_000;
+      buffer = buffer.slice(-5_000);
+      console.warn(`[FLUSH] Buffer overflow — dropped ${dropped} oldest events`);
+    }
   }
 }
 

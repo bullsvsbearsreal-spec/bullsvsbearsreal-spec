@@ -32,10 +32,14 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 3000;       // requests per window (edgeX alone needs ~185/call)
 const RATE_WINDOW_MS = 60_000; // 1 minute
 
+const MAX_RATE_LIMIT_ENTRIES = 50_000;
+
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
+    // Reject new entries when map is full to prevent OOM
+    if (!entry && rateLimitMap.size >= MAX_RATE_LIMIT_ENTRIES) return true;
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
     return false;
   }
@@ -135,7 +139,7 @@ export default {
       // Check target domain against allowlist
       const allowedTargets = getAllowedTargets(env);
       if (!allowedTargets.has(parsed.hostname)) {
-        return json({ error: `Domain not allowed: ${parsed.hostname}` }, 403);
+        return json({ error: 'Domain not allowed' }, 403);
       }
 
       // Forward the request with timeout
