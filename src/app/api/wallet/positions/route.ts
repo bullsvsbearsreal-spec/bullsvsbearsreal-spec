@@ -152,6 +152,10 @@ export async function GET(request: NextRequest) {
 
   const result = { exchange: 'hyperliquid', accountValue, totalMarginUsed, positions };
   setMem(cacheKey, result);
+  if (cache.size > 500) {
+    const first = cache.keys().next().value;
+    if (first) cache.delete(first);
+  }
 
   return NextResponse.json(result, {
     headers: { 'Cache-Control': 'no-store, max-age=0' },

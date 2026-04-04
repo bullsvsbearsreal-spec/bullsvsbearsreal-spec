@@ -173,14 +173,14 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((item: any, index: number) => ({
           symbol: json[0].universe[index]?.name || `ASSET${index}`,
           exchange: 'Hyperliquid',
-          lastPrice: parseFloat(item.markPx),
-          price: parseFloat(item.markPx),
+          lastPrice: parseFloat(item.markPx) || 0,
+          price: parseFloat(item.markPx) || 0,
           priceChangePercent24h: parseFloat(item.dayNtlVlm) > 0 && (parseFloat(item.prevDayPx) || 0) > 0 ? ((parseFloat(item.markPx) - parseFloat(item.prevDayPx)) / parseFloat(item.prevDayPx)) * 100 : 0,
           changePercent24h: parseFloat(item.dayNtlVlm) > 0 && (parseFloat(item.prevDayPx) || 0) > 0 ? ((parseFloat(item.markPx) - parseFloat(item.prevDayPx)) / parseFloat(item.prevDayPx)) * 100 : 0,
           high24h: 0,
           low24h: 0,
-          volume24h: parseFloat(item.dayNtlVlm),
-          quoteVolume24h: parseFloat(item.dayNtlVlm),
+          volume24h: parseFloat(item.dayNtlVlm) || 0,
+          quoteVolume24h: parseFloat(item.dayNtlVlm) || 0,
         }))
         .filter((item: any) => !isNaN(item.lastPrice) && item.lastPrice > 0);
     },
@@ -210,8 +210,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           changePercent24h: changePct,
           high24h: 0,
           low24h: 0,
-          volume24h: parseFloat(market.volume24H),
-          quoteVolume24h: parseFloat(market.volume24H),
+          volume24h: parseFloat(market.volume24H) || 0,
+          quoteVolume24h: parseFloat(market.volume24H) || 0,
         };
         });
     },
@@ -887,7 +887,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
 
           const quoteVol = parseFloat(ticker.value || ticker.volume24h || '0');
           const baseVol = parseFloat(ticker.size || '0');
-          const priceChange = parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') * 100;
+          const priceChange = (parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') || 0) * 100;
 
           results.push({
             symbol,

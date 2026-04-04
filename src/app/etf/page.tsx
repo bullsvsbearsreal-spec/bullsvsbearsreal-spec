@@ -178,7 +178,7 @@ export default function ETFPage() {
 
   /* Summary stats */
   const stats = useMemo(() => {
-    if (!data) return null;
+    if (!data || data.funds.length === 0) return null;
     const leadFund = data.funds[0]; // IBIT or ETHA
     const avgFee = data.funds.reduce((s, f) => s + f.fee, 0) / data.funds.length;
     const lowestFee = Math.min(...data.funds.map((f) => f.fee));

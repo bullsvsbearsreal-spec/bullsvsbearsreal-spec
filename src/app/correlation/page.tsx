@@ -567,7 +567,7 @@ export default function CorrelationPage() {
                       <td className="px-4 py-2 text-right text-neutral-400">{s.exchangeCount}</td>
                       <td className="px-4 py-2">
                         <div className="flex flex-wrap gap-1.5">
-                          {s.changes
+                          {[...s.changes]
                             .sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h))
                             .slice(0, 6)
                             .map(c => (

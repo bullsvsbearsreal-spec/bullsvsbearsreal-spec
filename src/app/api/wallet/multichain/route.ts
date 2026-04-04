@@ -252,6 +252,10 @@ export async function GET(request: NextRequest) {
 
   // Cache results
   memCache.set(cacheKey, { data: chains, time: Date.now() });
+  if (memCache.size > 500) {
+    const first = memCache.keys().next().value;
+    if (first) memCache.delete(first);
+  }
   if (isDBConfigured()) {
     setCache(cacheKey, chains, 300).catch(() => {}); // 5 min
   }

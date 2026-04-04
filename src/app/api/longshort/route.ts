@@ -75,9 +75,9 @@ async function fetchBinanceTakerRatio(symbol: string, period: string, limit: num
   );
   if (!data) return null;
   return data.map((d: any) => ({
-    buySellRatio: parseFloat(d.buySellRatio),
-    buyVol: parseFloat(d.buyVol),
-    sellVol: parseFloat(d.sellVol),
+    buySellRatio: parseFloat(d.buySellRatio) || 0,
+    buyVol: parseFloat(d.buyVol) || 0,
+    sellVol: parseFloat(d.sellVol) || 0,
     timestamp: d.timestamp,
   }));
 }
@@ -105,7 +105,7 @@ async function fetchOKXLongShortRatio(symbol: string, period: string) {
       longRatio,
       shortRatio,
       longShortRatio: ratio,
-      timestamp: parseInt(r[0], 10),
+      timestamp: parseInt(r[0], 10) || 0,
     };
   }).filter(Boolean);
 }
@@ -121,13 +121,13 @@ async function fetchOKXTakerVolume(symbol: string, period: string) {
   if (!Array.isArray(rows) || rows.length === 0) return null;
   // Each row is [timestamp, sellVol, buyVol]
   return rows.map((r: any) => {
-    const sellVol = parseFloat(r[1]);
-    const buyVol = parseFloat(r[2]);
+    const sellVol = parseFloat(r[1]) || 0;
+    const buyVol = parseFloat(r[2]) || 0;
     return {
       buySellRatio: sellVol > 0 ? buyVol / sellVol : 1,
       buyVol,
       sellVol,
-      timestamp: parseInt(r[0], 10),
+      timestamp: parseInt(r[0], 10) || 0,
     };
   });
 }

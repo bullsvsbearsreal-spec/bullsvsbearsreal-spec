@@ -148,7 +148,7 @@ export default function BtcChartWidget({ widgetId }: { wide?: boolean; widgetId?
 
   if (!prices) return <WidgetSkeleton variant="chart" />;
 
-  const change7d = prices.length > 1 ? ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100 : 0;
+  const change7d = prices.length > 1 && prices[0] !== 0 ? ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100 : 0;
   const up = change7d >= 0;
 
   return (
