@@ -9,6 +9,8 @@ import DataFreshness from '@/components/DataFreshness';
 import { RefreshCw, AlertTriangle, Info } from 'lucide-react';
 import { savePriceSnapshot } from '@/lib/storage/priceHistory';
 
+const NON_CRYPTO_CORR = new Set(['XAU', 'XAG', 'XAUT', 'PAXG', 'XPT', 'XPD', 'EUR', 'GBP', 'JPY', 'USOIL', 'UKOIL', 'CL']);
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 interface SymbolEntry {
@@ -167,7 +169,6 @@ export default function CorrelationPage() {
   }, [data]);
 
   // Slice symbols to selected count, filter out non-crypto (commodities/forex)
-  const NON_CRYPTO_CORR = new Set(['XAU', 'XAG', 'XAUT', 'PAXG', 'XPT', 'XPD', 'EUR', 'GBP', 'JPY', 'USOIL', 'UKOIL', 'CL']);
   const symbols = useMemo(() => {
     if (!data?.symbols) return [];
     return data.symbols.filter((s: { symbol?: string }) => !NON_CRYPTO_CORR.has(s.symbol?.toUpperCase() ?? '')).slice(0, count);

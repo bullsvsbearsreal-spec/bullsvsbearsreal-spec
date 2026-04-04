@@ -274,7 +274,7 @@ export default function PredictionMarketsPage() {
             {authLimit && (
               <SoftAuthGate
                 freeLimit={viewMode === 'arbitrage' ? 5 : 10}
-                totalCount={viewMode === 'arbitrage' ? allArbitrage.length : (allMarkets.polymarket.length + allMarkets.kalshi.length)}
+                totalCount={viewMode === 'arbitrage' ? allArbitrage.length : (allMarkets.polymarket.length + allMarkets.kalshi.length + allMarkets.manifold.length)}
                 dataLabel={viewMode === 'arbitrage' ? 'arb opportunities' : 'markets'}
               />
             )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 
 // Exchange logos using real PNG images from /exchanges/ directory
 
@@ -78,6 +78,9 @@ const FILE_KEY_MAP: Record<string, string> = { 'gate.io': 'gate' };
 export const ExchangeLogo = memo(function ExchangeLogo({ exchange, size = 24, className = '' }: { exchange: string; size?: number; className?: string }) {
   const key = exchange.toLowerCase();
   const [imgError, setImgError] = useState(false);
+
+  // Reset error state when exchange changes (allows retry for transient failures)
+  useEffect(() => { setImgError(false); }, [key]);
 
   // Use real PNG if available
   if (PNG_EXCHANGES.has(key) && !imgError) {

@@ -267,8 +267,10 @@ export default function ScreenerPage() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Scroll to top on page change
+  // Scroll to top on page change (skip initial render)
+  const isFirstPageRender = useRef(true);
   useEffect(() => {
+    if (isFirstPageRender.current) { isFirstPageRender.current = false; return; }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [page]);
 

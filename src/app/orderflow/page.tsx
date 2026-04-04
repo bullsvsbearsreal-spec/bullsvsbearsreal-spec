@@ -197,11 +197,14 @@ export default function OrderflowPage() {
         prevHeatmapSymbolRef.current = symbol;
       }
 
+      let cancelled = false;
+
       const fetchSnapshot = async () => {
         try {
           const res = await fetch(`/api/orderbook?symbol=${symbol}&limit=25`);
-          if (!res.ok) return;
+          if (cancelled || !res.ok) return;
           const json = await res.json();
+          if (cancelled) return;
           const col: HeatmapColumn = {
             timestamp: json.timestamp || Date.now(),
             midPrice: json.midPrice,
@@ -222,6 +225,11 @@ export default function OrderflowPage() {
 
       fetchSnapshot();
       heatmapIntervalRef.current = setInterval(fetchSnapshot, 5000);
+
+      return () => {
+        cancelled = true;
+        if (heatmapIntervalRef.current) clearInterval(heatmapIntervalRef.current);
+      };
     }
     return () => { if (heatmapIntervalRef.current) clearInterval(heatmapIntervalRef.current); };
   }, [activeTab, symbol]);

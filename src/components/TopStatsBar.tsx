@@ -33,7 +33,7 @@ export default function TopStatsBar() {
     checkFlash('vol', formatNumber(stats.totalVolume24h));
     checkFlash('oi', formatNumber(stats.totalOpenInterest));
     checkFlash('dom', `${stats.btcDominance?.toFixed(1) || '54.2'}%`);
-    checkFlash('ls', `${stats.btcLongShort.longRatio.toFixed(1)}/${stats.btcLongShort.shortRatio.toFixed(1)}`);
+    if (stats.btcLongShort) checkFlash('ls', `${stats.btcLongShort.longRatio.toFixed(1)}/${stats.btcLongShort.shortRatio.toFixed(1)}`);
   }, [stats, checkFlash]);
 
   if (loading || !stats) {
@@ -53,7 +53,7 @@ export default function TopStatsBar() {
     );
   }
 
-  const isLongDominant = stats.btcLongShort.longRatio > 50;
+  const isLongDominant = stats.btcLongShort ? stats.btcLongShort.longRatio > 50 : true;
 
   const items = [
     { key: 'vol', label: 'Vol 24H', value: formatNumber(stats.totalVolume24h) },
@@ -62,7 +62,7 @@ export default function TopStatsBar() {
     {
       key: 'ls',
       label: 'Long/Short',
-      value: `${stats.btcLongShort.longRatio.toFixed(1)}/${stats.btcLongShort.shortRatio.toFixed(1)}`,
+      value: stats.btcLongShort ? `${stats.btcLongShort.longRatio.toFixed(1)}/${stats.btcLongShort.shortRatio.toFixed(1)}` : '–/–',
       color: isLongDominant ? 'text-green-400' : 'text-red-400',
     },
   ];
