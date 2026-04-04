@@ -261,13 +261,14 @@ export async function GET(request: NextRequest) {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
     });
   } catch (e) {
+    console.error('[Options]', e instanceof Error ? e.message : e);
     if (cached) {
       return NextResponse.json(cached.body, {
         headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
       });
     }
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Failed to fetch options data' },
+      { error: 'Failed to fetch options data' },
       { status: 500 },
     );
   }

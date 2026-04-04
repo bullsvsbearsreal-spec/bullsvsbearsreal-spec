@@ -99,10 +99,15 @@ export async function GET(request: NextRequest) {
     try {
       const res = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json', {
         next: { revalidate: 3600 }, // 1-hour cache
+        signal: AbortSignal.timeout(10000),
       });
       if (res.ok) {
-        ffEvents = await res.json();
-        liveSource = true;
+        try {
+          ffEvents = await res.json();
+          liveSource = true;
+        } catch {
+          // Malformed JSON — continue with static only
+        }
       }
     } catch {
       // ForexFactory unavailable — continue with static only
@@ -198,7 +203,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error('Economic calendar error:', err);
     return NextResponse.json(
-      { events: [], meta: { total: 0, error: err instanceof Error ? err.message : 'Failed to fetch' } },
+      { events: [], meta: { total: 0, error: 'Failed to fetch economic calendar' } },
       { status: 502 },
     );
   }

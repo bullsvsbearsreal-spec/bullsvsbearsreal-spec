@@ -28,11 +28,12 @@ export async function GET(request: NextRequest) {
   const symbols = symbolsParam.split(',').map(s => s.trim()).filter(Boolean).slice(0, 200);
 
   // Check cache — only serve from cache if ALL requested symbols are present
-  if (l1Cache && Date.now() - l1Cache.timestamp < L1_TTL) {
+  const cachedSnapshot = l1Cache;
+  if (cachedSnapshot && Date.now() - cachedSnapshot.timestamp < L1_TTL) {
     const filtered: Record<string, { avg7d: number; avg24h: number; avg6d: number }> = {};
     let allFound = true;
     symbols.forEach(s => {
-      if (l1Cache!.data[s]) filtered[s] = l1Cache!.data[s];
+      if (cachedSnapshot.data[s]) filtered[s] = cachedSnapshot.data[s];
       else allFound = false;
     });
     if (allFound) {

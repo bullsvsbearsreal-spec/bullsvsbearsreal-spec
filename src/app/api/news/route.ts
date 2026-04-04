@@ -446,7 +446,7 @@ async function fetchMacroEvents(): Promise<MacroEvent[]> {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get('page') || '1', 10);
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
   const filter = searchParams.get('filter') || 'all'; // all | hot | rising | bullish | bearish
   const currency = searchParams.get('currency') || '';
   const search = searchParams.get('search') || '';

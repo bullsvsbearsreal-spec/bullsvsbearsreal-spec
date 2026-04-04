@@ -165,8 +165,9 @@ export async function GET(request: NextRequest) {
       headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
     });
   } catch (e) {
+    console.error('[Aggtrades]', e instanceof Error ? e.message : e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Failed to fetch trade data' },
+      { error: 'Failed to fetch trade data' },
       { status: 500 },
     );
   }
