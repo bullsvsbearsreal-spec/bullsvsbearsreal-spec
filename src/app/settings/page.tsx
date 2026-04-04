@@ -54,20 +54,24 @@ export default function SettingsPage() {
       } catch {}
     })();
 
-    const savedTheme = localStorage.getItem('infohub-theme');
-    if (savedTheme === 'light') setTheme('light');
+    try {
+      const savedTheme = localStorage.getItem('infohub-theme');
+      if (savedTheme === 'light') setTheme('light');
+    } catch {}
   }, [userId]);
 
   const handleThemeToggle = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
-    if (next === 'light') {
-      document.documentElement.dataset.theme = 'light';
-      localStorage.setItem('infohub-theme', 'light');
-    } else {
-      delete document.documentElement.dataset.theme;
-      localStorage.removeItem('infohub-theme');
-    }
+    try {
+      if (next === 'light') {
+        document.documentElement.dataset.theme = 'light';
+        localStorage.setItem('infohub-theme', 'light');
+      } else {
+        delete document.documentElement.dataset.theme;
+        localStorage.removeItem('infohub-theme');
+      }
+    } catch {}
   };
 
   if (status === 'loading') {

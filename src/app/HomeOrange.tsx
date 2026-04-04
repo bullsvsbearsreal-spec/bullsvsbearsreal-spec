@@ -53,12 +53,14 @@ export default function HomeOrange() {
 
   // Collapse hero for returning visitors
   useEffect(() => {
-    const visited = localStorage.getItem('infohub-visited');
-    if (visited) {
-      setHeroCollapsed(true);
-    } else {
-      localStorage.setItem('infohub-visited', 'true');
-    }
+    try {
+      const visited = localStorage.getItem('infohub-visited');
+      if (visited) {
+        setHeroCollapsed(true);
+      } else {
+        localStorage.setItem('infohub-visited', 'true');
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
