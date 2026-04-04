@@ -42,14 +42,7 @@ const MIN_VALUE = 100;
 const RECONNECT_DELAY = 3000;
 const POLL_INTERVAL = 15_000;
 
-/** Normalize symbol: "BTCUSDT" → "BTC" */
-function normalizeSymbol(raw: string): string {
-  return raw
-    .replace(/USD[_]?[A-Z]*$/i, '')
-    .replace(/-.*$/, '')
-    .replace(/1M/i, '')
-    .toUpperCase();
-}
+import { normalizeSymbolBase as normalizeSymbol } from '@/lib/utils/normalize';
 
 export function useRealtimeLiquidations(enabled: boolean) {
   const [liqs, setLiqs] = useState<RealtimeLiq[]>([]);

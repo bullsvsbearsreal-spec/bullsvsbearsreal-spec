@@ -29,9 +29,7 @@ interface CoinData {
 
 const POPULAR = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB', 'ADA', 'AVAX', 'LINK', 'SUI', 'ARB', 'OP'];
 
-function normalizeSymbol(raw: string): string {
-  return raw.toUpperCase().replace(/[-_]/g, '').replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '').replace(/^1000/, '');
-}
+import { normalizeSymbolBase as normalizeSymbol } from '@/lib/utils/normalize';
 
 interface CompareData {
   tickers: TickerEntry[];

@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchWithTimeout } from '../_shared/fetch';
+import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
+import { tickerFetchers } from '../tickers/exchanges';
+import { getFundingData } from '../_shared/funding-core';
+import { getOIData } from '../_shared/oi-core';
+
+export const runtime = 'nodejs';
+export const preferredRegion = 'bom1';
+export const dynamic = 'force-dynamic';
 
 /**
  * /api/enriched?symbol=BTC
  * Merges tickers + funding + OI into a single per-exchange response.
- * Saves the client from making 3 separate fetches.
+ * Uses direct function imports instead of HTTP self-fetch.
  */
-
-const INTERNAL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 interface EnrichedEntry {
   exchange: string;
@@ -25,15 +32,15 @@ export async function GET(req: NextRequest) {
   const sym = req.nextUrl.searchParams.get('symbol') || 'BTC';
 
   try {
-    const [tickerRes, fundingRes, oiRes] = await Promise.allSettled([
-      fetch(`${INTERNAL}/api/tickers?symbols=${sym}`, { next: { revalidate: 5 } }).then(r => r.ok ? r.json() : null),
-      fetch(`${INTERNAL}/api/funding`, { next: { revalidate: 15 } }).then(r => r.ok ? r.json() : null),
-      fetch(`${INTERNAL}/api/openinterest`, { next: { revalidate: 30 } }).then(r => r.ok ? r.json() : null),
+    const [tickerResult, fundingResult, oiResult] = await Promise.allSettled([
+      fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout),
+      getFundingData('all'),
+      getOIData(),
     ]);
 
-    const tickers: any[] = (tickerRes.status === 'fulfilled' && tickerRes.value?.data) || [];
-    const funding: any[] = (fundingRes.status === 'fulfilled' && fundingRes.value?.data) || [];
-    const oi: any[] = (oiRes.status === 'fulfilled' && oiRes.value?.data) || [];
+    const tickers: any[] = (tickerResult.status === 'fulfilled' && tickerResult.value?.data) || [];
+    const funding: any[] = (fundingResult.status === 'fulfilled' && fundingResult.value?.result?.data) || [];
+    const oi: any[] = (oiResult.status === 'fulfilled' && oiResult.value?.result?.data) || [];
 
     // Filter to requested symbol
     const symTickers = tickers.filter(t => t.symbol === sym);

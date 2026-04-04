@@ -172,34 +172,43 @@ export async function GET(request: Request) {
     let points: any[] | null = null;
     let resolvedExchange = exchange;
 
+    // Fetch both exchanges in parallel to avoid timeout cascade when one is blocked.
+    // topTraders is Binance-only, so skip OKX for that source.
+    const canFallbackOKX = source !== 'topTraders';
+
+    const binanceFn = () => {
+      if (source === 'global') return fetchBinanceGlobalLS(symbol, period, limit);
+      if (source === 'topTraders') return fetchBinanceTopTraderLS(symbol, period, limit);
+      return fetchBinanceTakerRatio(symbol, period, limit);
+    };
+    const okxFn = () => {
+      if (source === 'global' || source === 'topTraders') return fetchOKXLongShortRatio(bareSymbol, period);
+      return fetchOKXTakerVolume(bareSymbol, period);
+    };
+
+    // Fire both in parallel
+    const [binanceResult, okxResult] = await Promise.allSettled([
+      binanceFn().catch(() => null),
+      canFallbackOKX ? okxFn().catch(() => null) : Promise.resolve(null),
+    ]);
+
+    const binanceData = binanceResult.status === 'fulfilled' ? binanceResult.value : null;
+    const okxData = okxResult.status === 'fulfilled' ? okxResult.value : null;
+
+    // Prefer the requested exchange, fall back to the other
     if (exchange === 'binance') {
-      if (source === 'global') points = await fetchBinanceGlobalLS(symbol, period, limit);
-      else if (source === 'topTraders') points = await fetchBinanceTopTraderLS(symbol, period, limit);
-      else if (source === 'taker') points = await fetchBinanceTakerRatio(symbol, period, limit);
-
-      // Cascade: if Binance failed (geo-blocked), try OKX as fallback
-      if (!points || points.length === 0) {
-        console.warn(`[longshort] Binance failed for ${symbol}, trying OKX fallback`);
-        if (source === 'global' || source === 'topTraders') {
-          points = await fetchOKXLongShortRatio(bareSymbol, period);
-        } else if (source === 'taker') {
-          points = await fetchOKXTakerVolume(bareSymbol, period);
-        }
-        if (points && points.length > 0) resolvedExchange = 'okx';
+      if (binanceData && binanceData.length > 0) {
+        points = binanceData;
+      } else if (okxData && okxData.length > 0) {
+        points = okxData;
+        resolvedExchange = 'okx';
       }
-    } else if (exchange === 'okx') {
-      if (source === 'global') points = await fetchOKXLongShortRatio(bareSymbol, period);
-      else if (source === 'taker') points = await fetchOKXTakerVolume(bareSymbol, period);
-
-      // Cascade: if OKX failed, try Binance as fallback
-      if (!points || points.length === 0) {
-        console.warn(`[longshort] OKX failed for ${symbol}, trying Binance fallback`);
-        if (source === 'global') {
-          points = await fetchBinanceGlobalLS(symbol, period, limit);
-        } else if (source === 'taker') {
-          points = await fetchBinanceTakerRatio(symbol, period, limit);
-        }
-        if (points && points.length > 0) resolvedExchange = 'binance';
+    } else {
+      if (okxData && okxData.length > 0) {
+        points = okxData;
+      } else if (binanceData && binanceData.length > 0) {
+        points = binanceData;
+        resolvedExchange = 'binance';
       }
     }
 

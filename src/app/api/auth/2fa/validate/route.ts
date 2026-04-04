@@ -4,7 +4,27 @@ export const preferredRegion = 'bom1';
 import { NextResponse } from 'next/server';
 import * as OTPAuth from 'otpauth';
 import crypto from 'crypto';
-import { isDBConfigured, getSQL } from '@/lib/db';
+import { isDBConfigured, getSQL, initDB } from '@/lib/db';
+
+/** Issue a single-use nonce proving 2FA was validated server-side (5 min TTL). */
+async function issueNonce(userId: string): Promise<string> {
+  const db = getSQL();
+  const nonce = crypto.randomBytes(32).toString('hex');
+  // Ensure table exists (idempotent)
+  await db`
+    CREATE TABLE IF NOT EXISTS twofa_nonces (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      nonce TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '5 minutes',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  // Clean up expired nonces opportunistically
+  await db`DELETE FROM twofa_nonces WHERE expires_at < NOW()`;
+  await db`INSERT INTO twofa_nonces (user_id, nonce) VALUES (${userId}, ${nonce})`;
+  return nonce;
+}
 
 // In-memory rate limit: max 5 attempts per email per 15 minutes
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -80,7 +100,8 @@ export async function POST(req: Request) {
 
       const delta = totp.validate({ token: code, window: 1 });
       if (delta !== null) {
-        return NextResponse.json({ valid: true });
+        const nonce = await issueNonce(userId);
+        return NextResponse.json({ valid: true, nonce });
       }
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 });
     }
@@ -101,7 +122,8 @@ export async function POST(req: Request) {
         RETURNING id
       `;
       if (claimed.length > 0) {
-        return NextResponse.json({ valid: true });
+        const nonce = await issueNonce(userId);
+        return NextResponse.json({ valid: true, nonce });
       }
       return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
     }
@@ -130,7 +152,8 @@ export async function POST(req: Request) {
         if (removed.length === 0) {
           return NextResponse.json({ error: 'Backup code already used' }, { status: 400 });
         }
-        return NextResponse.json({ valid: true });
+        const nonce = await issueNonce(userId);
+        return NextResponse.json({ valid: true, nonce });
       }
       return NextResponse.json({ error: 'Invalid backup code' }, { status: 400 });
     }

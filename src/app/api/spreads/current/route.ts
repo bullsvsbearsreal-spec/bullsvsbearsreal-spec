@@ -71,6 +71,7 @@ export async function GET() {
     cache = { data: resp, ts: Date.now() };
     return NextResponse.json(resp, { headers: { 'Cache-Control': 's-maxage=30, stale-while-revalidate=60' } });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[spreads/current]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

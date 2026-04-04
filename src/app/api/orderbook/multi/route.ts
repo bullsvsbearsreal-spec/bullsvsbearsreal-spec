@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         const book = await fetcher(symbol, fetch);
         return { exchange, error: null, book };
       } catch (err: any) {
-        return { exchange, error: err.message || 'fetch_failed', book: null as RawBookData | null };
+        return { exchange, error: 'fetch_failed', book: null as RawBookData | null };
       }
     }),
   );

@@ -19,7 +19,7 @@ const providers: any[] = [
     credentials: {
       email: { label: 'Email', type: 'email', placeholder: 'you@example.com' },
       password: { label: 'Password', type: 'password' },
-      twoFactorValidated: { label: '2FA Validated', type: 'text' },
+      twoFactorNonce: { label: '2FA Nonce', type: 'text' },
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
@@ -44,14 +44,25 @@ const providers: any[] = [
 
       // Server-side 2FA enforcement — prevents bypass via direct NextAuth callback.
       // The client flow is: check-credentials → 2fa/validate → signIn(), but an attacker
-      // could skip straight to signIn(). This check ensures 2FA cannot be bypassed.
+      // could skip straight to signIn(). This check verifies a server-issued nonce.
       const twofa = await db`
         SELECT totp_enabled, email_2fa_enabled FROM user_2fa WHERE user_id = ${user.id}
       `;
       if (twofa.length > 0 && (twofa[0].totp_enabled || twofa[0].email_2fa_enabled)) {
-        // 2FA is enabled — require a validated 2FA token.
-        // The client must pass twoFactorValidated=true after completing 2fa/validate.
-        if (credentials.twoFactorValidated !== 'true') {
+        // 2FA is enabled — require a valid server-side nonce from /api/auth/2fa/validate.
+        const nonce = credentials.twoFactorNonce as string | undefined;
+        if (!nonce) {
+          throw new Error('2FA_REQUIRED');
+        }
+        // Atomically claim the nonce — prevents replay and ensures server-side proof
+        const claimed = await db`
+          DELETE FROM twofa_nonces
+          WHERE user_id = ${user.id}
+            AND nonce = ${nonce}
+            AND expires_at > NOW()
+          RETURNING id
+        `;
+        if (claimed.length === 0) {
           throw new Error('2FA_REQUIRED');
         }
       }

@@ -41,6 +41,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (e: any) {
     console.error('[admin/dedup-liquidations] error:', e);
-    return NextResponse.json({ error: e.message || 'Failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

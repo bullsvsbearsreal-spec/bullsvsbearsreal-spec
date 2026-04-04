@@ -55,13 +55,7 @@ const PRESET_TOP5 = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE'];
 /*  Helper: strip common suffixes so "BTCUSDT" normalizes to "BTC"     */
 /* ------------------------------------------------------------------ */
 
-function normalizeSymbol(raw: string): string {
-  return raw
-    .toUpperCase()
-    .replace(/[-_]/g, '')
-    .replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '')
-    .replace(/^1000/, '');
-}
+import { normalizeSymbolBase as normalizeSymbol } from '@/lib/utils/normalize';
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */

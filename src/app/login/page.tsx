@@ -85,12 +85,12 @@ function LoginPageInner() {
     }
   }
 
-  async function completeSignIn() {
+  async function completeSignIn(nonce?: string) {
     try {
       const res = await signIn('credentials', {
         email,
         password,
-        twoFactorValidated: 'true',
+        ...(nonce ? { twoFactorNonce: nonce } : {}),
         redirect: false,
       });
 
@@ -182,9 +182,9 @@ function LoginPageInner() {
         return;
       }
 
-      // 2FA valid — NOW issue the session via signIn
+      // 2FA valid — NOW issue the session via signIn with server-issued nonce
       setLoading(true);
-      await completeSignIn();
+      await completeSignIn(data.nonce);
     } catch {
       setError('Something went wrong');
     } finally {

@@ -46,8 +46,11 @@ export async function GET(req: NextRequest) {
 
     const resp = { symbol, days, grid, totalSamples: rows.reduce((s: number, r: any) => s + r.samples, 0) };
     cache[key] = { data: resp, ts: Date.now() };
-    return NextResponse.json(resp);
+    return NextResponse.json(resp, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[spreads/heatmap]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

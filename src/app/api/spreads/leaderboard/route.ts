@@ -41,8 +41,11 @@ export async function GET(req: NextRequest) {
 
     const resp = { data, days, count: data.length, ts: Date.now() };
     cache = { data: resp, ts: Date.now() };
-    return NextResponse.json(resp);
+    return NextResponse.json(resp, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[spreads/leaderboard]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

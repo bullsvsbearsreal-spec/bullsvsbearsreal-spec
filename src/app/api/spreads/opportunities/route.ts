@@ -41,8 +41,11 @@ export async function GET(req: NextRequest) {
       durationMs: r.closed_at ? new Date(r.closed_at).getTime() - new Date(r.opened_at).getTime() : Date.now() - new Date(r.opened_at).getTime(),
     }));
 
-    return NextResponse.json({ data, count: data.length });
+    return NextResponse.json({ data, count: data.length }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[spreads/opportunities]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
