@@ -529,17 +529,35 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
 
   // MEXC
-  // MEXC — cross-references with /contract/detail to exclude non-active pairs (state !== 0)
+  // MEXC — uses /funding_rate (batch) for rates + collectCycle, /contract/detail for active filter,
+  // and /ticker for mark/index prices. collectCycle varies per coin (1h, 4h, 8h, 24h).
   {
     name: 'MEXC',
     fetcher: async (fetchFn) => {
-      const [tickerRes, detailRes] = await Promise.all([
+      const [fundingRes, tickerRes, detailRes] = await Promise.all([
+        fetchFn('https://contract.mexc.com/api/v1/contract/funding_rate'),
         fetchFn('https://contract.mexc.com/api/v1/contract/ticker'),
         fetchFn('https://contract.mexc.com/api/v1/contract/detail', {}, 8000).catch(() => null),
       ]);
-      if (!tickerRes.ok) return [];
-      const json = await tickerRes.json();
-      if (!json.success || !Array.isArray(json.data)) return [];
+      if (!fundingRes.ok) return [];
+      const fundingJson = await fundingRes.json();
+      if (!fundingJson.success || !Array.isArray(fundingJson.data)) return [];
+
+      // Build price map from ticker data for mark/index prices
+      const priceMap = new Map<string, { fairPrice: number; indexPrice: number }>();
+      if (tickerRes.ok) {
+        try {
+          const tickerJson = await tickerRes.json();
+          if (tickerJson.success && Array.isArray(tickerJson.data)) {
+            for (const t of tickerJson.data) {
+              priceMap.set(t.symbol, {
+                fairPrice: parseFloat(t.fairPrice) || 0,
+                indexPrice: parseFloat(t.indexPrice) || 0,
+              });
+            }
+          }
+        } catch {}
+      }
 
       // Build set of active contract symbols (state=0) to filter out delisted/suspended pairs
       let activeSymbols: Set<string> | null = null;
@@ -556,22 +574,29 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         } catch {}
       }
 
-      return json.data
+      const VALID_INTERVALS = new Set([1, 4, 8]);
+
+      return fundingJson.data
         .filter((item: any) => {
           if (!item.symbol.endsWith('_USDT') || item.fundingRate == null) return false;
           if (activeSymbols && activeSymbols.size > 0 && !activeSymbols.has(item.symbol)) return false;
           return true;
         })
-        .map((item: any) => ({
-          symbol: item.symbol.replace('_USDT', ''),
-          exchange: 'MEXC',
-          fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.fairPrice) || 0,
-          indexPrice: parseFloat(item.indexPrice) || 0,
-          nextFundingTime: item.nextSettlementTime || Date.now() + 28800000,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const cycle = parseInt(item.collectCycle) || 8;
+          const intervalHours = VALID_INTERVALS.has(cycle) ? cycle : 8;
+          const prices = priceMap.get(item.symbol);
+          return {
+            symbol: item.symbol.replace('_USDT', ''),
+            exchange: 'MEXC',
+            fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
+            fundingInterval: `${intervalHours}h` as '1h' | '4h' | '8h',
+            markPrice: prices?.fairPrice || 0,
+            indexPrice: prices?.indexPrice || 0,
+            nextFundingTime: item.nextSettleTime || Date.now() + intervalHours * 3600000,
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
