@@ -14,7 +14,7 @@ export function walkBook(
   let levelsConsumed = 0;
 
   for (const level of levels) {
-    if (remaining <= 0) break;
+    if (remaining <= 0 || level.price <= 0) break;
     const levelValueUsd = level.size * level.price;
     const fillUsd = Math.min(remaining, levelValueUsd);
     totalBaseQty += fillUsd / level.price;
