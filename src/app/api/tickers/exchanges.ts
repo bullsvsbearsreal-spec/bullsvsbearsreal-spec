@@ -530,7 +530,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => {
           const lastPrice = parseFloat(ticker.last_price) || 0;
           return {
-            symbol: ticker.ticker_id.replace('_PERP', ''),
+            symbol: ticker.ticker_id.replace(/_USDT_PERP$|_PERP$/, ''),
             exchange: 'WhiteBIT',
             lastPrice,
             price: lastPrice,
@@ -559,7 +559,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => {
           const lastPrice = parseFloat(ticker.quote?.mark_price) || 0;
           return {
-            symbol: ticker.symbol.replace('-PERP', ''),
+            symbol: ticker.symbol.replace(/-USD-PERP$|-PERP$/, ''),
             exchange: 'Coinbase',
             lastPrice,
             price: lastPrice,

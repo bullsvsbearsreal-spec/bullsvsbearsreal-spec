@@ -143,9 +143,9 @@ export const spotPriceFetchers: ExchangeFetcherConfig<SpotPrice>[] = [
         if (pair.endsWith('ZUSD')) {
           symbol = pair.replace('ZUSD', '');
         } else if (pair.endsWith('USD')) {
-          symbol = pair.replace('USD', '');
+          symbol = pair.slice(0, -3);
         } else if (pair.endsWith('USDT')) {
-          symbol = pair.replace('USDT', '');
+          symbol = pair.slice(0, -4);
         } else {
           continue;
         }
@@ -387,8 +387,8 @@ export const spotPriceFetchers: ExchangeFetcherConfig<SpotPrice>[] = [
           const lastPrice = parseFloat(t[7]) || 0;
           if (lastPrice <= 0) return null;
           let sym = t[0].slice(1); // Remove 't' prefix
-          if (sym.endsWith('UST')) sym = sym.replace('UST', '');
-          else if (sym.endsWith('USD')) sym = sym.replace('USD', '');
+          if (sym.endsWith('UST')) sym = sym.slice(0, -3);
+          else if (sym.endsWith('USD')) sym = sym.slice(0, -3);
           if (sym === 'XBT') sym = 'BTC';
           if (!sym || sym.length > 10 || !isCryptoSymbol(sym)) return null;
           const vol = parseFloat(t[8]) || 0;

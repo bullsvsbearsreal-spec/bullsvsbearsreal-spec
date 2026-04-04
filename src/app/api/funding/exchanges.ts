@@ -587,7 +587,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return json.tickers
         .filter((item: any) => item.symbol.startsWith('PF_') && item.symbol.endsWith('USD') && item.fundingRate != null && item.markPrice > 0)
         .map((item: any) => {
-          let sym = item.symbol.replace('PF_', '').replace('USD', '');
+          let sym = item.symbol.replace('PF_', '').replace(/USD$/, '');
           if (sym === 'XBT') sym = 'BTC';
           const markPrice = parseFloat(item.markPrice) || 0;
           // Kraken fundingRate is ABSOLUTE (per contract unit), not relative
@@ -961,7 +961,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return items
         .filter((item: any) => item.ticker_id && item.ticker_id.endsWith('_PERP') && item.funding_rate != null)
         .map((item: any) => ({
-          symbol: item.ticker_id.replace('_PERP', ''),
+          symbol: item.ticker_id.replace(/_USDT_PERP$|_PERP$/, ''),
           exchange: 'WhiteBIT',
           fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
           fundingInterval: '8h' as const,
@@ -985,7 +985,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return data
         .filter((item: any) => (item.type === 'PERP' || item.instrument_type === 'PERP') && item.quote?.predicted_funding != null)
         .map((item: any) => ({
-          symbol: item.symbol.replace('-PERP', ''),
+          symbol: item.symbol.replace(/-USD-PERP$|-PERP$/, ''),
           exchange: 'Coinbase',
           fundingRate: (parseFloat(item.quote.predicted_funding) || 0) * 100, // native 1h fraction → %
           fundingInterval: '1h' as const,
