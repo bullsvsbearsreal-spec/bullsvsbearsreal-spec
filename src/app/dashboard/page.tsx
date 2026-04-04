@@ -71,7 +71,8 @@ export default function DashboardPage() {
       } catch {}
 
       // First-time user: apply Market Pulse and show persona selector
-      const personaSet = localStorage.getItem(PERSONA_SET_KEY);
+      let personaSet: string | null = null;
+      try { personaSet = localStorage.getItem(PERSONA_SET_KEY); } catch {}
       if (!personaSet) {
         const marketPulse = getPresetLayout('market-pulse');
         if (marketPulse) {
@@ -131,7 +132,7 @@ export default function DashboardPage() {
         const presetLayout = getPresetLayout(presetId);
         if (presetLayout) handleLayoutChange(presetLayout);
       }
-      localStorage.setItem(PERSONA_SET_KEY, 'true');
+      try { localStorage.setItem(PERSONA_SET_KEY, 'true'); } catch {}
       setShowPersona(false);
       setIsFirstVisit(false);
     },

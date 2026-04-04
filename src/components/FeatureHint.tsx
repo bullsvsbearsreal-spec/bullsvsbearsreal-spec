@@ -44,35 +44,37 @@ export default function FeatureHint({ page }: FeatureHintProps) {
   const [hint, setHint] = useState<HintConfig | null>(null);
 
   useEffect(() => {
-    // Only show one hint per session
-    const sessionHintShown = sessionStorage.getItem(HINT_SHOWN_KEY);
-    if (sessionHintShown) return;
-
-    // Check if user already visited this page
-    let visited: string[] = [];
     try {
-      const stored = localStorage.getItem(VISITED_KEY);
-      if (stored) visited = JSON.parse(stored);
-    } catch {}
+      // Only show one hint per session
+      const sessionHintShown = sessionStorage.getItem(HINT_SHOWN_KEY);
+      if (sessionHintShown) return;
 
-    const hintConfig = PAGE_HINTS[page];
-    if (!hintConfig || visited.includes(page)) {
-      // Mark page as visited even if no hint
-      if (!visited.includes(page)) {
-        visited.push(page);
-        localStorage.setItem(VISITED_KEY, JSON.stringify(visited));
+      // Check if user already visited this page
+      let visited: string[] = [];
+      try {
+        const stored = localStorage.getItem(VISITED_KEY);
+        if (stored) visited = JSON.parse(stored);
+      } catch {}
+
+      const hintConfig = PAGE_HINTS[page];
+      if (!hintConfig || visited.includes(page)) {
+        // Mark page as visited even if no hint
+        if (!visited.includes(page)) {
+          visited.push(page);
+          try { localStorage.setItem(VISITED_KEY, JSON.stringify(visited)); } catch {}
+        }
+        return;
       }
-      return;
-    }
 
-    // Show hint for first visit
-    setHint(hintConfig);
-    setVisible(true);
-    sessionStorage.setItem(HINT_SHOWN_KEY, 'true');
+      // Show hint for first visit
+      setHint(hintConfig);
+      setVisible(true);
+      try { sessionStorage.setItem(HINT_SHOWN_KEY, 'true'); } catch {}
 
-    // Mark page visited
-    visited.push(page);
-    localStorage.setItem(VISITED_KEY, JSON.stringify(visited));
+      // Mark page visited
+      visited.push(page);
+      try { localStorage.setItem(VISITED_KEY, JSON.stringify(visited)); } catch {}
+    } catch {}
   }, [page]);
 
   const dismiss = () => setVisible(false);

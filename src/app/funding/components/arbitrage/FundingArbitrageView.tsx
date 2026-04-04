@@ -22,9 +22,11 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
   // State
   const [portfolio, setPortfolio] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ih_arb_portfolio');
-      const val = parseInt(saved ?? '', 10);
-      return isFinite(val) && val > 0 ? val : 10000;
+      try {
+        const saved = localStorage.getItem('ih_arb_portfolio');
+        const val = parseInt(saved ?? '', 10);
+        return isFinite(val) && val > 0 ? val : 10000;
+      } catch {}
     }
     return 10000;
   });
@@ -55,7 +57,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
 
   const handlePortfolioChange = (val: number) => {
     setPortfolio(val);
-    if (typeof window !== 'undefined') localStorage.setItem('ih_arb_portfolio', String(val));
+    try { if (typeof window !== 'undefined') localStorage.setItem('ih_arb_portfolio', String(val)); } catch {}
   };
 
   React.useEffect(() => {
