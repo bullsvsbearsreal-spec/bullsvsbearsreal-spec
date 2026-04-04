@@ -312,7 +312,7 @@ export default function WalletTrackerPage() {
     lastUpdate,
     refresh: refreshWallet,
   } = useApi<WalletData | null>({
-    key: activeAddress && activeChain ? `wallet-funding-${activeAddress}` : null,
+    key: activeAddress && activeChain ? `wallet-${activeChain}-${activeAddress}` : null,
     fetcher: walletFetcher,
     refreshInterval: 120_000,
   });

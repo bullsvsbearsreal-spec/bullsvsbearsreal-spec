@@ -251,7 +251,7 @@ export function parseOKXLiq(data: any): Liquidation | null {
     quantity: size,
     value: price * size,
     exchange: 'OKX',
-    timestamp: parseInt(detail.ts, 10),
+    timestamp: parseInt(detail.ts, 10) || Date.now(),
   };
 }
 
@@ -455,7 +455,7 @@ export function parseGTradeLiq(data: any): Liquidation | null {
     quantity,
     value,
     exchange: 'gTrade',
-    timestamp: trade.closeTimestamp ? parseInt(trade.closeTimestamp, 10) : Date.now(),
+    timestamp: (trade.closeTimestamp ? parseInt(trade.closeTimestamp, 10) : NaN) || Date.now(),
   };
 }
 

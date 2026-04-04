@@ -216,15 +216,18 @@ export default function NewsPage() {
     }
   }, [buildParams]);
 
-  // Fetch on filter/page/search/time/sourceType changes
+  // Fetch when page changes (user pagination)
   useEffect(() => {
     fetchNews(page, filter, timeRange, currency, debouncedSearch, sourceType);
-  }, [page, filter, timeRange, currency, debouncedSearch, sourceType, fetchNews]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, fetchNews]);
 
-  // Reset page when filters change
+  // Reset page and fetch page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [filter, timeRange, currency, debouncedSearch, sourceType]);
+    fetchNews(1, filter, timeRange, currency, debouncedSearch, sourceType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, timeRange, currency, debouncedSearch, sourceType, fetchNews]);
 
   // Background polling for new articles (every 2 min)
   useEffect(() => {

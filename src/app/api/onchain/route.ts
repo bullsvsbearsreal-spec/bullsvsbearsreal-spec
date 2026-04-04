@@ -469,7 +469,7 @@ async function fetchOnchainData(): Promise<OnchainResponse> {
     mempool,
     transactionVolume,
     supply,
-    timestamp: Math.floor(Date.now() / 1000),
+    timestamp: Date.now(),
   };
 }
 

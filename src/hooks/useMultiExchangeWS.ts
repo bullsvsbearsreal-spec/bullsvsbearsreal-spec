@@ -91,7 +91,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
           const exPrices = data.data[symbol];
           const found = new Set<string>();
           for (const [ex, info] of Object.entries(exPrices) as [string, any][]) {
-            if (!exchanges.includes(ex)) continue;
+            if (!exchangesRef.current.includes(ex)) continue;
             if (info.price > 0) {
               handlePrice(ex, symbol, info.price, info.bid || info.price, info.ask || info.price, info.ts || Date.now());
               found.add(ex);
@@ -146,6 +146,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
         ws.onmessage = (event) => {
           if (aborted) return;
           try {
+            if (typeof event.data !== 'string' || !event.data.startsWith('{')) return;
             const msg = JSON.parse(event.data as string);
 
             // Heartbeat
@@ -160,7 +161,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
               if (symData) {
                 const found = new Set<string>();
                 for (const [ex, info] of Object.entries(symData) as [string, any][]) {
-                  if (!exchanges.includes(ex)) continue;
+                  if (!exchangesRef.current.includes(ex)) continue;
                   if (info.price > 0) {
                     handlePrice(ex, symbol, info.price, info.bid || info.price, info.ask || info.price, info.ts || Date.now());
                     found.add(ex);
@@ -195,6 +196,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
           // Fall back to polling immediately
           startPolling();
           // Attempt reconnect with backoff
+          if (reconnectTimer) clearTimeout(reconnectTimer);
           const delay = RECONNECT_DELAYS[Math.min(reconnectAttempt.current, RECONNECT_DELAYS.length - 1)];
           reconnectAttempt.current++;
           reconnectTimer = setTimeout(connectWS, delay);
@@ -206,6 +208,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
       } catch {
         // WebSocket constructor failed — stay on polling
         startPolling();
+        if (reconnectTimer) clearTimeout(reconnectTimer);
         const delay = RECONNECT_DELAYS[Math.min(reconnectAttempt.current, RECONNECT_DELAYS.length - 1)];
         reconnectAttempt.current++;
         reconnectTimer = setTimeout(connectWS, delay);

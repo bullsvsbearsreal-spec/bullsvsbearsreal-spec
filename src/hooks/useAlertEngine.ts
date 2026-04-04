@@ -137,17 +137,18 @@ export function useAlertEngine(intervalMs: number = 60_000) {
 
   const runCheck = useCallback(async () => {
     const alerts = getAlerts().filter((a) => a.enabled);
-    if (alerts.length === 0) return;
-
-    const marketData = await fetchMarketData();
     const now = Date.now();
 
-    // Prune stale cooldown entries (deleted alerts or entries older than 2x cooldown)
+    // Prune stale cooldown entries unconditionally (deleted alerts or entries older than 2x cooldown)
     const pruneCutoff = now - ALERT_COOLDOWN_MS * 2;
     const activeIds = new Set(alerts.map(a => a.id));
     lastFiredRef.current.forEach((ts, id) => {
       if (ts < pruneCutoff || !activeIds.has(id)) lastFiredRef.current.delete(id);
     });
+
+    if (alerts.length === 0) return;
+
+    const marketData = await fetchMarketData();
 
     alerts.forEach((alert) => {
       const data = marketData.get(alert.symbol);

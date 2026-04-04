@@ -44,7 +44,7 @@ async function fetchHistory(limit: number): Promise<HistoryResponse | null> {
     const entries: FearGreedEntry[] = json.data.map((entry: { value: string; value_classification: string; timestamp: string }) => ({
       value: parseInt(entry.value) || 50,
       classification: entry.value_classification || 'Neutral',
-      timestamp: (parseInt(entry.timestamp) * 1000) || Date.now(),
+      timestamp: (() => { const t = parseInt(entry.timestamp, 10); return t > 0 ? t * 1000 : Date.now(); })(),
     }));
 
     return {
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
         cachedData = {
           value: parseInt(entry.value) || 50,
           classification: entry.value_classification || 'Neutral',
-          timestamp: parseInt(entry.timestamp) * 1000 || Date.now(),
+          timestamp: (() => { const t = parseInt(entry.timestamp, 10); return t > 0 ? t * 1000 : Date.now(); })(),
         };
         cacheTime = Date.now();
         if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
