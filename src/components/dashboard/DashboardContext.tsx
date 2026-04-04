@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useReducer, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
@@ -156,8 +156,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     [state.lockedWidgets],
   );
 
+  const ctxValue = useMemo(
+    () => ({ state, dispatch, getWidgetSymbol, getWidgetTimeframe, isWidgetLocked }),
+    [state, dispatch, getWidgetSymbol, getWidgetTimeframe, isWidgetLocked],
+  );
+
   return (
-    <DashboardCtx.Provider value={{ state, dispatch, getWidgetSymbol, getWidgetTimeframe, isWidgetLocked }}>
+    <DashboardCtx.Provider value={ctxValue}>
       {children}
     </DashboardCtx.Provider>
   );

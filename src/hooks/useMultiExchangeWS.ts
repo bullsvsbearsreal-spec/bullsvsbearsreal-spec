@@ -175,7 +175,7 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
             // Live price update: { s, e, p, b, a, t }
             if (msg.s && msg.e && msg.p) {
               if (msg.s !== symbol) return;
-              if (!exchanges.includes(msg.e)) return;
+              if (!exchangesRef.current.includes(msg.e)) return;
               const p = typeof msg.p === 'string' ? parseFloat(msg.p) : msg.p;
               const b = typeof (msg.b || msg.p) === 'string' ? parseFloat(msg.b || msg.p) : (msg.b || msg.p);
               const a = typeof (msg.a || msg.p) === 'string' ? parseFloat(msg.a || msg.p) : (msg.a || msg.p);

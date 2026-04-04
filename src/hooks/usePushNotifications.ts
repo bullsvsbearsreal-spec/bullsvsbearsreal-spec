@@ -20,6 +20,7 @@ export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
+    let destroyed = false;
     const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
     setIsSupported(supported);
     if (supported) {
@@ -27,10 +28,11 @@ export function usePushNotifications() {
       // Check existing subscription
       navigator.serviceWorker.ready.then((reg) => {
         reg.pushManager.getSubscription().then((sub) => {
-          setIsSubscribed(!!sub);
+          if (!destroyed) setIsSubscribed(!!sub);
         });
       });
     }
+    return () => { destroyed = true; };
   }, []);
 
   const subscribe = useCallback(async (): Promise<boolean> => {

@@ -108,8 +108,9 @@ export async function GET(request: NextRequest) {
     const oiData: any[] = oiResult?.result?.data || [];
     const oiMap = new Map<string, Map<string, number>>();
     oiData.forEach((item: any) => {
-      const sym = item.symbol?.toUpperCase();
-      if (!sym) return;
+      const rawSym = item.symbol?.toUpperCase();
+      if (!rawSym) return;
+      const sym = SYMBOL_ALIASES[rawSym] || rawSym;
       if (!oiMap.has(sym)) oiMap.set(sym, new Map());
       oiMap.get(sym)!.set(item.exchange, item.openInterestValue || 0);
     });
