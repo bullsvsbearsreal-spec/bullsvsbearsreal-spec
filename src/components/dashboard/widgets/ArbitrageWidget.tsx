@@ -90,7 +90,7 @@ export default function ArbitrageWidget({ wide }: { wide?: boolean }) {
         )}
         {arbs.map((a, i) => (
           <div
-            key={i}
+            key={`${a.symbol}-${a.longExchange}-${a.shortExchange}`}
             onClick={() => dashCtx?.dispatch({ type: 'SET_SYMBOL', symbol: a.symbol })}
             className="flex items-center gap-2 text-xs py-1 border-b border-white/[0.03] last:border-0 cursor-pointer hover:bg-white/[0.03] rounded transition-colors">
             <span className="font-bold text-white w-14 flex-shrink-0">{a.symbol}</span>

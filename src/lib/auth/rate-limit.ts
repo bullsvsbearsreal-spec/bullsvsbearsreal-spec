@@ -60,8 +60,8 @@ export function isValidEmail(email: string): boolean {
 /** Extract client IP from request headers. */
 export function getClientIP(req: Request): string {
   return (
-    (req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()) ||
     req.headers.get('x-real-ip') ||
+    (req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()) ||
     'unknown'
   );
 }

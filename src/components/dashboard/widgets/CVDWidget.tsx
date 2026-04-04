@@ -144,7 +144,7 @@ export default function CVDWidget({ wide, widgetId }: { wide?: boolean; widgetId
   const totalBuyVol = buckets.reduce((s, b) => s + b.buyVol, 0);
   const totalSellVol = buckets.reduce((s, b) => s + b.sellVol, 0);
 
-  const fmtVol = (v: number) => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`;
+  const fmtVol = (v: number) => { const a = Math.abs(v); return a >= 1e6 ? `$${(a / 1e6).toFixed(1)}M` : `$${(a / 1e3).toFixed(0)}K`; };
 
   return (
     <div>

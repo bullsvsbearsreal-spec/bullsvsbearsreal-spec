@@ -55,14 +55,14 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
     return () => { mounted = false; clearInterval(iv); };
   }, [wide]);
 
+  const dashCtx = useDashboardOptional();
+
   if (error && !movers) return (
     <div className="text-center py-4">
       <p className="text-xs text-neutral-500">Failed to load movers</p>
       <button onClick={() => { setError(false); window.location.reload(); }} className="text-[10px] text-amber-500 hover:text-amber-400 mt-1">Retry</button>
     </div>
   );
-
-  const dashCtx = useDashboardOptional();
 
   if (!movers) return <WidgetSkeleton variant="list" rows={3} />;
 

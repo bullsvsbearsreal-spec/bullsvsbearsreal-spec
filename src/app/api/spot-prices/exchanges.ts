@@ -238,8 +238,8 @@ export const spotPriceFetchers: ExchangeFetcherConfig<SpotPrice>[] = [
         .map((t: any) => ({
           symbol: t.symbol.replace('usdt', '').toUpperCase(),
           exchange: 'HTX',
-          price: parseFloat(t.close),
-          volume24h: parseFloat(t.vol) || 0, // vol is already in quote currency (USDT)
+          price: parseFloat(t.close) || 0,
+          volume24h: parseFloat(t.amount) || 0, // amount is quote-currency (USDT) 24h turnover
         }))
         .filter((t: SpotPrice) => isCryptoSymbol(t.symbol));
     },

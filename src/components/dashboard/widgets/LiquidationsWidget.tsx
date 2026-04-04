@@ -103,7 +103,7 @@ export default function LiquidationsWidget({ wide, widgetId }: { wide?: boolean;
 
         return (
           <div
-            key={i}
+            key={`${l.time}-${l.side}-${l.symbol}-${i}`}
             className={`rekt-tape-entry ${tapeClass} flex items-center justify-between text-xs py-1.5 px-2 rounded-md hover:bg-white/[0.04] transition-colors relative has-tooltip`}
           >
             <div className="flex items-center gap-2">

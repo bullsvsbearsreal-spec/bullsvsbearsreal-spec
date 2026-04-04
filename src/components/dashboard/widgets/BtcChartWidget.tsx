@@ -43,7 +43,7 @@ export default function BtcChartWidget({ widgetId }: { wide?: boolean; widgetId?
         const ts = data.prices.map((p: [number, number]) => p[0]);
         setPrices(pts);
         setTimestamps(ts);
-        setCurrent(pts[pts.length - 1]);
+        if (pts.length > 0) setCurrent(pts[pts.length - 1]);
         setUpdatedAt(Date.now());
       } catch (err) { console.error(`[ChartWidget] fetch error for ${symbol}:`, err); }
     })();
