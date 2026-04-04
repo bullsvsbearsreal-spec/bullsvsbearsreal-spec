@@ -100,7 +100,7 @@ export async function fetchMarketDataServer(
     }
     bySymbol.forEach((prices, sym) => {
       if (prices.length < 2) return;
-      const sorted = prices.sort((a, b) => a - b);
+      const sorted = [...prices].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
       const sane = sorted.filter(p => median > 0 ? Math.abs(p - median) / median < 0.05 : true);
       if (sane.length < 2) return;

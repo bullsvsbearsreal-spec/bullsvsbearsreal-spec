@@ -61,7 +61,7 @@ export default function OiChartWidget() {
         {entries.map((e, i) => {
           const pct = maxOi > 0 ? ((e.openInterest || 0) / maxOi) * 100 : 0;
           return (
-            <div key={e.symbol + i} className="flex items-center gap-2 py-0.5 px-1 -mx-1 rounded-md hover:bg-white/[0.04] transition-colors">
+            <div key={e.symbol} className="flex items-center gap-2 py-0.5 px-1 -mx-1 rounded-md hover:bg-white/[0.04] transition-colors">
               <div className="flex items-center gap-1 w-16 flex-shrink-0">
                 <TokenIconSimple symbol={e.symbol?.replace(/USDT$/, '')} size={12} />
                 <span className="text-[10px] text-neutral-400 truncate">{e.symbol?.replace(/USDT$/, '')}</span>

@@ -6,10 +6,26 @@ import { isDBConfigured, getSQL } from '@/lib/db';
 
 // In-memory rate limit: max 20 lookups per email per 5 minutes
 const statusAttempts = new Map<string, { count: number; resetAt: number }>();
+let lastCleanup = 0;
+const MAX_TRACKED_KEYS = 10_000;
 
 function checkStatusRate(email: string): boolean {
   const now = Date.now();
   const key = email.toLowerCase();
+
+  // Periodic cleanup of expired entries
+  if (now - lastCleanup > 60_000) {
+    lastCleanup = now;
+    statusAttempts.forEach((v, k) => {
+      if (now > v.resetAt) statusAttempts.delete(k);
+    });
+  }
+
+  // Hard cap to prevent memory exhaustion
+  if (statusAttempts.size >= MAX_TRACKED_KEYS && !statusAttempts.has(key)) {
+    return false;
+  }
+
   const entry = statusAttempts.get(key);
   if (!entry || now > entry.resetAt) {
     statusAttempts.set(key, { count: 1, resetAt: now + 5 * 60 * 1000 });

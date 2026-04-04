@@ -83,8 +83,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Merge new results into existing cache (so symbols from prior queries are retained)
+    // Merge new results into existing cache, cap at 500 symbols to prevent unbounded growth
     const merged = l1Cache ? { ...l1Cache.data, ...data } : data;
+    const keys = Object.keys(merged);
+    if (keys.length > 500) {
+      for (const k of keys.slice(0, keys.length - 500)) delete merged[k];
+    }
     l1Cache = { data: merged, timestamp: Date.now() };
 
     return NextResponse.json({ data }, {

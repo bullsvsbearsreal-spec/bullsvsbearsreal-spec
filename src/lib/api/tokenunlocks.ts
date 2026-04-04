@@ -49,7 +49,7 @@ export async function fetchUpcomingUnlocks(limit: number = 10): Promise<TokenUnl
 
 // Fetch ALL unlocks (past + future) for calendar views
 export async function fetchAllUnlocks(): Promise<TokenUnlock[]> {
-  return getAllUnlocks()
+  return [...getAllUnlocks()]
     .sort((a, b) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime());
 }
 
@@ -565,7 +565,7 @@ function getTokenUnlocks(coinId: string): TokenUnlock[] {
 // Get upcoming unlocks across all tokens, sorted by date
 function getUpcomingUnlocks(limit: number): TokenUnlock[] {
   const now = new Date();
-  return getAllUnlocks()
+  return [...getAllUnlocks()]
     .filter(u => new Date(u.unlockDate) > now)
     .sort((a, b) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime())
     .slice(0, limit);

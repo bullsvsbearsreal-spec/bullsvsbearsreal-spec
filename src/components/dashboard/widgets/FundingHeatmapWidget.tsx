@@ -87,7 +87,7 @@ export default function FundingHeatmapWidget() {
 
           return (
             <div
-              key={`${r.symbol}-${r.exchange}-${i}`}
+              key={`${r.symbol}-${r.exchange}`}
               onClick={() => {
                 const sym = r.symbol?.replace(/USDT$/, '');
                 if (sym) dashCtx?.dispatch({ type: 'SET_SYMBOL', symbol: sym });

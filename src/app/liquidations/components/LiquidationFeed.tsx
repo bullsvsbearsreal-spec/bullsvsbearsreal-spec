@@ -110,7 +110,7 @@ export default function LiquidationFeed({
           <div className="divide-y divide-white/[0.03]">
             {filteredData.map((item, idx) => (
               <LiquidationFeedRow
-                key={`${item.exchange}-${item.symbol}-${item.ts}-${idx}`}
+                key={`${item.exchange}-${item.symbol}-${item.ts}-${item.valueUsd}`}
                 symbol={item.symbol}
                 side={item.side}
                 value={item.valueUsd}
