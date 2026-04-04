@@ -81,7 +81,7 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
       }
     });
 
-    const result = Array.from(symbolMap.values()).sort((a, b) => b.quoteVolume24h - a.quoteVolume24h);
+    const result = Array.from(symbolMap.values()).sort((a, b) => (b.quoteVolume24h || 0) - (a.quoteVolume24h || 0));
     setCache('tickers', result);
     return result;
   } catch (error) {
@@ -217,7 +217,7 @@ export function aggregateOpenInterestBySymbol(oiData: OpenInterestData[]): Map<s
 
   oiData.forEach((item) => {
     const current = symbolOI.get(item.symbol) || 0;
-    symbolOI.set(item.symbol, current + item.openInterestValue);
+    symbolOI.set(item.symbol, current + (item.openInterestValue || 0));
   });
 
   return symbolOI;
@@ -229,7 +229,7 @@ export function aggregateOpenInterestByExchange(oiData: OpenInterestData[]): Map
 
   oiData.forEach((item) => {
     const current = exchangeOI.get(item.exchange) || 0;
-    exchangeOI.set(item.exchange, current + item.openInterestValue);
+    exchangeOI.set(item.exchange, current + (item.openInterestValue || 0));
   });
 
   return exchangeOI;
@@ -261,7 +261,7 @@ export function calculateAverageFundingRates(fundingRates: FundingRateData[]): M
 
 // Get total market volume
 export function calculateTotalVolume(tickers: TickerData[]): number {
-  return tickers.reduce((sum, t) => sum + t.quoteVolume24h, 0);
+  return tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0);
 }
 
 // Get the server-computed total volume (sum across all exchanges, not just best-per-symbol)
@@ -281,7 +281,7 @@ export async function fetchAggregatedMarketData(): Promise<AggregatedMarketData>
   tickers.forEach((t: any) => tickerMap.set(t.symbol, t));
 
   const totalVolume = calculateTotalVolume(tickers);
-  const totalOI = openInterest.reduce((sum, oi) => sum + oi.openInterestValue, 0);
+  const totalOI = openInterest.reduce((sum, oi) => sum + (oi.openInterestValue || 0), 0);
 
   return {
     tickers: tickerMap,
@@ -358,7 +358,7 @@ export async function fetchOIChanges(): Promise<(OpenInterestData & { pct1h?: nu
     const oiData: OpenInterestData[] = json.data || [];
     const changesMap: Record<string, { pct1h?: number; pct4h?: number; pct24h?: number }> = json.oiChanges || {};
 
-    const sorted = [...oiData].sort((a, b) => b.openInterestValue - a.openInterestValue);
+    const sorted = [...oiData].sort((a, b) => (b.openInterestValue || 0) - (a.openInterestValue || 0));
     const result = sorted.slice(0, 20).map(d => ({
       ...d,
       ...changesMap[d.symbol],
@@ -369,7 +369,7 @@ export async function fetchOIChanges(): Promise<(OpenInterestData & { pct1h?: nu
   } catch {
     // Fallback: use basic OI data without changes
     const oiData = await fetchAllOpenInterest();
-    const sorted = [...oiData].sort((a, b) => b.openInterestValue - a.openInterestValue);
+    const sorted = [...oiData].sort((a, b) => (b.openInterestValue || 0) - (a.openInterestValue || 0));
     const result = sorted.slice(0, 20);
     setCache('oiChanges', result);
     return result;

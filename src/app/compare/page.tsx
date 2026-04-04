@@ -68,7 +68,7 @@ export default function ComparePage() {
     return selected.map(sym => {
       // Tickers — use highest-volume exchange for price/change
       let bestPrice = 0, bestChange = 0, totalVol = 0;
-      let maxVol = -1;
+      let maxVol = 0;
       tickers.forEach(t => {
         const ns = normalizeSymbol(t.symbol);
         if (ns !== sym) return;
