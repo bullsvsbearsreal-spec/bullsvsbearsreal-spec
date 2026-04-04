@@ -7,7 +7,7 @@ const cacheMap = new Map<number, { data: any; ts: number }>();
 const CACHE_MS = 300_000; // 5 min
 
 export async function GET(req: NextRequest) {
-  const days = Math.min(+(req.nextUrl.searchParams.get('days') || '7'), 30);
+  const days = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('days') || '7', 10) || 7, 1), 30);
 
   const cached = cacheMap.get(days);
   if (cached && Date.now() - cached.ts < CACHE_MS) {

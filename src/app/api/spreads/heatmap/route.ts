@@ -9,7 +9,7 @@ const CACHE_MS = 300_000;
 
 export async function GET(req: NextRequest) {
   const symbol = (req.nextUrl.searchParams.get('symbol') || 'BTC').toUpperCase();
-  const days = Math.min(+(req.nextUrl.searchParams.get('days') || '30'), 90);
+  const days = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('days') || '30', 10) || 30, 1), 90);
 
   const key = `${symbol}-${days}`;
   const cached = cache.get(key);

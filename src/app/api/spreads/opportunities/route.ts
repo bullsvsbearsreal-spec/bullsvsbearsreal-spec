@@ -4,7 +4,7 @@ import postgres from 'postgres';
 const sql = postgres(process.env.DATABASE_URL || '', { max: 2 });
 
 export async function GET(req: NextRequest) {
-  const days = Math.min(+(req.nextUrl.searchParams.get('days') || '7'), 30);
+  const days = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('days') || '7', 10) || 7, 1), 30);
   const status = req.nextUrl.searchParams.get('status') || 'all'; // 'open', 'closed', 'all'
 
   try {
