@@ -359,8 +359,7 @@ export async function GET() {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('RSI API error:', msg);
+    console.error('[RSI]', error instanceof Error ? error.message : error);
 
     // Return stale cache if available
     if (l1Cache) {
@@ -370,7 +369,7 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      { error: msg, data: [], timestamp: Date.now() },
+      { error: 'Failed to fetch RSI data', data: [], timestamp: Date.now() },
       { status: 500 },
     );
   }

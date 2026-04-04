@@ -245,8 +245,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Liquidation map API error:', msg);
+    console.error('[Liq-map]', error instanceof Error ? error.message : error);
 
     // Return stale cache if available
     if (l1Cache && l1Cache.body.symbol === symbol) {
@@ -259,7 +258,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: msg, symbol, currentPrice: 0, levels: [], totalLongLiq: 0, totalShortLiq: 0, timestamp: Date.now() },
+      { error: 'Failed to compute liquidation map', symbol, currentPrice: 0, levels: [], totalLongLiq: 0, totalShortLiq: 0, timestamp: Date.now() },
       { status: 500 },
     );
   }

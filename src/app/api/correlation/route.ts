@@ -93,8 +93,7 @@ export async function GET(request: NextRequest) {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Correlation API error:', msg);
-    return NextResponse.json({ error: msg, symbols: [] }, { status: 500 });
+    console.error('[Correlation]', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Failed to compute correlation', symbols: [] }, { status: 500 });
   }
 }

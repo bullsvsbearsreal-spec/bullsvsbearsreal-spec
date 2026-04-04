@@ -624,8 +624,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Liquidation heatmap API error:', msg);
+    console.error('[Liq-heatmap]', error instanceof Error ? error.message : error);
 
     // Return stale cache if available
     if (cached) {
@@ -639,7 +638,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: msg,
+        error: 'Failed to compute liquidation heatmap',
         symbol,
         currentPrice: 0,
         timeframe,
