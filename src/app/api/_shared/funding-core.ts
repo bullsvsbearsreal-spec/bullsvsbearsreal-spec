@@ -116,7 +116,10 @@ export async function getFundingData(
         getTop500Symbols(),
       ]),
     );
-    data = exchangeResult.data;
+    // Clone entries — dedupedFetch returns shared references, and the
+    // post-processing pipeline mutates entries in-place (symbol, markPrice, etc.).
+    // Without cloning, concurrent callers would race on the same objects.
+    data = exchangeResult.data.map((e: any) => ({ ...e }));
     health = exchangeResult.health;
     top500 = top500Result;
   } catch (err) {

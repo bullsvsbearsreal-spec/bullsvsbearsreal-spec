@@ -111,8 +111,10 @@ export async function GET(request: NextRequest) {
     strikes.forEach((testPrice) => {
       let totalLoss = 0;
       strikeOI.forEach((oi, strike) => {
-        if (testPrice > strike) totalLoss += oi.callOI * (testPrice - strike) / (underlyingPrice || 1);
-        if (testPrice < strike) totalLoss += oi.putOI * (strike - testPrice) / (underlyingPrice || 1);
+        if (underlyingPrice > 0) {
+          if (testPrice > strike) totalLoss += oi.callOI * (testPrice - strike) / underlyingPrice;
+          if (testPrice < strike) totalLoss += oi.putOI * (strike - testPrice) / underlyingPrice;
+        }
       });
       if (totalLoss < minTotalLoss) {
         minTotalLoss = totalLoss;

@@ -668,7 +668,7 @@ async function getOptionsData(input: ToolInput, ctx: ExecuteContext): Promise<st
   if (expiries.length > 0) {
     lines.push('', 'Top Expiries:');
     expiries.slice(0, 5).forEach((e: any) => {
-      lines.push(`  ${new Date(e.date).toLocaleDateString()}: $${formatNum(e.totalOI)} (PCR: ${e.putOI > 0 ? (e.putOI / (e.callOI || 1)).toFixed(2) : 'N/A'})`);
+      lines.push(`  ${new Date(e.date).toLocaleDateString()}: $${formatNum(e.totalOI)} (PCR: ${e.callOI > 0 ? (e.putOI / e.callOI).toFixed(2) : 'N/A'})`);
     });
   }
 

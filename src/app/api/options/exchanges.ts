@@ -225,7 +225,7 @@ export const optionsFetchers: OptionsExchangeFetcher[] = [
             optionType,
             strike,
             expiryTimestamp,
-            openInterestUsd: oiCcy * (underlyingPrice || 1),
+            openInterestUsd: underlyingPrice > 0 ? oiCcy * underlyingPrice : 0,
             markIV,
             underlyingPrice,
           };

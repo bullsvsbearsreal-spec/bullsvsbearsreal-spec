@@ -21,6 +21,9 @@ function checkRateLimit(email: string): boolean {
     });
   }
 
+  // Hard cap to prevent memory exhaustion under attack
+  if (attempts.size >= 10_000 && !attempts.has(key)) return false;
+
   const entry = attempts.get(key);
 
   if (!entry || now > entry.resetAt) {

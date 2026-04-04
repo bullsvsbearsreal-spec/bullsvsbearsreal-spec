@@ -75,6 +75,10 @@ export async function GET(req: NextRequest) {
     const resp = { symbol, interval, limit, exchanges: filtered, meta: { requested: Object.keys(rawExchanges).length, success: ok, ts: Date.now() } };
     // Only cache non-empty responses to avoid caching post-restart empty data
     if (ok > 0) {
+      if (cache.size > 200) {
+        const oldest = cache.keys().next().value;
+        if (oldest) cache.delete(oldest);
+      }
       cache.set(key, { data: resp, ts: Date.now() });
     }
     return NextResponse.json(resp, { headers: { 'Cache-Control': ok > 0 ? 's-maxage=60, stale-while-revalidate=120' : 'no-cache' } });

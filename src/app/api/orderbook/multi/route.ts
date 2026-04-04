@@ -129,6 +129,10 @@ export async function GET(request: NextRequest) {
     venues,
   };
 
+  if (cache.size > 100) {
+    const oldest = cache.keys().next().value;
+    if (oldest) cache.delete(oldest);
+  }
   cache.set(cacheKey, { data: body, ts: Date.now() });
 
   return NextResponse.json(body, {

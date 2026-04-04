@@ -21,6 +21,8 @@ const API_WINDOW    = 60 * 1000;       // 1 min
 let lastCleanup = Date.now();
 const CLEANUP_INTERVAL = 5 * 60 * 1000;
 
+const MAX_BUCKET_SIZE = 50_000;
+
 function cleanup() {
   const now = Date.now();
   if (now - lastCleanup < CLEANUP_INTERVAL) return;
@@ -39,6 +41,10 @@ function isRateLimited(
   const bucket = buckets.get(key);
 
   if (!bucket || now - bucket.start > window) {
+    // Hard cap: reject new IPs if map is full (prevents memory exhaustion under DDoS)
+    if (!bucket && buckets.size >= MAX_BUCKET_SIZE) {
+      return { limited: true, retryAfter: 60 };
+    }
     buckets.set(key, { count: 1, start: now });
     return { limited: false, retryAfter: 0 };
   }
@@ -142,29 +148,26 @@ export function middleware(request: NextRequest) {
 
   // Auth routes — strict limits + no-store cache
   if (AUTH_PATHS.has(pathname) || pathname.startsWith('/api/auth/')) {
-    const response = NextResponse.next();
-    response.headers.set('Cache-Control', 'no-store');
-
-    if (AUTH_PATHS.has(pathname) || pathname.startsWith('/api/auth/')) {
-      const key = `auth:${ip}`;
-      const { limited, retryAfter } = isRateLimited(authBuckets, key, AUTH_LIMIT, AUTH_WINDOW);
-      if (limited) {
-        return NextResponse.json(
-          { error: 'Too many requests. Please try again later.' },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': String(retryAfter),
-              'Cache-Control': 'no-store',
-              'X-RateLimit-Limit': String(AUTH_LIMIT),
-              'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': String(Math.ceil(Date.now() / 1000) + retryAfter),
-            },
+    const key = `auth:${ip}`;
+    const { limited, retryAfter } = isRateLimited(authBuckets, key, AUTH_LIMIT, AUTH_WINDOW);
+    if (limited) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+            'Cache-Control': 'no-store',
+            'X-RateLimit-Limit': String(AUTH_LIMIT),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(Math.ceil(Date.now() / 1000) + retryAfter),
           },
-        );
-      }
+        },
+      );
     }
 
+    const response = NextResponse.next();
+    response.headers.set('Cache-Control', 'no-store');
     return response;
   }
 
@@ -208,6 +211,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico
      */
-    '/((?!_next/static|_next/image).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico).*)',
   ],
 };

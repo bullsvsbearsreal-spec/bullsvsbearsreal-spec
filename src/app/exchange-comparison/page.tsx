@@ -300,9 +300,8 @@ export default function ExchangeComparisonPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sorted.map((s, i) => {
-                        const totalAllOI = sorted.reduce((sum, x) => sum + x.totalOI, 0) || 1;
-                        const share = (s.totalOI / totalAllOI) * 100;
+                      {(() => { const totalAllOI = sorted.reduce((sum, x) => sum + x.totalOI, 0); return sorted.map((s, i) => {
+                        const share = totalAllOI > 0 ? (s.totalOI / totalAllOI) * 100 : 0;
                         return (
                           <tr key={s.exchange} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
                             <td className="px-4 py-2.5 text-neutral-600">{i + 1}</td>
@@ -334,7 +333,7 @@ export default function ExchangeComparisonPage() {
                             </td>
                           </tr>
                         );
-                      })}
+                      }); })()}
                     </tbody>
                   </table>
                 </div>

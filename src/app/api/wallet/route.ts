@@ -512,6 +512,10 @@ export async function GET(request: NextRequest) {
     try {
       const dbData = await getCache<WalletResult>(cacheKey);
       if (dbData) {
+        if (memCache.size > MEM_CACHE_MAX) {
+          const first = memCache.keys().next().value;
+          if (first) memCache.delete(first);
+        }
         memCache.set(cacheKey, { data: dbData, time: Date.now() });
         return jsonOk(dbData);
       }
