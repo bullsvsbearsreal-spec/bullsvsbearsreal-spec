@@ -58,7 +58,7 @@ export function useRealtimeLiquidations(enabled: boolean) {
   useEffect(() => { windowRef.current = liqWindow; }, [liqWindow]);
 
   const addLiq = useCallback((liq: RealtimeLiq) => {
-    const key = `${liq.exchange}-${liq.time}-${liq.value.toFixed(0)}-${liq.side}`;
+    const key = `${liq.exchange}-${liq.time}-${liq.value.toFixed(2)}-${liq.side}`;
     if (seenIdsRef.current.has(key)) return;
     seenIdsRef.current.add(key);
     if (seenIdsRef.current.size > 2000) {
@@ -72,7 +72,7 @@ export function useRealtimeLiquidations(enabled: boolean) {
   const addMany = useCallback((newLiqs: RealtimeLiq[]) => {
     const unique: RealtimeLiq[] = [];
     for (const liq of newLiqs) {
-      const key = `${liq.exchange}-${liq.time}-${liq.value.toFixed(0)}-${liq.side}`;
+      const key = `${liq.exchange}-${liq.time}-${liq.value.toFixed(2)}-${liq.side}`;
       if (seenIdsRef.current.has(key)) continue;
       seenIdsRef.current.add(key);
       unique.push(liq);

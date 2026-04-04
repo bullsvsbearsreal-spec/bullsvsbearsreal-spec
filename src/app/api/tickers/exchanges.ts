@@ -111,19 +111,21 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       return json.data
         .filter((t: any) => t.instId.endsWith('-USDT-SWAP'))
         .map((ticker: any) => {
-          const lastPrice = parseFloat(ticker.last);
+          const lastPrice = parseFloat(ticker.last) || 0;
+          const open24h = parseFloat(ticker.open24h) || 0;
           // volCcy24h is BASE currency volume, not USD — multiply by price for USD volume
           const baseCurrencyVol = parseFloat(ticker.volCcy24h) || 0;
+          const changePct = open24h > 0 ? ((lastPrice - open24h) / open24h) * 100 : 0;
           return {
             symbol: ticker.instId.replace('-USDT-SWAP', ''),
             exchange: 'OKX',
             lastPrice,
             price: lastPrice,
-            priceChangePercent24h: ((lastPrice - parseFloat(ticker.open24h)) / parseFloat(ticker.open24h)) * 100,
-            changePercent24h: ((lastPrice - parseFloat(ticker.open24h)) / parseFloat(ticker.open24h)) * 100,
-            high24h: parseFloat(ticker.high24h),
-            low24h: parseFloat(ticker.low24h),
-            volume24h: parseFloat(ticker.vol24h),
+            priceChangePercent24h: changePct,
+            changePercent24h: changePct,
+            high24h: parseFloat(ticker.high24h) || 0,
+            low24h: parseFloat(ticker.low24h) || 0,
+            volume24h: parseFloat(ticker.vol24h) || 0,
             quoteVolume24h: baseCurrencyVol * lastPrice,
           };
         });
@@ -882,7 +884,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           const lastPrice = parseFloat(ticker.lastPrice || ticker.close || ticker.oraclePrice || '0');
           if (lastPrice <= 0) continue;
 
-          const volume24h = parseFloat(ticker.value || ticker.volume24h || '0');
+          const quoteVol = parseFloat(ticker.value || ticker.volume24h || '0');
+          const baseVol = parseFloat(ticker.size || '0');
           const priceChange = parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') * 100;
 
           results.push({
@@ -894,8 +897,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             changePercent24h: priceChange,
             high24h: parseFloat(ticker.high || '0') || lastPrice,
             low24h: parseFloat(ticker.low || '0') || lastPrice,
-            volume24h: parseFloat(ticker.size || '0'),
-            quoteVolume24h: volume24h || (parseFloat(ticker.size || '0') * lastPrice),
+            volume24h: baseVol,
+            quoteVolume24h: quoteVol || (baseVol * lastPrice),
           });
         }
       }

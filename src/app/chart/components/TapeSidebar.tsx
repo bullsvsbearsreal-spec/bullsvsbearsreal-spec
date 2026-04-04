@@ -142,7 +142,7 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
               </div>
             )}
             {trades.slice(0, 100).map((trade, i) => (
-              <TradeRow key={`${trade.time}-${i}`} trade={trade} />
+              <TradeRow key={`${trade.time}-${trade.price}-${trade.qty}`} trade={trade} />
             ))}
           </div>
 
