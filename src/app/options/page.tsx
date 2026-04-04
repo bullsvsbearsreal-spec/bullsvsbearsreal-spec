@@ -407,7 +407,7 @@ function OIByExpiryChart({
             <span className="text-[10px] text-neutral-500 font-mono">
               {((hoveredEntry.totalOI / totalOI) * 100).toFixed(1)}% of total OI
             </span>
-            {hoveredEntry.maxPain && (
+            {hoveredEntry.maxPain != null && (
               <span className="text-[10px] text-orange-400 font-mono">
                 Max Pain: ${hoveredEntry.maxPain.toLocaleString()}
               </span>

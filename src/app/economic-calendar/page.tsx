@@ -260,7 +260,7 @@ export default function EconomicCalendarPage() {
 
   const { data, error, isLoading, isRefreshing, refresh, lastUpdate } =
     useApi<ApiResponse>({
-      key: 'economic-calendar',
+      key: `economic-calendar-${monthKey}-${searchQuery}-${countryFilter}`,
       fetcher,
       refreshInterval: 5 * 60 * 1000,
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApi } from '@/hooks/useSWRApi';
 import { fetchExecutionCosts } from '@/lib/api/aggregator';
@@ -64,6 +64,8 @@ function ExecutionCostsInner() {
     return loadPrefs().direction;
   });
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   // Persist to localStorage on change
   useEffect(() => {
@@ -108,7 +110,7 @@ function ExecutionCostsInner() {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
 

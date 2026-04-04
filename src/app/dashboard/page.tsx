@@ -36,14 +36,17 @@ export default function DashboardPage() {
   // Load layout from user prefs (DB) or localStorage
   useEffect(() => {
     if (status === 'loading' && !authTimedOut) return;
+    let mounted = true;
 
     const loadLayout = async () => {
       // Try DB first (logged-in users)
       if (session?.user) {
         try {
           const res = await fetch('/api/user/data');
+          if (!mounted) return;
           if (res.ok) {
             const data = await res.json();
+            if (!mounted) return;
             if (data.dashboardLayout && Array.isArray(data.dashboardLayout) && data.dashboardLayout.length > 0) {
               setLayout(data.dashboardLayout);
               setLoaded(true);
@@ -52,6 +55,7 @@ export default function DashboardPage() {
           }
         } catch {}
       }
+      if (!mounted) return;
 
       // Fallback: localStorage
       try {
@@ -87,6 +91,7 @@ export default function DashboardPage() {
     };
 
     loadLayout();
+    return () => { mounted = false; };
   }, [session, status, authTimedOut]);
 
   // Debounced DB save — localStorage is immediate, DB save waits 1.5s
