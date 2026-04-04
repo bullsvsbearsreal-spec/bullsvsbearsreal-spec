@@ -481,7 +481,7 @@ export function useMultiExchangeLiquidations({
             prev.map(c => c.exchange === exchange ? { ...c, eventCount: eventCounts[exchange], lastEventAt: Date.now() } : c),
           );
           handleLiquidation(liq);
-          // Buffer for DB persistence (only events > $500)
+          // Buffer for DB persistence (only events >= $100)
           if (liq.value >= 100) {
             dbBufferRef.current.push(liq);
           }

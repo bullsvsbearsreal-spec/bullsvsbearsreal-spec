@@ -144,6 +144,7 @@ export function formatTimeAgo(dateStr: string): string {
   const ts = new Date(dateStr).getTime();
   if (!isFinite(ts)) return 'unknown';
   const ms = Date.now() - ts;
+  if (ms < 0) return 'just now';
   const mins = Math.floor(ms / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;

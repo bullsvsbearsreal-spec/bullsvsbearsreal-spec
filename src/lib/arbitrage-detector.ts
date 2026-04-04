@@ -131,7 +131,8 @@ export function detectPriceArbitrage(
     // by more than MAX_PRICE_DEVIATION_FROM_MEDIAN from the median, it's likely
     // a different denomination (e.g., 1MPEPE vs PEPE, GME-token vs GME-stock).
     const prices = entries.map(e => e.lastPrice).sort((a, b) => a - b);
-    const median = prices[Math.floor(prices.length / 2)];
+    const mid = Math.floor(prices.length / 2);
+    const median = prices.length % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
     const filtered = entries.filter(e => {
       const ratio = e.lastPrice > median ? e.lastPrice / median : median / e.lastPrice;
       return ratio <= MAX_PRICE_DEVIATION_FROM_MEDIAN;
