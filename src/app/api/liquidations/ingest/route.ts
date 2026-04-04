@@ -29,7 +29,7 @@ const RATE_LIMIT_MS = 5000;
 
 export async function POST(request: NextRequest) {
   // Rate limit by IP
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const ip = request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   const now = Date.now();
   const lastRequest = rateLimitMap.get(ip) || 0;
   if (now - lastRequest < RATE_LIMIT_MS) {

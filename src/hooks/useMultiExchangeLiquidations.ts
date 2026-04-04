@@ -402,6 +402,13 @@ export function useMultiExchangeLiquidations({
       if (liq.side === 'long') existing.longValue += liq.value;
       else existing.shortValue += liq.value;
       newMap.set(liq.symbol, existing);
+      // Cap at 200 entries — prune smallest when exceeded
+      if (newMap.size > 200) {
+        const sorted = Array.from(newMap.entries()).sort((a, b) => b[1].totalValue - a[1].totalValue);
+        const pruned = new Map(sorted.slice(0, 150));
+        aggRef.current = pruned;
+        return pruned;
+      }
       aggRef.current = newMap;
       return newMap;
     });

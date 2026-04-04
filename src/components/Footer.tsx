@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import Logo from './Logo';
 import { ALL_EXCHANGES } from '@/lib/constants';
@@ -156,127 +157,101 @@ function safeParseJson(data: unknown): unknown {
 
 /* ─── Footer ────────────────────────────────────────────────────── */
 
+const jsonFetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null).catch(() => null);
+
 function FooterInner() {
-  const [stats, setStats] = useState<LiveStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Use SWR with shared cache keys — deduplicates with page-level fetches
+  const { data: tickersRes } = useSWR('/api/tickers', jsonFetcher, { refreshInterval: 45_000, revalidateOnFocus: false });
+  const { data: oiRes } = useSWR('/api/openinterest', jsonFetcher, { refreshInterval: 45_000, revalidateOnFocus: false });
+  const { data: fgRes } = useSWR('/api/fear-greed', jsonFetcher, { refreshInterval: 45_000, revalidateOnFocus: false });
+  const { data: lsRes } = useSWR('/api/longshort', jsonFetcher, { refreshInterval: 45_000, revalidateOnFocus: false });
+  const { data: moversRes } = useSWR('/api/top-movers', jsonFetcher, { refreshInterval: 45_000, revalidateOnFocus: false });
 
-  useEffect(() => {
-    let cancelled = false;
+  const loading = !tickersRes && !oiRes;
 
-    async function fetchStats() {
-      try {
-        const [tickersRes, oiRes, fgRes, lsRes, moversRes] = await Promise.all([
-          fetch('/api/tickers').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/openinterest').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/fear-greed').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/longshort').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/top-movers').then(r => r.ok ? r.json() : null).catch(() => null),
-        ]);
+  const stats = useMemo<LiveStats | null>(() => {
+    const tickers = Array.isArray(tickersRes) ? tickersRes : tickersRes?.data ?? [];
+    const oiData = oiRes?.data ?? [];
+    if (tickers.length === 0 && oiData.length === 0) return null;
 
-        if (cancelled) return;
+    const fgData = safeParseJson(fgRes) as { value?: number; classification?: string } | null;
+    const moversData = safeParseJson(moversRes) as { gainers?: { symbol: string; change24h: number }[] } | null;
 
-        const tickers = Array.isArray(tickersRes) ? tickersRes : tickersRes?.data ?? [];
-        const oiData = oiRes?.data ?? [];
+    let btcPrice = 0;
+    let btcChange = 0;
+    let btcVol = 0;
+    let totalVolume = 0;
+    const pairSet = new Set<string>();
 
-        // Handle double-encoded JSON responses
-        const fgData = safeParseJson(fgRes) as { value?: number; classification?: string } | null;
-        const moversData = safeParseJson(moversRes) as { gainers?: { symbol: string; change24h: number }[] } | null;
+    const bestBySymbol: Record<string, { vol: number; price: number; change: number }> = {};
+    for (const t of tickers) {
+      const sym = (t.symbol || '').toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '');
+      const ex = ((t.exchange as string) || '').toLowerCase();
+      const qVol = Number(t.quoteVolume24h) || 0;
+      const isBrokenExchange = ex.includes('gate') || ex.includes('bitmex');
+      pairSet.add(`${sym}-${t.exchange}`);
 
-        // BTC price — highest quote-volume BTC entry
-        let btcPrice = 0;
-        let btcChange = 0;
-        let btcVol = 0;
-        let totalVolume = 0;
-        const pairSet = new Set<string>();
-
-        // Deduplicate volume: keep highest-volume entry per symbol (across exchanges)
-        const bestBySymbol: Record<string, { vol: number; price: number; change: number }> = {};
-        for (const t of tickers) {
-          const sym = (t.symbol || '').toUpperCase().replace(/(USDT|USD|USDC|BUSD|PERP|SWAP)$/i, '');
-          const ex = ((t.exchange as string) || '').toLowerCase();
-          const qVol = Number(t.quoteVolume24h) || 0;
-          const isBrokenExchange = ex.includes('gate') || ex.includes('bitmex');
-          pairSet.add(`${sym}-${t.exchange}`);
-
-          // Track best per symbol for deduped volume
-          if (qVol > 0 && !isBrokenExchange) {
-            const existing = bestBySymbol[sym];
-            if (!existing || qVol > existing.vol) {
-              bestBySymbol[sym] = {
-                vol: qVol,
-                price: t.lastPrice ?? t.price ?? 0,
-                change: t.priceChangePercent24h ?? t.changePercent24h ?? 0,
-              };
-            }
-          }
-
-          // BTC price — highest quote-volume BTC entry
-          if (sym === 'BTC' && qVol > btcVol) {
-            btcPrice = t.lastPrice ?? t.price ?? 0;
-            btcChange = t.priceChangePercent24h ?? t.changePercent24h ?? 0;
-            btcVol = qVol;
-          }
+      if (qVol > 0 && !isBrokenExchange) {
+        const existing = bestBySymbol[sym];
+        if (!existing || qVol > existing.vol) {
+          bestBySymbol[sym] = {
+            vol: qVol,
+            price: t.lastPrice ?? t.price ?? 0,
+            change: t.priceChangePercent24h ?? t.changePercent24h ?? 0,
+          };
         }
-        // Sum deduped volume (one entry per symbol)
-        for (const entry of Object.values(bestBySymbol)) {
-          totalVolume += entry.vol;
-        }
+      }
 
-        // Total OI
-        let totalOI = 0;
-        for (const o of oiData) {
-          totalOI += o.openInterestValue ?? 0;
-        }
-
-        // Fear & Greed
-        const fearGreed = fgData && typeof fgData.value === 'number'
-          ? { value: fgData.value, classification: fgData.classification || '' }
-          : null;
-
-        // Long/Short — ignore fallback 50/50 placeholder data
-        const longShort = lsRes && typeof lsRes.longRatio === 'number' && !lsRes.fallback
-          ? { longRatio: lsRes.longRatio, shortRatio: lsRes.shortRatio }
-          : null;
-
-        // Top Gainer
-        const gainers = moversData?.gainers ?? [];
-        const topGainer = gainers.length > 0
-          ? { symbol: gainers[0].symbol, change24h: gainers[0].change24h }
-          : null;
-
-        // Top coins by volume (real prices from tickers)
-        const TOP_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'SUI', 'LINK'];
-        const topCoins: CoinPrice[] = TOP_COINS
-          .filter(sym => bestBySymbol[sym])
-          .map(sym => ({
-            symbol: sym,
-            price: bestBySymbol[sym].price,
-            change: bestBySymbol[sym].change,
-          }));
-
-        setStats({
-          btcPrice,
-          btcChange,
-          totalOI,
-          volume24h: totalVolume,
-          activePairs: pairSet.size,
-          fearGreed,
-          longShort,
-          topGainer,
-          topCoins,
-          lastUpdated: Date.now(),
-        });
-      } catch {
-        // silently fail — stats are supplementary
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (sym === 'BTC' && qVol > btcVol) {
+        btcPrice = t.lastPrice ?? t.price ?? 0;
+        btcChange = t.priceChangePercent24h ?? t.changePercent24h ?? 0;
+        btcVol = qVol;
       }
     }
+    for (const entry of Object.values(bestBySymbol)) {
+      totalVolume += entry.vol;
+    }
 
-    fetchStats();
-    const interval = setInterval(fetchStats, 45_000); // Refresh every 45s for live feel
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
+    let totalOI = 0;
+    for (const o of oiData) {
+      totalOI += o.openInterestValue ?? 0;
+    }
+
+    const fearGreed = fgData && typeof fgData.value === 'number'
+      ? { value: fgData.value, classification: fgData.classification || '' }
+      : null;
+
+    const longShort = lsRes && typeof lsRes.longRatio === 'number' && !lsRes.fallback
+      ? { longRatio: lsRes.longRatio, shortRatio: lsRes.shortRatio }
+      : null;
+
+    const gainers = moversData?.gainers ?? [];
+    const topGainer = gainers.length > 0
+      ? { symbol: gainers[0].symbol, change24h: gainers[0].change24h }
+      : null;
+
+    const TOP_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'SUI', 'LINK'];
+    const topCoins: CoinPrice[] = TOP_COINS
+      .filter(sym => bestBySymbol[sym])
+      .map(sym => ({
+        symbol: sym,
+        price: bestBySymbol[sym].price,
+        change: bestBySymbol[sym].change,
+      }));
+
+    return {
+      btcPrice,
+      btcChange,
+      totalOI,
+      volume24h: totalVolume,
+      activePairs: pairSet.size,
+      fearGreed,
+      longShort,
+      topGainer,
+      topCoins,
+      lastUpdated: Date.now(),
+    };
+  }, [tickersRes, oiRes, fgRes, lsRes, moversRes]);
 
   return (
     <footer className="border-t border-white/[0.04] mt-12 bg-gradient-to-b from-black/30 to-black/60 relative">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -84,14 +84,14 @@ export default function OpenInterestPage() {
   }, []);
 
   // Get unique exchanges
-  const exchanges = Array.from(new Set(openInterest.map(oi => oi.exchange)));
+  const exchanges = useMemo(() => Array.from(new Set(openInterest.map(oi => oi.exchange))), [openInterest]);
 
   // Aggregate data
-  const symbolAggregated = aggregateOpenInterestBySymbol(openInterest);
-  const exchangeAggregated = aggregateOpenInterestByExchange(openInterest);
+  const symbolAggregated = useMemo(() => aggregateOpenInterestBySymbol(openInterest), [openInterest]);
+  const exchangeAggregated = useMemo(() => aggregateOpenInterestByExchange(openInterest), [openInterest]);
 
   // Filter and sort data
-  const filteredAndSorted = openInterest
+  const filteredAndSorted = useMemo(() => openInterest
     .filter(oi => {
       if (exchangeFilter !== 'all' && oi.exchange !== exchangeFilter) return false;
       if (searchTerm && !oi.symbol.toLowerCase().includes(searchTerm.toLowerCase())) return false;
@@ -121,12 +121,12 @@ export default function OpenInterestPage() {
         }
       }
       return sortOrder === 'asc' ? comparison : -comparison;
-    });
+    }), [openInterest, exchangeFilter, searchTerm, sortField, sortOrder, oiDeltas]);
 
   const displayData = authLimit ? filteredAndSorted.slice(0, authLimit) : filteredAndSorted;
 
   // Aggregated by symbol, sorted
-  const aggregatedSorted = Array.from(symbolAggregated.entries())
+  const aggregatedSorted = useMemo(() => Array.from(symbolAggregated.entries())
     .filter(([symbol]) => !searchTerm || symbol.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
       let comparison = 0;
@@ -149,13 +149,13 @@ export default function OpenInterestPage() {
           break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
-    });
+    }), [symbolAggregated, searchTerm, sortField, sortOrder, oiDeltas]);
 
   const AGGREGATED_DEFAULT = 20;
   const displayedAggregated = expanded ? aggregatedSorted : aggregatedSorted.slice(0, AGGREGATED_DEFAULT);
 
   // Calculate total OI
-  const totalOI = openInterest.reduce((sum, oi) => sum + oi.openInterestValue, 0);
+  const totalOI = useMemo(() => openInterest.reduce((sum, oi) => sum + oi.openInterestValue, 0), [openInterest]);
   const totalOIFlash = useFlash(totalOI);
 
   // Compute biggest OI movers (24h) from deltas

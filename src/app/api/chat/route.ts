@@ -33,8 +33,8 @@ function extractText(content: MessageContent): string {
 
 export async function POST(request: NextRequest) {
   // Rate limiting
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') || 'unknown';
+  const ip = request.headers.get('x-real-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
   let body: ChatRequestBody;
   try {

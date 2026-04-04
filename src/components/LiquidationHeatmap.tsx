@@ -6,7 +6,7 @@ import { formatLiqValue } from '@/lib/utils/format';
 import { useMultiExchangeLiquidations, type Liquidation } from '@/hooks/useMultiExchangeLiquidations';
 import { useSound } from '@/hooks/useSound';
 
-const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'MEXC', 'BingX', 'HTX', 'gTrade'];
+const EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'HTX', 'gTrade'];
 
 /** Trader slang based on total liq volume */
 function getLiqSlang(totalValue: number, longPct: number): string | null {

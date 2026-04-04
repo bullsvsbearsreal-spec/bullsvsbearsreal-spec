@@ -25,6 +25,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: pw.error }, { status: 400 });
     }
 
+    if (!isDBConfigured()) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
     const db = getSQL();
 
     // Get user's current password hash
