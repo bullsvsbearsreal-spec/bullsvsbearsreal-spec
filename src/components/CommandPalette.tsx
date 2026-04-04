@@ -376,7 +376,7 @@ export default function CommandPalette({ onClose, onShowShortcuts }: CommandPale
                         : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
                     }`}
                   >
-                    <Image src={coin.thumb} alt={coin.name} width={20} height={20} className="rounded-full" />
+                    <Image src={coin.thumb?.startsWith('https://') ? coin.thumb : '/logo-icon.svg'} alt={coin.name} width={20} height={20} className="rounded-full" />
                     <span className="flex-1 text-left">
                       <span className="text-white font-medium">{coin.name}</span>
                       <span className="text-neutral-600 ml-1.5 text-xs">{coin.symbol.toUpperCase()}</span>

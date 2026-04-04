@@ -23,7 +23,7 @@ export default function CoinCard({ coin, showEvents = true }: CoinCardProps) {
     if (showEvents && expanded) {
       loadEvents();
     }
-  }, [expanded, coin.symbol]);
+  }, [expanded, coin.symbol, showEvents]);
 
   async function loadEvents() {
     setLoadingEvents(true);
@@ -103,7 +103,7 @@ export default function CoinCard({ coin, showEvents = true }: CoinCardProps) {
               <div className="h-2 bg-hub-gray/50 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-hub-yellow to-hub-orange rounded-full"
-                  style={{ width: `${(coin.circulating_supply / coin.max_supply) * 100}%` }}
+                  style={{ width: `${coin.circulating_supply != null ? (coin.circulating_supply / coin.max_supply) * 100 : 0}%` }}
                 />
               </div>
               <div className="flex items-center justify-between mt-2">

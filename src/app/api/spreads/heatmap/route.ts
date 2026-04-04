@@ -4,7 +4,7 @@ import postgres from 'postgres';
 const sql = postgres(process.env.DATABASE_URL || '', { max: 2 });
 
 // Cache for 5 minutes
-let cache: Record<string, { data: any; ts: number }> = {};
+const cache = new Map<string, { data: any; ts: number }>();
 const CACHE_MS = 300_000;
 
 export async function GET(req: NextRequest) {
@@ -12,8 +12,9 @@ export async function GET(req: NextRequest) {
   const days = Math.min(+(req.nextUrl.searchParams.get('days') || '30'), 90);
 
   const key = `${symbol}-${days}`;
-  if (cache[key] && Date.now() - cache[key].ts < CACHE_MS) {
-    return NextResponse.json(cache[key].data);
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.ts < CACHE_MS) {
+    return NextResponse.json(cached.data);
   }
 
   try {
@@ -45,7 +46,8 @@ export async function GET(req: NextRequest) {
     }
 
     const resp = { symbol, days, grid, totalSamples: rows.reduce((s: number, r: any) => s + r.samples, 0) };
-    cache[key] = { data: resp, ts: Date.now() };
+    cache.set(key, { data: resp, ts: Date.now() });
+    if (cache.size > 200) { const first = cache.keys().next().value; if (first) cache.delete(first); }
     return NextResponse.json(resp, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });

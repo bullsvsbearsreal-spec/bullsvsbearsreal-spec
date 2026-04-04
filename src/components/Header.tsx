@@ -216,6 +216,10 @@ export default function Header() {
   const navRef = useRef<HTMLElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => { if (closeTimer.current) clearTimeout(closeTimer.current); };
+  }, []);
+
   /* ---------- helpers ------------------------------------------------ */
 
   const isCategoryActive = useCallback(

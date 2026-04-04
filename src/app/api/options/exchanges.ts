@@ -124,7 +124,7 @@ export const optionsFetchers: OptionsExchangeFetcher[] = [
             const yr = 2000 + parseInt(parts[1].slice(0, 2));
             const mo = parseInt(parts[1].slice(2, 4)) - 1;
             const da = parseInt(parts[1].slice(4, 6));
-            expiryTimestamp = new Date(yr, mo, da, 8, 0, 0).getTime(); // 08:00 UTC expiry
+            expiryTimestamp = Date.UTC(yr, mo, da, 8, 0, 0); // 08:00 UTC expiry
           }
 
           const price = underlyingPrice || parseFloat(t.strikePrice) || 0;
@@ -211,7 +211,7 @@ export const optionsFetchers: OptionsExchangeFetcher[] = [
             const yr = 2000 + parseInt(parts[2].slice(0, 2));
             const mo = parseInt(parts[2].slice(2, 4)) - 1;
             const da = parseInt(parts[2].slice(4, 6));
-            expiryTimestamp = new Date(yr, mo, da, 8, 0, 0).getTime();
+            expiryTimestamp = Date.UTC(yr, mo, da, 8, 0, 0);
           }
 
           const oiContracts = parseFloat(item.oi) || 0;

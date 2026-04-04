@@ -371,7 +371,7 @@ export default function SymbolPage() {
                 <p className="text-xs text-neutral-500 py-4 text-center">No funding data</p>
               ) : (
                 <div className="space-y-2">
-                  {funding
+                  {[...funding]
                     .sort((a, b) => b.rate - a.rate)
                     .map((f) => (
                       <div key={f.exchange} className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
@@ -392,7 +392,7 @@ export default function SymbolPage() {
                 <p className="text-xs text-neutral-500 py-4 text-center">No OI data</p>
               ) : (
                 <div className="space-y-2">
-                  {oi
+                  {[...oi]
                     .sort((a, b) => b.openInterest - a.openInterest)
                     .map((o) => (
                       <div key={o.exchange} className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
@@ -422,7 +422,7 @@ export default function SymbolPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tickers
+                    {[...tickers]
                       .sort((a, b) => b.volume24h - a.volume24h)
                       .map((t) => (
                         <tr key={t.exchange} className="border-b border-white/[0.04]">

@@ -3,14 +3,15 @@ import postgres from 'postgres';
 
 const sql = postgres(process.env.DATABASE_URL || '', { max: 2 });
 
-let cache: { data: any; ts: number } | null = null;
+const cacheMap = new Map<number, { data: any; ts: number }>();
 const CACHE_MS = 300_000; // 5 min
 
 export async function GET(req: NextRequest) {
   const days = Math.min(+(req.nextUrl.searchParams.get('days') || '7'), 30);
 
-  if (cache && Date.now() - cache.ts < CACHE_MS) {
-    return NextResponse.json(cache.data);
+  const cached = cacheMap.get(days);
+  if (cached && Date.now() - cached.ts < CACHE_MS) {
+    return NextResponse.json(cached.data);
   }
 
   try {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
     }));
 
     const resp = { data, days, count: data.length, ts: Date.now() };
-    cache = { data: resp, ts: Date.now() };
+    cacheMap.set(days, { data: resp, ts: Date.now() });
     return NextResponse.json(resp, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
