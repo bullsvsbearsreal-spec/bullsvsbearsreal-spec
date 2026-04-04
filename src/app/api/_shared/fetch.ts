@@ -185,9 +185,9 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
     if (response.status === 451 || response.status === 403) {
       const fallbacks = getDomainFallbacks(url);
       for (const fallbackUrl of fallbacks) {
+        const controller2 = new AbortController();
+        const id2 = setTimeout(() => controller2.abort(), timeout);
         try {
-          const controller2 = new AbortController();
-          const id2 = setTimeout(() => controller2.abort(), timeout);
           const fallbackResponse = await fetch(fallbackUrl, {
             ...options,
             signal: controller2.signal,
@@ -196,6 +196,7 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
           clearTimeout(id2);
           if (fallbackResponse.ok) return fallbackResponse;
         } catch {
+          clearTimeout(id2);
           continue;
         }
       }
@@ -206,19 +207,20 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
     // On network error, also try fallbacks
     const fallbacks = getDomainFallbacks(url);
     for (const fallbackUrl of fallbacks) {
-      try {
         const controller2 = new AbortController();
         const id2 = setTimeout(() => controller2.abort(), timeout);
-        const fallbackResponse = await fetch(fallbackUrl, {
-          ...options,
-          signal: controller2.signal,
-          headers: { ...commonHeaders, ...options.headers },
-        });
-        clearTimeout(id2);
-        if (fallbackResponse.ok) return fallbackResponse;
-      } catch {
-        continue;
-      }
+        try {
+          const fallbackResponse = await fetch(fallbackUrl, {
+            ...options,
+            signal: controller2.signal,
+            headers: { ...commonHeaders, ...options.headers },
+          });
+          clearTimeout(id2);
+          if (fallbackResponse.ok) return fallbackResponse;
+        } catch {
+          clearTimeout(id2);
+          continue;
+        }
     }
     throw error;
   }

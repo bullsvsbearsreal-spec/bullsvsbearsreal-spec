@@ -46,13 +46,16 @@ export async function GET() {
 
       // Filter outliers: exclude >5% from median
       const prices = exchanges.map(e => e.price).sort((a, b) => a - b);
-      const median = prices[Math.floor(prices.length / 2)];
+      const mid = Math.floor(prices.length / 2);
+      const median = prices.length % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
+      if (!median || median <= 0) continue;
       const sane = exchanges.filter(e => Math.abs(e.price - median) / median < 0.05);
       if (sane.length < 2) continue;
 
       sane.sort((a, b) => b.price - a.price);
       const high = sane[0];
       const low = sane[sane.length - 1];
+      if (low.price <= 0) continue;
       const spreadUsd = high.price - low.price;
       const spreadPct = (spreadUsd / low.price) * 100;
 
