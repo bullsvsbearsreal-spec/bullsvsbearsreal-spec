@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { HelpCircle } from 'lucide-react';
 
@@ -80,6 +80,8 @@ export default function MetricTooltip({ term, children }: MetricTooltipProps) {
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   const show = useCallback(() => {
     timerRef.current = setTimeout(() => setVisible(true), 1500);

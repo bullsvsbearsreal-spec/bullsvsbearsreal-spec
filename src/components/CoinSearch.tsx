@@ -35,17 +35,18 @@ export default function CoinSearch({
   }, [autoFocus]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('recentCoinSearches');
-    if (saved) {
-      try {
+    try {
+      const saved = localStorage.getItem('recentCoinSearches');
+      if (saved) {
         setRecentSearches(JSON.parse(saved).slice(0, 5));
-      } catch (e) {
-        console.error('Failed to parse recent searches');
       }
+    } catch {
+      // localStorage unavailable or corrupt data
     }
   }, []);
 
   useEffect(() => {
+    let mounted = true;
     const timer = setTimeout(async () => {
       if (query.length >= 1) {
         setIsLoading(true);
@@ -53,17 +54,17 @@ export default function CoinSearch({
           const res = await fetch(`/api/coin-search?q=${encodeURIComponent(query)}`);
           if (!res.ok) throw new Error(`Search API ${res.status}`);
           const json = await res.json();
-          setResults(json.results || []);
+          if (mounted) setResults(json.results || []);
         } catch {
-          setResults([]);
+          if (mounted) setResults([]);
         }
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       } else {
         setResults([]);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => { mounted = false; clearTimeout(timer); };
   }, [query]);
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function CoinSearch({
   const handleSelect = (coin: CoinSearchResult) => {
     const updated = [coin, ...recentSearches.filter(c => c.id !== coin.id)].slice(0, 5);
     setRecentSearches(updated);
-    localStorage.setItem('recentCoinSearches', JSON.stringify(updated));
+    try { localStorage.setItem('recentCoinSearches', JSON.stringify(updated)); } catch {}
 
     setQuery('');
     setIsOpen(false);
@@ -88,7 +89,7 @@ export default function CoinSearch({
 
   const clearRecent = () => {
     setRecentSearches([]);
-    localStorage.removeItem('recentCoinSearches');
+    try { localStorage.removeItem('recentCoinSearches'); } catch {}
   };
 
   return (

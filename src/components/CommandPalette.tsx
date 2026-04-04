@@ -171,19 +171,20 @@ export default function CommandPalette({ onClose, onShowShortcuts }: CommandPale
       setCoinResults([]);
       return;
     }
+    let mounted = true;
     setIsLoadingCoins(true);
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/coin-search?q=${encodeURIComponent(query)}`);
         if (!res.ok) throw new Error();
         const json = await res.json();
-        setCoinResults((json.results || []).slice(0, 5));
+        if (mounted) setCoinResults((json.results || []).slice(0, 5));
       } catch {
-        setCoinResults([]);
+        if (mounted) setCoinResults([]);
       }
-      setIsLoadingCoins(false);
+      if (mounted) setIsLoadingCoins(false);
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { mounted = false; clearTimeout(timer); };
   }, [query]);
 
   // Page results (instant, local)

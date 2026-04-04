@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Share2, Check, Copy } from 'lucide-react';
 
 interface ShareButtonProps {
@@ -17,6 +17,8 @@ export default function ShareButton({
   className = '',
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const handleShare = useCallback(async () => {
     const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : 'https://info-hub.io');
@@ -35,7 +37,7 @@ export default function ShareButton({
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard not available
     }

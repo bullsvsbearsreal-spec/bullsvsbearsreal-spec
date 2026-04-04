@@ -8,8 +8,10 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'light') setTheme('light');
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === 'light') setTheme('light');
+    } catch {}
   }, []);
 
   const toggle = () => {
@@ -18,10 +20,10 @@ export default function ThemeToggle() {
 
     if (next === 'light') {
       document.documentElement.dataset.theme = 'light';
-      localStorage.setItem(STORAGE_KEY, 'light');
+      try { localStorage.setItem(STORAGE_KEY, 'light'); } catch {}
     } else {
       delete document.documentElement.dataset.theme;
-      localStorage.removeItem(STORAGE_KEY);
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
     }
   };
 

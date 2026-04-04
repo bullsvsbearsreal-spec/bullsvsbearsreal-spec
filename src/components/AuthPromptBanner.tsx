@@ -52,7 +52,9 @@ export default function AuthPromptBanner({
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem(storageKey) === '1') setDismissed(true);
+    try {
+      if (sessionStorage.getItem(storageKey) === '1') setDismissed(true);
+    } catch {}
   }, [storageKey]);
 
   if (dismissed) return null;
@@ -62,7 +64,7 @@ export default function AuthPromptBanner({
 
   const handleDismiss = () => {
     setDismissed(true);
-    sessionStorage.setItem(storageKey, '1');
+    try { sessionStorage.setItem(storageKey, '1'); } catch {}
   };
 
   return (

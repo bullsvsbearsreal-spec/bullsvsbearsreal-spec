@@ -34,24 +34,27 @@ export default function FearGreedIndex() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     const fetchData = async () => {
       try {
         const res = await fetch('/api/fear-greed?history=true&limit=7');
         if (res.ok) {
           const data = await res.json();
-          setCurrent(data.current);
-          setHistory(data.history || []);
+          if (mounted) {
+            setCurrent(data.current);
+            setHistory(data.history || []);
+          }
         }
       } catch {
         // fallback — keep loading state
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
     fetchData();
     const interval = setInterval(fetchData, 10 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => { mounted = false; clearInterval(interval); };
   }, []);
 
   const displayValue = current?.value ?? 50;
