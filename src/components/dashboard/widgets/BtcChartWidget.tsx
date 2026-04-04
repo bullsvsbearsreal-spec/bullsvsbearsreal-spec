@@ -52,7 +52,7 @@ export default function BtcChartWidget({ widgetId }: { wide?: boolean; widgetId?
 
   // Draw sparkline
   useEffect(() => {
-    if (!prices || !canvasRef.current) return;
+    if (!prices || prices.length === 0 || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;

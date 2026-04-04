@@ -113,8 +113,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         .map((ticker: any) => ({
           symbol: ticker.symbol.replace('USDT', ''),
           exchange: 'Bybit',
-          openInterest: parseFloat(ticker.openInterest),
-          openInterestValue: parseFloat(ticker.openInterestValue),
+          openInterest: parseFloat(ticker.openInterest) || 0,
+          openInterestValue: parseFloat(ticker.openInterestValue) || 0,
         }));
     },
   },
