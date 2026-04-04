@@ -38,16 +38,19 @@ export function useSound() {
   const ctxRef = useRef<AudioContext | null>(null)
   const [enabled, setEnabled] = useState(false)
 
-  // Hydrate from localStorage
+  const [prefersReduced, setPrefersReduced] = useState(false)
+
+  // Hydrate from localStorage + listen for reduced-motion changes
   useEffect(() => {
     try {
       setEnabled(localStorage.getItem(STORAGE_KEY) === 'true')
     } catch {}
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReduced(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
   }, [])
-
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
   const toggle = useCallback(async () => {
     const next = !enabled

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCache, setCache, isDBConfigured } from '@/lib/db';
+import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
+import { fetchWithTimeout } from '../_shared/fetch';
+import { tickerFetchers } from '../tickers/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -66,7 +69,6 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch CMC top 500 and InfoHub exchange symbols in parallel
-    const origin = request.nextUrl.origin;
     const [cmcRes, exchangeSymbols] = await Promise.all([
       fetch(
         'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=500&sort=market_cap&convert=USD',
@@ -75,7 +77,7 @@ export async function GET(request: NextRequest) {
           signal: AbortSignal.timeout(10000),
         }
       ),
-      getExchangeSymbols(origin),
+      getExchangeSymbols(),
     ]);
 
     if (!cmcRes.ok) throw new Error(`CMC failed: ${cmcRes.status}`);
@@ -183,19 +185,14 @@ export async function GET(request: NextRequest) {
 }
 
 // Fetch unique symbols from InfoHub exchange tickers
-async function getExchangeSymbols(origin: string): Promise<Set<string>> {
+async function getExchangeSymbols(): Promise<Set<string>> {
   if (exchangeSymbolsCache.size > 0 && Date.now() - exchangeSymbolsCacheTime < EXCHANGE_SYMBOLS_TTL) {
     return exchangeSymbolsCache;
   }
   try {
-    const res = await fetch(`${origin}/api/tickers`, {
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) return exchangeSymbolsCache;
-    const json = await res.json();
-    const tickers: any[] = Array.isArray(json) ? json : json?.data || [];
+    const { data: tickers } = await fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout);
     const symbols = new Set<string>(
-      tickers.map((t: any) => (t.symbol || '').toUpperCase()).filter(Boolean)
+      (tickers as any[]).map((t: any) => (t.symbol || '').toUpperCase()).filter(Boolean)
     );
     if (symbols.size > 50) {
       exchangeSymbolsCache = symbols;

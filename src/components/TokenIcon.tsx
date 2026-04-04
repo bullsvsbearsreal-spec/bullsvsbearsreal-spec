@@ -131,6 +131,9 @@ function getRemotePath(symbol: string): string {
   return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${mapped}.png`;
 }
 
+// Module-level cache: once a URL is confirmed working for a symbol, skip probing
+const resolvedIconCache = new Map<string, string | false>();
+
 export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIconProps) {
   const [hasError, setHasError] = useState(false);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -146,21 +149,26 @@ export default function TokenIcon({ symbol, size = 24, className = '' }: TokenIc
   useEffect(() => {
     if (forexMatch) return;
 
+    // Check module-level cache first
+    const cached = resolvedIconCache.get(mappedSymbol);
+    if (cached === false) { setHasError(true); return; }
+    if (cached) { setImgSrc(cached); return; }
+
     // Reset state when symbol changes
     setHasError(false);
     setImgSrc(null);
 
     let cancelled = false;
     const img = new window.Image();
-    img.onload = () => { if (!cancelled) setImgSrc(`/tokens/${mappedSymbol}.png`); };
+    img.onload = () => { if (!cancelled) { resolvedIconCache.set(mappedSymbol, `/tokens/${mappedSymbol}.png`); setImgSrc(`/tokens/${mappedSymbol}.png`); } };
     img.onerror = () => {
       const img2 = new window.Image();
-      img2.onload = () => { if (!cancelled) setImgSrc(`/tokens/${mappedSymbol}.svg`); };
+      img2.onload = () => { if (!cancelled) { resolvedIconCache.set(mappedSymbol, `/tokens/${mappedSymbol}.svg`); setImgSrc(`/tokens/${mappedSymbol}.svg`); } };
       img2.onerror = () => {
         const remotePath = getRemotePath(symbol);
         const img3 = new window.Image();
-        img3.onload = () => { if (!cancelled) setImgSrc(remotePath); };
-        img3.onerror = () => { if (!cancelled) setHasError(true); };
+        img3.onload = () => { if (!cancelled) { resolvedIconCache.set(mappedSymbol, remotePath); setImgSrc(remotePath); } };
+        img3.onerror = () => { if (!cancelled) { resolvedIconCache.set(mappedSymbol, false); setHasError(true); } };
         img3.src = remotePath;
       };
       img2.src = `/tokens/${mappedSymbol}.svg`;
