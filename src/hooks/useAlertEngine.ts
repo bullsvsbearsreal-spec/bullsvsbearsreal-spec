@@ -38,7 +38,8 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
     if (tickerRes?.data) {
       const priceAccum = new Map<string, { sum: number; count: number }>();
       const changeAccum = new Map<string, { sum: number; count: number }>();
-      interface RawTicker { symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number }
+      interface RawTicker { symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number; quoteVolume24h?: number }
+      const volAccum = new Map<string, number>();
       (tickerRes.data as RawTicker[]).forEach((t) => {
         const sym = t.symbol;
         if (!map.has(sym)) {
@@ -61,6 +62,11 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
           acc.count++;
           changeAccum.set(sym, acc);
           entry.change24h = acc.sum / acc.count;
+        }
+        // Sum volume across exchanges
+        if (t.quoteVolume24h && t.quoteVolume24h > 0) {
+          volAccum.set(sym, (volAccum.get(sym) || 0) + t.quoteVolume24h);
+          entry.volume24h = volAccum.get(sym)!;
         }
       });
     }
