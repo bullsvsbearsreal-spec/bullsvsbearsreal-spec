@@ -362,7 +362,7 @@ export async function fetchAccumulatedFromDB(
 
       let d1 = 0, d7 = 0, d30 = 0;
       periodMap.forEach((rates, periodStart) => {
-        const avgRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+        const avgRate = rates.reduce((sum, r) => sum + r, 0) / (rates.length || 1);
         d30 += avgRate;
         if (periodStart >= cutoff7d) d7 += avgRate;
         if (periodStart >= cutoff1d) d1 += avgRate;

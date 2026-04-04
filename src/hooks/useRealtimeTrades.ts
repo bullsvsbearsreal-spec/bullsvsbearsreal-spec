@@ -115,7 +115,16 @@ export function useRealtimeTrades(symbol: string) {
     destroyedRef.current = false;
 
     const connect = () => {
-      const ws = new WebSocket(url);
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(url);
+      } catch {
+        setConnected(false);
+        if (!destroyedRef.current) {
+          reconnectTimerRef.current = setTimeout(connect, 3000);
+        }
+        return;
+      }
       wsRef.current = ws;
 
       ws.onopen = () => setConnected(true);

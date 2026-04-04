@@ -257,7 +257,7 @@ function OIByStrikeChart({
                 y={pad.top + chartH - callH}
                 width={barW}
                 height={Math.max(callH, 0.5)}
-                fill={isHovered ? '#22c55e' : '#22c55e'}
+                fill={isHovered ? '#4ade80' : '#22c55e'}
                 rx={1.5}
               />
               <rect
@@ -265,7 +265,7 @@ function OIByStrikeChart({
                 y={pad.top + chartH - putH}
                 width={barW}
                 height={Math.max(putH, 0.5)}
-                fill={isHovered ? '#ef4444' : '#ef4444'}
+                fill={isHovered ? '#f87171' : '#ef4444'}
                 rx={1.5}
               />
               {(i % labelStep === 0 || isSpot || isMaxPain) && (
@@ -462,7 +462,7 @@ function OIByExpiryChart({
                 y={pad.top + chartH - callH}
                 width={barW}
                 height={Math.max(callH, 1)}
-                fill={isHovered ? '#22c55e' : '#22c55e'}
+                fill={isHovered ? '#4ade80' : '#22c55e'}
                 rx={3}
               />
               {/* Put bar */}
@@ -471,7 +471,7 @@ function OIByExpiryChart({
                 y={pad.top + chartH - putH}
                 width={barW}
                 height={Math.max(putH, 1)}
-                fill={isHovered ? '#ef4444' : '#ef4444'}
+                fill={isHovered ? '#f87171' : '#ef4444'}
                 rx={3}
               />
 

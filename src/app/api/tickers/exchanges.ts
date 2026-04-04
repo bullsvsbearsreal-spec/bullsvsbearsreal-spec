@@ -175,8 +175,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           exchange: 'Hyperliquid',
           lastPrice: parseFloat(item.markPx),
           price: parseFloat(item.markPx),
-          priceChangePercent24h: parseFloat(item.dayNtlVlm) > 0 ? ((parseFloat(item.markPx) - parseFloat(item.prevDayPx)) / parseFloat(item.prevDayPx)) * 100 : 0,
-          changePercent24h: parseFloat(item.dayNtlVlm) > 0 ? ((parseFloat(item.markPx) - parseFloat(item.prevDayPx)) / parseFloat(item.prevDayPx)) * 100 : 0,
+          priceChangePercent24h: parseFloat(item.dayNtlVlm) > 0 && (parseFloat(item.prevDayPx) || 0) > 0 ? ((parseFloat(item.markPx) - parseFloat(item.prevDayPx)) / parseFloat(item.prevDayPx)) * 100 : 0,
+          changePercent24h: parseFloat(item.dayNtlVlm) > 0 && (parseFloat(item.prevDayPx) || 0) > 0 ? ((parseFloat(item.markPx) - parseFloat(item.prevDayPx)) / parseFloat(item.prevDayPx)) * 100 : 0,
           high24h: 0,
           low24h: 0,
           volume24h: parseFloat(item.dayNtlVlm),
@@ -235,8 +235,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             exchange: 'MEXC',
             lastPrice,
             price: lastPrice,
-            priceChangePercent24h: parseFloat(ticker.riseFallRate) * 100 || 0,
-            changePercent24h: parseFloat(ticker.riseFallRate) * 100 || 0,
+            priceChangePercent24h: (parseFloat(ticker.riseFallRate) || 0) * 100,
+            changePercent24h: (parseFloat(ticker.riseFallRate) || 0) * 100,
             high24h: parseFloat(ticker.high24Price) || 0,
             low24h: parseFloat(ticker.low24Price) || 0,
             volume24h: parseFloat(ticker.volume24) || 0,
@@ -835,7 +835,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           const stats = m.marketStats;
           const lastPrice = parseFloat(stats.lastPrice) || 0;
           // dailyPriceChangePercentage is decimal (e.g., -0.0222 = -2.22%)
-          const changePercent = parseFloat(stats.dailyPriceChangePercentage) * 100 || 0;
+          const changePercent = (parseFloat(stats.dailyPriceChangePercentage) || 0) * 100;
           return {
             symbol,
             exchange: 'Extended',
@@ -1004,7 +1004,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .filter((t: any) => t.symbol?.endsWith('_USDC_PERP'))
         .map((t: any) => {
           const lastPrice = parseFloat(t.lastPrice) || 0;
-          const changePercent = parseFloat(t.priceChangePercent) * 100 || 0;
+          const changePercent = (parseFloat(t.priceChangePercent) || 0) * 100;
           return {
             symbol: t.symbol.replace('_USDC_PERP', ''),
             exchange: 'Backpack',
@@ -1071,7 +1071,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((t: any) => {
           const symbol = t.symbol.replace('-USD-PERP', '');
           const lastPrice = parseFloat(t.last_traded_price) || parseFloat(t.mark_price) || 0;
-          const changePercent = parseFloat(t.price_change_rate_24h) * 100 || 0;
+          const changePercent = (parseFloat(t.price_change_rate_24h) || 0) * 100;
           return {
             symbol,
             exchange: 'Paradex',

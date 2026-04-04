@@ -244,6 +244,7 @@ function createExchangeWS(
 
   const scheduleReconnect = () => {
     if (destroyed) return;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(connect, RECONNECT_DELAY);
   };
 
