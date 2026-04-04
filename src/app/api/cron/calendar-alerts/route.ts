@@ -108,7 +108,13 @@ export async function GET(request: NextRequest) {
           // Parse time like "14:00 ET" or "08:30"
           const timeMatch = e.time.match(/(\d{1,2}):(\d{2})/);
           if (timeMatch) {
-            eventDate.setUTCHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10));
+            const h = parseInt(timeMatch[1], 10);
+            const m = parseInt(timeMatch[2], 10);
+            // Economic calendar times are typically ET (Eastern Time)
+            // ET = UTC-5 (EST) or UTC-4 (EDT). Use UTC offset to normalize.
+            const isEDT = new Date().toLocaleString('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' }).includes('EDT');
+            const etOffsetHours = isEDT ? 4 : 5;
+            eventDate.setUTCHours(h + etOffsetHours, m);
           }
         }
         return eventDate >= now && eventDate <= twoHoursFromNow;

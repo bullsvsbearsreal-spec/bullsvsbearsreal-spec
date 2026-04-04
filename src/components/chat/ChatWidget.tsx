@@ -165,8 +165,10 @@ export default function ChatWidget() {
               break;
 
             case 'tool_start': {
-              const { name } = JSON.parse(eventData);
-              setActiveToolName(name);
+              try {
+                const { name } = JSON.parse(eventData);
+                setActiveToolName(name);
+              } catch { /* malformed event data */ }
               break;
             }
 
@@ -188,7 +190,8 @@ export default function ChatWidget() {
               break;
 
             case 'error': {
-              const { message } = JSON.parse(eventData);
+              let message = 'Unknown error';
+              try { message = JSON.parse(eventData).message || message; } catch { /* malformed */ }
               fullText = `Error: ${message}`;
               setMessages((prev) =>
                 prev.map((m) =>
