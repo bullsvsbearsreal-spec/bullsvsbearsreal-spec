@@ -100,12 +100,13 @@ export async function GET(request: NextRequest) {
       // Evict expired entries first
       const now = Date.now();
       cache.forEach((v, k) => { if (now - v.ts > CACHE_TTL) cache.delete(k); });
-      // If still over limit, evict oldest entries
+      // If still over limit, evict oldest until at 75
       if (cache.size > 100) {
         const entries: [string, { body: any; ts: number }][] = [];
         cache.forEach((v, k) => entries.push([k, v]));
         entries.sort((a, b) => a[1].ts - b[1].ts);
-        entries.slice(0, 25).forEach(([k]) => cache.delete(k));
+        const toEvict = cache.size - 75;
+        entries.slice(0, toEvict).forEach(([k]) => cache.delete(k));
       }
     }
 

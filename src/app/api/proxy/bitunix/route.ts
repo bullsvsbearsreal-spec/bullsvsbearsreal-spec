@@ -30,7 +30,15 @@ export async function GET(request: NextRequest) {
       },
     });
     clearTimeout(timeout);
-    const data = await res.json();
+    let data: any;
+    try {
+      data = await res.json();
+    } catch {
+      return NextResponse.json(
+        { code: -1, msg: `Bitunix returned non-JSON (status ${res.status})`, data: [] },
+        { status: 502 },
+      );
+    }
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
     });

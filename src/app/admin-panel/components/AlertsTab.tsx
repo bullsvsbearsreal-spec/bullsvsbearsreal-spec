@@ -23,12 +23,13 @@ function downloadCSV(data: any, filename: string) {
 export default function AlertsTab() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/monitoring/alerts')
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(setData)
-      .catch(() => {})
+      .catch((e) => setError(e?.message || 'Failed to load alerts'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -39,6 +40,10 @@ export default function AlertsTab() {
         <ChartSkeleton height={80} />
       </div>
     );
+  }
+
+  if (error) {
+    return <div className="text-center py-8 text-red-400 text-sm">{error}</div>;
   }
 
   // Build hourly heatmap from recent alerts

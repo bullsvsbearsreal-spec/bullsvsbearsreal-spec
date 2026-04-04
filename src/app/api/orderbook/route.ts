@@ -174,8 +174,8 @@ export async function GET(request: NextRequest) {
     bids: cumulativeBids,
     asks: cumulativeAsks,
     trades: [...raw.trades].reverse(), // newest first
-    spread: asks.length > 0 && bids.length > 0 ? asks[0].price - bids[0].price : 0,
-    midPrice: asks.length > 0 && bids.length > 0 ? (asks[0].price + bids[0].price) / 2 : 0,
+    spread: asks.length > 0 && bids.length > 0 ? (Number.isFinite(asks[0].price) && Number.isFinite(bids[0].price) ? asks[0].price - bids[0].price : 0) : 0,
+    midPrice: asks.length > 0 && bids.length > 0 ? (Number.isFinite(asks[0].price) && Number.isFinite(bids[0].price) ? (asks[0].price + bids[0].price) / 2 : 0) : 0,
     bidDepth: cumBid,
     askDepth: cumAsk,
     buyVolume: buyVol,
@@ -186,6 +186,11 @@ export async function GET(request: NextRequest) {
   };
 
   l1Cache.set(cacheKey, { body, timestamp: Date.now() });
+  // Evict stale entries to prevent unbounded growth
+  if (l1Cache.size > 50) {
+    const now = Date.now();
+    l1Cache.forEach((v, k) => { if (now - v.timestamp > L1_TTL * 3) l1Cache.delete(k); });
+  }
 
   return NextResponse.json(body, {
     headers: { 'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5' },

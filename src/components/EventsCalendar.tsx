@@ -22,7 +22,7 @@ export default function EventsCalendar({ symbol, limit = 10, showFilters = true 
       setLoading(false);
     }
     loadEvents();
-  }, [symbol]);
+  }, []);
 
   const displayEvents = events.slice(0, limit);
 
