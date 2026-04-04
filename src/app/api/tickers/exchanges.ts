@@ -229,7 +229,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       return json.data
         .filter((t: any) => t.symbol.endsWith('_USDT'))
         .map((ticker: any) => {
-          const lastPrice = parseFloat(ticker.lastPrice);
+          const lastPrice = parseFloat(ticker.lastPrice) || 0;
           return {
             symbol: ticker.symbol.replace('_USDT', ''),
             exchange: 'MEXC',
@@ -291,7 +291,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       return json.data
         .filter((t: any) => t.symbol.endsWith('-USDT'))
         .map((ticker: any) => {
-          const lastPrice = parseFloat(ticker.lastPrice);
+          const lastPrice = parseFloat(ticker.lastPrice) || 0;
           return {
             symbol: ticker.symbol.replace('-USDT', ''),
             exchange: 'BingX',
@@ -405,8 +405,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           return {
           symbol: sym,
           exchange: 'KuCoin',
-          lastPrice: parseFloat(ticker.lastTradePrice),
-          price: parseFloat(ticker.lastTradePrice),
+          lastPrice: parseFloat(ticker.lastTradePrice) || 0,
+          price: parseFloat(ticker.lastTradePrice) || 0,
           priceChangePercent24h: (parseFloat(ticker.priceChgPct) || 0) * 100,
           changePercent24h: (parseFloat(ticker.priceChgPct) || 0) * 100,
           high24h: parseFloat(ticker.highPrice) || 0,
@@ -633,10 +633,10 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           return {
             symbol,
             exchange: 'Aster',
-            lastPrice: parseFloat(ticker.lastPrice),
-            price: parseFloat(ticker.lastPrice),
-            priceChangePercent24h: parseFloat(ticker.priceChangePercent),
-            changePercent24h: parseFloat(ticker.priceChangePercent),
+            lastPrice: parseFloat(ticker.lastPrice) || 0,
+            price: parseFloat(ticker.lastPrice) || 0,
+            priceChangePercent24h: parseFloat(ticker.priceChangePercent) || 0,
+            changePercent24h: parseFloat(ticker.priceChangePercent) || 0,
             high24h: parseFloat(ticker.highPrice) || 0,
             low24h: parseFloat(ticker.lowPrice) || 0,
             volume24h: parseFloat(ticker.volume) || 0,
