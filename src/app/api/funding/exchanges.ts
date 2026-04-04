@@ -807,7 +807,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               if (rates.length > 0) {
                 // Sort by timepoint descending and take the most recent settled rate
                 rates.sort((a: any, b: any) => (b.timepoint || 0) - (a.timepoint || 0));
-                overrides.set(item.symbol, parseFloat(rates[0].fundingRate));
+                overrides.set(item.symbol, parseFloat(rates[0].fundingRate) || 0);
               }
             }
           } catch {}
@@ -1032,7 +1032,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             predictedRate,
             markPrice: parseFloat(frData.mark_price || t.mark_price) || 0,
             indexPrice: parseFloat(t.index_price) || 0,
-            nextFundingTime: frData.next_funding_time ? parseInt(frData.next_funding_time) * 1000 : Date.now() + 28800000,
+            nextFundingTime: parseInt(frData.next_funding_time) * 1000 || Date.now() + 28800000,
             type: 'cex' as const,
           };
         } catch { return null; }
@@ -1146,8 +1146,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const groupIdx = parseInt(pair.groupIndex);
           const group = groups[groupIdx];
           if (group) {
-            const groupMaxLev = parseInt(group.maxLeverage) / 1e3;
-            const groupMinLev = parseInt(group.minLeverage) / 1e3;
+            const groupMaxLev = (parseInt(group.maxLeverage) || 0) / 1e3;
+            const groupMinLev = (parseInt(group.minLeverage) || 0) / 1e3;
             const pairMaxLev = Number(rawMaxLeverages[i] || 0) / 1e3;
             const effectiveMaxLev = pairMaxLev === 0 ? groupMaxLev : pairMaxLev;
             if (effectiveMaxLev < groupMinLev) continue;

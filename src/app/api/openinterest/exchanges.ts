@@ -346,11 +346,11 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           const oiJson = await oiRes.json();
           if (oiJson.code !== 0 || !oiJson.data) return null;
           const oiValueUSD = parseFloat(oiJson.data.openInterest) || 0;
-          const price = parseFloat(ticker.lastPrice) || 1;
+          const price = parseFloat(ticker.lastPrice) || 0;
           return {
             symbol: ticker.symbol.replace('-USDT', ''),
             exchange: 'BingX',
-            openInterest: oiValueUSD / price,
+            openInterest: price > 0 ? oiValueUSD / price : 0,
             openInterestValue: oiValueUSD,
           };
         } catch { return null; }
@@ -425,11 +425,11 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           const r = json.result;
           if (!r) return null;
           const oiUsd = parseFloat(r.open_interest) || 0;
-          const price = parseFloat(r.mark_price) || 1;
+          const price = parseFloat(r.mark_price) || 0;
           return {
             symbol: inst.replace('-PERPETUAL', ''),
             exchange: 'Deribit',
-            openInterest: oiUsd / price,  // Convert USD to base currency
+            openInterest: price > 0 ? oiUsd / price : 0,  // Convert USD to base currency
             openInterestValue: oiUsd,      // Already in USD
           };
         } catch { return null; }

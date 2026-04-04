@@ -258,7 +258,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       return json.tickers
         .filter((t: any) => t.symbol.startsWith('PF_') && t.symbol.endsWith('USD'))
         .map((ticker: any) => {
-          let sym = ticker.symbol.replace('PF_', '').replace('USD', '');
+          let sym = ticker.symbol.replace('PF_', '').replace(/USD$/, '');
           if (sym === 'XBT') sym = 'BTC';
           const lastPrice = ticker.last || ticker.markPrice || 0;
           const open = ticker.open24h || lastPrice;
@@ -667,8 +667,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             exchange: 'Lighter',
             lastPrice,
             price: lastPrice,
-            priceChangePercent24h: parseFloat(b.daily_price_change) || 0,
-            changePercent24h: parseFloat(b.daily_price_change) || 0,
+            priceChangePercent24h: lastPrice > 0 && b.daily_price_change != null ? ((parseFloat(b.daily_price_change) || 0) / lastPrice) * 100 : 0,
+            changePercent24h: lastPrice > 0 && b.daily_price_change != null ? ((parseFloat(b.daily_price_change) || 0) / lastPrice) * 100 : 0,
             high24h: parseFloat(b.daily_price_high) || 0,
             low24h: parseFloat(b.daily_price_low) || 0,
             volume24h: parseFloat(b.daily_base_token_volume) || 0,
@@ -885,8 +885,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           const lastPrice = parseFloat(ticker.lastPrice || ticker.close || ticker.oraclePrice || '0');
           if (lastPrice <= 0) continue;
 
-          const quoteVol = parseFloat(ticker.value || ticker.volume24h || '0');
-          const baseVol = parseFloat(ticker.size || '0');
+          const quoteVol = parseFloat(ticker.value || ticker.volume24h || '0') || 0;
+          const baseVol = parseFloat(ticker.size || '0') || 0;
           const priceChange = (parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') || 0) * 100;
 
           results.push({
@@ -1004,7 +1004,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .filter((t: any) => t.symbol?.endsWith('_USDC_PERP'))
         .map((t: any) => {
           const lastPrice = parseFloat(t.lastPrice) || 0;
-          const changePercent = (parseFloat(t.priceChangePercent) || 0) * 100;
+          const changePercent = parseFloat(t.priceChangePercent) || 0;
           return {
             symbol: t.symbol.replace('_USDC_PERP', ''),
             exchange: 'Backpack',
