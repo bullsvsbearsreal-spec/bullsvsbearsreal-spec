@@ -88,6 +88,10 @@ function getCached<T>(key: string): T | null {
 
 function setCache(key: string, data: any): void {
   cache.set(key, { data, timestamp: Date.now() });
+  if (cache.size > 500) {
+    const first = cache.keys().next().value;
+    if (first) cache.delete(first);
+  }
 }
 
 // Fetch REAL crypto news from CryptoCompare (FREE API)
@@ -303,7 +307,7 @@ function convertNewsToEvents(articles: NewsArticle[], coinId?: string): CryptoEv
           : [{ id: '1', name: 'Crypto', symbol: 'CRYPTO', rank: 1 }],
       date_event: publishedDate.toISOString(),
       created_date: publishedDate.toISOString(),
-      description: article.body?.substring(0, 200) + '...' || article.title,
+      description: article.body ? article.body.substring(0, 200) + '...' : article.title,
       proof: article.url,
       source: article.source_info?.name || article.source || 'CryptoCompare',
       is_hot: false,

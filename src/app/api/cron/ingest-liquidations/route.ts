@@ -88,7 +88,7 @@ async function fetchOKXLiqsForUly(uly: string): Promise<LiqRow[]> {
       for (const d of item.details || []) {
         const price = parseFloat(d.bkPx || '0');
         const qty = parseFloat(d.sz || '0');
-        if (price <= 0 || qty <= 0) continue;
+        if (!isFinite(price) || price <= 0 || !isFinite(qty) || qty <= 0) continue;
         rows.push({
           symbol,
           exchange: 'OKX',
@@ -239,7 +239,7 @@ async function fetchDeribitLiqsForCurrency(currency: string): Promise<LiqRow[]> 
           price,
           quantity: qty,
           valueUsd: price * qty,
-          timestamp: t.timestamp || Date.now(),
+          timestamp: t.timestamp ? Math.floor(t.timestamp / 1000) : Date.now(),
         };
       })
       .filter((r: LiqRow) => r.valueUsd > 0 && r.price > 0);

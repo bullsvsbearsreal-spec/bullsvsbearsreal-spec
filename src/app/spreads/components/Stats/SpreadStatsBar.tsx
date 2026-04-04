@@ -69,7 +69,7 @@ function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarPr
             </div>
             <div className="border-t border-white/[0.06] pt-1.5">
               <p className={`text-xl font-bold font-mono text-hub-yellow ${spreadFlash}`}>${fp(stats.cur)}</p>
-              <p className="text-[11px] text-neutral-500">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
+              <p className="text-[11px] text-neutral-500">{isFinite(stats.pct) ? `${stats.pct.toFixed(3)}% · ${(stats.pct * 100).toFixed(1)} bps` : '—'}</p>
               {stats.percentile !== null && (
                 <PercentileGauge pct={stats.percentile} isLive={isLive} tfLabel={tfLabel} />
               )}
@@ -78,7 +78,7 @@ function SpreadStatsBarInner({ stats, tf, exs, wsPrices, sel }: SpreadStatsBarPr
         ) : (
           <>
             <p className={`text-2xl font-bold font-mono text-hub-yellow ${spreadFlash}`}>${fp(stats.cur)}</p>
-            <p className="text-[11px] text-neutral-500 mt-1">{stats.pct.toFixed(3)}% · {(stats.pct * 100).toFixed(1)} bps</p>
+            <p className="text-[11px] text-neutral-500 mt-1">{isFinite(stats.pct) ? `${stats.pct.toFixed(3)}% · ${(stats.pct * 100).toFixed(1)} bps` : '—'}</p>
             {(() => {
               const fresh = Object.values(wsPrices).filter(p => p.price > 0 && (Date.now() - p.ts) < 20000).length;
               const total = sel.length;

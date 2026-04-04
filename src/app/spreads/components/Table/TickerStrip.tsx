@@ -136,7 +136,7 @@ function TickerStripInner({ stats, exs, wsPrices, wsSpread, wsCount, sym }: Tick
               {/* WS freshness indicator */}
               {wsP && (
                 <span className={`w-1 h-1 rounded-full flex-shrink-0 ${getFreshnessDotColor(freshness)}`}
-                  title={`${Math.round(age / 1000)}s ago`} />
+                  title={wsP.ts > 0 ? `${Math.round(age / 1000)}s ago` : 'No data'} />
               )}
             </div>
           );

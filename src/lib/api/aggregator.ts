@@ -337,8 +337,8 @@ export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers:
   const sorted = [...validTickers].sort((a, b) => b.priceChangePercent24h - a.priceChangePercent24h);
 
   const result = {
-    gainers: sorted.slice(0, 10),
-    losers: sorted.slice(-10).reverse(),
+    gainers: sorted.slice(0, Math.min(10, Math.floor(sorted.length / 2) || 10)),
+    losers: sorted.slice(-Math.min(10, Math.floor(sorted.length / 2) || 10)).reverse(),
   };
 
   setCache('topMovers', result);

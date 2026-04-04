@@ -53,8 +53,10 @@ function checkAIRateLimit(chatId: number): boolean {
   const now = Date.now();
   const cutoff = now - 3600_000; // 1 hour
   const timestamps = (AI_RATE_LIMIT.get(chatId) || []).filter(t => t > cutoff);
+  if (timestamps.length === 0) { AI_RATE_LIMIT.delete(chatId); }
   if (timestamps.length >= AI_MAX_PER_HOUR) return false;
   timestamps.push(now);
+  if (AI_RATE_LIMIT.size > 10_000 && !AI_RATE_LIMIT.has(chatId)) return false;
   AI_RATE_LIMIT.set(chatId, timestamps);
   return true;
 }

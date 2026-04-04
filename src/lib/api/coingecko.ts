@@ -57,6 +57,10 @@ function getCached<T>(key: string, ttl: number): T | null {
 
 function setCache(key: string, data: any): void {
   cache.set(key, { data, timestamp: Date.now() });
+  if (cache.size > 500) {
+    const first = cache.keys().next().value;
+    if (first) cache.delete(first);
+  }
 }
 
 const TTL = {

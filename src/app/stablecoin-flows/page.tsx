@@ -208,7 +208,7 @@ export default function StablecoinFlowsPage() {
                     </thead>
                     <tbody>
                       {data.stablecoins.map((s, i) => {
-                        const share = (s.mcap / data.totalMcap) * 100;
+                        const share = data.totalMcap > 0 ? (s.mcap / data.totalMcap) * 100 : 0;
                         const isExpanded = expandedId === s.id;
                         const topChains = Object.entries(s.chains)
                           .sort(([, a], [, b]) => b - a)

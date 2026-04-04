@@ -65,6 +65,9 @@ export function checkRateLimit(ip: string, inputLength: number): RateLimitResult
   // Check per-IP limit
   let entry = ipLimits.get(ip);
   if (!entry || now - entry.windowStart > WINDOW_MS) {
+    if (ipLimits.size >= 50_000 && !ipLimits.has(ip)) {
+      return { allowed: false, remaining: 0, error: 'Service is busy. Please try again later.' };
+    }
     entry = { count: 0, windowStart: now };
     ipLimits.set(ip, entry);
   }
