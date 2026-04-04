@@ -64,9 +64,11 @@ export default function ProfilePage() {
 
   // Sync avatar URL from session (only when session image changes, not during local preview)
   const sessionImage = session?.user?.image ?? null;
+  const avatarHasUnsaved = avatar.hasUnsaved;
+  const avatarSetUrl = avatar.setUrl;
   useEffect(() => {
-    if (sessionImage && !avatar.hasUnsaved) avatar.setUrl(sessionImage);
-  }, [sessionImage]);
+    if (sessionImage && !avatarHasUnsaved) avatarSetUrl(sessionImage);
+  }, [sessionImage, avatarHasUnsaved, avatarSetUrl]);
 
   // Load account stats + user data once on mount
   const userId = session?.user?.id;
@@ -386,7 +388,7 @@ export default function ProfilePage() {
                     n.metric === 'fundingRate' ? 'Funding' :
                     n.metric === 'openInterest' ? 'OI' :
                     n.metric === 'change24h' ? '24h %' : n.metric;
-                  const ago = formatTimeAgo(n.sentAt);
+                  const ago = n.sentAt ? formatTimeAgo(n.sentAt) : 'unknown';
                   return (
                     <div key={i} className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
                       <div className="flex items-center gap-2 min-w-0">

@@ -65,6 +65,7 @@ const CACHE_TTL = 120; // 2 minutes in seconds
 // L1: In-memory cache
 const memCache = new Map<string, { data: WalletResult; time: number }>();
 const MEM_CACHE_TTL = 2 * 60 * 1000; // 2 min
+const MEM_CACHE_MAX = 200;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -112,8 +113,10 @@ async function fetchEthBalanceViaRPC(address: string): Promise<number> {
       if (json.error || !json.result) continue;
 
       // Convert hex wei to ETH
-      const wei = BigInt(json.result);
-      return Number(wei) / 1e18;
+      try {
+        const wei = BigInt(json.result);
+        return Number(wei) / 1e18;
+      } catch { continue; }
     } catch {
       continue; // Try next RPC
     }
@@ -175,7 +178,8 @@ async function fetchTokenBalancesViaBlockscout(address: string) {
       })
       .map((item) => {
         const decimals = parseInt(item.token.decimals) || 18;
-        const balance = Number(BigInt(item.value || '0')) / Math.pow(10, decimals);
+        let balance = 0;
+        try { balance = Number(BigInt(item.value || '0')) / Math.pow(10, decimals); } catch {};
         const price = parseFloat(item.token.exchange_rate || '0');
         const usd = balance * price;
         return {
@@ -270,7 +274,7 @@ async function fetchEthWallet(address: string): Promise<WalletResult> {
     hash: tx.hash,
     from: tx.from,
     to: tx.to,
-    value: (Number(BigInt(tx.value || '0')) / 1e18).toFixed(6),
+    value: (() => { try { return (Number(BigInt(tx.value || '0')) / 1e18).toFixed(6); } catch { return '0'; } })(),
     timestamp: Number(tx.timeStamp) * 1000,
     isError: tx.isError === '1',
     direction: tx.to?.toLowerCase() === address.toLowerCase() ? 'in' : 'out',
@@ -528,8 +532,12 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // Store in caches
+    // Store in caches (evict oldest if over limit)
     memCache.set(cacheKey, { data, time: Date.now() });
+    if (memCache.size > MEM_CACHE_MAX) {
+      const first = memCache.keys().next().value;
+      if (first) memCache.delete(first);
+    }
     if (isDBConfigured()) {
       setCache(cacheKey, data, CACHE_TTL).catch(() => {});
     }

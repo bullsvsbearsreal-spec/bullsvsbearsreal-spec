@@ -33,7 +33,7 @@ export default function DataFreshness({ exchangeCount, lastUpdated, sources }: D
   const sourceText = sources && sources.length > 0
     ? sources.length <= 3
       ? sources.join(', ')
-      : `${sources.slice(0, 2).join(', ')} +${exchangeCount - 2}`
+      : `${sources.slice(0, 2).join(', ')} +${sources.length - 2}`
     : `${exchangeCount} exchanges`;
 
   return (

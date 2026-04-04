@@ -17,7 +17,12 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const pwStrength = password.length >= 12 ? 3 : password.length >= 8 ? 2 : password.length >= 4 ? 1 : 0;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasDigit = /\d/.test(password);
+  const isLong = password.length >= 8;
+  const checksPass = [hasUpper, hasLower, hasDigit, isLong].filter(Boolean).length;
+  const pwStrength = checksPass >= 4 ? 3 : checksPass >= 3 ? 2 : checksPass >= 1 ? 1 : 0;
   const pwLabel = ['', 'Weak', 'Good', 'Strong'][pwStrength];
   const pwColor = ['', '#ef4444', '#f59e0b', '#22c55e'][pwStrength];
 
@@ -25,8 +30,8 @@ function ResetPasswordForm() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (!isLong || !hasUpper || !hasLower || !hasDigit) {
+      setError('Password must be at least 8 characters with uppercase, lowercase, and a digit');
       return;
     }
 

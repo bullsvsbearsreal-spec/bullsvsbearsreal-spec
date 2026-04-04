@@ -152,13 +152,16 @@ function SignupContent() {
         return;
       }
 
-      // Email verified — sign in
-      const signInRes = await signIn('credentials', { email, password, redirect: false });
-      if (signInRes?.error) {
-        window.location.href = '/login';
-      } else {
-        window.location.href = callbackUrl;
+      // Email verified — sign in (only if password available from this session)
+      if (password) {
+        const signInRes = await signIn('credentials', { email, password, redirect: false });
+        if (!signInRes?.error) {
+          window.location.href = callbackUrl;
+          return;
+        }
       }
+      // No password (URL-based verify) or sign-in failed — redirect to login
+      window.location.href = '/login?verified=true';
     } catch {
       setError('Something went wrong');
     } finally {

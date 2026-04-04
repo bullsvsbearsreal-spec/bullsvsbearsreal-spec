@@ -28,17 +28,16 @@ type SortMode = 'default' | 'avg-desc' | 'avg-asc' | 'latest-desc' | 'latest-asc
 
 function getHeatColor(rate: number | undefined): string {
   if (rate === undefined) return 'bg-neutral-800/40';
-  // Rate is typically -0.1% to +0.3%, in decimal like 0.01 = 0.01%
-  const r = rate * 100; // convert to basis points style for thresholding
-  if (r > 10) return 'bg-green-400';
-  if (r > 5) return 'bg-green-500';
-  if (r > 2) return 'bg-green-600/90';
-  if (r > 0.5) return 'bg-green-700/70';
-  if (r > 0) return 'bg-green-800/50';
-  if (r > -0.5) return 'bg-red-900/40';
-  if (r > -2) return 'bg-red-700/70';
-  if (r > -5) return 'bg-red-600/90';
-  if (r > -10) return 'bg-red-500';
+  // Rate is already a percentage (e.g., 0.01 = 0.01%)
+  if (rate > 0.10) return 'bg-green-400';
+  if (rate > 0.05) return 'bg-green-500';
+  if (rate > 0.02) return 'bg-green-600/90';
+  if (rate > 0.005) return 'bg-green-700/70';
+  if (rate > 0) return 'bg-green-800/50';
+  if (rate > -0.005) return 'bg-red-900/40';
+  if (rate > -0.02) return 'bg-red-700/70';
+  if (rate > -0.05) return 'bg-red-600/90';
+  if (rate > -0.10) return 'bg-red-500';
   return 'bg-red-400';
 }
 

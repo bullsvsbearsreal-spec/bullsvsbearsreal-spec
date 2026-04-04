@@ -8,6 +8,8 @@ import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { ArrowUpDown, ArrowLeftRight, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { getCoinIcon } from '@/lib/coinIcons';
+
+const CEX_SET = new Set(['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit','BitMEX','Gate.io']);
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import DataFreshness from '@/components/DataFreshness';
@@ -39,7 +41,6 @@ export default function SpreadScannerPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filter, setFilter] = useState('');
   const [cexOnly, setCexOnly] = useState(false);
-  const CEX_SET = new Set(['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit','BitMEX','Gate.io']);
 
   const fetcher = useCallback(async () => {
     const res = await fetch('/api/spreads/current');

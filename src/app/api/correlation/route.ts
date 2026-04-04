@@ -45,17 +45,18 @@ export async function GET(request: NextRequest) {
     }>();
 
     for (const t of allTickers) {
-      if (!t.symbol || !isFinite(t.priceChangePercent24h) || !isFinite(t.price) || t.price <= 0) continue;
+      const price = t.price || t.lastPrice || 0;
+      if (!t.symbol || !isFinite(t.priceChangePercent24h) || !isFinite(price) || price <= 0) continue;
 
       const existing = symbolMap.get(t.symbol);
       if (existing) {
         existing.changes.push({ exchange: t.exchange, change24h: t.priceChangePercent24h });
-        existing.prices.push(t.price);
+        existing.prices.push(price);
         existing.volumes.push(t.quoteVolume24h || 0);
       } else {
         symbolMap.set(t.symbol, {
           changes: [{ exchange: t.exchange, change24h: t.priceChangePercent24h }],
-          prices: [t.price],
+          prices: [price],
           volumes: [t.quoteVolume24h || 0],
         });
       }
