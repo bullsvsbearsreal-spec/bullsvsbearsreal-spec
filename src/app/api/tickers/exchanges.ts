@@ -47,14 +47,14 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => ({
           symbol: ticker.symbol.replace('USDT', ''),
           exchange: 'Binance',
-          lastPrice: parseFloat(ticker.lastPrice),
-          price: parseFloat(ticker.lastPrice),
-          priceChangePercent24h: parseFloat(ticker.priceChangePercent),
-          changePercent24h: parseFloat(ticker.priceChangePercent),
-          high24h: parseFloat(ticker.highPrice),
-          low24h: parseFloat(ticker.lowPrice),
-          volume24h: parseFloat(ticker.volume),
-          quoteVolume24h: parseFloat(ticker.quoteVolume),
+          lastPrice: parseFloat(ticker.lastPrice) || 0,
+          price: parseFloat(ticker.lastPrice) || 0,
+          priceChangePercent24h: parseFloat(ticker.priceChangePercent) || 0,
+          changePercent24h: parseFloat(ticker.priceChangePercent) || 0,
+          high24h: parseFloat(ticker.highPrice) || 0,
+          low24h: parseFloat(ticker.lowPrice) || 0,
+          volume24h: parseFloat(ticker.volume) || 0,
+          quoteVolume24h: parseFloat(ticker.quoteVolume) || 0,
         }));
     },
   },
@@ -88,14 +88,14 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => ({
           symbol: ticker.symbol.replace('USDT', ''),
           exchange: 'Bybit',
-          lastPrice: parseFloat(ticker.lastPrice),
-          price: parseFloat(ticker.lastPrice),
-          priceChangePercent24h: parseFloat(ticker.price24hPcnt) * 100,
-          changePercent24h: parseFloat(ticker.price24hPcnt) * 100,
-          high24h: parseFloat(ticker.highPrice24h),
-          low24h: parseFloat(ticker.lowPrice24h),
-          volume24h: parseFloat(ticker.volume24h),
-          quoteVolume24h: parseFloat(ticker.turnover24h),
+          lastPrice: parseFloat(ticker.lastPrice) || 0,
+          price: parseFloat(ticker.lastPrice) || 0,
+          priceChangePercent24h: (parseFloat(ticker.price24hPcnt) || 0) * 100,
+          changePercent24h: (parseFloat(ticker.price24hPcnt) || 0) * 100,
+          high24h: parseFloat(ticker.highPrice24h) || 0,
+          low24h: parseFloat(ticker.lowPrice24h) || 0,
+          volume24h: parseFloat(ticker.volume24h) || 0,
+          quoteVolume24h: parseFloat(ticker.turnover24h) || 0,
         }));
     },
   },
@@ -145,14 +145,14 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => ({
           symbol: ticker.symbol.replace('USDT', ''),
           exchange: 'Bitget',
-          lastPrice: parseFloat(ticker.lastPr),
-          price: parseFloat(ticker.lastPr),
-          priceChangePercent24h: parseFloat(ticker.change24h) * 100,
-          changePercent24h: parseFloat(ticker.change24h) * 100,
-          high24h: parseFloat(ticker.high24h),
-          low24h: parseFloat(ticker.low24h),
-          volume24h: parseFloat(ticker.baseVolume),
-          quoteVolume24h: parseFloat(ticker.quoteVolume),
+          lastPrice: parseFloat(ticker.lastPr) || 0,
+          price: parseFloat(ticker.lastPr) || 0,
+          priceChangePercent24h: (parseFloat(ticker.change24h) || 0) * 100,
+          changePercent24h: (parseFloat(ticker.change24h) || 0) * 100,
+          high24h: parseFloat(ticker.high24h) || 0,
+          low24h: parseFloat(ticker.low24h) || 0,
+          volume24h: parseFloat(ticker.baseVolume) || 0,
+          quoteVolume24h: parseFloat(ticker.quoteVolume) || 0,
         }));
     },
   },
@@ -197,9 +197,10 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       return Object.entries(json.markets)
         .filter(([key]: [string, any]) => key.endsWith('-USD'))
         .map(([key, market]: [string, any]) => {
-          const price = parseFloat(market.oraclePrice);
+          const price = parseFloat(market.oraclePrice) || 0;
           const change24h = parseFloat(market.priceChange24H) || 0; // dollar amount, not ratio
-          const changePct = price > 0 ? (change24h / (price - change24h)) * 100 : 0;
+          const oldPrice = price - change24h;
+          const changePct = oldPrice > 0 ? (change24h / oldPrice) * 100 : 0;
           return {
           symbol: key.replace('-USD', ''),
           exchange: 'dYdX',
