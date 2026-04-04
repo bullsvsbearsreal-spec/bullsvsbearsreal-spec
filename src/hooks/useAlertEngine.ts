@@ -113,6 +113,7 @@ function getMetricValue(data: MarketData, metric: AlertMetric): number {
     case 'change24h': return data.change24h;
     case 'volume24h': return data.volume24h;
     case 'liquidations24h': return data.liquidations24h;
+    default: return 0;
   }
 }
 

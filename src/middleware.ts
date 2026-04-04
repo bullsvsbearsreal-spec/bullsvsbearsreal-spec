@@ -145,7 +145,7 @@ export function middleware(request: NextRequest) {
     const response = NextResponse.next();
     response.headers.set('Cache-Control', 'no-store');
 
-    if (AUTH_PATHS.has(pathname)) {
+    if (AUTH_PATHS.has(pathname) || pathname.startsWith('/api/auth/')) {
       const key = `auth:${ip}`;
       const { limited, retryAfter } = isRateLimited(authBuckets, key, AUTH_LIMIT, AUTH_WINDOW);
       if (limited) {

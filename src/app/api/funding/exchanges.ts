@@ -1607,7 +1607,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingRate,
             markPrice,
             indexPrice: parseFloat(ticker.indexPrice || '0') || markPrice,
-            nextFundingTime: parseInt(ticker.nextFundingTime || '0') || (Date.now() + 3600000),
+            nextFundingTime: (() => { const t = parseInt(ticker.nextFundingTime || '0'); return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 3600000; })(),
             fundingInterval: '1h',
             type: 'dex',
           });
@@ -1845,7 +1845,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '1h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
-            nextFundingTime: parseInt(item.nextFundingTimestamp) || Date.now() + 3600000,
+            nextFundingTime: (() => { const t = parseInt(item.nextFundingTimestamp); return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 3600000; })(),
             type: 'dex' as const,
           };
         })
@@ -1880,7 +1880,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: `${fundingPeriod}h` as '8h',
             markPrice: parseFloat(item.mark_price) || 0,
             indexPrice: parseFloat(item.index_price) || 0,
-            nextFundingTime: parseInt(item.next_funding_time) || Date.now() + 28800000,
+            nextFundingTime: (() => { const t = parseInt(item.next_funding_time); return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 28800000; })(),
             type: 'dex' as const,
           };
         })

@@ -175,7 +175,10 @@ export function useMultiExchangeWS(symbol: string, exchanges: string[], enabled 
             if (msg.s && msg.e && msg.p) {
               if (msg.s !== symbol) return;
               if (!exchanges.includes(msg.e)) return;
-              handlePrice(msg.e, msg.s, msg.p, msg.b || msg.p, msg.a || msg.p, msg.t || Date.now());
+              const p = typeof msg.p === 'string' ? parseFloat(msg.p) : msg.p;
+              const b = typeof (msg.b || msg.p) === 'string' ? parseFloat(msg.b || msg.p) : (msg.b || msg.p);
+              const a = typeof (msg.a || msg.p) === 'string' ? parseFloat(msg.a || msg.p) : (msg.a || msg.p);
+              handlePrice(msg.e, msg.s, p, b, a, msg.t || Date.now());
 
               // Update connected for this exchange
               setConnected(prev => {
