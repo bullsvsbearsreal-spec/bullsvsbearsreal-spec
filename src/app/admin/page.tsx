@@ -71,7 +71,8 @@ function Sparkline({ data, color = '#f5a623' }: { data: number[]; color?: string
   const max = Math.max(...data, 1);
   const w = 80;
   const h = 24;
-  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(' ');
+  const divisor = data.length > 1 ? data.length - 1 : 1;
+  const points = data.map((v, i) => `${(i / divisor) * w},${h - (v / max) * h}`).join(' ');
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-20 h-6" preserveAspectRatio="none">
       <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} />

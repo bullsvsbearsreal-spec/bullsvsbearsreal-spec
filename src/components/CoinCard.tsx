@@ -174,9 +174,10 @@ export default function CoinCard({ coin, showEvents = true }: CoinCardProps) {
 }
 
 function MiniChart({ data, isPositive }: { data: number[]; isPositive: boolean }) {
+  if (!data || data.length < 2) return null;
   const min = Math.min(...data);
   const max = Math.max(...data);
-  const range = max - min;
+  const range = max - min || 1;
 
   const points = data.map((price, i) => {
     const x = (i / (data.length - 1)) * 100;
