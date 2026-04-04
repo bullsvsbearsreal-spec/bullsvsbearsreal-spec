@@ -12,19 +12,26 @@ function getTheme(): Theme {
 }
 
 let listeners: (() => void)[] = [];
+let sharedObserver: MutationObserver | null = null;
 
 function subscribe(cb: () => void) {
   listeners.push(cb);
-  const observer = new MutationObserver(() => {
-    listeners.forEach((l) => l());
-  });
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme'],
-  });
+  // Create a single shared observer for all subscribers
+  if (!sharedObserver) {
+    sharedObserver = new MutationObserver(() => {
+      listeners.forEach((l) => l());
+    });
+    sharedObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+  }
   return () => {
     listeners = listeners.filter((l) => l !== cb);
-    observer.disconnect();
+    if (listeners.length === 0 && sharedObserver) {
+      sharedObserver.disconnect();
+      sharedObserver = null;
+    }
   };
 }
 
@@ -39,10 +46,10 @@ export function toggleTheme(): void {
   const current = getTheme();
   if (current === 'orange') {
     document.documentElement.dataset.theme = 'green';
-    localStorage.setItem(STORAGE_KEY, 'green');
+    try { localStorage.setItem(STORAGE_KEY, 'green'); } catch {}
   } else {
     delete document.documentElement.dataset.theme;
-    localStorage.removeItem(STORAGE_KEY);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }
 
   // Remove transition class after animation completes
