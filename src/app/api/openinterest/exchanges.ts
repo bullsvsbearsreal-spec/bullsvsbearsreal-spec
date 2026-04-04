@@ -45,7 +45,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
 
       const topSymbols = tickerData
         .filter((t: any) => t.symbol?.endsWith('USDT') && isCryptoSymbol(t.symbol.replace('USDT', '')))
-        .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+        .sort((a: any, b: any) => (parseFloat(b.quoteVolume) || 0) - (parseFloat(a.quoteVolume) || 0))
         .slice(0, 50);
 
       const BATCH_SIZE = 10;
@@ -135,7 +135,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         const tickerJson = await tickerRes.json();
         if (tickerJson.code === '0') {
           tickerJson.data.forEach((t: any) => {
-            priceMap.set(t.instId, parseFloat(t.last));
+            priceMap.set(t.instId, parseFloat(t.last) || 0);
           });
         }
       }

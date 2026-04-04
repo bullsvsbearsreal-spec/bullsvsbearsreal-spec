@@ -48,7 +48,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.symbol.replace('USDT', ''),
           exchange: 'Binance',
-          fundingRate: parseFloat(item.lastFundingRate) * 100,
+          fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
           fundingInterval: '8h' as const,
           markPrice: parseFloat(item.markPrice) || 0,
           indexPrice: parseFloat(item.indexPrice) || 0,
@@ -86,7 +86,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           .map((item: any) => ({
             symbol: item.symbol.replace('USD_PERP', ''),
             exchange: 'Binance',
-            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
@@ -127,7 +127,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.symbol.replace('USDT', ''),
           exchange: 'Bybit',
-          fundingRate: parseFloat(item.fundingRate) * 100,
+          fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
           fundingInterval: '8h' as const,
           markPrice: parseFloat(item.markPrice) || 0,
           indexPrice: parseFloat(item.indexPrice) || 0,
@@ -184,12 +184,12 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                   const fr = frJson.data[0];
                   const markPrice = markPriceMap.get(inst.instId) || 0;
                   const predictedRate = fr.nextFundingRate
-                    ? parseFloat(fr.nextFundingRate) * 100
+                    ? (parseFloat(fr.nextFundingRate) || 0) * 100
                     : undefined;
                   return {
                     symbol: inst.instId.replace('-USDT-SWAP', ''),
                     exchange: 'OKX',
-                    fundingRate: parseFloat(fr.fundingRate) * 100,
+                    fundingRate: (parseFloat(fr.fundingRate) || 0) * 100,
                     fundingInterval: '8h' as const,
                     predictedRate,
                     markPrice,
@@ -226,7 +226,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.symbol.replace('USDT', ''),
           exchange: 'Bitget',
-          fundingRate: parseFloat(item.fundingRate) * 100,
+          fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
           fundingInterval: '8h' as const,
           markPrice: parseFloat(item.markPrice) || 0,
           indexPrice: parseFloat(item.indexPrice) || 0,
@@ -283,7 +283,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 if (Array.isArray(venues)) {
                   for (const [venue, data] of venues) {
                     if (venue === 'HlPerp' && data?.fundingRate) {
-                      predictedMap.set(coin, parseFloat(data.fundingRate) * 100);
+                      predictedMap.set(coin, (parseFloat(data.fundingRate) || 0) * 100);
                       break;
                     }
                   }
@@ -368,10 +368,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'Aster',
-            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
             fundingInterval: '8h' as const,
-            markPrice: parseFloat(item.markPrice || '0'),
-            indexPrice: parseFloat(item.indexPrice || '0'),
+            markPrice: parseFloat(item.markPrice || '0') || 0,
+            indexPrice: parseFloat(item.indexPrice || '0') || 0,
             nextFundingTime: Number(item.nextFundingTime) || Date.now() + 28800000,
             type: 'dex' as const,
             assetClass: normalized.assetClass,
@@ -427,7 +427,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'Lighter',
-            fundingRate: (parseFloat(item.rate || '0') * 100) / 8, // API returns 8h-normalized; divide by 8 for native 1h rate
+            fundingRate: ((parseFloat(item.rate || '0') || 0) * 100) / 8, // API returns 8h-normalized; divide by 8 for native 1h rate
             fundingInterval: '1h' as const,
             markPrice: market.price,
             indexPrice: market.price,
@@ -565,7 +565,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.symbol.replace('_USDT', ''),
           exchange: 'MEXC',
-          fundingRate: parseFloat(item.fundingRate) * 100,
+          fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
           fundingInterval: '8h' as const,
           markPrice: parseFloat(item.fairPrice) || 0,
           indexPrice: parseFloat(item.indexPrice) || 0,
@@ -655,7 +655,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'BingX',
-            fundingRate: parseFloat(item.lastFundingRate) * 100,
+            fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
@@ -710,7 +710,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: normalized.symbol,
             exchange: 'Phemex',
-            fundingRate: parseFloat(item.fundingRateRr) * 100,
+            fundingRate: (parseFloat(item.fundingRateRr) || 0) * 100,
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.markPriceRp) || 0,
             indexPrice: parseFloat(item.indexPriceRp) || 0,
@@ -821,7 +821,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (sym === 'XBT') sym = 'BTC';
           const actualRate = overrides.has(item.symbol)
             ? (overrides.get(item.symbol) ?? 0) * 100
-            : parseFloat(item.fundingFeeRate) * 100;
+            : (parseFloat(item.fundingFeeRate) || 0) * 100;
           return {
             symbol: sym,
             exchange: 'KuCoin',
@@ -905,7 +905,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.contract_code.replace('-USDT', ''),
           exchange: 'HTX',
-          fundingRate: parseFloat(item.funding_rate) * 100,
+          fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
           fundingInterval: '8h' as const,
           markPrice: 0,
           indexPrice: 0,
@@ -963,7 +963,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.ticker_id.replace('_PERP', ''),
           exchange: 'WhiteBIT',
-          fundingRate: parseFloat(item.funding_rate) * 100,
+          fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
           fundingInterval: '8h' as const,
           markPrice: parseFloat(item.last_price) || 0,
           indexPrice: parseFloat(item.index_price) || 0,
@@ -987,7 +987,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => ({
           symbol: item.symbol.replace('-PERP', ''),
           exchange: 'Coinbase',
-          fundingRate: parseFloat(item.quote.predicted_funding) * 100, // native 1h fraction → %
+          fundingRate: (parseFloat(item.quote.predicted_funding) || 0) * 100, // native 1h fraction → %
           fundingInterval: '1h' as const,
           markPrice: parseFloat(item.quote?.mark_price) || 0,
           indexPrice: parseFloat(item.quote?.index_price) || 0,
@@ -1022,7 +1022,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (!frData) return null;
           const rate = parseFloat(frData.latest_funding_rate || frData.next_funding_rate || '0');
           const predictedRate = frData.next_funding_rate
-            ? parseFloat(frData.next_funding_rate) * 100
+            ? (parseFloat(frData.next_funding_rate) || 0) * 100
             : undefined;
           return {
             symbol: t.market.replace('USDT', ''),
@@ -1536,7 +1536,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (symbol.startsWith('1000')) symbol = symbol.slice(4);
 
           const norm = normalizeSymbol(symbol, 'Extended');
-          const fundingRate = parseFloat(stats.fundingRate) * 100; // decimal → %
+          const fundingRate = (parseFloat(stats.fundingRate) || 0) * 100; // decimal → %
 
           return {
             symbol: norm.symbol,
@@ -1597,7 +1597,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
           if (!symbol || !isCryptoSymbol(symbol)) continue;
 
-          const fundingRate = parseFloat(ticker.fundingRate || '0') * 100;
+          const fundingRate = (parseFloat(ticker.fundingRate || '0') || 0) * 100;
           const markPrice = parseFloat(ticker.oraclePrice || ticker.markPrice || '0');
           if (!markPrice || markPrice <= 0) continue;
 
@@ -1695,7 +1695,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: sym,
             exchange: 'BitMEX',
-            fundingRate: parseFloat(i.fundingRate) * 100,
+            fundingRate: (parseFloat(i.fundingRate) || 0) * 100,
             fundingInterval: '8h' as const,
             markPrice: parseFloat(i.lastPrice) || 0,
             indexPrice: 0,
@@ -1723,7 +1723,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((c: any) => ({
           symbol: c.name.replace('_USDT', ''),
           exchange: 'Gate.io',
-          fundingRate: parseFloat(c.funding_rate) * 100,
+          fundingRate: (parseFloat(c.funding_rate) || 0) * 100,
           fundingInterval: '8h' as const,
           markPrice: parseFloat(c.mark_price) || 0,
           indexPrice: parseFloat(c.index_price) || 0,
@@ -1841,7 +1841,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol,
             exchange: 'Backpack',
-            fundingRate: parseFloat(item.fundingRate) * 100,
+            fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
             fundingInterval: '1h' as const,
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.indexPrice) || 0,
@@ -1875,8 +1875,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol,
             exchange: 'Orderly',
-            fundingRate: parseFloat(item.last_funding_rate) * 100,
-            predictedRate: item.est_funding_rate != null ? parseFloat(item.est_funding_rate) * 100 : undefined,
+            fundingRate: (parseFloat(item.last_funding_rate) || 0) * 100,
+            predictedRate: item.est_funding_rate != null ? (parseFloat(item.est_funding_rate) || 0) * 100 : undefined,
             fundingInterval: `${fundingPeriod}h` as '8h',
             markPrice: parseFloat(item.mark_price) || 0,
             indexPrice: parseFloat(item.index_price) || 0,
@@ -1904,7 +1904,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol,
             exchange: 'Paradex',
-            fundingRate: parseFloat(item.funding_rate) * 100,
+            fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
             fundingInterval: '8h' as const,
             markPrice: parseFloat(item.mark_price) || 0,
             indexPrice: parseFloat(item.underlying_price) || 0,
