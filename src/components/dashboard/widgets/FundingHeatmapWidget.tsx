@@ -52,7 +52,7 @@ export default function FundingHeatmapWidget() {
           // Flash micro-glow on refresh (skip first load)
           if (fetchCount.current > 0) {
             setJustUpdated(true);
-            setTimeout(() => setJustUpdated(false), 1000);
+            setTimeout(() => { if (mounted) setJustUpdated(false); }, 1000);
           }
           fetchCount.current++;
         }

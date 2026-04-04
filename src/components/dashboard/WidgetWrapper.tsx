@@ -1,8 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { GripVertical, X, Maximize2, Minimize2, ChevronUp, ChevronDown, Lock, Unlock } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import {
+  GripVertical, X, Maximize2, Minimize2, ChevronUp, ChevronDown, Lock, Unlock,
+  Bitcoin, Globe, TrendingUp, PieChart, Zap, Grid3X3, BarChart3, Flame,
+  ArrowLeftRight, Star, Briefcase, Bell, Wallet, Gauge, Newspaper, LineChart,
+  Activity, Coins, Calendar, Timer,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+/** Lookup map for dynamic icon resolution — avoids `import *` which prevents tree-shaking */
+const ICON_MAP: Record<string, LucideIcon> = {
+  Bitcoin, Globe, TrendingUp, PieChart, Zap, Grid3X3, BarChart3, Flame,
+  ArrowLeftRight, Star, Briefcase, Bell, Wallet, Gauge, Newspaper, LineChart,
+  Unlock: Unlock, Activity, Coins, Calendar, Timer,
+};
 
 interface WidgetWrapperProps {
   title: string;
@@ -28,8 +40,7 @@ interface WidgetWrapperProps {
 /** Resolve a lucide icon name string to the actual component */
 function getIcon(name?: string) {
   if (!name) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic icon lookup by string name
-  const Icon = (LucideIcons as any)[name] as React.ComponentType<{ className?: string }> | undefined;
+  const Icon = ICON_MAP[name];
   return Icon ? <Icon className="w-3 h-3" /> : null;
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import WidgetSkeleton from '../WidgetSkeleton';
@@ -16,7 +16,7 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
   const [movers, setMovers] = useState<{ gainers: Mover[]; losers: Mover[] } | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [error, setError] = useState(false);
-  const retriesRef = { current: 0 };
+  const retriesRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -29,7 +29,7 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
         if (!Array.isArray(data) || !mounted) return;
 
         const valid = data
-          .filter((t: any) => t.priceChangePercent != null && t.symbol)
+          .filter((t: any) => t.symbol && isFinite(Number(t.priceChangePercent)))
           .map((t: any) => ({
             symbol: t.symbol.replace(/USDT$/, ''),
             change: Number(t.priceChangePercent),
