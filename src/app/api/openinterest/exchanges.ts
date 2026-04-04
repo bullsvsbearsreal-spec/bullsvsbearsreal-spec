@@ -57,7 +57,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         const batchResults = await Promise.all(
           batch.map(async (ticker: any) => {
             try {
-              const oiTarget = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${ticker.symbol}`;
+              const oiTarget = `${workingDomain}/fapi/v1/openInterest?symbol=${ticker.symbol}`;
               const oiUrl = isProxy && proxyUrl
                 ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(oiTarget)}`
                 : `${workingDomain}/fapi/v1/openInterest?symbol=${ticker.symbol}`;
@@ -270,7 +270,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         const detailJson = await detailRes.json();
         if (detailJson.success && Array.isArray(detailJson.data)) {
           detailJson.data.forEach((c: any) => {
-            sizeMap.set(c.symbol, parseFloat(c.contractSize) || 1);
+            const cs = parseFloat(c.contractSize);
+            sizeMap.set(c.symbol, cs > 0 ? cs : 1);
           });
         }
       }
@@ -303,7 +304,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       return json.tickers
         .filter((t: any) => t.symbol.startsWith('PF_') && t.symbol.endsWith('USD') && t.openInterest)
         .map((item: any) => {
-          let sym = item.symbol.replace('PF_', '').replace('USD', '');
+          let sym = item.symbol.replace('PF_', '').replace(/USD$/, '');
           if (sym === 'XBT') sym = 'BTC';
           const oi = item.openInterest || 0;
           const price = item.last || item.markPrice || 0;
@@ -502,7 +503,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           const oi = parseFloat(item.open_interest) || 0;
           const price = parseFloat(item.last_price) || 0;
           return {
-            symbol: item.ticker_id.replace('_PERP', ''),
+            symbol: item.ticker_id.replace(/_USDT_PERP$|_PERP$/, ''),
             exchange: 'WhiteBIT',
             openInterest: oi,
             openInterestValue: oi * price,
@@ -525,7 +526,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           const oi = parseFloat(item.open_interest) || parseFloat(item.base_open_interest) || 0;
           const price = parseFloat(item.quote?.mark_price) || 0;
           return {
-            symbol: item.symbol.replace('-PERP', ''),
+            symbol: item.symbol.replace(/-USD-PERP$|-PERP$/, ''),
             exchange: 'Coinbase',
             openInterest: oi,
             openInterestValue: oi * price,
@@ -584,9 +585,10 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           if (price <= 0) continue;
 
           // OI values are in base asset units (e.g., SOL count)
+          // OI long ≈ short in a balanced market; use max to avoid double-counting
           const oiLong = Math.abs(parseFloat(m.openInterest?.long) || 0);
           const oiShort = Math.abs(parseFloat(m.openInterest?.short) || 0);
-          const totalOI = oiLong + oiShort;
+          const totalOI = Math.max(oiLong, oiShort);
           const oiValue = totalOI * price;
           if (oiValue < 1000) continue;
 

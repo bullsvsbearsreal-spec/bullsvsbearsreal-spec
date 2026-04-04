@@ -87,7 +87,7 @@ function recordFailure(name: string) {
   if (state.failures >= CIRCUIT_THRESHOLD) {
     state.consecutiveOpens++;
     state.openedAt = now;
-    const cooldown = Math.min(CIRCUIT_COOLDOWN_MS * Math.pow(2, state.consecutiveOpens - 1), CIRCUIT_MAX_COOLDOWN_MS);
+    const cooldown = Math.min(CIRCUIT_COOLDOWN_MS * Math.pow(2, state.consecutiveOpens), CIRCUIT_MAX_COOLDOWN_MS);
     // Only log once every 10 minutes to avoid spam for persistently blocked exchanges
     if (now - state.lastLoggedAt > 10 * 60 * 1000) {
       state.lastLoggedAt = now;
@@ -96,13 +96,19 @@ function recordFailure(name: string) {
   }
 }
 
-/** Get circuit breaker status for all tracked exchanges */
+/** Get circuit breaker status for all tracked exchanges (read-only — no side effects) */
 export function getCircuitBreakerStatus(): Record<string, { failures: number; isOpen: boolean; openedAt: number | null }> {
   const result: Record<string, { failures: number; isOpen: boolean; openedAt: number | null }> = {};
   circuitStates.forEach((state, name) => {
+    // Pure read: check if circuit is open without resetting state
+    let isOpen = false;
+    if (state.openedAt) {
+      const cooldown = Math.min(CIRCUIT_COOLDOWN_MS * Math.pow(2, state.consecutiveOpens), CIRCUIT_MAX_COOLDOWN_MS);
+      isOpen = Date.now() - state.openedAt < cooldown;
+    }
     result[name] = {
       failures: state.failures,
-      isOpen: isCircuitOpen(name),
+      isOpen,
       openedAt: state.openedAt,
     };
   });
