@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_PASSWORD, AUTH_SECRET } from '@/lib/config';
 
+/* ─── IP-based rate limiter: max 5 attempts per 15 minutes ──────── */
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  // Periodic cleanup
+  if (loginAttempts.size > 1000) {
+    loginAttempts.forEach((v, k) => { if (now > v.resetAt) loginAttempts.delete(k); });
+  }
+  const entry = loginAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 });
+    return true;
+  }
+  if (entry.count >= 5) return false;
+  entry.count++;
+  return true;
+}
+
 async function hashToken(value: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(value);
@@ -23,7 +42,18 @@ function safeEqual(a: string, b: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json({ error: 'Too many login attempts. Try again later.' }, { status: 429 });
+    }
+
     const { password } = await request.json();
+
+    // Block login entirely if ADMIN_PASSWORD is not configured
+    if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 8) {
+      return NextResponse.json({ error: 'Admin password not configured' }, { status: 503 });
+    }
 
     if (!password || typeof password !== 'string' || !safeEqual(password, ADMIN_PASSWORD)) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
