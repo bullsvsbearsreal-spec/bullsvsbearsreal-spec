@@ -335,7 +335,7 @@ async function handlePrice(chatId: number, args: string[], origin: string): Prom
     return;
   }
 
-  const symbol = args[0].toUpperCase();
+  const symbol = args[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
 
   try {
     const res = await fetch(
@@ -399,7 +399,7 @@ async function handleHistory(chatId: number, args: string[], origin: string): Pr
     return;
   }
 
-  const symbol = args[0].toUpperCase();
+  const symbol = args[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
 
   // Parse timeframe (default 7d)
   let days = 7;
@@ -471,7 +471,7 @@ async function handleFundingRates(chatId: number, args: string[], origin: string
     return;
   }
 
-  const symbol = args[0].toUpperCase();
+  const symbol = args[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
 
   try {
     const res = await fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) });
@@ -536,7 +536,7 @@ async function handleOI(chatId: number, args: string[], origin: string): Promise
     return;
   }
 
-  const symbol = args[0].toUpperCase();
+  const symbol = args[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
 
   try {
     const res = await fetch(
@@ -599,7 +599,7 @@ async function handleOI(chatId: number, args: string[], origin: string): Promise
 // ---------------------------------------------------------------------------
 
 async function handleLiq(chatId: number, args: string[], origin: string): Promise<void> {
-  const symbol = args.length > 0 ? args[0].toUpperCase() : null;
+  const symbol = args.length > 0 ? args[0].toUpperCase().replace(/[^A-Z0-9]/g, '') : null;
 
   try {
     const url = symbol
@@ -824,7 +824,7 @@ async function handleAlert(chatId: number, args: string[]): Promise<void> {
         return;
       }
 
-      const symbol = args[1].toUpperCase();
+      const symbol = args[1].toUpperCase().replace(/[^A-Z0-9]/g, '');
       const metricInput = args[2].toLowerCase();
       const operator = args[3].toLowerCase();
       const threshold = parseFloat(args[4]);
@@ -1031,7 +1031,7 @@ async function handleMenuCallback(chatId: number, args: string[]): Promise<void>
 // ---------------------------------------------------------------------------
 
 async function handleBasis(chatId: number, args: string[], origin: string): Promise<void> {
-  const symbol = args.length > 0 ? args[0].toUpperCase() : null;
+  const symbol = args.length > 0 ? args[0].toUpperCase().replace(/[^A-Z0-9]/g, '') : null;
 
   try {
     const res = await fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) });
@@ -1131,7 +1131,7 @@ async function handleRsi(chatId: number, args: string[], origin: string): Promis
     return;
   }
 
-  const symbol = args[0].toUpperCase();
+  const symbol = args[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
 
   try {
     const res = await fetch(`${origin}/api/rsi`, { signal: AbortSignal.timeout(25000) });
@@ -1658,7 +1658,7 @@ async function handleOIDelta(chatId: number, origin: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function handleLongShort(chatId: number, args: string[], origin: string): Promise<void> {
-  const symbol = args.length > 0 ? args[0].toUpperCase() : 'BTC';
+  const symbol = args.length > 0 ? args[0].toUpperCase().replace(/[^A-Z0-9]/g, '') || 'BTC' : 'BTC';
   const pair = symbol.endsWith('USDT') ? symbol : symbol + 'USDT';
 
   try {
@@ -1878,14 +1878,16 @@ export async function POST(request: NextRequest) {
 
       // Handle chart image callbacks
       if (cbPrefix === 'chart' && cbCmd && cbArgs[0]) {
+        const safeType = cbCmd.replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeSym = cbArgs[0].replace(/[^a-zA-Z0-9]/g, '');
         try {
           const chartRes = await fetch(
-            `${cbOrigin}/api/charts/telegram?type=${cbCmd}&symbol=${encodeURIComponent(cbArgs[0])}`,
+            `${cbOrigin}/api/charts/telegram?type=${safeType}&symbol=${encodeURIComponent(safeSym)}`,
             { signal: AbortSignal.timeout(20000) },
           );
           if (chartRes.ok) {
             const buf = Buffer.from(await chartRes.arrayBuffer());
-            await sendPhoto(cbChatId, buf, `${esc(cbArgs[0])} ${esc(cbCmd)} chart`);
+            await sendPhoto(cbChatId, buf, `${esc(safeSym)} ${esc(safeType)} chart`);
           } else {
             await sendMessage(cbChatId, 'Chart generation failed. Try again later.');
           }
