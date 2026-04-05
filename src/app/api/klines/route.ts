@@ -15,7 +15,8 @@ const VALID_INTERVALS = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const symbol = searchParams.get('symbol')?.toUpperCase();
+  const rawSymbol = searchParams.get('symbol')?.toUpperCase() || '';
+  const symbol = /^[A-Z0-9]+$/.test(rawSymbol) ? rawSymbol : '';
   const interval = searchParams.get('interval') || '1h';
   const limit = Math.min(parseInt(searchParams.get('limit') || '200') || 200, 500);
 

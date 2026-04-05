@@ -12,8 +12,11 @@ const cache = new Map<string, { data: any; ts: number }>();
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
-  const symbol = (sp.get('symbol') || 'BTC').toUpperCase();
-  const interval = sp.get('interval') || '1h';
+  const rawSymbol = (sp.get('symbol') || 'BTC').toUpperCase();
+  const symbol = /^[A-Z0-9]+$/.test(rawSymbol) ? rawSymbol : 'BTC';
+  const VALID_INTERVALS = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
+  const rawInterval = sp.get('interval') || '1h';
+  const interval = VALID_INTERVALS.includes(rawInterval) ? rawInterval : '1h';
   const limit = Number(sp.get('limit')) || (interval === '1h' ? 168 : interval === '4h' ? 180 : 90);
 
   const key = `${symbol}-${interval}-${limit}`;

@@ -20,7 +20,9 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/alerts';
+  const raw = event.notification.data?.url || '/alerts';
+  // Only allow relative paths — block absolute URLs to prevent open redirect
+  const url = (typeof raw === 'string' && raw.startsWith('/')) ? raw : '/alerts';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (const client of windowClients) {

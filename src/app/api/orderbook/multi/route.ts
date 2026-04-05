@@ -49,7 +49,8 @@ const DEPTH_SIZES = [10_000, 50_000, 100_000, 500_000];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const symbol = (searchParams.get('symbol') || 'BTC').toUpperCase();
+  const rawSymbol = (searchParams.get('symbol') || 'BTC').toUpperCase();
+  const symbol = /^[A-Z0-9]+$/.test(rawSymbol) ? rawSymbol : 'BTC';
   const exchangesParam = searchParams.get('exchanges') || 'Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter';
   const requestedExchanges = exchangesParam.split(',').map(e => e.trim()).filter(Boolean);
   const includeDepth = searchParams.get('depth') === 'true';

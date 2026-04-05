@@ -15,7 +15,8 @@ const CACHE_TTL = 10_000;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const asset = (searchParams.get('asset') || 'BTC').toUpperCase();
+  const rawAsset = (searchParams.get('asset') || 'BTC').toUpperCase();
+  const asset = /^[A-Z0-9]+$/.test(rawAsset) ? rawAsset : 'BTC';
   const size = Math.max(1000, Math.min(10_000_000, Number(searchParams.get('size')) || 100_000));
   const direction = (searchParams.get('direction') || 'long') as Direction;
 

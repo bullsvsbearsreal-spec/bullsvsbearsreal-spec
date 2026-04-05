@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const symbol = searchParams.get('symbol')?.toUpperCase();
+  const rawSymbol = searchParams.get('symbol')?.toUpperCase() || '';
+  const symbol = /^[A-Z0-9]+$/.test(rawSymbol) ? rawSymbol : '';
   const limit = Math.min(parseInt(searchParams.get('limit') || '500') || 500, 1000);
 
   if (!symbol) {
