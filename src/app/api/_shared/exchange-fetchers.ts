@@ -180,7 +180,7 @@ export async function fetchAllExchangesWithHealth<T>(
           status: 'error',
           count: 0,
           latencyMs: Date.now() - start,
-          error: lastError,
+          error: 'Exchange fetch failed',
         });
         return [] as T[];
       }

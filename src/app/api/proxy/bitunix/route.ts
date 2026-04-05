@@ -42,9 +42,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
     });
-  } catch (err: any) {
+  } catch (err) {
+    console.error('[proxy/bitunix]', err instanceof Error ? err.message : err);
     return NextResponse.json(
-      { code: -1, msg: err?.message || 'Proxy fetch failed', data: [] },
+      { code: -1, msg: 'Proxy fetch failed', data: [] },
       { status: 502 },
     );
   }

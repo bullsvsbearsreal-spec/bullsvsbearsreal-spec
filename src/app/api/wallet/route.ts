@@ -563,7 +563,7 @@ export async function GET(request: NextRequest) {
       return jsonOk(memCached.data);
     }
 
-    const message = err instanceof Error ? err.message : 'Unknown error fetching wallet data';
-    return errorResponse(message, 502);
+    console.error('[wallet]', err instanceof Error ? err.message : err);
+    return errorResponse('Failed to fetch wallet data', 502);
   }
 }

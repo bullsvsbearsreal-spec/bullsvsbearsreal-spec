@@ -90,7 +90,8 @@ export async function executeTool(
         return `Unknown tool: ${toolName}`;
     }
   } catch (error) {
-    return `Error executing ${toolName}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error(`[chat] tool ${toolName} error:`, error instanceof Error ? error.message : error);
+    return `Error executing ${toolName}: tool unavailable`;
   }
 }
 

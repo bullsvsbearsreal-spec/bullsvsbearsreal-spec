@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCircuitBreakerStatus } from '../_shared/exchange-fetchers';
 
@@ -27,9 +28,11 @@ interface RouteHealth {
 }
 
 export async function GET(request: NextRequest) {
-  // Auth check — always require Bearer token
-  const authHeader = request.headers.get('authorization');
-  if (!ADMIN_API_KEY || authHeader !== `Bearer ${ADMIN_API_KEY}`) {
+  // Auth check — always require Bearer token (timing-safe comparison)
+  const authHeader = request.headers.get('authorization') || '';
+  const expected = `Bearer ${ADMIN_API_KEY}`;
+  if (!ADMIN_API_KEY || authHeader.length !== expected.length
+    || !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

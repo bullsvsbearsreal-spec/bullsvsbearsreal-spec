@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       errors.push(`${raw.source}: empty orderbook`);
       raw = null;
     } catch (err: any) {
-      errors.push(err.message || 'Unknown error');
+      errors.push('fetch failed');
     }
   }
 
