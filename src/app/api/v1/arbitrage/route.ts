@@ -95,7 +95,9 @@ export async function GET(request: NextRequest) {
   const gradeFilter = searchParams.get('grade')?.split(',').map(g => g.trim().toUpperCase()).filter(Boolean);
   const symbolFilter = searchParams.get('symbols')?.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
   const limit = Math.min(500, Math.max(1, parseInt(searchParams.get('limit') || '100', 10) || 100));
-  const assetClass = (searchParams.get('assetClass') || 'crypto') as AssetClassFilter;
+  const VALID_ASSET_CLASSES = ['crypto', 'stocks', 'forex', 'commodities', 'all'] as const;
+  const rawAC = searchParams.get('assetClass') || 'crypto';
+  const assetClass = (VALID_ASSET_CLASSES as readonly string[]).includes(rawAC) ? rawAC as AssetClassFilter : 'crypto' as AssetClassFilter;
 
   try {
     // Fetch funding + OI data directly (no self-referential HTTP)
