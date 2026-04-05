@@ -20,6 +20,11 @@ interface ExecuteContext {
   portfolio?: Array<{ symbol: string; quantity: number; avgPrice: number }>;
 }
 
+/** Sanitize a string for safe use in URL query params (strip anything non-alphanumeric) */
+function sanitizeParam(s: string): string {
+  return s.replace(/[^A-Za-z0-9_.-]/g, '');
+}
+
 export async function executeTool(
   toolName: string,
   input: ToolInput,
@@ -101,7 +106,7 @@ async function fetchApi(ctx: ExecuteContext, path: string): Promise<any> {
 // ---- Tool Implementations ----
 
 async function getFundingRates(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const ac = input.assetClass || 'crypto';
+  const ac = sanitizeParam(input.assetClass || 'crypto');
   const data = await fetchApi(ctx, `/api/funding?assetClass=${ac}`);
   const rates: any[] = data.data || [];
 
@@ -192,8 +197,8 @@ async function getTopMovers(ctx: ExecuteContext): Promise<string> {
 }
 
 async function getLongShort(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const symbol = input.symbol || 'BTCUSDT';
-  const period = input.period || '1h';
+  const symbol = sanitizeParam(input.symbol || 'BTCUSDT');
+  const period = sanitizeParam(input.period || '1h');
   const data = await fetchApi(ctx, `/api/longshort?symbol=${symbol}&period=${period}&limit=5`);
   const entries: any[] = data.data || [];
 
@@ -298,10 +303,10 @@ async function getTickers(input: ToolInput, ctx: ExecuteContext): Promise<string
 }
 
 async function getFundingHistory(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const sym = input.symbol?.toUpperCase();
+  const sym = sanitizeParam(input.symbol?.toUpperCase() || '');
   if (!sym) return 'Symbol is required for funding history.';
   const days = Math.min(input.days || 30, 90);
-  const exParam = input.exchange ? `&exchange=${input.exchange}` : '';
+  const exParam = input.exchange ? `&exchange=${sanitizeParam(input.exchange)}` : '';
   const data = await fetchApi(ctx, `/api/history/funding?symbol=${sym}&days=${days}${exParam}`);
   const entries: any[] = data.points || data.data || [];
 
@@ -489,7 +494,7 @@ async function getLiquidations(input: ToolInput, ctx: ExecuteContext): Promise<s
 }
 
 async function getOiHistory(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const sym = input.symbol?.toUpperCase();
+  const sym = sanitizeParam(input.symbol?.toUpperCase() || '');
   if (!sym) return 'Symbol is required for OI history.';
   const days = Math.min(input.days || 7, 90);
   const data = await fetchApi(ctx, `/api/history/oi?symbol=${sym}&days=${days}`);
@@ -578,7 +583,7 @@ async function getMarketDominance(ctx: ExecuteContext): Promise<string> {
 }
 
 async function getRealLiquidations(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const sym = input.symbol?.toUpperCase();
+  const sym = sanitizeParam(input.symbol?.toUpperCase() || '');
   if (!sym) return 'Symbol is required for liquidation data.';
 
   const data = await fetchApi(ctx, `/api/liquidations?symbol=${sym}&limit=50`);
@@ -614,7 +619,7 @@ async function getRealLiquidations(input: ToolInput, ctx: ExecuteContext): Promi
 }
 
 async function getEtfFlows(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const etfType = input.type || 'btc';
+  const etfType = sanitizeParam(input.type || 'btc');
   const data = await fetchApi(ctx, `/api/etf?type=${etfType}`);
   const funds: any[] = data.funds || data.data || [];
 
@@ -641,7 +646,7 @@ async function getEtfFlows(input: ToolInput, ctx: ExecuteContext): Promise<strin
 // ---- New Tools: Options, On-chain, Cycle, Predictions, OI Delta, Stablecoins, RSI, Execution ----
 
 async function getOptionsData(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const currency = (input.currency || 'BTC').toUpperCase();
+  const currency = sanitizeParam((input.currency || 'BTC').toUpperCase());
   const data = await fetchApi(ctx, `/api/options?currency=${currency}`);
 
   if (!data || !data.underlyingPrice) return `No options data available for ${currency}.`;
@@ -855,7 +860,7 @@ async function getRsiData(input: ToolInput, ctx: ExecuteContext): Promise<string
 }
 
 async function getExecutionCosts(input: ToolInput, ctx: ExecuteContext): Promise<string> {
-  const sym = (input.symbol || 'BTC').toUpperCase();
+  const sym = sanitizeParam((input.symbol || 'BTC').toUpperCase());
   const data = await fetchApi(ctx, `/api/execution-costs?asset=${sym}&size=100000&direction=long`);
 
   if (!data || !data.venues || data.venues.length === 0) return `No execution cost data for ${sym}.`;

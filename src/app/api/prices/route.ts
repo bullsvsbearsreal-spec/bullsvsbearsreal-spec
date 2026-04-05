@@ -8,7 +8,8 @@ const AGGREGATOR = 'http://46.101.247.54:3100';
 // Thin proxy to the VPS price aggregator — avoids mixed content (HTTPS→HTTP)
 // No caching — the aggregator serves fresh data every request
 export async function GET(req: NextRequest) {
-  const symbol = req.nextUrl.searchParams.get('symbol') || '';
+  const rawSymbol = req.nextUrl.searchParams.get('symbol') || '';
+  const symbol = /^[A-Za-z0-9,]+$/.test(rawSymbol) ? rawSymbol : '';
   const url = symbol ? `${AGGREGATOR}/prices?symbol=${symbol}` : `${AGGREGATOR}/prices`;
 
   try {
