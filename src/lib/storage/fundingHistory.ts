@@ -47,7 +47,7 @@ export function saveFundingSnapshot(rates: FundingEntry[]): void {
   const key = getSnapshotKey(now);
 
   // Skip if we already have a snapshot for this 5-min slot
-  if (localStorage.getItem(key)) return;
+  try { if (localStorage.getItem(key)) return; } catch { return; }
 
   // Count exchanges per symbol to find top-100
   const symbolExCounts: Record<string, number> = {};
@@ -294,7 +294,7 @@ function pruneOldSnapshots(maxAge: number): void {
     }
   }
 
-  keysToRemove.forEach(k => localStorage.removeItem(k));
+  keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch {} });
 }
 
 // ─── DB-backed functions (prefer over localStorage when DB is available) ────

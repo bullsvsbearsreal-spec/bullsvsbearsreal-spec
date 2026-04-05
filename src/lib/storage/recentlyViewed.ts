@@ -35,5 +35,5 @@ export function addRecentlyViewed(path: string, label: string, symbol?: string):
 
 export function clearRecentlyViewed(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEY);
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
 }
