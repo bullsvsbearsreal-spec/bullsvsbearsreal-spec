@@ -8,11 +8,24 @@ async function hashToken(value: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Timing-safe string comparison — prevents password leaking via timing analysis */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufA = new TextEncoder().encode(a);
+  const bufB = new TextEncoder().encode(b);
+  // Constant-time comparison: XOR all bytes, accumulate differences
+  let diff = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    diff |= bufA[i] ^ bufB[i];
+  }
+  return diff === 0;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json();
 
-    if (!password || password !== ADMIN_PASSWORD) {
+    if (!password || typeof password !== 'string' || !safeEqual(password, ADMIN_PASSWORD)) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 

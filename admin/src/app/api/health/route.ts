@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { INFOHUB_API_URL, ADMIN_API_KEY } from '@/lib/config';
+import { INFOHUB_API_URL, ADMIN_API_KEY, AUTH_SECRET } from '@/lib/config';
+
+async function hashToken(value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export async function GET(request: NextRequest) {
-  // Check that user is authenticated (has session cookie)
+  // Verify session HMAC — same check as middleware (which only covers /dashboard)
   const session = request.cookies.get('admin_session')?.value;
-  if (!session) {
+  const verify = request.cookies.get('admin_verify')?.value;
+  if (!session || !verify) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const expectedVerify = await hashToken(`${AUTH_SECRET}-${session}`);
+  if (verify !== expectedVerify) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
