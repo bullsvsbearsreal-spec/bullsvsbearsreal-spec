@@ -1738,7 +1738,7 @@ async function handleNews(chatId: number, args: string[], origin: string): Promi
     }
 
     const lines = [
-      coin ? `<b>📰 News: ${coin}</b>` : '<b>📰 Latest News</b>',
+      coin ? `<b>📰 News: ${esc(coin)}</b>` : '<b>📰 Latest News</b>',
       '━━━━━━━━━━━━━━━━',
       '',
     ];
@@ -1746,12 +1746,12 @@ async function handleNews(chatId: number, args: string[], origin: string): Promi
     articles.slice(0, 5).forEach((a, i) => {
       const sentEmoji = a.sentiment === 'bullish' ? '🟢' : a.sentiment === 'bearish' ? '🔴' : '⚪';
       const title = a.title.length > 70 ? a.title.slice(0, 67) + '...' : a.title;
-      const coins = a.currencies.length > 0 ? ` [${a.currencies.slice(0, 3).join(', ')}]` : '';
+      const coins = a.currencies.length > 0 ? ` [${a.currencies.slice(0, 3).map(c => esc(c)).join(', ')}]` : '';
       const ago = Math.round((Date.now() - a.publishedAt) / 60000);
       const timeStr = ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`;
       lines.push(
         `${i + 1}. ${sentEmoji} <b>${esc(title)}</b>${coins}`,
-        `   ${esc(a.source)} · ${timeStr} · <a href="${a.url}">Read</a>`,
+        `   ${esc(a.source)} · ${timeStr} · <a href="${a.url.replace(/"/g, '&quot;')}">Read</a>`,
         '',
       );
     });

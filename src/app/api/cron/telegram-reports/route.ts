@@ -17,6 +17,10 @@ export const maxDuration = 30;
 
 const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
 
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** Format a USD amount with compact notation. */
 function fmtUsd(n: number): string {
   const sign = n < 0 ? '-' : '';
@@ -180,8 +184,8 @@ export async function GET(request: NextRequest) {
     const topPos = topWhale.positions?.[0];
     if (topPos) {
       const pnl = topPos.unrealizedPnl >= 0 ? `+${fmtUsd(topPos.unrealizedPnl)}` : fmtUsd(topPos.unrealizedPnl);
-      lines.push(`<b>🐋 Top Whale:</b> ${topWhale.label}`);
-      lines.push(`  ${topPos.coin} ${topPos.side.toUpperCase()} ${fmtUsd(topPos.positionValue)} (${pnl})`);
+      lines.push(`<b>🐋 Top Whale:</b> ${escHtml(String(topWhale.label || 'Unknown'))}`);
+      lines.push(`  ${escHtml(String(topPos.coin))} ${topPos.side.toUpperCase()} ${fmtUsd(topPos.positionValue)} (${pnl})`);
       lines.push('');
     }
   }

@@ -52,7 +52,7 @@ function formatNewsAlert(articles: NewsArticle[]): string {
     const coins = a.currencies.length > 0 ? ` [${a.currencies.slice(0, 3).join(', ')}]` : '';
     lines.push(
       `${sentimentEmoji} <b>${escHtml(a.title.length > 80 ? a.title.slice(0, 77) + '...' : a.title)}</b>${coins}`,
-      `   ${escHtml(a.source)} · <a href="${a.url}">Read</a>`,
+      `   ${escHtml(a.source)} · <a href="${a.url.replace(/"/g, '&quot;')}">Read</a>`,
       '',
     );
   }
