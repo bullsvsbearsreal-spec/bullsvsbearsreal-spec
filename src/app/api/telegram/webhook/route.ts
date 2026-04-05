@@ -180,7 +180,7 @@ async function handleStatus(chatId: number): Promise<void> {
   }
 
   const watchlistDisplay = user.watchlist
-    ? user.watchlist.split(',').join(', ')
+    ? user.watchlist.split(',').map(s => esc(s)).join(', ')
     : '<i>all symbols</i>';
 
   const status = [
@@ -237,11 +237,11 @@ async function handleWatchlist(chatId: number, args: string[]): Promise<void> {
     return;
   }
 
-  // Parse symbols — accept space-separated or comma-separated
+  // Parse symbols — accept space-separated or comma-separated, strip non-alphanumeric
   const symbols = args
     .join(' ')
     .split(/[\s,]+/)
-    .map((s) => s.toUpperCase().trim())
+    .map((s) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').trim())
     .filter(Boolean);
 
   const watchlist = Array.from(new Set(symbols)).join(',');
@@ -249,7 +249,7 @@ async function handleWatchlist(chatId: number, args: string[]): Promise<void> {
 
   await sendMessage(
     chatId,
-    `Watchlist set to: <b>${symbols.join(', ')}</b>\nAlerts will be filtered to these symbols only.`,
+    `Watchlist set to: <b>${symbols.map(s => esc(s)).join(', ')}</b>\nAlerts will be filtered to these symbols only.`,
   );
 }
 
@@ -1751,7 +1751,7 @@ async function handleNews(chatId: number, args: string[], origin: string): Promi
       const timeStr = ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`;
       lines.push(
         `${i + 1}. ${sentEmoji} <b>${esc(title)}</b>${coins}`,
-        `   ${esc(a.source)} · ${timeStr} · <a href="${a.url.replace(/"/g, '&quot;')}">Read</a>`,
+        `   ${esc(a.source)} · ${timeStr} · <a href="${esc(a.url).replace(/"/g, '&quot;')}">Read</a>`,
         '',
       );
     });
