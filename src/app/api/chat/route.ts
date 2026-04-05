@@ -261,8 +261,8 @@ export async function POST(request: NextRequest) {
 
       await sendEvent('done', '{}');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
-      await sendEvent('error', JSON.stringify({ message }));
+      console.error('[chat] stream error:', error instanceof Error ? error.message : error);
+      await sendEvent('error', JSON.stringify({ message: 'An error occurred' }));
     } finally {
       try { await writer.close(); } catch { /* stream already closed/errored */ }
       streamClosed = true;

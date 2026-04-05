@@ -79,7 +79,7 @@ export async function POST() {
     return NextResponse.json(
       {
         success: false,
-        error: isTimeout ? 'Health check timed out — cache may be cold, try again in 1 minute' : err.message,
+        error: isTimeout ? 'Health check timed out — cache may be cold, try again in 1 minute' : 'Health check failed',
       },
       { status: isTimeout ? 504 : 500 },
     );

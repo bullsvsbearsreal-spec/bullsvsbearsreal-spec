@@ -321,7 +321,7 @@ export async function GET(request: NextRequest) {
         headers: { 'Cache-Control': 'no-store, max-age=0' },
       });
     }
-    const message = err instanceof Error ? err.message : 'Failed to fetch whale data';
-    return NextResponse.json({ error: message }, { status: 502 });
+    console.error('[hl-whales]', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Failed to fetch whale data' }, { status: 502 });
   }
 }

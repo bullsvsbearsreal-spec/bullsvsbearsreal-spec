@@ -86,7 +86,7 @@ export async function GET() {
   } catch (err) {
     console.error('Reserves API error:', err);
     return Response.json(
-      { error: err instanceof Error ? err.message : 'Failed to fetch reserves' },
+      { error: 'Failed to fetch reserves' },
       { status: 500 },
     );
   }

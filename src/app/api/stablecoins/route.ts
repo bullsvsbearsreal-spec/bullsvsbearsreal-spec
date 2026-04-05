@@ -72,7 +72,7 @@ export async function GET() {
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Failed to fetch stablecoin data' },
+      { error: 'Failed to fetch stablecoin data' },
       { status: 500 },
     );
   }

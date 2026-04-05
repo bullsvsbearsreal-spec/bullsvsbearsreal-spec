@@ -347,7 +347,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error(`[charts/telegram] Error rendering ${type} chart:`, err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Chart render failed' },
+      { error: 'Chart render failed' },
       { status: 500 },
     );
   }

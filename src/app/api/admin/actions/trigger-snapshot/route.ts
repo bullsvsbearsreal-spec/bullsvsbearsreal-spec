@@ -48,7 +48,7 @@ export async function POST() {
     return NextResponse.json(
       {
         success: false,
-        error: isTimeout ? 'Snapshot timed out — try again in a minute' : err.message,
+        error: isTimeout ? 'Snapshot timed out — try again in a minute' : 'Snapshot failed',
       },
       { status: isTimeout ? 504 : 500 },
     );

@@ -455,7 +455,7 @@ export async function GET() {
       return NextResponse.json(cachedResponse);
     }
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Failed to fetch market cycle data' },
+      { error: 'Failed to fetch market cycle data' },
       { status: 500 },
     );
   }
