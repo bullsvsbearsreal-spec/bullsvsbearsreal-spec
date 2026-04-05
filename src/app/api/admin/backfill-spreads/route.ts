@@ -5,7 +5,8 @@ export const maxDuration = 30;
 export const runtime = 'nodejs';
 
 const sql = postgres(process.env.DATABASE_URL || '', { max: 3 });
-const CRON_SECRET = process.env.CRON_SECRET || '';
+import { timingSafeEqual } from 'crypto';
+const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
 
 const SYMBOLS = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK'];
 
@@ -37,12 +38,14 @@ export async function GET(req: NextRequest) { return run(req); }
 export async function POST(req: NextRequest) { return run(req); }
 
 async function run(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
+  const auth = req.headers.get('authorization') || '';
+  const expected = `Bearer ${CRON_SECRET}`;
+  if (!CRON_SECRET || auth.length !== expected.length || !timingSafeEqual(Buffer.from(auth), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const singleSym = req.nextUrl.searchParams.get('symbol')?.toUpperCase();
+  const rawSym = req.nextUrl.searchParams.get('symbol')?.toUpperCase() || '';
+  const singleSym = /^[A-Z0-9]+$/.test(rawSym) ? rawSym : '';
   const symsToProcess = singleSym ? [singleSym] : ['BTC'];
   const results: Array<{ symbol: string; inserted: number; skipped: number }> = [];
 

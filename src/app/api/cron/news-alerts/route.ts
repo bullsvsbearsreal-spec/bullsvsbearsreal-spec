@@ -18,7 +18,6 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 export const preferredRegion = 'bom1';
 
-const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
 
 // Track recently sent article IDs to prevent duplicates across runs
 const recentlySent = new Set<string>();
@@ -61,10 +60,9 @@ function formatNewsAlert(articles: NewsArticle[]): string {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const { verifyCronAuth } = await import('../_auth');
+  const authErr = verifyCronAuth(request);
+  if (authErr) return authErr;
 
   if (!isDBConfigured()) {
     return NextResponse.json({ error: 'DB not configured' }, { status: 503 });

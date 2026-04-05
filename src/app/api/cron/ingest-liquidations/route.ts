@@ -256,12 +256,10 @@ async function fetchDeribitLiqs(): Promise<LiqRow[]> {
 
 // ─── Handler ───────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
-  // Verify cron auth (Vercel sends CRON_SECRET in Authorization header)
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = (process.env.CRON_SECRET || '').trim();
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // Verify cron auth — timing-safe comparison
+  const { verifyCronAuth } = await import('../_auth');
+  const authErr = verifyCronAuth(request);
+  if (authErr) return authErr;
 
   if (!isDBConfigured()) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });

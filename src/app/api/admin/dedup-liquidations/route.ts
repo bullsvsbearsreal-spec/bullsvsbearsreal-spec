@@ -15,9 +15,11 @@ import { initDB, isDBConfigured, getSQL } from '@/lib/db';
  */
 export async function POST(request: NextRequest) {
   // Auth
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  const { timingSafeEqual } = await import('crypto');
+  const authHeader = request.headers.get('authorization') || '';
+  const cronSecret = (process.env.CRON_SECRET || '').trim();
+  const expected = `Bearer ${cronSecret}`;
+  if (!cronSecret || authHeader.length !== expected.length || !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
