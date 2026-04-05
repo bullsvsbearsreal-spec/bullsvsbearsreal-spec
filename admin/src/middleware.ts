@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'infohub-admin-secret-change-me';
+const AUTH_SECRET = (process.env.AUTH_SECRET || '').trim();
 
 async function hashToken(value: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -9,10 +9,27 @@ async function hashToken(value: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Constant-time hex string comparison (Edge-compatible, no Node crypto needed) */
+function safeHexEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufA = new TextEncoder().encode(a);
+  const bufB = new TextEncoder().encode(b);
+  let diff = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    diff |= bufA[i] ^ bufB[i];
+  }
+  return diff === 0;
+}
+
 export async function middleware(request: NextRequest) {
   // Only protect /dashboard routes
   if (!request.nextUrl.pathname.startsWith('/dashboard')) {
     return NextResponse.next();
+  }
+
+  // Block access entirely if AUTH_SECRET is not configured
+  if (!AUTH_SECRET || AUTH_SECRET.length < 16) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   const session = request.cookies.get('admin_session')?.value;
@@ -26,7 +43,7 @@ export async function middleware(request: NextRequest) {
   // Verify HMAC: admin_verify must equal hash(AUTH_SECRET + session_token)
   // Without this, an attacker could set both cookies to arbitrary values
   const expectedVerify = await hashToken(`${AUTH_SECRET}-${session}`);
-  if (verify !== expectedVerify) {
+  if (!safeHexEqual(verify, expectedVerify)) {
     // Invalid session — clear cookies and redirect to login
     const response = NextResponse.redirect(new URL('/', request.url));
     response.cookies.delete('admin_session');

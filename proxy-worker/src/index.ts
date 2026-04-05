@@ -167,13 +167,13 @@ export default {
         });
       } catch (err) {
         clearTimeout(timeoutId);
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        return json({ error: `Proxy fetch failed: ${message}` }, 502, origin, allowedOrigins);
+        console.error('[proxy-worker] fetch error:', err instanceof Error ? err.message : err);
+        return json({ error: 'Proxy fetch failed' }, 502, origin, allowedOrigins);
       }
     } catch (err) {
       // Top-level catch — should never reach here but prevents 1027 errors
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      return json({ error: `Worker error: ${message}` }, 500, origin, allowedOrigins);
+      console.error('[proxy-worker] worker error:', err instanceof Error ? err.message : err);
+      return json({ error: 'Worker error' }, 500, origin, allowedOrigins);
     }
   },
 };

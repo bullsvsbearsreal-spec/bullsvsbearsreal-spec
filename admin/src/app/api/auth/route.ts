@@ -50,9 +50,12 @@ export async function POST(request: NextRequest) {
 
     const { password } = await request.json();
 
-    // Block login entirely if ADMIN_PASSWORD is not configured
+    // Block login entirely if ADMIN_PASSWORD or AUTH_SECRET is not configured
     if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 8) {
       return NextResponse.json({ error: 'Admin password not configured' }, { status: 503 });
+    }
+    if (!AUTH_SECRET || AUTH_SECRET.length < 16) {
+      return NextResponse.json({ error: 'Auth secret not configured' }, { status: 503 });
     }
 
     if (!password || typeof password !== 'string' || !safeEqual(password, ADMIN_PASSWORD)) {

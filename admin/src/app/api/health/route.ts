@@ -8,15 +8,27 @@ async function hashToken(value: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Constant-time hex string comparison */
+function safeHexEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufA = new TextEncoder().encode(a);
+  const bufB = new TextEncoder().encode(b);
+  let diff = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    diff |= bufA[i] ^ bufB[i];
+  }
+  return diff === 0;
+}
+
 export async function GET(request: NextRequest) {
   // Verify session HMAC — same check as middleware (which only covers /dashboard)
   const session = request.cookies.get('admin_session')?.value;
   const verify = request.cookies.get('admin_verify')?.value;
-  if (!session || !verify) {
+  if (!session || !verify || !AUTH_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const expectedVerify = await hashToken(`${AUTH_SECRET}-${session}`);
-  if (verify !== expectedVerify) {
+  if (!safeHexEqual(verify, expectedVerify)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -41,7 +53,7 @@ export async function GET(request: NextRequest) {
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    return NextResponse.json({ error: `Failed to reach InfoHub: ${msg}` }, { status: 502 });
+    console.error('[admin/health]', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Failed to reach InfoHub API' }, { status: 502 });
   }
 }
