@@ -82,8 +82,8 @@ export async function GET(request: NextRequest) {
   const exchange = searchParams.get('exchange') || undefined;
   const days = Math.min(parseInt(searchParams.get('days') || '30') || 30, 90);
 
-  if (!symbol) {
-    return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 });
+  if (!symbol || !/^[A-Z0-9]+$/.test(symbol)) {
+    return NextResponse.json({ error: 'Missing or invalid symbol parameter' }, { status: 400 });
   }
 
   // --- Exchange source (Hyperliquid, Bitget) ---

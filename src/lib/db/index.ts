@@ -1137,6 +1137,9 @@ export interface UserData {
   notificationPrefs?: NotificationPrefs;
   theme?: string;
   fundingPrefs?: FundingPrefs;
+  bio?: string;
+  displayPrefs?: { currency?: string; defaultExchange?: string; fundingDisplay?: string };
+  dashboardLayout?: any[];
 }
 
 export async function getUserData(userId: string): Promise<UserData | null> {

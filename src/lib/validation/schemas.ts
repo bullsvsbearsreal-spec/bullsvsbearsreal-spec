@@ -31,10 +31,12 @@ export const LiquidationsQuerySchema = z.object({
     .string()
     .min(1, 'Missing symbol parameter')
     .max(20)
+    .regex(/^[A-Za-z0-9]+$/, 'Symbol must be alphanumeric')
     .transform(s => s.toUpperCase()),
   exchange: z
     .string()
     .max(20)
+    .regex(/^[A-Za-z0-9]+$/, 'Exchange must be alphanumeric')
     .transform(s => s.toLowerCase())
     .default('okx'),
   limit: z

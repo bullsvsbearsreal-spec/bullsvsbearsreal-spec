@@ -109,7 +109,8 @@ async function fetchOKX(symbol: string, limit: number): Promise<RawOrderbook> {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const symbol = (searchParams.get('symbol') || 'BTC').toUpperCase();
+  const rawSym = (searchParams.get('symbol') || 'BTC').toUpperCase();
+  const symbol = /^[A-Z0-9]+$/.test(rawSym) ? rawSym : 'BTC';
   const limit = Math.min(parseInt(searchParams.get('limit') || '25'), 50);
   const pair = `${symbol}USDT`;
 

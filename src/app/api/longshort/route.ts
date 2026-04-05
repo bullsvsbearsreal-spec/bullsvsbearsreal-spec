@@ -136,7 +136,8 @@ async function fetchOKXTakerVolume(symbol: string, period: string) {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const symbol = searchParams.get('symbol') || 'BTCUSDT';
+  const rawSymbol = searchParams.get('symbol') || 'BTCUSDT';
+  const symbol = /^[A-Za-z0-9]+$/.test(rawSymbol) ? rawSymbol : 'BTCUSDT';
   const period = VALID_PERIODS.includes(searchParams.get('period') || '')
     ? searchParams.get('period')!
     : '5m';

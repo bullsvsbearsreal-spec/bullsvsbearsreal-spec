@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
   const symbol = searchParams.get('symbol')?.toUpperCase();
   const source = searchParams.get('source') || 'db';
 
-  if (!symbol) {
-    return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 });
+  if (!symbol || !/^[A-Z0-9]+$/.test(symbol)) {
+    return NextResponse.json({ error: 'Missing or invalid symbol parameter' }, { status: 400 });
   }
 
   // --- Binance source ---
