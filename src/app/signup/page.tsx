@@ -18,7 +18,9 @@ export default function SignupPage() {
 function SignupContent() {
   const searchParams = useSearchParams();
   const verifyEmail = searchParams.get('verify');
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const rawCallback = searchParams.get('callbackUrl') || '/';
+  // Prevent open redirect — only allow relative paths (no protocol-relative // either)
+  const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState(verifyEmail || '');

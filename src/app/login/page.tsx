@@ -9,7 +9,9 @@ import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Shield, Smartphone } 
 
 function LoginPageInner() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const rawCallback = searchParams.get('callbackUrl') || '/';
+  // Prevent open redirect — only allow relative paths (no protocol-relative // either)
+  const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);

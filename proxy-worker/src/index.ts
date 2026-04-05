@@ -65,14 +65,12 @@ function getAllowedOrigins(env: Env): Set<string> {
   return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
 }
 
-function json(data: Record<string, string>, status: number): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
+function json(data: Record<string, string>, status: number, origin?: string, allowedOrigins?: Set<string>): Response {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (!allowedOrigins || allowedOrigins.has('*') || (origin && allowedOrigins.has(origin))) {
+    headers['Access-Control-Allow-Origin'] = origin || '*';
+  }
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 function addCorsHeaders(responseHeaders: Headers, request: Request, env: Env): void {
@@ -85,6 +83,9 @@ function addCorsHeaders(responseHeaders: Headers, request: Request, env: Env): v
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const origin = request.headers.get('Origin') || '';
+    const allowedOrigins = getAllowedOrigins(env);
+
     try {
       // CORS preflight
       if (request.method === 'OPTIONS') {
@@ -92,11 +93,8 @@ export default {
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
           'Access-Control-Max-Age': '86400',
-          'Access-Control-Allow-Origin': '*',
         };
-        const origin = request.headers.get('Origin') || '';
-        const allowedOrigins = getAllowedOrigins(env);
-        if (allowedOrigins.has(origin) || allowedOrigins.has('*')) {
+        if (allowedOrigins.has('*') || allowedOrigins.has(origin)) {
           headers['Access-Control-Allow-Origin'] = origin || '*';
         }
         return new Response(null, { status: 204, headers });
@@ -104,13 +102,13 @@ export default {
 
       // Only allow GET requests
       if (request.method !== 'GET') {
-        return json({ error: 'Method not allowed' }, 405);
+        return json({ error: 'Method not allowed' }, 405, origin, allowedOrigins);
       }
 
       // Rate limit by IP
       const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
       if (isRateLimited(ip)) {
-        return json({ error: 'Rate limited' }, 429);
+        return json({ error: 'Rate limited' }, 429, origin, allowedOrigins);
       }
 
       // Periodic cleanup (every ~100 requests)
@@ -120,7 +118,7 @@ export default {
       const reqUrl = new URL(request.url);
       const targetUrl = reqUrl.searchParams.get('url');
       if (!targetUrl) {
-        return json({ error: 'Missing ?url= parameter', status: 'ok', worker: 'infohub-proxy' }, 400);
+        return json({ error: 'Missing ?url= parameter', status: 'ok', worker: 'infohub-proxy' }, 400, origin, allowedOrigins);
       }
 
       // Validate target URL
@@ -128,18 +126,18 @@ export default {
       try {
         parsed = new URL(targetUrl);
       } catch {
-        return json({ error: 'Invalid URL' }, 400);
+        return json({ error: 'Invalid URL' }, 400, origin, allowedOrigins);
       }
 
       // Only allow HTTPS
       if (parsed.protocol !== 'https:') {
-        return json({ error: 'Only HTTPS targets allowed' }, 400);
+        return json({ error: 'Only HTTPS targets allowed' }, 400, origin, allowedOrigins);
       }
 
       // Check target domain against allowlist
       const allowedTargets = getAllowedTargets(env);
       if (!allowedTargets.has(parsed.hostname)) {
-        return json({ error: 'Domain not allowed' }, 403);
+        return json({ error: 'Domain not allowed' }, 403, origin, allowedOrigins);
       }
 
       // Forward the request with timeout
@@ -170,15 +168,12 @@ export default {
       } catch (err) {
         clearTimeout(timeoutId);
         const message = err instanceof Error ? err.message : 'Unknown error';
-        return json({ error: `Proxy fetch failed: ${message}` }, 502);
+        return json({ error: `Proxy fetch failed: ${message}` }, 502, origin, allowedOrigins);
       }
     } catch (err) {
       // Top-level catch — should never reach here but prevents 1027 errors
       const message = err instanceof Error ? err.message : 'Unknown error';
-      return new Response(JSON.stringify({ error: `Worker error: ${message}` }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      return json({ error: `Worker error: ${message}` }, 500, origin, allowedOrigins);
     }
   },
 };
