@@ -1885,7 +1885,7 @@ export async function POST(request: NextRequest) {
           );
           if (chartRes.ok) {
             const buf = Buffer.from(await chartRes.arrayBuffer());
-            await sendPhoto(cbChatId, buf, `${cbArgs[0]} ${cbCmd} chart`);
+            await sendPhoto(cbChatId, buf, `${esc(cbArgs[0])} ${esc(cbCmd)} chart`);
           } else {
             await sendMessage(cbChatId, 'Chart generation failed. Try again later.');
           }
@@ -1917,10 +1917,11 @@ export async function POST(request: NextRequest) {
           break;
         case 'alert_prompt':
           if (cbArgs[0]) {
+            const sym = esc(cbArgs[0]);
             await sendMessage(cbChatId,
-              `To create an alert for <b>${cbArgs[0]}</b>:\n` +
-              `/alert add ${cbArgs[0]} price gt &lt;value&gt;\n` +
-              `/alert add ${cbArgs[0]} funding gt &lt;value&gt;`,
+              `To create an alert for <b>${sym}</b>:\n` +
+              `/alert add ${sym} price gt &lt;value&gt;\n` +
+              `/alert add ${sym} funding gt &lt;value&gt;`,
             );
           }
           break;
@@ -1951,7 +1952,8 @@ export async function POST(request: NextRequest) {
         case 'menu_prompt':
           // Prompt user to enter a symbol for the given command
           if (cbArgs[0]) {
-            await sendMessage(cbChatId, `Type: /${cbArgs[0]} &lt;symbol&gt;\n\nExample: /${cbArgs[0]} BTC`);
+            const cmd = esc(cbArgs[0]);
+            await sendMessage(cbChatId, `Type: /${cmd} &lt;symbol&gt;\n\nExample: /${cmd} BTC`);
           }
           break;
         case 'alert_list':
