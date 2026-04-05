@@ -30,12 +30,12 @@ const providers: any[] = [
         FROM users WHERE email = ${credentials.email as string}
       `;
 
-      if (rows.length === 0) return null;
-      const user = rows[0];
-
-      if (!user.password_hash) return null; // OAuth-only account
-      const valid = await bcrypt.compare(credentials.password as string, user.password_hash);
-      if (!valid) return null;
+      // Constant-time: always run bcrypt to prevent timing-based email enumeration
+      const DUMMY_HASH = '$2a$12$000000000000000000000uGBOzFBKvLMbVaFMgvweDHL8dh3M3/ZW';
+      const user = rows.length > 0 ? rows[0] : null;
+      const hashToCompare = user?.password_hash || DUMMY_HASH;
+      const valid = await bcrypt.compare(credentials.password as string, hashToCompare);
+      if (!user || !user.password_hash || !valid) return null;
 
       // Block unverified email accounts (!user.email_verified catches both null and undefined)
       if (!user.email_verified) {

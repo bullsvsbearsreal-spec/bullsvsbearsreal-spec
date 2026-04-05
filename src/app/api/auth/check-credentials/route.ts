@@ -65,17 +65,15 @@ export async function POST(req: Request) {
       FROM users WHERE email = ${email}
     `;
 
-    if (rows.length === 0) {
-      return NextResponse.json({ error: 'Wrong email or password' }, { status: 401 });
-    }
+    // Constant-time comparison: always run bcrypt to prevent timing-based email enumeration.
+    // Without this, attackers can distinguish valid vs invalid emails by response time
+    // (~150ms with bcrypt vs ~5ms without).
+    const DUMMY_HASH = '$2a$12$000000000000000000000uGBOzFBKvLMbVaFMgvweDHL8dh3M3/ZW';
+    const user = rows.length > 0 ? rows[0] : null;
+    const hashToCompare = user?.password_hash || DUMMY_HASH;
+    const valid = await bcrypt.compare(password, hashToCompare);
 
-    const user = rows[0];
-    if (!user.password_hash) {
-      return NextResponse.json({ error: 'Wrong email or password' }, { status: 401 });
-    }
-
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) {
+    if (!user || !user.password_hash || !valid) {
       return NextResponse.json({ error: 'Wrong email or password' }, { status: 401 });
     }
 
