@@ -120,7 +120,7 @@ export default function PriceSpreadChart({ tickers, symbol }: Props) {
               <Cell
                 key={i}
                 fill={entry.deviation >= 0 ? '#22c55e' : '#ef4444'}
-                fillOpacity={0.7 + Math.min(Math.abs(entry.deviation) / spreadBps, 1) * 0.3}
+                fillOpacity={0.7 + Math.min(spreadBps > 0 ? Math.abs(entry.deviation) / spreadBps : 0, 1) * 0.3}
               />
             ))}
           </Bar>
