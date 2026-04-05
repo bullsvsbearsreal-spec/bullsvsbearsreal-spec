@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export function middleware(request: NextRequest) {
+const AUTH_SECRET = process.env.AUTH_SECRET || 'infohub-admin-secret-change-me';
+
+async function hashToken(value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function middleware(request: NextRequest) {
   // Only protect /dashboard routes
   if (!request.nextUrl.pathname.startsWith('/dashboard')) {
     return NextResponse.next();
@@ -14,8 +23,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Basic check: both cookies must exist and be non-empty
-  // Full hash verification happens in the API route
+  // Verify HMAC: admin_verify must equal hash(AUTH_SECRET + session_token)
+  // Without this, an attacker could set both cookies to arbitrary values
+  const expectedVerify = await hashToken(`${AUTH_SECRET}-${session}`);
+  if (verify !== expectedVerify) {
+    // Invalid session — clear cookies and redirect to login
+    const response = NextResponse.redirect(new URL('/', request.url));
+    response.cookies.delete('admin_session');
+    response.cookies.delete('admin_verify');
+    return response;
+  }
+
   return NextResponse.next();
 }
 
