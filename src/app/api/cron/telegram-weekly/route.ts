@@ -15,7 +15,7 @@ export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 45;
 
-const CRON_SECRET = process.env.CRON_SECRET || '';
+const CRON_SECRET = (process.env.CRON_SECRET || '').trim();
 
 function fmtUsd(n: number): string {
   const sign = n < 0 ? '-' : '';
