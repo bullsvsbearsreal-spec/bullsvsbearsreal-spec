@@ -132,18 +132,20 @@ export default function AlertsPage() {
   // Load notification prefs from DB when logged in
   useEffect(() => {
     if (!session?.user) return;
+    let mounted = true;
     (async () => {
       try {
         const res = await fetch('/api/user/data');
         if (!res.ok) return;
         const json = await res.json();
         const prefs = json.notificationPrefs;
-        if (prefs) {
+        if (mounted && prefs) {
           setEmailEnabled(prefs.email ?? true);
           setCooldownMinutes(prefs.cooldownMinutes ?? 60);
         }
       } catch {}
     })();
+    return () => { mounted = false; };
   }, [session]);
 
   const handleAdd = () => {

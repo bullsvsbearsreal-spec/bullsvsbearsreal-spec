@@ -74,11 +74,12 @@ export default function ProfilePage() {
   const userId = session?.user?.id;
   useEffect(() => {
     if (!userId) return;
+    let mounted = true;
 
     (async () => {
       try {
         const res = await fetch('/api/user/stats');
-        if (res.ok) setAccountStats(await res.json());
+        if (res.ok && mounted) setAccountStats(await res.json());
       } catch {}
     })();
 
@@ -87,12 +88,15 @@ export default function ProfilePage() {
         const res = await fetch('/api/user/data');
         if (!res.ok) return;
         const data = await res.json();
+        if (!mounted) return;
         if (data.bio) setBio(data.bio);
         if (data.displayPrefs) {
           setDisplayPrefs(prev => ({ ...prev, ...data.displayPrefs }));
         }
       } catch {}
     })();
+
+    return () => { mounted = false; };
   }, [userId]);
 
   // Save bio

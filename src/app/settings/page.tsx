@@ -46,11 +46,12 @@ export default function SettingsPage() {
   const userId = session?.user?.id;
   useEffect(() => {
     if (!userId) return;
+    let mounted = true;
 
     (async () => {
       try {
         const res = await fetch('/api/user/stats');
-        if (res.ok) setAccountStats(await res.json());
+        if (res.ok && mounted) setAccountStats(await res.json());
       } catch {}
     })();
 
@@ -58,6 +59,8 @@ export default function SettingsPage() {
       const savedTheme = localStorage.getItem('infohub-theme');
       if (savedTheme === 'light') setTheme('light');
     } catch {}
+
+    return () => { mounted = false; };
   }, [userId]);
 
   const handleThemeToggle = () => {

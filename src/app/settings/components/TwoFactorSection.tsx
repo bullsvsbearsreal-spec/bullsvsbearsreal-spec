@@ -21,6 +21,7 @@ export default function TwoFactorSection({ email }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         const res = await fetch('/api/auth/2fa/status', {
@@ -30,12 +31,15 @@ export default function TwoFactorSection({ email }: Props) {
         });
         if (res.ok) {
           const data = await res.json();
-          setTotpEnabled(data.methods?.includes('totp') || false);
-          setEmail2faEnabled(data.methods?.includes('email') || false);
+          if (mounted) {
+            setTotpEnabled(data.methods?.includes('totp') || false);
+            setEmail2faEnabled(data.methods?.includes('email') || false);
+          }
         }
       } catch {}
-      setLoading(false);
+      if (mounted) setLoading(false);
     })();
+    return () => { mounted = false; };
   }, [email]);
 
   const handleStartTotpSetup = async () => {

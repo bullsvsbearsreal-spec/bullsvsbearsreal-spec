@@ -499,6 +499,16 @@ export async function GET(request: NextRequest) {
     return errorResponse('Invalid or missing chain parameter. Use eth, btc, or sol.');
   }
 
+  // Validate address format to prevent malformed URLs / injection
+  const ADDRESS_PATTERNS: Record<string, RegExp> = {
+    eth: /^0x[0-9a-fA-F]{40}$/,
+    btc: /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/,
+    sol: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+  };
+  if (!ADDRESS_PATTERNS[chain].test(address)) {
+    return errorResponse('Invalid address format');
+  }
+
   const cacheKey = `wallet:${chain}:${address.toLowerCase()}`;
 
   // L1: In-memory cache

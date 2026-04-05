@@ -239,7 +239,7 @@ async function fetchDeribitLiqsForCurrency(currency: string): Promise<LiqRow[]> 
           price,
           quantity: qty,
           valueUsd: price * qty,
-          timestamp: t.timestamp ? Math.floor(t.timestamp / 1000) : Date.now(),
+          timestamp: t.timestamp || Date.now(),
         };
       })
       .filter((r: LiqRow) => r.valueUsd > 0 && r.price > 0);

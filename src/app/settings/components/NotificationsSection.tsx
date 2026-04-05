@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Mail, Clock, Loader2, Check, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const COOLDOWN_OPTIONS = [
@@ -19,20 +19,25 @@ export default function NotificationsSection({ email }: Props) {
   const [cooldownMinutes, setCooldownMinutes] = useState(60);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         const res = await fetch('/api/user/data');
         if (!res.ok) return;
         const json = await res.json();
         const prefs = json.notificationPrefs as { email?: boolean; cooldownMinutes?: number } | undefined;
-        if (prefs) {
+        if (mounted && prefs) {
           setEmailEnabled(prefs.email ?? true);
           setCooldownMinutes(prefs.cooldownMinutes ?? 60);
         }
       } catch {}
     })();
+    return () => { mounted = false; };
   }, []);
 
   const savePrefs = async (emailVal: boolean, cooldown: number) => {
@@ -47,7 +52,7 @@ export default function NotificationsSection({ email }: Props) {
         }),
       });
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
     } catch {}
     setSaving(false);
   };
