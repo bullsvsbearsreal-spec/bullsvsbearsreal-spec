@@ -10,6 +10,7 @@ interface FundingEntry {
   symbol: string;
   exchange: string;
   fundingRate: number;
+  fundingInterval?: string;
 }
 
 interface ArbPair {
@@ -42,24 +43,29 @@ export default function ArbitrageWidget({ wide }: { wide?: boolean }) {
           bySymbol[entry.symbol].push(entry);
         }
 
+        // Normalize to 8h basis for fair comparison across exchanges
+        const norm8h = (e: FundingEntry) => e.fundingRate * (e.fundingInterval === '1h' ? 8 : e.fundingInterval === '4h' ? 2 : 1);
+
         // Find best arb for each symbol
         const pairs: ArbPair[] = [];
         for (const [symbol, entries] of Object.entries(bySymbol)) {
           if (entries.length < 2) continue;
           let minEntry = entries[0], maxEntry = entries[0];
+          let minRate = norm8h(entries[0]), maxRate = norm8h(entries[0]);
           for (const e of entries) {
-            if (e.fundingRate < minEntry.fundingRate) minEntry = e;
-            if (e.fundingRate > maxEntry.fundingRate) maxEntry = e;
+            const r = norm8h(e);
+            if (r < minRate) { minEntry = e; minRate = r; }
+            if (r > maxRate) { maxEntry = e; maxRate = r; }
           }
-          const spread = maxEntry.fundingRate - minEntry.fundingRate;
+          const spread = maxRate - minRate;
           if (spread > 0.001) {
             pairs.push({
               symbol,
               longExchange: minEntry.exchange,
               shortExchange: maxEntry.exchange,
               spread,
-              longRate: minEntry.fundingRate,
-              shortRate: maxEntry.fundingRate,
+              longRate: minRate,
+              shortRate: maxRate,
             });
           }
         }

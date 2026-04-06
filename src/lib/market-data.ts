@@ -118,8 +118,10 @@ export async function fetchMarketDataServer(
       const sym = f.symbol as string;
       const rate = f.rate ?? f.fundingRate;
       if (rate != null) {
+        // Normalize to 8h basis for fair averaging across exchanges
+        const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
         const cur = sums.get(sym) || { sum: 0, count: 0 };
-        cur.sum += rate;
+        cur.sum += rate * mult;
         cur.count++;
         sums.set(sym, cur);
       }

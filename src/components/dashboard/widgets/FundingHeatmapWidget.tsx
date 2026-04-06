@@ -10,6 +10,7 @@ interface FundingRate {
   symbol: string;
   exchange: string;
   fundingRate: number;
+  fundingInterval?: string;
 }
 
 /** Map funding rate to intensity class */
@@ -80,7 +81,7 @@ export default function FundingHeatmapWidget() {
     <div className={justUpdated ? 'data-updated' : ''}>
       <div className="flex flex-wrap gap-1.5 mb-3">
         {rates.slice(0, 18).map((r, i) => {
-          const rate = r.fundingRate;
+          const rate = r.fundingRate * (r.fundingInterval === '1h' ? 8 : r.fundingInterval === '4h' ? 2 : 1);
           const intensityClass = getIntensityClass(rate);
           const slang = getHeatmapSlang(rate);
           const isExtreme = Math.abs(rate) > 0.05;

@@ -74,13 +74,15 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
     // Funding rates: average per symbol
     if (fundingRes?.data) {
       const fundingSums = new Map<string, { sum: number; count: number }>();
-      interface RawFunding { symbol: string; rate?: number; fundingRate?: number }
+      interface RawFunding { symbol: string; rate?: number; fundingRate?: number; fundingInterval?: string }
       (fundingRes.data as RawFunding[]).forEach((f) => {
         const sym = f.symbol;
         const rate = f.rate ?? f.fundingRate;
         if (rate != null) {
+          // Normalize to 8h basis for fair averaging across exchanges
+          const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
           const cur = fundingSums.get(sym) || { sum: 0, count: 0 };
-          cur.sum += rate;
+          cur.sum += rate * mult;
           cur.count++;
           fundingSums.set(sym, cur);
         }
