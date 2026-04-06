@@ -586,11 +586,15 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => {
           const cycle = parseInt(item.collectCycle) || 8;
           const intervalHours = VALID_INTERVALS.has(cycle) ? cycle : 8;
+          // API returns per-interval rate. If cycle doesn't match label (e.g. 24h → 8h),
+          // scale the rate so it matches the declared fundingInterval.
+          const rawRate = (parseFloat(item.fundingRate) || 0) * 100;
+          const fundingRate = VALID_INTERVALS.has(cycle) ? rawRate : rawRate * (intervalHours / cycle);
           const prices = priceMap.get(item.symbol);
           return {
             symbol: item.symbol.replace('_USDT', ''),
             exchange: 'MEXC',
-            fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
+            fundingRate,
             fundingInterval: `${intervalHours}h` as '1h' | '4h' | '8h',
             markPrice: prices?.fairPrice || 0,
             indexPrice: prices?.indexPrice || 0,
@@ -1667,8 +1671,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // Convert: per_interval_pct = raw_decimal * 100 / periods_per_year
           // Verified: DUSK raw=-4.67 → -0.4262%/8h matches Variational UI (-0.4275%)
           //           ADA raw=0.1095 → 0.0100%/8h, LINK 0.0100%/8h — match CEX benchmarks
+          // Use the LABEL interval (not raw intervalS) so rate matches the declared fundingInterval.
+          // e.g. 2h interval bucketed as '1h' → compute per-1h rate so arb normalizer (×8) is correct.
           const rawDecimal = parseFloat(m.funding_rate);
-          const periodsPerYear = (365 * 24 * 3600) / intervalS;
+          const labelSeconds = fundingInterval === '1h' ? 3600 : fundingInterval === '4h' ? 14400 : 28800;
+          const periodsPerYear = (365 * 24 * 3600) / labelSeconds;
           const fundingRate = (rawDecimal * 100) / periodsPerYear;
 
           const norm = normalizeSymbol(symbol, 'Variational');
