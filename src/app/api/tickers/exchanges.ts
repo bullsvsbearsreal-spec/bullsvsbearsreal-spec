@@ -891,7 +891,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
 
           const quoteVol = parseFloat(ticker.value || ticker.volume24h || '0') || 0;
           const baseVol = parseFloat(ticker.size || '0') || 0;
-          const priceChange = parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') || 0;
+          const priceChange = (parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') || 0) * 100; // edgeX returns decimal fraction (0.037 = 3.7%)
 
           results.push({
             symbol,
