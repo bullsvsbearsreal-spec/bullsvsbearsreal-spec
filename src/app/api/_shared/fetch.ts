@@ -53,6 +53,7 @@ if (_rawProxyUrl && !PROXY_URL) {
 const PROXIED_DOMAINS = new Set([
   'www.bitmex.com',
   'api.gateio.ws',
+  'api.hbdm.com',        // HTX — consistently blocked from Vercel IPs since ~Mar 2026
   'pro.edgex.exchange',
   'query1.finance.yahoo.com',
   'query2.finance.yahoo.com',
