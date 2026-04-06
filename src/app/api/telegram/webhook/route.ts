@@ -766,6 +766,172 @@ const METRIC_ALIASES: Record<string, string> = {
 };
 const VALID_OPERATORS = new Set(['gt', 'lt']);
 
+// ─── Whale wallet tracking commands ────────────────────────────────────────
+
+async function handleTrack(chatId: number, args: string[]): Promise<void> {
+  if (args.length === 0) {
+    await sendMessage(chatId, [
+      '<b>Track a wallet for DEX trade alerts</b>',
+      '',
+      '/track &lt;address&gt; [label]',
+      '/track eth 0xd8dA6BF... Vitalik',
+      '/track sol 5ZWj7a1f... Jupiter Whale',
+      '',
+      'Supported chains: eth, base, arbitrum, optimism, polygon, sol',
+      'Auto-detects chain from address format if omitted.',
+    ].join('\n'));
+    return;
+  }
+
+  const { addTrackedWallet, initDB, isDBConfigured } = await import('@/lib/db');
+  const { detectChain } = await import('@/lib/whale-trades');
+
+  if (!isDBConfigured()) {
+    await sendMessage(chatId, 'Database not configured.');
+    return;
+  }
+  await initDB();
+
+  // Parse: /track [chain] <address> [label...]
+  let chain: string | undefined;
+  let address: string;
+  let label: string | undefined;
+
+  const chainAliases: Record<string, string> = {
+    eth: 'ethereum', ethereum: 'ethereum', base: 'base',
+    arb: 'arbitrum', arbitrum: 'arbitrum', op: 'optimism', optimism: 'optimism',
+    poly: 'polygon', polygon: 'polygon', sol: 'solana', solana: 'solana',
+  };
+
+  if (chainAliases[args[0].toLowerCase()]) {
+    chain = chainAliases[args[0].toLowerCase()];
+    address = args[1] || '';
+    label = args.slice(2).join(' ').trim() || undefined;
+  } else {
+    address = args[0];
+    label = args.slice(1).join(' ').trim() || undefined;
+    chain = detectChain(address);
+  }
+
+  // Validate address
+  const isEVM = /^0x[a-fA-F0-9]{40}$/i.test(address);
+  const isSOL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+  if (!isEVM && !isSOL) {
+    await sendMessage(chatId, 'Invalid address. Must be an EVM (0x...) or Solana address.');
+    return;
+  }
+
+  // Sanitize label
+  const safeLabel = label ? label.replace(/[^a-zA-Z0-9\s._-]/g, '').slice(0, 60) : undefined;
+  const ownerId = `tg_${chatId}`;
+
+  const result = await addTrackedWallet('telegram', ownerId, address, chain!, safeLabel, ['telegram']);
+  if (!result.ok) {
+    await sendMessage(chatId, `Failed: ${esc(result.error || 'Unknown error')}`);
+    return;
+  }
+
+  const shortAddr = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const display = safeLabel ? `${esc(safeLabel)} (${shortAddr})` : shortAddr;
+  await sendMessage(chatId, `\u{2705} Now tracking <b>${display}</b> on <b>${chain}</b>.\nYou'll be notified when this wallet makes a DEX trade.`);
+}
+
+async function handleUntrack(chatId: number, args: string[]): Promise<void> {
+  if (args.length === 0) {
+    await sendMessage(chatId, 'Usage: /untrack &lt;address&gt;');
+    return;
+  }
+
+  const { removeTrackedWallet, initDB, isDBConfigured } = await import('@/lib/db');
+  if (!isDBConfigured()) { await sendMessage(chatId, 'Database not configured.'); return; }
+  await initDB();
+
+  const address = args[0].trim();
+  const removed = await removeTrackedWallet(`tg_${chatId}`, address);
+
+  if (removed) {
+    await sendMessage(chatId, `\u{1F6D1} Stopped tracking ${address.slice(0, 6)}...${address.slice(-4)}.`);
+  } else {
+    await sendMessage(chatId, 'Wallet not found in your tracking list.');
+  }
+}
+
+async function handleTracking(chatId: number): Promise<void> {
+  const { getTrackedWalletsForOwner, initDB, isDBConfigured } = await import('@/lib/db');
+  if (!isDBConfigured()) { await sendMessage(chatId, 'Database not configured.'); return; }
+  await initDB();
+
+  const wallets = await getTrackedWalletsForOwner(`tg_${chatId}`);
+  if (wallets.length === 0) {
+    await sendMessage(chatId, 'You are not tracking any wallets.\nUse /track &lt;address&gt; to start.');
+    return;
+  }
+
+  const lines = [
+    `<b>Tracked Wallets (${wallets.length}/10)</b>`,
+    '\u2501'.repeat(16),
+  ];
+  wallets.forEach((w, i) => {
+    const short = `${w.address.slice(0, 6)}...${w.address.slice(-4)}`;
+    const labelStr = w.label ? ` — ${esc(w.label)}` : '';
+    lines.push(`${i + 1}. <code>${short}</code>${labelStr} (${w.chain})`);
+  });
+  lines.push('', '/untrack &lt;address&gt; to remove');
+
+  await sendMessage(chatId, lines.join('\n'));
+}
+
+async function handleTrades(chatId: number, args: string[]): Promise<void> {
+  const { getTrackedWalletsForOwner, getRecentTradesForWallet, initDB, isDBConfigured } = await import('@/lib/db');
+  if (!isDBConfigured()) { await sendMessage(chatId, 'Database not configured.'); return; }
+  await initDB();
+
+  const wallets = await getTrackedWalletsForOwner(`tg_${chatId}`);
+  if (wallets.length === 0) {
+    await sendMessage(chatId, 'You are not tracking any wallets.\nUse /track &lt;address&gt; to start.');
+    return;
+  }
+
+  // If address specified, show trades for that wallet
+  const targetAddr = args[0]?.toLowerCase();
+  const target = targetAddr
+    ? wallets.find(w => w.address.startsWith(targetAddr) || w.address === targetAddr)
+    : null;
+
+  if (target) {
+    const trades = await getRecentTradesForWallet(target.address, target.chain, 5);
+    if (trades.length === 0) {
+      await sendMessage(chatId, `No recent trades found for ${target.label || target.address.slice(0, 10)}...`);
+      return;
+    }
+    const label = target.label || `${target.address.slice(0, 6)}...${target.address.slice(-4)}`;
+    const lines = [`<b>Recent trades — ${esc(label)}</b>`, ''];
+    for (const t of trades) {
+      const time = new Date(t.blockTime).toLocaleString('en-GB', { timeZone: 'UTC', hour12: false });
+      const usd = t.valueUsd ? ` | $${t.valueUsd >= 1000 ? (t.valueUsd / 1000).toFixed(1) + 'K' : t.valueUsd.toFixed(0)}` : '';
+      lines.push(`${time} — ${esc(t.tokenOutSymbol || '?')} \u2192 ${esc(t.tokenInSymbol || '?')} on ${esc(t.dex || '?')}${usd}`);
+    }
+    await sendMessage(chatId, lines.join('\n'));
+    return;
+  }
+
+  // Show latest trade from each tracked wallet
+  const lines = ['<b>Latest Trades</b>', ''];
+  for (const w of wallets) {
+    const trades = await getRecentTradesForWallet(w.address, w.chain, 1);
+    const label = w.label || `${w.address.slice(0, 6)}...${w.address.slice(-4)}`;
+    if (trades.length > 0) {
+      const t = trades[0];
+      const time = new Date(t.blockTime).toLocaleString('en-GB', { timeZone: 'UTC', hour12: false });
+      lines.push(`<b>${esc(label)}</b>: ${esc(t.tokenOutSymbol || '?')} \u2192 ${esc(t.tokenInSymbol || '?')} (${time})`);
+    } else {
+      lines.push(`<b>${esc(label)}</b>: No trades yet`);
+    }
+  }
+  lines.push('', '/trades &lt;address&gt; for details');
+  await sendMessage(chatId, lines.join('\n'));
+}
+
 async function handleAlert(chatId: number, args: string[]): Promise<void> {
   if (args.length === 0) {
     await sendMessage(
@@ -2169,6 +2335,22 @@ export async function POST(request: NextRequest) {
 
       case '/unsubscribe':
         await handleUnsubscribe(chatId, args);
+        break;
+
+      case '/track':
+        await handleTrack(chatId, args);
+        break;
+
+      case '/untrack':
+        await handleUntrack(chatId, args);
+        break;
+
+      case '/tracking':
+        await handleTracking(chatId);
+        break;
+
+      case '/trades':
+        await handleTrades(chatId, args);
         break;
 
       default:

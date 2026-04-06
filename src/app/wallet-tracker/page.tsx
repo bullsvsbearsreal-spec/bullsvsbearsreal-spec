@@ -208,7 +208,7 @@ export default function WalletTrackerPage() {
   const [activeChain, setActiveChain] = useState<'eth' | 'btc' | 'sol' | null>(null);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [inputError, setInputError] = useState('');
-  const [activeTab, setActiveTab] = useState<'tokens' | 'transactions' | 'positions'>('tokens');
+  const [activeTab, setActiveTab] = useState<'tokens' | 'transactions' | 'positions' | 'trades'>('tokens');
   const [featuredCategory, setFeaturedCategory] = useState<WalletCategory | 'all'>('all');
   const [featuredSearch, setFeaturedSearch] = useState('');
   const [showFeatured, setShowFeatured] = useState(true);
@@ -333,6 +333,31 @@ export default function WalletTrackerPage() {
     key: activeAddress && activeChain === 'eth' ? `wallet-oi-${activeAddress}` : null,
     fetcher: positionsFetcher,
     refreshInterval: 60_000,
+  });
+
+  /* ---- fetch DEX trades for active wallet ----------------------------- */
+  const tradesFetcher = useCallback(async () => {
+    if (!activeAddress) return null;
+    const chain = activeChain === 'eth' ? 'ethereum' : activeChain === 'sol' ? 'solana' : null;
+    if (!chain) return null;
+    const res = await fetch(`/api/whale-trades?address=${encodeURIComponent(activeAddress)}&chain=${chain}&limit=20`);
+    const json = await res.json();
+    if (json.error) return null;
+    return json.trades as Array<{
+      txHash: string; dex: string; action: string;
+      tokenInSymbol: string | null; amountIn: number | null;
+      tokenOutSymbol: string | null; amountOut: number | null;
+      valueUsd: number | null; blockTime: string; chain: string;
+    }>;
+  }, [activeAddress, activeChain]);
+
+  const {
+    data: tradesData,
+    isLoading: tradesLoading,
+  } = useApi<any[] | null>({
+    key: activeAddress && (activeChain === 'eth' || activeChain === 'sol') ? `wallet-trades-${activeAddress}` : null,
+    fetcher: tradesFetcher,
+    refreshInterval: 120_000,
   });
 
   /* ---- fetch multichain portfolio (EVM addresses only) --------------- */
@@ -1026,10 +1051,12 @@ export default function WalletTrackerPage() {
                 'tokens' as const,
                 'transactions' as const,
                 ...(activeChain === 'eth' ? ['positions' as const] : []),
+                ...((activeChain === 'eth' || activeChain === 'sol') ? ['trades' as const] : []),
               ]).map((tab) => {
                 const isActive = activeTab === tab;
                 const count = tab === 'tokens' ? enrichedTokens.length
                   : tab === 'transactions' ? (walletData?.transactions.length ?? 0)
+                  : tab === 'trades' ? (tradesData?.length ?? 0)
                   : (positionsData?.positions.length ?? 0);
                 return (
                   <button
@@ -1044,7 +1071,8 @@ export default function WalletTrackerPage() {
                     {tab === 'tokens' && <Coins className="w-3.5 h-3.5" />}
                     {tab === 'transactions' && <ArrowRightLeft className="w-3.5 h-3.5" />}
                     {tab === 'positions' && <TrendingUp className="w-3.5 h-3.5" />}
-                    {tab === 'tokens' ? 'Tokens' : tab === 'transactions' ? 'Transactions' : 'Positions'}
+                    {tab === 'trades' && <Activity className="w-3.5 h-3.5" />}
+                    {tab === 'tokens' ? 'Tokens' : tab === 'transactions' ? 'Transactions' : tab === 'trades' ? 'DEX Trades' : 'Positions'}
                     {count > 0 && (
                       <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
                         isActive ? 'bg-white/[0.1] text-neutral-300' : 'bg-white/[0.04] text-neutral-600'
@@ -1516,6 +1544,84 @@ export default function WalletTrackerPage() {
                 )}
               </div>
             )}
+
+            {/* ========== DEX TRADES TAB ================================ */}
+            {activeTab === 'trades' && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                {tradesLoading && !tradesData ? (
+                  <div className="p-6 space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-12 bg-white/[0.04] rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                ) : tradesData && tradesData.length > 0 ? (
+                  <>
+                    <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+                      <h3 className="text-sm font-medium text-neutral-400">Recent DEX Trades</h3>
+                      <span className="text-[11px] text-neutral-600">{tradesData.length} trades</span>
+                    </div>
+                    <div className="divide-y divide-white/[0.04]">
+                      {tradesData.map((trade: any, i: number) => {
+                        const usd = trade.valueUsd
+                          ? trade.valueUsd >= 1e6 ? `$${(trade.valueUsd / 1e6).toFixed(2)}M`
+                            : trade.valueUsd >= 1e3 ? `$${(trade.valueUsd / 1e3).toFixed(1)}K`
+                            : `$${trade.valueUsd.toFixed(0)}`
+                          : null;
+                        return (
+                          <div key={trade.txHash || i} className="px-4 py-3 flex items-center gap-3 hover:bg-white/[0.02] transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center flex-shrink-0">
+                              <ArrowRightLeft className="w-4 h-4 text-hub-yellow" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-white">
+                                  {trade.amountOut ? Number(trade.amountOut).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '?'}{' '}
+                                  <span className="text-neutral-400">{trade.tokenOutSymbol || '???'}</span>
+                                </span>
+                                <span className="text-neutral-600">&rarr;</span>
+                                <span className="text-sm font-medium text-white">
+                                  {trade.amountIn ? Number(trade.amountIn).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '?'}{' '}
+                                  <span className="text-neutral-400">{trade.tokenInSymbol || '???'}</span>
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[11px] text-neutral-600">{trade.dex || 'DEX'}</span>
+                                <span className="text-[11px] text-neutral-700">&middot;</span>
+                                <span className="text-[11px] text-neutral-600">
+                                  {trade.blockTime ? new Date(trade.blockTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {usd && (
+                                <span className="text-xs font-mono text-hub-yellow">{usd}</span>
+                              )}
+                              {trade.txHash && (
+                                <a
+                                  href={`https://etherscan.io/tx/${trade.txHash}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-neutral-600 hover:text-neutral-400 transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-8 text-center text-neutral-600 text-sm">
+                    No DEX trades found for this wallet.
+                    <br />
+                    <span className="text-neutral-700 text-xs">Trades are detected from token transfer patterns on Blockscout.</span>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
 

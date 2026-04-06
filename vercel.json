@@ -47,6 +47,10 @@
     {
       "path": "/api/cron/telegram-weekly",
       "schedule": "0 10 * * 0"
+    },
+    {
+      "path": "/api/cron/whale-trades",
+      "schedule": "*/2 * * * *"
     }
   ]
 }

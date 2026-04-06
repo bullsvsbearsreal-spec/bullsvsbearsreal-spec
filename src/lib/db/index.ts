@@ -308,6 +308,60 @@ async function _doInitDB(): Promise<void> {
   // Cache expiry cleanup
   await sql`CREATE INDEX IF NOT EXISTS idx_api_cache_expires_at ON api_cache(expires_at DESC)`;
 
+  // ── Whale wallet trade tracking (Apr 2026) ──
+  await sql`
+    CREATE TABLE IF NOT EXISTS whale_tracked_wallets (
+      id SERIAL PRIMARY KEY,
+      owner_type TEXT NOT NULL,
+      owner_id TEXT NOT NULL,
+      address TEXT NOT NULL,
+      chain TEXT NOT NULL,
+      label TEXT,
+      notify_channels TEXT[] DEFAULT '{}',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(owner_id, address, chain)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_whale_tracked_owner ON whale_tracked_wallets(owner_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_whale_tracked_addr ON whale_tracked_wallets(address, chain)`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS whale_trade_events (
+      id SERIAL PRIMARY KEY,
+      address TEXT NOT NULL,
+      chain TEXT NOT NULL,
+      tx_hash TEXT NOT NULL,
+      log_index INT DEFAULT 0,
+      dex TEXT,
+      action TEXT NOT NULL DEFAULT 'swap',
+      token_in TEXT,
+      token_in_symbol TEXT,
+      amount_in REAL,
+      token_out TEXT,
+      token_out_symbol TEXT,
+      amount_out REAL,
+      value_usd REAL,
+      block_number BIGINT,
+      block_time TIMESTAMPTZ NOT NULL,
+      discovered_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(tx_hash, log_index)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_whale_events_addr_time ON whale_trade_events(address, chain, block_time DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_whale_events_discovered ON whale_trade_events(discovered_at DESC)`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS whale_alert_notifications (
+      id SERIAL PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      trade_event_id INT NOT NULL,
+      channel TEXT NOT NULL,
+      sent_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(owner_id, trade_event_id, channel)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_whale_notif_owner ON whale_alert_notifications(owner_id, sent_at DESC)`;
+
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -2358,6 +2412,235 @@ export async function getSpreadHistory(
   } catch (e) {
     console.error('DB getSpreadHistory error:', e);
     return [];
+  }
+}
+
+// ─── Whale Trade Tracking ──────────────────────────────────────────────────
+
+export interface WhaleTrackedWallet {
+  id: number;
+  ownerType: string;
+  ownerId: string;
+  address: string;
+  chain: string;
+  label: string | null;
+  notifyChannels: string[];
+  createdAt: string;
+}
+
+export interface WhaleTradeEvent {
+  id: number;
+  address: string;
+  chain: string;
+  txHash: string;
+  logIndex: number;
+  dex: string | null;
+  action: string;
+  tokenIn: string | null;
+  tokenInSymbol: string | null;
+  amountIn: number | null;
+  tokenOut: string | null;
+  tokenOutSymbol: string | null;
+  amountOut: number | null;
+  valueUsd: number | null;
+  blockNumber: number | null;
+  blockTime: string;
+  discoveredAt: string;
+}
+
+const MAX_TRACKED_WALLETS_PER_OWNER = 10;
+
+export async function addTrackedWallet(
+  ownerType: 'user' | 'telegram',
+  ownerId: string,
+  address: string,
+  chain: string,
+  label?: string,
+  notifyChannels: string[] = ['telegram'],
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const sql = getSQL();
+    const existing = await sql`
+      SELECT COUNT(*)::int AS cnt FROM whale_tracked_wallets WHERE owner_id = ${ownerId}
+    `;
+    if (existing[0].cnt >= MAX_TRACKED_WALLETS_PER_OWNER) {
+      return { ok: false, error: `Maximum ${MAX_TRACKED_WALLETS_PER_OWNER} tracked wallets allowed` };
+    }
+    await sql`
+      INSERT INTO whale_tracked_wallets (owner_type, owner_id, address, chain, label, notify_channels)
+      VALUES (${ownerType}, ${ownerId}, ${address.toLowerCase()}, ${chain}, ${label || null}, ${notifyChannels})
+      ON CONFLICT (owner_id, address, chain) DO UPDATE SET
+        label = COALESCE(EXCLUDED.label, whale_tracked_wallets.label),
+        notify_channels = EXCLUDED.notify_channels
+    `;
+    return { ok: true };
+  } catch (e) {
+    console.error('addTrackedWallet error:', e);
+    return { ok: false, error: 'Database error' };
+  }
+}
+
+export async function removeTrackedWallet(ownerId: string, address: string, chain?: string): Promise<boolean> {
+  try {
+    const sql = getSQL();
+    const addr = address.toLowerCase();
+    if (chain) {
+      const res = await sql`DELETE FROM whale_tracked_wallets WHERE owner_id = ${ownerId} AND address = ${addr} AND chain = ${chain} RETURNING id`;
+      return res.length > 0;
+    }
+    const res = await sql`DELETE FROM whale_tracked_wallets WHERE owner_id = ${ownerId} AND address = ${addr} RETURNING id`;
+    return res.length > 0;
+  } catch (e) {
+    console.error('removeTrackedWallet error:', e);
+    return false;
+  }
+}
+
+export async function getTrackedWalletsForOwner(ownerId: string): Promise<WhaleTrackedWallet[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT id, owner_type, owner_id, address, chain, label, notify_channels, created_at
+      FROM whale_tracked_wallets WHERE owner_id = ${ownerId} ORDER BY created_at ASC
+    `;
+    return rows.map((r: any) => ({
+      id: r.id, ownerType: r.owner_type, ownerId: r.owner_id,
+      address: r.address, chain: r.chain, label: r.label,
+      notifyChannels: r.notify_channels || [], createdAt: r.created_at,
+    }));
+  } catch (e) {
+    console.error('getTrackedWalletsForOwner error:', e);
+    return [];
+  }
+}
+
+export async function getDistinctTrackedWallets(): Promise<Array<{ address: string; chain: string }>> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`SELECT DISTINCT address, chain FROM whale_tracked_wallets`;
+    return rows.map((r: any) => ({ address: r.address, chain: r.chain }));
+  } catch (e) {
+    console.error('getDistinctTrackedWallets error:', e);
+    return [];
+  }
+}
+
+export async function insertWhaleTradeEvents(events: Array<{
+  address: string; chain: string; txHash: string; logIndex?: number;
+  dex?: string; action?: string;
+  tokenIn?: string; tokenInSymbol?: string; amountIn?: number;
+  tokenOut?: string; tokenOutSymbol?: string; amountOut?: number;
+  valueUsd?: number; blockNumber?: number; blockTime: Date;
+}>): Promise<number> {
+  if (events.length === 0) return 0;
+  try {
+    const sql = getSQL();
+    let inserted = 0;
+    for (const e of events) {
+      const res = await sql`
+        INSERT INTO whale_trade_events (address, chain, tx_hash, log_index, dex, action,
+          token_in, token_in_symbol, amount_in, token_out, token_out_symbol, amount_out,
+          value_usd, block_number, block_time)
+        VALUES (${e.address.toLowerCase()}, ${e.chain}, ${e.txHash}, ${e.logIndex ?? 0},
+          ${e.dex || null}, ${e.action || 'swap'},
+          ${e.tokenIn || null}, ${e.tokenInSymbol || null}, ${e.amountIn ?? null},
+          ${e.tokenOut || null}, ${e.tokenOutSymbol || null}, ${e.amountOut ?? null},
+          ${e.valueUsd ?? null}, ${e.blockNumber ?? null}, ${e.blockTime.toISOString()})
+        ON CONFLICT (tx_hash, log_index) DO NOTHING
+        RETURNING id
+      `;
+      if (res.length > 0) inserted++;
+    }
+    return inserted;
+  } catch (e) {
+    console.error('insertWhaleTradeEvents error:', e);
+    return 0;
+  }
+}
+
+export async function getRecentTradesForWallet(
+  address: string, chain?: string, limit = 20,
+): Promise<WhaleTradeEvent[]> {
+  try {
+    const sql = getSQL();
+    const addr = address.toLowerCase();
+    const rows = chain
+      ? await sql`
+          SELECT * FROM whale_trade_events
+          WHERE address = ${addr} AND chain = ${chain}
+          ORDER BY block_time DESC LIMIT ${limit}
+        `
+      : await sql`
+          SELECT * FROM whale_trade_events
+          WHERE address = ${addr}
+          ORDER BY block_time DESC LIMIT ${limit}
+        `;
+    return rows.map((r: any) => ({
+      id: r.id, address: r.address, chain: r.chain, txHash: r.tx_hash,
+      logIndex: r.log_index, dex: r.dex, action: r.action,
+      tokenIn: r.token_in, tokenInSymbol: r.token_in_symbol, amountIn: r.amount_in,
+      tokenOut: r.token_out, tokenOutSymbol: r.token_out_symbol, amountOut: r.amount_out,
+      valueUsd: r.value_usd, blockNumber: r.block_number,
+      blockTime: r.block_time, discoveredAt: r.discovered_at,
+    }));
+  } catch (e) {
+    console.error('getRecentTradesForWallet error:', e);
+    return [];
+  }
+}
+
+export async function getTradeSubscribers(address: string, chain: string): Promise<WhaleTrackedWallet[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT id, owner_type, owner_id, address, chain, label, notify_channels, created_at
+      FROM whale_tracked_wallets WHERE address = ${address.toLowerCase()} AND chain = ${chain}
+    `;
+    return rows.map((r: any) => ({
+      id: r.id, ownerType: r.owner_type, ownerId: r.owner_id,
+      address: r.address, chain: r.chain, label: r.label,
+      notifyChannels: r.notify_channels || [], createdAt: r.created_at,
+    }));
+  } catch (e) {
+    console.error('getTradeSubscribers error:', e);
+    return [];
+  }
+}
+
+export async function hasWhaleNotifBeenSent(ownerId: string, tradeEventId: number, channel: string): Promise<boolean> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT 1 FROM whale_alert_notifications
+      WHERE owner_id = ${ownerId} AND trade_event_id = ${tradeEventId} AND channel = ${channel}
+      LIMIT 1
+    `;
+    return rows.length > 0;
+  } catch { return false; }
+}
+
+export async function logWhaleNotification(ownerId: string, tradeEventId: number, channel: string): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      INSERT INTO whale_alert_notifications (owner_id, trade_event_id, channel)
+      VALUES (${ownerId}, ${tradeEventId}, ${channel})
+      ON CONFLICT (owner_id, trade_event_id, channel) DO NOTHING
+    `;
+  } catch (e) {
+    console.error('logWhaleNotification error:', e);
+  }
+}
+
+export async function pruneOldWhaleData(keepDays = 30): Promise<{ events: number; notifs: number }> {
+  try {
+    const sql = getSQL();
+    const e = await sql`DELETE FROM whale_trade_events WHERE block_time < NOW() - ${keepDays + ' days'}::interval`;
+    const n = await sql`DELETE FROM whale_alert_notifications WHERE sent_at < NOW() - ${keepDays + ' days'}::interval`;
+    return { events: e.count, notifs: n.count };
+  } catch (e) {
+    console.error('pruneOldWhaleData error:', e);
+    return { events: 0, notifs: 0 };
   }
 }
 
