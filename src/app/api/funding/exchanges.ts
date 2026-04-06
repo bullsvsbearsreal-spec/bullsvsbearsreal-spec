@@ -780,7 +780,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return items
         .filter((item: any) => item.symbol?.endsWith('USDT') && item.fundingRate != null)
         .map((item: any) => {
-          // Bitunix fundingRate is already a percentage (e.g. 0.0023 = 0.0023%, NOT 0.23%)
+          // Bitunix fundingRate is a decimal fraction (e.g. 0.0005 = 0.05%)
           const rate = parseFloat(item.fundingRate);
           // fundingInterval is a number (1, 4, 8) representing hours
           const intervalNum = parseInt(item.fundingInterval) || 8;
@@ -788,7 +788,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Bitunix',
-            fundingRate: rate,
+            fundingRate: rate * 100,
             fundingInterval: interval as '1h' | '4h' | '8h',
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.lastPrice) || 0,
