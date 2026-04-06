@@ -195,7 +195,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
       const json = await res.json();
       if (!json.markets) return [];
       return Object.entries(json.markets)
-        .filter(([key]: [string, any]) => key.endsWith('-USD'))
+        .filter(([key]: [string, any]) => /^[A-Z0-9]+-USD$/.test(key))
         .map(([key, market]: [string, any]) => {
           const price = parseFloat(market.oraclePrice) || 0;
           const change24h = parseFloat(market.priceChange24H) || 0; // dollar amount, not ratio

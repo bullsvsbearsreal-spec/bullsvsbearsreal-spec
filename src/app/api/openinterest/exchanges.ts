@@ -214,7 +214,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       const json = await res.json();
       if (!json.markets) return [];
       return Object.entries(json.markets)
-        .filter(([key]: [string, any]) => key.endsWith('-USD'))
+        .filter(([key]: [string, any]) => /^[A-Z0-9]+-USD$/.test(key))
         .filter(([key]: [string, any]) => !DYDX_FOREX.has(key.replace('-USD', '')))
         .map(([key, market]: [string, any]) => ({
           symbol: key.replace('-USD', ''),
