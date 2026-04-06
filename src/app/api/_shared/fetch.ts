@@ -22,12 +22,14 @@ const SYMBOL_ALIASES: Record<string, string> = {
   'MATIC': 'POL',
 };
 export function normalizeSymbol(symbol: string): string {
+  const original = symbol;
   // Strip quantity prefixes used by exchanges for low-price tokens
   // 1000000PEPE (Aevo), 10000SATS (Aevo), 1000SHIB (Bybit/OKX/Bitget), 1MBONK (Drift)
   if (symbol.startsWith('1000000')) symbol = symbol.slice(7);
   else if (symbol.startsWith('10000')) symbol = symbol.slice(5);
   else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
   else if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+  if (!symbol) return original; // guard against prefix-only inputs
   return SYMBOL_ALIASES[symbol] || symbol;
 }
 

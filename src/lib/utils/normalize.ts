@@ -3,7 +3,7 @@
  * "BTCUSDT" → "BTC", "1000SHIBUSDT" → "SHIB", "SOL-USD-SWAP" → "SOL"
  */
 export function normalizeSymbolBase(raw: string): string {
-  return raw
+  const result = raw
     .toUpperCase()
     .replace(/[-_]/g, '')
     .replace(/(USDT|USDC|USD|BUSD|PERP|SWAP)$/i, '')
@@ -11,4 +11,6 @@ export function normalizeSymbolBase(raw: string): string {
     .replace(/^10000/, '')
     .replace(/^1000/, '')
     .replace(/^1M/, '');
+  // If normalization stripped everything (e.g. "USDT", "1000USDT"), return the original uppercased
+  return result || raw.toUpperCase();
 }
