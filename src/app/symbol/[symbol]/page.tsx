@@ -189,7 +189,11 @@ export default function SymbolPage() {
   const totalOI = useMemo(() => oi.reduce((s, o) => s + o.openInterest, 0), [oi]);
   const avgFunding = useMemo(() => {
     if (funding.length === 0) return 0;
-    return funding.reduce((s, f) => s + f.rate, 0) / funding.length;
+    // Normalize to 8h basis for fair averaging across exchanges
+    return funding.reduce((s, f) => {
+      const mult = f.interval === '1h' ? 8 : f.interval === '4h' ? 2 : 1;
+      return s + f.rate * mult;
+    }, 0) / funding.length;
   }, [funding]);
   const avgChange = useMemo(() => {
     if (tickers.length === 0) return 0;
