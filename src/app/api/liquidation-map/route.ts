@@ -28,6 +28,7 @@ interface LiquidationMapResponse {
   levels: LiquidationLevel[];
   totalLongLiq: number;
   totalShortLiq: number;
+  exchangeCount?: number;
   timestamp: number;
 }
 
@@ -232,6 +233,7 @@ export async function GET(request: NextRequest) {
       levels,
       totalLongLiq,
       totalShortLiq,
+      exchangeCount,
       timestamp: Date.now(),
     };
 

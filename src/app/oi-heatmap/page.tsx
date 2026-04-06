@@ -236,6 +236,11 @@ export default function OIHeatmapPage() {
     return result;
   }, [oiData, deltaData]);
 
+  const uniqueExchangeCount = useMemo(() => {
+    if (!oiData?.data) return 0;
+    return new Set(oiData.data.map((e: any) => e.exchange)).size;
+  }, [oiData]);
+
   // Apply count filter
   const filtered = useMemo(() => {
     if (count === 'all') return aggregated;
@@ -297,7 +302,7 @@ export default function OIHeatmapPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={uniqueExchangeCount || 1} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={isRefreshing}

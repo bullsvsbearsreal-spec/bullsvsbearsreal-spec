@@ -118,6 +118,14 @@ export default function ComparePage() {
     });
   }, [selected, tickers, funding, oi]);
 
+  const uniqueExchangeCount = useMemo(() => {
+    const exchanges = new Set<string>();
+    tickers.forEach((t: any) => t.exchange && exchanges.add(t.exchange));
+    funding.forEach((f: any) => f.exchange && exchanges.add(f.exchange));
+    oi.forEach((o: any) => o.exchange && exchanges.add(o.exchange));
+    return exchanges.size;
+  }, [tickers, funding, oi]);
+
   const handleAdd = (sym: string) => {
     const upper = sym.toUpperCase().trim();
     if (!upper || selected.includes(upper) || selected.length >= 4) return;
@@ -149,7 +157,7 @@ export default function ComparePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={uniqueExchangeCount || 1} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}

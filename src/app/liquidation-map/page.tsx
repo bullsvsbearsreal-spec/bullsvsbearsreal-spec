@@ -34,6 +34,7 @@ interface LiquidationMapData {
   levels: LiquidationLevel[];
   totalLongLiq: number;
   totalShortLiq: number;
+  exchangeCount?: number;
   timestamp: number;
 }
 
@@ -410,7 +411,7 @@ export default function LiquidationMapPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={data?.exchangeCount || 1} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={loading}
