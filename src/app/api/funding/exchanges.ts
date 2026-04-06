@@ -1601,19 +1601,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           batch.map((c: any) =>
             fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 6000)
               .then(async r => {
-                if (!r.ok) {
-                  if (i === 0) {
-                    const body = await r.text().catch(() => '');
-                    console.warn(`[edgeX] ticker ${c.contractId} HTTP ${r.status} body=${body.slice(0, 80)}`);
-                  }
-                  return null;
-                }
+                if (!r.ok) return null;
                 return r.json();
               })
-              .catch((e: Error) => {
-                if (i === 0) console.warn(`[edgeX] ticker ${c.contractId} err: ${e.message}`);
-                return null;
-              })
+              .catch(() => null)
           )
         );
 

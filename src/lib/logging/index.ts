@@ -18,6 +18,10 @@ async function getSentry() {
   return Sentry;
 }
 
+// Throttle exchange error logs to avoid spam from persistently blocked exchanges
+const exchangeLogTimestamps = new Map<string, number>();
+const EXCHANGE_LOG_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 /** Log an exchange-level error with Sentry context */
 export async function logExchangeError(
   exchange: string,
@@ -25,8 +29,11 @@ export async function logExchangeError(
   context?: { route?: string; endpoint?: string; status?: number },
 ) {
   const message = error instanceof Error ? error.message : String(error);
-  // Use warn instead of error — exchange failures are expected (CloudFlare blocks, timeouts)
-  // and handled by circuit breakers. Sentry still captures at warning level.
+  // Throttle: only log each exchange's warning once per 5 minutes per instance
+  const now = Date.now();
+  const lastLogged = exchangeLogTimestamps.get(exchange) || 0;
+  if (now - lastLogged < EXCHANGE_LOG_INTERVAL_MS) return;
+  exchangeLogTimestamps.set(exchange, now);
   console.warn(`[Exchange:${exchange}] ${message}`);
 
   const sentry = await getSentry();
