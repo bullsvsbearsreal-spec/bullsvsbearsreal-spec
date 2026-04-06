@@ -1008,7 +1008,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .filter((t: any) => t.symbol?.endsWith('_USDC_PERP'))
         .map((t: any) => {
           const lastPrice = parseFloat(t.lastPrice) || 0;
-          const changePercent = parseFloat(t.priceChangePercent) || 0;
+          const changePercent = (parseFloat(t.priceChangePercent) || 0) * 100; // API returns decimal fraction (0.035 = 3.5%)
           return {
             symbol: t.symbol.replace('_USDC_PERP', ''),
             exchange: 'Backpack',
