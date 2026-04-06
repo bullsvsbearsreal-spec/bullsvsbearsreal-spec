@@ -32,17 +32,21 @@ export async function GET(request: NextRequest) {
   // Get top symbols from live funding data
   const origin = new URL(request.url).origin;
   let symbols: string[] = [];
+  let exchangeCount = 0;
 
   try {
     const fundingRes = await fetch(`${origin}/api/funding`).then((r) => r.ok ? r.json() : null);
     if (fundingRes?.data) {
       // Gather unique symbols, prioritize by appearing on most exchanges
       const symbolCounts = new Map<string, number>();
-      interface RawFundingItem { symbol: string }
+      const exchanges = new Set<string>();
+      interface RawFundingItem { symbol: string; exchange: string }
       (fundingRes.data as RawFundingItem[]).forEach((item) => {
         const sym = item.symbol;
         symbolCounts.set(sym, (symbolCounts.get(sym) || 0) + 1);
+        if (item.exchange) exchanges.add(item.exchange);
       });
+      exchangeCount = exchanges.size;
       // Sort by exchange count descending, take top N
       const sorted: string[] = [];
       symbolCounts.forEach((count, sym) => sorted.push(sym));
@@ -70,5 +74,6 @@ export async function GET(request: NextRequest) {
     symbols,
     days,
     data,
+    exchangeCount,
   });
 }

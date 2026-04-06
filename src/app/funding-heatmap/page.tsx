@@ -20,6 +20,7 @@ interface HeatmapResponse {
   symbols: string[];
   days: number;
   data: Record<string, DayPoint[]>;
+  exchangeCount?: number;
 }
 
 type SortMode = 'default' | 'avg-desc' | 'avg-asc' | 'latest-desc' | 'latest-asc';
@@ -198,7 +199,7 @@ export default function FundingHeatmapPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+              <DataFreshness exchangeCount={data?.exchangeCount || stats?.symbols || 0} lastUpdated={lastUpdate} />
               {/* Day selector */}
               <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5">
                 {[7, 14, 30].map((d) => (
@@ -411,7 +412,7 @@ export default function FundingHeatmapPage() {
               </div>
               <span className="text-xs text-neutral-500">Positive</span>
             </div>
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={data?.exchangeCount || stats?.symbols || 0} lastUpdated={lastUpdate} />
           </div>
 
           {/* Info footer */}
