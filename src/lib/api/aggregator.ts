@@ -575,11 +575,13 @@ export async function fetchArbHistory(symbols: string[]): Promise<Map<string, Ar
 
   try {
     const map = new Map<string, ArbHistoricalSpread>();
-    // Batch into chunks of 100, fetch in parallel to avoid sequential waterfall
-    const BATCH = 100;
+    // Filter out non-ASCII symbols (e.g. Chinese chars) that bloat URL encoding
+    const ascii = unique.filter(s => /^[A-Za-z0-9._-]+$/.test(s));
+    // Batch into chunks of 60, fetch in parallel to stay under middleware query limit
+    const BATCH = 60;
     const batches: string[][] = [];
-    for (let i = 0; i < unique.length; i += BATCH) {
-      batches.push(unique.slice(i, i + BATCH));
+    for (let i = 0; i < ascii.length; i += BATCH) {
+      batches.push(ascii.slice(i, i + BATCH));
     }
     const responses = await Promise.all(
       batches.map(batch => fetch(`/api/arb-history?symbols=${batch.join(',')}`).catch(() => null))

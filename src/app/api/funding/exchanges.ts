@@ -329,6 +329,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return Object.entries(json.markets)
         .filter(([key, market]: [string, any]) =>
           key.endsWith('-USD') && market.status === 'ACTIVE'
+          && /^[A-Z0-9]+-USD$/.test(key) // reject malformed keys (commas, addresses)
         )
         .map(([key, market]: [string, any]) => {
           const rate = parseFloat(market.nextFundingRate);
