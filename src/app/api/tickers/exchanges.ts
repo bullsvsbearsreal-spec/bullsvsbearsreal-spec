@@ -55,7 +55,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           low24h: parseFloat(ticker.lowPrice) || 0,
           volume24h: parseFloat(ticker.volume) || 0,
           quoteVolume24h: parseFloat(ticker.quoteVolume) || 0,
-        }));
+        }))
+        .filter((t: any) => t.lastPrice > 0);
     },
   },
 
@@ -96,7 +97,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           low24h: parseFloat(ticker.lowPrice24h) || 0,
           volume24h: parseFloat(ticker.volume24h) || 0,
           quoteVolume24h: parseFloat(ticker.turnover24h) || 0,
-        }));
+        }))
+        .filter((t: any) => t.lastPrice > 0);
     },
   },
 
@@ -128,7 +130,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             volume24h: parseFloat(ticker.vol24h) || 0,
             quoteVolume24h: baseCurrencyVol * lastPrice,
           };
-        });
+        })
+        .filter((t: any) => t.lastPrice > 0);
     },
   },
 
@@ -153,7 +156,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           low24h: parseFloat(ticker.low24h) || 0,
           volume24h: parseFloat(ticker.baseVolume) || 0,
           quoteVolume24h: parseFloat(ticker.quoteVolume) || 0,
-        }));
+        }))
+        .filter((t: any) => t.lastPrice > 0);
     },
   },
 
