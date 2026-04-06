@@ -201,13 +201,13 @@ async function getLongShort(input: ToolInput, ctx: ExecuteContext): Promise<stri
   const symbol = sanitizeParam(input.symbol || 'BTCUSDT');
   const period = sanitizeParam(input.period || '1h');
   const data = await fetchApi(ctx, `/api/longshort?symbol=${symbol}&period=${period}&limit=5`);
-  const entries: any[] = data.data || [];
+  const entries: any[] = data.points || data.data || [];
 
   if (entries.length === 0) return `No long/short data for ${symbol}.`;
 
   const rows = entries.map(
     (e: any) =>
-      `${new Date(e.timestamp).toLocaleString()}: Long ${(e.longAccount * 100).toFixed(1)}% / Short ${(e.shortAccount * 100).toFixed(1)}% (ratio: ${e.longShortRatio?.toFixed(2)})`,
+      `${new Date(e.timestamp).toLocaleString()}: Long ${(e.longRatio ?? 0).toFixed(1)}% / Short ${(e.shortRatio ?? 0).toFixed(1)}% (ratio: ${e.longShortRatio?.toFixed(2)})`,
   );
   return `Long/Short Ratio for ${symbol} (${period} intervals):\n${rows.join('\n')}`;
 }
