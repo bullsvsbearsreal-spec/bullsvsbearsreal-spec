@@ -114,7 +114,7 @@ export default function ScreenerPage() {
   const MAX_SANE_VOL = 10_000_000_000;
 
   interface RawTicker { symbol: string; exchange: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number; quoteVolume24h?: number }
-  interface RawFunding { symbol: string; fundingRate?: number }
+  interface RawFunding { symbol: string; fundingRate?: number; fundingInterval?: string }
   interface RawOI { symbol: string; openInterestValue?: number }
   interface RawDelta { symbol: string; change24h?: number }
 
@@ -144,7 +144,9 @@ export default function ScreenerPage() {
     const fundingMap = new Map<string, { total: number; count: number }>();
     funding.forEach((f: RawFunding) => {
       const cur = fundingMap.get(f.symbol) || { total: 0, count: 0 };
-      cur.total += f.fundingRate || 0;
+      // Normalize to 8h basis for fair averaging across exchanges
+      const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
+      cur.total += (f.fundingRate || 0) * mult;
       cur.count++;
       fundingMap.set(f.symbol, cur);
     });
