@@ -1150,7 +1150,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         // Groups have no fee caps — just use raw net OI
         const effectiveOi = Math.abs(oiLong - oiShort);
         const utilization = Math.min(effectiveOi / maxOi, 1);
-        return feePerBlock * Math.pow(utilization, exponent) * ARB_BLOCKS_PER_8H;
+        return feePerBlock * Math.pow(utilization, exponent) * ARB_BLOCKS_PER_8H * 100;
       });
 
       for (let i = 0; i < Math.min(pairs.length, fundingParams.length, fundingData.length); i++) {
@@ -1252,8 +1252,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               }
             }
 
-            // Step 3: Convert per-second rate to 8h percentage
-            fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
+            // Step 3: Convert per-second fraction to 8h percentage
+            fundingRate8h = currentFundingRatePerSecondP * 8 * 3600 * 100;
 
             // gTrade holding fee per side = directional funding + borrowing.
             // When one side has 0 OI, that side can't receive funding, so the other
@@ -1292,7 +1292,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // V2 borrowing: per-second rate (used by funded pairs, 0 for borrow-only)
           const borrowParams = borrowingV2Params[i];
           const borrowV2Rate8h = borrowParams?.borrowingRatePerSecondP
-            ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600
+            ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600 * 100
             : 0;
 
           // V1 borrowing: block-based, utilization fee (used by borrow-only pairs)
@@ -1325,7 +1325,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                   const maxP = rawMaxP && rawMaxP > 0 ? rawMaxP / 1e3 / 100 : 1;
                   const netOi = Math.abs(pairOiL - pairOiS);
                   const effectiveOi = Math.min(Math.max(netOi, pairMaxOi * minP), pairMaxOi * maxP);
-                  pairRate8h = pairFeePerBlock * Math.pow(effectiveOi / pairMaxOi, pairExp) * ARB_BLOCKS_PER_8H;
+                  pairRate8h = pairFeePerBlock * Math.pow(effectiveOi / pairMaxOi, pairExp) * ARB_BLOCKS_PER_8H * 100;
                 }
               }
               // SDK: getActiveFeePerBlock returns Math.max(pairRate, groupRate)
