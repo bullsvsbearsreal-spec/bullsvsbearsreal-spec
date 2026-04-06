@@ -170,13 +170,14 @@ export default function WatchlistPage() {
       });
     });
 
-    // -- funding: average across exchanges
+    // -- funding: average across exchanges (normalized to 8h basis)
     const fundingMap = new Map<string, { sum: number; count: number }>();
     (Array.isArray(fundingData) ? fundingData : []).forEach((f) => {
       const sym = normalizeSymbol(f.symbol);
       if (!wlSet.has(sym)) return;
+      const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
       const prev = fundingMap.get(sym) ?? { sum: 0, count: 0 };
-      fundingMap.set(sym, { sum: prev.sum + f.fundingRate, count: prev.count + 1 });
+      fundingMap.set(sym, { sum: prev.sum + f.fundingRate * mult, count: prev.count + 1 });
     });
 
     // -- OI: sum across exchanges

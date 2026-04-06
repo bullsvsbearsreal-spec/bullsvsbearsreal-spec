@@ -18,7 +18,7 @@ type ViewMode = 'chart' | 'table';
 type SortKey = 'oi' | 'funding' | 'volume' | 'symbols';
 
 interface OIEntry { exchange: string; symbol: string; openInterestValue?: number }
-interface FundingEntry { exchange: string; symbol: string; fundingRate: number }
+interface FundingEntry { exchange: string; symbol: string; fundingRate: number; fundingInterval?: string }
 interface TickerEntry { exchange: string; symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number; quoteVolume24h?: number }
 
 interface ExchangeStats {
@@ -102,10 +102,13 @@ export default function ExchangeComparisonPage() {
         });
       }
       const s = statsMap.get(ex)!;
-      s.fundingBySymbol.set(fr.symbol, fr.fundingRate);
+      // Normalize to 8h basis for fair comparison across exchanges
+      const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
+      const rate8h = fr.fundingRate * mult;
+      s.fundingBySymbol.set(fr.symbol, rate8h);
       if (!fundingCounts.has(ex)) fundingCounts.set(ex, { sum: 0, count: 0 });
       const fc = fundingCounts.get(ex)!;
-      fc.sum += fr.fundingRate;
+      fc.sum += rate8h;
       fc.count += 1;
     });
 
