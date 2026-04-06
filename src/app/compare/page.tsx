@@ -87,8 +87,11 @@ export default function ComparePage() {
       funding.forEach(f => {
         const ns = normalizeSymbol(f.symbol);
         if (ns !== sym) return;
-        fundingByExchange.push({ exchange: f.exchange, rate: f.fundingRate });
-        fundingSum += f.fundingRate;
+        // Normalize to 8h basis for fair averaging across exchanges
+        const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
+        const rate8h = f.fundingRate * mult;
+        fundingByExchange.push({ exchange: f.exchange, rate: rate8h });
+        fundingSum += rate8h;
         fundingCount++;
       });
 
