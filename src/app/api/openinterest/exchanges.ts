@@ -150,7 +150,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oiBase,
             openInterestValue: oiBase * price,
           };
-        });
+        })
+        .filter((item: any) => item.openInterestValue > 0);
     },
   },
 
@@ -289,7 +290,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oiCoins,
             openInterestValue: oiCoins * price,
           };
-        });
+        })
+        .filter((item: any) => item.openInterestValue > 0);
     },
   },
 
@@ -380,7 +382,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oi,
             openInterestValue: oi * price,
           };
-        });
+        })
+        .filter((item: any) => item.openInterestValue > 0);
     },
   },
 
@@ -508,7 +511,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oi,
             openInterestValue: oi * price,
           };
-        });
+        })
+        .filter((item: any) => item.openInterestValue > 0);
     },
   },
 
@@ -531,7 +535,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oi,
             openInterestValue: oi * price,
           };
-        });
+        })
+        .filter((item: any) => item.openInterestValue > 0);
     },
   },
 
@@ -554,7 +559,8 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
             openInterest: oi,
             openInterestValue: oi * price,
           };
-        });
+        })
+        .filter((item: any) => item.openInterestValue > 0);
     },
   },
 
