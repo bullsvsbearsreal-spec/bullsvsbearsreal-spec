@@ -24,6 +24,7 @@ interface FundingEntry {
   symbol: string;
   exchange: string;
   fundingRate: number;
+  fundingInterval?: string;
   annualized?: number;
 }
 
@@ -118,16 +119,18 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
   const metrics = useMemo(() => {
     const sym = symbol.toUpperCase();
 
-    // Funding
+    // Funding — normalize to 8h basis for fair averaging across exchanges
     const fundingEntries = fundingData?.data?.filter(f => f.symbol === sym) ?? [];
-    const rates = fundingEntries.map(f => f.fundingRate).filter(r => typeof r === 'number' && isFinite(r));
+    const norm8h = (f: FundingEntry) => f.fundingRate * (f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1);
+    const rates = fundingEntries.map(f => norm8h(f)).filter(r => typeof r === 'number' && isFinite(r));
     const avgFunding = rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : null;
     let minFunding: { rate: number; exchange: string } | null = null;
     let maxFunding: { rate: number; exchange: string } | null = null;
     for (const f of fundingEntries) {
       if (typeof f.fundingRate !== 'number' || !isFinite(f.fundingRate)) continue;
-      if (!minFunding || f.fundingRate < minFunding.rate) minFunding = { rate: f.fundingRate, exchange: f.exchange };
-      if (!maxFunding || f.fundingRate > maxFunding.rate) maxFunding = { rate: f.fundingRate, exchange: f.exchange };
+      const rate8h = norm8h(f);
+      if (!minFunding || rate8h < minFunding.rate) minFunding = { rate: rate8h, exchange: f.exchange };
+      if (!maxFunding || rate8h > maxFunding.rate) maxFunding = { rate: rate8h, exchange: f.exchange };
     }
 
     // OI
@@ -149,9 +152,10 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
     const price = priceEntry?.lastPrice ?? null;
     const change24h = priceEntry?.priceChangePercent24h ?? null;
 
-    // Per-exchange funding for bar chart (sorted by rate)
+    // Per-exchange funding for bar chart (sorted by 8h-normalized rate)
     const perExchangeFunding = fundingEntries
       .filter(f => typeof f.fundingRate === 'number' && isFinite(f.fundingRate))
+      .map(f => ({ ...f, fundingRate: norm8h(f) }))
       .sort((a, b) => b.fundingRate - a.fundingRate)
       .slice(0, 15);
 
