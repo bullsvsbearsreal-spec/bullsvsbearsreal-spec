@@ -126,6 +126,16 @@ const CHAIN_CONFIG = {
   },
 } as const;
 
+// Explorer TX URLs for whale-trades chain IDs
+const TRADE_EXPLORER_TX: Record<string, string> = {
+  ethereum: 'https://etherscan.io/tx/',
+  base: 'https://basescan.org/tx/',
+  arbitrum: 'https://arbiscan.io/tx/',
+  optimism: 'https://optimistic.etherscan.io/tx/',
+  polygon: 'https://polygonscan.com/tx/',
+  solana: 'https://solscan.io/tx/',
+};
+
 const QUICK_ADD_WALLETS = getQuickAddWallets(6);
 
 /* ------------------------------------------------------------------ */
@@ -1598,7 +1608,7 @@ export default function WalletTrackerPage() {
                               )}
                               {trade.txHash && (
                                 <a
-                                  href={`https://etherscan.io/tx/${trade.txHash}`}
+                                  href={`${TRADE_EXPLORER_TX[trade.chain] || 'https://etherscan.io/tx/'}${trade.txHash}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-neutral-600 hover:text-neutral-400 transition-colors"

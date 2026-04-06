@@ -72,6 +72,22 @@ const DEX_ROUTERS: Record<string, string> = {
 // Jupiter program ID (Solana)
 const JUPITER_PROGRAM = 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4';
 
+// Well-known Solana token mints → symbols
+const SOLANA_TOKENS: Record<string, string> = {
+  'So11111111111111111111111111111111111111112': 'SOL',
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
+  'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN': 'JUP',
+  'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 'BONK',
+  '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr': 'POPCAT',
+  'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm': 'WIF',
+  'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3': 'PYTH',
+  'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So': 'mSOL',
+  'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn': 'jitoSOL',
+  '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs': 'ETH (Wormhole)',
+  'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof': 'RENDER',
+};
+
 export interface DetectedTrade {
   address: string;
   chain: string;
@@ -256,11 +272,10 @@ export async function detectSolanaSwaps(address: string): Promise<DetectedTrade[
         // Parse token balance changes for the wallet
         const preBalances = tx.meta.preTokenBalances || [];
         const postBalances = tx.meta.postTokenBalances || [];
-        const addr = address.toLowerCase();
 
         const changes: Array<{ mint: string; symbol: string; delta: number }> = [];
         for (const post of postBalances) {
-          if (post.owner?.toLowerCase() !== addr) continue;
+          if (post.owner !== address) continue;
           const pre = preBalances.find((p: any) => p.accountIndex === post.accountIndex);
           const preAmount = parseFloat(pre?.uiTokenAmount?.uiAmountString || '0');
           const postAmount = parseFloat(post.uiTokenAmount?.uiAmountString || '0');
@@ -268,7 +283,7 @@ export async function detectSolanaSwaps(address: string): Promise<DetectedTrade[
           if (Math.abs(delta) > 0.0001) {
             changes.push({
               mint: post.mint,
-              symbol: post.uiTokenAmount?.uiAmountString ? (post.mint.slice(0, 6) + '...') : 'Unknown',
+              symbol: SOLANA_TOKENS[post.mint] || `${post.mint.slice(0, 4)}...${post.mint.slice(-4)}`,
               delta,
             });
           }
