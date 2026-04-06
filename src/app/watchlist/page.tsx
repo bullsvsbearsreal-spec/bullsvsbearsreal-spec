@@ -27,6 +27,7 @@ interface TickerEntry {
 interface FundingEntry {
   symbol: string;
   fundingRate: number;
+  fundingInterval?: string;
   exchange: string;
 }
 

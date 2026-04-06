@@ -3,15 +3,15 @@
 
 /** Trader slang for funding rate values */
 export function getFundingSlang(rate: number): string {
-  const pct = rate * 100; // rate is decimal, pct is %
-  if (pct > 0.1) return 'Longs absolutely loaded — paying massive premium';
-  if (pct > 0.05) return 'Degens pumping hard — expensive to be long';
-  if (pct > 0.01) return 'Longs paying up — moderately bullish sentiment';
-  if (pct > 0) return 'Slight long bias — normal market conditions';
-  if (pct === 0) return 'Perfectly neutral — balanced market';
-  if (pct > -0.01) return 'Slight short bias — bears nibbling';
-  if (pct > -0.05) return 'Shorts paying up — bears getting aggressive';
-  if (pct > -0.1) return 'Short squeeze territory — expensive to be short';
+  // rate is already in percentage form (e.g. 0.01 = 0.01%)
+  if (rate > 0.1) return 'Longs absolutely loaded — paying massive premium';
+  if (rate > 0.05) return 'Degens pumping hard — expensive to be long';
+  if (rate > 0.01) return 'Longs paying up — moderately bullish sentiment';
+  if (rate > 0) return 'Slight long bias — normal market conditions';
+  if (rate === 0) return 'Perfectly neutral — balanced market';
+  if (rate > -0.01) return 'Slight short bias — bears nibbling';
+  if (rate > -0.05) return 'Shorts paying up — bears getting aggressive';
+  if (rate > -0.1) return 'Short squeeze territory — expensive to be short';
   return 'Absolute carnage for shorts — mega squeeze incoming';
 }
 

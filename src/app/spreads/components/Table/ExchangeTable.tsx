@@ -379,11 +379,14 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                     vs Low +{fromLow.toFixed(3)}%
                   </span>
                 )}
-                {r.fundingRate !== undefined && (
-                  <span className={r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    F: {r.fundingRate >= 0 ? '+' : ''}{(r.fundingRate * 100).toFixed(4)}%
+                {r.fundingRate !== undefined && (() => {
+                  const rate8h = r.fundingRate * (r.fundingInterval === '1h' ? 8 : r.fundingInterval === '4h' ? 2 : 1);
+                  return (
+                  <span className={rate8h >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    F: {rate8h >= 0 ? '+' : ''}{rate8h.toFixed(4)}%
                   </span>
-                )}
+                  );
+                })()}
                 {r.change !== undefined && (
                   <span className={r.change >= 0 ? 'text-green-400/70' : 'text-red-400/70'}>
                     24h {r.change >= 0 ? '+' : ''}{r.change.toFixed(2)}%
@@ -510,13 +513,16 @@ function ExchangeTableInner({ sym, stats, wsPrices, klineData }: ExchangeTablePr
                     {r.change !== undefined ? (r.change >= 0 ? '+' : '') + r.change.toFixed(2) + '%' : <span className="text-neutral-700">—</span>}
                   </td>}
                   {/* Funding 8h */}
-                  {col('funding') && <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400' : 'text-red-400') : ''}`}
-                    title={r.fundingRate !== undefined ? getFundingSlang(r.fundingRate) : undefined}>
-                    {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100).toFixed(4) + '%' : <span className="text-neutral-700">—</span>}
-                  </td>}
+                  {col('funding') && (() => {
+                    const rate8h = r.fundingRate !== undefined ? r.fundingRate * (r.fundingInterval === '1h' ? 8 : r.fundingInterval === '4h' ? 2 : 1) : undefined;
+                    return <td className={`px-3 py-2.5 text-right font-mono tabular-nums ${rate8h !== undefined ? (rate8h >= 0 ? 'text-green-400' : 'text-red-400') : ''}`}
+                    title={rate8h !== undefined ? getFundingSlang(rate8h) : undefined}>
+                    {rate8h !== undefined ? (rate8h >= 0 ? '+' : '') + rate8h.toFixed(4) + '%' : <span className="text-neutral-700">—</span>}
+                  </td>;
+                  })()}
                   {/* Annualized */}
                   {col('annrate') && <td className={`px-3 py-2.5 text-right font-mono tabular-nums text-[10px] ${r.fundingRate !== undefined ? (r.fundingRate >= 0 ? 'text-green-400/60' : 'text-red-400/60') : ''}`}>
-                    {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * 100 * annMultiplier).toFixed(1) + '%' : <span className="text-neutral-700">—</span>}
+                    {r.fundingRate !== undefined ? (r.fundingRate >= 0 ? '+' : '') + (r.fundingRate * annMultiplier).toFixed(1) + '%' : <span className="text-neutral-700">—</span>}
                   </td>}
                   {/* OI */}
                   {col('oi') && <td className="px-3 py-2.5 text-right font-mono text-neutral-300 tabular-nums" title={r.oiValue ? getOISlang(r.oiValue) : undefined}>
