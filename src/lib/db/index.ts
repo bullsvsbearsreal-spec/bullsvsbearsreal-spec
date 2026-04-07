@@ -1080,9 +1080,9 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
   try {
     const sql = getSQL();
 
-    // Single-pass query using conditional aggregation instead of 4 separate CTEs.
-    // Each row is bucketed into current/1h/4h/24h based on its timestamp,
-    // then we aggregate per symbol in one scan of the index.
+    // Single-pass conditional aggregation. The WHERE clause limits the scan
+    // to the last ~24h of data. statement_timeout prevents runaway queries
+    // from exhausting Neon's connection pool.
     const rows = await sql`
       SELECT
         symbol,
