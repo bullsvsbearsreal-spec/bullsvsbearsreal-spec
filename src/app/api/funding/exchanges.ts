@@ -784,7 +784,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return items
         .filter((item: any) => item.symbol?.endsWith('USDT') && item.fundingRate != null)
         .map((item: any) => {
-          // Bitunix fundingRate is a decimal fraction (e.g. 0.0005 = 0.05%)
+          // Bitunix fundingRate is already in percentage form (e.g. -0.004005 = -0.004005%)
           const rate = parseFloat(item.fundingRate);
           // fundingInterval is a number (1, 4, 8) representing hours
           const intervalNum = parseInt(item.fundingInterval) || 8;
@@ -792,7 +792,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Bitunix',
-            fundingRate: rate * 100,
+            fundingRate: rate,
             fundingInterval: interval as '1h' | '4h' | '8h',
             markPrice: parseFloat(item.markPrice) || 0,
             indexPrice: parseFloat(item.lastPrice) || 0,
@@ -1357,13 +1357,22 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // Positive = cost (you pay), consistent with gTrade convention.
           const holdingFeeLong = fundingRateLong + totalBorrowRate8h;
           const holdingFeeShort = fundingRateShort + totalBorrowRate8h;
+
+          // Sanity-cap gTrade rates — velocity model can produce extreme frozen rates
+          // on stale/illiquid pairs (e.g. -243% per 8h). Cap to ±5% for display.
+          const GTRADE_RATE_CAP = 5; // ±5% per 8h
+          const clamp = (v: number) => Math.max(-GTRADE_RATE_CAP, Math.min(GTRADE_RATE_CAP, v));
+          const cappedFundingRate8h = clamp(fundingRate8h);
+          const cappedHoldingFeeLong = clamp(holdingFeeLong);
+          const cappedHoldingFeeShort = clamp(holdingFeeShort);
+
           const hasDirectionalFunding = Math.abs(fundingRate8h) > 0.00001 || totalBorrowRate8h > 0.00001;
           results.push({
             symbol,
             exchange: 'gTrade',
-            fundingRate: fundingRate8h,
-            fundingRateLong: hasDirectionalFunding ? holdingFeeLong : undefined,
-            fundingRateShort: hasDirectionalFunding ? holdingFeeShort : undefined,
+            fundingRate: cappedFundingRate8h,
+            fundingRateLong: hasDirectionalFunding ? cappedHoldingFeeLong : undefined,
+            fundingRateShort: hasDirectionalFunding ? cappedHoldingFeeShort : undefined,
             borrowingRate: totalBorrowRate8h > 0.00001 ? totalBorrowRate8h : undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: tokenPrice,

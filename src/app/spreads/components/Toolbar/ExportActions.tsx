@@ -44,7 +44,7 @@ function ExportActionsInner({ data, exchanges, symbol, stats, tf }: ExportAction
       a.download = `${symbol}_spread_${tf}_${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
     } catch {
-      alert('Screenshot requires html2canvas. Install with: npm i html2canvas');
+      alert('Screenshot failed to load. Please refresh the page and try again.');
     }
   }, [symbol, tf]);
 
