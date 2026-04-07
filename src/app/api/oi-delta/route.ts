@@ -35,11 +35,11 @@ export async function GET() {
   }
 
   try {
-    await initDB();
-
-    // Race the DB query against a 25s timeout to avoid Vercel 504s
+    // Race the entire DB operation (init + query) against a 25s timeout
+    // to avoid Vercel 504s. The query scans oi_snapshots 4x with different
+    // time windows and can exceed 60s under load.
     const deltas = await Promise.race([
-      getOIDeltas(),
+      (async () => { await initDB(); return getOIDeltas(); })(),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('OI delta query timeout (25s)')), 25_000)
       ),
