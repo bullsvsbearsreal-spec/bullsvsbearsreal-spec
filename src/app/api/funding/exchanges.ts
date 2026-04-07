@@ -1366,14 +1366,15 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const cappedHoldingFeeLong = clamp(holdingFeeLong);
           const cappedHoldingFeeShort = clamp(holdingFeeShort);
 
-          const hasDirectionalFunding = Math.abs(fundingRate8h) > 0.00001 || totalBorrowRate8h > 0.00001;
           results.push({
             symbol,
             exchange: 'gTrade',
-            fundingRate: cappedFundingRate8h,
-            fundingRateLong: hasDirectionalFunding ? cappedHoldingFeeLong : undefined,
-            fundingRateShort: hasDirectionalFunding ? cappedHoldingFeeShort : undefined,
-            borrowingRate: totalBorrowRate8h > 0.00001 ? totalBorrowRate8h : undefined,
+            // gTrade always shows L/S only — fundingRate drives heatmap cell color,
+            // use the long holding fee so color reflects what longs pay (positive = longs pay).
+            fundingRate: cappedHoldingFeeLong,
+            fundingRateLong: cappedHoldingFeeLong,
+            fundingRateShort: cappedHoldingFeeShort,
+            borrowingRate: undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: tokenPrice,
             indexPrice: 0,
