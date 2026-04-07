@@ -36,7 +36,14 @@ export async function GET() {
 
   try {
     await initDB();
-    const deltas = await getOIDeltas();
+
+    // Race the DB query against a 25s timeout to avoid Vercel 504s
+    const deltas = await Promise.race([
+      getOIDeltas(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('OI delta query timeout (25s)')), 25_000)
+      ),
+    ]);
 
     const responseBody = {
       data: deltas,
@@ -53,7 +60,15 @@ export async function GET() {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
     });
   } catch (error) {
-    console.error('OI delta error:', error);
+    console.error('OI delta error:', error instanceof Error ? error.message : error);
+
+    // Serve stale cache instead of erroring
+    if (deltaCache) {
+      return NextResponse.json(deltaCache.body, {
+        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+      });
+    }
+
     return NextResponse.json(
       { error: 'Failed to compute OI deltas', data: [] },
       { status: 500 },
