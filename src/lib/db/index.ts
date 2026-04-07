@@ -1080,54 +1080,36 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
   try {
     const sql = getSQL();
 
+    // Single-pass query using conditional aggregation instead of 4 separate CTEs.
+    // Each row is bucketed into current/1h/4h/24h based on its timestamp,
+    // then we aggregate per symbol in one scan of the index.
     const rows = await sql`
-      WITH latest AS (
-        SELECT MAX(ts) AS max_ts FROM oi_snapshots WHERE ts > NOW() - INTERVAL '30 minutes'
-      ),
-      current_oi AS (
-        SELECT symbol, SUM(oi_usd) AS oi
-        FROM oi_snapshots, latest
-        WHERE ts >= latest.max_ts - INTERVAL '2 minutes'
-        GROUP BY symbol
-      ),
-      oi_1h AS (
-        SELECT symbol, SUM(oi_usd) AS oi
-        FROM oi_snapshots
-        WHERE ts BETWEEN NOW() - INTERVAL '70 minutes' AND NOW() - INTERVAL '50 minutes'
-        GROUP BY symbol
-      ),
-      oi_4h AS (
-        SELECT symbol, SUM(oi_usd) AS oi
-        FROM oi_snapshots
-        WHERE ts BETWEEN NOW() - INTERVAL '250 minutes' AND NOW() - INTERVAL '230 minutes'
-        GROUP BY symbol
-      ),
-      oi_24h AS (
-        SELECT symbol, SUM(oi_usd) AS oi
-        FROM oi_snapshots
-        WHERE ts BETWEEN NOW() - INTERVAL '1450 minutes' AND NOW() - INTERVAL '1430 minutes'
-        GROUP BY symbol
-      )
       SELECT
-        c.symbol,
-        c.oi AS current_oi,
-        CASE WHEN h1.oi > 0 THEN ((c.oi - h1.oi) / h1.oi * 100) ELSE NULL END AS change_1h,
-        CASE WHEN h4.oi > 0 THEN ((c.oi - h4.oi) / h4.oi * 100) ELSE NULL END AS change_4h,
-        CASE WHEN h24.oi > 0 THEN ((c.oi - h24.oi) / h24.oi * 100) ELSE NULL END AS change_24h
-      FROM current_oi c
-      LEFT JOIN oi_1h h1 ON c.symbol = h1.symbol
-      LEFT JOIN oi_4h h4 ON c.symbol = h4.symbol
-      LEFT JOIN oi_24h h24 ON c.symbol = h24.symbol
-      ORDER BY c.oi DESC
+        symbol,
+        SUM(CASE WHEN ts >= NOW() - INTERVAL '12 minutes' THEN oi_usd ELSE 0 END) AS current_oi,
+        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '70 minutes' AND NOW() - INTERVAL '50 minutes' THEN oi_usd ELSE 0 END) AS oi_1h,
+        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '250 minutes' AND NOW() - INTERVAL '230 minutes' THEN oi_usd ELSE 0 END) AS oi_4h,
+        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '1450 minutes' AND NOW() - INTERVAL '1430 minutes' THEN oi_usd ELSE 0 END) AS oi_24h
+      FROM oi_snapshots
+      WHERE ts >= NOW() - INTERVAL '1450 minutes'
+      GROUP BY symbol
+      HAVING SUM(CASE WHEN ts >= NOW() - INTERVAL '12 minutes' THEN oi_usd ELSE 0 END) > 0
+      ORDER BY SUM(CASE WHEN ts >= NOW() - INTERVAL '12 minutes' THEN oi_usd ELSE 0 END) DESC
     `;
 
-    return rows.map((r: any) => ({
-      symbol: r.symbol,
-      currentOI: Number(r.current_oi),
-      change1h: r.change_1h != null ? Number(r.change_1h) : null,
-      change4h: r.change_4h != null ? Number(r.change_4h) : null,
-      change24h: r.change_24h != null ? Number(r.change_24h) : null,
-    }));
+    return rows.map((r: any) => {
+      const current = Number(r.current_oi);
+      const h1 = Number(r.oi_1h);
+      const h4 = Number(r.oi_4h);
+      const h24 = Number(r.oi_24h);
+      return {
+        symbol: r.symbol,
+        currentOI: current,
+        change1h: h1 > 0 ? ((current - h1) / h1 * 100) : null,
+        change4h: h4 > 0 ? ((current - h4) / h4 * 100) : null,
+        change24h: h24 > 0 ? ((current - h24) / h24 * 100) : null,
+      };
+    });
   } catch (e) {
     console.error('DB getOIDeltas error:', e);
     return [];
