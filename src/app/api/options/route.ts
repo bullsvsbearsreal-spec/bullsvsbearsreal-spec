@@ -74,22 +74,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No options data available from any exchange' }, { status: 502 });
     }
 
-    // Determine underlying price — prefer Deribit (dominant options exchange, 90% OI share,
-    // returns native underlying_price from book summary). Other exchanges fetch spot price
-    // separately which can be stale or geo-blocked.
-    let underlyingPrice = 0;
-    const deribitPrices = allInstruments
-      .filter(i => i.exchange === 'Deribit' && i.underlyingPrice > 0)
-      .map(i => i.underlyingPrice);
-    if (deribitPrices.length > 0) {
-      deribitPrices.sort((a, b) => a - b);
-      underlyingPrice = deribitPrices[Math.floor(deribitPrices.length / 2)];
-    }
-    // Fallback: median across all exchanges if Deribit unavailable
-    if (underlyingPrice === 0) {
-      const allPrices = allInstruments.map(i => i.underlyingPrice).filter(p => p > 0).sort((a, b) => a - b);
-      underlyingPrice = allPrices.length > 0 ? allPrices[Math.floor(allPrices.length / 2)] : 0;
-    }
+    // Determine underlying (spot) price.
+    // Strategy: collect per-exchange spot prices, then pick the best one.
+    // Deribit index price is most reliable, but may return forward prices if the
+    // index fetch fails. OKX/Bybit fetch spot independently. We take the MINIMUM
+    // across exchanges to avoid forward-price inflation (spot < forward always).
+    const exchangeSpotPrices: number[] = [];
+    const pricesByExchange = new Map<string, number[]>();
+    allInstruments.forEach(i => {
+      if (i.underlyingPrice > 0) {
+        if (!pricesByExchange.has(i.exchange)) pricesByExchange.set(i.exchange, []);
+        pricesByExchange.get(i.exchange)!.push(i.underlyingPrice);
+      }
+    });
+    // For each exchange, use the minimum reported price (nearest to spot)
+    pricesByExchange.forEach((prices, exchange) => {
+      if (prices.length > 0) {
+        const minPrice = Math.min(...prices);
+        if (minPrice > 0) exchangeSpotPrices.push(minPrice);
+      }
+    });
+    // Use minimum across exchanges — spot is always below forward prices
+    let underlyingPrice = exchangeSpotPrices.length > 0
+      ? Math.min(...exchangeSpotPrices)
+      : 0;
 
     // Calculate per-strike OI (merged across all exchanges)
     const strikeOI = new Map<number, { callOI: number; putOI: number }>();

@@ -38,7 +38,9 @@ export const optionsFetchers: OptionsExchangeFetcher[] = [
           const indexJson = await indexRes.json();
           underlyingPrice = indexJson.result?.index_price || 0;
         }
-      } catch { /* fallback below */ }
+      } catch (err) {
+        console.warn(`[Options] Deribit index price fetch failed for ${currency}:`, err instanceof Error ? err.message : err);
+      }
 
       const res = await fetchFn(
         `https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=${currency}&kind=option`,
@@ -50,9 +52,16 @@ export const optionsFetchers: OptionsExchangeFetcher[] = [
       const instruments: any[] = json.result || [];
       if (instruments.length === 0) return [];
 
-      // Fallback to first instrument's underlying_price if index fetch failed
+      // Fallback: if index price fetch failed, use the MINIMUM underlying_price
+      // across instruments. Book summary returns forward prices that increase with
+      // expiry (basis premium). The shortest-expiry instruments have the smallest
+      // premium, so min() gives the closest approximation to spot.
       if (underlyingPrice === 0) {
-        underlyingPrice = instruments[0]?.underlying_price || 0;
+        const fwdPrices = instruments.map((i: any) => i.underlying_price).filter((p: number) => p > 0);
+        underlyingPrice = fwdPrices.length > 0 ? Math.min(...fwdPrices) : 0;
+        if (underlyingPrice > 0) {
+          console.warn(`[Options] Deribit index price fetch failed, using min forward price: $${underlyingPrice}`);
+        }
       }
 
       return instruments.map((inst: any) => {
