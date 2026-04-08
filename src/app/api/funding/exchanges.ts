@@ -1268,36 +1268,28 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             // NOT to borrowing rates which are already in percentage units after /1e10.
             fundingRate8h = (currentFundingRatePerSecondP * 8 * 3600) / 100;
 
-            // gTrade holding fee per side = directional funding + borrowing.
-            // When one side has 0 OI, that side can't receive funding, so the other
-            // side only pays borrowing (the funding component has no counterparty).
-            // With APR multiplier: minority side pays amplified rate, majority pays base.
+            // gTrade asymmetric funding distribution (confirmed by Joseph @ gTrade Apr 2026):
+            //   F > 0 (longs pay): long = -F, short = +F * OI(L) / OI(S)
+            //   F < 0 (shorts pay): short = F, long = -F * OI(S) / OI(L)
+            // The paying side always pays F; receiving side gets scaled by OI ratio.
             if (oiLongToken <= 0 && oiShortToken <= 0) {
-              // No OI at all — no funding
               fundingRateLong = 0;
               fundingRateShort = 0;
-            } else if (oiShortToken <= 0) {
-              // No shorts: longs can't pay funding (no counterparty), only borrowing applies
-              fundingRateLong = 0; // will add borrowing below
-              fundingRateShort = -fundingRate8h; // shorts would receive funding if they existed
-            } else if (oiLongToken <= 0) {
-              // No longs: shorts can't pay funding, only borrowing
-              fundingRateLong = fundingRate8h;
-              fundingRateShort = 0;
+            } else if (fundingRate8h > 0) {
+              // Longs pay, shorts receive
+              fundingRateLong = fundingRate8h;  // positive = cost
+              fundingRateShort = oiShortToken > 0
+                ? -fundingRate8h * (oiLongToken / oiShortToken)  // negative = earning
+                : 0;
+            } else if (fundingRate8h < 0) {
+              // Shorts pay, longs receive
+              fundingRateShort = -fundingRate8h;  // positive = cost (flip sign)
+              fundingRateLong = oiLongToken > 0
+                ? fundingRate8h * (oiShortToken / oiLongToken)  // negative = earning
+                : 0;
             } else {
-              // Both sides have OI — apply APR multiplier for skew
-              fundingRateLong = fundingRate8h;
-              fundingRateShort = -fundingRate8h;
-              const APR_MULT_CAP = 100;
-              if (params.aprMultiplierEnabled) {
-                if (fundingRate8h < 0) {
-                  fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, APR_MULT_CAP);
-                  fundingRateShort = -fundingRate8h;
-                } else if (fundingRate8h > 0) {
-                  fundingRateLong = fundingRate8h;
-                  fundingRateShort = -fundingRate8h * Math.min(oiLongToken / oiShortToken, APR_MULT_CAP);
-                }
-              }
+              fundingRateLong = 0;
+              fundingRateShort = 0;
             }
           }
 

@@ -1,0 +1,16 @@
+{
+  "name": "infohub-funding-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Direct exchange funding rate fetcher — polls all 33 exchanges, validates, stores in Postgres",
+  "scripts": {
+    "start": "tsx bot.ts",
+    "dev": "tsx watch bot.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "postgres": "^3.4.8",
+    "tsx": "^4.19.0"
+  }
+}

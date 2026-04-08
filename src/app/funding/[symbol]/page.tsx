@@ -8,7 +8,7 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Percent, Activity, DollarSign } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Percent, Activity, DollarSign, Eye, EyeOff, Check } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
 import { useFlash } from '@/hooks/useFlash';
 import { useApi } from '@/hooks/useSWRApi';
@@ -22,7 +22,7 @@ import FundingSparkline from '../components/FundingSparkline';
 import { useTrackPageView } from '@/hooks/useTrackPageView';
 import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts';
 
 // Hex colors for chart lines per exchange
@@ -55,26 +55,30 @@ type TimeRange = '7d' | '30d';
 // ── Custom tooltip — compact, sorted, max 8 visible ──
 
 interface ChartTooltipEntry { name: string; value: number | null; color: string }
-function FundingChartTooltip({ active, payload, label }: { active?: boolean; payload?: ChartTooltipEntry[]; label?: string }) {
+function FundingChartTooltip({ active, payload, label, annualized }: { active?: boolean; payload?: ChartTooltipEntry[]; label?: string; annualized?: boolean }) {
   if (!active || !payload?.length) return null;
 
   const entries = payload
     .filter((e: ChartTooltipEntry) => e.value != null)
     .sort((a: ChartTooltipEntry, b: ChartTooltipEntry) => b.value! - a.value!);
 
-  const visible = entries.slice(0, 8);
+  const visible = entries.slice(0, 10);
   const remaining = entries.length - visible.length;
+  const decimals = annualized ? 2 : 4;
 
   return (
     <div
-      className="rounded-lg px-3 py-2.5 text-xs shadow-xl max-w-[220px]"
+      className="rounded-lg px-3 py-2.5 text-xs shadow-xl max-w-[240px]"
       style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}
     >
-      <p className="text-neutral-400 mb-1.5 font-medium">
-        {label ? new Date(label).toLocaleString(undefined, {
-          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-        }) : ''}
-      </p>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-neutral-400 font-medium">
+          {label ? new Date(label).toLocaleString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+          }) : ''}
+        </p>
+        {annualized && <span className="text-[9px] text-hub-yellow font-semibold bg-hub-yellow/10 px-1 rounded">APR</span>}
+      </div>
       <div className="flex flex-col gap-0.5">
         {visible.map((entry: ChartTooltipEntry) => (
           <div key={entry.name} className="flex items-center justify-between gap-3">
@@ -83,13 +87,14 @@ function FundingChartTooltip({ active, payload, label }: { active?: boolean; pay
                 className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                 style={{ backgroundColor: entry.color }}
               />
+              <ExchangeLogo exchange={entry.name.toLowerCase()} size={12} />
               <span className="text-neutral-400 truncate text-[11px]">{entry.name}</span>
             </div>
             <span
               className="font-mono tabular-nums font-semibold text-[11px] flex-shrink-0"
               style={{ color: (entry.value ?? 0) >= 0 ? '#34D399' : '#FB7185' }}
             >
-              {(entry.value ?? 0) >= 0 ? '+' : ''}{(entry.value ?? 0).toFixed(4)}%
+              {(entry.value ?? 0) >= 0 ? '+' : ''}{(entry.value ?? 0).toFixed(decimals)}%
             </span>
           </div>
         ))}
@@ -107,6 +112,56 @@ export default function SymbolFundingPage() {
   const symbol = (params.symbol as string || '').toUpperCase();
   useTrackPageView(`${symbol} Funding`, symbol);
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+  // Read funding prefs from synced localStorage key (auto-syncs to DB for logged-in users)
+  const readFundingPrefs = useCallback((): { hiddenExchanges: Record<string, string[]>; showAnnualized: boolean } => {
+    if (typeof window === 'undefined') return { hiddenExchanges: {}, showAnnualized: false };
+    try {
+      const raw = localStorage.getItem('ih_funding_prefs');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { hiddenExchanges: {}, showAnnualized: false };
+  }, []);
+
+  const [hiddenExchanges, setHiddenExchanges] = useState<Set<string>>(() => {
+    const prefs = readFundingPrefs();
+    return new Set(prefs.hiddenExchanges[symbol] || []);
+  });
+  const [showAnnualized, setShowAnnualized] = useState(() => {
+    return readFundingPrefs().showAnnualized;
+  });
+  const [exchangePickerOpen, setExchangePickerOpen] = useState(false);
+
+  // Persist funding prefs to synced localStorage key (useUserSync handles DB push)
+  useEffect(() => {
+    const prefs = readFundingPrefs();
+    const arr = Array.from(hiddenExchanges);
+    prefs.hiddenExchanges[symbol] = arr.length > 0 ? arr : [];
+    prefs.showAnnualized = showAnnualized;
+    // Clean up empty entries
+    for (const key of Object.keys(prefs.hiddenExchanges)) {
+      if (prefs.hiddenExchanges[key].length === 0) delete prefs.hiddenExchanges[key];
+    }
+    localStorage.setItem('ih_funding_prefs', JSON.stringify(prefs));
+  }, [hiddenExchanges, showAnnualized, symbol, readFundingPrefs]);
+
+  // Re-read prefs when DB sync completes (login from another device)
+  useEffect(() => {
+    const handler = () => {
+      const prefs = readFundingPrefs();
+      setHiddenExchanges(new Set(prefs.hiddenExchanges[symbol] || []));
+      setShowAnnualized(prefs.showAnnualized);
+    };
+    window.addEventListener('user-data-synced', handler);
+    return () => window.removeEventListener('user-data-synced', handler);
+  }, [symbol, readFundingPrefs]);
+
+  // Escape key closes dropdown
+  useEffect(() => {
+    if (!exchangePickerOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setExchangePickerOpen(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [exchangePickerOpen]);
 
   // Fetch all funding rates (same as main page)
   const fetcher = useCallback(async () => {
@@ -285,6 +340,46 @@ export default function SymbolFundingPage() {
     return points;
   }, [dbFundingData, liveExchanges, symbol, days, symbolRates]);
 
+  // Visible exchanges = all chart exchanges minus hidden ones
+  const visibleExchanges = useMemo(() => {
+    return chartExchanges.filter(ex => !hiddenExchanges.has(ex));
+  }, [chartExchanges, hiddenExchanges]);
+
+  // Build a map of exchange → funding interval for annualization
+  const exchangeIntervalMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    symbolRates.forEach((r: FundingRateData) => {
+      map[r.exchange] = r.fundingInterval || '8h';
+    });
+    return map;
+  }, [symbolRates]);
+
+  // Annualized chart data — multiply each rate by periodsPerDay * 365
+  const displayChartData = useMemo(() => {
+    if (!showAnnualized) return chartData;
+    return chartData.map(point => {
+      const newPoint: Record<string, any> = { time: point.time };
+      for (const key of Object.keys(point)) {
+        if (key === 'time') continue;
+        const val = point[key];
+        if (typeof val !== 'number') { newPoint[key] = val; continue; }
+        const interval = exchangeIntervalMap[key] || '8h';
+        const periodsPerDay = interval === '1h' ? 24 : interval === '4h' ? 6 : 3;
+        newPoint[key] = val * periodsPerDay * 365;
+      }
+      return newPoint;
+    });
+  }, [chartData, showAnnualized, exchangeIntervalMap]);
+
+  // Live rate per exchange for picker display
+  const liveRateMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    symbolRates.forEach((r: FundingRateData) => {
+      map[r.exchange] = r.fundingRate;
+    });
+    return map;
+  }, [symbolRates]);
+
   const hasChartData = chartData.length >= 1;
   const hasOiHistory = oiHistoryData.length >= 2;
 
@@ -431,33 +526,175 @@ export default function SymbolFundingPage() {
 
             {/* Historical Chart */}
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden mb-8">
-              <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
+              <div className="p-4 border-b border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-white font-semibold text-sm">Funding Rate History</h2>
                   <p className="text-neutral-600 text-xs mt-0.5">
-                    Per-exchange rates over time{Object.keys(dbFundingData).length > 0 ? '' : ' (local data — sign in for full history)'}
+                    {showAnnualized ? 'Annualized rates' : 'Per-exchange rates'} over time
+                    {visibleExchanges.length < chartExchanges.length && ` (${visibleExchanges.length}/${chartExchanges.length} exchanges)`}
+                    {Object.keys(dbFundingData).length === 0 && ' (local data — sign in for full history)'}
                   </p>
                 </div>
-                <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
-                  {(['7d', '30d'] as TimeRange[]).map(range => (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Exchange picker */}
+                  <div className="relative">
                     <button
-                      key={range}
-                      onClick={() => setTimeRange(range)}
-                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                        timeRange === range
-                          ? 'bg-hub-yellow text-black'
-                          : 'text-neutral-600 hover:text-white'
+                      onClick={() => setExchangePickerOpen(!exchangePickerOpen)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                        hiddenExchanges.size > 0
+                          ? 'bg-hub-yellow/10 border-hub-yellow/30 text-hub-yellow'
+                          : 'bg-white/[0.04] border-white/[0.06] text-neutral-400 hover:text-white'
                       }`}
                     >
-                      {range}
+                      {hiddenExchanges.size > 0 ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      Exchanges
+                      {hiddenExchanges.size > 0 && (
+                        <span className="bg-hub-yellow/20 text-hub-yellow text-[10px] px-1 rounded">
+                          {visibleExchanges.length}
+                        </span>
+                      )}
                     </button>
-                  ))}
+                    {exchangePickerOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setExchangePickerOpen(false)} />
+                        <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1 z-50 bg-hub-darker border border-white/[0.08] rounded-xl shadow-2xl w-60 max-h-80 overflow-y-auto">
+                          {/* Header with quick filters */}
+                          <div className="p-2 border-b border-white/[0.06] space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Exchanges</span>
+                              <button
+                                onClick={() => setHiddenExchanges(
+                                  hiddenExchanges.size > 0 ? new Set() : new Set(chartExchanges)
+                                )}
+                                className="text-[10px] text-hub-yellow hover:underline"
+                              >
+                                {hiddenExchanges.size > 0 ? 'Show All' : 'Hide All'}
+                              </button>
+                            </div>
+                            <div className="flex gap-1">
+                              {[
+                                { label: 'CEX', filter: (ex: string) => !isExchangeDex(ex) },
+                                { label: 'DEX', filter: (ex: string) => isExchangeDex(ex) },
+                              ].map(({ label, filter }) => {
+                                const matching = chartExchanges.filter(filter);
+                                const allVisible = matching.every(ex => !hiddenExchanges.has(ex));
+                                return (
+                                  <button
+                                    key={label}
+                                    onClick={() => {
+                                      const next = new Set(hiddenExchanges);
+                                      if (allVisible) {
+                                        matching.forEach(ex => next.add(ex));
+                                      } else {
+                                        matching.forEach(ex => next.delete(ex));
+                                      }
+                                      setHiddenExchanges(next);
+                                    }}
+                                    className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                                      allVisible
+                                        ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/30'
+                                        : 'bg-white/[0.04] text-neutral-500 border border-white/[0.06] hover:text-white'
+                                    }`}
+                                  >
+                                    {label} ({matching.length})
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          {/* Exchange list */}
+                          {chartExchanges.sort().map(ex => {
+                            const visible = !hiddenExchanges.has(ex);
+                            return (
+                              <div
+                                key={ex}
+                                className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/[0.04] transition-colors group"
+                              >
+                                <button
+                                  onClick={() => {
+                                    const next = new Set(hiddenExchanges);
+                                    if (visible) next.add(ex); else next.delete(ex);
+                                    setHiddenExchanges(next);
+                                  }}
+                                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                                    visible
+                                      ? 'border-hub-yellow bg-hub-yellow/20'
+                                      : 'border-white/[0.15] bg-transparent'
+                                  }`}
+                                >
+                                  {visible && <Check className="w-2.5 h-2.5 text-hub-yellow" />}
+                                </button>
+                                <span
+                                  className="w-2 h-2 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: EXCHANGE_HEX[ex] || '#737373' }}
+                                />
+                                <ExchangeLogo exchange={ex.toLowerCase()} size={14} />
+                                <button
+                                  onClick={() => {
+                                    // Solo mode: hide all except this one
+                                    const allOthers = new Set(chartExchanges.filter(e => e !== ex));
+                                    // If already solo on this exchange, show all
+                                    const isSolo = hiddenExchanges.size === allOthers.size && Array.from(allOthers).every(e => hiddenExchanges.has(e));
+                                    setHiddenExchanges(isSolo ? new Set() : allOthers);
+                                  }}
+                                  className={`text-xs text-left flex-1 transition-colors ${visible ? 'text-white' : 'text-neutral-600'}`}
+                                  title="Click to solo this exchange"
+                                >
+                                  {ex}
+                                </button>
+                                {liveRateMap[ex] != null && (
+                                  <span className={`font-mono text-[10px] tabular-nums flex-shrink-0 ${
+                                    visible ? getRateColor(liveRateMap[ex]) : 'text-neutral-700'
+                                  }`}>
+                                    {formatRate(liveRateMap[ex])}
+                                  </span>
+                                )}
+                                {isExchangeDex(ex) && (
+                                  <span className="text-[8px] font-bold text-purple-400/60 leading-none">DEX</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Annualized toggle */}
+                  <button
+                    onClick={() => setShowAnnualized(!showAnnualized)}
+                    className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                      showAnnualized
+                        ? 'bg-hub-yellow/10 border-hub-yellow/30 text-hub-yellow'
+                        : 'bg-white/[0.04] border-white/[0.06] text-neutral-400 hover:text-white'
+                    }`}
+                    title="Toggle annualized rates"
+                  >
+                    APR
+                  </button>
+
+                  {/* Time range */}
+                  <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
+                    {(['7d', '30d'] as TimeRange[]).map(range => (
+                      <button
+                        key={range}
+                        onClick={() => setTimeRange(range)}
+                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                          timeRange === range
+                            ? 'bg-hub-yellow text-black'
+                            : 'text-neutral-600 hover:text-white'
+                        }`}
+                      >
+                        {range}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="p-4">
                 {hasChartData ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                  <ResponsiveContainer width="100%" height={340}>
+                    <LineChart data={displayChartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
                       <XAxis
                         dataKey="time"
@@ -468,26 +705,27 @@ export default function SymbolFundingPage() {
                         tick={{ fontSize: 10 }}
                       />
                       <YAxis
-                        tickFormatter={(v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(4)}%`}
+                        tickFormatter={(v: number) =>
+                          showAnnualized
+                            ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+                            : `${v >= 0 ? '+' : ''}${v.toFixed(4)}%`
+                        }
                         stroke="#525252"
                         tick={{ fontSize: 10 }}
                         width={70}
                       />
+                      <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 4" />
                       <RechartsTooltip
-                        content={<FundingChartTooltip />}
+                        content={<FundingChartTooltip annualized={showAnnualized} />}
                         cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
                       />
-                      <Legend
-                        wrapperStyle={{ fontSize: 11 }}
-                        iconType="line"
-                      />
-                      {chartExchanges.map(ex => (
+                      {visibleExchanges.map(ex => (
                         <Line
                           key={ex}
                           type="monotone"
                           dataKey={ex}
                           stroke={EXCHANGE_HEX[ex] || '#737373'}
-                          dot={chartData.length < 3}
+                          dot={displayChartData.length < 3}
                           strokeWidth={1.5}
                           connectNulls
                         />
