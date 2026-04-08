@@ -6,13 +6,18 @@
 
 let Sentry: typeof import('@sentry/nextjs') | null = null;
 
-// Lazy-load Sentry to avoid import issues in test environments
+// Lazy-load Sentry to avoid import issues in test/bot environments
 async function getSentry() {
   if (!Sentry) {
     try {
-      Sentry = await import('@sentry/nextjs');
+      const mod = await import('@sentry/nextjs');
+      // Verify Sentry actually loaded with expected methods
+      // (fails in non-Next.js environments like the funding bot)
+      if (typeof mod?.withScope === 'function') {
+        Sentry = mod;
+      }
     } catch {
-      // Sentry not available (e.g., in tests)
+      // Sentry not available (e.g., in tests or standalone bot)
     }
   }
   return Sentry;
