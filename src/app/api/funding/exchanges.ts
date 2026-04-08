@@ -1192,10 +1192,14 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
           const hasFunding = !!params.fundingFeesEnabled;
 
-          // Parse OI in tokens (may be zero for some pairs — still show funding rate)
+          // Parse OI in tokens — skip pairs with zero OI (dead markets show phantom
+          // borrowing rates from V1 minP floor which are misleading in the heatmap)
           const oi = pairOiEntry;
-          const oiLongToken = oi?.token ? Number(oi.token.oiLongToken) / PRECISION.OI_TOKEN : 0;
-          const oiShortToken = oi?.token ? Number(oi.token.oiShortToken) / PRECISION.OI_TOKEN : 0;
+          const rawOiLong = Number(oi?.token?.oiLongToken || 0);
+          const rawOiShort = Number(oi?.token?.oiShortToken || 0);
+          if (rawOiLong === 0 && rawOiShort === 0) continue;
+          const oiLongToken = rawOiLong / PRECISION.OI_TOKEN;
+          const oiShortToken = rawOiShort / PRECISION.OI_TOKEN;
 
           let fundingRate8h = 0;
           let fundingRateLong = 0;
