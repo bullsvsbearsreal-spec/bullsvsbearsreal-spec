@@ -1142,7 +1142,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       // Pre-calculate V1 group borrowing rates (utilization-dependent)
       // SDK converter divides all raw values by 1e10 before calculation.
       // Formula: activeFeePerBlock = (feePerBlock/1e10) * (netOi/maxOi)^exp
-      // Rate 8h = activeFeePerBlock * ARB_BLOCKS_PER_8H (no extra /1e10 at calc time)
+      // Rate 8h = activeFeePerBlock * ARB_BLOCKS_PER_8H * 100
+      // The * 100 converts the 1e10-precision fraction to percentage (empirically verified
+      // against gTrade live stats — borrow-only pairs match at 1.00 ratio with * 100).
       const v1GroupRates: number[] = v1BorrowGroups.map((group: any) => {
         const feePerBlock = Number(group?.feePerBlock || 0) / V1_FEE_PRECISION;
         if (feePerBlock <= 0) return 0;
@@ -1154,7 +1156,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         // Groups have no fee caps — just use raw net OI
         const effectiveOi = Math.abs(oiLong - oiShort);
         const utilization = Math.min(effectiveOi / maxOi, 1);
-        return feePerBlock * Math.pow(utilization, exponent) * ARB_BLOCKS_PER_8H;
+        return feePerBlock * Math.pow(utilization, exponent) * ARB_BLOCKS_PER_8H * 100;
       });
 
       for (let i = 0; i < Math.min(pairs.length, fundingParams.length, fundingData.length); i++) {
@@ -1336,7 +1338,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                   const maxP = rawMaxP && rawMaxP > 0 ? rawMaxP / 1e3 / 100 : 1;
                   const netOi = Math.abs(pairOiL - pairOiS);
                   const effectiveOi = Math.min(Math.max(netOi, pairMaxOi * minP), pairMaxOi * maxP);
-                  pairRate8h = pairFeePerBlock * Math.pow(effectiveOi / pairMaxOi, pairExp) * ARB_BLOCKS_PER_8H;
+                  pairRate8h = pairFeePerBlock * Math.pow(effectiveOi / pairMaxOi, pairExp) * ARB_BLOCKS_PER_8H * 100;
                 }
               }
               // SDK: getActiveFeePerBlock returns Math.max(pairRate, groupRate)
