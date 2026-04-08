@@ -1261,9 +1261,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             }
 
             // Step 3: Convert per-second rate to 8h percentage
-            // Note: "P"-suffix values in gTrade contracts are already percentage-precision,
-            // NOT fractions — do NOT multiply by 100 again.
-            fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
+            // SDK formula: baseHourlyRate = ratePerSecondP * 3600 / 100
+            // The /100 (PERCENTAGE_PRECISION) applies to funding rates only,
+            // NOT to borrowing rates which are already in percentage units after /1e10.
+            fundingRate8h = (currentFundingRatePerSecondP * 8 * 3600) / 100;
 
             // gTrade holding fee per side = directional funding + borrowing.
             // When one side has 0 OI, that side can't receive funding, so the other
