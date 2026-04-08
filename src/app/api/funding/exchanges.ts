@@ -1154,7 +1154,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         // Groups have no fee caps — just use raw net OI
         const effectiveOi = Math.abs(oiLong - oiShort);
         const utilization = Math.min(effectiveOi / maxOi, 1);
-        return feePerBlock * Math.pow(utilization, exponent) * ARB_BLOCKS_PER_8H * 100;
+        return feePerBlock * Math.pow(utilization, exponent) * ARB_BLOCKS_PER_8H;
       });
 
       for (let i = 0; i < Math.min(pairs.length, fundingParams.length, fundingData.length); i++) {
@@ -1260,8 +1260,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               }
             }
 
-            // Step 3: Convert per-second fraction to 8h percentage
-            fundingRate8h = currentFundingRatePerSecondP * 8 * 3600 * 100;
+            // Step 3: Convert per-second rate to 8h percentage
+            // Note: "P"-suffix values in gTrade contracts are already percentage-precision,
+            // NOT fractions — do NOT multiply by 100 again.
+            fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
             // gTrade holding fee per side = directional funding + borrowing.
             // When one side has 0 OI, that side can't receive funding, so the other
@@ -1283,7 +1285,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               // Both sides have OI — apply APR multiplier for skew
               fundingRateLong = fundingRate8h;
               fundingRateShort = -fundingRate8h;
-              const APR_MULT_CAP = 10;
+              const APR_MULT_CAP = 100;
               if (params.aprMultiplierEnabled) {
                 if (fundingRate8h < 0) {
                   fundingRateLong = fundingRate8h * Math.min(oiShortToken / oiLongToken, APR_MULT_CAP);
@@ -1300,7 +1302,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // V2 borrowing: per-second rate (used by funded pairs, 0 for borrow-only)
           const borrowParams = borrowingV2Params[i];
           const borrowV2Rate8h = borrowParams?.borrowingRatePerSecondP
-            ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600 * 100
+            ? (Number(borrowParams.borrowingRatePerSecondP) / PRECISION.BORROWING_RATE_PER_SECOND) * 8 * 3600
             : 0;
 
           // V1 borrowing: block-based, utilization fee (used by borrow-only pairs)
@@ -1333,7 +1335,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                   const maxP = rawMaxP && rawMaxP > 0 ? rawMaxP / 1e3 / 100 : 1;
                   const netOi = Math.abs(pairOiL - pairOiS);
                   const effectiveOi = Math.min(Math.max(netOi, pairMaxOi * minP), pairMaxOi * maxP);
-                  pairRate8h = pairFeePerBlock * Math.pow(effectiveOi / pairMaxOi, pairExp) * ARB_BLOCKS_PER_8H * 100;
+                  pairRate8h = pairFeePerBlock * Math.pow(effectiveOi / pairMaxOi, pairExp) * ARB_BLOCKS_PER_8H;
                 }
               }
               // SDK: getActiveFeePerBlock returns Math.max(pairRate, groupRate)
@@ -1362,22 +1364,14 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const holdingFeeLong = fundingRateLong + totalBorrowRate8h;
           const holdingFeeShort = fundingRateShort + totalBorrowRate8h;
 
-          // Sanity-cap gTrade rates — velocity model can produce extreme frozen rates
-          // on stale/illiquid pairs (e.g. -243% per 8h). Cap to ±5% for display.
-          const GTRADE_RATE_CAP = 5; // ±5% per 8h
-          const clamp = (v: number) => Math.max(-GTRADE_RATE_CAP, Math.min(GTRADE_RATE_CAP, v));
-          const cappedFundingRate8h = clamp(fundingRate8h);
-          const cappedHoldingFeeLong = clamp(holdingFeeLong);
-          const cappedHoldingFeeShort = clamp(holdingFeeShort);
-
           results.push({
             symbol,
             exchange: 'gTrade',
             // gTrade always shows L/S only — fundingRate drives heatmap cell color,
             // use the long holding fee so color reflects what longs pay (positive = longs pay).
-            fundingRate: cappedHoldingFeeLong,
-            fundingRateLong: cappedHoldingFeeLong,
-            fundingRateShort: cappedHoldingFeeShort,
+            fundingRate: holdingFeeLong,
+            fundingRateLong: holdingFeeLong,
+            fundingRateShort: holdingFeeShort,
             borrowingRate: undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: tokenPrice,
