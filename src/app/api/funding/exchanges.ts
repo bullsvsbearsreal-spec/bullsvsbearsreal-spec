@@ -1385,52 +1385,78 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
   // Drift Protocol (Solana DEX) — funding settles HOURLY
-  // Uses the Data API which returns pre-parsed human-readable values
+  // /stats/markets endpoint is broken (returns empty since ~Apr 2026)
+  // Now uses: /stats/markets/prices (market list) + /market/{sym}/fundingRates?limit=1 (per-market)
+  // fundingRate from API is in USD, convert: rate_pct = fundingRate / oraclePriceTwap * 100
   {
     name: 'Drift',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://data.api.drift.trade/stats/markets', {}, 12000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const markets: any[] = json?.markets || [];
+      // Step 1: Get list of perp markets
+      const listRes = await fetchFn('https://data.api.drift.trade/stats/markets/prices', {}, 12000);
+      if (!listRes.ok) return [];
+      const listJson = await listRes.json();
+      const allMarkets: any[] = listJson?.data || listJson || [];
+      const perpSymbols = (Array.isArray(allMarkets) ? allMarkets : [])
+        .filter((m: any) => m.type === 'perp' && m.symbol?.endsWith('-PERP'))
+        // Skip bet/prediction markets
+        .filter((m: any) => !m.symbol.includes('-BET'))
+        .map((m: any) => m.symbol as string);
 
+      if (perpSymbols.length === 0) return [];
+
+      // Step 2: Fetch latest funding rate per market (parallel, 10 at a time)
+      const CONCURRENCY = 10;
       const results: FundingData[] = [];
-      for (const m of markets) {
-        try {
-          if (m.marketType !== 'perp') continue;
 
-          let symbol = (m.symbol || '').replace('-PERP', '');
-          if (!symbol) continue;
-          if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+      for (let i = 0; i < perpSymbols.length; i += CONCURRENCY) {
+        const batch = perpSymbols.slice(i, i + CONCURRENCY);
+        const batchResults = await Promise.all(
+          batch.map(async (perpSym) => {
+            try {
+              const res = await fetchFn(
+                `https://data.api.drift.trade/market/${perpSym}/fundingRates?limit=1`,
+                {}, 6000,
+              );
+              if (!res.ok) return null;
+              const json = await res.json();
+              const entries = json?.data || json?.records || [];
+              const entry = Array.isArray(entries) ? entries[0] : null;
+              if (!entry) return null;
 
-          const price = parseFloat(m.oraclePrice) || 0;
-          if (price <= 0) continue;
+              const fundingRateUsd = parseFloat(entry.fundingRate) || 0;
+              const oraclePrice = parseFloat(entry.oraclePriceTwap) || 0;
+              const markPrice = parseFloat(entry.markPriceTwap) || 0;
+              if (oraclePrice <= 0) return null;
 
-          // OI filter — skip tiny markets
-          const oiL = Math.abs(parseFloat(m.openInterest?.long) || 0);
-          const oiS = Math.abs(parseFloat(m.openInterest?.short) || 0);
-          if ((oiL + oiS) * price < 1000) continue;
+              // Convert USD-denominated rate to percentage
+              // Drift: positive fundingRate = shorts pay longs
+              // Our convention: positive = longs pay → negate
+              const ratePct = -(fundingRateUsd / oraclePrice) * 100;
 
-          // fundingRate values are already hourly percentages
-          // frLong positive = longs receive; our convention: positive = longs pay
-          // So negate frLong for standard convention
-          const frLong = parseFloat(m.fundingRate?.long) || 0;
-          if (isNaN(frLong)) continue;
+              let symbol = perpSym.replace('-PERP', '');
+              if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+              if (symbol.startsWith('1K')) symbol = symbol.slice(2);
 
-          results.push({
-            symbol,
-            exchange: 'Drift',
-            fundingRate: -frLong, // negate: Data API positive = longs receive → our positive = longs pay
-            fundingInterval: '1h' as const,
-            markPrice: price,
-            indexPrice: price,
-            nextFundingTime: Date.now() + 3600000,
-            type: 'dex' as const,
-          });
-        } catch {
-          continue;
+              return {
+                symbol,
+                exchange: 'Drift' as const,
+                fundingRate: ratePct,
+                fundingInterval: '1h' as const,
+                markPrice: markPrice || oraclePrice,
+                indexPrice: oraclePrice,
+                nextFundingTime: Date.now() + 3600000,
+                type: 'dex' as const,
+              };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        for (const r of batchResults) {
+          if (r && !isNaN(r.fundingRate)) results.push(r);
         }
       }
+
       return results;
     },
   },
