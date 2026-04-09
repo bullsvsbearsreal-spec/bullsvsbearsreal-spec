@@ -125,6 +125,106 @@ interface RunResult {
   elapsedMs: number;
 }
 
+// Batch upsert rows in chunks using a single transaction per chunk.
+// This reduces ~6500 individual round trips to ~65 batched transactions.
+const BATCH_SIZE = 100;
+
+async function batchUpsert(rows: any[]) {
+  let upserted = 0;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const chunk = rows.slice(i, i + BATCH_SIZE);
+    try {
+      await sql.begin(async (tx) => {
+        for (const entry of chunk) {
+          const e = entry as any;
+          await tx`
+            INSERT INTO funding_latest (
+              symbol, exchange, funding_rate, funding_rate_long, funding_rate_short,
+              borrowing_rate, predicted_rate, mark_price, index_price,
+              next_funding_time, funding_interval, type, asset_class, margin_type, updated_at
+            ) VALUES (
+              ${e.symbol}, ${e.exchange}, ${e.fundingRate},
+              ${e.fundingRateLong ?? null}, ${e.fundingRateShort ?? null},
+              ${e.borrowingRate ?? null}, ${e.predictedRate ?? null},
+              ${e.markPrice ?? 0}, ${e.indexPrice ?? 0},
+              ${e.nextFundingTime ?? null}, ${e.fundingInterval ?? '8h'},
+              ${e.type ?? 'cex'}, ${e.assetClass ?? 'crypto'},
+              ${e.marginType ?? null}, ${new Date()}
+            )
+            ON CONFLICT (symbol, exchange) DO UPDATE SET
+              funding_rate = EXCLUDED.funding_rate,
+              funding_rate_long = EXCLUDED.funding_rate_long,
+              funding_rate_short = EXCLUDED.funding_rate_short,
+              borrowing_rate = EXCLUDED.borrowing_rate,
+              predicted_rate = EXCLUDED.predicted_rate,
+              mark_price = EXCLUDED.mark_price,
+              index_price = EXCLUDED.index_price,
+              next_funding_time = EXCLUDED.next_funding_time,
+              funding_interval = EXCLUDED.funding_interval,
+              type = EXCLUDED.type,
+              asset_class = EXCLUDED.asset_class,
+              margin_type = EXCLUDED.margin_type,
+              updated_at = EXCLUDED.updated_at
+          `;
+        }
+      });
+      upserted += chunk.length;
+    } catch (err: any) {
+      // If a batch fails, try rows individually so one bad row doesn't kill the batch
+      for (const entry of chunk) {
+        try {
+          const e = entry as any;
+          await sql`
+            INSERT INTO funding_latest (
+              symbol, exchange, funding_rate, funding_rate_long, funding_rate_short,
+              borrowing_rate, predicted_rate, mark_price, index_price,
+              next_funding_time, funding_interval, type, asset_class, margin_type, updated_at
+            ) VALUES (
+              ${e.symbol}, ${e.exchange}, ${e.fundingRate},
+              ${e.fundingRateLong ?? null}, ${e.fundingRateShort ?? null},
+              ${e.borrowingRate ?? null}, ${e.predictedRate ?? null},
+              ${e.markPrice ?? 0}, ${e.indexPrice ?? 0},
+              ${e.nextFundingTime ?? null}, ${e.fundingInterval ?? '8h'},
+              ${e.type ?? 'cex'}, ${e.assetClass ?? 'crypto'},
+              ${e.marginType ?? null}, ${new Date()}
+            )
+            ON CONFLICT (symbol, exchange) DO UPDATE SET
+              funding_rate = EXCLUDED.funding_rate,
+              funding_rate_long = EXCLUDED.funding_rate_long,
+              funding_rate_short = EXCLUDED.funding_rate_short,
+              borrowing_rate = EXCLUDED.borrowing_rate,
+              predicted_rate = EXCLUDED.predicted_rate,
+              mark_price = EXCLUDED.mark_price,
+              index_price = EXCLUDED.index_price,
+              next_funding_time = EXCLUDED.next_funding_time,
+              funding_interval = EXCLUDED.funding_interval,
+              type = EXCLUDED.type,
+              asset_class = EXCLUDED.asset_class,
+              margin_type = EXCLUDED.margin_type,
+              updated_at = EXCLUDED.updated_at
+          `;
+          upserted++;
+        } catch { /* skip bad row */ }
+      }
+    }
+  }
+  return upserted;
+}
+
+async function batchInsertAnomalies(anomalies: { symbol: string; exchange: string; oldRate: number | undefined; newRate: number; reason: string }[]) {
+  if (anomalies.length === 0) return;
+  try {
+    await sql.begin(async (tx) => {
+      for (const a of anomalies) {
+        await tx`
+          INSERT INTO funding_anomalies (symbol, exchange, old_rate, new_rate, reason)
+          VALUES (${a.symbol}, ${a.exchange}, ${a.oldRate ?? null}, ${a.newRate}, ${a.reason})
+        `;
+      }
+    });
+  } catch { /* don't fail on anomaly logging */ }
+}
+
 async function fetchAndStore(): Promise<RunResult> {
   const start = Date.now();
   const result: RunResult = {
@@ -150,7 +250,10 @@ async function fetchAndStore(): Promise<RunResult> {
     const exchangeZeros = new Map<string, number>();
     const exchangeTotals = new Map<string, number>();
 
-    // Upsert each entry
+    // Filter valid entries and run anomaly checks
+    const validEntries: typeof data = [];
+    const anomalyBatch: { symbol: string; exchange: string; oldRate: number | undefined; newRate: number; reason: string }[] = [];
+
     for (const entry of data) {
       if (!entry.symbol || !entry.exchange || entry.fundingRate == null) continue;
 
@@ -159,56 +262,27 @@ async function fetchAndStore(): Promise<RunResult> {
         exchangeZeros.set(entry.exchange, (exchangeZeros.get(entry.exchange) || 0) + 1);
       }
 
-      // Anomaly check
       const anomaly = checkAnomaly(entry.symbol, entry.exchange, entry.fundingRate);
       if (anomaly.isAnomaly) {
         result.anomalies++;
-        console.warn(`[ANOMALY] ${entry.exchange} ${entry.symbol}: ${anomaly.reason}`);
-        // Log to DB but still store the value (might be legit)
-        try {
-          await sql`
-            INSERT INTO funding_anomalies (symbol, exchange, old_rate, new_rate, reason)
-            VALUES (${entry.symbol}, ${entry.exchange}, ${anomaly.oldRate ?? null}, ${entry.fundingRate}, ${anomaly.reason ?? ''})
-          `;
-        } catch { /* don't fail on anomaly logging */ }
+        anomalyBatch.push({
+          symbol: entry.symbol,
+          exchange: entry.exchange,
+          oldRate: anomaly.oldRate,
+          newRate: entry.fundingRate,
+          reason: anomaly.reason ?? '',
+        });
       }
 
-      // Upsert into funding_latest
-      try {
-        await sql`
-          INSERT INTO funding_latest (
-            symbol, exchange, funding_rate, funding_rate_long, funding_rate_short,
-            borrowing_rate, predicted_rate, mark_price, index_price,
-            next_funding_time, funding_interval, type, asset_class, margin_type, updated_at
-          ) VALUES (
-            ${entry.symbol}, ${entry.exchange}, ${entry.fundingRate},
-            ${entry.fundingRateLong ?? null}, ${entry.fundingRateShort ?? null},
-            ${entry.borrowingRate ?? null}, ${entry.predictedRate ?? null},
-            ${entry.markPrice ?? 0}, ${entry.indexPrice ?? 0},
-            ${entry.nextFundingTime ?? null}, ${entry.fundingInterval ?? '8h'},
-            ${entry.type ?? 'cex'}, ${entry.assetClass ?? 'crypto'},
-            ${(entry as any).marginType ?? null}, ${new Date()}
-          )
-          ON CONFLICT (symbol, exchange) DO UPDATE SET
-            funding_rate = EXCLUDED.funding_rate,
-            funding_rate_long = EXCLUDED.funding_rate_long,
-            funding_rate_short = EXCLUDED.funding_rate_short,
-            borrowing_rate = EXCLUDED.borrowing_rate,
-            predicted_rate = EXCLUDED.predicted_rate,
-            mark_price = EXCLUDED.mark_price,
-            index_price = EXCLUDED.index_price,
-            next_funding_time = EXCLUDED.next_funding_time,
-            funding_interval = EXCLUDED.funding_interval,
-            type = EXCLUDED.type,
-            asset_class = EXCLUDED.asset_class,
-            margin_type = EXCLUDED.margin_type,
-            updated_at = EXCLUDED.updated_at
-        `;
-        result.upserted++;
-      } catch (err: any) {
-        // Don't log every single row error — batch them
-      }
+      validEntries.push(entry);
     }
+
+    // Batch DB writes — drastically reduces round trips
+    const [upserted] = await Promise.all([
+      batchUpsert(validEntries),
+      batchInsertAnomalies(anomalyBatch),
+    ]);
+    result.upserted = upserted;
 
     // Flag exchanges where >80% of rates are zero
     exchangeZeros.forEach((zeros, exchange) => {
@@ -294,7 +368,14 @@ const server = createServer((req, res) => {
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
+let isRunning = false;
+
 async function run() {
+  if (isRunning) {
+    console.warn(`[${new Date().toISOString()}] Skipping — previous run still active`);
+    return;
+  }
+  isRunning = true;
   try {
     const r = await fetchAndStore();
     lastResult = r;
@@ -307,6 +388,8 @@ async function run() {
     );
   } catch (err: any) {
     console.error(`[${new Date().toISOString()}] Run failed:`, err.message);
+  } finally {
+    isRunning = false;
   }
 }
 
