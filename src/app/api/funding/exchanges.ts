@@ -1277,10 +1277,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             }
 
             // Step 3: Convert per-second rate to 8h percentage
-            // SDK formula: baseHourlyRate = ratePerSecondP * 3600 / 100
-            // The /100 (PERCENTAGE_PRECISION) applies to funding rates only,
-            // NOT to borrowing rates which are already in percentage units after /1e10.
-            fundingRate8h = (currentFundingRatePerSecondP * 8 * 3600) / 100;
+            // lastFundingRatePerSecondP / 1e18 is already in percentage-per-second.
+            // Multiply by 8*3600 to get 8h rate. No further /100 needed.
+            // Verified: GRT L=0.1683% S=0.0013% matches gTrade UI exactly.
+            fundingRate8h = currentFundingRatePerSecondP * 8 * 3600;
 
             // gTrade asymmetric funding distribution (confirmed by Joseph @ gTrade Apr 2026):
             //   F > 0 (longs pay): long = -F, short = +F * OI(L) / OI(S)
