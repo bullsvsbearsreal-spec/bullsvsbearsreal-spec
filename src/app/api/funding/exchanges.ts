@@ -1617,6 +1617,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
+      // Metadata endpoint works directly, but ticker endpoint needs CF Worker proxy
       const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 10000);
       if (!metaRes.ok) return [];
       const metaData = await metaRes.json();
@@ -1624,15 +1625,19 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const active = contracts.filter((c: any) => c.enableTrade);
       if (active.length === 0) return [];
 
-      // Fetch tickers in small sequential batches to avoid overwhelming the proxy
-      // edgeX has no bulk ticker endpoint — each contract needs a separate call
+      const proxyUrl = process.env.PROXY_URL;
+      // Ticker endpoint is CF-challenged from datacenter IPs — must use proxy
+      const tickerBase = proxyUrl
+        ? (contractId: string) => `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${contractId}`)}`
+        : (contractId: string) => `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${contractId}`;
+
       const batchSize = 25;
       const results: FundingData[] = [];
       for (let i = 0; i < active.length; i += batchSize) {
         const batch = active.slice(i, i + batchSize);
         const tickerResults = await Promise.all(
           batch.map((c: any) =>
-            fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 6000)
+            fetchFn(tickerBase(c.contractId), {}, 6000)
               .then(async r => {
                 if (!r.ok) return null;
                 return r.json();
@@ -1766,8 +1771,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'Gate.io',
     fetcher: async (fetchFn) => {
-      // Gate.io works directly from FRA1 datacenter IPs — no proxy needed
-      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts', {}, 12000);
+      // Gate.io works directly from FRA1 but rejects browser-like User-Agent headers
+      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts', {
+        headers: { 'User-Agent': '', 'Accept': 'application/json' },
+      }, 12000);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
