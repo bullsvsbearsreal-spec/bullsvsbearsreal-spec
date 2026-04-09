@@ -125,69 +125,66 @@ interface RunResult {
   elapsedMs: number;
 }
 
-// Batch upsert rows in chunks using a single transaction per chunk.
-// This reduces ~6500 individual round trips to ~65 batched transactions.
+// Batch upsert using postgres.js multi-row sql() helper.
+// Each batch sends ONE multi-row INSERT (single round trip) instead of N individual queries.
+// With BLR1→FRA1 latency (~150ms), this cuts 6500×150ms = 16 min down to 66×150ms = 10s.
 const BATCH_SIZE = 100;
+
+const UPSERT_COLUMNS = [
+  'symbol', 'exchange', 'funding_rate', 'funding_rate_long', 'funding_rate_short',
+  'borrowing_rate', 'predicted_rate', 'mark_price', 'index_price',
+  'next_funding_time', 'funding_interval', 'type', 'asset_class', 'margin_type', 'updated_at',
+] as const;
+
+function toDbRow(e: any) {
+  return {
+    symbol: e.symbol,
+    exchange: e.exchange,
+    funding_rate: e.fundingRate,
+    funding_rate_long: e.fundingRateLong ?? null,
+    funding_rate_short: e.fundingRateShort ?? null,
+    borrowing_rate: e.borrowingRate ?? null,
+    predicted_rate: e.predictedRate ?? null,
+    mark_price: e.markPrice ?? 0,
+    index_price: e.indexPrice ?? 0,
+    next_funding_time: e.nextFundingTime ?? null,
+    funding_interval: e.fundingInterval ?? '8h',
+    type: e.type ?? 'cex',
+    asset_class: e.assetClass ?? 'crypto',
+    margin_type: e.marginType ?? null,
+    updated_at: new Date(),
+  };
+}
 
 async function batchUpsert(rows: any[]) {
   let upserted = 0;
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const chunk = rows.slice(i, i + BATCH_SIZE);
+    const chunk = rows.slice(i, i + BATCH_SIZE).map(toDbRow);
     try {
-      await sql.begin(async (tx) => {
-        for (const entry of chunk) {
-          const e = entry as any;
-          await tx`
-            INSERT INTO funding_latest (
-              symbol, exchange, funding_rate, funding_rate_long, funding_rate_short,
-              borrowing_rate, predicted_rate, mark_price, index_price,
-              next_funding_time, funding_interval, type, asset_class, margin_type, updated_at
-            ) VALUES (
-              ${e.symbol}, ${e.exchange}, ${e.fundingRate},
-              ${e.fundingRateLong ?? null}, ${e.fundingRateShort ?? null},
-              ${e.borrowingRate ?? null}, ${e.predictedRate ?? null},
-              ${e.markPrice ?? 0}, ${e.indexPrice ?? 0},
-              ${e.nextFundingTime ?? null}, ${e.fundingInterval ?? '8h'},
-              ${e.type ?? 'cex'}, ${e.assetClass ?? 'crypto'},
-              ${e.marginType ?? null}, ${new Date()}
-            )
-            ON CONFLICT (symbol, exchange) DO UPDATE SET
-              funding_rate = EXCLUDED.funding_rate,
-              funding_rate_long = EXCLUDED.funding_rate_long,
-              funding_rate_short = EXCLUDED.funding_rate_short,
-              borrowing_rate = EXCLUDED.borrowing_rate,
-              predicted_rate = EXCLUDED.predicted_rate,
-              mark_price = EXCLUDED.mark_price,
-              index_price = EXCLUDED.index_price,
-              next_funding_time = EXCLUDED.next_funding_time,
-              funding_interval = EXCLUDED.funding_interval,
-              type = EXCLUDED.type,
-              asset_class = EXCLUDED.asset_class,
-              margin_type = EXCLUDED.margin_type,
-              updated_at = EXCLUDED.updated_at
-          `;
-        }
-      });
+      await sql`
+        INSERT INTO funding_latest ${sql(chunk, ...UPSERT_COLUMNS)}
+        ON CONFLICT (symbol, exchange) DO UPDATE SET
+          funding_rate = EXCLUDED.funding_rate,
+          funding_rate_long = EXCLUDED.funding_rate_long,
+          funding_rate_short = EXCLUDED.funding_rate_short,
+          borrowing_rate = EXCLUDED.borrowing_rate,
+          predicted_rate = EXCLUDED.predicted_rate,
+          mark_price = EXCLUDED.mark_price,
+          index_price = EXCLUDED.index_price,
+          next_funding_time = EXCLUDED.next_funding_time,
+          funding_interval = EXCLUDED.funding_interval,
+          type = EXCLUDED.type,
+          asset_class = EXCLUDED.asset_class,
+          margin_type = EXCLUDED.margin_type,
+          updated_at = EXCLUDED.updated_at
+      `;
       upserted += chunk.length;
-    } catch (err: any) {
-      // If a batch fails, try rows individually so one bad row doesn't kill the batch
-      for (const entry of chunk) {
+    } catch {
+      // If a multi-row batch fails (e.g. one bad value), fall back to individual rows
+      for (const row of chunk) {
         try {
-          const e = entry as any;
           await sql`
-            INSERT INTO funding_latest (
-              symbol, exchange, funding_rate, funding_rate_long, funding_rate_short,
-              borrowing_rate, predicted_rate, mark_price, index_price,
-              next_funding_time, funding_interval, type, asset_class, margin_type, updated_at
-            ) VALUES (
-              ${e.symbol}, ${e.exchange}, ${e.fundingRate},
-              ${e.fundingRateLong ?? null}, ${e.fundingRateShort ?? null},
-              ${e.borrowingRate ?? null}, ${e.predictedRate ?? null},
-              ${e.markPrice ?? 0}, ${e.indexPrice ?? 0},
-              ${e.nextFundingTime ?? null}, ${e.fundingInterval ?? '8h'},
-              ${e.type ?? 'cex'}, ${e.assetClass ?? 'crypto'},
-              ${e.marginType ?? null}, ${new Date()}
-            )
+            INSERT INTO funding_latest ${sql([row], ...UPSERT_COLUMNS)}
             ON CONFLICT (symbol, exchange) DO UPDATE SET
               funding_rate = EXCLUDED.funding_rate,
               funding_rate_long = EXCLUDED.funding_rate_long,
@@ -214,14 +211,16 @@ async function batchUpsert(rows: any[]) {
 async function batchInsertAnomalies(anomalies: { symbol: string; exchange: string; oldRate: number | undefined; newRate: number; reason: string }[]) {
   if (anomalies.length === 0) return;
   try {
-    await sql.begin(async (tx) => {
-      for (const a of anomalies) {
-        await tx`
-          INSERT INTO funding_anomalies (symbol, exchange, old_rate, new_rate, reason)
-          VALUES (${a.symbol}, ${a.exchange}, ${a.oldRate ?? null}, ${a.newRate}, ${a.reason})
-        `;
-      }
-    });
+    const rows = anomalies.map(a => ({
+      symbol: a.symbol,
+      exchange: a.exchange,
+      old_rate: a.oldRate ?? null,
+      new_rate: a.newRate,
+      reason: a.reason,
+    }));
+    await sql`
+      INSERT INTO funding_anomalies ${sql(rows, 'symbol', 'exchange', 'old_rate', 'new_rate', 'reason')}
+    `;
   } catch { /* don't fail on anomaly logging */ }
 }
 
