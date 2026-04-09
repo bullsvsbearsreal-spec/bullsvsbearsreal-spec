@@ -900,9 +900,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'HTX',
     fetcher: async (fetchFn) => {
-      const [fundingRes, contractsRes] = await Promise.all([
+      const [fundingRes, contractsRes, tickersRes] = await Promise.all([
         fetchFn('https://api.hbdm.com/linear-swap-api/v1/swap_batch_funding_rate'),
         fetchFn('https://api.hbdm.com/linear-swap-api/v1/swap_contract_info', {}, 8000).catch(() => null),
+        fetchFn('https://api.hbdm.com/linear-swap-ex/market/detail/batch_merged', {}, 8000).catch(() => null),
       ]);
       if (!fundingRes.ok) return [];
       const json = await fundingRes.json();
@@ -923,6 +924,19 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         } catch {}
       }
 
+      // Build price map from batch_merged tickers (swap perpetuals only)
+      const priceMap = new Map<string, number>();
+      if (tickersRes?.ok) {
+        try {
+          const tickersJson = await tickersRes.json();
+          for (const t of tickersJson?.ticks || []) {
+            if (t.business_type === 'swap' && t.contract_code) {
+              priceMap.set(t.contract_code, parseFloat(t.close) || 0);
+            }
+          }
+        } catch {}
+      }
+
       return json.data
         .filter((item: any) => {
           const code = item.contract_code || '';
@@ -937,7 +951,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           exchange: 'HTX',
           fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
           fundingInterval: '8h' as const,
-          markPrice: 0,
+          markPrice: priceMap.get(item.contract_code) || 0,
           indexPrice: 0,
           nextFundingTime: item.next_funding_time || Date.now() + 28800000,
           type: 'cex' as const,
@@ -1362,14 +1376,15 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           results.push({
             symbol,
             exchange: 'gTrade',
-            // gTrade always shows L/S only — fundingRate drives heatmap cell color,
-            // use the long holding fee so color reflects what longs pay (positive = longs pay).
-            fundingRate: holdingFeeLong,
+            // Use pure funding rate (without borrowing) for cross-exchange comparison.
+            // Borrow-only pairs (hasFunding=false) correctly show 0% funding.
+            // holdingFeeLong/Short include borrowing and are stored in L/S fields.
+            fundingRate: fundingRateLong,
             fundingRateLong: holdingFeeLong,
             fundingRateShort: holdingFeeShort,
-            borrowingRate: undefined,
+            borrowingRate: totalBorrowRate8h > 0 ? totalBorrowRate8h : undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
-            markPrice: tokenPrice,
+            markPrice: 0, // gTrade has no mark price API; collateral/OI formula is inaccurate
             indexPrice: 0,
             nextFundingTime: 0, // gTrade funding is continuous, no discrete funding time
             type: 'dex' as const,
@@ -1422,6 +1437,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               const entries = json?.data || json?.records || [];
               const entry = Array.isArray(entries) ? entries[0] : null;
               if (!entry) return null;
+
+              // Skip stale data — Drift data API has been unreliable since ~Apr 2026
+              const entryTs = parseInt(entry.ts) || 0;
+              if (entryTs > 0 && (Date.now() / 1000 - entryTs) > 7200) return null; // >2h stale
 
               const fundingRateUsd = parseFloat(entry.fundingRate) || 0;
               const oraclePrice = parseFloat(entry.oraclePriceTwap) || 0;
