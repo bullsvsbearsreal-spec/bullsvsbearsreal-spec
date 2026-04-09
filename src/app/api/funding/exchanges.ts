@@ -1617,19 +1617,14 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      // Metadata endpoint works directly, but ticker endpoint needs CF Worker proxy
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 10000);
+      // edgeX CF bot detection triggers on browser-like User-Agent — strip it
+      const edgeXHeaders = { headers: { 'User-Agent': '', 'Accept': 'application/json' } };
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
       if (!metaRes.ok) return [];
       const metaData = await metaRes.json();
       const contracts = metaData?.data?.contractList || [];
       const active = contracts.filter((c: any) => c.enableTrade);
       if (active.length === 0) return [];
-
-      const proxyUrl = process.env.PROXY_URL;
-      // Ticker endpoint is CF-challenged from datacenter IPs — must use proxy
-      const tickerBase = proxyUrl
-        ? (contractId: string) => `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${contractId}`)}`
-        : (contractId: string) => `https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${contractId}`;
 
       const batchSize = 25;
       const results: FundingData[] = [];
@@ -1637,7 +1632,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         const batch = active.slice(i, i + batchSize);
         const tickerResults = await Promise.all(
           batch.map((c: any) =>
-            fetchFn(tickerBase(c.contractId), {}, 6000)
+            fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, edgeXHeaders, 6000)
               .then(async r => {
                 if (!r.ok) return null;
                 return r.json();
