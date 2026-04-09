@@ -1623,13 +1623,16 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!metaRes.ok) return [];
       const metaData = await metaRes.json();
       const contracts = metaData?.data?.contractList || [];
-      const active = contracts.filter((c: any) => c.enableTrade);
+      const active = contracts.filter((c: any) => c.enableTrade && !c.isStock);
       if (active.length === 0) return [];
 
-      const batchSize = 25;
+      // Limit to first 30 contracts to avoid triggering CloudFlare rate limits
+      // (186 individual calls every 2 min gets IP-blocked)
+      const limited = active.slice(0, 30);
+      const batchSize = 10;
       const results: FundingData[] = [];
-      for (let i = 0; i < active.length; i += batchSize) {
-        const batch = active.slice(i, i + batchSize);
+      for (let i = 0; i < limited.length; i += batchSize) {
+        const batch = limited.slice(i, i + batchSize);
         const tickerResults = await Promise.all(
           batch.map((c: any) =>
             fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, edgeXHeaders, 6000)
