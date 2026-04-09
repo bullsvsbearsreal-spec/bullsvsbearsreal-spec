@@ -1395,9 +1395,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       const listRes = await fetchFn('https://data.api.drift.trade/stats/markets/prices', {}, 12000);
       if (!listRes.ok) return [];
       const listJson = await listRes.json();
-      const allMarkets: any[] = listJson?.data || listJson || [];
+      const allMarkets: any[] = listJson?.markets || listJson?.data || listJson || [];
       const perpSymbols = (Array.isArray(allMarkets) ? allMarkets : [])
-        .filter((m: any) => m.type === 'perp' && m.symbol?.endsWith('-PERP'))
+        .filter((m: any) => (m.marketType === 'perp' || m.type === 'perp') && m.symbol?.endsWith('-PERP'))
         // Skip bet/prediction markets
         .filter((m: any) => !m.symbol.includes('-BET'))
         .map((m: any) => m.symbol as string);

@@ -55,6 +55,7 @@ const PROXIED_DOMAINS = new Set([
   'api.gateio.ws',
   'api.hbdm.com',        // HTX — consistently blocked from Vercel IPs since ~Mar 2026
   'pro.edgex.exchange',
+  'omni-client-api.prod.ap-northeast-1.variational.io', // Variational
   'query1.finance.yahoo.com',
   'query2.finance.yahoo.com',
 ]);
