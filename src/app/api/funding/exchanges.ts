@@ -1766,10 +1766,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'Gate.io',
     fetcher: async (fetchFn) => {
-      const proxyUrl = process.env.PROXY_URL;
-      if (!proxyUrl) return [];
-      const targetUrl = 'https://api.gateio.ws/api/v4/futures/usdt/contracts';
-      const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
+      // Gate.io works directly from FRA1 datacenter IPs — no proxy needed
+      const res = await fetchFn('https://api.gateio.ws/api/v4/futures/usdt/contracts', {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];

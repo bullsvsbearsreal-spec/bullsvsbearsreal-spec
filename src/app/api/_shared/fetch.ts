@@ -52,12 +52,12 @@ if (_rawProxyUrl && !PROXY_URL) {
 /** Domains that need proxying due to CloudFlare datacenter IP blocks or stale responses */
 const PROXIED_DOMAINS = new Set([
   'www.bitmex.com',
-  'api.gateio.ws',
   'api.hbdm.com',        // HTX — consistently blocked from Vercel IPs since ~Mar 2026
-  'pro.edgex.exchange',
   'omni-client-api.prod.ap-northeast-1.variational.io', // Variational
   'query1.finance.yahoo.com',
   'query2.finance.yahoo.com',
+  // Gate.io (api.gateio.ws) and edgeX (pro.edgex.exchange) work directly from FRA1
+  // but fail through CF Worker proxy — keep them direct-only
 ]);
 
 /** Rewrite a URL through the proxy if the domain is blocked and proxy is configured */
