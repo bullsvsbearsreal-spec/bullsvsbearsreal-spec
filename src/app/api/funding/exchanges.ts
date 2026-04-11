@@ -354,26 +354,64 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   },
 
   // Aster DEX — stocks, forex, commodities + crypto
+  // Aster uses variable funding intervals per pair (1h, 2h, 4h, 8h).
+  // We MUST fetch /fapi/v1/fundingInfo to get the per-pair interval, otherwise
+  // the frontend halves displayed rates when it converts a mislabeled 8h→4h.
   {
     name: 'Aster',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://fapi.asterdex.com/fapi/v1/premiumIndex');
-      if (!res.ok) return [];
-      const data = await res.json();
+      const [premRes, infoRes] = await Promise.all([
+        fetchFn('https://fapi.asterdex.com/fapi/v1/premiumIndex'),
+        fetchFn('https://fapi.asterdex.com/fapi/v1/fundingInfo').catch(() => null),
+      ]);
+      if (!premRes.ok) return [];
+      const data = await premRes.json();
       if (!Array.isArray(data)) return [];
+
+      // Build symbol -> intervalHours map. Default to 8h if not listed.
+      const intervalMap = new Map<string, number>();
+      if (infoRes?.ok) {
+        try {
+          const infoJson = await infoRes.json();
+          if (Array.isArray(infoJson)) {
+            for (const row of infoJson) {
+              if (row?.symbol && row?.fundingIntervalHours != null) {
+                intervalMap.set(row.symbol, Number(row.fundingIntervalHours));
+              }
+            }
+          }
+        } catch {}
+      }
+
       const seen = new Set<string>();
       return data
         .filter((item: any) => item.symbol && item.lastFundingRate != null)
         .map((item: any) => {
           const normalized = normalizeSymbol(item.symbol, 'aster');
+          const hrs = intervalMap.get(item.symbol) ?? 8;
+          // Map to the supported FundingInterval buckets ('1h'|'4h'|'8h').
+          // 2h pairs → bucket as '1h' with rate halved to preserve per-hour
+          // magnitude. The FundingInterval type doesn't include '2h'.
+          let interval: '1h' | '4h' | '8h';
+          let ratePct = (parseFloat(item.lastFundingRate) || 0) * 100;
+          if (hrs === 1) {
+            interval = '1h';
+          } else if (hrs === 2) {
+            interval = '1h';
+            ratePct = ratePct / 2;
+          } else if (hrs === 4) {
+            interval = '4h';
+          } else {
+            interval = '8h';
+          }
           return {
             symbol: normalized.symbol,
             exchange: 'Aster',
-            fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
-            fundingInterval: '8h' as const,
+            fundingRate: ratePct,
+            fundingInterval: interval,
             markPrice: parseFloat(item.markPrice || '0') || 0,
             indexPrice: parseFloat(item.indexPrice || '0') || 0,
-            nextFundingTime: Number(item.nextFundingTime) || Date.now() + 28800000,
+            nextFundingTime: Number(item.nextFundingTime) || Date.now() + hrs * 3600 * 1000,
             type: 'dex' as const,
             assetClass: normalized.assetClass,
           };
