@@ -178,7 +178,7 @@ export default function ScreenerPage() {
       if (t.count < 2 && t.vol < 50_000) return;
 
       const change24h = t.change || 0;
-      const avgFunding = f ? f.total / f.count : 0;
+      const avgFunding = f && f.count > 0 ? f.total / f.count : 0;
       const oiChange24h = deltaMap.get(symbol) || 0;
       const { label: sentiment, color: sentimentColor } = deriveSentiment(change24h, oiChange24h, avgFunding);
       const totalOI = o?.total || 0;

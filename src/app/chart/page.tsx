@@ -43,6 +43,7 @@ const ASSET_TABS: AssetTab[] = [
     label: 'Crypto',
     icon: <TrendingUp className="w-3.5 h-3.5" />,
     pinned: [
+      // Top coins by market cap
       { label: 'BTC', tvSymbol: 'BITSTAMP:BTCUSD', displayPair: '/USD', icon: 'btc' },
       { label: 'ETH', tvSymbol: 'BITSTAMP:ETHUSD', displayPair: '/USD', icon: 'eth' },
       { label: 'SOL', tvSymbol: 'COINBASE:SOLUSD', displayPair: '/USD', icon: 'sol' },
@@ -53,14 +54,44 @@ const ASSET_TABS: AssetTab[] = [
       { label: 'AVAX', tvSymbol: 'COINBASE:AVAXUSD', displayPair: '/USD', icon: 'avax' },
       { label: 'LINK', tvSymbol: 'COINBASE:LINKUSD', displayPair: '/USD', icon: 'link' },
       { label: 'DOT', tvSymbol: 'COINBASE:DOTUSD', displayPair: '/USD', icon: 'dot' },
-      { label: 'MATIC', tvSymbol: 'COINBASE:MATICUSD', displayPair: '/USD', icon: 'matic' },
+      { label: 'TRX', tvSymbol: 'BINANCE:TRXUSDT', displayPair: '/USDT', icon: 'trx' },
+      { label: 'TON', tvSymbol: 'BINANCE:TONUSDT', displayPair: '/USDT', icon: 'ton' },
+      { label: 'SHIB', tvSymbol: 'COINBASE:SHIBUSD', displayPair: '/USD', icon: 'shib' },
       { label: 'SUI', tvSymbol: 'COINBASE:SUIUSD', displayPair: '/USD', icon: 'sui' },
       { label: 'NEAR', tvSymbol: 'COINBASE:NEARUSD', displayPair: '/USD', icon: 'near' },
       { label: 'APT', tvSymbol: 'COINBASE:APTUSD', displayPair: '/USD', icon: 'apt' },
+      { label: 'LTC', tvSymbol: 'COINBASE:LTCUSD', displayPair: '/USD', icon: 'ltc' },
+      { label: 'BCH', tvSymbol: 'COINBASE:BCHUSD', displayPair: '/USD', icon: 'bch' },
+      { label: 'HBAR', tvSymbol: 'BINANCE:HBARUSDT', displayPair: '/USDT', icon: 'hbar' },
+      // L2s & infra
+      { label: 'MATIC', tvSymbol: 'COINBASE:MATICUSD', displayPair: '/USD', icon: 'matic' },
       { label: 'OP', tvSymbol: 'COINBASE:OPUSD', displayPair: '/USD', icon: 'op' },
       { label: 'ARB', tvSymbol: 'COINBASE:ARBUSD', displayPair: '/USD', icon: 'arb' },
+      { label: 'SEI', tvSymbol: 'COINBASE:SEIUSD', displayPair: '/USD', icon: 'sei' },
+      { label: 'TIA', tvSymbol: 'COINBASE:TIAUSD', displayPair: '/USD', icon: 'tia' },
+      { label: 'INJ', tvSymbol: 'COINBASE:INJUSD', displayPair: '/USD', icon: 'inj' },
+      { label: 'STX', tvSymbol: 'COINBASE:STXUSD', displayPair: '/USD', icon: 'stx' },
+      // DeFi
+      { label: 'UNI', tvSymbol: 'COINBASE:UNIUSD', displayPair: '/USD', icon: 'uni' },
+      { label: 'AAVE', tvSymbol: 'COINBASE:AAVEUSD', displayPair: '/USD', icon: 'aave' },
+      { label: 'MKR', tvSymbol: 'COINBASE:MKRUSD', displayPair: '/USD', icon: 'mkr' },
+      { label: 'CRV', tvSymbol: 'COINBASE:CRVUSD', displayPair: '/USD', icon: 'crv' },
+      { label: 'PENDLE', tvSymbol: 'BINANCE:PENDLEUSDT', displayPair: '/USDT', icon: 'pendle' },
+      { label: 'ENA', tvSymbol: 'BINANCE:ENAUSDT', displayPair: '/USDT', icon: 'ena' },
+      { label: 'JUP', tvSymbol: 'COINBASE:JUPUSD', displayPair: '/USD', icon: 'jup' },
+      // AI & compute
+      { label: 'RENDER', tvSymbol: 'COINBASE:RENDERUSD', displayPair: '/USD', icon: 'render' },
+      { label: 'FET', tvSymbol: 'COINBASE:FETUSD', displayPair: '/USD', icon: 'fet' },
+      { label: 'TAO', tvSymbol: 'BINANCE:TAOUSDT', displayPair: '/USDT', icon: 'tao' },
+      // Memecoins
       { label: 'PEPE', tvSymbol: 'COINBASE:PEPEUSD', displayPair: '/USD', icon: 'pepe' },
       { label: 'WIF', tvSymbol: 'COINBASE:WIFUSD', displayPair: '/USD', icon: 'wif' },
+      { label: 'BONK', tvSymbol: 'COINBASE:BONKUSD', displayPair: '/USD', icon: 'bonk' },
+      { label: 'FLOKI', tvSymbol: 'COINBASE:FLOKIUSD', displayPair: '/USD', icon: 'floki' },
+      // Perp DEX tokens
+      { label: 'HYPE', tvSymbol: 'BINANCE:HYPEUSDT', displayPair: '/USDT', icon: 'hype' },
+      { label: 'DRIFT', tvSymbol: 'BINANCE:DRIFTUSDT', displayPair: '/USDT', icon: 'drift' },
+      { label: 'DYDX', tvSymbol: 'COINBASE:DYDXUSD', displayPair: '/USD', icon: 'dydx' },
     ],
   },
   {

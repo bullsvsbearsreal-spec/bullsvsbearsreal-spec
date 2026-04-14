@@ -32,19 +32,29 @@ interface HistoryResponse {
   history: FearGreedEntry[];
 }
 
-async function fetchHistory(limit: number): Promise<HistoryResponse | null> {
+function classifyValue(value: number): string {
+  if (value <= 20) return 'Extreme Fear';
+  if (value <= 40) return 'Fear';
+  if (value <= 60) return 'Neutral';
+  if (value <= 80) return 'Greed';
+  return 'Extreme Greed';
+}
+
+async function fetchCMCHistory(limit: number): Promise<HistoryResponse | null> {
+  if (!CMC_API_KEY) return null;
   try {
-    const res = await fetch(`https://api.alternative.me/fng/?limit=${limit}`, {
+    const res = await fetch(`https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit=${limit}`, {
+      headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY, 'Accept': 'application/json' },
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const json = await res.json();
     if (!json.data || json.data.length === 0) return null;
 
-    const entries: FearGreedEntry[] = json.data.map((entry: { value: string; value_classification: string; timestamp: string }) => ({
-      value: parseInt(entry.value) || 50,
-      classification: entry.value_classification || 'Neutral',
-      timestamp: (() => { const t = parseInt(entry.timestamp, 10); return t > 0 ? t * 1000 : Date.now(); })(),
+    const entries: FearGreedEntry[] = json.data.map((entry: { value: number; value_classification?: string; timestamp?: string; update_time?: string }) => ({
+      value: entry.value ?? 50,
+      classification: entry.value_classification || classifyValue(entry.value ?? 50),
+      timestamp: entry.update_time ? new Date(entry.update_time).getTime() : (entry.timestamp ? new Date(entry.timestamp).getTime() : Date.now()),
     }));
 
     return {
@@ -52,7 +62,29 @@ async function fetchHistory(limit: number): Promise<HistoryResponse | null> {
       history: entries,
     };
   } catch (error) {
-    console.error('Fear & Greed history fetch error:', error);
+    console.error('CMC Fear & Greed history error:', error);
+    return null;
+  }
+}
+
+async function fetchCMCCurrent(): Promise<FearGreedEntry | null> {
+  if (!CMC_API_KEY) return null;
+  try {
+    const res = await fetch('https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest', {
+      headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY, 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.data) return null;
+
+    return {
+      value: json.data.value ?? 50,
+      classification: json.data.value_classification || classifyValue(json.data.value ?? 50),
+      timestamp: json.data.update_time ? new Date(json.data.update_time).getTime() : Date.now(),
+    };
+  } catch (error) {
+    console.error('CMC Fear & Greed error:', error);
     return null;
   }
 }
@@ -84,8 +116,8 @@ export async function GET(request: NextRequest) {
       } catch { /* DB miss — proceed to fetch */ }
     }
 
-    // Fetch from alternative.me
-    const historyData = await fetchHistory(limit);
+    // Fetch from CMC
+    const historyData = await fetchCMCHistory(limit);
     if (historyData) {
       historyCache[limit] = { data: historyData, time: Date.now() };
       if (isDBConfigured()) setCache(cacheKey, historyData, 3600).catch(() => {});
@@ -99,7 +131,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ current: { value: 50, classification: 'Neutral', timestamp: Date.now(), unavailable: true }, history: [] });
   }
 
-  // --- Current value mode (unchanged) ---
+  // --- Current value mode ---
   // L1: Return in-memory cache if fresh
   if (cachedData && Date.now() - cacheTime < CACHE_TTL) {
     return NextResponse.json(cachedData);
@@ -117,56 +149,15 @@ export async function GET(request: NextRequest) {
     } catch { /* DB miss or error — proceed to fetch */ }
   }
 
-  // Try CMC first
-  try {
-    const res = await fetch('https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest', {
-      headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY, 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(5000),
+  // Fetch from CMC
+  const entry = await fetchCMCCurrent();
+  if (entry) {
+    cachedData = entry;
+    cacheTime = Date.now();
+    if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
+    return NextResponse.json(cachedData, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
-
-    if (res.ok) {
-      const json = await res.json();
-      if (json.data) {
-        cachedData = {
-          value: json.data.value ?? 50,
-          classification: json.data.value_classification || 'Neutral',
-          timestamp: json.data.update_time ? new Date(json.data.update_time).getTime() : Date.now(),
-        };
-        cacheTime = Date.now();
-        if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
-        return NextResponse.json(cachedData, {
-          headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
-        });
-      }
-    }
-  } catch (error) {
-    console.error('CMC Fear & Greed error:', error);
-  }
-
-  // Fallback to alternative.me (free, no key needed)
-  try {
-    const res = await fetch('https://api.alternative.me/fng/?limit=1', {
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (res.ok) {
-      const json = await res.json();
-      if (json.data && json.data.length > 0) {
-        const entry = json.data[0];
-        cachedData = {
-          value: parseInt(entry.value) || 50,
-          classification: entry.value_classification || 'Neutral',
-          timestamp: (() => { const t = parseInt(entry.timestamp, 10); return t > 0 ? t * 1000 : Date.now(); })(),
-        };
-        cacheTime = Date.now();
-        if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
-        return NextResponse.json(cachedData, {
-          headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
-        });
-      }
-    }
-  } catch (error) {
-    console.error('alternative.me Fear & Greed fallback error:', error);
   }
 
   // Return stale cache or neutral fallback
