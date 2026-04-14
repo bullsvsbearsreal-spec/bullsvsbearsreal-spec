@@ -296,6 +296,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [pipeline, setPipeline] = useState<PipelineData | null>(null);
+  const [workers, setWorkers] = useState<{ summary: { total: number; healthy: number; stale: number }; workers: { worker: string; lastBeat: string; status: string; stale: boolean; details: any }[] } | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -305,10 +306,11 @@ export default function AdminDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [statsRes, pipelineRes, usersRes] = await Promise.all([
+      const [statsRes, pipelineRes, usersRes, workersRes] = await Promise.all([
         fetch('/api/admin/stats'),
         fetch('/api/admin/monitoring/pipeline'),
         fetch('/api/admin/users?limit=20'),
+        fetch('/api/admin/monitoring/workers'),
       ]);
 
       if (statsRes.status === 403 || pipelineRes.status === 403) {
@@ -319,6 +321,7 @@ export default function AdminDashboard() {
 
       if (statsRes.ok) setStats(await statsRes.json());
       if (pipelineRes.ok) setPipeline(await pipelineRes.json());
+      if (workersRes.ok) setWorkers(await workersRes.json());
       if (usersRes.ok) {
         const data = await usersRes.json();
         setUsers(data.users || data || []);
@@ -436,6 +439,36 @@ export default function AdminDashboard() {
             <ExchangeTable title="OI Pipeline Health" data={pipeline.exchanges.oi} />
           )}
         </div>
+
+        {/* Worker Health */}
+        {workers && workers.workers.length > 0 && (
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+            <h3 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+              <Server className="w-3.5 h-3.5 text-blue-400" />
+              Worker Health
+              <span className="text-[10px] font-mono text-neutral-600 ml-auto">
+                {workers.summary.healthy} healthy / {workers.summary.stale} stale
+              </span>
+            </h3>
+            <div className="space-y-1">
+              {workers.workers.map(w => (
+                <div key={w.worker} className="flex items-center gap-3 text-xs py-1.5">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${w.stale ? 'bg-red-500' : 'bg-green-500'}`} />
+                  <span className="text-neutral-300 font-mono w-36">{w.worker}</span>
+                  <span className="text-neutral-500 w-28">{new Date(w.lastBeat).toLocaleString()}</span>
+                  <span className={`text-[10px] font-mono ${w.stale ? 'text-red-400' : 'text-green-400'}`}>
+                    {w.stale ? 'STALE' : w.status}
+                  </span>
+                  {w.details && (
+                    <span className="text-neutral-600 text-[10px] truncate flex-1">
+                      {JSON.stringify(w.details).slice(0, 60)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Anomalies */}
         {pipeline?.anomalies && pipeline.anomalies.length > 0 && (

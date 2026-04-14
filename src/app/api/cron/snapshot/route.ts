@@ -16,6 +16,7 @@ import {
   saveSpreadSnapshot,
   pruneOldData,
   recordAdminMetric,
+  upsertWorkerHeartbeat,
 } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -207,6 +208,11 @@ export async function GET(request: NextRequest) {
         await recordAdminMetric('db_size', Number(size_bytes));
       } catch { /* non-critical */ }
     }
+
+    await upsertWorkerHeartbeat('cron:snapshot', 'ok', {
+      runType: isFullRun ? 'full' : 'price-only',
+      fundingInserted, oiInserted, spreadInserted,
+    }).catch(() => {});
 
     return NextResponse.json({
       ok: true,
