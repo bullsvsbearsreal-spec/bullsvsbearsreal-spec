@@ -23,6 +23,8 @@ interface CCArticle {
 
 export type SourceType = 'news' | 'exchange' | 'blog' | 'aggregator';
 
+export type NewsCategory = 'listing' | 'regulatory' | 'hack' | 'macro' | 'partnership' | 'funding-round' | 'airdrop' | 'defi' | 'general';
+
 export interface UnifiedNewsArticle {
   id: string;
   title: string;
@@ -37,6 +39,10 @@ export interface UnifiedNewsArticle {
   sentiment?: 'bullish' | 'bearish' | 'neutral';
   votes?: { positive: number; negative: number };
   origin: 'cryptocompare' | 'cryptopanic' | 'rss';
+  /** 1 = exchange announcement (market-moving), 2 = high-signal, 3 = standard news, 4 = aggregator */
+  priority?: number;
+  /** Auto-classified topic */
+  newsCategory?: NewsCategory;
 }
 
 /* ─── CryptoPanic types ──────────────────────────────────────── */
@@ -606,6 +612,46 @@ function addTitleMentions(title: string, found: string[]): void {
   }
 }
 
+/* ─── Source priority (1 = highest signal, 4 = lowest) ────────── */
+
+const SOURCE_PRIORITY: Record<string, number> = {
+  // Exchange announcements — priority 1 (market-moving)
+  'Binance Listings': 1, 'Binance Latest': 1, 'OKX': 1, 'Bybit': 1, 'Bitget': 1,
+  // High-signal sources — priority 2
+  'The Block': 2, 'CoinDesk': 2, 'Blockworks': 2, 'DL News': 2, 'Unchained': 2,
+  'BitMEX Research': 2, 'Chainalysis': 2, 'Watcher Guru': 2, 'Protos': 2,
+  // Exchange blogs — priority 2
+  'Kraken': 2, 'MEXC': 2, 'Deribit': 2,
+};
+
+function getSourcePriority(source: string, sourceType: SourceType): number {
+  if (SOURCE_PRIORITY[source]) return SOURCE_PRIORITY[source];
+  if (sourceType === 'exchange') return 1;
+  if (sourceType === 'blog') return 3;
+  if (sourceType === 'aggregator') return 4;
+  return 3; // standard news
+}
+
+/* ─── Auto-categorization ──────────────────────────────────────── */
+
+const CATEGORY_PATTERNS: [NewsCategory, RegExp][] = [
+  ['listing', /\b(list(?:ing|ed|s)|delist|perpetual.*launch|new.*(?:pair|market|trading)|adds?\s+\w+\/|futures?\s+launch)\b/i],
+  ['regulatory', /\b(sec |cftc|regul|lawsuit|fine[sd]|ban[ns]?|compliance|sanction|subpoena|enforce|approval|etf\b|spot.*etf)\b/i],
+  ['hack', /\b(hack|exploit|breach|drain|stolen|vulnerability|rug\s*pull|flash.*loan.*attack)\b/i],
+  ['macro', /\b(fed\b|fomc|cpi\b|inflation|interest.*rate|gdp\b|payroll|unemployment|treasury|tariff)\b/i],
+  ['partnership', /\b(partner|collaborat|integrat(?:ion|e)|team.*up|alliance|deal\b)\b/i],
+  ['funding-round', /\b(raise[sd]?|funding.*round|series\s+[a-d]|venture|seed\s+round|valuation|invest(?:ment|or))\b/i],
+  ['airdrop', /\b(airdrop|token.*distribut|claim.*token|reward.*distribut)\b/i],
+  ['defi', /\b(defi|tvl|yield|liquidity|amm|dex\b|lending|staking|restaking|lsd\b)\b/i],
+];
+
+function classifyArticle(title: string): NewsCategory {
+  for (const [category, pattern] of CATEGORY_PATTERNS) {
+    if (pattern.test(title)) return category;
+  }
+  return 'general';
+}
+
 function deriveSentiment(votes?: CPPost['votes']): 'bullish' | 'bearish' | 'neutral' | undefined {
   if (!votes) return undefined;
   const pos = votes.positive + votes.liked;
@@ -722,8 +768,19 @@ export async function GET(request: NextRequest) {
   // Merge and deduplicate (exchange announcements first — highest signal, market-moving)
   let merged = deduplicateArticles([...binanceAnn, ...okxAnn, ...bybitAnn, ...bitgetAnn, ...cpArticles, ...rssArticles, ...ccArticles]);
 
-  // Sort by publish time (newest first)
-  merged.sort((a, b) => b.publishedAt - a.publishedAt);
+  // Assign priority and auto-classify
+  for (const article of merged) {
+    article.priority = getSourcePriority(article.source, article.sourceType);
+    article.newsCategory = classifyArticle(article.title);
+  }
+
+  // Sort by priority ASC (highest signal first), then publishedAt DESC (newest first)
+  merged.sort((a, b) => {
+    const pa = a.priority ?? 3;
+    const pb = b.priority ?? 3;
+    if (pa !== pb) return pa - pb;
+    return b.publishedAt - a.publishedAt;
+  });
 
   // Apply time range filter
   if (timeRange !== 'all' && TIME_RANGES[timeRange]) {

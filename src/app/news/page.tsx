@@ -25,6 +25,8 @@ interface NewsArticle {
   sentiment?: 'bullish' | 'bearish' | 'neutral';
   votes?: { positive: number; negative: number };
   origin: 'cryptocompare' | 'cryptopanic' | 'rss';
+  priority?: number;
+  newsCategory?: string;
 }
 
 interface MacroEvent {
@@ -58,6 +60,17 @@ type TimeRange = 'all' | '1h' | '24h' | '7d' | '30d';
 type ViewMode = 'cards' | 'feed';
 
 /* ─── Helpers ────────────────────────────────────────────────── */
+
+/** Is this article "breaking" (high-priority + very recent)? */
+function isBreaking(article: NewsArticle): boolean {
+  const ageSeconds = Date.now() / 1000 - article.publishedAt;
+  return (article.priority ?? 3) <= 2 && ageSeconds < 15 * 60; // <15 min from priority 1-2
+}
+
+function isVeryFresh(article: NewsArticle): boolean {
+  const ageSeconds = Date.now() / 1000 - article.publishedAt;
+  return ageSeconds < 5 * 60; // <5 min
+}
 
 function formatTimeAgo(unixTs: number): string {
   const now = Date.now() / 1000;
@@ -229,7 +242,7 @@ export default function NewsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, timeRange, currency, debouncedSearch, sourceType, fetchNews]);
 
-  // Background polling for new articles (every 2 min)
+  // Background polling for new articles (every 30s)
   useEffect(() => {
     const poll = async () => {
       try {
@@ -243,7 +256,7 @@ export default function NewsPage() {
         }
       } catch { /* silent */ }
     };
-    const iv = setInterval(poll, 60_000);
+    const iv = setInterval(poll, 30_000);
     return () => clearInterval(iv);
   }, [filter, timeRange, currency, debouncedSearch, sourceType, buildParams]);
 
@@ -703,7 +716,7 @@ export default function NewsPage() {
                 )}
               </div>
               <p className="text-[10px] text-neutral-600 mt-3">
-                Auto-refreshes every 60s
+                Auto-refreshes every 30s
               </p>
             </div>
           </div>
@@ -772,6 +785,12 @@ function FeaturedArticle({ article, onCurrencyClick, isRead, isBookmarked, onArt
 
           {/* Title */}
           <h3 className="text-xl font-semibold text-white group-hover:text-hub-yellow transition-colors line-clamp-2 mb-2">
+            {isBreaking(article) && (
+              <span className="inline-flex items-center gap-1 mr-2 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30">
+                {isVeryFresh(article) && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
+                BREAKING
+              </span>
+            )}
             {article.title}
           </h3>
 
@@ -864,6 +883,12 @@ function NewsCard({ article, onCurrencyClick, isRead, isBookmarked, onArticleCli
 
           {/* Title */}
           <h3 className="text-sm font-semibold text-white group-hover:text-hub-yellow transition-colors line-clamp-2 mb-1">
+            {isBreaking(article) && (
+              <span className="inline-flex items-center gap-1 mr-1.5 px-1 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30">
+                {isVeryFresh(article) && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
+                BREAKING
+              </span>
+            )}
             {article.title}
           </h3>
 
@@ -939,6 +964,12 @@ function FeedItem({ article, onCurrencyClick, isRead, isBookmarked, onArticleCli
       {/* Content */}
       <div className="flex-1 min-w-0">
         <h3 className="text-sm text-white group-hover:text-hub-yellow transition-colors line-clamp-1">
+          {isBreaking(article) && (
+            <span className="inline-flex items-center gap-1 mr-1.5 px-1 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30">
+              {isVeryFresh(article) && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
+              BREAKING
+            </span>
+          )}
           {article.title}
         </h3>
       </div>
