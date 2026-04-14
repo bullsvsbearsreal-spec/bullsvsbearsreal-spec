@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
           const high = entries[0];
           const low = entries[entries.length - 1];
           const spread = high.price - low.price;
-          const pct = (spread / low.price) * 100;
+          const pct = low.price > 0 ? (spread / low.price) * 100 : 0;
           await saveSpreadSnapshot({
             symbol: sym, spreadUsd: spread, spreadPct: pct,
             highExchange: high.exchange, lowExchange: low.exchange,

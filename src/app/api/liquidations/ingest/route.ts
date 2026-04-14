@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         exchange: e.exchange,
         side: e.side as 'long' | 'short',
         price: e.price,
-        quantity: e.quantity || (e.value / e.price),
+        quantity: e.quantity || (e.price > 0 ? e.value / e.price : 0),
         valueUsd: e.value,
         timestamp: e.timestamp,
       };

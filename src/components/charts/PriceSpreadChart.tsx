@@ -29,6 +29,7 @@ export default function PriceSpreadChart({ tickers, symbol }: Props) {
     if (prices.length < 2) return { data: [], med: 0, high: null, low: null, spreadBps: 0 };
 
     const med = median(prices);
+    if (med <= 0) return { data: [], med: 0, high: null, low: null, spreadBps: 0 };
     const sorted = [...tickers]
       .filter((t) => t.lastPrice > 0)
       .map((t) => ({

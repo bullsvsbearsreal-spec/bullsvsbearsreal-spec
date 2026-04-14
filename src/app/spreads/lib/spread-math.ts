@@ -23,6 +23,7 @@ export function filterOutliers(
   if (entries.length < 2) return entries;
   const prices = entries.map(x => x.p).sort((a, b) => a - b);
   const median = prices[Math.floor(prices.length / 2)];
+  if (median <= 0) return entries;
   const sane = entries.filter(x => Math.abs(x.p - median) / median < OUTLIER_THRESHOLD);
   return sane.length >= 2 ? sane : entries;
 }
@@ -110,7 +111,8 @@ export function transformLiveData(
     const avg = sanePrices.reduce((s, p) => s + p, 0) / sanePrices.length;
     for (const x of sane) pt[x.e + '_dev'] = ((x.p - avg) / avg) * 100;
     pt._spread = Math.max(...sanePrices) - Math.min(...sanePrices);
-    pt._spreadPct = ((Math.max(...sanePrices) - Math.min(...sanePrices)) / Math.min(...sanePrices)) * 100;
+    const minSane = Math.min(...sanePrices);
+    pt._spreadPct = minSane > 0 ? ((Math.max(...sanePrices) - minSane) / minSane) * 100 : 0;
     pt.label = new Date(snap.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     rows.push(pt);
   }
@@ -178,7 +180,8 @@ export function transformKlineData(
 
     const usePrices = useExs.map(x => x.p);
     pt._spread = Math.max(...usePrices) - Math.min(...usePrices);
-    pt._spreadPct = usePrices.length >= 2 ? ((Math.max(...usePrices) - Math.min(...usePrices)) / Math.min(...usePrices)) * 100 : 0;
+    const minUse = Math.min(...usePrices);
+    pt._spreadPct = usePrices.length >= 2 && minUse > 0 ? ((Math.max(...usePrices) - minUse) / minUse) * 100 : 0;
 
     if (useExs.length >= 2 && avg > 0) {
       pt._spreadAB = ((useExs[0].p - useExs[1].p) / avg) * 100;
@@ -210,7 +213,8 @@ export function transformKlineData(
       }
       const usePrices = useExs.map(x => x.p);
       pt._spread = Math.max(...usePrices) - Math.min(...usePrices);
-      pt._spreadPct = usePrices.length >= 2 ? ((Math.max(...usePrices) - Math.min(...usePrices)) / Math.min(...usePrices)) * 100 : 0;
+      const minUse = Math.min(...usePrices);
+    pt._spreadPct = usePrices.length >= 2 && minUse > 0 ? ((Math.max(...usePrices) - minUse) / minUse) * 100 : 0;
       const d = new Date(now);
       pt.label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       rows.push(pt);
