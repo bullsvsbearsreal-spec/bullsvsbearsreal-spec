@@ -169,9 +169,15 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
       ? ((priceHigh.price - priceLow.price) / priceLow.price) * 100
       : null;
 
+    // Per-exchange prices sorted high→low for spread bar chart
+    const perExchangePrices = prices
+      .sort((a, b) => b.price - a.price)
+      .slice(0, 20);
+
     return {
       avgFunding, minFunding, maxFunding, totalOI, totalVolume, price, change24h,
       exchangeCount: fundingEntries.length, perExchangeFunding, priceHigh, priceLow, priceSpreadPct,
+      perExchangePrices,
     };
   }, [symbol, fundingData, oiData, tickerData]);
 
@@ -426,6 +432,68 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
                         </span>
                       </div>
                     )}
+                  </div>
+                );
+              })()}
+
+              {/* Per-exchange price spread bars */}
+              {metrics.perExchangePrices.length >= 2 && (() => {
+                const sorted = metrics.perExchangePrices;
+                const high = sorted[0].price;
+                const low = sorted[sorted.length - 1].price;
+                const range = high - low || 1;
+                const mid = (high + low) / 2;
+                const decimals = mid >= 1000 ? 2 : mid >= 1 ? 4 : 6;
+                return (
+                  <div className="flex-1 rounded-md border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[9px] text-neutral-600 uppercase tracking-wider">Price by Exchange</p>
+                      {metrics.priceSpreadPct !== null && (
+                        <span className={`text-[8px] font-mono font-bold ${metrics.priceSpreadPct > 0.1 ? 'text-hub-yellow' : 'text-neutral-400'}`}>
+                          spread {metrics.priceSpreadPct.toFixed(4)}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-[2px]">
+                      {sorted.map((p, i) => {
+                        const pct = range > 0 ? ((p.price - low) / range) * 100 : 50;
+                        const isTop = i === 0;
+                        const isBottom = i === sorted.length - 1;
+                        return (
+                          <div
+                            key={p.exchange}
+                            className={`flex items-center gap-1.5 py-[2px] px-1 rounded-sm transition-colors ${
+                              (isTop || isBottom) ? 'bg-white/[0.02]' : ''
+                            }`}
+                          >
+                            <span className={`text-[9px] w-[68px] truncate text-right flex-shrink-0 ${
+                              isTop ? 'text-green-400 font-medium' : isBottom ? 'text-red-400 font-medium' : 'text-neutral-500'
+                            }`}>
+                              {p.exchange}
+                            </span>
+                            <div className="flex-1 h-[8px] rounded-[2px] overflow-hidden relative bg-white/[0.03]">
+                              <div
+                                className={`absolute top-0 h-full rounded-[2px] transition-all duration-500 ${
+                                  isTop ? 'bg-green-400/40' : isBottom ? 'bg-red-400/40' : 'bg-blue-400/25'
+                                }`}
+                                style={{ width: `${Math.max(pct, 3)}%`, left: 0 }}
+                              />
+                            </div>
+                            <span className={`text-[9px] font-mono w-[72px] text-right flex-shrink-0 font-medium ${
+                              isTop ? 'text-green-400' : isBottom ? 'text-red-400' : 'text-neutral-300'
+                            }`}>
+                              ${p.price.toFixed(decimals)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-1.5 pt-1.5 border-t border-white/[0.04] flex items-center justify-between">
+                      <span className="text-[8px] text-neutral-600">Range across {sorted.length} exchanges</span>
+                      <span className="text-[9px] font-mono font-bold text-hub-yellow">
+                        ${(high - low).toFixed(decimals)}
+                      </span>
+                    </div>
                   </div>
                 );
               })()}
