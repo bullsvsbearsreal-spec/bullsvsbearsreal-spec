@@ -24,6 +24,9 @@ const ALLOWED_DOMAINS = new Set([
   'query1.finance.yahoo.com',
   'query2.finance.yahoo.com',
   'omni-client-api.prod.ap-northeast-1.variational.io', // Variational
+  'data.api.drift.trade',   // Drift data API
+  'dlob.drift.trade',       // Drift DLOB
+  'mainnet-beta.api.drift.trade',
 ]);
 
 // Simple shared secret to prevent open-proxy abuse

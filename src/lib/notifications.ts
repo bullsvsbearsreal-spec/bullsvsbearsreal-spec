@@ -1,6 +1,6 @@
 /**
  * Notification delivery for user alerts.
- * Supports email (Resend), Telegram, and Web Push channels.
+ * Supports email (Resend), Telegram, Discord Webhook, WhatsApp (Twilio), and Web Push channels.
  */
 
 import { Resend } from 'resend';
@@ -27,6 +27,8 @@ export interface TriggeredAlertInfo {
   operator: string;
   threshold: number;
   actualValue: number;
+  exchange?: string;
+  proximityPct?: number;
 }
 
 // ─── Email Notifications ────────────────────────────────────────────────────
@@ -39,6 +41,8 @@ function formatMetricLabel(metric: string): string {
     case 'change24h': return '24h Change';
     case 'volume24h': return '24h Volume';
     case 'liquidations24h': return '24h Liquidations';
+    case 'liqProximity': return 'Liquidation Price';
+    case 'tpProximity': return 'Take Profit Price';
     default: return metric;
   }
 }
@@ -56,18 +60,33 @@ function formatValue(metric: string, value: number): string {
       if (abs >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
       return `$${value.toFixed(2)}`;
     case 'change24h': return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+    case 'liqProximity':
+    case 'tpProximity':
+      return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
     default: return String(value);
   }
 }
 
+function formatCondition(a: TriggeredAlertInfo): string {
+  if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
+    const label = a.metric === 'liqProximity' ? 'liq price' : 'TP';
+    const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+    return `within ${distPct}% of ${label} ${formatValue(a.metric, a.threshold)}`;
+  }
+  const opLabel = a.operator === 'gt' ? 'above' : 'below';
+  const metricLabel = a.exchange
+    ? `${formatMetricLabel(a.metric)} (${a.exchange})`
+    : formatMetricLabel(a.metric);
+  return `${metricLabel} ${opLabel} ${formatValue(a.metric, a.threshold)}`;
+}
+
 function buildAlertEmailHTML(alerts: TriggeredAlertInfo[]): string {
   const rows = alerts.map((a) => {
-    const opLabel = a.operator === 'gt' ? 'above' : 'below';
     return `
       <tr>
         <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #fff; font-weight: 600;">${escapeHtml(a.symbol)}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #999;">${escapeHtml(formatMetricLabel(a.metric))} ${opLabel} ${escapeHtml(formatValue(a.metric, a.threshold))}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #f5a623; font-weight: 600;">${escapeHtml(formatValue(a.metric, a.actualValue))}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #999;">${escapeHtml(formatCondition(a))}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #2a2a2a; color: #f5a623; font-weight: 600;">${escapeHtml(formatValue(a.metric === 'liqProximity' || a.metric === 'tpProximity' ? 'price' : a.metric, a.actualValue))}</td>
       </tr>
     `;
   }).join('');
@@ -128,8 +147,16 @@ export async function sendAlertEmail(
 
 function buildTelegramMessage(alerts: TriggeredAlertInfo[]): string {
   const lines = alerts.map((a) => {
+    if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
+      const label = a.metric === 'liqProximity' ? 'liquidation price' : 'take profit';
+      const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+      return `<b>${escapeHtml(a.symbol)}</b> ⚠️ Price within ${distPct}% of ${label}\nPrice: <b>${escapeHtml(formatValue('price', a.actualValue))}</b> | Target: ${escapeHtml(formatValue(a.metric, a.threshold))}`;
+    }
     const opLabel = a.operator === 'gt' ? '▲ above' : '▼ below';
-    return `<b>${escapeHtml(a.symbol)}</b> — ${escapeHtml(formatMetricLabel(a.metric))} ${opLabel} ${escapeHtml(formatValue(a.metric, a.threshold))}\nCurrent: <b>${escapeHtml(formatValue(a.metric, a.actualValue))}</b>`;
+    const metricLabel = a.exchange
+      ? `${formatMetricLabel(a.metric)} (${a.exchange})`
+      : formatMetricLabel(a.metric);
+    return `<b>${escapeHtml(a.symbol)}</b> — ${escapeHtml(metricLabel)} ${opLabel} ${escapeHtml(formatValue(a.metric, a.threshold))}\nCurrent: <b>${escapeHtml(formatValue(a.metric, a.actualValue))}</b>`;
   });
   return `🔔 <b>Alert${alerts.length > 1 ? 's' : ''} Triggered</b>\n\n${lines.join('\n\n')}`;
 }
@@ -184,8 +211,15 @@ export async function sendAlertPush(
 
   const symbols = alerts.map((a) => a.symbol).join(', ');
   const body = alerts.map((a) => {
+    if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
+      const label = a.metric === 'liqProximity' ? 'liq' : 'TP';
+      return `${a.symbol} price near ${label} ${formatValue(a.metric, a.threshold)} → ${formatValue('price', a.actualValue)}`;
+    }
     const op = a.operator === 'gt' ? 'above' : 'below';
-    return `${a.symbol} ${formatMetricLabel(a.metric)} ${op} ${formatValue(a.metric, a.threshold)} → ${formatValue(a.metric, a.actualValue)}`;
+    const metricLabel = a.exchange
+      ? `${formatMetricLabel(a.metric)} (${a.exchange})`
+      : formatMetricLabel(a.metric);
+    return `${a.symbol} ${metricLabel} ${op} ${formatValue(a.metric, a.threshold)} → ${formatValue(a.metric, a.actualValue)}`;
   }).join('\n');
 
   const payload = JSON.stringify({
@@ -210,7 +244,7 @@ export async function sendAlertPush(
       } catch (err: any) {
         if (err?.statusCode === 410 || err?.statusCode === 404) {
           expiredEndpoints.push(sub.endpoint);
-          console.log(`[push] Subscription expired: ${sub.endpoint.slice(0, 60)}...`);
+          console.warn(`[push] Subscription expired: ${sub.endpoint.slice(0, 60)}...`);
         } else {
           console.error('[push] Send error:', err?.statusCode || err);
         }
@@ -225,4 +259,134 @@ export async function sendAlertPush(
   }
 
   return { sent, failed, expiredEndpoints };
+}
+
+// ─── Discord Webhook Notifications ─────────────────────────────────────────
+
+function buildDiscordEmbed(alerts: TriggeredAlertInfo[]): object {
+  const fields = alerts.map((a) => {
+    let value: string;
+    if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
+      const label = a.metric === 'liqProximity' ? 'liq price' : 'TP';
+      const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+      value = `⚠️ Within ${distPct}% of ${label} ${formatValue(a.metric, a.threshold)}\nPrice: **${formatValue('price', a.actualValue)}**`;
+    } else {
+      const opLabel = a.operator === 'gt' ? '▲ above' : '▼ below';
+      const metricLabel = a.exchange
+        ? `${formatMetricLabel(a.metric)} (${a.exchange})`
+        : formatMetricLabel(a.metric);
+      value = `${metricLabel} ${opLabel} ${formatValue(a.metric, a.threshold)}\nCurrent: **${formatValue(a.metric, a.actualValue)}**`;
+    }
+    return { name: a.symbol, value, inline: true };
+  });
+
+  return {
+    embeds: [
+      {
+        title: `🔔 ${alerts.length} Alert${alerts.length > 1 ? 's' : ''} Triggered`,
+        color: 0xf5a623, // hub-yellow
+        fields,
+        footer: { text: 'InfoHub — info-hub.io' },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+}
+
+export async function sendAlertDiscord(
+  webhookUrl: string,
+  alerts: TriggeredAlertInfo[],
+): Promise<boolean> {
+  if (alerts.length === 0 || !webhookUrl) return false;
+  // Basic Discord webhook URL validation (allow word chars, hyphens, dots in token)
+  if (!/^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w\-.]+$/.test(webhookUrl)) {
+    console.error('[notifications] invalid discord webhook URL');
+    return false;
+  }
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildDiscordEmbed(alerts)),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      console.error('[notifications] discord webhook error:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[notifications] discord send error:', e);
+    return false;
+  }
+}
+
+// ─── WhatsApp Notifications (Twilio) ───────────────────────────────────────
+
+function buildWhatsAppMessage(alerts: TriggeredAlertInfo[]): string {
+  const lines = alerts.map((a) => {
+    if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
+      const label = a.metric === 'liqProximity' ? 'liq price' : 'TP';
+      const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+      return `*${a.symbol}* ⚠️ Within ${distPct}% of ${label} ${formatValue(a.metric, a.threshold)}\nPrice: *${formatValue('price', a.actualValue)}*`;
+    }
+    const opLabel = a.operator === 'gt' ? '▲ above' : '▼ below';
+    const metricLabel = a.exchange
+      ? `${formatMetricLabel(a.metric)} (${a.exchange})`
+      : formatMetricLabel(a.metric);
+    return `*${a.symbol}* — ${metricLabel} ${opLabel} ${formatValue(a.metric, a.threshold)}\nCurrent: *${formatValue(a.metric, a.actualValue)}*`;
+  });
+  return `🔔 *Alert${alerts.length > 1 ? 's' : ''} Triggered*\n\n${lines.join('\n\n')}\n\n_InfoHub — info-hub.io_`;
+}
+
+export async function sendAlertWhatsApp(
+  toPhone: string,
+  alerts: TriggeredAlertInfo[],
+): Promise<boolean> {
+  if (alerts.length === 0 || !toPhone) return false;
+
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886'; // Twilio sandbox default
+
+  if (!accountSid || !authToken) {
+    console.error('[notifications] Twilio credentials not configured');
+    return false;
+  }
+
+  // Normalize phone to E.164 with whatsapp: prefix
+  let normalized = toPhone.trim();
+  if (normalized.startsWith('whatsapp:')) normalized = normalized.slice(9);
+  // Ensure + prefix for E.164 (Twilio requires it)
+  if (/^\d/.test(normalized)) normalized = `+${normalized}`;
+  const to = `whatsapp:${normalized}`;
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    const body = new URLSearchParams({
+      To: to,
+      From: fromNumber,
+      Body: buildWhatsAppMessage(alerts),
+    });
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => '');
+      console.error('[notifications] whatsapp send error:', res.status, errorBody);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[notifications] whatsapp send error:', e);
+    return false;
+  }
 }

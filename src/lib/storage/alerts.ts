@@ -6,7 +6,7 @@
 const STORAGE_KEY = 'ih_alerts';
 const TRIGGERED_KEY = 'ih_alerts_triggered';
 
-export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h';
+export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h' | 'liqProximity' | 'tpProximity';
 export type AlertOperator = 'gt' | 'lt';
 
 export interface Alert {
@@ -17,6 +17,10 @@ export interface Alert {
   value: number;
   enabled: boolean;
   createdAt: number;
+  /** Optional: specific exchange for per-exchange funding alerts */
+  exchange?: string;
+  /** For liqProximity/tpProximity: alert when price is within this % of the target price */
+  proximityPct?: number;
 }
 
 export interface TriggeredAlert {
@@ -37,6 +41,8 @@ export const METRIC_LABELS: Record<AlertMetric, string> = {
   change24h: '24h Change (%)',
   volume24h: '24h Volume ($)',
   liquidations24h: '24h Liquidations ($)',
+  liqProximity: 'Liquidation Price ($)',
+  tpProximity: 'Take Profit Price ($)',
 };
 
 function readAlerts(): Alert[] {

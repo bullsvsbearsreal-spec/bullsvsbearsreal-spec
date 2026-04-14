@@ -50,10 +50,10 @@ const SOLANA_RPCS = [
 
 // Known DEX router addresses (lowercase) → DEX name
 const DEX_ROUTERS: Record<string, string> = {
-  // Uniswap V3
+  // Uniswap V2/V3/Universal Router
+  '0x7a250d5630b4cf539739df2c5dacb4c659f2488d': 'Uniswap V2',
   '0xe592427a0aece92de3edee1f18e0157c05861564': 'Uniswap V3',
   '0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45': 'Uniswap V3',
-  // Uniswap Universal Router
   '0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad': 'Uniswap',
   '0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b': 'Uniswap',
   // 1inch
@@ -61,31 +61,81 @@ const DEX_ROUTERS: Record<string, string> = {
   '0x111111125421ca6dc452d289314280a0f8842a65': '1inch V6',
   // SushiSwap
   '0xd9e1ce17f2641f24ae83637ab66a2cca9c378b9f': 'SushiSwap',
+  '0x6bded42c6da8fbf0d2ba55b2fa120c5e0c8d7891': 'SushiSwap V3',
   // 0x Protocol
   '0xdef1c0ded9bec7f1a1670819833240f027b25eff': '0x',
   // Paraswap
   '0xdef171fe48cf0115b1d80b88dc8eab59176fee57': 'Paraswap',
   // CoW Protocol
   '0x9008d19f58aabd9ed0d60971565aa8510560ab41': 'CoW Swap',
+  // Curve Finance
+  '0x99a58482bd75cbab83b27ec03ca68ff489b5788f': 'Curve',
+  '0xf0d4c12a5768d806021f80a262b4d39d26c58b8d': 'Curve Router',
+  // Balancer
+  '0xba12222222228d8ba445958a75a0704d566bf2c8': 'Balancer',
+  // Kyber Network (KyberSwap)
+  '0x6131b5fae19ea4f9d964eac0408e4408b66337b5': 'KyberSwap',
+  // DODO
+  '0xa356867fdcea8e71aeaf87805808ab1d0aa39f8e': 'DODO',
+  // Camelot (Arbitrum)
+  '0xc873fecbd354f5a56e00e710b90ef4201db2448d': 'Camelot',
+  // Trader Joe (Avalanche/Arbitrum)
+  '0xb4315e873dbcf96ffd0acd8ea43f689d8c20fb30': 'Trader Joe',
+  // PancakeSwap (BSC/Ethereum)
+  '0x13f4ea83d0bd40e75c8222255bc855a974568dd4': 'PancakeSwap V3',
+  '0xeff92a263d31888d860bd50809a8d171709b7b1c': 'PancakeSwap',
+  // Odos
+  '0xcf5540fffcdc3d510b18bfca6d2b9987b0772559': 'Odos',
+  // OpenOcean
+  '0x6352a56caadc4f1e25cd6c75970fa768a3304e64': 'OpenOcean',
+  // Maverick
+  '0x32aed3bce901da12ca8f29d3213f3c8e232f8692': 'Maverick',
 };
 
-// Jupiter program ID (Solana)
-const JUPITER_PROGRAM = 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4';
+// Solana DEX program IDs
+const SOLANA_DEX_PROGRAMS: Record<string, string> = {
+  'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': 'Jupiter',
+  'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB9': 'Jupiter V4',
+  '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': 'Raydium',
+  'routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS': 'Raydium V2',
+  'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK': 'Raydium CLMM',
+  'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc': 'Orca Whirlpools',
+  '9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP': 'Orca V2',
+};
 
 // Well-known Solana token mints → symbols
 const SOLANA_TOKENS: Record<string, string> = {
+  // Native / wrapped
   'So11111111111111111111111111111111111111112': 'SOL',
+  // Stablecoins
   'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
   'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
-  'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN': 'JUP',
-  'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 'BONK',
-  '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr': 'POPCAT',
-  'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm': 'WIF',
-  'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3': 'PYTH',
+  'USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA': 'USDS',
+  // LSTs
   'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So': 'mSOL',
   'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn': 'jitoSOL',
-  '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs': 'ETH (Wormhole)',
+  'bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1': 'bSOL',
+  // DeFi
+  'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN': 'JUP',
+  'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3': 'PYTH',
+  'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE': 'ORCA',
+  'RaijocabFdwX19w8RpiPBjNJdkHcYBSFKUX1ZY4paj1': 'RAY',
+  'MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey': 'MNDE',
+  'DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7': 'DRIFT',
+  // Memecoins
+  'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 'BONK',
+  'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm': 'WIF',
+  '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr': 'POPCAT',
+  'A8C3xuqscfmyLrte3VKj5YS4cGL1z1LRDWT3xkjYPump': 'FARTCOIN',
+  '2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv': 'PENGU',
+  'ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82': 'BOME',
+  // AI / Infra
   'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof': 'RENDER',
+  'FtgGSFADXBtroxq8VCausXRr2of47QBf5AS1NtZCu4GD': 'IO',
+  // Bridged
+  '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs': 'ETH (Wormhole)',
+  '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh': 'WBTC (Wormhole)',
+  'A9mUU4qviSctJVPJdBGJuoSKRF7T6EKUZGQMbaVQ76M5': 'WETH (Wormhole)',
 };
 
 export interface DetectedTrade {
@@ -262,12 +312,15 @@ export async function detectSolanaSwaps(address: string): Promise<DetectedTrade[
         const tx = json.result;
         if (!tx?.meta || tx.meta.err) break; // failed tx or no data
 
-        // Check if Jupiter is in the program list
+        // Check if any known DEX program is in the transaction
         const programIds: string[] = (tx.transaction?.message?.accountKeys || [])
           .map((k: any) => typeof k === 'string' ? k : k.pubkey)
           .filter(Boolean);
-        const isJupiter = programIds.includes(JUPITER_PROGRAM);
-        if (!isJupiter) break;
+        let detectedDex: string | null = null;
+        for (const pid of programIds) {
+          if (SOLANA_DEX_PROGRAMS[pid]) { detectedDex = SOLANA_DEX_PROGRAMS[pid]; break; }
+        }
+        if (!detectedDex) break;
 
         // Parse token balance changes for the wallet
         const preBalances = tx.meta.preTokenBalances || [];
@@ -298,7 +351,7 @@ export async function detectSolanaSwaps(address: string): Promise<DetectedTrade[
               chain: 'solana',
               txHash: sig.signature,
               logIndex: 0,
-              dex: 'Jupiter',
+              dex: detectedDex,
               action: 'swap',
               tokenOut: sent.mint,
               tokenOutSymbol: sent.symbol,

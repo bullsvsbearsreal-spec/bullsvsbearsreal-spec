@@ -60,7 +60,7 @@ interface TreemapItem {
 }
 
 const DEX_EXCHANGES = new Set(['gTrade', 'dYdX', 'Hyperliquid', 'GMX', 'Drift', 'Aevo', 'Lighter']);
-const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'HTX', 'gTrade', 'dYdX', 'Bitfinex'];
+const WS_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'HTX', 'gTrade', 'dYdX', 'Bitfinex', 'Hyperliquid'];
 
 type ExchangeFilterKey = 'all' | 'cex' | 'dex';
 

@@ -13,7 +13,7 @@ interface Env {
 }
 
 // Default allowed targets if env var is missing
-const DEFAULT_TARGETS = 'www.bitmex.com,api.gateio.ws,pro.edgex.exchange,query1.finance.yahoo.com,query2.finance.yahoo.com';
+const DEFAULT_TARGETS = 'www.bitmex.com,api.gateio.ws,api.hbdm.com,pro.edgex.exchange,fapi.binance.com,dapi.binance.com,fapi.binance.me,api.bybit.com,api.bytick.com,query1.finance.yahoo.com,query2.finance.yahoo.com,omni-client-api.prod.ap-northeast-1.variational.io,data.api.drift.trade,dlob.drift.trade,mainnet-beta.api.drift.trade';
 const DEFAULT_ORIGINS = '*';
 
 // Browser-like headers to avoid bot detection

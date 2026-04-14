@@ -380,7 +380,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               }
             }
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][Aster] interval parse:', e instanceof Error ? e.message : e); }
       }
 
       const seen = new Set<string>();
@@ -595,7 +595,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               });
             }
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][MEXC] ticker parse:', e instanceof Error ? e.message : e); }
       }
 
       // Build set of active contract symbols (state=0) to filter out delisted/suspended pairs
@@ -610,7 +610,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 .map((c: any) => c.symbol as string)
             );
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][MEXC] detail parse:', e instanceof Error ? e.message : e); }
       }
 
       const VALID_INTERVALS = new Set([1, 4, 8]);
@@ -708,7 +708,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 .map((c: any) => c.symbol as string)
             );
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][BingX] contracts parse:', e instanceof Error ? e.message : e); }
       }
 
       return json.data
@@ -763,7 +763,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 .map((p: any) => p.symbol as string)
             );
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][Phemex] products parse:', e instanceof Error ? e.message : e); }
       }
 
       return phemexResult
@@ -805,7 +805,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const json = await res.json();
           items = Array.isArray(json.data) ? json.data : [];
         }
-      } catch {}
+      } catch (e) { console.warn('[funding][Bitunix] direct fetch:', e instanceof Error ? e.message : e); }
 
       // If direct returns empty, try Node.js proxy (different IP pool)
       if (items.length === 0) {
@@ -815,7 +815,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             const proxyJson = await proxyRes.json();
             items = Array.isArray(proxyJson.data) ? proxyJson.data : [];
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][Bitunix] proxy fetch:', e instanceof Error ? e.message : e); }
       }
 
       if (items.length === 0) return [];
@@ -878,7 +878,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 overrides.set(item.symbol, parseFloat(rates[0].fundingRate) || 0);
               }
             }
-          } catch {}
+          } catch (e) { console.warn('[funding][KuCoin] rate history:', e instanceof Error ? e.message : e); }
         }));
       }
 
@@ -959,7 +959,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 .map((c: any) => c.contract_code as string)
             );
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][HTX] contracts parse:', e instanceof Error ? e.message : e); }
       }
 
       // Build price map from batch_merged tickers (swap perpetuals only)
@@ -972,7 +972,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               priceMap.set(t.contract_code, parseFloat(t.close) || 0);
             }
           }
-        } catch {}
+        } catch (e) { console.warn('[funding][HTX] tickers parse:', e instanceof Error ? e.message : e); }
       }
 
       return json.data
@@ -1418,8 +1418,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             // Borrow-only pairs (hasFunding=false) correctly show 0% funding.
             // holdingFeeLong/Short include borrowing and are stored in L/S fields.
             fundingRate: fundingRateLong,
-            fundingRateLong: holdingFeeLong,
-            fundingRateShort: holdingFeeShort,
+            fundingRateLong: -holdingFeeLong,   // Earning convention: positive = earning for longs
+            fundingRateShort: -holdingFeeShort, // Earning convention: positive = earning for shorts
             borrowingRate: totalBorrowRate8h > 0 ? totalBorrowRate8h : undefined,
             fundingInterval: '8h' as const, // velocity model, normalized to 8h for display
             markPrice: 0, // gTrade has no mark price API; collateral/OI formula is inaccurate
@@ -1439,8 +1439,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
   // Drift Protocol (Solana DEX) — funding settles HOURLY
   // /stats/markets endpoint is broken (returns empty since ~Apr 2026)
-  // Now uses: /stats/markets/prices (market list) + /market/{sym}/fundingRates?limit=1 (per-market)
+  // Uses: /stats/markets/prices (market list) + /market/{sym}/fundingRates?limit=1 (per-market)
   // fundingRate from API is in USD, convert: rate_pct = fundingRate / oraclePriceTwap * 100
+  // Host `data.api.drift.trade` is in PROXIED_DOMAINS → routes through DigitalOcean/CF proxy
   {
     name: 'Drift',
     fetcher: async (fetchFn) => {
@@ -1459,6 +1460,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
 
       // Step 2: Fetch latest funding rate per market (parallel, 10 at a time)
       const CONCURRENCY = 10;
+      // Drift data API has been serving stale snapshots since ~Apr 2026 (indexer frozen).
+      // Accept up to 30 days old so we still ship last-known funding rates
+      // rather than nothing at all. DYOR disclaimer + UI timestamp flag handles staleness.
+      const MAX_STALENESS_SEC = 30 * 24 * 3600;
       const results: FundingData[] = [];
 
       for (let i = 0; i < perpSymbols.length; i += CONCURRENCY) {
@@ -1476,9 +1481,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               const entry = Array.isArray(entries) ? entries[0] : null;
               if (!entry) return null;
 
-              // Skip stale data — Drift data API has been unreliable since ~Apr 2026
               const entryTs = parseInt(entry.ts) || 0;
-              if (entryTs > 0 && (Date.now() / 1000 - entryTs) > 7200) return null; // >2h stale
+              if (entryTs > 0 && (Date.now() / 1000 - entryTs) > MAX_STALENESS_SEC) return null;
 
               const fundingRateUsd = parseFloat(entry.fundingRate) || 0;
               const oraclePrice = parseFloat(entry.oraclePriceTwap) || 0;
@@ -1489,10 +1493,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               // Drift: positive fundingRate = shorts pay longs
               // Our convention: positive = longs pay → negate
               const ratePct = -(fundingRateUsd / oraclePrice) * 100;
+              if (!isFinite(ratePct) || isNaN(ratePct)) return null;
 
               let symbol = perpSym.replace('-PERP', '');
               if (symbol.startsWith('1M')) symbol = symbol.slice(2);
               if (symbol.startsWith('1K')) symbol = symbol.slice(2);
+
+              // If data is >2h stale, use the entry timestamp + 1h for next funding
+              // instead of Date.now() + 1h so UI can show actual age
+              const lastUpdateMs = entryTs * 1000;
+              const nextFunding = entryTs > 0
+                ? lastUpdateMs + 3600000
+                : Date.now() + 3600000;
 
               return {
                 symbol,
@@ -1501,7 +1513,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 fundingInterval: '1h' as const,
                 markPrice: markPrice || oraclePrice,
                 indexPrice: oraclePrice,
-                nextFundingTime: Date.now() + 3600000,
+                nextFundingTime: nextFunding,
                 type: 'dex' as const,
               };
             } catch {
@@ -1598,7 +1610,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingRate: fundingL,                // Base funding component (positive = longs pay)
             fundingRateLong: -rateLong,            // Earning convention: positive = earning for longs
             fundingRateShort: -rateShort,           // Earning convention: positive = earning for shorts
-            borrowingRate: borrowL + borrowS > 0.00001 ? borrowL : undefined,
+            borrowingRate: borrowL + borrowS > 0.00001 ? Math.max(borrowL, borrowS) : undefined,
             markPrice: 0, // GMX markets/info doesn't provide mark price
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000, // continuous, next "hour"

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   try {
     await initDB();
-    const origin = request.nextUrl.origin;
+    const origin = process.env.NEXTAUTH_URL || 'https://info-hub.io';
 
     // Fetch current prices
     const tickerJson = await fetchJSON<{ data: any[] }>(`${origin}/api/tickers`);

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'bom1';
+
 const sql = postgres(process.env.DATABASE_URL || '', { max: 2 });
 
 // Cache for 5 minutes
@@ -47,7 +50,13 @@ export async function GET(req: NextRequest) {
 
     const resp = { symbol, days, grid, totalSamples: rows.reduce((s: number, r: any) => s + r.samples, 0) };
     cache.set(key, { data: resp, ts: Date.now() });
-    if (cache.size > 200) { const first = cache.keys().next().value; if (first) cache.delete(first); }
+    // Evict stale entries when cache grows large
+    if (cache.size > 100) {
+      const now = Date.now();
+      Array.from(cache.entries()).forEach(([k, v]) => {
+        if (now - v.ts > CACHE_MS) cache.delete(k);
+      });
+    }
     return NextResponse.json(resp, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });

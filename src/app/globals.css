@@ -4,25 +4,34 @@
 
 /* ═══ Theme: Orange (default) ═══ */
 /* 60:30:10 Color Rule — Dominant : Secondary : Accent */
+/* Palette tuned for extended reading sessions: no pure black, no pure white,
+   desaturated semantic colors. Warm-neutral dark base reduces retinal halation
+   and blue-light fatigue versus #000000 + #ffffff. */
 :root {
-  /* ── 60% Dominant: Dark backgrounds ── */
-  --hub-black: #000000;            /* page body */
-  --hub-dark: #0a0a0a;             /* primary surface (navbar, footer) */
-  --hub-darker: #111111;           /* card backgrounds */
+  /* ── 60% Dominant: Dark backgrounds (soft blue-gray, not pure black) ── */
+  --hub-black: #0b0d12;            /* page body — easier on rods than #000 */
+  --hub-dark: #10131a;              /* primary surface (navbar, footer) */
+  --hub-darker: #161923;            /* card backgrounds */
 
   /* ── 30% Secondary: Supporting surfaces & text ── */
-  --hub-secondary: #1a1a1a;        /* elevated surfaces, tooltips, dropdowns */
-  --hub-secondary-light: #222222;  /* subtle fills, skeleton mid-tone */
-  --hub-secondary-medium: #2a2a2a; /* input backgrounds, hover states */
+  --hub-secondary: #1c2030;         /* elevated surfaces, tooltips, dropdowns */
+  --hub-secondary-light: #232738;   /* subtle fills, skeleton mid-tone */
+  --hub-secondary-medium: #2b3042;  /* input backgrounds, hover states */
   /* Backward-compat aliases */
   --hub-gray: var(--hub-secondary);
   --hub-gray-light: var(--hub-secondary-light);
   --hub-gray-medium: var(--hub-secondary-medium);
 
-  /* ── Borders: 3 tiers ── */
-  --hub-border-subtle: rgba(255, 255, 255, 0.03); /* dividers, grid lines */
-  --hub-border: rgba(255, 255, 255, 0.06);        /* default */
-  --hub-border-hover: rgba(255, 255, 255, 0.12);  /* hover / focus / active */
+  /* ── Borders: 3 tiers (softer than pure white alpha) ── */
+  --hub-border-subtle: rgba(255, 255, 255, 0.04); /* dividers, grid lines */
+  --hub-border: rgba(255, 255, 255, 0.07);        /* default */
+  --hub-border-hover: rgba(255, 255, 255, 0.14);  /* hover / focus / active */
+
+  /* ── Semantic foreground tokens — soft off-whites, no pure #fff ── */
+  --fg-default: #e6e6ea;                /* primary text — 90% luminance */
+  --fg-muted:   #a5a8b2;                /* secondary / labels */
+  --fg-subtle:  #777b87;                /* tertiary / captions */
+  --fg-faint:   #555965;                /* decorative / disabled */
 
   /* ── 10% Accent: Orange spectrum ── */
   --hub-accent-rgb: 255 165 0;            /* #FFA500 — primary */
@@ -34,13 +43,13 @@
   --hub-accent-dark: #FF8C00;
   --hub-accent-secondary: #FF6B00;
 
-  /* ── PH×Coinglass: Intensity colors ── */
-  --rekt-mild: #ef4444;
-  --rekt-hot: #ff1744;
-  --rekt-nuclear: #d50000;
-  --pump-mild: #22c55e;
-  --pump-hot: #00e676;
-  --pump-nuclear: #00ff88;
+  /* ── PH×Coinglass: Intensity colors (desaturated for eye comfort) ── */
+  --rekt-mild: #f87171;
+  --rekt-hot: #ef5464;
+  --rekt-nuclear: #e63946;
+  --pump-mild: #4ade80;
+  --pump-hot: #34d399;
+  --pump-nuclear: #22d38a;
   --highlight-hot: #ff6ec7;
   --highlight-purple: #b388ff;
   --highlight-neon: #e040fb;
@@ -48,8 +57,20 @@
   color-scheme: dark;
 }
 
+/* Semantic foreground utility classes */
+.text-fg        { color: var(--fg-default); }
+.text-fg-muted  { color: var(--fg-muted); }
+.text-fg-subtle { color: var(--fg-subtle); }
+.text-fg-faint  { color: var(--fg-faint); }
+
 /* ═══ Theme: Light ═══ */
 [data-theme="light"] {
+  /* Semantic foreground tokens — inverted for light mode */
+  --fg-default: #0a0a0a;
+  --fg-muted:   #404040;
+  --fg-subtle:  #737373;
+  --fg-faint:   #a3a3a3;
+
   /* 60% Dominant */
   --hub-black: #f5f6f8;
   --hub-dark: #f0f1f4;
@@ -113,33 +134,70 @@ html { scroll-behavior: smooth; }
 
 body {
   max-width: 100vw; overflow-x: hidden;
-  background: #000; color: #e5e5e5;
-  font-family: var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif;
+  /* Eye-care dark base: soft blue-gray, not pure black, with a subtle
+     radial vignette so the center of the page reads slightly warmer than
+     the edges — reduces halation at night and during long sessions. */
+  background:
+    radial-gradient(1200px 700px at 50% -10%, rgba(255, 165, 0, 0.015), transparent 60%),
+    var(--hub-black);
+  color: var(--fg-default);
+  font-family: var(--font-sans), system-ui, sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Linear/Vercel trick — Inter feels premium with slight negative tracking */
+  letter-spacing: -0.011em;
+  font-feature-settings: "cv11", "ss01", "ss03";
 }
 
 /* Minimal scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
 
-::selection { background: rgb(var(--hub-accent-rgb) / 0.3); color: white; }
+::selection { background: rgb(var(--hub-accent-rgb) / 0.3); color: #e6e6ea; }
+
+/* ═══ Eye-care palette overrides ═══
+   Soften saturated Tailwind utilities without touching individual files.
+   Runs after @tailwind utilities so cascade order tie goes to these rules. */
+.text-white { color: var(--fg-default); }
+.text-green-500 { color: #4ade80; }
+.text-red-500   { color: #f87171; }
+.text-green-600 { color: #3fc777; }
+.text-red-600   { color: #ed6a6a; }
+.bg-green-500 { background-color: #4ade80; }
+.bg-red-500   { background-color: #f87171; }
+.bg-green-500\/5  { background-color: rgba(74, 222, 128, 0.05); }
+.bg-green-500\/10 { background-color: rgba(74, 222, 128, 0.10); }
+.bg-red-500\/5    { background-color: rgba(248, 113, 113, 0.05); }
+.bg-red-500\/10   { background-color: rgba(248, 113, 113, 0.10); }
+.border-green-500 { border-color: #4ade80; }
+.border-red-500   { border-color: #f87171; }
+/* Respect reduced-motion preference — calms the entire UI for sensitive users */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Heatmap horizontal scrollbar — visible, styled */
-.heatmap-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,165,0,0.3) rgba(255,255,255,0.04); }
+/* Heatmap horizontal scrollbar — neutral (was orange, too loud) */
+.heatmap-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) rgba(255,255,255,0.04); }
 .heatmap-scroll::-webkit-scrollbar { height: 8px; }
 .heatmap-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 8px; margin: 0 130px 0 0; }
-.heatmap-scroll::-webkit-scrollbar-thumb { background: rgba(255,165,0,0.25); border-radius: 8px; border: 1px solid rgba(255,165,0,0.1); }
-.heatmap-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,165,0,0.45); }
-[data-theme="light"] .heatmap-scroll { scrollbar-color: rgba(255,165,0,0.3) rgba(0,0,0,0.04); }
+.heatmap-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); }
+.heatmap-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+[data-theme="light"] .heatmap-scroll { scrollbar-color: rgba(0,0,0,0.2) rgba(0,0,0,0.04); }
 [data-theme="light"] .heatmap-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.03); }
-[data-theme="light"] .heatmap-scroll::-webkit-scrollbar-thumb { background: rgba(255,165,0,0.3); border: 1px solid rgba(255,165,0,0.15); }
-[data-theme="light"] .heatmap-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,165,0,0.5); }
+[data-theme="light"] .heatmap-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.08); }
+[data-theme="light"] .heatmap-scroll::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
 
 @layer utilities {
   /* --- Hide scrollbar utility --- */
@@ -189,15 +247,13 @@ body {
   .glow-text { text-shadow: 0 0 8px rgb(var(--hub-accent-rgb) / 0.4); }
   .glow-box { box-shadow: 0 0 12px rgb(var(--hub-accent-rgb) / 0.15); }
 
-  /* --- Stat cards --- */
+  /* --- Stat cards (accent line removed — was orange) --- */
   .stat-card {
     @apply rounded-xl p-4 relative;
     background: var(--hub-darker); border: 1px solid var(--hub-border);
+    transition: border-color 0.15s;
   }
-  .stat-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgb(var(--hub-accent-rgb) / 0.3), transparent);
-  }
+  .stat-card:hover { border-color: var(--hub-border-hover); }
   .stat-value { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; letter-spacing: -0.02em; }
 
   /* --- Data rows --- */
@@ -278,28 +334,22 @@ body {
   .tabular-nums { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
   .page-desc { @apply text-neutral-400 text-sm mt-1; }
 
-  /* ═══ Premium card system ═══ */
+  /* ═══ Canonical card system (calm, one hover state) ═══ */
+  .card,
   .card-premium {
-    background: var(--hub-dark);
+    background: var(--hub-darker);
     border: 1px solid var(--hub-border);
     border-radius: 12px;
     position: relative;
     overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    transition: border-color 0.15s;
   }
-  .card-premium::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgb(var(--hub-accent-rgb) / 0.4), transparent);
-    opacity: 0.6;
-  }
+  .card:hover,
   .card-premium:hover {
     border-color: var(--hub-border-hover);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 12px 32px rgba(0,0,0,0.4);
-    transform: translateY(-1px);
   }
+  .card-flat { background: transparent; border: 1px solid var(--hub-border); }
+  .card-lg { border-radius: 16px; }
 
   /* Hero gradient mesh background */
   .hero-mesh {
@@ -353,10 +403,278 @@ body {
   .stagger > *:nth-child(16) { animation-delay: 450ms; }
   .stagger > *:nth-child(17) { animation-delay: 480ms; }
 
-  /* Accent line */
+  /* Accent line (now neutral — was orange, caused visual noise) */
   .accent-line {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgb(var(--hub-accent-rgb) / 0.25), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  }
+
+  /* Coinglass-style section header: flat, compact, utilitarian.
+     Small white title + thin rule line — no decorations, no serif,
+     no eyebrow kickers. Lets the data itself be the thing. */
+  .cg-section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .cg-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e5e5e5;
+    letter-spacing: -0.005em;
+    flex-shrink: 0;
+  }
+  .cg-section-rule {
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     TERMINAL LAYOUT — sticky left sidebar + dense data main area.
+     This is the big structural change: the homepage now feels like
+     a Bloomberg/Coinglass terminal, not a landing page.
+     ═══════════════════════════════════════════════════════════════ */
+  .terminal-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 110px;
+    align-self: flex-start;
+    max-height: calc(100vh - 110px);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--hub-border);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, transparent 100%);
+  }
+  /* Collapse sidebar on mobile/tablet — the JSX uses `hidden lg:flex` but
+     the plain CSS `display: flex` above lands after the Tailwind utilities
+     layer and would otherwise win source-order at equal specificity.
+     This explicit media query forces the sidebar to vanish below lg. */
+  @media (max-width: 1023px) {
+    .terminal-sidebar {
+      display: none !important;
+    }
+  }
+  .sidebar-search {
+    padding: 12px 12px 8px 12px;
+    border-bottom: 1px solid var(--hub-border);
+  }
+  .sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 8px 12px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+  .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+  .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 2px; }
+  .sidebar-group {
+    margin-bottom: 14px;
+  }
+  .sidebar-group:last-child { margin-bottom: 0; }
+  .sidebar-group-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #525252;
+    padding: 6px 10px 4px 10px;
+  }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: #a3a3a3;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background-color 0.12s, color 0.12s;
+    cursor: pointer;
+  }
+  .sidebar-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff;
+  }
+  .sidebar-item-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+  .sidebar-item-label {
+    flex: 1;
+  }
+  .sidebar-item-arrow {
+    width: 12px;
+    height: 12px;
+    color: #404040;
+    opacity: 0;
+    transform: translateX(-2px);
+    transition: opacity 0.12s, transform 0.12s;
+  }
+  .sidebar-item:hover .sidebar-item-arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .sidebar-footer {
+    border-top: 1px solid var(--hub-border);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .sidebar-footer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-family: var(--font-mono), monospace;
+    color: #737373;
+  }
+  .sidebar-footer-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sidebar-footer-label {
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .sidebar-footer-value {
+    color: #e5e5e5;
+    font-weight: 600;
+  }
+
+  /* Top vitals strip — Coinglass-style major coin tiles.
+     Leads the main content area above the heatmap. */
+  .market-tile {
+    display: block;
+    padding: 10px 12px;
+    background: var(--hub-darker);
+    border: 1px solid var(--hub-border);
+    border-radius: 10px;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .market-tile::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+  .market-tile:hover {
+    border-color: var(--hub-border-hover);
+    transform: translateY(-1px);
+  }
+  .market-tile:hover::before {
+    background: rgb(var(--hub-accent-rgb) / 0.6);
+  }
+
+  /* --- Bloomberg-style slim market tape (sticky below TopStatsBar) --- */
+  .market-tape {
+    position: sticky;
+    top: 82px;
+    z-index: 35;
+    border-bottom: 1px solid var(--hub-border);
+    background: rgba(10, 10, 10, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;       /* clip the marquee track */
+    max-width: 100vw;       /* prevent horizontal page overflow */
+    width: 100%;
+  }
+  .market-tape-track {
+    display: flex;
+    width: max-content;
+    animation: marquee-scroll 55s linear infinite;
+    will-change: transform;
+  }
+  .market-tape:hover .market-tape-track { animation-play-state: paused; }
+  .market-tape-run {
+    display: flex;
+    gap: 18px;
+    padding: 6px 9px;
+    flex-shrink: 0;
+  }
+  @media (max-width: 640px) {
+    .market-tape-run { gap: 12px; padding: 5px 6px; }
+    .tape-item { gap: 4px; padding: 2px 6px; }
+    .tape-item:not(:last-child)::after { right: -6px; height: 12px; }
+    .tape-sym { font-size: 10px; }
+    .tape-price { font-size: 11px; }
+    .tape-chg { font-size: 9px; }
+  }
+  @keyframes marquee-scroll {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-50%, 0, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .market-tape-track { animation: none; }
+  }
+  .tape-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .tape-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 14px;
+    background: var(--hub-border);
+  }
+  .tape-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .tape-sym {
+    color: var(--fg-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .tape-price {
+    color: var(--fg-default);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono), 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .tape-price-empty { color: var(--fg-faint); }
+  .tape-chg {
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--font-mono), 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .tape-chg-up { color: var(--pump-mild); }
+  .tape-chg-down { color: var(--rekt-mild); }
+  .tape-skeleton {
+    display: inline-block;
+    width: 52px;
+    height: 12px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 3px;
   }
 
   /* --- Page section card --- */
@@ -632,19 +950,15 @@ body {
   }
   .rank-number {
     font-family: var(--font-mono);
-    font-size: 0.85rem;
-    font-weight: 800;
-    color: rgba(255, 165, 0, 0.5);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.35);
     min-width: 18px;
     text-align: center;
   }
   .rank-number-top {
-    color: #ffa500;
-    font-size: 1rem;
-  }
-  .ranked-list .rank-row:first-child {
-    background: rgba(255, 165, 0, 0.05);
-    border-left: 3px solid #ffa500;
+    color: #ffffff;
+    font-weight: 800;
   }
 
   /* --- Heatmap tiles (bigger, bolder) --- */

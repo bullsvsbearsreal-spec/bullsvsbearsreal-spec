@@ -74,7 +74,7 @@ function shouldSkip(path: string): boolean {
   if (path === '/api/chat') return true;             // has own rate limiter
   if (path.startsWith('/api/admin/')) return true;   // auth-protected
   if (path.startsWith('/api/cron/')) return true;    // internal cron
-  if (path === '/api/telegram/webhook') return true; // webhook
+  if (path === '/api/telegram/webhook') return true; // telegram bot webhook
   return false;
 }
 

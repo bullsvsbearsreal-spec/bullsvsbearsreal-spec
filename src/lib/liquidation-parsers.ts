@@ -95,6 +95,7 @@ export const EXCHANGE_WS_URLS: Record<string, string> = {
   gTrade: 'wss://backend-arbitrum.gains.trade/socket.io/?EIO=4&transport=websocket',
   dYdX: 'wss://indexer.dydx.trade/v4/ws',
   Bitfinex: 'wss://api-pub.bitfinex.com/ws/2',
+  Hyperliquid: 'wss://api.hyperliquid.xyz/ws',
 };
 
 // Returns the JSON-stringified subscription messages to send after connecting
@@ -153,6 +154,12 @@ export function getSubscriptionMessages(exchange: string): string[] {
         channel: 'status',
         key: 'liq:global',
       })];
+    case 'Hyperliquid':
+      // One subscribe message per coin — HL requires separate subs for trades
+      return HYPERLIQUID_LIQ_COINS.map(coin => JSON.stringify({
+        method: 'subscribe',
+        subscription: { type: 'trades', coin },
+      }));
     default:
       // Binance, gTrade: no subscription needed
       return [];
@@ -486,6 +493,55 @@ export function parseDydxLiq(data: any): Liquidation | null {
     };
   }
   return null;
+}
+
+// Top Hyperliquid perp coins for trade subscription (one sub per coin).
+// Note: HL uses lowercase `k` prefix for 1000-unit contracts (kPEPE, kSHIB, kBONK).
+// Plain `PEPE` etc. do NOT exist on HL — subscriptions silently fail otherwise.
+export const HYPERLIQUID_LIQ_COINS = [
+  'BTC', 'ETH', 'SOL', 'XRP', 'DOGE',
+  'HYPE', 'kPEPE', 'BNB', 'ADA', 'AVAX',
+  'LINK', 'SUI', 'APT', 'WIF', 'TIA',
+  'INJ', 'SEI', 'ARB', 'OP', 'NEAR',
+];
+
+/**
+ * Hyperliquid public trades channel.
+ * Liquidations are marked by an all-zero hash (0x0000...) — confirmed Apr 2026.
+ * HL side semantics: 'A' = Ask (seller), 'B' = Bid (buyer).
+ * A forced sell (side='A' on liquidation) means a long was liquidated.
+ * A forced buy  (side='B' on liquidation) means a short was liquidated.
+ *
+ * HL batches trades in a single message (initial snapshot ~30 trades + live updates
+ * can be multi-trade), so we parse ALL zero-hash trades per message, not just the first.
+ */
+export function parseHyperliquidLiqAll(data: any): Liquidation[] {
+  if (data.channel !== 'trades' || !Array.isArray(data.data) || data.data.length === 0) return [];
+  const results: Liquidation[] = [];
+  for (const t of data.data) {
+    // Only keep zero-hash trades (= liquidations / ADL / forced closes)
+    if (t.hash !== '0x0000000000000000000000000000000000000000000000000000000000000000') continue;
+    let symbol = String(t.coin || '');
+    if (!symbol) continue;
+    // Strip HL's lowercase `k` prefix (1000-unit contracts: kPEPE → PEPE, kSHIB → SHIB)
+    if (/^k[A-Z]/.test(symbol)) symbol = symbol.slice(1);
+    const normalized = normalizeLiqSymbol(symbol);
+    if (!isLiqCryptoSymbol(normalized)) continue;
+    const price = parseFloat(t.px || '0');
+    const sz = parseFloat(t.sz || '0');
+    if (!isFinite(price) || !isFinite(sz) || price <= 0 || sz <= 0) continue;
+    results.push({
+      id: `hl-${t.tid || `${symbol}-${t.time}`}`,
+      symbol: normalized,
+      side: t.side === 'A' ? 'long' : 'short',
+      price,
+      quantity: sz,
+      value: price * sz,
+      exchange: 'Hyperliquid',
+      timestamp: typeof t.time === 'number' ? t.time : Date.now(),
+    });
+  }
+  return results;
 }
 
 export function parseBitfinexLiq(data: any): Liquidation | null {

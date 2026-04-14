@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3, Globe } from 'lucide-react';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3, Globe, Clock } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
@@ -74,13 +75,69 @@ interface DexPosition {
   leverage: number;
   liquidationPrice: number | null;
   marginUsed: number;
+  marginType?: 'cross' | 'isolated';
+  maxLeverage?: number;
+  fundingSinceOpen?: number;
+  fundingAllTime?: number;
+}
+
+interface HLOrder {
+  coin: string;
+  side: 'buy' | 'sell';
+  price: number;
+  size: number;
+  value: number;
+  oid: number;
+  timestamp: number;
+  reduceOnly: boolean;
+  triggerPx?: number;
+}
+
+interface HLFill {
+  coin: string;
+  side: 'buy' | 'sell';
+  price: number;
+  size: number;
+  value: number;
+  time: number;
+  fee: number;
+  closedPnl: number;
+  crossed: boolean;
+}
+
+interface HLFundingPayment {
+  coin: string;
+  amount: number;
+  rate: number;
+  positionSize: number;
+  time: number;
+}
+
+interface HLSpotBalance {
+  coin: string;
+  total: number;
+  hold: number;
+  available: number;
 }
 
 interface PositionsData {
-  exchange: string;
-  accountValue: number;
+  // Multi-DEX response (new format)
+  exchanges?: { name: string; accountValue: number; totalMarginUsed: number; positionCount: number; withdrawable?: number }[];
+  totalAccountValue?: number;
+  totalPositions?: number;
+  // Legacy single-exchange format (backwards compat)
+  exchange?: string;
+  accountValue?: number;
   totalMarginUsed: number;
   positions: DexPosition[];
+  hlOpenOrders?: HLOrder[];
+  hlFills?: HLFill[];
+  hlFundingPayments?: HLFundingPayment[];
+  hlSpotBalances?: HLSpotBalance[];
+  hlPortfolio?: Record<string, { equity: [number, number][]; pnl: [number, number][]; volume: number }>;
+  hlUserFees?: { makerRate: number; takerRate: number; dailyVolume: { date: string; taker: number; maker: number }[] };
+  hlLedger?: { type: string; amount: number; fee: number; time: number; token?: string; destination?: string }[];
+  errors?: string[];
 }
 
 interface MultichainSummary {
@@ -223,6 +280,11 @@ export default function WalletTrackerPage() {
   const [featuredSearch, setFeaturedSearch] = useState('');
   const [showFeatured, setShowFeatured] = useState(true);
 
+  // Auto-collapse featured wallets when tracking an address
+  useEffect(() => {
+    if (activeAddress) setShowFeatured(false);
+  }, [activeAddress]);
+
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: FAMOUS_WALLETS.length };
     for (const w of FAMOUS_WALLETS) counts[w.category] = (counts[w.category] || 0) + 1;
@@ -268,6 +330,23 @@ export default function WalletTrackerPage() {
   useEffect(() => {
     setSavedWallets(getSavedWallets());
   }, []);
+
+  // Read ?address= URL param on mount and auto-track
+  const searchParams = useSearchParams();
+  const urlParamHandled = useRef(false);
+  useEffect(() => {
+    if (urlParamHandled.current) return;
+    const urlAddr = searchParams.get('address');
+    if (urlAddr && urlAddr.trim()) {
+      const chain = detectChain(urlAddr.trim());
+      if (chain) {
+        urlParamHandled.current = true;
+        setAddressInput(urlAddr.trim());
+        setActiveAddress(urlAddr.trim());
+        setActiveChain(chain);
+      }
+    }
+  }, [searchParams]);
 
   // Reset to tokens tab when switching to a non-ETH wallet while on positions tab
   useEffect(() => {
@@ -327,10 +406,10 @@ export default function WalletTrackerPage() {
     refreshInterval: 120_000,
   });
 
-  /* ---- fetch DEX positions (Hyperliquid) ----------------------------- */
+  /* ---- fetch DEX positions (Hyperliquid + GMX + dYdX) ---------------- */
   const positionsFetcher = useCallback(async () => {
     if (!activeAddress || activeChain !== 'eth') return null;
-    const res = await fetch(`/api/wallet/positions?address=${encodeURIComponent(activeAddress)}`);
+    const res = await fetch(`/api/wallet/positions?address=${encodeURIComponent(activeAddress)}&exchange=all`);
     const json = await res.json();
     if (json.error) throw new Error(json.error);
     return json as PositionsData;
@@ -462,9 +541,10 @@ export default function WalletTrackerPage() {
   const totalPortfolioUSD = useMemo(() => {
     const base = balanceUSD ?? 0;
     const tokens = totalTokenUSD ?? 0;
-    const total = base + tokens;
+    const dexAcct = positionsData?.totalAccountValue ?? positionsData?.accountValue ?? 0;
+    const total = base + tokens + dexAcct;
     return isNaN(total) ? 0 : total;
-  }, [balanceUSD, totalTokenUSD]);
+  }, [balanceUSD, totalTokenUSD, positionsData]);
 
   /* ---- handlers ---------------------------------------------------- */
   const handleTrack = () => {
@@ -557,7 +637,7 @@ export default function WalletTrackerPage() {
                 Refresh
               </button>
             )}
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            {activeAddress && <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />}
           </div>
         </div>
 
@@ -761,9 +841,12 @@ export default function WalletTrackerPage() {
                           )}
                           <div className="flex items-center gap-1.5">
                             <p className="text-[10px] font-mono text-neutral-600 truncate">{truncateAddress(w.address, 8)}</p>
-                            <button
+                            <span
+                              role="button"
+                              tabIndex={0}
                               onClick={(e) => { e.stopPropagation(); handleCopy(w.address); }}
-                              className="p-0.5 text-neutral-700 hover:text-neutral-400 transition-colors opacity-0 group-hover:opacity-100"
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleCopy(w.address); } }}
+                              className="p-0.5 text-neutral-700 hover:text-neutral-400 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                               title="Copy address"
                             >
                               {copiedHash === w.address ? (
@@ -771,7 +854,7 @@ export default function WalletTrackerPage() {
                               ) : (
                                 <Copy className="w-3 h-3" />
                               )}
-                            </button>
+                            </span>
                           </div>
                         </div>
 
@@ -973,9 +1056,9 @@ export default function WalletTrackerPage() {
                         : CHAIN_CONFIG[activeChain].name
                       }
                     </div>
-                    {positionsData && positionsData.accountValue > 0 && (
+                    {positionsData && (positionsData.totalAccountValue ?? positionsData.accountValue ?? 0) > 0 && (
                       <div className="text-[11px] font-mono text-neutral-600">
-                        ${positionsData.accountValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        ${(positionsData.totalAccountValue ?? positionsData.accountValue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
                     )}
                   </div>
@@ -1384,172 +1467,552 @@ export default function WalletTrackerPage() {
 
             {/* ========== DEX POSITIONS =================================== */}
             {activeTab === 'positions' && (
-              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
-                {/* Header with account summary */}
-                <div className="px-4 py-3 border-b border-white/[0.06]">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-hub-yellow" />
-                      Open Positions
-                    </h3>
-                    {positionsData && positionsData.positions.length > 0 && (
-                      <div className="flex items-center gap-4 text-xs font-mono">
-                        <span className="text-neutral-500">
-                          Acct: <span className="text-neutral-300">{formatUSD(positionsData.accountValue)}</span>
-                        </span>
-                        <span className="text-neutral-500">
-                          Margin: <span className="text-neutral-300">{formatUSD(positionsData.totalMarginUsed)}</span>
-                        </span>
-                        {(() => {
-                          const totalPnl = positionsData.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
-                          return (
-                            <span className={totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                              PnL: {totalPnl >= 0 ? '+' : ''}{formatUSD(totalPnl)}
-                            </span>
-                          );
-                        })()}
+              <div className="space-y-3">
+                {/* ── Account Summary Bar ── */}
+                {positionsData && (positionsData.totalAccountValue ?? positionsData.accountValue ?? 0) > 0 && (
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                      {(() => {
+                        const acctVal = positionsData.totalAccountValue ?? positionsData.accountValue ?? 0;
+                        const margin = positionsData.totalMarginUsed;
+                        const totalPnl = positionsData.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
+                        const totalFunding = positionsData.positions.reduce((s, p) => s + (p.fundingSinceOpen ?? 0), 0);
+                        const hlExchange = positionsData.exchanges?.find(e => e.name === 'Hyperliquid');
+                        const withdrawable = hlExchange?.withdrawable ?? 0;
+                        const marginRatio = acctVal > 0 ? (margin / acctVal) * 100 : 0;
+                        return (
+                          <>
+                            <div>
+                              <div className="text-[10px] text-neutral-600 uppercase tracking-wider">Account</div>
+                              <div className="text-sm font-mono font-semibold text-white">{formatUSD(acctVal)}</div>
+                            </div>
+                            {margin > 0 && (
+                              <div>
+                                <div className="text-[10px] text-neutral-600 uppercase tracking-wider">Margin Used</div>
+                                <div className="text-sm font-mono text-neutral-300">{formatUSD(margin)} <span className="text-[10px] text-neutral-600">({marginRatio.toFixed(1)}%)</span></div>
+                              </div>
+                            )}
+                            {withdrawable > 0 && (
+                              <div>
+                                <div className="text-[10px] text-neutral-600 uppercase tracking-wider">Available</div>
+                                <div className="text-sm font-mono text-neutral-300">{formatUSD(withdrawable)}</div>
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-[10px] text-neutral-600 uppercase tracking-wider">Unrealized PnL</div>
+                              <div className={`text-sm font-mono font-semibold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {totalPnl >= 0 ? '+' : ''}{formatUSD(totalPnl)}
+                              </div>
+                            </div>
+                            {Math.abs(totalFunding) > 0.01 && (
+                              <div>
+                                <div className="text-[10px] text-neutral-600 uppercase tracking-wider">Funding Paid</div>
+                                <div className={`text-sm font-mono ${totalFunding >= 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                  {totalFunding >= 0 ? '-' : '+'}{formatUSD(Math.abs(totalFunding))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {/* Per-exchange breakdown */}
+                    {positionsData.exchanges && positionsData.exchanges.filter(e => e.positionCount > 0).length > 1 && (
+                      <div className="flex items-center gap-3 mt-2 pt-2 border-t border-white/[0.04]">
+                        {positionsData.exchanges.filter(e => e.positionCount > 0).map(e => (
+                          <span key={e.name} className="flex items-center gap-1 text-[10px] text-neutral-500 font-mono">
+                            <ExchangeLogo exchange={e.name} size={12} />
+                            {e.name}: {e.positionCount} ({formatUSD(e.accountValue)})
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>
-                </div>
+                )}
 
-                {positionsLoading && !positionsData ? (
-                  /* Skeleton */
-                  <div>
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse border-b border-white/[0.04]">
-                        <div className="w-7 h-7 rounded-full bg-white/[0.06]" />
-                        <div className="flex-1 h-4 bg-white/[0.06] rounded" />
-                        <div className="w-16 h-4 bg-white/[0.06] rounded" />
-                        <div className="w-20 h-4 bg-white/[0.06] rounded" />
-                        <div className="w-20 h-4 bg-white/[0.06] rounded" />
-                        <div className="w-16 h-4 bg-white/[0.06] rounded" />
-                      </div>
-                    ))}
+                {/* ── Open Positions ── */}
+                <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-hub-yellow" />
+                    <h3 className="text-sm font-semibold text-white">Open Positions</h3>
+                    {positionsData && <span className="text-[11px] text-neutral-600 font-mono">{positionsData.positions.length}</span>}
                   </div>
-                ) : positionsData && positionsData.positions.length > 0 ? (
-                  <>
-                    {/* Desktop table header */}
-                    <div className="hidden sm:grid grid-cols-[minmax(140px,1.5fr)_100px_100px_100px_120px_100px] items-center px-4 py-2 border-b border-white/[0.06] text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
-                      <div>Symbol</div>
-                      <div className="text-right">Size</div>
-                      <div className="text-right">Entry</div>
-                      <div className="text-right">Mark</div>
-                      <div className="text-right">PnL</div>
-                      <div className="text-right">Leverage</div>
-                    </div>
 
-                    <div className="divide-y divide-white/[0.04]">
-                      {positionsData.positions.map((pos) => (
-                        <div key={`${pos.exchange}-${pos.symbol}-${pos.side}`}>
-                          {/* Desktop row */}
-                          <div className="hidden sm:grid grid-cols-[minmax(140px,1.5fr)_100px_100px_100px_120px_100px] items-center px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
-                            {/* Symbol + side + exchange */}
-                            <div className="flex items-center gap-2 min-w-0">
-                              <TokenIconSimple symbol={pos.symbol} size={28} />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
+                  {positionsLoading && !positionsData ? (
+                    <div>
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse border-b border-white/[0.04]">
+                          <div className="w-7 h-7 rounded-full bg-white/[0.06]" />
+                          <div className="flex-1 h-4 bg-white/[0.06] rounded" />
+                          <div className="w-16 h-4 bg-white/[0.06] rounded" />
+                          <div className="w-20 h-4 bg-white/[0.06] rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : positionsData && positionsData.positions.length > 0 ? (
+                    <>
+                      <div className="hidden sm:grid grid-cols-[minmax(140px,1.5fr)_95px_95px_95px_110px_90px_80px] items-center px-4 py-2 border-b border-white/[0.06] text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                        <div>Symbol</div>
+                        <div className="text-right">Size</div>
+                        <div className="text-right">Entry</div>
+                        <div className="text-right">Mark</div>
+                        <div className="text-right">PnL</div>
+                        <div className="text-right">Leverage</div>
+                        <div className="text-right">Funding</div>
+                      </div>
+                      <div className="divide-y divide-white/[0.04]">
+                        {positionsData.positions.map((pos) => (
+                          <div key={`${pos.exchange}-${pos.symbol}-${pos.side}`}>
+                            {/* Desktop row */}
+                            <div className="hidden sm:grid grid-cols-[minmax(140px,1.5fr)_95px_95px_95px_110px_90px_80px] items-center px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <TokenIconSimple symbol={pos.symbol} size={28} />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-medium text-white">{pos.symbol}</span>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                                      {pos.side === 'long' ? 'LONG' : 'SHORT'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <ExchangeLogo exchange={pos.exchange} size={14} />
+                                    <span className="text-[10px] text-neutral-600">{pos.exchange}</span>
+                                    {pos.marginType && <span className="text-[9px] text-neutral-700 ml-1">{pos.marginType}</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[13px] font-mono text-neutral-300">
+                                  {pos.size < 1 ? pos.size.toFixed(4) : pos.size < 100 ? pos.size.toFixed(2) : pos.size.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                                </div>
+                                <div className="text-[10px] font-mono text-neutral-600">{formatUSD(pos.positionValue)}</div>
+                              </div>
+                              <div className="text-right text-[13px] font-mono text-neutral-400">{formatPrice(pos.entryPrice)}</div>
+                              <div className="text-right text-[13px] font-mono text-neutral-300">{formatPrice(pos.markPrice)}</div>
+                              <div className="text-right">
+                                <div className={`text-[13px] font-mono font-semibold ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {pos.unrealizedPnl >= 0 ? '+' : ''}{formatUSD(pos.unrealizedPnl)}
+                                </div>
+                                <div className={`text-[10px] font-mono ${pos.roe >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
+                                  {pos.roe >= 0 ? '+' : ''}{pos.roe.toFixed(2)}%
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[13px] font-mono text-hub-yellow font-semibold">{pos.leverage > 0 ? `${pos.leverage}x` : '—'}</div>
+                                {pos.liquidationPrice && <div className="text-[10px] font-mono text-neutral-600">Liq {formatPrice(pos.liquidationPrice)}</div>}
+                              </div>
+                              <div className="text-right">
+                                {pos.fundingSinceOpen != null && Math.abs(pos.fundingSinceOpen) > 0.001 ? (
+                                  <div className={`text-[12px] font-mono ${pos.fundingSinceOpen >= 0 ? 'text-red-400/80' : 'text-green-400/80'}`}>
+                                    {pos.fundingSinceOpen >= 0 ? '-' : '+'}{formatUSD(Math.abs(pos.fundingSinceOpen))}
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-neutral-700">—</span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Mobile row */}
+                            <div className="sm:hidden px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <TokenIconSimple symbol={pos.symbol} size={28} />
                                   <span className="text-sm font-medium text-white">{pos.symbol}</span>
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                    pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
-                                  }`}>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
                                     {pos.side === 'long' ? 'LONG' : 'SHORT'}
                                   </span>
+                                  <span className="text-[11px] font-mono text-hub-yellow">{pos.leverage > 0 ? `${pos.leverage}x` : ''}</span>
                                 </div>
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <ExchangeLogo exchange={pos.exchange} size={14} />
-                                  <span className="text-[10px] text-neutral-600 capitalize">{pos.exchange}</span>
-                                </div>
+                                <ExchangeLogo exchange={pos.exchange} size={14} />
                               </div>
-                            </div>
-
-                            {/* Size */}
-                            <div className="text-right">
-                              <div className="text-[13px] font-mono text-neutral-300">
-                                {pos.size < 1 ? pos.size.toFixed(4) : pos.size < 100 ? pos.size.toFixed(2) : pos.size.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                              <div className="flex items-center justify-between">
+                                <span className={`text-[13px] font-mono font-semibold ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {pos.unrealizedPnl >= 0 ? '+' : ''}{formatUSD(pos.unrealizedPnl)}
+                                  <span className={`ml-1.5 text-[11px] ${pos.roe >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
+                                    ({pos.roe >= 0 ? '+' : ''}{pos.roe.toFixed(1)}%)
+                                  </span>
+                                </span>
+                                <span className="text-xs font-mono text-neutral-500">{formatUSD(pos.positionValue)}</span>
                               </div>
-                              <div className="text-[10px] font-mono text-neutral-600">
-                                {formatUSD(pos.positionValue)}
-                              </div>
-                            </div>
-
-                            {/* Entry price */}
-                            <div className="text-right text-[13px] font-mono text-neutral-400">
-                              {formatPrice(pos.entryPrice)}
-                            </div>
-
-                            {/* Mark price */}
-                            <div className="text-right text-[13px] font-mono text-neutral-300">
-                              {formatPrice(pos.markPrice)}
-                            </div>
-
-                            {/* PnL */}
-                            <div className="text-right">
-                              <div className={`text-[13px] font-mono font-semibold ${
-                                pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'
-                              }`}>
-                                {pos.unrealizedPnl >= 0 ? '+' : ''}{formatUSD(pos.unrealizedPnl)}
-                              </div>
-                              <div className={`text-[10px] font-mono ${
-                                pos.roe >= 0 ? 'text-green-400/70' : 'text-red-400/70'
-                              }`}>
-                                {pos.roe >= 0 ? '+' : ''}{pos.roe.toFixed(2)}%
-                              </div>
-                            </div>
-
-                            {/* Leverage + liq */}
-                            <div className="text-right">
-                              <div className="text-[13px] font-mono text-hub-yellow font-semibold">
-                                {pos.leverage}x
-                              </div>
-                              {pos.liquidationPrice && (
-                                <div className="text-[10px] font-mono text-neutral-600">
-                                  Liq {formatPrice(pos.liquidationPrice)}
+                              {pos.fundingSinceOpen != null && Math.abs(pos.fundingSinceOpen) > 0.001 && (
+                                <div className="mt-1 text-[10px] font-mono text-neutral-600">
+                                  Funding: <span className={pos.fundingSinceOpen >= 0 ? 'text-red-400/70' : 'text-green-400/70'}>{pos.fundingSinceOpen >= 0 ? '-' : '+'}{formatUSD(Math.abs(pos.fundingSinceOpen))}</span>
                                 </div>
                               )}
                             </div>
                           </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-8 text-center text-neutral-600 text-sm">
+                      No open positions found (Hyperliquid, GMX, dYdX)
+                    </div>
+                  )}
+                </div>
 
-                          {/* Mobile row */}
-                          <div className="sm:hidden px-4 py-3 hover:bg-white/[0.02] transition-colors">
-                            <div className="flex items-center justify-between mb-1.5">
+                {/* ── Open Orders (Hyperliquid) ── */}
+                {positionsData?.hlOpenOrders && positionsData.hlOpenOrders.length > 0 && (
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-hub-yellow" />
+                      <h3 className="text-sm font-semibold text-white">Open Orders</h3>
+                      <span className="text-[11px] text-neutral-600 font-mono">{positionsData.hlOpenOrders.length}</span>
+                      <span className="text-[10px] text-neutral-700 ml-auto">Hyperliquid</span>
+                    </div>
+                    <div className="hidden sm:grid grid-cols-[minmax(120px,1.5fr)_80px_90px_90px_90px_60px] items-center px-4 py-2 border-b border-white/[0.06] text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                      <div>Coin</div>
+                      <div className="text-right">Side</div>
+                      <div className="text-right">Price</div>
+                      <div className="text-right">Size</div>
+                      <div className="text-right">Value</div>
+                      <div className="text-right">Type</div>
+                    </div>
+                    <div className="divide-y divide-white/[0.04]">
+                      {positionsData.hlOpenOrders.map((o) => (
+                        <div key={o.oid}>
+                          {/* Desktop */}
+                          <div className="hidden sm:grid grid-cols-[minmax(120px,1.5fr)_80px_90px_90px_90px_60px] items-center px-4 py-2 hover:bg-white/[0.02] transition-colors text-[13px] font-mono">
+                            <div className="flex items-center gap-2">
+                              <TokenIconSimple symbol={o.coin} size={22} />
+                              <span className="text-white">{o.coin}</span>
+                            </div>
+                            <div className={`text-right font-bold ${o.side === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
+                              {o.side === 'buy' ? 'BUY' : 'SELL'}
+                            </div>
+                            <div className="text-right text-neutral-300">{formatPrice(o.price)}</div>
+                            <div className="text-right text-neutral-400">{o.size < 1 ? o.size.toFixed(4) : o.size.toFixed(2)}</div>
+                            <div className="text-right text-neutral-400">{formatUSD(o.value)}</div>
+                            <div className="text-right">
+                              {o.reduceOnly && <span className="text-[9px] text-orange-400/80">TP/SL</span>}
+                              {o.triggerPx && <span className="text-[9px] text-neutral-600 block">@{formatPrice(o.triggerPx)}</span>}
+                            </div>
+                          </div>
+                          {/* Mobile */}
+                          <div className="sm:hidden px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                            <div className="flex items-center justify-between mb-1">
                               <div className="flex items-center gap-2">
-                                <TokenIconSimple symbol={pos.symbol} size={28} />
-                                <span className="text-sm font-medium text-white">{pos.symbol}</span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                  pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
-                                }`}>
-                                  {pos.side === 'long' ? 'LONG' : 'SHORT'}
+                                <TokenIconSimple symbol={o.coin} size={22} />
+                                <span className="text-sm font-medium text-white">{o.coin}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${o.side === 'buy' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                                  {o.side === 'buy' ? 'BUY' : 'SELL'}
                                 </span>
-                                <span className="text-[11px] font-mono text-hub-yellow">{pos.leverage}x</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <ExchangeLogo exchange={pos.exchange} size={14} />
+                                {o.reduceOnly && <span className="text-[9px] text-orange-400/80">TP/SL</span>}
                               </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className={`text-[13px] font-mono font-semibold ${
-                                pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'
-                              }`}>
-                                {pos.unrealizedPnl >= 0 ? '+' : ''}{formatUSD(pos.unrealizedPnl)}
-                                <span className={`ml-1.5 text-[11px] ${
-                                  pos.roe >= 0 ? 'text-green-400/70' : 'text-red-400/70'
-                                }`}>
-                                  ({pos.roe >= 0 ? '+' : ''}{pos.roe.toFixed(1)}%)
-                                </span>
-                              </span>
-                              <span className="text-xs font-mono text-neutral-500">
-                                {formatUSD(pos.positionValue)}
-                              </span>
+                            <div className="flex items-center justify-between text-xs font-mono">
+                              <span className="text-neutral-400">{formatPrice(o.price)} × {o.size < 1 ? o.size.toFixed(4) : o.size.toFixed(2)}</span>
+                              <span className="text-neutral-500">{formatUSD(o.value)}</span>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </>
-                ) : (
-                  <div className="p-8 text-center text-neutral-600 text-sm">
-                    No open positions on Hyperliquid
+                  </div>
+                )}
+
+                {/* ── Recent Fills (Hyperliquid) ── */}
+                {positionsData?.hlFills && positionsData.hlFills.length > 0 && (
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-hub-yellow" />
+                      <h3 className="text-sm font-semibold text-white">Recent Fills</h3>
+                      <span className="text-[11px] text-neutral-600 font-mono">{positionsData.hlFills.length}</span>
+                      <span className="text-[10px] text-neutral-700 ml-auto">Hyperliquid</span>
+                    </div>
+                    <div className="hidden sm:grid grid-cols-[minmax(120px,1.2fr)_70px_90px_80px_90px_80px_90px] items-center px-4 py-2 border-b border-white/[0.06] text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                      <div>Coin</div>
+                      <div className="text-right">Side</div>
+                      <div className="text-right">Price</div>
+                      <div className="text-right">Size</div>
+                      <div className="text-right">Value</div>
+                      <div className="text-right">PnL</div>
+                      <div className="text-right">Time</div>
+                    </div>
+                    <div className="divide-y divide-white/[0.04] max-h-[400px] overflow-y-auto">
+                      {positionsData.hlFills.map((f, i) => (
+                        <div key={`${f.time}-${i}`}>
+                          {/* Desktop */}
+                          <div className="hidden sm:grid grid-cols-[minmax(120px,1.2fr)_70px_90px_80px_90px_80px_90px] items-center px-4 py-2 hover:bg-white/[0.02] transition-colors text-[13px] font-mono">
+                            <div className="flex items-center gap-2">
+                              <TokenIconSimple symbol={f.coin} size={20} />
+                              <span className="text-white text-sm">{f.coin}</span>
+                            </div>
+                            <div className={`text-right font-bold ${f.side === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
+                              {f.side === 'buy' ? 'BUY' : 'SELL'}
+                            </div>
+                            <div className="text-right text-neutral-300">{formatPrice(f.price)}</div>
+                            <div className="text-right text-neutral-400">{f.size < 1 ? f.size.toFixed(4) : f.size.toFixed(2)}</div>
+                            <div className="text-right text-neutral-400">{formatUSD(f.value)}</div>
+                            <div className="text-right">
+                              {Math.abs(f.closedPnl) > 0.01 ? (
+                                <span className={f.closedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                  {f.closedPnl >= 0 ? '+' : ''}{formatUSD(f.closedPnl)}
+                                </span>
+                              ) : <span className="text-neutral-700">—</span>}
+                            </div>
+                            <div className="text-right text-neutral-600 text-[11px]">
+                              {new Date(f.time).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                          {/* Mobile */}
+                          <div className="sm:hidden px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <TokenIconSimple symbol={f.coin} size={20} />
+                                <span className="text-sm text-white">{f.coin}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${f.side === 'buy' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                                  {f.side === 'buy' ? 'BUY' : 'SELL'}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-neutral-600 font-mono">
+                                {new Date(f.time).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs font-mono">
+                              <span className="text-neutral-400">{formatPrice(f.price)} × {f.size < 1 ? f.size.toFixed(4) : f.size.toFixed(2)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-neutral-500">{formatUSD(f.value)}</span>
+                                {Math.abs(f.closedPnl) > 0.01 && (
+                                  <span className={`font-semibold ${f.closedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {f.closedPnl >= 0 ? '+' : ''}{formatUSD(f.closedPnl)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Funding Payments (Hyperliquid, last 7 days) ── */}
+                {positionsData?.hlFundingPayments && positionsData.hlFundingPayments.length > 0 && (
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                      <CircleDollarSign className="w-4 h-4 text-hub-yellow" />
+                      <h3 className="text-sm font-semibold text-white">Funding Payments</h3>
+                      <span className="text-[10px] text-neutral-700 ml-auto">Last 7 days</span>
+                    </div>
+                    {(() => {
+                      const payments = positionsData.hlFundingPayments!;
+                      const totalFunding = payments.reduce((s, p) => s + p.amount, 0);
+                      // Group by coin
+                      const byCoin = new Map<string, number>();
+                      for (const p of payments) {
+                        byCoin.set(p.coin, (byCoin.get(p.coin) || 0) + p.amount);
+                      }
+                      const coinSummary = Array.from(byCoin.entries())
+                        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                        .slice(0, 10);
+                      return (
+                        <>
+                          <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center justify-between">
+                            <span className="text-xs text-neutral-500">7d Total</span>
+                            <span className={`text-sm font-mono font-semibold ${totalFunding >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {totalFunding >= 0 ? '+' : ''}{formatUSD(totalFunding)}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-px bg-white/[0.04]">
+                            {coinSummary.map(([coin, total]) => (
+                              <div key={coin} className="bg-hub-darker px-3 py-2">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <TokenIconSimple symbol={coin} size={16} />
+                                  <span className="text-[11px] text-neutral-400">{coin}</span>
+                                </div>
+                                <div className={`text-[13px] font-mono font-semibold ${total >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {total >= 0 ? '+' : ''}{formatUSD(total)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* ── Spot Balances (Hyperliquid) ── */}
+                {positionsData?.hlSpotBalances && positionsData.hlSpotBalances.length > 0 && (
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-hub-yellow" />
+                      <h3 className="text-sm font-semibold text-white">Spot Balances</h3>
+                      <span className="text-[11px] text-neutral-600 font-mono">{positionsData.hlSpotBalances.length}</span>
+                      <span className="text-[10px] text-neutral-700 ml-auto">Hyperliquid</span>
+                    </div>
+                    <div className="divide-y divide-white/[0.04]">
+                      {positionsData.hlSpotBalances.map((b) => (
+                        <div key={b.coin} className="flex items-center justify-between px-4 py-2 hover:bg-white/[0.02] transition-colors">
+                          <div className="flex items-center gap-2">
+                            <TokenIconSimple symbol={b.coin} size={22} />
+                            <span className="text-sm text-white">{b.coin}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[13px] font-mono text-neutral-300">
+                              {b.total < 1 ? b.total.toFixed(6) : b.total < 1000 ? b.total.toFixed(4) : b.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </div>
+                            {b.hold > 0 && (
+                              <div className="text-[10px] font-mono text-neutral-600">
+                                {b.available.toFixed(4)} avail
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Equity Curve (Hyperliquid) ── */}
+                {positionsData?.hlPortfolio && (() => {
+                  const periods = positionsData.hlPortfolio!;
+                  // Pick best available: day → week → month → allTime
+                  const periodKey = periods.day?.equity?.length > 2 ? 'day'
+                    : periods.week?.equity?.length > 2 ? 'week'
+                    : periods.month?.equity?.length > 2 ? 'month'
+                    : periods.allTime?.equity?.length > 2 ? 'allTime' : null;
+                  if (!periodKey) return null;
+                  const data = periods[periodKey];
+                  const equity = data.equity;
+                  if (equity.length < 2) return null;
+                  const minVal = Math.min(...equity.map(p => p[1]));
+                  const maxVal = Math.max(...equity.map(p => p[1]));
+                  const range = maxVal - minVal || 1;
+                  const startVal = equity[0][1];
+                  const endVal = equity[equity.length - 1][1];
+                  const change = endVal - startVal;
+                  const changePct = startVal > 0 ? (change / startVal) * 100 : 0;
+                  const isUp = change >= 0;
+                  // Build SVG sparkline
+                  const w = 600, h = 80;
+                  const points = equity.map((p, i) => {
+                    const x = (i / (equity.length - 1)) * w;
+                    const y = h - ((p[1] - minVal) / range) * (h - 8) - 4;
+                    return `${x},${y}`;
+                  }).join(' ');
+                  const allTimeVol = periods.allTime?.volume || 0;
+                  const labels: Record<string, string> = { day: '24h', week: '7d', month: '30d', allTime: 'All Time' };
+                  return (
+                    <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                      <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="w-4 h-4 text-hub-yellow" />
+                          <h3 className="text-sm font-semibold text-white">Equity Curve</h3>
+                          <span className="text-[10px] text-neutral-700">{labels[periodKey]}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs font-mono">
+                          <span className={isUp ? 'text-green-400' : 'text-red-400'}>
+                            {isUp ? '+' : ''}{formatUSD(change)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
+                          </span>
+                          {allTimeVol > 0 && (
+                            <span className="text-neutral-600">Vol: {formatUSD(allTimeVol)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="px-4 py-3">
+                        <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-20" preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={isUp ? '#22c55e' : '#ef4444'} stopOpacity="0.2" />
+                              <stop offset="100%" stopColor={isUp ? '#22c55e' : '#ef4444'} stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          <polygon points={`0,${h} ${points} ${w},${h}`} fill="url(#eqGrad)" />
+                          <polyline points={points} fill="none" stroke={isUp ? '#22c55e' : '#ef4444'} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                        </svg>
+                        <div className="flex items-center justify-between mt-1 text-[10px] font-mono text-neutral-700">
+                          <span>{new Date(equity[0][0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                          <span>{formatUSD(endVal)}</span>
+                          <span>{new Date(equity[equity.length - 1][0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ── Fee Tier & Volume (Hyperliquid) ── */}
+                {positionsData?.hlUserFees && (
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="w-4 h-4 text-hub-yellow" />
+                      <h3 className="text-sm font-semibold text-white">Fee Tier</h3>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs font-mono">
+                      <div>
+                        <span className="text-neutral-600">Maker: </span>
+                        <span className={positionsData.hlUserFees.makerRate < 0 ? 'text-green-400' : 'text-neutral-300'}>
+                          {(positionsData.hlUserFees.makerRate * 100).toFixed(4)}%
+                          {positionsData.hlUserFees.makerRate < 0 && ' (rebate)'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-600">Taker: </span>
+                        <span className="text-neutral-300">{(positionsData.hlUserFees.takerRate * 100).toFixed(4)}%</span>
+                      </div>
+                      {positionsData.hlUserFees.dailyVolume.length > 0 && (() => {
+                        const last7 = positionsData.hlUserFees!.dailyVolume.slice(-7);
+                        const totalVol = last7.reduce((s, d) => s + d.taker + d.maker, 0);
+                        return (
+                          <div>
+                            <span className="text-neutral-600">7d Vol: </span>
+                            <span className="text-neutral-300">{formatUSD(totalVol)}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Account Ledger (Hyperliquid) ── */}
+                {positionsData?.hlLedger && positionsData.hlLedger.length > 0 && (
+                  <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                      <ArrowRightLeft className="w-4 h-4 text-hub-yellow" />
+                      <h3 className="text-sm font-semibold text-white">Account Ledger</h3>
+                      <span className="text-[10px] text-neutral-700 ml-auto">Last 30 days</span>
+                    </div>
+                    <div className="divide-y divide-white/[0.04] max-h-[300px] overflow-y-auto">
+                      {positionsData.hlLedger.map((entry, i) => (
+                        <div key={`${entry.time}-${i}`} className="flex items-center justify-between px-4 py-2 hover:bg-white/[0.02] transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                              entry.type === 'deposit' ? 'bg-green-500/15 text-green-400'
+                                : entry.type === 'withdraw' ? 'bg-red-500/15 text-red-400'
+                                : 'bg-blue-500/15 text-blue-400'
+                            }`}>
+                              {entry.type === 'deposit' ? '↓' : entry.type === 'withdraw' ? '↑' : '⇄'}
+                            </div>
+                            <div>
+                              <div className="text-sm text-white capitalize">{entry.type}</div>
+                              <div className="text-[10px] text-neutral-600 font-mono">
+                                {new Date(entry.time).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-[13px] font-mono font-semibold ${
+                              entry.type === 'deposit' ? 'text-green-400' : entry.type === 'withdraw' ? 'text-red-400' : 'text-neutral-300'
+                            }`}>
+                              {entry.type === 'deposit' ? '+' : entry.type === 'withdraw' ? '-' : ''}{formatUSD(Math.abs(entry.amount))}
+                            </div>
+                            {entry.fee > 0 && (
+                              <div className="text-[10px] text-neutral-600 font-mono">fee: {formatUSD(entry.fee)}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── API Errors Banner ── */}
+                {positionsData?.errors && positionsData.errors.length > 0 && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-xs text-red-400/80">
+                      {positionsData.errors.join(' · ')} — some data may be incomplete
+                    </span>
                   </div>
                 )}
               </div>

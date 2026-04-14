@@ -53,19 +53,17 @@ export default function TopStatsBar() {
     );
   }
 
-  const isLongDominant = stats.btcLongShort ? stats.btcLongShort.longRatio > 50 : true;
+  const longRatio = stats.btcLongShort?.longRatio;
+  const shortRatio = stats.btcLongShort?.shortRatio;
+  const isLongDominant = longRatio != null ? longRatio > 50 : true;
 
   const items = [
     { key: 'vol', label: 'Vol 24H', value: formatNumber(stats.totalVolume24h) },
     { key: 'oi', label: 'OI', value: formatNumber(stats.totalOpenInterest) },
     { key: 'dom', label: 'BTC Dom', value: `${stats.btcDominance?.toFixed(1) || '54.2'}%` },
-    {
-      key: 'ls',
-      label: 'Long/Short',
-      value: stats.btcLongShort ? `${stats.btcLongShort.longRatio.toFixed(1)}/${stats.btcLongShort.shortRatio.toFixed(1)}` : '–/–',
-      color: isLongDominant ? 'text-green-400' : 'text-red-400',
-    },
   ];
+
+  const lsFlash = flashKeys['ls'];
 
   return (
     <div className="sticky top-[49px] z-40 border-b border-white/[0.04] bg-hub-dark/95 backdrop-blur-md">
@@ -76,14 +74,38 @@ export default function TopStatsBar() {
             return (
               <div key={item.key} className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="text-neutral-600 text-[10px] uppercase tracking-wide font-medium">{item.label}</span>
-                <span className={`font-mono font-bold text-sm sm:text-base tracking-tight rounded px-0.5 ${
-                  item.color || 'text-neutral-200'
-                } ${flash === 'up' ? 'animate-flash-green' : flash === 'down' ? 'animate-flash-red' : ''}`}>
+                <span className={`font-mono font-bold text-sm sm:text-base tracking-tight rounded px-0.5 text-neutral-200 ${
+                  flash === 'up' ? 'animate-flash-green' : flash === 'down' ? 'animate-flash-red' : ''
+                }`}>
                   {item.value}
                 </span>
               </div>
             );
           })}
+
+          {/* Long/Short — split colors so each side reads independently */}
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className="text-neutral-600 text-[10px] uppercase tracking-wide font-medium">Long/Short</span>
+            {longRatio != null && shortRatio != null ? (
+              <span
+                className={`font-mono font-bold text-sm sm:text-base tracking-tight rounded px-0.5 ${
+                  lsFlash === 'up' ? 'animate-flash-green' : lsFlash === 'down' ? 'animate-flash-red' : ''
+                }`}
+                aria-label={`Longs ${longRatio.toFixed(1)} percent, shorts ${shortRatio.toFixed(1)} percent`}
+              >
+                <span className={isLongDominant ? 'text-green-400' : 'text-green-400/60'}>
+                  {longRatio.toFixed(1)}
+                </span>
+                <span className="text-neutral-600 mx-0.5">/</span>
+                <span className={isLongDominant ? 'text-red-400/60' : 'text-red-400'}>
+                  {shortRatio.toFixed(1)}
+                </span>
+              </span>
+            ) : (
+              <span className="font-mono font-bold text-sm sm:text-base tracking-tight text-neutral-500">–/–</span>
+            )}
+          </div>
+
           {/* Live heartbeat */}
           <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
             <span className="heartbeat-dot" />

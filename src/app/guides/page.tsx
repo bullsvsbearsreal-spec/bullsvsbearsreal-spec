@@ -23,15 +23,16 @@ const upcomingGuides = [
   },
   {
     title: 'Reading Open Interest Like a Pro',
-    desc: 'OI is the one metric most traders ignore — and it\'s the one that tells you the most. Learn to spot squeezes before they happen.',
+    desc: 'OI is the one metric most traders ignore, and it\'s the one that tells you the most. Learn to spot squeezes before they happen.',
     icon: BarChart3,
     tag: 'Analysis',
     difficulty: 'Beginner',
-    eta: 'Coming soon',
+    eta: 'Published',
+    href: '/guides/reading-open-interest',
   },
   {
     title: 'Surviving Liquidation Cascades',
-    desc: 'When leveraged positions unwind, prices move fast. Here\'s how to stay on the right side of the waterfall — or profit from it.',
+    desc: 'When leveraged positions unwind, prices move fast. Here\'s how to stay on the right side of the waterfall, or profit from it.',
     icon: Zap,
     tag: 'Trading',
     difficulty: 'Advanced',
@@ -39,7 +40,7 @@ const upcomingGuides = [
   },
   {
     title: 'Order Flow for Humans',
-    desc: 'Forget complicated footprint charts. We\'ll teach you to read the tape in plain English — who\'s buying, who\'s selling, and what it means.',
+    desc: 'Forget complicated footprint charts. We\'ll teach you to read the tape in plain English. Who\'s buying, who\'s selling, and what it means.',
     icon: TrendingUp,
     tag: 'Analysis',
     difficulty: 'Intermediate',
@@ -268,7 +269,7 @@ export default function GuidesPage() {
           {/* ─── Bottom note ─── */}
           <div className="text-center pt-4 border-t border-white/[0.04]">
             <p className="text-neutral-700 text-xs">
-              Guides are coming soon — we're writing them now.
+              Guides are coming soon, we're writing them now.
             </p>
           </div>
         </div>

@@ -260,7 +260,7 @@ function ExportActionsInner({ data, exchanges, symbol, stats, tf }: ExportAction
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1.5 z-50 w-48 rounded-xl bg-[#12141a] border border-white/[0.08] shadow-xl shadow-black/40 overflow-hidden">
+          <div className="absolute right-0 top-full mt-1.5 z-50 w-48 max-w-[calc(100vw-2rem)] rounded-xl bg-[#12141a] border border-white/[0.08] shadow-xl shadow-black/40 overflow-hidden">
             <button
               onClick={handleScreenshot}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-neutral-300 hover:bg-white/[0.06] hover:text-white transition text-left"

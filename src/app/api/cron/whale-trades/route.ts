@@ -16,6 +16,7 @@ import {
 } from '@/lib/db';
 import { detectTrades, formatTradeMessage } from '@/lib/whale-trades';
 import { sendMessage } from '@/lib/telegram';
+import { sendAlertDiscord, sendAlertWhatsApp } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -143,6 +144,27 @@ async function notifySubscribers(
             await sendPush(sub.ownerId, trade, sub.label);
             await logWhaleNotification(sub.ownerId, eventId, channel);
             sent++;
+          } else if (channel === 'discord' && sub.discordWebhookUrl) {
+            const tradeMsg = formatTradeMessage(trade, sub.label);
+            const ok = await sendAlertDiscord(sub.discordWebhookUrl, [{
+              alertId: String(eventId),
+              symbol: trade.tokenOutSymbol || trade.tokenInSymbol || '?',
+              metric: 'whale_trade',
+              operator: trade.action === 'buy' ? 'gt' : 'lt',
+              threshold: trade.valueUsd || 0,
+              actualValue: trade.valueUsd || 0,
+            }]);
+            if (ok) { await logWhaleNotification(sub.ownerId, eventId, channel); sent++; }
+          } else if (channel === 'whatsapp' && sub.whatsappPhone) {
+            const ok = await sendAlertWhatsApp(sub.whatsappPhone, [{
+              alertId: String(eventId),
+              symbol: trade.tokenOutSymbol || trade.tokenInSymbol || '?',
+              metric: 'whale_trade',
+              operator: trade.action === 'buy' ? 'gt' : 'lt',
+              threshold: trade.valueUsd || 0,
+              actualValue: trade.valueUsd || 0,
+            }]);
+            if (ok) { await logWhaleNotification(sub.ownerId, eventId, channel); sent++; }
           }
         } catch (err) {
           console.error(`[whale-trades] notify ${channel}:`, err instanceof Error ? err.message : err);

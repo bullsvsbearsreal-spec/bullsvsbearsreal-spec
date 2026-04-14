@@ -58,3 +58,5 @@ C:*
 
 .env*.local
 src/remotion/
+
+.env*.local

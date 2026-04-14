@@ -13,9 +13,11 @@ export interface MarketData {
   liquidations24h: number;
   spread?: number;
   spreadPct?: number;
+  /** Per-exchange funding rates (normalized to 8h) keyed by exchange name */
+  fundingByExchange?: Record<string, number>;
 }
 
-export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h' | 'spread' | 'spreadPct';
+export type AlertMetric = 'price' | 'fundingRate' | 'openInterest' | 'change24h' | 'volume24h' | 'liquidations24h' | 'spread' | 'spreadPct' | 'liqProximity' | 'tpProximity';
 export type AlertOperator = 'gt' | 'lt';
 
 export interface Alert {
@@ -26,6 +28,10 @@ export interface Alert {
   value: number;
   enabled: boolean;
   createdAt: number;
+  /** Optional: specific exchange for per-exchange funding alerts */
+  exchange?: string;
+  /** For liqProximity/tpProximity: alert when price is within this % of the target price */
+  proximityPct?: number;
 }
 
 /** Fetch JSON from an internal API with a 15s timeout. */
@@ -111,26 +117,36 @@ export async function fetchMarketDataServer(
     });
   }
 
-  // Funding rates → average per symbol
+  // Funding rates → average per symbol + per-exchange rates
   if (fundingRes?.data) {
     const sums = new Map<string, { sum: number; count: number }>();
+    const perExchange = new Map<string, Record<string, number>>();
     for (const f of fundingRes.data) {
       const sym = f.symbol as string;
       const rate = f.rate ?? f.fundingRate;
       if (rate != null) {
         // Normalize to 8h basis for fair averaging across exchanges
         const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
+        const normalized = rate * mult;
         const cur = sums.get(sym) || { sum: 0, count: 0 };
-        cur.sum += rate * mult;
+        cur.sum += normalized;
         cur.count++;
         sums.set(sym, cur);
+        // Store per-exchange rate
+        if (f.exchange) {
+          const exMap = perExchange.get(sym) || {};
+          exMap[f.exchange] = normalized;
+          perExchange.set(sym, exMap);
+        }
       }
     }
     sums.forEach((v, sym) => {
       if (!map.has(sym)) {
         map.set(sym, { symbol: sym, price: 0, change24h: 0, fundingRate: 0, openInterest: 0, volume24h: 0, liquidations24h: 0 });
       }
-      map.get(sym)!.fundingRate = v.count > 0 ? v.sum / v.count : 0;
+      const entry = map.get(sym)!;
+      entry.fundingRate = v.count > 0 ? v.sum / v.count : 0;
+      entry.fundingByExchange = perExchange.get(sym);
     });
   }
 
@@ -159,20 +175,35 @@ export async function fetchMarketDataServer(
   return map;
 }
 
-export function getMetricValue(data: MarketData, metric: AlertMetric): number {
+export function getMetricValue(data: MarketData, metric: AlertMetric, alert?: Alert): number {
   switch (metric) {
     case 'price': return data.price;
-    case 'fundingRate': return data.fundingRate;
+    case 'fundingRate':
+      // Per-exchange funding rate if exchange is specified
+      if (alert?.exchange && data.fundingByExchange?.[alert.exchange] != null) {
+        return data.fundingByExchange[alert.exchange];
+      }
+      return data.fundingRate;
     case 'openInterest': return data.openInterest;
     case 'change24h': return data.change24h;
     case 'volume24h': return data.volume24h;
     case 'liquidations24h': return data.liquidations24h;
     case 'spread': return data.spread || 0;
     case 'spreadPct': return data.spreadPct || 0;
+    case 'liqProximity':
+    case 'tpProximity':
+      // For proximity alerts, value is the target price; return current price
+      return data.price;
   }
 }
 
 export function checkAlert(alert: Alert, data: MarketData): boolean {
-  const val = getMetricValue(data, alert.metric);
+  if (alert.metric === 'liqProximity' || alert.metric === 'tpProximity') {
+    // Proximity check: fire when price is within proximityPct% of target price
+    if (!alert.proximityPct || data.price <= 0) return false;
+    const distancePct = Math.abs(data.price - alert.value) / data.price * 100;
+    return distancePct <= alert.proximityPct;
+  }
+  const val = getMetricValue(data, alert.metric, alert);
   return alert.operator === 'gt' ? val > alert.value : val < alert.value;
 }

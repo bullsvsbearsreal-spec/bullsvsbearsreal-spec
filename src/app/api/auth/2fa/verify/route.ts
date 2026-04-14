@@ -73,7 +73,9 @@ export async function DELETE(req: Request) {
 
     // Require re-authentication: password or current TOTP code
     let body: { password?: string; code?: string } = {};
-    try { body = await req.json(); } catch {}
+    try { body = await req.json(); } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     if (body.code) {
       // Verify TOTP code

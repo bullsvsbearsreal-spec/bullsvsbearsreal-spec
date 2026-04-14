@@ -165,6 +165,7 @@ async function _doInitDB(): Promise<void> {
     )
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_alert_notif_user ON alert_notifications(user_id, alert_id, sent_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_alert_notif_user_channel ON alert_notifications(user_id, alert_id, channel, sent_at DESC)`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS portfolio_snapshots (
@@ -250,7 +251,6 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_push_sub_user ON push_subscriptions (user_id)`;
 
   await initTelegramTables();
-  await initTelegramAlertTables();
 
   // Email verification column
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`;
@@ -1152,6 +1152,10 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
 export interface NotificationPrefs {
   email: boolean;
   cooldownMinutes: number;
+  discordWebhookUrl?: string;  // Discord webhook URL for alert delivery
+  discordEnabled?: boolean;     // Toggle discord notifications
+  whatsappPhone?: string;       // WhatsApp phone number (E.164 format)
+  whatsappEnabled?: boolean;    // Toggle WhatsApp notifications
 }
 
 export interface FundingPrefs {
@@ -1221,319 +1225,222 @@ export async function setUserData(userId: string, data: UserData): Promise<void>
   }
 }
 
-// ─── Telegram Bot Tables ────────────────────────────────────────────────────
+// ─── Telegram Radar Bot — link codes + linked accounts ─────────────────────
 
 async function initTelegramTables(): Promise<void> {
   const sql = getSQL();
 
+  // Linked Telegram accounts (chat_id ↔ user_id)
   await sql`
-    CREATE TABLE IF NOT EXISTS telegram_users (
+    CREATE TABLE IF NOT EXISTS telegram_links (
       chat_id BIGINT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       active BOOLEAN DEFAULT true,
-      price_threshold REAL DEFAULT 0.5,
-      funding_threshold REAL DEFAULT 0.02,
-      watchlist TEXT DEFAULT '',
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
+      muted_until TIMESTAMPTZ DEFAULT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_tg_links_user ON telegram_links (user_id)`;
 
+  // Temporary link codes (expire after 10 min)
   await sql`
-    CREATE TABLE IF NOT EXISTS arb_cooldowns (
-      key TEXT PRIMARY KEY,
-      alerted_at TIMESTAMPTZ DEFAULT NOW(),
-      spread REAL DEFAULT 0
+    CREATE TABLE IF NOT EXISTS telegram_link_codes (
+      code TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL
     )
-  `;
-
-  // Add report_schedule column if missing (safe idempotent ALTER)
-  await sql`
-    DO $$ BEGIN
-      ALTER TABLE telegram_users ADD COLUMN report_schedule TEXT DEFAULT NULL;
-    EXCEPTION WHEN duplicate_column THEN NULL;
-    END $$
   `;
 }
 
-export interface TelegramUser {
+// No longer needed — replaced by telegram_links
+async function initTelegramAlertTables(): Promise<void> {}
+
+export interface TelegramLink {
   chat_id: number;
+  user_id: string;
   active: boolean;
-  price_threshold: number;
-  funding_threshold: number;
-  watchlist: string;
+  muted_until: Date | null;
 }
 
-export async function getTelegramUser(chatId: number): Promise<TelegramUser | null> {
+/** Create a link code for a logged-in user (expires in 10 min). */
+export async function createTelegramLinkCode(userId: string, code: string): Promise<void> {
+  try {
+    const sql = getSQL();
+    // Remove any existing codes for this user first
+    await sql`DELETE FROM telegram_link_codes WHERE user_id = ${userId}`;
+    await sql`
+      INSERT INTO telegram_link_codes (code, user_id, expires_at)
+      VALUES (${code}, ${userId}, NOW() + INTERVAL '10 minutes')
+    `;
+  } catch (e) {
+    console.error('DB createTelegramLinkCode error:', e);
+  }
+}
+
+/** Verify and consume a link code. Returns user_id if valid, null if expired/invalid. */
+export async function consumeTelegramLinkCode(code: string): Promise<string | null> {
   try {
     const sql = getSQL();
     const rows = await sql`
-      SELECT chat_id, active, price_threshold, funding_threshold, watchlist
-      FROM telegram_users WHERE chat_id = ${chatId}
+      DELETE FROM telegram_link_codes
+      WHERE code = ${code} AND expires_at > NOW()
+      RETURNING user_id
+    `;
+    return rows.length > 0 ? rows[0].user_id : null;
+  } catch (e) {
+    console.error('DB consumeTelegramLinkCode error:', e);
+    return null;
+  }
+}
+
+/** Link a Telegram chat_id to a user_id. */
+export async function linkTelegramChat(chatId: number, userId: string): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      INSERT INTO telegram_links (chat_id, user_id, active, created_at)
+      VALUES (${chatId}, ${userId}, true, NOW())
+      ON CONFLICT (chat_id) DO UPDATE SET
+        user_id = ${userId}, active = true, muted_until = NULL
+    `;
+  } catch (e) {
+    console.error('DB linkTelegramChat error:', e);
+  }
+}
+
+/** Unlink / deactivate a Telegram chat. */
+export async function unlinkTelegramChat(chatId: number): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`UPDATE telegram_links SET active = false WHERE chat_id = ${chatId}`;
+  } catch (e) {
+    console.error('DB unlinkTelegramChat error:', e);
+  }
+}
+
+/** Reactivate a previously stopped chat. */
+export async function reactivateTelegramChat(chatId: number): Promise<boolean> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      UPDATE telegram_links SET active = true, muted_until = NULL
+      WHERE chat_id = ${chatId}
+      RETURNING chat_id
+    `;
+    return rows.length > 0;
+  } catch (e) {
+    console.error('DB reactivateTelegramChat error:', e);
+    return false;
+  }
+}
+
+/** Mute a chat until a specific time. */
+export async function muteTelegramChat(chatId: number, until: Date): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`UPDATE telegram_links SET muted_until = ${until} WHERE chat_id = ${chatId}`;
+  } catch (e) {
+    console.error('DB muteTelegramChat error:', e);
+  }
+}
+
+/** Clear mute without changing active status. */
+export async function unmuteTelegramChat(chatId: number): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`UPDATE telegram_links SET muted_until = NULL WHERE chat_id = ${chatId}`;
+  } catch (e) {
+    console.error('DB unmuteTelegramChat error:', e);
+  }
+}
+
+/** Get a linked Telegram chat by chat_id. */
+export async function getTelegramLink(chatId: number): Promise<TelegramLink | null> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT chat_id, user_id, active, muted_until
+      FROM telegram_links WHERE chat_id = ${chatId}
     `;
     if (rows.length === 0) return null;
     const r = rows[0];
     return {
       chat_id: Number(r.chat_id),
+      user_id: r.user_id,
       active: Boolean(r.active),
-      price_threshold: Number(r.price_threshold),
-      funding_threshold: Number(r.funding_threshold),
-      watchlist: r.watchlist ?? '',
+      muted_until: r.muted_until ? new Date(r.muted_until) : null,
     };
   } catch (e) {
-    console.error('DB getTelegramUser error:', e);
+    console.error('DB getTelegramLink error:', e);
     return null;
   }
 }
 
-export async function upsertTelegramUser(
-  chatId: number,
-  fields?: Partial<Omit<TelegramUser, 'chat_id'>>,
-): Promise<void> {
-  try {
-    const sql = getSQL();
-    const active = fields?.active ?? null;
-    const priceThreshold = fields?.price_threshold ?? null;
-    const fundingThreshold = fields?.funding_threshold ?? null;
-    const watchlist = fields?.watchlist ?? null;
-
-    await sql`
-      INSERT INTO telegram_users (chat_id, active, price_threshold, funding_threshold, watchlist, updated_at)
-      VALUES (
-        ${chatId},
-        COALESCE(${active}, true),
-        COALESCE(${priceThreshold}, 0.5),
-        COALESCE(${fundingThreshold}, 0.02),
-        COALESCE(${watchlist}, ''),
-        NOW()
-      )
-      ON CONFLICT (chat_id) DO UPDATE SET
-        active = COALESCE(${active}, telegram_users.active),
-        price_threshold = COALESCE(${priceThreshold}, telegram_users.price_threshold),
-        funding_threshold = COALESCE(${fundingThreshold}, telegram_users.funding_threshold),
-        watchlist = COALESCE(${watchlist}, telegram_users.watchlist),
-        updated_at = NOW()
-    `;
-  } catch (e) {
-    console.error('DB upsertTelegramUser error:', e);
-  }
-}
-
-export async function getActiveTelegramUsers(): Promise<TelegramUser[]> {
+/** Get a linked Telegram chat by user_id. */
+export async function getTelegramLinkByUser(userId: string): Promise<TelegramLink | null> {
   try {
     const sql = getSQL();
     const rows = await sql`
-      SELECT chat_id, active, price_threshold, funding_threshold, watchlist
-      FROM telegram_users WHERE active = true
-    `;
-    return rows.map((r: any) => ({
-      chat_id: Number(r.chat_id),
-      active: true,
-      price_threshold: Number(r.price_threshold),
-      funding_threshold: Number(r.funding_threshold),
-      watchlist: r.watchlist ?? '',
-    }));
-  } catch (e) {
-    console.error('DB getActiveTelegramUsers error:', e);
-    return [];
-  }
-}
-
-export async function updateReportSchedule(chatId: number, schedule: string | null): Promise<void> {
-  try {
-    const sql = getSQL();
-    await sql`
-      UPDATE telegram_users SET report_schedule = ${schedule}, updated_at = NOW()
-      WHERE chat_id = ${chatId}
-    `;
-  } catch (e) {
-    console.error('DB updateReportSchedule error:', e);
-  }
-}
-
-export async function getSubscribedUsers(schedule: string): Promise<number[]> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT chat_id FROM telegram_users
-      WHERE report_schedule = ${schedule} AND active = true
-    `;
-    return rows.map((r: any) => Number(r.chat_id));
-  } catch (e) {
-    console.error('DB getSubscribedUsers error:', e);
-    return [];
-  }
-}
-
-export async function getCooldown(key: string): Promise<{ alertedAt: Date; spread: number } | null> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT alerted_at, spread FROM arb_cooldowns
-      WHERE key = ${key} AND alerted_at > NOW() - INTERVAL '15 minutes'
+      SELECT chat_id, user_id, active, muted_until
+      FROM telegram_links WHERE user_id = ${userId}
+      ORDER BY active DESC, created_at DESC
+      LIMIT 1
     `;
     if (rows.length === 0) return null;
+    const r = rows[0];
     return {
-      alertedAt: new Date(rows[0].alerted_at),
-      spread: Number(rows[0].spread),
+      chat_id: Number(r.chat_id),
+      user_id: r.user_id,
+      active: Boolean(r.active),
+      muted_until: r.muted_until ? new Date(r.muted_until) : null,
     };
   } catch (e) {
-    console.error('DB getCooldown error:', e);
+    console.error('DB getTelegramLinkByUser error:', e);
     return null;
   }
 }
 
-export async function setCooldown(key: string, spread: number): Promise<void> {
-  try {
-    const sql = getSQL();
-    await sql`
-      INSERT INTO arb_cooldowns (key, alerted_at, spread)
-      VALUES (${key}, NOW(), ${spread})
-      ON CONFLICT (key) DO UPDATE SET
-        alerted_at = NOW(),
-        spread = ${spread}
-    `;
-  } catch (e) {
-    console.error('DB setCooldown error:', e);
-  }
-}
-
-export async function cleanupCooldowns(): Promise<void> {
-  try {
-    const sql = getSQL();
-    await sql`
-      DELETE FROM arb_cooldowns WHERE alerted_at < NOW() - INTERVAL '1 hour'
-    `;
-  } catch (e) {
-    console.error('DB cleanupCooldowns error:', e);
-  }
-}
-
-// ─── Telegram Alerts (custom price/funding/OI alerts via bot) ────────────────
-
-async function initTelegramAlertTables(): Promise<void> {
-  const sql = getSQL();
-
-  await sql`
-    CREATE TABLE IF NOT EXISTS telegram_alerts (
-      id SERIAL PRIMARY KEY,
-      chat_id BIGINT NOT NULL,
-      symbol TEXT NOT NULL,
-      metric TEXT NOT NULL,
-      operator TEXT NOT NULL,
-      threshold REAL NOT NULL,
-      enabled BOOLEAN DEFAULT true,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_tg_alerts_chat ON telegram_alerts (chat_id)`;
-}
-
-export interface TelegramAlert {
-  id: number;
-  chat_id: number;
-  symbol: string;
-  metric: string;
-  operator: string;
-  threshold: number;
-  enabled: boolean;
-  created_at: string;
-}
-
-export async function getTelegramAlerts(chatId: number): Promise<TelegramAlert[]> {
+/** Get all active, unmuted Telegram links (for alert delivery). */
+export async function getActiveTelegramLinks(): Promise<TelegramLink[]> {
   try {
     const sql = getSQL();
     const rows = await sql`
-      SELECT id, chat_id, symbol, metric, operator, threshold, enabled, created_at
-      FROM telegram_alerts
-      WHERE chat_id = ${chatId}
-      ORDER BY id ASC
+      SELECT chat_id, user_id, active, muted_until
+      FROM telegram_links
+      WHERE active = true
+        AND (muted_until IS NULL OR muted_until < NOW())
     `;
     return rows.map((r: any) => ({
-      id: Number(r.id),
       chat_id: Number(r.chat_id),
-      symbol: r.symbol,
-      metric: r.metric,
-      operator: r.operator,
-      threshold: Number(r.threshold),
-      enabled: Boolean(r.enabled),
-      created_at: String(r.created_at),
+      user_id: r.user_id,
+      active: true,
+      muted_until: r.muted_until ? new Date(r.muted_until) : null,
     }));
   } catch (e) {
-    console.error('DB getTelegramAlerts error:', e);
+    console.error('DB getActiveTelegramLinks error:', e);
     return [];
   }
 }
 
-export async function addTelegramAlert(
-  chatId: number,
-  symbol: string,
-  metric: string,
-  operator: string,
-  threshold: number,
-): Promise<void> {
+/** Get all active Telegram chat IDs (for broadcast). */
+export async function getAllActiveTelegramChatIds(): Promise<number[]> {
   try {
     const sql = getSQL();
-    await sql`
-      INSERT INTO telegram_alerts (chat_id, symbol, metric, operator, threshold)
-      VALUES (${chatId}, ${symbol}, ${metric}, ${operator}, ${threshold})
-    `;
+    const rows = await sql`SELECT chat_id FROM telegram_links WHERE active = true`;
+    return rows.map((r: any) => Number(r.chat_id));
   } catch (e) {
-    console.error('DB addTelegramAlert error:', e);
-  }
-}
-
-export async function removeTelegramAlert(chatId: number, alertIndex: number): Promise<boolean> {
-  try {
-    const sql = getSQL();
-    // alertIndex is 1-based; fetch all alerts ordered by id and delete the Nth one
-    const rows = await sql`
-      SELECT id FROM telegram_alerts
-      WHERE chat_id = ${chatId}
-      ORDER BY id ASC
-    `;
-    if (alertIndex < 1 || alertIndex > rows.length) return false;
-    const targetId = rows[alertIndex - 1].id;
-    await sql`DELETE FROM telegram_alerts WHERE id = ${targetId}`;
-    return true;
-  } catch (e) {
-    console.error('DB removeTelegramAlert error:', e);
-    return false;
-  }
-}
-
-export async function clearTelegramAlerts(chatId: number): Promise<number> {
-  try {
-    const sql = getSQL();
-    const result = await sql`DELETE FROM telegram_alerts WHERE chat_id = ${chatId}`;
-    return result.count ?? 0;
-  } catch (e) {
-    console.error('DB clearTelegramAlerts error:', e);
-    return 0;
-  }
-}
-
-export async function getAllActiveTelegramAlerts(): Promise<TelegramAlert[]> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT id, chat_id, symbol, metric, operator, threshold, enabled, created_at
-      FROM telegram_alerts
-      WHERE enabled = true
-      ORDER BY chat_id, id ASC
-    `;
-    return rows.map((r: any) => ({
-      id: Number(r.id),
-      chat_id: Number(r.chat_id),
-      symbol: r.symbol,
-      metric: r.metric,
-      operator: r.operator,
-      threshold: Number(r.threshold),
-      enabled: Boolean(r.enabled),
-      created_at: String(r.created_at),
-    }));
-  } catch (e) {
-    console.error('DB getAllActiveTelegramAlerts error:', e);
+    console.error('DB getAllActiveTelegramChatIds error:', e);
     return [];
+  }
+}
+
+/** Prune expired link codes. */
+export async function pruneExpiredLinkCodes(): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`DELETE FROM telegram_link_codes WHERE expires_at < NOW()`;
+  } catch (e) {
+    console.error('DB pruneExpiredLinkCodes error:', e);
   }
 }
 
@@ -1581,17 +1488,29 @@ export async function getAlertCooldown(
   userId: string,
   alertId: string,
   cooldownMinutes: number = 60,
+  channel?: string,
 ): Promise<boolean> {
   try {
     const sql = getSQL();
     const intervalStr = `${cooldownMinutes} minutes`;
-    const rows = await sql`
-      SELECT 1 FROM alert_notifications
-      WHERE user_id = ${userId}
-        AND alert_id = ${alertId}
-        AND sent_at > NOW() - ${intervalStr}::interval
-      LIMIT 1
-    `;
+    // When channel is specified, only check cooldown for that specific channel.
+    // This prevents a successful email from blocking a failed Discord retry.
+    const rows = channel
+      ? await sql`
+          SELECT 1 FROM alert_notifications
+          WHERE user_id = ${userId}
+            AND alert_id = ${alertId}
+            AND channel = ${channel}
+            AND sent_at > NOW() - ${intervalStr}::interval
+          LIMIT 1
+        `
+      : await sql`
+          SELECT 1 FROM alert_notifications
+          WHERE user_id = ${userId}
+            AND alert_id = ${alertId}
+            AND sent_at > NOW() - ${intervalStr}::interval
+          LIMIT 1
+        `;
     return rows.length > 0;
   } catch (e) {
     console.error('DB getAlertCooldown error:', e);
@@ -2250,17 +2169,6 @@ export async function getAllPushSubscriptions() {
   }
 }
 
-export async function getAllActiveTelegramChatIds(): Promise<Array<{ chatId: string }>> {
-  try {
-    const db = getSQL();
-    const rows = await db`SELECT chat_id FROM telegram_users WHERE active = true`;
-    return rows.map((r: any) => ({ chatId: String(r.chat_id) }));
-  } catch (e) {
-    console.error('DB getAllActiveTelegramChatIds error:', e);
-    return [];
-  }
-}
-
 // ─── API Key Management (Public API v1) ─────────────────────────────────────
 
 import { randomBytes, createHash } from 'crypto';
@@ -2408,6 +2316,9 @@ export interface WhaleTrackedWallet {
   label: string | null;
   notifyChannels: string[];
   createdAt: string;
+  // Notification config (joined from user_prefs when ownerType = 'user')
+  discordWebhookUrl?: string;
+  whatsappPhone?: string;
 }
 
 export interface WhaleTradeEvent {
@@ -2574,14 +2485,21 @@ export async function getRecentTradesForWallet(
 export async function getTradeSubscribers(address: string, chain: string): Promise<WhaleTrackedWallet[]> {
   try {
     const sql = getSQL();
+    // Left-join user_prefs to get Discord/WhatsApp config for 'user' owner types
     const rows = await sql`
-      SELECT id, owner_type, owner_id, address, chain, label, notify_channels, created_at
-      FROM whale_tracked_wallets WHERE address = ${address.toLowerCase()} AND chain = ${chain}
+      SELECT w.id, w.owner_type, w.owner_id, w.address, w.chain, w.label, w.notify_channels, w.created_at,
+             up.prefs->'notificationPrefs'->>'discordWebhookUrl' AS discord_webhook_url,
+             up.prefs->'notificationPrefs'->>'whatsappPhone' AS whatsapp_phone
+      FROM whale_tracked_wallets w
+      LEFT JOIN user_prefs up ON w.owner_type = 'user' AND w.owner_id = up.user_id
+      WHERE w.address = ${address.toLowerCase()} AND w.chain = ${chain}
     `;
     return rows.map((r: any) => ({
       id: r.id, ownerType: r.owner_type, ownerId: r.owner_id,
       address: r.address, chain: r.chain, label: r.label,
       notifyChannels: r.notify_channels || [], createdAt: r.created_at,
+      discordWebhookUrl: r.discord_webhook_url || undefined,
+      whatsappPhone: r.whatsapp_phone || undefined,
     }));
   } catch (e) {
     console.error('getTradeSubscribers error:', e);

@@ -32,12 +32,12 @@ module.exports = {
           'gray-text': '#888888',
           'gray-text-light': '#b0b0b0',
         },
-        success: '#22c55e',
-        danger: '#ef4444',
-        warning: '#f59e0b',
-        info: '#3b82f6',
-        long: '#22c55e',
-        short: '#ef4444',
+        success: '#4ade80',
+        danger: '#f87171',
+        warning: '#fbbf24',
+        info: '#60a5fa',
+        long: '#4ade80',
+        short: '#f87171',
       },
       borderColor: {
         'hub-subtle': 'var(--hub-border-subtle)',
@@ -47,6 +47,17 @@ module.exports = {
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
+      },
+      /* Additive type scale — use these instead of ad-hoc text-[Npx] */
+      fontSize: {
+        'micro': ['11px', { lineHeight: '14px', letterSpacing: '0.005em' }],
+        'tiny':  ['12px', { lineHeight: '16px' }],
+        'body':  ['13px', { lineHeight: '18px' }],
+        'md':    ['15px', { lineHeight: '22px' }],
+        'hl':    ['18px', { lineHeight: '24px', letterSpacing: '-0.01em' }],
+        'display-sm': ['22px', { lineHeight: '28px', letterSpacing: '-0.015em' }],
+        'display':    ['28px', { lineHeight: '34px', letterSpacing: '-0.02em' }],
+        'display-lg': ['40px', { lineHeight: '44px', letterSpacing: '-0.025em' }],
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

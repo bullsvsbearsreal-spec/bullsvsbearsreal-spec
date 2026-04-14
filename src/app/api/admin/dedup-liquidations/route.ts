@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth';
 import { initDB, isDBConfigured, getSQL } from '@/lib/db';
 
 /**
@@ -11,17 +12,11 @@ import { initDB, isDBConfigured, getSQL } from '@/lib/db';
  * Removes duplicate rows keeping the one with the lowest id per
  * (symbol, exchange, side, round(price,2), round(ts to second)).
  *
- * Protected by CRON_SECRET.
+ * Protected by admin session auth.
  */
 export async function POST(request: NextRequest) {
-  // Auth
-  const { timingSafeEqual } = await import('crypto');
-  const authHeader = request.headers.get('authorization') || '';
-  const cronSecret = (process.env.CRON_SECRET || '').trim();
-  const expected = `Bearer ${cronSecret}`;
-  if (!cronSecret || authHeader.length !== expected.length || !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const adminErr = await requireAdmin();
+  if (adminErr) return adminErr;
 
   if (!isDBConfigured()) {
     return NextResponse.json({ error: 'DB not configured' }, { status: 503 });

@@ -71,6 +71,11 @@ const RSS_FEEDS: { url: string; name: string; type: SourceType; format?: 'atom' 
   { url: 'https://ambcrypto.com/feed/', name: 'AMBCrypto', type: 'news' },
   { url: 'https://www.newsbtc.com/feed/', name: 'NewsBTC', type: 'news' },
   { url: 'https://cryptobriefing.com/feed/', name: 'Crypto Briefing', type: 'news' },
+  // High-signal / Tree-of-Alpha-style sources
+  { url: 'https://watcher.guru/news/feed/', name: 'Watcher Guru', type: 'news' },
+  { url: 'https://protos.com/feed/', name: 'Protos', type: 'news' },
+  { url: 'https://unchainedcrypto.com/feed/', name: 'Unchained', type: 'news' },
+  { url: 'https://www.bitmex.com/feed', name: 'BitMEX Research', type: 'exchange' },
   // Exchange blogs
   { url: 'https://blog.kraken.com/feed/', name: 'Kraken', type: 'exchange' },
   { url: 'https://blog.mexc.com/feed/', name: 'MEXC', type: 'exchange' },
@@ -112,19 +117,21 @@ async function fetchCryptoCompare(currency?: string): Promise<UnifiedNewsArticle
     const data = await res.json();
     const articles: CCArticle[] = data.Data || [];
 
-    return articles.map(a => ({
-      id: `cc-${a.id}`,
-      title: a.title,
-      body: a.body?.substring(0, 300),
-      url: a.url,
-      imageUrl: a.imageurl,
-      source: a.source_info?.name || a.source,
-      sourceType: 'aggregator' as SourceType,
-      publishedAt: a.published_on,
-      categories: a.categories ? a.categories.split('|').filter(Boolean) : [],
-      currencies: extractCurrencies(a.categories, a.tags, a.title),
-      origin: 'cryptocompare' as const,
-    }));
+    return articles
+      .filter(a => a.published_on && !isNaN(a.published_on) && a.published_on > 0)
+      .map(a => ({
+        id: `cc-${a.id}`,
+        title: a.title,
+        body: a.body?.substring(0, 300),
+        url: a.url,
+        imageUrl: a.imageurl,
+        source: a.source_info?.name || a.source,
+        sourceType: 'aggregator' as SourceType,
+        publishedAt: a.published_on,
+        categories: a.categories ? a.categories.split('|').filter(Boolean) : [],
+        currencies: extractCurrencies(a.categories, a.tags, a.title),
+        origin: 'cryptocompare' as const,
+      }));
   } catch (err) {
     console.error('CryptoCompare fetch error:', err);
     return [];
@@ -299,6 +306,201 @@ function hashTitle(title: string): string {
   return Math.abs(h).toString(36);
 }
 
+/* ─── Fetch Binance announcements (listing firehose) ────────── */
+
+interface BinanceArticle {
+  id: number;
+  code: string;
+  title: string;
+  releaseDate: number;
+}
+
+async function fetchBinanceAnnouncements(): Promise<UnifiedNewsArticle[]> {
+  const cached = getCached<UnifiedNewsArticle[]>('binance-announcements');
+  if (cached) return cached;
+
+  // Catalog IDs: 48 = New Listings, 49 = Latest News, 161 = Airdrops
+  const catalogs = [
+    { id: 48, label: 'Listings' },
+    { id: 49, label: 'Latest' },
+  ];
+
+  const all: UnifiedNewsArticle[] = [];
+  await Promise.all(
+    catalogs.map(async ({ id, label }) => {
+      try {
+        const res = await fetch(
+          `https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=${id}&pageNo=1&pageSize=15`,
+          {
+            signal: AbortSignal.timeout(6000),
+            headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
+          },
+        );
+        if (!res.ok) return;
+        const json = await res.json();
+        const articles: BinanceArticle[] = json?.data?.catalogs?.[0]?.articles || [];
+        for (const a of articles) {
+          all.push({
+            id: `binance-ann-${a.id}`,
+            title: a.title,
+            url: `https://www.binance.com/en/support/announcement/${a.code}`,
+            source: `Binance ${label}`,
+            sourceType: 'exchange',
+            publishedAt: Math.floor(a.releaseDate / 1000),
+            categories: [label.toLowerCase()],
+            currencies: extractCurrenciesFromTitle(a.title),
+            origin: 'rss' as const,
+          });
+        }
+      } catch (err) {
+        console.error(`Binance announcement fetch error (${label}):`, err);
+      }
+    }),
+  );
+
+  setCache('binance-announcements', all);
+  return all;
+}
+
+/* ─── OKX Announcements ─────────────────────────────────────── */
+
+async function fetchOKXAnnouncements(): Promise<UnifiedNewsArticle[]> {
+  const cached = getCached<UnifiedNewsArticle[]>('okx-announcements');
+  if (cached) return cached;
+
+  const all: UnifiedNewsArticle[] = [];
+  try {
+    const res = await fetch(
+      'https://www.okx.com/v2/support/home/web/announcement?page=1&annType=all',
+      {
+        signal: AbortSignal.timeout(6000),
+        headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
+      },
+    );
+    if (!res.ok) { setCache('okx-announcements', all); return all; }
+    const json = await res.json();
+    const items: any[] = json?.data?.notices || json?.data?.announcements || [];
+    for (const item of items.slice(0, 20)) {
+      const title = item.title || item.annTitle || '';
+      const id = item.annId || item.id || hashTitle(title);
+      const pubTime = item.pTime || item.publishTime || item.publishDate || 0;
+      const publishedAt = typeof pubTime === 'number'
+        ? (pubTime > 1e12 ? Math.floor(pubTime / 1000) : pubTime)
+        : Math.floor(new Date(pubTime).getTime() / 1000);
+      if (!title || isNaN(publishedAt) || publishedAt <= 0) continue;
+      all.push({
+        id: `okx-ann-${id}`,
+        title: decodeHTMLEntities(title),
+        url: `https://www.okx.com/support/hc/announcements/${id}`,
+        source: 'OKX',
+        sourceType: 'exchange',
+        publishedAt,
+        categories: ['announcement'],
+        currencies: extractCurrenciesFromTitle(title),
+        origin: 'rss' as const,
+      });
+    }
+  } catch (err) {
+    console.error('OKX announcement fetch error:', err);
+  }
+
+  setCache('okx-announcements', all);
+  return all;
+}
+
+/* ─── Bybit Announcements ───────────────────────────────────── */
+
+async function fetchBybitAnnouncements(): Promise<UnifiedNewsArticle[]> {
+  const cached = getCached<UnifiedNewsArticle[]>('bybit-announcements');
+  if (cached) return cached;
+
+  const all: UnifiedNewsArticle[] = [];
+  try {
+    const res = await fetch(
+      'https://api.bybit.com/v5/announcements/index?locale=en-US&limit=20',
+      {
+        signal: AbortSignal.timeout(6000),
+        headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
+      },
+    );
+    if (!res.ok) { setCache('bybit-announcements', all); return all; }
+    const json = await res.json();
+    const items: any[] = json?.result?.list || [];
+    for (const item of items) {
+      const title = item.title || '';
+      const id = item.announcementId || item.id || hashTitle(title);
+      const pubTime = item.publishTime || item.dateTimestamp || 0;
+      const publishedAt = typeof pubTime === 'number'
+        ? (pubTime > 1e12 ? Math.floor(pubTime / 1000) : pubTime)
+        : Math.floor(new Date(pubTime).getTime() / 1000);
+      if (!title || isNaN(publishedAt) || publishedAt <= 0) continue;
+      all.push({
+        id: `bybit-ann-${id}`,
+        title: decodeHTMLEntities(title),
+        url: item.url || `https://announcements.bybit.com/article/${item.slug || id}`,
+        source: 'Bybit',
+        sourceType: 'exchange',
+        publishedAt,
+        categories: [item.type?.title?.toLowerCase() || 'announcement'],
+        currencies: extractCurrenciesFromTitle(title),
+        origin: 'rss' as const,
+      });
+    }
+  } catch (err) {
+    console.error('Bybit announcement fetch error:', err);
+  }
+
+  setCache('bybit-announcements', all);
+  return all;
+}
+
+/* ─── Bitget Announcements ──────────────────────────────────── */
+
+async function fetchBitgetAnnouncements(): Promise<UnifiedNewsArticle[]> {
+  const cached = getCached<UnifiedNewsArticle[]>('bitget-announcements');
+  if (cached) return cached;
+
+  const all: UnifiedNewsArticle[] = [];
+  try {
+    // Bitget public announcement endpoint — annType: new_listing(6), latest(1)
+    const res = await fetch(
+      'https://api.bitget.com/api/v2/public/annoucements?language=en_US&annType=all&pageNo=1&pageSize=20',
+      {
+        signal: AbortSignal.timeout(6000),
+        headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
+      },
+    );
+    if (!res.ok) { setCache('bitget-announcements', all); return all; }
+    const json = await res.json();
+    const items: any[] = json?.data?.items || json?.data || [];
+    for (const item of items.slice(0, 20)) {
+      const title = item.annTitle || item.title || '';
+      const id = item.annId || item.id || hashTitle(title);
+      const pubTime = item.annTime || item.cTime || item.publishTime || 0;
+      const publishedAt = typeof pubTime === 'number'
+        ? (pubTime > 1e12 ? Math.floor(pubTime / 1000) : pubTime)
+        : Math.floor(new Date(pubTime).getTime() / 1000);
+      if (!title || isNaN(publishedAt) || publishedAt <= 0) continue;
+      all.push({
+        id: `bitget-ann-${id}`,
+        title: decodeHTMLEntities(title),
+        url: item.annUrl || `https://www.bitget.com/support/articles/${id}`,
+        source: 'Bitget',
+        sourceType: 'exchange',
+        publishedAt,
+        categories: ['announcement'],
+        currencies: extractCurrenciesFromTitle(title),
+        origin: 'rss' as const,
+      });
+    }
+  } catch (err) {
+    console.error('Bitget announcement fetch error:', err);
+  }
+
+  setCache('bitget-announcements', all);
+  return all;
+}
+
 async function fetchRSSFeeds(): Promise<UnifiedNewsArticle[]> {
   const cached = getCached<UnifiedNewsArticle[]>('rss-raw');
   if (cached) return cached;
@@ -328,10 +530,22 @@ async function fetchRSSFeeds(): Promise<UnifiedNewsArticle[]> {
 /* ─── Helpers ────────────────────────────────────────────────── */
 
 const COMMON_COINS = new Set([
+  // Top 20 by mcap
   'BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'UNI',
-  'MATIC', 'ARB', 'OP', 'SUI', 'BNB', 'TRX', 'TON', 'NEAR', 'APT', 'SEI',
-  'TIA', 'JUP', 'WIF', 'PEPE', 'BONK', 'RENDER', 'FET', 'INJ', 'AAVE',
-  'MKR', 'LDO', 'CRV', 'PENDLE', 'ENA', 'EIGEN', 'STRK', 'ZK', 'HYPE',
+  'BNB', 'TRX', 'TON', 'NEAR', 'APT', 'SUI', 'HBAR', 'BCH', 'LTC', 'XLM',
+  // L2s & infra
+  'MATIC', 'ARB', 'OP', 'SEI', 'TIA', 'STRK', 'ZK', 'EIGEN', 'MANTA', 'BLAST',
+  // DeFi
+  'AAVE', 'MKR', 'LDO', 'CRV', 'PENDLE', 'ENA', 'COMP', 'SNX', 'DYDX',
+  'GMX', 'JUP', 'RAY', 'ONDO', 'ETHFI',
+  // AI & compute
+  'RENDER', 'FET', 'TAO', 'AKT', 'IO', 'GRASS',
+  // Memecoins
+  'WIF', 'PEPE', 'BONK', 'SHIB', 'FLOKI', 'FARTCOIN', 'POPCAT', 'BOME', 'PENGU',
+  // Gaming & social
+  'IMX', 'GALA', 'AXS', 'SAND', 'MANA',
+  // Perp DEXs tracked by InfoHub
+  'HYPE', 'INJ', 'DRIFT', 'AEVO',
 ]);
 
 function extractCurrencies(categories: string, tags: string, title: string): string[] {
@@ -349,11 +563,27 @@ function extractCurrenciesFromTitle(title: string): string[] {
 }
 
 function addTitleMentions(title: string, found: string[]): void {
-  // $SYMBOL pattern
+  // $SYMBOL pattern (e.g. "$BTC", "$ETH")
   const dollarMatches = title.match(/\$([A-Z]{2,6})/g);
   if (dollarMatches) {
     for (const m of dollarMatches) {
       const sym = m.replace('$', '');
+      if (COMMON_COINS.has(sym)) found.push(sym);
+    }
+  }
+  // (SYMBOL) pattern — common in exchange listing announcements
+  const parenMatches = title.match(/\(([A-Z]{2,6})\)/g);
+  if (parenMatches) {
+    for (const m of parenMatches) {
+      const sym = m.replace(/[()]/g, '');
+      if (COMMON_COINS.has(sym)) found.push(sym);
+    }
+  }
+  // SYMBOL/USDT or SYMBOL/USD pattern — common in trading pair announcements
+  const pairMatches = title.match(/\b([A-Z]{2,6})\/(?:USDT|USD|USDC|BTC|ETH)\b/g);
+  if (pairMatches) {
+    for (const m of pairMatches) {
+      const sym = m.split('/')[0];
       if (COMMON_COINS.has(sym)) found.push(sym);
     }
   }
@@ -363,7 +593,12 @@ function addTitleMentions(title: string, found: string[]): void {
     cardano: 'ADA', avalanche: 'AVAX', polkadot: 'DOT', chainlink: 'LINK',
     uniswap: 'UNI', arbitrum: 'ARB', optimism: 'OP', celestia: 'TIA',
     jupiter: 'JUP', aave: 'AAVE', pendle: 'PENDLE', injective: 'INJ',
-    hyperliquid: 'HYPE',
+    hyperliquid: 'HYPE', litecoin: 'LTC', toncoin: 'TON', tron: 'TRX',
+    hedera: 'HBAR', aptos: 'APT', sui: 'SUI', pepe: 'PEPE', bonk: 'BONK',
+    render: 'RENDER', worldcoin: 'WLD', mantle: 'MNT', starknet: 'STRK',
+    shiba: 'SHIB', floki: 'FLOKI', immutable: 'IMX', near: 'NEAR',
+    maker: 'MKR', compound: 'COMP', synthetix: 'SNX', ondo: 'ONDO',
+    eigenlayer: 'EIGEN', ethena: 'ENA', drift: 'DRIFT',
   };
   const lower = title.toLowerCase();
   for (const [name, sym] of Object.entries(nameMap)) {
@@ -473,15 +708,19 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch from all sources in parallel
-  const [ccArticles, cpArticles, rssArticles, macroEvents] = await Promise.all([
+  const [ccArticles, cpArticles, rssArticles, binanceAnn, okxAnn, bybitAnn, bitgetAnn, macroEvents] = await Promise.all([
     fetchCryptoCompare(currency || undefined),
     fetchCryptoPanic(filter, currency || undefined),
     fetchRSSFeeds(),
+    fetchBinanceAnnouncements(),
+    fetchOKXAnnouncements(),
+    fetchBybitAnnouncements(),
+    fetchBitgetAnnouncements(),
     fetchMacroEvents(),
   ]);
 
-  // Merge and deduplicate (CryptoPanic first for sentiment data priority)
-  let merged = deduplicateArticles([...cpArticles, ...rssArticles, ...ccArticles]);
+  // Merge and deduplicate (exchange announcements first — highest signal, market-moving)
+  let merged = deduplicateArticles([...binanceAnn, ...okxAnn, ...bybitAnn, ...bitgetAnn, ...cpArticles, ...rssArticles, ...ccArticles]);
 
   // Sort by publish time (newest first)
   merged.sort((a, b) => b.publishedAt - a.publishedAt);
@@ -534,6 +773,7 @@ export async function GET(request: NextRequest) {
   for (const feed of RSS_FEEDS) {
     if (rssArticles.some(a => a.source === feed.name)) sourceSet.add(feed.name);
   }
+  for (const a of [...binanceAnn, ...okxAnn, ...bybitAnn, ...bitgetAnn]) sourceSet.add(a.source);
   const sources = Array.from(sourceSet);
 
   const result = { articles, total, trending, sources, macroEvents };

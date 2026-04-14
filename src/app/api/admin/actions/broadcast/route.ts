@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, auth } from '@/lib/auth';
-import { recordAuditEvent, getAllPushSubscriptions, getAllActiveTelegramChatIds } from '@/lib/db';
+import { initDB, recordAuditEvent, getAllPushSubscriptions, getAllActiveTelegramChatIds } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
   if (!channels || !Array.isArray(channels) || channels.length === 0) {
     return NextResponse.json({ error: 'At least one channel required' }, { status: 400 });
   }
+
+  await initDB();
 
   const result = { push: { sent: 0, failed: 0 }, telegram: { sent: 0, failed: 0 } };
 
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
     if (botToken) {
       const chatIds = await getAllActiveTelegramChatIds();
-      for (const { chatId } of chatIds) {
+      for (const chatId of chatIds) {
         try {
           const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: 'POST',

@@ -18,7 +18,6 @@ import Logo from './Logo';
 import CoinSearch from './CoinSearch';
 import CommandPalette from './CommandPalette';
 import ThemeToggle from './ThemeToggle';
-import SoundToggle from './SoundToggle';
 import UserMenu from './UserMenu';
 import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
 import Breadcrumbs from './Breadcrumbs';
@@ -409,10 +408,10 @@ export default function Header() {
               <Logo size="lg" />
             </Link>
 
-            {/* Desktop navigation */}
+            {/* Desktop navigation (lg+ only — tablet falls back to hamburger) */}
             <nav
               ref={navRef}
-              className="hidden md:flex items-center gap-0.5"
+              className="hidden lg:flex items-center gap-0.5"
               aria-label="Main navigation"
             >
               {navCategories.map((cat) => {
@@ -454,34 +453,33 @@ export default function Header() {
             </nav>
           </div>
 
-          {/* Right: Theme + Search + Auth + Mobile toggle */}
+          {/* Right: Search + Theme + Auth + Mobile toggle */}
           <div className="flex items-center gap-2" ref={searchRef}>
-            <SoundToggle />
-            <ThemeToggle />
-            <button
-              onClick={() => setShortcutsOpen(true)}
-              className="hidden sm:flex items-center justify-center w-7 h-7 rounded-md text-neutral-600 hover:text-white hover:bg-white/[0.06] transition-colors text-[13px] font-medium"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts (?)"
-            >
-              ?
-            </button>
-            <UserMenu />
-
+            {/* Prominent search — primary navigation pattern (desktop only, lg+) */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-neutral-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-[13px]"
+              className="hidden lg:flex items-center gap-2 h-8 pl-3 pr-2 rounded-lg text-neutral-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] transition-colors text-[13px] w-56"
               aria-label="Search pages and coins"
             >
               <Search className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Search</span>
-              <kbd className="hidden sm:inline text-[10px] text-neutral-600 bg-white/[0.06] px-1.5 py-0.5 rounded ml-2">
-                Ctrl K
-              </kbd>
+              <span className="flex-1 text-left text-neutral-500">Search or jump to...</span>
+              <kbd className="text-[10px] text-neutral-500 font-mono bg-white/[0.06] px-1.5 py-0.5 rounded">⌘K</kbd>
             </button>
 
+            {/* Compact icon search — mobile + tablet (up to lg) */}
             <button
-              className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
+              onClick={() => setSearchOpen(true)}
+              className="lg:hidden flex items-center justify-center w-8 h-8 rounded-md text-neutral-400 hover:text-white bg-white/[0.04]"
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
+            <ThemeToggle />
+            <UserMenu />
+
+            <button
+              className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
@@ -497,7 +495,7 @@ export default function Header() {
       {mobileOpen && (
         <div
           id="mobile-nav"
-          className="md:hidden bg-hub-dark border-t border-white/[0.06] max-h-[80vh] overflow-y-auto"
+          className="lg:hidden bg-hub-dark border-t border-white/[0.06] max-h-[80vh] overflow-y-auto"
           role="dialog"
           aria-modal="true"
           aria-label="Navigation menu"

@@ -12,13 +12,14 @@ import CoinSearch from '@/components/CoinSearch';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { CoinSearchResult } from '@/lib/api/coingecko';
-import { ArrowRight, Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, Search, Radio, ChevronRight, Globe, Lock, Crosshair, ArrowLeftRight } from 'lucide-react';
+import { Activity, TrendingUp, Zap, BarChart3, Newspaper, Shield, GitCompareArrows, ChevronRight, Globe, Crosshair, ArrowLeftRight } from 'lucide-react';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber } from '@/lib/utils/format';
 import { type ExchangeHealthInfo } from '@/lib/api/aggregator';
 import { type FundingRateData } from '@/lib/api/types';
 import { type NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
 import Footer from '@/components/Footer';
+import RecentPages from '@/components/RecentPages';
 
 // Dynamic imports — below-the-fold widgets + heavy data modules
 const StatsOverview = dynamic(() => import('@/components/StatsOverview'));
@@ -28,6 +29,7 @@ const TopMovers = dynamic(() => import('@/components/TopMovers'));
 const OIChangeWidget = dynamic(() => import('@/components/OIChangeWidget'));
 const LongShortRatio = dynamic(() => import('@/components/LongShortRatio'));
 const MarketIndices = dynamic(() => import('@/components/MarketIndices'));
+const MarketTiles = dynamic(() => import('@/components/MarketTiles'));
 
 const QUICK_LINKS = [
   { name: 'Funding', href: '/funding', icon: Activity, desc: 'Live rates', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
@@ -49,19 +51,6 @@ export default function HomeOrange() {
   const [exchangeHealth, setExchangeHealth] = useState<ExchangeHealthInfo[]>([]);
   const [activeExchangeCount, setActiveExchangeCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [heroCollapsed, setHeroCollapsed] = useState(false);
-
-  // Collapse hero for returning visitors
-  useEffect(() => {
-    try {
-      const visited = localStorage.getItem('infohub-visited');
-      if (visited) {
-        setHeroCollapsed(true);
-      } else {
-        localStorage.setItem('infohub-visited', 'true');
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -100,9 +89,7 @@ export default function HomeOrange() {
 
   const cexExchanges = ALL_EXCHANGES.filter(e => !isExchangeDex(e));
   const dexExchanges = ALL_EXCHANGES.filter(e => isExchangeDex(e));
-  // Exchanges known to be CloudFlare-blocked on Vercel datacenter IPs (now proxied via proxy.info-hub.io)
-  const KNOWN_BLOCKED = new Set<string>([]);
-  // Before health data loads, assume all exchanges are active (except known-blocked)
+  // Before health data loads, assume all exchanges are active
   const healthLoaded = exchangeHealth.length > 0;
   const isExchangeActive = (name: string) => {
     const h = exchangeHealth.find(x => x.name === name);
@@ -110,109 +97,146 @@ export default function HomeOrange() {
   };
   const activeCex = healthLoaded
     ? cexExchanges.filter(isExchangeActive).length
-    : cexExchanges.filter(e => !KNOWN_BLOCKED.has(e)).length;
+    : cexExchanges.length;
   const activeDex = healthLoaded
     ? dexExchanges.filter(isExchangeActive).length
-    : dexExchanges.filter(e => !KNOWN_BLOCKED.has(e)).length;
+    : dexExchanges.length;
 
   // QUICK_LINKS defined at module scope for stable references
+
+  // Sidebar navigation groups — Bloomberg/Coinglass-style category tree
+  const NAV_GROUPS = [
+    {
+      label: 'Derivatives',
+      items: [
+        { name: 'Funding Rates', href: '/funding', icon: Activity, color: '#22c55e' },
+        { name: 'Open Interest', href: '/open-interest', icon: BarChart3, color: '#8b5cf6' },
+        { name: 'Liquidations', href: '/liquidations', icon: Zap, color: '#ff1744' },
+        { name: 'Long/Short', href: '/longshort', icon: GitCompareArrows, color: '#3b82f6' },
+      ],
+    },
+    {
+      label: 'Markets',
+      items: [
+        { name: 'Screener', href: '/screener', icon: TrendingUp, color: '#3b82f6' },
+        { name: 'Spreads', href: '/spreads', icon: ArrowLeftRight, color: '#ffa726' },
+        { name: 'Compare', href: '/compare', icon: GitCompareArrows, color: '#ffa500' },
+        { name: 'Predictions', href: '/prediction-markets', icon: Crosshair, color: '#e040fb' },
+      ],
+    },
+    {
+      label: 'Intel',
+      items: [
+        { name: 'News', href: '/news', icon: Newspaper, color: '#f59e0b' },
+        { name: 'Exchanges', href: '#infra', icon: Globe, color: '#22c55e' },
+      ],
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
       <TopStatsBar />
-      <MarketTicker />
+      {/* Sticky Bloomberg-style live tape — majors prices pinned below stats */}
+      <MarketTiles />
 
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6">
+      {/* ═══ Terminal Layout: Sticky Sidebar + Dense Bento Content ═══ */}
+      <div id="main-content" className="max-w-[1600px] mx-auto flex gap-0">
 
-        {/* ═══ Hero Section (collapses for returning visitors) ═══ */}
-        <section className={`relative ${heroCollapsed ? 'pt-3 pb-2 mb-1' : 'pt-8 pb-6 mb-2'}`}>
-          <div className="absolute inset-0 hero-mesh pointer-events-none" aria-hidden="true" />
+        {/* ═══ Left rail — sticky category nav ═══ */}
+        <aside className="terminal-sidebar hidden lg:flex">
+          <div className="sidebar-search">
+            <CoinSearch
+              onSelect={handleCoinSelect}
+              placeholder="Search coin..."
+              className="w-full"
+              compact
+            />
+          </div>
 
-          <div className="relative">
-            {/* Title area — compact for returning visitors */}
-            {!heroCollapsed && (
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                      <span className="text-white">info</span><span className="bg-gradient-to-r from-hub-yellow-light via-hub-yellow to-hub-orange bg-clip-text text-transparent">hub</span>
-                    </h1>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
-                      <span className="live-dot" />
-                      <span className="text-green-400 text-[10px] font-semibold uppercase tracking-wider">Live</span>
-                    </div>
-                  </div>
-                  <p className="text-neutral-500 text-sm max-w-md">
-                    Real-time derivatives intelligence across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span>. Funding, OI, liquidations & more.
-                  </p>
-                </div>
+          <div className="sidebar-scroll">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="sidebar-group">
+                <div className="sidebar-group-label">{group.label}</div>
+                {group.items.map((item) => (
+                  <Link key={item.href} href={item.href} className="sidebar-item group/nav">
+                    <item.icon className="sidebar-item-icon" style={{ color: item.color }} />
+                    <span className="sidebar-item-label">{item.name}</span>
+                    <ChevronRight className="sidebar-item-arrow" />
+                  </Link>
+                ))}
               </div>
-            )}
+            ))}
+          </div>
 
-            {/* Search bar — elevated */}
-            <div className={`max-w-xl ${heroCollapsed ? 'mb-3' : 'mb-6'}`}>
-              <CoinSearch
-                onSelect={handleCoinSelect}
-                placeholder="Search any coin for events, unlocks & news..."
-                className="w-full"
-                compact
-              />
+          {/* Live footer: compact stats summary */}
+          <div className="sidebar-footer">
+            <div className="sidebar-footer-row">
+              <span className="live-dot" />
+              <span className="sidebar-footer-label">Online</span>
+              <span className="sidebar-footer-value">{ALL_EXCHANGES.length}</span>
             </div>
-
-            {/* Quick access grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-              {QUICK_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="group flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-hub-yellow-dark/30 hover:bg-hub-yellow/[0.04] hover:shadow-[0_0_16px_rgba(255,140,0,0.08)] transition-all duration-200"
-                >
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-all" style={{ background: link.bg }}>
-                    <link.icon className="w-4.5 h-4.5 transition-colors" style={{ color: link.color }} />
-                  </div>
-                  <span className="text-neutral-300 group-hover:text-white text-[11px] font-semibold transition-colors">{link.name}</span>
-                  <span className="text-neutral-600 text-[9px] -mt-1 hidden sm:block">{link.desc}</span>
-                </Link>
-              ))}
+            <div className="sidebar-footer-row">
+              <span className="sidebar-footer-dot" style={{ background: '#8b5cf6' }} />
+              <span className="sidebar-footer-label">DEX</span>
+              <span className="sidebar-footer-value">{dexExchanges.length}</span>
+            </div>
+            <div className="sidebar-footer-row">
+              <span className="sidebar-footer-dot" style={{ background: '#22c55e' }} />
+              <span className="sidebar-footer-label">CEX</span>
+              <span className="sidebar-footer-value">{cexExchanges.length}</span>
             </div>
           </div>
-        </section>
+        </aside>
 
-        {/* Accent divider */}
-        <div className="accent-line mb-6" />
+        {/* ═══ Main content column ═══ */}
+        <main className="terminal-main flex-1 min-w-0 px-4 sm:px-5 pt-4 pb-10">
 
-        {/* ═══ Stats Overview ═══ */}
-        <section id="stats" className="mb-6 stagger scroll-mt-16">
+        {/* ═══ Mobile-only: search + quick pills (sidebar is hidden on mobile) ═══ */}
+        <div className="lg:hidden mb-4 space-y-3">
+          <CoinSearch
+            onSelect={handleCoinSelect}
+            placeholder="Search any coin..."
+            className="w-full"
+            compact
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {QUICK_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] font-medium text-neutral-300"
+              >
+                <link.icon className="w-3.5 h-3.5" style={{ color: link.color }} />
+                <span>{link.name}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Recently viewed pages — self-hides when empty */}
+        <RecentPages />
+
+        {/* ═══ Stats tiles row — dense data snapshot ═══ */}
+        <section id="stats" className="mb-4 stagger scroll-mt-16">
           <StatsOverview />
         </section>
 
-        <div className="section-divider" />
-
-        {/* ═══ Trading Signals Row ═══ */}
-        <section id="signals" className="mb-6 scroll-mt-16">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Trading Signals</span>
-            <div className="flex-1 h-px bg-white/[0.04]" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
-            <MarketIndices />
-            <TopMovers />
-            <LongShortRatio />
-          </div>
+        {/* ═══ HERO: Liquidation Heatmap — full-width centerpiece ═══ */}
+        <section id="pulse" className="mb-4 scroll-mt-16 stagger">
+          <LiquidationHeatmap />
         </section>
 
-        <div className="section-divider" />
-
-        {/* ═══ Data Feeds Row ═══ */}
-        <section id="feeds" className="mb-6 scroll-mt-16">
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Data Feeds</span>
-            <div className="flex-1 h-px bg-white/[0.04]" />
+        {/* ═══ Data Feeds Row — Sentiment + Funding + OI + News ═══ */}
+        <section id="feeds" className="mb-4 scroll-mt-16">
+          <div className="cg-section-head mb-2">
+            <h2 className="cg-section-title">Sentiment · Funding · Open Interest · News</h2>
+            <div className="cg-section-rule" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 stagger">
+
+            {/* Fear & Greed — compact sentiment gauge */}
+            <FearGreedIndex />
 
             {/* Top Funding Rates */}
             <div className="card-premium p-4">
@@ -231,7 +255,7 @@ export default function HomeOrange() {
               {loading ? (
                 <div className="space-y-1.5">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="animate-pulse h-9 bg-white/[0.03] rounded-lg" />
+                    <div key={i} className="skeleton h-9" />
                   ))}
                 </div>
               ) : (
@@ -258,7 +282,7 @@ export default function HomeOrange() {
                           <TokenIconSimple symbol={item.symbol} size={18} />
                           <div className="flex flex-col flex-1 min-w-0">
                             <span className="text-white font-medium text-xs">{item.symbol}</span>
-                            <span className="text-neutral-600 text-[9px] leading-none">{item.exchange}</span>
+                            <span className="text-neutral-500 text-[10px] leading-none">{item.exchange}</span>
                           </div>
                           <div className="relative has-tooltip">
                             <span className={`delta-badge ${
@@ -308,7 +332,7 @@ export default function HomeOrange() {
               {loading ? (
                 <div className="space-y-1.5">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="animate-pulse h-14 bg-white/[0.03] rounded-lg" />
+                    <div key={i} className="skeleton h-14" />
                   ))}
                 </div>
               ) : (
@@ -327,7 +351,7 @@ export default function HomeOrange() {
                         </h4>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-[10px] text-hub-yellow/60 font-medium">{article.source_info?.name || article.source}</span>
-                          <span className="text-neutral-700 text-[8px]">&middot;</span>
+                          <span className="text-neutral-700">&middot;</span>
                           <span className="text-[10px] text-neutral-600">{formatTimeAgo(article.published_on)}</span>
                         </div>
                       </a>
@@ -345,34 +369,25 @@ export default function HomeOrange() {
           </div>
         </section>
 
-        <div className="section-divider" />
-
-        {/* ═══ Market Pulse — Fear & Greed + Liquidation ═══ */}
-        <section id="pulse" className="mb-6 scroll-mt-16">
-          <div className="flex items-center gap-2 mb-3">
-            <Radio className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Market Pulse</span>
-            <div className="flex-1 h-px bg-white/[0.04]" />
+        {/* ═══ Market Snapshot row ═══ */}
+        <section id="signals" className="mb-4 scroll-mt-16">
+          <div className="cg-section-head mb-2">
+            <h2 className="cg-section-title">Market Snapshot</h2>
+            <div className="cg-section-rule" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 stagger">
-            <div className="md:col-span-3">
-              <FearGreedIndex />
-            </div>
-            <div className="md:col-span-2">
-              <LiquidationHeatmap />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
+            <MarketIndices />
+            <TopMovers />
+            <LongShortRatio />
           </div>
         </section>
 
-        <div className="section-divider" />
-
         {/* ═══ Exchange Status ═══ */}
-        <section id="infra" className="mb-10 scroll-mt-16">
-          <div className="flex items-center gap-2 mb-3">
-            <Globe className="w-3.5 h-3.5 text-hub-yellow" />
-            <span className="section-label">Infrastructure</span>
-            <div className="flex-1 h-px bg-white/[0.04]" />
-            <div className="flex items-center gap-3 text-[10px]">
+        <section id="infra" className="mb-6 scroll-mt-16">
+          <div className="cg-section-head mb-2">
+            <h2 className="cg-section-title">Exchange Status · {ALL_EXCHANGES.length} sources</h2>
+            <div className="cg-section-rule" />
+            <div className="flex items-center gap-3 text-[10px] ml-3">
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />
                 <span className="text-neutral-500">Active</span>
@@ -422,8 +437,7 @@ export default function HomeOrange() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
                   {cexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
-                    const isBlocked = KNOWN_BLOCKED.has(exchange);
-                    const isActive = !isBlocked && (health?.status === 'ok' || !healthLoaded);
+                    const isActive = health?.status === 'ok' || !healthLoaded;
                     const isEmpty = healthLoaded && health?.status === 'empty';
                     const isCircuitOpen = healthLoaded && health?.status === 'circuit-open';
                     return (
@@ -440,7 +454,7 @@ export default function HomeOrange() {
                                   ? 'bg-red-500/5 border border-red-500/15'
                                   : 'bg-white/[0.02] border border-white/[0.04]'
                         }`}
-                        title={isBlocked ? `${exchange}: CloudFlare blocked on datacenter IPs` : health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
+                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
                           isActive ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : isCircuitOpen ? 'bg-orange-500 animate-pulse' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
@@ -448,13 +462,10 @@ export default function HomeOrange() {
                         <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
                         <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : isCircuitOpen ? 'text-neutral-500' : 'text-neutral-600'}`}>{exchange}</span>
                         {isActive && health && (
-                          <span className="text-[9px] text-green-500/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
+                          <span className="text-[10px] text-green-500/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
                         )}
                         {isCircuitOpen && (
-                          <span className="text-[9px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
-                        )}
-                        {isBlocked && (
-                          <span className="text-[9px] text-neutral-600 font-mono ml-auto flex-shrink-0">CF</span>
+                          <span className="text-[10px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
                         )}
                       </div>
                     );
@@ -478,8 +489,7 @@ export default function HomeOrange() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
                   {dexExchanges.map((exchange) => {
                     const health = exchangeHealth.find(h => h.name === exchange);
-                    const isBlocked = KNOWN_BLOCKED.has(exchange);
-                    const isActive = !isBlocked && (health?.status === 'ok' || !healthLoaded);
+                    const isActive = health?.status === 'ok' || !healthLoaded;
                     const isEmpty = healthLoaded && health?.status === 'empty';
                     const isCircuitOpen = healthLoaded && health?.status === 'circuit-open';
                     return (
@@ -496,7 +506,7 @@ export default function HomeOrange() {
                                   ? 'bg-red-500/5 border border-red-500/15'
                                   : 'bg-white/[0.02] border border-white/[0.04]'
                         }`}
-                        title={isBlocked ? `${exchange}: CloudFlare blocked on datacenter IPs` : health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
+                        title={health ? `${exchange}: ${health.count} pairs · ${health.latencyMs}ms${isCircuitOpen ? ' · Circuit breaker open (recovering)' : ''}${health.error ? ` · ${health.error}` : ''}` : exchange}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
                           isActive ? 'bg-purple-500 shadow-[0_0_4px_rgba(168,85,247,0.4)]' : isCircuitOpen ? 'bg-orange-500 animate-pulse' : isEmpty ? 'bg-yellow-500' : health ? 'bg-red-500/60' : 'bg-neutral-600'
@@ -504,13 +514,10 @@ export default function HomeOrange() {
                         <ExchangeLogo exchange={exchange.toLowerCase()} size={14} />
                         <span className={`text-xs font-medium truncate ${isActive ? 'text-neutral-300' : isCircuitOpen ? 'text-neutral-500' : 'text-neutral-600'}`}>{exchange}</span>
                         {isActive && health && (
-                          <span className="text-[9px] text-purple-400/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
+                          <span className="text-[10px] text-purple-400/50 font-mono ml-auto flex-shrink-0">{health.count}</span>
                         )}
                         {isCircuitOpen && (
-                          <span className="text-[9px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
-                        )}
-                        {isBlocked && (
-                          <span className="text-[9px] text-neutral-600 font-mono ml-auto flex-shrink-0">CF</span>
+                          <span className="text-[10px] text-orange-500/60 font-mono ml-auto flex-shrink-0">CB</span>
                         )}
                       </div>
                     );
@@ -521,25 +528,7 @@ export default function HomeOrange() {
           </div>
         </section>
 
-      </main>
-
-      {/* Quick-jump floating pills */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 hidden sm:flex gap-1.5 px-2 py-1.5 bg-hub-dark/90 backdrop-blur-md border border-white/[0.08] rounded-full shadow-2xl">
-        {[
-          { id: 'stats', label: 'Stats' },
-          { id: 'signals', label: 'Signals' },
-          { id: 'feeds', label: 'Feeds' },
-          { id: 'pulse', label: 'Pulse' },
-          { id: 'infra', label: 'Infra' },
-        ].map((pill) => (
-          <a
-            key={pill.id}
-            href={`#${pill.id}`}
-            className="px-3 py-1 text-[11px] font-semibold rounded-full text-neutral-500 hover:text-hub-yellow hover:bg-hub-yellow/10 transition-all"
-          >
-            {pill.label}
-          </a>
-        ))}
+        </main>
       </div>
 
       <Footer />

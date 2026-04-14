@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   let exchangeCount = 0;
 
   try {
-    const fundingRes = await fetch(`${origin}/api/funding`).then((r) => r.ok ? r.json() : null);
+    const fundingRes = await fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(10_000) }).then((r) => r.ok ? r.json() : null);
     if (fundingRes?.data) {
       // Gather unique symbols, prioritize by appearing on most exchanges
       const symbolCounts = new Map<string, number>();

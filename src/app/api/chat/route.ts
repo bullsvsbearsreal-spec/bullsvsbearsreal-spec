@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
   let btcOI: number | undefined;
   try {
     const [tickerRes, oiRes] = await Promise.all([
-      fetch(`${origin}/api/tickers`).then((r) => r.ok ? r.json() : null).catch(() => null),
-      fetch(`${origin}/api/openinterest`).then((r) => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(8_000) }).then((r) => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(8_000) }).then((r) => r.ok ? r.json() : null).catch(() => null),
     ]);
     if (tickerRes?.data) {
       interface RawTicker { symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number }

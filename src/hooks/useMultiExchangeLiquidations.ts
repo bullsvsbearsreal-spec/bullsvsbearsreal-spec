@@ -13,6 +13,7 @@ import {
   parseDydxLiq,
   parseBitfinexLiq,
   parseHTXLiq,
+  parseHyperliquidLiqAll,
   decompressGzip,
   EXCHANGE_WS_URLS,
   getSubscriptionMessages,
@@ -125,6 +126,12 @@ function createExchangeWS(
             ws.send(JSON.stringify({ event: 'ping', cid: Date.now() }));
           }
         }, 25000);
+      } else if (exchange === 'Hyperliquid') {
+        pingTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ method: 'ping' }));
+          }
+        }, 30000);
       }
       // dYdX uses standard WebSocket ping frames, no custom ping needed
     };
@@ -195,10 +202,17 @@ function createExchangeWS(
         if (data.type === 'subscribed' || data.type === 'connected') return;
         // Skip Bitfinex info/subscription events (object with "event" key)
         if (data.event === 'info' || data.event === 'subscribed') return;
+        // Skip Hyperliquid subscription/pong responses
+        if (data.channel === 'subscriptionResponse' || data.channel === 'pong') return;
 
-        // Bybit sends batched liquidations — process all items
+        // Bybit + Hyperliquid send batched liquidations — process all items
         if (exchange === 'Bybit') {
           const liqs = parseBybitLiqAll(data);
+          for (const liq of liqs) {
+            if (liq.value > 0) onMessage(liq);
+          }
+        } else if (exchange === 'Hyperliquid') {
+          const liqs = parseHyperliquidLiqAll(data);
           for (const liq of liqs) {
             if (liq.value > 0) onMessage(liq);
           }
@@ -208,6 +222,7 @@ function createExchangeWS(
             case 'Binance': liq = parseBinanceLiq(data); break;
             case 'OKX': liq = parseOKXLiq(data); break;
             case 'Bitget': liq = parseBitgetLiq(data); break;
+            case 'Deribit': liq = parseDeribitLiq(data); break;
             case 'HTX': liq = parseHTXLiq(data); break;
             case 'dYdX': liq = parseDydxLiq(data); break;
             case 'Bitfinex': liq = parseBitfinexLiq(data); break;

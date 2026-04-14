@@ -181,7 +181,7 @@ export default function RootLayout({
         {/* Prevent FOUC: apply saved theme before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('infohub-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}` }} />
       </head>
-      <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black text-white min-h-screen antialiased`}>
+      <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black min-h-screen antialiased`} style={{ color: 'var(--fg-default)' }}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

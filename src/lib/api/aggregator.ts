@@ -395,10 +395,11 @@ export async function fetchMarketStats(): Promise<{
   ]);
 
   // Use client-side quoteVolume24h sum (USD-denominated only)
-  // serverTotalVolume from /api/tickers meta is unreliable (may include base-unit volumes)
-  // CoinGecko's global total_volume includes all spot markets, not just our perp coverage
+  // Cap per-entry at $100B as safety net against exchanges reporting in wrong units
+  const MAX_SANE_VOL = 100_000_000_000;
   const totalVolume = tickers.reduce((sum, t) => {
     const qVol = Number(t.quoteVolume24h) || 0;
+    if (qVol <= 0 || qVol > MAX_SANE_VOL) return sum;
     return sum + qVol;
   }, 0);
 

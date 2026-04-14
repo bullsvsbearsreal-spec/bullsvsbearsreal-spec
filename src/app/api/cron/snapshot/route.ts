@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
   try {
     await initDB();
 
-    const origin = request.nextUrl.origin;
+    const origin = process.env.NEXTAUTH_URL || 'https://info-hub.io';
     // With 1-min cron: only do full funding+OI every 10 min (when minute is 0)
     const minute = new Date().getMinutes();
     const isFullRun = minute % 10 === 0;

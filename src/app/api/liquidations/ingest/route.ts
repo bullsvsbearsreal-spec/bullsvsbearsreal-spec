@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 const MAX_BATCH_SIZE = 50;
 // Only accept events from these known exchanges
 const ALLOWED_EXCHANGES = new Set([
-  'Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'HTX', 'gTrade', 'dYdX', 'Bitfinex',
+  'Binance', 'Bybit', 'OKX', 'Bitget', 'Deribit', 'HTX', 'gTrade', 'dYdX', 'Bitfinex', 'Hyperliquid',
 ]);
 
 // Simple in-memory rate limiting (per-deployment, not global)

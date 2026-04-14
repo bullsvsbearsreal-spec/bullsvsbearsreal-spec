@@ -41,7 +41,7 @@ function ExchangePickerInner({ selected, klineData, tf, onToggle, onSetExchanges
   const fillPct = Math.round((totalSelected / totalExchanges) * 100);
 
   return (
-    <div className="absolute top-full mt-1 left-0 z-50 w-72 max-h-[28rem] overflow-hidden rounded-2xl bg-[#111114] border border-white/[0.08] shadow-2xl flex flex-col">
+    <div className="absolute top-full mt-1 left-0 z-50 w-72 max-w-[calc(100vw-2rem)] max-h-[28rem] overflow-hidden rounded-2xl bg-[#111114] border border-white/[0.08] shadow-2xl flex flex-col">
       {/* Header with count + progress */}
       <div className="p-3 pb-2.5 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center justify-between mb-2">
@@ -86,7 +86,7 @@ function ExchangePickerInner({ selected, klineData, tf, onToggle, onSetExchanges
             className="w-full bg-transparent text-xs text-white placeholder:text-neutral-600 outline-none"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="text-neutral-500 hover:text-white transition">
+            <button onClick={() => setSearch('')} aria-label="Clear search" className="text-neutral-500 hover:text-white transition">
               <X className="w-3 h-3" />
             </button>
           )}

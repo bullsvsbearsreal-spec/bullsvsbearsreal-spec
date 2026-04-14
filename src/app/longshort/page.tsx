@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -10,6 +11,8 @@ import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react
 import DataFreshness from '@/components/DataFreshness';
 
 const LSChart = dynamic(() => import('./components/LSChart'), { ssr: false });
+const OIHistoryChart = dynamic(() => import('./components/OIHistoryChart'), { ssr: false });
+const TakerRatioChart = dynamic(() => import('./components/TakerRatioChart'), { ssr: false });
 
 interface LSPoint {
   longRatio: number;
@@ -25,6 +28,29 @@ interface LSHistoryData {
   longRatio?: number;
   shortRatio?: number;
   timestamp?: number;
+}
+
+interface OIHistoryData {
+  symbol: string;
+  source: string;
+  period: string;
+  points: Array<{ t: number; oi: number; vol?: number | null }>;
+}
+
+interface TakerRawPoint {
+  timestamp: number;
+  buyVol: number;
+  sellVol: number;
+  buySellRatio: number;
+}
+
+interface TakerHistoryData {
+  symbol: string;
+  exchange: string;
+  source: string;
+  period: string;
+  points?: TakerRawPoint[];
+  fallback?: boolean;
 }
 
 type Period = '5m' | '15m' | '30m' | '1h' | '4h' | '1d';
@@ -54,9 +80,25 @@ const PERIODS: { label: string; value: Period }[] = [
 const MULTI_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'BNBUSDT', 'ADAUSDT', 'AVAXUSDT', 'LINKUSDT', 'DOTUSDT'];
 
 export default function LongShortPage() {
+  const searchParams = useSearchParams();
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [period, setPeriod] = useState<Period>('1h');
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // One-time: initialize state from URL on mount (deep linking from /chart)
+  useEffect(() => {
+    const s = searchParams.get('s');
+    const tf = searchParams.get('tf');
+    if (s) {
+      const match = SYMBOLS.find(sy => sy.label === s.toUpperCase());
+      if (match) setSymbol(match.value);
+    }
+    if (tf) {
+      const match = PERIODS.find(p => p.value === tf);
+      if (match) setPeriod(match.value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Main chart data
   const { data, error, isLoading, lastUpdate, refresh, isRefreshing } = useApi<LSHistoryData>({
@@ -67,6 +109,29 @@ export default function LongShortPage() {
       return res.json();
     }, [symbol, period]),
     refreshInterval: autoRefresh ? 10000 : undefined,
+  });
+
+  // OI history (Binance with OKX fallback)
+  const bareSymbol = symbol.replace('USDT', '');
+  const { data: oiData } = useApi<OIHistoryData>({
+    key: `oi-history-${bareSymbol}-${period}`,
+    fetcher: useCallback(async () => {
+      const res = await fetch(`/api/history/oi?symbol=${bareSymbol}&source=exchange&period=${period}&limit=100`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }, [bareSymbol, period]),
+    refreshInterval: autoRefresh ? 60000 : undefined,
+  });
+
+  // Taker buy/sell volume (Binance with OKX fallback)
+  const { data: takerData } = useApi<TakerHistoryData>({
+    key: `taker-${symbol}-${period}`,
+    fetcher: useCallback(async () => {
+      const res = await fetch(`/api/longshort?symbol=${symbol}&source=taker&period=${period}&limit=100`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }, [symbol, period]),
+    refreshInterval: autoRefresh ? 30000 : undefined,
   });
 
   // Multi-symbol table data
@@ -125,9 +190,9 @@ export default function LongShortPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h1 className="heading-page">Long/Short Ratio</h1>
+            <h1 className="heading-page">Derivatives Stats</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Binance Global Long/Short Account Ratio
+              Open Interest · Long/Short Ratio · Taker Volume (Binance + OKX)
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -242,8 +307,28 @@ export default function LongShortPage() {
           </div>
         )}
 
+        {/* OI History Chart */}
+        {oiData && oiData.points && oiData.points.length > 0 && (
+          <OIHistoryChart
+            data={oiData.points}
+            symbolLabel={symbolLabel}
+            period={period}
+            source={oiData.source}
+          />
+        )}
+
+        {/* Long/Short Ratio Chart */}
         {!isLoading && chartData.length > 0 && (
           <LSChart chartData={chartData} symbolLabel={symbolLabel} period={period} />
+        )}
+
+        {/* Taker Buy/Sell Volume Chart */}
+        {takerData && takerData.points && takerData.points.length > 0 && !takerData.fallback && (
+          <TakerRatioChart
+            data={takerData.points}
+            symbolLabel={symbolLabel}
+            period={period}
+          />
         )}
 
         {/* Multi-symbol table */}

@@ -446,47 +446,72 @@ function FooterInner() {
           ))}
         </div>
 
-        {/* ─── Disclaimer ─── */}
-        <div className="border-t border-white/[0.06] pt-3 mb-3">
-          <p className="text-[10px] text-neutral-500 leading-relaxed text-center max-w-3xl mx-auto">
-            InfoHub aggregates publicly available market data for informational and educational purposes only.
-            Nothing on this site constitutes financial, investment, or trading advice.
-            Data is sourced from third-party APIs and may be delayed, incomplete, or inaccurate.
-            Always do your own research and consult a qualified professional before making any financial decisions. Use at your own risk.
-          </p>
+        {/* ─── Disclaimer — compact pill, responsive ─── */}
+        <div className="border-t border-hub-subtle pt-3 sm:pt-4 mb-3 sm:mb-4 flex justify-center">
+          <div className="inline-flex items-start gap-2 px-2.5 sm:px-3 py-2 rounded-lg bg-white/[0.02] border border-hub-subtle max-w-2xl">
+            <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-neutral-500 mt-[2px]" />
+            <p className="text-[10px] sm:text-[10.5px] text-neutral-500 leading-relaxed text-left">
+              <span className="text-neutral-400 font-medium">Not financial advice.</span>{' '}
+              <span className="hidden sm:inline">InfoHub aggregates third-party market data for informational purposes only. Data may be delayed or incomplete. DYOR before any financial decisions.</span>
+              <span className="sm:hidden">Third-party data, may be delayed. DYOR.</span>
+            </p>
+          </div>
         </div>
 
-        {/* ─── Bottom bar ─── */}
-        <div className="border-t border-white/[0.06] pt-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Logo variant="icon" size="sm" />
-              <span className="text-neutral-500 text-xs font-medium">
+        {/* ─── Bottom bar — responsive: stacked on mobile, 3-col on desktop ─── */}
+        <div className="border-t border-hub-subtle pt-3 sm:pt-4 flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4">
+          {/* Left: logo + wordmark + meta */}
+          <div className="flex items-center gap-2 sm:gap-3 order-1">
+            <Logo variant="full" size="sm" />
+            <span className="hidden sm:inline h-4 w-px bg-white/[0.08]" />
+            <div className="hidden sm:flex flex-col leading-tight">
+              <span className="text-neutral-400 text-[10px] font-medium tracking-wide">
                 &copy; {new Date().getFullYear()} InfoHub
               </span>
-            </div>
-            <span className="hidden sm:inline text-neutral-700">&middot;</span>
-            <span className="hidden sm:inline text-neutral-600 text-[10px]">
-              {ALL_EXCHANGES.length} exchanges &middot; Real-time data
-            </span>
-          </div>
-          <div className="flex items-center gap-5">
-            <Link href="/terms" className="text-neutral-600 hover:text-neutral-300 text-[11px] transition-colors">
-              Terms
-            </Link>
-            <Link href="/privacy" className="text-neutral-600 hover:text-neutral-300 text-[11px] transition-colors">
-              Privacy
-            </Link>
-            <Link href="/faq" className="text-neutral-600 hover:text-neutral-300 text-[11px] transition-colors">
-              FAQ
-            </Link>
-            <Link href="/funding" className="flex items-center gap-1.5 pl-2 border-l border-white/[0.06] hover:opacity-80 transition-opacity">
-              <span className={`h-2 w-2 rounded-full ${stats ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]' : 'bg-neutral-600'}`} />
-              <span className={`text-[11px] font-medium ${stats ? 'text-green-500/80' : 'text-neutral-600'}`}>
-                {stats ? `${stats.activePairs.toLocaleString()} Live Pairs` : 'Loading...'}
+              <span className="text-neutral-600 text-[9px] tabular-nums">
+                {ALL_EXCHANGES.length} exchanges &middot; v2.0
               </span>
-            </Link>
+            </div>
           </div>
+
+          {/* Middle: nav links — wraps on narrow screens */}
+          <nav className="flex flex-wrap items-center justify-center gap-0.5 sm:gap-1 order-3 lg:order-2">
+            {[
+              { href: '/terms', label: 'Terms' },
+              { href: '/privacy', label: 'Privacy' },
+              { href: '/faq', label: 'FAQ' },
+              { href: '/developers/docs', label: 'API' },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="px-2 sm:px-2.5 py-1 rounded-md text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.04] transition-colors uppercase tracking-wider text-[10px] font-medium"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Right: live status pill */}
+          <Link
+            href="/funding"
+            className="group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.02] border border-hub-subtle hover:border-hub-hover hover:bg-white/[0.04] transition-all order-2 lg:order-3 max-w-full"
+          >
+            <span className="relative flex h-2 w-2 flex-shrink-0">
+              {stats && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500/60 opacity-75" />
+              )}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${stats ? 'bg-green-500 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-neutral-600'}`} />
+            </span>
+            <span className="text-[10px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-400 transition-colors">
+              {stats ? 'Live' : 'Offline'}
+            </span>
+            <span className="h-3 w-px bg-white/[0.08]" />
+            <span className={`text-[11px] font-semibold tabular-nums ${stats ? 'text-neutral-200' : 'text-neutral-600'}`}>
+              {stats ? `${stats.activePairs.toLocaleString()}` : '—'}
+            </span>
+            <span className="text-[10px] text-neutral-600 hidden xs:inline sm:inline">pairs</span>
+          </Link>
         </div>
       </div>
     </footer>

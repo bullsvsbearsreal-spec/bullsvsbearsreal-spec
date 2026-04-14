@@ -40,22 +40,28 @@ export const commonHeaders = {
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
-// Proxy URL for CloudFlare-blocked exchanges (BitMEX, Gate.io)
-// Set PROXY_URL env var to a proxy service URL, e.g. "https://your-proxy.workers.dev"
+// Proxy URL for CloudFlare-blocked exchanges and unreliable data APIs
+// Set PROXY_URL env var to a proxy service URL, e.g. "https://proxy.info-hub.io" (DO droplet)
 // The proxy should forward: GET {PROXY_URL}?url={encoded_target_url}
-const _rawProxyUrl = process.env.PROXY_URL || '';
-const PROXY_URL = _rawProxyUrl && _rawProxyUrl.startsWith('https://') ? _rawProxyUrl : '';
+// Defensive: strip whitespace/newlines/backslashes that can leak from .env corruption
+const _rawProxyUrl = (process.env.PROXY_URL || '')
+  .trim()
+  .replace(/\\n$/, '')        // strip literal "\n" tail (seen in Vercel env corruption)
+  .replace(/[\r\n\s]+$/g, ''); // strip trailing whitespace/newlines
+const PROXY_URL = _rawProxyUrl && _rawProxyUrl.startsWith('https://') ? _rawProxyUrl.replace(/\/$/, '') : '';
 if (_rawProxyUrl && !PROXY_URL) {
   console.warn('[proxy] PROXY_URL ignored — must start with https://');
 }
 
-/** Domains that need proxying due to CloudFlare datacenter IP blocks or stale responses */
+/** Domains that need proxying due to CloudFlare datacenter IP blocks, stale responses, or geo-blocking */
 const PROXIED_DOMAINS = new Set([
   'www.bitmex.com',
   'api.hbdm.com',        // HTX — consistently blocked from Vercel IPs since ~Mar 2026
   'omni-client-api.prod.ap-northeast-1.variational.io', // Variational
   'query1.finance.yahoo.com',
   'query2.finance.yahoo.com',
+  'data.api.drift.trade', // Drift data API — unreliable from Vercel bom1; route through DO droplet
+  'dlob.drift.trade',     // Drift DLOB API (fallback price data)
   // Gate.io (api.gateio.ws) and edgeX (pro.edgex.exchange) work directly from FRA1
   // but fail through CF Worker proxy — keep them direct-only
 ]);

@@ -61,7 +61,7 @@ export default function FundingRateArbitragePage() {
               Funding Rate Arbitrage
             </h1>
             <p className="text-neutral-400 text-base leading-relaxed">
-              The strategy that lets you profit from funding rate differences across exchanges &mdash;
+              The strategy that lets you profit from funding rate differences across exchanges ,
               regardless of which way the market moves. Here&apos;s exactly how it works,
               when it works, and when it doesn&apos;t.
             </p>
@@ -96,7 +96,7 @@ export default function FundingRateArbitragePage() {
           <Section id="what-is-funding" title="1. What are funding rates?">
             <p className="text-neutral-300 text-sm leading-relaxed mb-4">
               Perpetual futures don&apos;t have an expiry date, so they need a mechanism to stay anchored to the spot price.
-              That mechanism is the <strong className="text-white">funding rate</strong> &mdash; a periodic payment between longs and shorts.
+              That mechanism is the <strong className="text-white">funding rate</strong> , a periodic payment between longs and shorts.
             </p>
             <div className="grid sm:grid-cols-2 gap-3 my-5">
               <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/15">
@@ -125,7 +125,7 @@ export default function FundingRateArbitragePage() {
             </p>
             <p className="text-neutral-300 text-sm leading-relaxed">
               Typical rates range from <span className="text-green-400 font-mono">+0.01%</span> to <span className="text-red-400 font-mono">-0.01%</span> per 8h in calm markets.
-              During high volatility, rates can spike to <span className="text-hub-yellow font-mono">0.1%+</span> per 8h &mdash;
+              During high volatility, rates can spike to <span className="text-hub-yellow font-mono">0.1%+</span> per 8h ,
               that&apos;s <strong className="text-white">4.5% per day</strong> annualized.
             </p>
           </Section>
@@ -144,17 +144,17 @@ export default function FundingRateArbitragePage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-green-400">1.</span>
                 <span className="text-white">Buy spot BTC</span>
-                <span className="text-neutral-600">&mdash; you own the asset</span>
+                <span className="text-neutral-600">/ you own the asset</span>
               </div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-green-400">2.</span>
                 <span className="text-white">Short BTC perp (same size)</span>
-                <span className="text-neutral-600">&mdash; you&apos;re delta neutral</span>
+                <span className="text-neutral-600">/ you&apos;re delta neutral</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-hub-yellow">3.</span>
                 <span className="text-hub-yellow">Collect funding every 8h</span>
-                <span className="text-neutral-600">&mdash; longs pay you</span>
+                <span className="text-neutral-600">/ longs pay you</span>
               </div>
             </div>
 
@@ -171,12 +171,12 @@ export default function FundingRateArbitragePage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-green-400">1.</span>
                 <span className="text-white">Short on Exchange A</span>
-                <span className="text-neutral-600">&mdash; high positive funding (you receive)</span>
+                <span className="text-neutral-600">/ high positive funding (you receive)</span>
               </div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-green-400">2.</span>
                 <span className="text-white">Long on Exchange B</span>
-                <span className="text-neutral-600">&mdash; low/negative funding (you pay less or receive)</span>
+                <span className="text-neutral-600">/ low/negative funding (you pay less or receive)</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-hub-yellow">3.</span>
@@ -328,7 +328,7 @@ export default function FundingRateArbitragePage() {
             <h3 className="text-white font-semibold text-base mb-3">CEX vs DEX arbitrage</h3>
             <p className="text-neutral-300 text-sm leading-relaxed mb-4">
               DEXes (Hyperliquid, dYdX, Drift) often have different funding dynamics than CEXes (Binance, Bybit, OKX).
-              DEX funding is driven by smaller, more volatile pools &mdash; creating bigger spreads.
+              DEX funding is driven by smaller, more volatile pools , creating bigger spreads.
               The trade-off is higher gas costs and slower execution.
             </p>
 

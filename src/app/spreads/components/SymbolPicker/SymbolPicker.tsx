@@ -72,7 +72,7 @@ function CoinLogo({ symbol, size = 20 }: { symbol: string; size?: number }) {
 
 function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryChange, onClose }: SymbolPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const activeRef = useRef<HTMLButtonElement>(null);
+  const activeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -98,7 +98,7 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
 
   return (
     <div
-      className="absolute top-full mt-1 left-0 z-50 w-80 max-h-[34rem] overflow-y-auto rounded-2xl bg-[#111114] border border-white/[0.08] shadow-2xl backdrop-blur-xl"
+      className="absolute top-full mt-1 left-0 z-50 w-80 max-w-[calc(100vw-2rem)] max-h-[34rem] overflow-y-auto rounded-2xl bg-[#111114] border border-white/[0.08] shadow-2xl backdrop-blur-xl"
       data-sym-picker
       data-testid="symbol-picker"
       onKeyDown={handleKeyDown}
@@ -115,7 +115,7 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
             className="bg-transparent text-sm text-white placeholder:text-neutral-500 outline-none w-full"
           />
           {query && (
-            <button onClick={() => onQueryChange('')} className="text-neutral-500 hover:text-white transition-colors">
+            <button onClick={() => onQueryChange('')} aria-label="Clear search" className="text-neutral-500 hover:text-white transition-colors">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -179,11 +179,14 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
               {filtered.map(s => {
                 const isActive = s === current;
                 return (
-                  <button
+                  <div
                     key={s}
                     ref={isActive ? activeRef : undefined}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelect(s)}
-                    className={`w-full text-left px-3 py-[8px] text-[13px] flex items-center gap-3 transition-all group
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s); } }}
+                    className={`w-full text-left px-3 py-[8px] text-[13px] flex items-center gap-3 transition-all group cursor-pointer
                       ${isActive
                         ? 'bg-hub-yellow/[0.08] text-hub-yellow'
                         : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
@@ -198,7 +201,7 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
                         <ChevronRight className="w-3.5 h-3.5 text-hub-yellow" />
                       )}
                     </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -221,10 +224,13 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
               {filtered.slice(0, query ? 50 : 20).map(s => {
                 const isActive = s === current;
                 return (
-                  <button
+                  <div
                     key={s}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelect(s)}
-                    className={`w-full text-left px-3 py-[8px] text-[13px] flex items-center gap-3 transition-all group
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s); } }}
+                    className={`w-full text-left px-3 py-[8px] text-[13px] flex items-center gap-3 transition-all group cursor-pointer
                       ${isActive
                         ? 'bg-hub-yellow/[0.08] text-hub-yellow'
                         : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
@@ -239,7 +245,7 @@ function SymbolPickerInner({ current, query, dynamicSymbols, onSelect, onQueryCh
                         <ChevronRight className="w-3.5 h-3.5 text-hub-yellow" />
                       )}
                     </span>
-                  </button>
+                  </div>
                 );
               })}
               {!query && filtered.length > 20 && (

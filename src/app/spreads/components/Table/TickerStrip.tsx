@@ -31,13 +31,16 @@ function TickerStripInner({ stats, exs, wsPrices, wsSpread, wsCount, sym }: Tick
   // Reset prev prices on symbol change
   useEffect(() => { prevPricesRef.current = {}; }, [sym]);
 
-  // Update prev prices after render
+  // Update prev prices after a short delay so the direction flash can show
   useEffect(() => {
-    stats.prices.forEach(x => {
-      const wsP = wsPrices[x.e];
-      prevPricesRef.current[x.e] = wsP?.price || x.p;
-    });
-  });
+    const timer = setTimeout(() => {
+      stats.prices.forEach(x => {
+        const wsP = wsPrices[x.e];
+        prevPricesRef.current[x.e] = wsP?.price || x.p;
+      });
+    }, 1500); // delay so the flash animation is visible
+    return () => clearTimeout(timer);
+  }, [stats.prices, wsPrices]);
 
   // Find the most recent update time
   const latestTs = Object.values(wsPrices).reduce((max, p) => Math.max(max, p.ts || 0), 0);

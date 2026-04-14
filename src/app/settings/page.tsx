@@ -11,6 +11,7 @@ import ConnectedAccountsSection from './components/ConnectedAccountsSection';
 import SecuritySection from './components/SecuritySection';
 import TwoFactorSection from './components/TwoFactorSection';
 import NotificationsSection from './components/NotificationsSection';
+import TelegramSection from './components/TelegramSection';
 import DataExportSection from './components/DataExportSection';
 import DangerZoneSection from './components/DangerZoneSection';
 
@@ -116,6 +117,7 @@ export default function SettingsPage() {
           <SecuritySection />
           <TwoFactorSection email={email} />
           <NotificationsSection email={email} />
+          <TelegramSection />
 
           {/* Display (theme toggle — tiny, kept inline) */}
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">

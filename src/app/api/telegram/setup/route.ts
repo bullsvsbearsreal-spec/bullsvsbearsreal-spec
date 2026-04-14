@@ -1,58 +1,26 @@
 /**
- * One-time Telegram webhook registration.
- * GET /api/telegram/setup?secret=<WEBHOOK_SECRET>
- *
- * Registers the webhook URL with the Telegram Bot API and returns bot info.
+ * Register the Telegram webhook with Telegram's API.
+ * GET /api/telegram/setup?secret=CRON_SECRET
  */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { setWebhook } from '@/lib/telegram';
 import { timingSafeEqual } from 'crypto';
+import { setWebhook } from '@/lib/telegram';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const preferredRegion = 'bom1';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
-const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
-
-function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
-}
-
-export async function GET(req: NextRequest) {
-  // Simple auth: require the webhook secret as query param
-  const secret = req.nextUrl.searchParams.get('secret');
-  if (!secret || !WEBHOOK_SECRET || !safeCompare(secret, WEBHOOK_SECRET)) {
+export async function GET(request: NextRequest) {
+  const secret = request.nextUrl.searchParams.get('secret') || '';
+  const expected = process.env.CRON_SECRET || '';
+  if (!expected || secret.length !== expected.length || !timingSafeEqual(Buffer.from(secret), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!BOT_TOKEN) {
-    return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN not configured' }, { status: 500 });
-  }
+  const webhookUrl = `${process.env.NEXTAUTH_URL || 'https://info-hub.io'}/api/telegram/webhook`;
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
 
-  try {
-    // Get bot info
-    const meRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`);
-    const me = await meRes.json();
+  const result = await setWebhook(webhookUrl, webhookSecret || undefined);
 
-    // Check current webhook
-    const whInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
-    const whInfo = await whInfoRes.json();
-
-    // Register webhook
-    const webhookUrl = `https://info-hub.io/api/telegram/webhook`;
-    const result = await setWebhook(webhookUrl, WEBHOOK_SECRET);
-
-    return NextResponse.json({
-      bot: me.result,
-      previousWebhook: whInfo.result,
-      registration: result,
-      webhookUrl,
-    });
-  } catch (err) {
-    return NextResponse.json(
-      { error: 'Failed to configure webhook' },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({ ok: true, webhookUrl, result });
 }

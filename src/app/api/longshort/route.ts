@@ -94,7 +94,7 @@ async function fetchOKXLongShortRatio(symbol: string, period: string) {
   const json = await res.json();
   const rows: any[] = json?.data;
   if (!Array.isArray(rows) || rows.length === 0) return null;
-  // Each row is [timestamp, longShortRatio]
+  // Each row is [timestamp, longShortRatio]. OKX returns DESC order; sort ASC to match Binance.
   return rows.map((r: any) => {
     const ratio = parseFloat(r[1]);
     if (!isFinite(ratio) || ratio <= 0) return null;
@@ -107,7 +107,7 @@ async function fetchOKXLongShortRatio(symbol: string, period: string) {
       longShortRatio: ratio,
       timestamp: parseInt(r[0], 10) || 0,
     };
-  }).filter(Boolean);
+  }).filter(Boolean).sort((a: any, b: any) => a.timestamp - b.timestamp);
 }
 
 async function fetchOKXTakerVolume(symbol: string, period: string) {
@@ -119,7 +119,7 @@ async function fetchOKXTakerVolume(symbol: string, period: string) {
   const json = await res.json();
   const rows: any[] = json?.data;
   if (!Array.isArray(rows) || rows.length === 0) return null;
-  // Each row is [timestamp, sellVol, buyVol]
+  // Each row is [timestamp, sellVol, buyVol]. OKX returns DESC order; sort ASC to match Binance.
   return rows.map((r: any) => {
     const sellVol = parseFloat(r[1]) || 0;
     const buyVol = parseFloat(r[2]) || 0;
@@ -129,7 +129,7 @@ async function fetchOKXTakerVolume(symbol: string, period: string) {
       sellVol,
       timestamp: parseInt(r[0], 10) || 0,
     };
-  });
+  }).sort((a, b) => a.timestamp - b.timestamp);
 }
 
 // --- Main handler ---
@@ -238,18 +238,28 @@ export async function GET(request: Request) {
       body = { symbol, exchange: resolvedExchange, source, period, points };
     }
 
-    // Cache store (evict if too large)
+    // Cache store (evict stale entries when large)
     cache.set(cacheKey, { body, ts: Date.now() });
-    if (cache.size > 200) {
-      const keys = Array.from(cache.keys()).slice(0, 50);
-      for (const k of keys) cache.delete(k);
+    if (cache.size > 100) {
+      const now = Date.now();
+      Array.from(cache.entries()).forEach(([k, v]) => {
+        if (now - v.ts > CACHE_TTL * 3) cache.delete(k);
+      });
+      // Hard cap if still too large
+      if (cache.size > 200) {
+        const iter = cache.keys();
+        for (let i = 0; i < 50; i++) {
+          const k = iter.next().value;
+          if (k) cache.delete(k);
+        }
+      }
     }
 
     return NextResponse.json(body, {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
     });
   } catch (error) {
-    console.error('Long/Short ratio error:', error);
+    console.error('[longshort]', error instanceof Error ? error.message : error);
 
     // Serve stale cache on error
     if (cached) {

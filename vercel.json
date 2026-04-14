@@ -29,28 +29,12 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/cron/arbitrage-alerts",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/news-alerts",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/calendar-alerts",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/telegram-reports",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/telegram-weekly",
-      "schedule": "0 10 * * 0"
-    },
-    {
       "path": "/api/cron/whale-trades",
       "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/telegram-daily",
+      "schedule": "0 8 * * *"
     }
   ]
 }

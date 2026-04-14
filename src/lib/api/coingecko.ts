@@ -57,9 +57,18 @@ function getCached<T>(key: string, ttl: number): T | null {
 
 function setCache(key: string, data: any): void {
   cache.set(key, { data, timestamp: Date.now() });
-  if (cache.size > 500) {
-    const first = cache.keys().next().value;
-    if (first) cache.delete(first);
+  // Evict stale entries when cache grows
+  if (cache.size > 200) {
+    const now = Date.now();
+    const maxAge = 15 * 60 * 1000; // 15min max stale
+    Array.from(cache.entries()).forEach(([k, v]) => {
+      if (now - v.timestamp > maxAge) cache.delete(k);
+    });
+    // Hard cap
+    if (cache.size > 500) {
+      const first = cache.keys().next().value;
+      if (first) cache.delete(first);
+    }
   }
 }
 

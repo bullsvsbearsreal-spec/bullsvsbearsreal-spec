@@ -357,7 +357,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           const json = await res.json();
           items = Array.isArray(json.data) ? json.data : [];
         }
-      } catch {}
+      } catch (e) { console.warn('[tickers][Bitunix] direct fetch:', e instanceof Error ? e.message : e); }
 
       if (items.length === 0) {
         try {
@@ -366,7 +366,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             const proxyJson = await proxyRes.json();
             items = Array.isArray(proxyJson.data) ? proxyJson.data : [];
           }
-        } catch {}
+        } catch (e) { console.warn('[tickers][Bitunix] proxy fetch:', e instanceof Error ? e.message : e); }
       }
 
       if (items.length === 0) return [];
@@ -671,8 +671,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             exchange: 'Lighter',
             lastPrice,
             price: lastPrice,
-            priceChangePercent24h: lastPrice > 0 && b.daily_price_change != null ? ((parseFloat(b.daily_price_change) || 0) / lastPrice) * 100 : 0,
-            changePercent24h: lastPrice > 0 && b.daily_price_change != null ? ((parseFloat(b.daily_price_change) || 0) / lastPrice) * 100 : 0,
+            priceChangePercent24h: b.daily_price_change != null ? parseFloat(b.daily_price_change) || 0 : 0,
+            changePercent24h: b.daily_price_change != null ? parseFloat(b.daily_price_change) || 0 : 0,
             high24h: parseFloat(b.daily_price_high) || 0,
             low24h: parseFloat(b.daily_price_low) || 0,
             volume24h: parseFloat(b.daily_base_token_volume) || 0,
@@ -714,21 +714,22 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // Drift Protocol (Solana DEX) — Data API has full price + volume + 24h stats
+  // Drift Protocol (Solana DEX) — /stats/markets broken since ~Apr 2026, use /stats/markets/prices
   {
     name: 'Drift',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://data.api.drift.trade/stats/markets', {}, 12000);
+      const res = await fetchFn('https://data.api.drift.trade/stats/markets/prices', {}, 12000);
       if (!res.ok) return [];
       const json = await res.json();
-      const markets: any[] = json?.markets || [];
+      const markets: any[] = json?.markets || json?.data || json || [];
+      if (!Array.isArray(markets)) return [];
       return markets
-        .filter((m: any) => m.marketType === 'perp' && m.oraclePrice)
+        .filter((m: any) => (m.marketType === 'perp' || m.type === 'perp') && (m.oraclePrice || m.price))
         .map((m: any) => {
           let symbol = (m.symbol || '').replace('-PERP', '');
           if (!symbol) return null;
           if (symbol.startsWith('1M')) symbol = symbol.slice(2);
-          const lastPrice = parseFloat(m.oraclePrice) || 0;
+          const lastPrice = parseFloat(m.oraclePrice || m.price) || 0;
           const priceChange = parseFloat(m.priceChange24hPercent) || parseFloat(m.priceChange24h?.percent) || 0;
           return {
             symbol,
@@ -737,10 +738,10 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             price: lastPrice,
             priceChangePercent24h: priceChange,
             changePercent24h: priceChange,
-            high24h: parseFloat(m.priceHigh?.oracle) || 0,
-            low24h: parseFloat(m.priceLow?.oracle) || 0,
-            volume24h: parseFloat(m.baseVolume) || 0,
-            quoteVolume24h: parseFloat(m.quoteVolume) || 0,
+            high24h: parseFloat(m.priceHigh?.oracle || m.high24h) || 0,
+            low24h: parseFloat(m.priceLow?.oracle || m.low24h) || 0,
+            volume24h: parseFloat(m.baseVolume || m.volume24h) || 0,
+            quoteVolume24h: parseFloat(m.quoteVolume || m.quoteVolume24h) || 0,
           };
         })
         .filter((item: any) => item && item.lastPrice > 0);
@@ -753,7 +754,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
       if (!proxyUrl) return [];
-      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,lastPrice,volume24h,prevPrice24h,highPrice,lowPrice&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
+      // Include foreignNotional24h (USD volume) + homeNotional24h (base volume) for correct volume
+      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,lastPrice,volume24h,prevPrice24h,highPrice,lowPrice,foreignNotional24h,homeNotional24h&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
       const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
@@ -766,6 +768,10 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
           const lastPrice = parseFloat(i.lastPrice) || 0;
           const prevPrice = parseFloat(i.prevPrice24h) || lastPrice;
           const changePercent = prevPrice > 0 ? ((lastPrice - prevPrice) / prevPrice) * 100 : 0;
+          // foreignNotional24h = USD volume (correct). Fallback to homeNotional24h * price.
+          const foreignNotional = parseFloat(i.foreignNotional24h) || 0;
+          const homeNotional = parseFloat(i.homeNotional24h) || 0;
+          const usdVolume = foreignNotional > 0 ? foreignNotional : homeNotional * lastPrice;
           return {
             symbol: sym,
             exchange: 'BitMEX',
@@ -775,8 +781,8 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             changePercent24h: changePercent,
             high24h: parseFloat(i.highPrice) || 0,
             low24h: parseFloat(i.lowPrice) || 0,
-            volume24h: parseFloat(i.volume24h) || 0,
-            quoteVolume24h: (parseFloat(i.volume24h) || 0) * lastPrice,
+            volume24h: homeNotional,
+            quoteVolume24h: usdVolume,
           };
         })
         .filter((i: any) => i.lastPrice > 0 && i.symbol.length > 0);
@@ -784,33 +790,34 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
   },
 
   // Gate.io — CloudFlare-blocked, requires PROXY_URL
+  // Use /tickers (24h data) NOT /contracts (which has cumulative trade_size, not 24h)
   {
     name: 'Gate.io',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
       if (!proxyUrl) return [];
-      const targetUrl = 'https://api.gateio.ws/api/v4/futures/usdt/contracts';
+      const targetUrl = 'https://api.gateio.ws/api/v4/futures/usdt/tickers';
       const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
       return data
-        .filter((c: any) => c.name?.endsWith('_USDT') && c.last_price)
-        .map((c: any) => {
-          const lastPrice = parseFloat(c.last_price) || 0;
-          const markPrice = parseFloat(c.mark_price) || lastPrice;
-          // Gate provides trade_size (24h contracts) and volume_24h_base/volume_24h_quote
+        .filter((t: any) => t.contract?.endsWith('_USDT') && (parseFloat(t.last) || parseFloat(t.mark_price)))
+        .map((t: any) => {
+          const lastPrice = parseFloat(t.last) || parseFloat(t.mark_price) || 0;
+          const markPrice = parseFloat(t.mark_price) || lastPrice;
+          const changePct = parseFloat(t.change_percentage) || 0;
           return {
-            symbol: c.name.replace('_USDT', ''),
+            symbol: t.contract.replace('_USDT', ''),
             exchange: 'Gate.io',
             lastPrice: markPrice,
             price: markPrice,
-            priceChangePercent24h: 0,
-            changePercent24h: 0,
-            high24h: 0,
-            low24h: 0,
-            volume24h: parseFloat(c.volume_24h_base) || parseFloat(c.trade_size) || 0,
-            quoteVolume24h: parseFloat(c.volume_24h_quote) || (parseFloat(c.trade_size) || 0) * markPrice,
+            priceChangePercent24h: changePct,
+            changePercent24h: changePct,
+            high24h: parseFloat(t.high_24h) || 0,
+            low24h: parseFloat(t.low_24h) || 0,
+            volume24h: parseFloat(t.volume_24h_base) || 0,
+            quoteVolume24h: parseFloat(t.volume_24h_quote) || parseFloat(t.volume_24h_settle) || 0,
           };
         })
         .filter((i: any) => i.lastPrice > 0);
@@ -857,22 +864,25 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout
+  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout. CF bot detection triggers on browser-like UA — strip it.
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 10000);
+      const edgeXHeaders = { headers: { 'User-Agent': '', 'Accept': 'application/json' } };
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
       if (!metaRes.ok) return [];
       const metaData = await metaRes.json();
       const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
       if (contracts.length === 0) return [];
 
+      // Limit to first 30 contracts to avoid CF rate-limiting (186 individual calls gets IP-blocked)
+      const limited = contracts.slice(0, 30);
       const batchSize = 10;
       const results: TickerData[] = [];
-      for (let i = 0; i < contracts.length; i += batchSize) {
-        const batch = contracts.slice(i, i + batchSize);
+      for (let i = 0; i < limited.length; i += batchSize) {
+        const batch = limited.slice(i, i + batchSize);
         const promises = batch.map((c: any) =>
-          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 8000)
+          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, edgeXHeaders, 8000)
             .then(r => r.ok ? r.json() : null)
             .catch(() => null)
         );

@@ -15,6 +15,13 @@
 const ALLOWED_DOMAINS = new Set([
   'www.bitmex.com',
   'api.gateio.ws',
+  'api.hbdm.com',
+  'pro.edgex.exchange',
+  'query1.finance.yahoo.com',
+  'query2.finance.yahoo.com',
+  'omni-client-api.prod.ap-northeast-1.variational.io',
+  'data.api.drift.trade',
+  'dlob.drift.trade',
 ]);
 
 // Secret token to prevent abuse — set as env var in Cloudflare dashboard

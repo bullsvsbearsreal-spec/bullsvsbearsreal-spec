@@ -605,13 +605,23 @@ export async function GET(request: NextRequest) {
     // Update L1 cache
     responseCache.set(cacheKey, { body, ts: Date.now() });
 
-    // Prune cache if it grows too large
+    // Prune stale cache entries
     if (responseCache.size > 20) {
-      const iter = responseCache.keys();
-      for (let i = 0; i < 10; i++) {
-        const k = iter.next().value;
-        if (k) responseCache.delete(k);
-      }
+      const now = Date.now();
+      Array.from(responseCache.entries()).forEach(([k, v]) => {
+        if (now - v.ts > CACHE_TTL * 5) responseCache.delete(k);
+      });
+    }
+
+    // Prune old eventStore/seenEvents for symbols not accessed recently
+    if (eventStore.size > 50) {
+      const cutoff = Date.now() - TWENTY_FOUR_HOURS;
+      Array.from(eventStore.entries()).forEach(([sym, events]) => {
+        if (events.length === 0 || events[events.length - 1].time < cutoff) {
+          eventStore.delete(sym);
+          seenEvents.delete(sym);
+        }
+      });
     }
 
     return NextResponse.json(body, {

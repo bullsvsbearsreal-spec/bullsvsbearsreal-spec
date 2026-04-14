@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const preferredRegion = 'bom1';
 
 const AGGREGATOR = 'http://46.101.247.54:3100';
 

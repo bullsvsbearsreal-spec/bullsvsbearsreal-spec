@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'bom1';
+
 const sql = postgres(process.env.DATABASE_URL || '', { max: 2 });
 
 const cacheMap = new Map<number, { data: any; ts: number }>();

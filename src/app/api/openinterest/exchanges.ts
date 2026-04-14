@@ -15,60 +15,80 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     name: 'Binance',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      const tickerTargets = [
-        'https://fapi.binance.com/fapi/v1/ticker/24hr',
-        'https://fapi1.binance.com/fapi/v1/ticker/24hr',
-        'https://fapi2.binance.com/fapi/v1/ticker/24hr',
+      // Track the actual Binance domain we're targeting (independent of proxy wrapping)
+      // so that OI requests can construct the correct inner target URL.
+      const binanceDomains = [
+        'https://fapi.binance.com',
+        'https://fapi1.binance.com',
+        'https://fapi2.binance.com',
       ];
+      type Attempt = { binanceBase: string; useProxy: boolean };
+      const attempts: Attempt[] = binanceDomains.map((d) => ({ binanceBase: d, useProxy: false }));
       if (proxyUrl) {
-        tickerTargets.push(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(tickerTargets[0])}`);
+        // Fallback: proxy-wrapped request to primary Binance domain
+        attempts.push({ binanceBase: binanceDomains[0], useProxy: true });
       }
 
-      // Find first working Binance domain
+      const buildUrl = (inner: string, viaProxy: boolean): string =>
+        viaProxy && proxyUrl
+          ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(inner)}`
+          : inner;
+
+      // Find first working Binance domain (direct or via proxy)
       let tickerData: any[] = [];
-      let workingDomain = 'https://fapi.binance.com';
-      for (const url of tickerTargets) {
+      let binanceBase = 'https://fapi.binance.com';
+      let useProxy = false;
+      for (const attempt of attempts) {
         try {
-          const res = await fetchFn(url, {}, 10000);
+          const inner = `${attempt.binanceBase}/fapi/v1/ticker/24hr`;
+          const res = await fetchFn(buildUrl(inner, attempt.useProxy), {}, 10000);
           if (!res.ok) continue;
           const json = await res.json();
           if (Array.isArray(json) && json.length > 0) {
             tickerData = json;
-            // Extract domain for OI calls
-            const match = url.match(/^(https:\/\/[^/]+)/);
-            if (match) workingDomain = match[1];
+            binanceBase = attempt.binanceBase;
+            useProxy = attempt.useProxy;
             break;
           }
         } catch { continue; }
       }
       if (tickerData.length === 0) return [];
 
+      // Filter to ASCII-only USDT perps — skips meme pairs like "币安人生USDT" that
+      // break URL parsing when passed unencoded (and tend not to have real OI).
+      // Raise cap from 50 → 150 to cover ~94% of Binance volume (vs ~83% at 50).
       const topSymbols = tickerData
-        .filter((t: any) => t.symbol?.endsWith('USDT') && isCryptoSymbol(t.symbol.replace('USDT', '')))
+        .filter((t: any) => {
+          const s = t.symbol;
+          if (!s || !s.endsWith('USDT')) return false;
+          // ASCII letters/digits only (ignore CJK / emoji / symbols)
+          if (!/^[A-Z0-9]+USDT$/.test(s)) return false;
+          return isCryptoSymbol(s.replace(/USDT$/, ''));
+        })
         .sort((a: any, b: any) => (parseFloat(b.quoteVolume) || 0) - (parseFloat(a.quoteVolume) || 0))
-        .slice(0, 50);
+        .slice(0, 150);
 
-      const BATCH_SIZE = 10;
+      const BATCH_SIZE = 20;
       const results: OIData[] = [];
-      const isProxy = workingDomain.includes('proxy') || (proxyUrl && workingDomain === proxyUrl.replace(/\/$/, ''));
 
       for (let i = 0; i < topSymbols.length; i += BATCH_SIZE) {
         const batch = topSymbols.slice(i, i + BATCH_SIZE);
         const batchResults = await Promise.all(
           batch.map(async (ticker: any) => {
             try {
-              const oiTarget = `${workingDomain}/fapi/v1/openInterest?symbol=${ticker.symbol}`;
-              const oiUrl = isProxy && proxyUrl
-                ? `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(oiTarget)}`
-                : `${workingDomain}/fapi/v1/openInterest?symbol=${ticker.symbol}`;
+              const encodedSym = encodeURIComponent(ticker.symbol);
+              const oiTarget = `${binanceBase}/fapi/v1/openInterest?symbol=${encodedSym}`;
+              const oiUrl = buildUrl(oiTarget, useProxy);
               const oiRes = await fetchFn(oiUrl, {}, 5000);
               if (oiRes.ok) {
                 const oiData = await oiRes.json();
+                const oi = parseFloat(oiData.openInterest) || 0;
+                if (oi <= 0) return null;
                 return {
-                  symbol: ticker.symbol.replace('USDT', ''),
+                  symbol: ticker.symbol.replace(/USDT$/, ''),
                   exchange: 'Binance',
-                  openInterest: parseFloat(oiData.openInterest) || 0,
-                  openInterestValue: (parseFloat(oiData.openInterest) || 0) * (parseFloat(ticker.lastPrice) || 0),
+                  openInterest: oi,
+                  openInterestValue: oi * (parseFloat(ticker.lastPrice) || 0),
                 };
               }
             } catch {
@@ -687,22 +707,25 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
-  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout
+  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout. CF bot detection triggers on browser-like UA — strip it.
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', {}, 10000);
+      const edgeXHeaders = { headers: { 'User-Agent': '', 'Accept': 'application/json' } };
+      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
       if (!metaRes.ok) return [];
       const metaData = await metaRes.json();
       const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
       if (contracts.length === 0) return [];
 
+      // Limit to first 30 contracts to avoid CF rate-limiting (186 individual calls gets IP-blocked)
+      const limited = contracts.slice(0, 30);
       const batchSize = 10;
       const results: OIData[] = [];
-      for (let i = 0; i < contracts.length; i += batchSize) {
-        const batch = contracts.slice(i, i + batchSize);
+      for (let i = 0; i < limited.length; i += batchSize) {
+        const batch = limited.slice(i, i + batchSize);
         const promises = batch.map((c: any) =>
-          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, {}, 8000)
+          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, edgeXHeaders, 8000)
             .then(r => r.ok ? r.json() : null)
             .catch(() => null)
         );
@@ -996,6 +1019,94 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
           };
         })
         .filter((item: any) => item != null);
+    },
+  },
+
+  // Aster DEX — Binance-compatible API, per-symbol OI
+  {
+    name: 'Aster',
+    fetcher: async (fetchFn) => {
+      const tickerRes = await fetchFn('https://fapi.asterdex.com/fapi/v1/ticker/24hr', {}, 10000);
+      if (!tickerRes.ok) return [];
+      const tickerData = await tickerRes.json();
+      if (!Array.isArray(tickerData)) return [];
+
+      const topSymbols = tickerData
+        .filter((t: any) => t.symbol?.endsWith('USDT') && /^[A-Z0-9]+USDT$/.test(t.symbol) && isCryptoSymbol(t.symbol.replace(/USDT$/, '')))
+        .sort((a: any, b: any) => (parseFloat(b.quoteVolume) || 0) - (parseFloat(a.quoteVolume) || 0))
+        .slice(0, 100);
+
+      const BATCH_SIZE = 20;
+      const results: OIData[] = [];
+
+      for (let i = 0; i < topSymbols.length; i += BATCH_SIZE) {
+        const batch = topSymbols.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (ticker: any) => {
+            try {
+              const oiRes = await fetchFn(`https://fapi.asterdex.com/fapi/v1/openInterest?symbol=${ticker.symbol}`, {}, 5000);
+              if (!oiRes.ok) return null;
+              const oiData = await oiRes.json();
+              const oi = parseFloat(oiData.openInterest) || 0;
+              if (oi <= 0) return null;
+              return {
+                symbol: ticker.symbol.replace(/USDT$/, ''),
+                exchange: 'Aster',
+                openInterest: oi,
+                openInterestValue: oi * (parseFloat(ticker.lastPrice) || 0),
+              };
+            } catch { return null; }
+          })
+        );
+        results.push(...batchResults.filter(Boolean) as OIData[]);
+      }
+
+      return results;
+    },
+  },
+
+  // Aevo DEX — per-asset OI via /statistics endpoint
+  {
+    name: 'Aevo',
+    fetcher: async (fetchFn) => {
+      // Get list of active perp markets
+      const marketsRes = await fetchFn('https://api.aevo.xyz/markets', {}, 10000);
+      if (!marketsRes.ok) return [];
+      const markets = await marketsRes.json();
+      if (!Array.isArray(markets)) return [];
+
+      const perpAssets = markets
+        .filter((m: any) => m.instrument_type === 'PERPETUAL' && m.is_active)
+        .map((m: any) => ({ asset: m.underlying_asset, price: parseFloat(m.mark_price) || 0 }))
+        .filter((m: any) => m.asset && isCryptoSymbol(m.asset) && m.price > 0);
+
+      const BATCH_SIZE = 10;
+      const results: OIData[] = [];
+
+      for (let i = 0; i < perpAssets.length; i += BATCH_SIZE) {
+        const batch = perpAssets.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (m: any) => {
+            try {
+              const res = await fetchFn(`https://api.aevo.xyz/statistics?asset=${m.asset}&instrument_type=PERPETUAL`, {}, 5000);
+              if (!res.ok) return null;
+              const stats = await res.json();
+              const oi = parseFloat(stats?.open_interest?.total) || 0;
+              if (oi <= 0) return null;
+              const price = parseFloat(stats?.index_price) || m.price;
+              return {
+                symbol: m.asset,
+                exchange: 'Aevo',
+                openInterest: oi,
+                openInterestValue: oi * price,
+              };
+            } catch { return null; }
+          })
+        );
+        results.push(...batchResults.filter(Boolean) as OIData[]);
+      }
+
+      return results;
     },
   },
 

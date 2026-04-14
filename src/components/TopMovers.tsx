@@ -72,7 +72,7 @@ export default function TopMovers() {
           <button
             onClick={() => setView('gainers')}
             className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              view === 'gainers' ? 'bg-green-500 text-white' : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
+              view === 'gainers' ? 'bg-green-500 text-hub-black font-semibold' : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             Gainers
@@ -80,7 +80,7 @@ export default function TopMovers() {
           <button
             onClick={() => setView('losers')}
             className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              view === 'losers' ? 'bg-red-500 text-white' : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
+              view === 'losers' ? 'bg-red-500 text-hub-black font-semibold' : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             Losers

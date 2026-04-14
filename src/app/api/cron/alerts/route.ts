@@ -18,7 +18,7 @@ import {
   pruneAlertNotifications,
   getPushSubscriptionsForUser,
   deletePushSubscription,
-  getAllActiveTelegramAlerts,
+  getTelegramLinkByUser,
 } from '@/lib/db';
 import {
   fetchMarketDataServer,
@@ -32,6 +32,8 @@ import {
   sendAlertEmail,
   sendAlertTelegram,
   sendAlertPush,
+  sendAlertDiscord,
+  sendAlertWhatsApp,
   type TriggeredAlertInfo,
 } from '@/lib/notifications';
 
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
   try {
     await initDB();
 
-    const origin = request.nextUrl.origin;
+    const origin = process.env.NEXTAUTH_URL || 'https://info-hub.io';
 
     // Fetch market data
     const marketData = await fetchMarketDataServer(origin);
@@ -80,137 +82,98 @@ export async function GET(request: NextRequest) {
         const cooldownMins = user.notificationPrefs?.cooldownMinutes ?? 60;
         const emailEnabled = user.notificationPrefs?.email !== false; // default true
 
-        const triggered: TriggeredAlertInfo[] = [];
+        // Collect all alerts that fired (metric check only — no cooldown yet)
+        const firedAlerts: TriggeredAlertInfo[] = [];
 
         for (const alert of enabledAlerts) {
           const data = marketData.get(alert.symbol);
           if (!data) continue;
 
           if (checkAlert(alert, data)) {
-            // Check cooldown
-            const inCooldown = await getAlertCooldown(user.userId, alert.id, cooldownMins);
-            if (inCooldown) continue;
-
-            const actualValue = getMetricValue(data, alert.metric);
-            triggered.push({
+            const actualValue = getMetricValue(data, alert.metric, alert);
+            firedAlerts.push({
               alertId: alert.id,
               symbol: alert.symbol,
               metric: alert.metric,
               operator: alert.operator,
               threshold: alert.value,
               actualValue,
+              ...(alert.exchange ? { exchange: alert.exchange } : {}),
+              ...(alert.proximityPct ? { proximityPct: alert.proximityPct } : {}),
             });
-            totalTriggered++;
           }
         }
 
-        if (triggered.length === 0) continue;
+        if (firedAlerts.length === 0) continue;
+        totalTriggered += firedAlerts.length;
 
-        // Send email notification
+        // Determine which channels are enabled for this user
+        const channels: { name: string; send: (alerts: TriggeredAlertInfo[]) => Promise<boolean> }[] = [];
         if (emailEnabled && user.email) {
-          const sent = await sendAlertEmail(user.email, triggered);
+          channels.push({ name: 'email', send: (a) => sendAlertEmail(user.email!, a) });
+        }
+        if (user.notificationPrefs?.discordEnabled && user.notificationPrefs?.discordWebhookUrl) {
+          const url = user.notificationPrefs.discordWebhookUrl;
+          channels.push({ name: 'discord', send: (a) => sendAlertDiscord(url, a) });
+        }
+        if (user.notificationPrefs?.whatsappEnabled && user.notificationPrefs?.whatsappPhone) {
+          const phone = user.notificationPrefs.whatsappPhone;
+          channels.push({ name: 'whatsapp', send: (a) => sendAlertWhatsApp(phone, a) });
+        }
+
+        // Telegram channel (linked via /start code flow)
+        const tgLink = await getTelegramLinkByUser(user.userId);
+        if (tgLink?.active && (!tgLink.muted_until || tgLink.muted_until < new Date())) {
+          const tgChatId = tgLink.chat_id;
+          channels.push({ name: 'telegram', send: (a) => sendAlertTelegram(tgChatId, a) });
+        }
+
+        // Push channel (always check if subscriptions exist)
+        const pushSubs = await getPushSubscriptionsForUser(user.userId);
+        const hasPush = pushSubs.length > 0;
+
+        // Per-channel delivery with per-channel cooldown
+        for (const ch of channels) {
+          // Filter to alerts not in cooldown for THIS channel
+          const toSend: TriggeredAlertInfo[] = [];
+          for (const alert of firedAlerts) {
+            const inCooldown = await getAlertCooldown(user.userId, alert.alertId, cooldownMins, ch.name);
+            if (!inCooldown) toSend.push(alert);
+          }
+          if (toSend.length === 0) continue;
+
+          const sent = await ch.send(toSend);
           if (sent) {
-            for (const t of triggered) {
-              await logAlertNotification(user.userId, t.alertId, t.symbol, t.metric, t.threshold, t.actualValue, 'email');
+            for (const t of toSend) {
+              await logAlertNotification(user.userId, t.alertId, t.symbol, t.metric, t.threshold, t.actualValue, ch.name);
             }
-            totalNotifications += triggered.length;
+            totalNotifications += toSend.length;
           }
         }
 
-        // Send web push notification
-        const pushSubs = await getPushSubscriptionsForUser(user.userId);
-        if (pushSubs.length > 0) {
-          const { sent, expiredEndpoints } = await sendAlertPush(pushSubs, triggered);
-          // Clean up expired subscriptions
-          for (const ep of expiredEndpoints) {
-            await deletePushSubscription(ep);
+        // Push notifications — separate handling due to different API
+        if (hasPush) {
+          const toSend: TriggeredAlertInfo[] = [];
+          for (const alert of firedAlerts) {
+            const inCooldown = await getAlertCooldown(user.userId, alert.alertId, cooldownMins, 'push');
+            if (!inCooldown) toSend.push(alert);
           }
-          if (sent > 0) {
-            for (const t of triggered) {
-              await logAlertNotification(user.userId, t.alertId, t.symbol, t.metric, t.threshold, t.actualValue, 'push');
+          if (toSend.length > 0) {
+            const { sent, expiredEndpoints } = await sendAlertPush(pushSubs, toSend);
+            for (const ep of expiredEndpoints) {
+              await deletePushSubscription(ep);
             }
-            totalNotifications += triggered.length;
+            if (sent > 0) {
+              for (const t of toSend) {
+                await logAlertNotification(user.userId, t.alertId, t.symbol, t.metric, t.threshold, t.actualValue, 'push');
+              }
+              totalNotifications += toSend.length;
+            }
           }
         }
       } catch (err) {
         console.error(`[alert-cron] error processing user ${user.userId}:`, err);
       }
-    }
-
-    // ─── Telegram alerts ────────────────────────────────────────────────────
-    let telegramTriggered = 0;
-    let telegramNotifications = 0;
-    try {
-      const tgAlerts = await getAllActiveTelegramAlerts();
-      if (tgAlerts.length > 0) {
-        // Group by chat_id
-        const byChatId = new Map<number, typeof tgAlerts>();
-        for (const ta of tgAlerts) {
-          const arr = byChatId.get(ta.chat_id) || [];
-          arr.push(ta);
-          byChatId.set(ta.chat_id, arr);
-        }
-
-        for (const [chatId, alerts] of Array.from(byChatId.entries())) {
-          const triggered: TriggeredAlertInfo[] = [];
-          for (const ta of alerts) {
-            const data = marketData.get(ta.symbol);
-            if (!data) continue;
-
-            // Map TelegramAlert to Alert shape for checkAlert()
-            const asAlert: Alert = {
-              id: String(ta.id),
-              symbol: ta.symbol,
-              metric: ta.metric as AlertMetric,
-              operator: ta.operator as AlertOperator,
-              value: ta.threshold,
-              enabled: true,
-              createdAt: Date.now(),
-            };
-
-            if (checkAlert(asAlert, data)) {
-              // Use chat_id as the userId key for cooldown
-              const inCooldown = await getAlertCooldown(
-                `tg_${chatId}`,
-                String(ta.id),
-                60,
-              );
-              if (inCooldown) continue;
-
-              const actualValue = getMetricValue(data, ta.metric as AlertMetric);
-              triggered.push({
-                alertId: String(ta.id),
-                symbol: ta.symbol,
-                metric: ta.metric,
-                operator: ta.operator,
-                threshold: ta.threshold,
-                actualValue,
-              });
-              telegramTriggered++;
-            }
-          }
-
-          if (triggered.length > 0) {
-            const sent = await sendAlertTelegram(chatId, triggered);
-            if (sent) {
-              for (const t of triggered) {
-                await logAlertNotification(
-                  `tg_${chatId}`,
-                  t.alertId,
-                  t.symbol,
-                  t.metric,
-                  t.threshold,
-                  t.actualValue,
-                  'telegram',
-                );
-              }
-              telegramNotifications += triggered.length;
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[alert-cron] error processing telegram alerts:', err);
     }
 
     // Prune old notifications ~5% of the time
@@ -221,10 +184,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       users: users.length,
-      triggered: totalTriggered + telegramTriggered,
-      notifications: totalNotifications + telegramNotifications,
-      telegramTriggered,
-      telegramNotifications,
+      triggered: totalTriggered,
+      notifications: totalNotifications,
     });
   } catch (error) {
     console.error('[alert-cron] error:', error);
