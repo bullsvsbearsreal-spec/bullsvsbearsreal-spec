@@ -159,6 +159,9 @@ body {
 
 ::selection { background: rgb(var(--hub-accent-rgb) / 0.3); color: #e6e6ea; }
 
+/* Dark dropdown options (native <select>) */
+option { background: #171717; color: #fff; }
+
 /* ═══ Eye-care palette overrides ═══
    Soften saturated Tailwind utilities without touching individual files.
    Runs after @tailwind utilities so cascade order tie goes to these rules. */
