@@ -159,6 +159,8 @@ export function useAlertEngine(intervalMs: number = 60_000) {
   const lastFiredRef = useRef<Map<string, number>>(new Map());
   const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
   const { playAlert } = useSound();
+  const playAlertRef = useRef(playAlert);
+  useEffect(() => { playAlertRef.current = playAlert; }, [playAlert]);
 
   const runCheck = useCallback(async () => {
     const alerts = getAlerts().filter((a) => a.enabled);
@@ -196,7 +198,7 @@ export function useAlertEngine(intervalMs: number = 60_000) {
         });
 
         // Sound notification
-        playAlert();
+        playAlertRef.current();
 
         // Browser notification (if permitted)
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
@@ -217,7 +219,8 @@ export function useAlertEngine(intervalMs: number = 60_000) {
         }
       }
     });
-  }, [playAlert]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Initial check after 5s

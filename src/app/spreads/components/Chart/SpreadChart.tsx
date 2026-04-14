@@ -119,8 +119,8 @@ function SpreadChartInner({ data, exchanges, viewMode, height = 420 }: SpreadCha
     });
 
     return () => {
-      ro.disconnect();
       chart.remove();
+      ro.disconnect();
       chartRef.current = null;
       seriesRef.current.clear();
     };

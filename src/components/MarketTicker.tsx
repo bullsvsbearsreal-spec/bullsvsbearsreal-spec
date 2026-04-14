@@ -89,7 +89,7 @@ export default function MarketTicker() {
             const isExtreme = Math.abs(ticker.change ?? 0) >= 10;
             return (
               <div
-                key={index}
+                key={`${index < tickerData.length ? 'a' : 'b'}-${ticker.symbol}`}
                 className="flex items-center gap-1.5 cursor-pointer group transition-opacity hover:opacity-70"
               >
                 <TokenIconSimple symbol={ticker.symbol} size={16} />

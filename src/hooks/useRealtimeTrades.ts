@@ -102,6 +102,12 @@ export function useRealtimeTrades(symbol: string) {
   }, []);
 
   useEffect(() => {
+    // Always clean up previous timers/connections regardless of symbol
+    destroyedRef.current = true;
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); }
+    if (statsTimerRef.current) clearInterval(statsTimerRef.current);
+
     if (!symbol) return; // Skip when not in live mode
 
     const pair = symbol.toUpperCase() + 'USDT';
