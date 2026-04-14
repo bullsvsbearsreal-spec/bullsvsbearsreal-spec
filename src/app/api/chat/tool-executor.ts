@@ -232,7 +232,7 @@ async function getWhalePositions(input: ToolInput, ctx: ExecuteContext): Promise
     relevant.sort((a, b) => Math.abs(b.position.positionValue || 0) - Math.abs(a.position.positionValue || 0));
     const rows = relevant.slice(0, 15).map(({ whale, position }) => {
       const p = position;
-      return `${whale.label || whale.address?.slice(0, 10)}... (AV: $${formatNum(whale.accountValue)}) | ${p.side} ${p.coin}: $${formatNum(Math.abs(p.positionValue || p.size * p.entryPrice))} @ ${p.leverage}x | PnL: $${formatNum(p.unrealizedPnl)} (${(p.roe * 100).toFixed(1)}%)`;
+      return `${whale.label || whale.address?.slice(0, 10)}... (AV: $${formatNum(whale.accountValue)}) | ${p.side} ${p.coin}: $${formatNum(Math.abs(p.positionValue || (p.size || 0) * (p.entryPrice || 0)))} @ ${p.leverage ?? 0}x | PnL: $${formatNum(p.unrealizedPnl)} (${((p.roe ?? 0) * 100).toFixed(1)}%)`;
     });
     return `Whales with ${coinFilter} positions on Hyperliquid:\n${rows.join('\n')}`;
   }
@@ -315,11 +315,11 @@ async function getFundingHistory(input: ToolInput, ctx: ExecuteContext): Promise
 
   // Summarize: average, min, max, recent trend
   const rates = entries.map((e: any) => e.rate || e.avgRate || e.fundingRate || 0);
-  const avg = rates.reduce((s: number, r: number) => s + r, 0) / rates.length;
-  const min = Math.min(...rates);
-  const max = Math.max(...rates);
+  const avg = rates.length > 0 ? rates.reduce((s: number, r: number) => s + r, 0) / rates.length : 0;
+  const min = rates.length > 0 ? Math.min(...rates) : 0;
+  const max = rates.length > 0 ? Math.max(...rates) : 0;
   const recent = rates.slice(-7);
-  const recentAvg = recent.reduce((s: number, r: number) => s + r, 0) / recent.length;
+  const recentAvg = recent.length > 0 ? recent.reduce((s: number, r: number) => s + r, 0) / recent.length : 0;
 
   return `${sym} Funding History (${days} days)${input.exchange ? ` on ${input.exchange}` : ''}:\nAverage: ${avg.toFixed(4)}%\nMin: ${min.toFixed(4)}% | Max: ${max.toFixed(4)}%\nLast 7 days avg: ${recentAvg.toFixed(4)}%\nTrend: ${recentAvg > avg ? 'Rising (recent > avg)' : recentAvg < avg ? 'Falling (recent < avg)' : 'Flat'}\nData points: ${entries.length}`;
 }
@@ -512,6 +512,7 @@ async function getOiHistory(input: ToolInput, ctx: ExecuteContext): Promise<stri
   }
 
   const values = points.map((p: any) => p.totalOi || p.openInterest || 0);
+  if (values.length === 0) return `No OI history data for ${sym}.`;
   const first = values[0];
   const last = values[values.length - 1];
   const change = first > 0 ? ((last - first) / first * 100) : 0;

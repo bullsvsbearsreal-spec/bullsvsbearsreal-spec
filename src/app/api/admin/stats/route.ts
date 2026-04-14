@@ -59,18 +59,18 @@ export async function GET() {
 
     return NextResponse.json({
       totals: {
-        users: Number(userCount[0].count),
-        alertNotifications: Number(alertNotifCount[0].count),
-        fundingSnapshots: Number(fundingRows[0].count),
-        oiSnapshots: Number(oiRows[0].count),
-        liquidationSnapshots: Number(liqRows[0].count),
-        telegramUsers: Number(telegramUsers[0].count),
-        pushSubscriptions: Number(pushSubs[0].count),
+        users: Number(userCount[0]?.count ?? 0),
+        alertNotifications: Number(alertNotifCount[0]?.count ?? 0),
+        fundingSnapshots: Number(fundingRows[0]?.count ?? 0),
+        oiSnapshots: Number(oiRows[0]?.count ?? 0),
+        liquidationSnapshots: Number(liqRows[0]?.count ?? 0),
+        telegramUsers: Number(telegramUsers[0]?.count ?? 0),
+        pushSubscriptions: Number(pushSubs[0]?.count ?? 0),
       },
       last24h: {
-        alertNotifications: Number(recentNotifs[0].count),
-        fundingSnapshots: Number(recentFunding[0].count),
-        liquidationSnapshots: Number(recentLiqs[0].count),
+        alertNotifications: Number(recentNotifs[0]?.count ?? 0),
+        fundingSnapshots: Number(recentFunding[0]?.count ?? 0),
+        liquidationSnapshots: Number(recentLiqs[0]?.count ?? 0),
       },
       trends: {
         alerts: toArr(trendAlerts),
@@ -78,7 +78,7 @@ export async function GET() {
         oi: toArr(trendOI),
         liquidations: toArr(trendLiqs),
       },
-      dbSize: dbSize[0].size,
+      dbSize: dbSize[0]?.size ?? 'unknown',
     });
   } catch (e) {
     console.error('Admin stats error:', e);
