@@ -10,13 +10,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   initDB, isDBConfigured, getSQL,
   getDistinctTrackedWallets, insertWhaleTradeEvents,
-  getTradeSubscribers, logWhaleNotification,
+  getTradeSubscribers, logWhaleNotification, hasWhaleNotifBeenSent,
   getCache, setCache, pruneOldWhaleData,
   getPushSubscriptionsForUser, deletePushSubscription,
+  upsertWorkerHeartbeat,
 } from '@/lib/db';
 import { detectTrades, formatTradeMessage } from '@/lib/whale-trades';
 import { sendMessage } from '@/lib/telegram';
-import { sendAlertDiscord, sendAlertWhatsApp } from '@/lib/notifications';
+import { sendAlertDiscord, sendAlertWhatsApp, sendAlertEmail } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -104,6 +105,10 @@ export async function GET(request: NextRequest) {
     await pruneOldWhaleData(30).catch(() => {});
   }
 
+  await upsertWorkerHeartbeat('cron:whale-trades', 'ok', {
+    checked: batch.length, trades: totalTrades, notifications: totalNotifs,
+  }).catch(() => {});
+
   return NextResponse.json({
     ok: true, checked: batch.length, totalTracked: allWallets.length,
     trades: totalTrades, notifications: totalNotifs, cursor: nextCursor,
@@ -128,13 +133,32 @@ async function notifySubscribers(
   let sent = 0;
 
   for (const sub of subscribers) {
-    for (const trade of trades) {
+    // Filter trades below subscriber's min value threshold
+    const filteredTrades = sub.minValueUsd
+      ? trades.filter(t => (t.valueUsd || 0) >= sub.minValueUsd!)
+      : trades;
+
+    for (const trade of filteredTrades) {
       const eventId = txToId.get(trade.txHash);
       if (!eventId) continue; // not newly inserted
 
       for (const channel of sub.notifyChannels) {
+        // Dedup: skip if already notified for this event+channel
+        const alreadySent = await hasWhaleNotifBeenSent(sub.ownerId, eventId, channel);
+        if (alreadySent) continue;
+
         try {
-          if (channel === 'telegram' && sub.ownerType === 'telegram' && BOT_TOKEN) {
+          if (channel === 'email' && sub.email) {
+            const ok = await sendAlertEmail(sub.email, [{
+              alertId: String(eventId),
+              symbol: trade.tokenOutSymbol || trade.tokenInSymbol || '?',
+              metric: 'whale_trade',
+              operator: trade.action === 'buy' ? 'gt' : 'lt',
+              threshold: trade.valueUsd || 0,
+              actualValue: trade.valueUsd || 0,
+            }]);
+            if (ok) { await logWhaleNotification(sub.ownerId, eventId, channel); sent++; }
+          } else if (channel === 'telegram' && sub.ownerType === 'telegram' && BOT_TOKEN) {
             const chatId = parseInt(sub.ownerId.replace('tg_', ''));
             if (isNaN(chatId)) continue;
             const msg = `\u{1F40B} <b>Whale Trade Alert</b>\n\n${esc(formatTradeMessage(trade, sub.label))}`;

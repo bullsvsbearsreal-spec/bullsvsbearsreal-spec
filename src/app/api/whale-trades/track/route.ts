@@ -36,11 +36,12 @@ export async function POST(request: NextRequest) {
   const chain = body.chain || detectChain(address);
   const label = typeof body.label === 'string' ? body.label.slice(0, 100) : undefined;
   const channels = Array.isArray(body.notifyChannels)
-    ? body.notifyChannels.filter((c: string) => ['email', 'push', 'telegram'].includes(c))
+    ? body.notifyChannels.filter((c: string) => ['email', 'push', 'telegram', 'discord', 'whatsapp'].includes(c))
     : ['push'];
+  const minValueUsd = typeof body.minValueUsd === 'number' && body.minValueUsd > 0 ? body.minValueUsd : undefined;
 
   await initDB();
-  const result = await addTrackedWallet('user', session.user.id, address, chain, label, channels);
+  const result = await addTrackedWallet('user', session.user.id, address, chain, label, channels, minValueUsd);
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
