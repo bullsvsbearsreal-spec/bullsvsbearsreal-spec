@@ -178,7 +178,8 @@ export default function WatchlistPage() {
       if (!wlSet.has(sym)) return;
       const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
       const prev = fundingMap.get(sym) ?? { sum: 0, count: 0 };
-      fundingMap.set(sym, { sum: prev.sum + f.fundingRate * mult, count: prev.count + 1 });
+      const rate = f.fundingRate ?? 0;
+      fundingMap.set(sym, { sum: prev.sum + rate * mult, count: prev.count + 1 });
     });
 
     // -- OI: sum across exchanges
@@ -186,7 +187,7 @@ export default function WatchlistPage() {
     (Array.isArray(oiData) ? oiData : []).forEach((o) => {
       const sym = normalizeSymbol(o.symbol);
       if (!wlSet.has(sym)) return;
-      oiMap.set(sym, (oiMap.get(sym) ?? 0) + o.openInterestValue);
+      oiMap.set(sym, (oiMap.get(sym) ?? 0) + (o.openInterestValue ?? 0));
     });
 
     return watchlist.map((sym) => {
