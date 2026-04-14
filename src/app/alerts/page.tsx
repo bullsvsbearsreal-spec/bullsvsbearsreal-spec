@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -176,25 +176,23 @@ export default function AlertsPage() {
     return () => { mounted = false; };
   }, [session]);
 
-  // Fetch Telegram link status
-  useEffect(() => {
-    if (!session?.user) return;
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/telegram/link-code');
-        if (res.ok && mounted) {
-          const json = await res.json();
-          setTgLinked(json.linked);
-          if (json.linked) {
-            setTgActive(json.active);
-            setTgMutedUntil(json.mutedUntil ?? null);
-          }
+  // Fetch Telegram link status lazily (on first "Setup" click or if prefs hint it's linked)
+  const tgFetchedRef = useRef(false);
+  const fetchTgStatus = useCallback(async () => {
+    if (tgFetchedRef.current) return;
+    tgFetchedRef.current = true;
+    try {
+      const res = await fetch('/api/telegram/link-code');
+      if (res.ok) {
+        const json = await res.json();
+        setTgLinked(json.linked);
+        if (json.linked) {
+          setTgActive(json.active);
+          setTgMutedUntil(json.mutedUntil ?? null);
         }
-      } catch {}
-    })();
-    return () => { mounted = false; };
-  }, [session]);
+      }
+    } catch {}
+  }, []);
 
   const tgGenerateCode = async () => {
     setTgGenerating(true);
@@ -657,7 +655,7 @@ export default function AlertsPage() {
                       </>
                     ) : (
                       <button
-                        onClick={() => setTgEditing(!tgEditing)}
+                        onClick={() => { setTgEditing(!tgEditing); fetchTgStatus(); }}
                         className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
                       >
                         {tgEditing ? 'Close' : 'Setup'}
