@@ -9,7 +9,7 @@ import { checkRateLimit } from '@/lib/api/rate-limit';
 import { createRateLimiter } from '@/lib/auth/rate-limit';
 
 // Fallback in-memory rate limiter when Redis is unavailable
-const fallbackLimiter = createRateLimiter({ maxAttempts: 60, windowMs: 60 * 1000 });
+const fallbackLimiter = createRateLimiter({ maxAttempts: 60, windowMs: 60 * 1000, name: 'v1-api' });
 
 interface V1AuthResult {
   userId: string;
@@ -125,7 +125,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
   } catch (e) {
     // Fallback to in-memory rate limiter when Redis is down
     console.error('Redis rate limit failed, using in-memory fallback:', e);
-    if (!fallbackLimiter.check(keyData.keyId)) {
+    if (!(await fallbackLimiter.check(keyData.keyId))) {
       return {
         ok: false,
         response: NextResponse.json(

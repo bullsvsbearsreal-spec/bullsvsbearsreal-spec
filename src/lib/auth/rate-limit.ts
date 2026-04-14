@@ -1,11 +1,14 @@
 /**
- * Simple in-memory rate limiter for auth endpoints.
- * Per-key (IP or email) sliding window with configurable limits.
+ * Hybrid rate limiter for auth endpoints.
+ * Uses in-memory as fast first check + DB for persistence across instances.
  *
- * Note: On Vercel serverless, each instance has separate state,
- * so this provides best-effort protection. For stronger guarantees,
- * use Upstash Redis (already used for v1 API rate limiting).
+ * On Vercel serverless, in-memory state is lost between cold starts and
+ * not shared across instances. The DB layer ensures limits are enforced
+ * consistently, while the in-memory layer avoids DB round-trips for
+ * repeated abuse from the same instance.
  */
+
+import { isDBConfigured, getSQL } from '@/lib/db';
 
 interface RateLimitEntry {
   count: number;
@@ -15,19 +18,21 @@ interface RateLimitEntry {
 interface RateLimiterOptions {
   maxAttempts: number;
   windowMs: number;
+  /** Identifier for this limiter in the DB (e.g. 'signup', '2fa') */
+  name: string;
 }
 
-export function createRateLimiter({ maxAttempts, windowMs }: RateLimiterOptions) {
+export function createRateLimiter({ maxAttempts, windowMs, name }: RateLimiterOptions) {
   const entries = new Map<string, RateLimitEntry>();
   let lastCleanup = 0;
 
   return {
     /** Returns true if allowed, false if rate-limited. */
-    check(key: string): boolean {
+    async check(key: string): Promise<boolean> {
       const now = Date.now();
       const normalizedKey = key.toLowerCase();
 
-      // Periodic cleanup (at most once per minute)
+      // Periodic cleanup of in-memory entries (at most once per minute)
       if (now - lastCleanup > 60_000) {
         lastCleanup = now;
         entries.forEach((v, k) => {
@@ -35,22 +40,58 @@ export function createRateLimiter({ maxAttempts, windowMs }: RateLimiterOptions)
         });
       }
 
-      const entry = entries.get(normalizedKey);
-      if (!entry || now > entry.resetAt) {
-        entries.set(normalizedKey, { count: 1, resetAt: now + windowMs });
-        return true;
+      // Fast in-memory check first
+      const memEntry = entries.get(normalizedKey);
+      if (memEntry && now <= memEntry.resetAt && memEntry.count >= maxAttempts) {
+        return false;
       }
-      if (entry.count >= maxAttempts) return false;
-      entry.count++;
+
+      // DB-backed check for cross-instance consistency
+      if (isDBConfigured()) {
+        try {
+          const sql = getSQL();
+          const windowSec = Math.ceil(windowMs / 1000);
+          const rows = await sql`
+            SELECT count(*)::int AS cnt FROM rate_limit_events
+            WHERE limiter = ${name}
+              AND key = ${normalizedKey}
+              AND created_at > NOW() - ${windowSec + ' seconds'}::interval
+          `;
+          const dbCount = rows[0]?.cnt ?? 0;
+
+          if (dbCount >= maxAttempts) {
+            // Sync to memory so we don't hit DB again
+            entries.set(normalizedKey, { count: maxAttempts, resetAt: now + windowMs });
+            return false;
+          }
+
+          // Record this attempt
+          await sql`
+            INSERT INTO rate_limit_events (limiter, key)
+            VALUES (${name}, ${normalizedKey})
+          `;
+        } catch {
+          // DB error — fall through to in-memory only
+        }
+      }
+
+      // Update in-memory
+      if (!memEntry || now > memEntry.resetAt) {
+        entries.set(normalizedKey, { count: 1, resetAt: now + windowMs });
+      } else {
+        memEntry.count++;
+        if (memEntry.count >= maxAttempts) return false;
+      }
+
       return true;
     },
   };
 }
 
 // Shared limiters for auth endpoints
-export const signupLimiter = createRateLimiter({ maxAttempts: 5, windowMs: 15 * 60 * 1000 });
-export const forgotPasswordLimiter = createRateLimiter({ maxAttempts: 5, windowMs: 15 * 60 * 1000 });
-export const twoFaChallengeLimiter = createRateLimiter({ maxAttempts: 10, windowMs: 15 * 60 * 1000 });
+export const signupLimiter = createRateLimiter({ maxAttempts: 5, windowMs: 15 * 60 * 1000, name: 'signup' });
+export const forgotPasswordLimiter = createRateLimiter({ maxAttempts: 5, windowMs: 15 * 60 * 1000, name: 'forgot-pw' });
+export const twoFaChallengeLimiter = createRateLimiter({ maxAttempts: 10, windowMs: 15 * 60 * 1000, name: '2fa' });
 
 /** Basic email format validation. */
 export function isValidEmail(email: string): boolean {

@@ -257,7 +257,8 @@ async function _doInitDB(): Promise<void> {
   // User roles (admin, user)
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
   // Seed admin accounts
-  await sql`UPDATE users SET role = 'admin' WHERE email = 'ocelotcex1638a@gmail.com' AND role != 'admin'`;
+  const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
+  await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
 
   // Admin monitoring metrics (DB size history, coverage snapshots)
   await sql`
@@ -372,6 +373,17 @@ async function _doInitDB(): Promise<void> {
     )
   `;
 
+  // Rate limit events — persistent cross-instance rate limiting
+  await sql`
+    CREATE TABLE IF NOT EXISTS rate_limit_events (
+      id SERIAL PRIMARY KEY,
+      limiter TEXT NOT NULL,
+      key TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_rle_lookup ON rate_limit_events(limiter, key, created_at)`;
+
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -426,15 +438,22 @@ export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Prom
   const sql = getSQL();
 
   let inserted = 0;
-  for (let i = 0; i < entries.length; i += 50) {
-    const chunk = entries.slice(i, i + 50);
-    const promises = chunk.map(e => {
-      const predicted = e.predicted != null ? e.predicted : null;
-      const markPrice = e.markPrice != null ? e.markPrice : null;
-      return sql`INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
-          VALUES (${e.symbol}, ${e.exchange}, ${e.rate}, ${predicted}, ${markPrice})`;
-    });
-    await Promise.all(promises);
+  for (let i = 0; i < entries.length; i += 500) {
+    const chunk = entries.slice(i, i + 500);
+    const symbols = chunk.map(e => e.symbol);
+    const exchanges = chunk.map(e => e.exchange);
+    const rates = chunk.map(e => e.rate);
+    const predicteds = chunk.map(e => e.predicted ?? null);
+    const markPrices = chunk.map(e => e.markPrice ?? null);
+    await sql`
+      INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
+      SELECT * FROM UNNEST(
+        ${sql.array(symbols)}::text[],
+        ${sql.array(exchanges)}::text[],
+        ${sql.array(rates)}::real[],
+        ${sql.array(predicteds)}::real[],
+        ${sql.array(markPrices)}::real[]
+      )`;
     inserted += chunk.length;
   }
 
@@ -454,13 +473,18 @@ export async function saveOISnapshot(entries: OISnapshotEntry[]): Promise<number
   const sql = getSQL();
 
   let inserted = 0;
-  for (let i = 0; i < entries.length; i += 50) {
-    const chunk = entries.slice(i, i + 50);
-    const promises = chunk.map(e =>
-      sql`INSERT INTO oi_snapshots (symbol, exchange, oi_usd)
-          VALUES (${e.symbol}, ${e.exchange}, ${e.oiUsd})`
-    );
-    await Promise.all(promises);
+  for (let i = 0; i < entries.length; i += 500) {
+    const chunk = entries.slice(i, i + 500);
+    const symbols = chunk.map(e => e.symbol);
+    const exchanges = chunk.map(e => e.exchange);
+    const oiUsds = chunk.map(e => e.oiUsd);
+    await sql`
+      INSERT INTO oi_snapshots (symbol, exchange, oi_usd)
+      SELECT * FROM UNNEST(
+        ${sql.array(symbols)}::text[],
+        ${sql.array(exchanges)}::text[],
+        ${sql.array(oiUsds)}::real[]
+      )`;
     inserted += chunk.length;
   }
 
@@ -1145,8 +1169,11 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
       DELETE FROM liquidation_snapshots WHERE ts < NOW() - ${intervalStr}::interval
     `;
 
-    // Also clean expired cache entries
+    // Also clean expired cache entries and stale auth codes
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
+    await sql`DELETE FROM email_verification_codes WHERE expires_at < NOW()`.catch(() => {});
+    await sql`DELETE FROM twofa_login_codes WHERE expires_at < NOW()`.catch(() => {});
+    await sql`DELETE FROM rate_limit_events WHERE created_at < NOW() - INTERVAL '1 day'`.catch(() => {});
 
     return {
       funding: fr.count ?? 0,

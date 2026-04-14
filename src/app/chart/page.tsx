@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign, Wheat, Globe2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign, Wheat, Globe2, Layers, Cpu, Flame, Zap } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import CryptoMetricsPanel from './components/CryptoMetricsPanel';
@@ -28,6 +28,7 @@ interface AssetSymbol {
   tvSymbol: string;       // TradingView symbol: "BINANCE:BTCUSDT", "NASDAQ:AAPL"
   displayPair?: string;   // Optional pair display: "/USDT", ""
   icon?: string;          // For crypto we use TokenIconSimple
+  cat?: string;           // Category grouping for grid display
 }
 
 interface AssetTab {
@@ -43,55 +44,49 @@ const ASSET_TABS: AssetTab[] = [
     label: 'Crypto',
     icon: <TrendingUp className="w-3.5 h-3.5" />,
     pinned: [
-      // Top coins by market cap
-      { label: 'BTC', tvSymbol: 'BITSTAMP:BTCUSD', displayPair: '/USD', icon: 'btc' },
-      { label: 'ETH', tvSymbol: 'BITSTAMP:ETHUSD', displayPair: '/USD', icon: 'eth' },
-      { label: 'SOL', tvSymbol: 'COINBASE:SOLUSD', displayPair: '/USD', icon: 'sol' },
-      { label: 'XRP', tvSymbol: 'BITSTAMP:XRPUSD', displayPair: '/USD', icon: 'xrp' },
-      { label: 'DOGE', tvSymbol: 'COINBASE:DOGEUSD', displayPair: '/USD', icon: 'doge' },
-      { label: 'BNB', tvSymbol: 'BINANCE:BNBUSDT', displayPair: '/USDT', icon: 'bnb' },
-      { label: 'ADA', tvSymbol: 'COINBASE:ADAUSD', displayPair: '/USD', icon: 'ada' },
-      { label: 'AVAX', tvSymbol: 'COINBASE:AVAXUSD', displayPair: '/USD', icon: 'avax' },
-      { label: 'LINK', tvSymbol: 'COINBASE:LINKUSD', displayPair: '/USD', icon: 'link' },
-      { label: 'DOT', tvSymbol: 'COINBASE:DOTUSD', displayPair: '/USD', icon: 'dot' },
-      { label: 'TRX', tvSymbol: 'BINANCE:TRXUSDT', displayPair: '/USDT', icon: 'trx' },
-      { label: 'TON', tvSymbol: 'BINANCE:TONUSDT', displayPair: '/USDT', icon: 'ton' },
-      { label: 'SHIB', tvSymbol: 'COINBASE:SHIBUSD', displayPair: '/USD', icon: 'shib' },
-      { label: 'SUI', tvSymbol: 'COINBASE:SUIUSD', displayPair: '/USD', icon: 'sui' },
-      { label: 'NEAR', tvSymbol: 'COINBASE:NEARUSD', displayPair: '/USD', icon: 'near' },
-      { label: 'APT', tvSymbol: 'COINBASE:APTUSD', displayPair: '/USD', icon: 'apt' },
-      { label: 'LTC', tvSymbol: 'COINBASE:LTCUSD', displayPair: '/USD', icon: 'ltc' },
-      { label: 'BCH', tvSymbol: 'COINBASE:BCHUSD', displayPair: '/USD', icon: 'bch' },
-      { label: 'HBAR', tvSymbol: 'BINANCE:HBARUSDT', displayPair: '/USDT', icon: 'hbar' },
-      // L2s & infra
-      { label: 'MATIC', tvSymbol: 'COINBASE:MATICUSD', displayPair: '/USD', icon: 'matic' },
-      { label: 'OP', tvSymbol: 'COINBASE:OPUSD', displayPair: '/USD', icon: 'op' },
-      { label: 'ARB', tvSymbol: 'COINBASE:ARBUSD', displayPair: '/USD', icon: 'arb' },
-      { label: 'SEI', tvSymbol: 'COINBASE:SEIUSD', displayPair: '/USD', icon: 'sei' },
-      { label: 'TIA', tvSymbol: 'COINBASE:TIAUSD', displayPair: '/USD', icon: 'tia' },
-      { label: 'INJ', tvSymbol: 'COINBASE:INJUSD', displayPair: '/USD', icon: 'inj' },
-      { label: 'STX', tvSymbol: 'COINBASE:STXUSD', displayPair: '/USD', icon: 'stx' },
-      // DeFi
-      { label: 'UNI', tvSymbol: 'COINBASE:UNIUSD', displayPair: '/USD', icon: 'uni' },
-      { label: 'AAVE', tvSymbol: 'COINBASE:AAVEUSD', displayPair: '/USD', icon: 'aave' },
-      { label: 'MKR', tvSymbol: 'COINBASE:MKRUSD', displayPair: '/USD', icon: 'mkr' },
-      { label: 'CRV', tvSymbol: 'COINBASE:CRVUSD', displayPair: '/USD', icon: 'crv' },
-      { label: 'PENDLE', tvSymbol: 'BINANCE:PENDLEUSDT', displayPair: '/USDT', icon: 'pendle' },
-      { label: 'ENA', tvSymbol: 'BINANCE:ENAUSDT', displayPair: '/USDT', icon: 'ena' },
-      { label: 'JUP', tvSymbol: 'COINBASE:JUPUSD', displayPair: '/USD', icon: 'jup' },
-      // AI & compute
-      { label: 'RENDER', tvSymbol: 'COINBASE:RENDERUSD', displayPair: '/USD', icon: 'render' },
-      { label: 'FET', tvSymbol: 'COINBASE:FETUSD', displayPair: '/USD', icon: 'fet' },
-      { label: 'TAO', tvSymbol: 'BINANCE:TAOUSDT', displayPair: '/USDT', icon: 'tao' },
-      // Memecoins
-      { label: 'PEPE', tvSymbol: 'COINBASE:PEPEUSD', displayPair: '/USD', icon: 'pepe' },
-      { label: 'WIF', tvSymbol: 'COINBASE:WIFUSD', displayPair: '/USD', icon: 'wif' },
-      { label: 'BONK', tvSymbol: 'COINBASE:BONKUSD', displayPair: '/USD', icon: 'bonk' },
-      { label: 'FLOKI', tvSymbol: 'COINBASE:FLOKIUSD', displayPair: '/USD', icon: 'floki' },
-      // Perp DEX tokens
-      { label: 'HYPE', tvSymbol: 'BINANCE:HYPEUSDT', displayPair: '/USDT', icon: 'hype' },
-      { label: 'DRIFT', tvSymbol: 'BINANCE:DRIFTUSDT', displayPair: '/USDT', icon: 'drift' },
-      { label: 'DYDX', tvSymbol: 'COINBASE:DYDXUSD', displayPair: '/USD', icon: 'dydx' },
+      { label: 'BTC', tvSymbol: 'BITSTAMP:BTCUSD', displayPair: '/USD', icon: 'btc', cat: 'Top' },
+      { label: 'ETH', tvSymbol: 'BITSTAMP:ETHUSD', displayPair: '/USD', icon: 'eth', cat: 'Top' },
+      { label: 'SOL', tvSymbol: 'COINBASE:SOLUSD', displayPair: '/USD', icon: 'sol', cat: 'Top' },
+      { label: 'XRP', tvSymbol: 'BITSTAMP:XRPUSD', displayPair: '/USD', icon: 'xrp', cat: 'Top' },
+      { label: 'BNB', tvSymbol: 'BINANCE:BNBUSDT', displayPair: '/USDT', icon: 'bnb', cat: 'Top' },
+      { label: 'DOGE', tvSymbol: 'COINBASE:DOGEUSD', displayPair: '/USD', icon: 'doge', cat: 'Top' },
+      { label: 'ADA', tvSymbol: 'COINBASE:ADAUSD', displayPair: '/USD', icon: 'ada', cat: 'Top' },
+      { label: 'AVAX', tvSymbol: 'COINBASE:AVAXUSD', displayPair: '/USD', icon: 'avax', cat: 'Top' },
+      { label: 'LINK', tvSymbol: 'COINBASE:LINKUSD', displayPair: '/USD', icon: 'link', cat: 'Top' },
+      { label: 'DOT', tvSymbol: 'COINBASE:DOTUSD', displayPair: '/USD', icon: 'dot', cat: 'Top' },
+      { label: 'TRX', tvSymbol: 'BINANCE:TRXUSDT', displayPair: '/USDT', icon: 'trx', cat: 'Top' },
+      { label: 'TON', tvSymbol: 'BINANCE:TONUSDT', displayPair: '/USDT', icon: 'ton', cat: 'Top' },
+      { label: 'SHIB', tvSymbol: 'COINBASE:SHIBUSD', displayPair: '/USD', icon: 'shib', cat: 'Top' },
+      { label: 'SUI', tvSymbol: 'COINBASE:SUIUSD', displayPair: '/USD', icon: 'sui', cat: 'Top' },
+      { label: 'NEAR', tvSymbol: 'COINBASE:NEARUSD', displayPair: '/USD', icon: 'near', cat: 'Top' },
+      { label: 'APT', tvSymbol: 'COINBASE:APTUSD', displayPair: '/USD', icon: 'apt', cat: 'Top' },
+      { label: 'LTC', tvSymbol: 'COINBASE:LTCUSD', displayPair: '/USD', icon: 'ltc', cat: 'Top' },
+      { label: 'BCH', tvSymbol: 'COINBASE:BCHUSD', displayPair: '/USD', icon: 'bch', cat: 'Top' },
+      { label: 'HBAR', tvSymbol: 'BINANCE:HBARUSDT', displayPair: '/USDT', icon: 'hbar', cat: 'Top' },
+      { label: 'MATIC', tvSymbol: 'COINBASE:MATICUSD', displayPair: '/USD', icon: 'matic', cat: 'L2' },
+      { label: 'OP', tvSymbol: 'COINBASE:OPUSD', displayPair: '/USD', icon: 'op', cat: 'L2' },
+      { label: 'ARB', tvSymbol: 'COINBASE:ARBUSD', displayPair: '/USD', icon: 'arb', cat: 'L2' },
+      { label: 'SEI', tvSymbol: 'COINBASE:SEIUSD', displayPair: '/USD', icon: 'sei', cat: 'L2' },
+      { label: 'TIA', tvSymbol: 'COINBASE:TIAUSD', displayPair: '/USD', icon: 'tia', cat: 'L2' },
+      { label: 'INJ', tvSymbol: 'COINBASE:INJUSD', displayPair: '/USD', icon: 'inj', cat: 'L2' },
+      { label: 'STX', tvSymbol: 'COINBASE:STXUSD', displayPair: '/USD', icon: 'stx', cat: 'L2' },
+      { label: 'UNI', tvSymbol: 'COINBASE:UNIUSD', displayPair: '/USD', icon: 'uni', cat: 'DeFi' },
+      { label: 'AAVE', tvSymbol: 'COINBASE:AAVEUSD', displayPair: '/USD', icon: 'aave', cat: 'DeFi' },
+      { label: 'MKR', tvSymbol: 'COINBASE:MKRUSD', displayPair: '/USD', icon: 'mkr', cat: 'DeFi' },
+      { label: 'CRV', tvSymbol: 'COINBASE:CRVUSD', displayPair: '/USD', icon: 'crv', cat: 'DeFi' },
+      { label: 'PENDLE', tvSymbol: 'BINANCE:PENDLEUSDT', displayPair: '/USDT', icon: 'pendle', cat: 'DeFi' },
+      { label: 'ENA', tvSymbol: 'BINANCE:ENAUSDT', displayPair: '/USDT', icon: 'ena', cat: 'DeFi' },
+      { label: 'JUP', tvSymbol: 'COINBASE:JUPUSD', displayPair: '/USD', icon: 'jup', cat: 'DeFi' },
+      { label: 'RENDER', tvSymbol: 'COINBASE:RENDERUSD', displayPair: '/USD', icon: 'render', cat: 'AI' },
+      { label: 'FET', tvSymbol: 'COINBASE:FETUSD', displayPair: '/USD', icon: 'fet', cat: 'AI' },
+      { label: 'TAO', tvSymbol: 'BINANCE:TAOUSDT', displayPair: '/USDT', icon: 'tao', cat: 'AI' },
+      { label: 'PEPE', tvSymbol: 'COINBASE:PEPEUSD', displayPair: '/USD', icon: 'pepe', cat: 'Meme' },
+      { label: 'WIF', tvSymbol: 'COINBASE:WIFUSD', displayPair: '/USD', icon: 'wif', cat: 'Meme' },
+      { label: 'BONK', tvSymbol: 'COINBASE:BONKUSD', displayPair: '/USD', icon: 'bonk', cat: 'Meme' },
+      { label: 'FLOKI', tvSymbol: 'COINBASE:FLOKIUSD', displayPair: '/USD', icon: 'floki', cat: 'Meme' },
+      { label: 'HYPE', tvSymbol: 'BINANCE:HYPEUSDT', displayPair: '/USDT', icon: 'hype', cat: 'Perps' },
+      { label: 'DRIFT', tvSymbol: 'BINANCE:DRIFTUSDT', displayPair: '/USDT', icon: 'drift', cat: 'Perps' },
+      { label: 'DYDX', tvSymbol: 'COINBASE:DYDXUSD', displayPair: '/USD', icon: 'dydx', cat: 'Perps' },
     ],
   },
   {
@@ -561,64 +556,134 @@ function ChartPageInner() {
                   ))}
                 </div>
 
-                {/* Symbol list */}
+                {/* Symbol grid */}
                 <div className="max-h-[60vh] overflow-y-auto py-1 scrollbar-thin" role="listbox">
                   {filteredSymbols.length === 0 && (
                     <div className="px-4 py-3 text-xs text-neutral-500 text-center">
                       No symbols found. Use TradingView search in the chart for more.
                     </div>
                   )}
-                  {!symbolQuery.trim() && (
-                    <div className="px-3 pt-1.5 pb-1 flex items-center gap-1.5">
-                      <Star className="w-3 h-3 text-hub-yellow/60" />
-                      <span className="text-[10px] font-medium text-neutral-600 uppercase tracking-wider">
-                        Popular {currentTab.label}
-                      </span>
-                    </div>
-                  )}
-                  {filteredSymbols.map((sym, idx) => (
-                    <button
-                      key={sym.tvSymbol}
-                      id={`symbol-${idx}`}
-                      role="option"
-                      aria-selected={sym.tvSymbol === tvSymbol}
-                      onClick={() => selectSymbol(sym)}
-                      onMouseEnter={() => setFocusedIndex(idx)}
-                      className={`w-full text-left px-3 py-1.5 transition-colors flex items-center gap-2 ${
-                        focusedIndex === idx
-                          ? 'bg-white/[0.08]'
-                          : sym.tvSymbol === tvSymbol
-                            ? 'bg-hub-yellow/10'
-                            : 'hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      {assetClass === 'crypto' && sym.icon ? (
-                        <TokenIconSimple symbol={sym.icon} size={18} />
-                      ) : assetClass !== 'crypto' ? (
-                        <div className={`w-[18px] h-[18px] rounded flex items-center justify-center text-[7px] font-bold flex-shrink-0 ${
-                          assetClass === 'stocks' ? 'bg-blue-500/15 text-blue-400' :
-                          assetClass === 'forex' ? 'bg-emerald-500/15 text-emerald-400' :
-                          assetClass === 'commodities' ? 'bg-amber-500/15 text-amber-400' :
-                          'bg-purple-500/15 text-purple-400'
-                        }`}>
-                          {sym.label.slice(0, 2).toUpperCase()}
+                  {assetClass === 'crypto' && !symbolQuery.trim() ? (
+                    /* ── Categorized grid for crypto ── */
+                    (() => {
+                      const CAT_META: Record<string, { icon: React.ReactNode; color: string }> = {
+                        Top: { icon: <Star className="w-3 h-3" />, color: 'text-hub-yellow' },
+                        L2: { icon: <Layers className="w-3 h-3" />, color: 'text-blue-400' },
+                        DeFi: { icon: <Zap className="w-3 h-3" />, color: 'text-emerald-400' },
+                        AI: { icon: <Cpu className="w-3 h-3" />, color: 'text-purple-400' },
+                        Meme: { icon: <Flame className="w-3 h-3" />, color: 'text-orange-400' },
+                        Perps: { icon: <TrendingUp className="w-3 h-3" />, color: 'text-cyan-400' },
+                      };
+                      const cats = ['Top', 'L2', 'DeFi', 'AI', 'Meme', 'Perps'];
+                      const grouped = new Map<string, AssetSymbol[]>();
+                      for (const sym of filteredSymbols) {
+                        const c = sym.cat || 'Top';
+                        if (!grouped.has(c)) grouped.set(c, []);
+                        grouped.get(c)!.push(sym);
+                      }
+                      let globalIdx = 0;
+                      return cats.filter(c => grouped.has(c)).map(cat => {
+                        const syms = grouped.get(cat)!;
+                        const meta = CAT_META[cat] || CAT_META.Top;
+                        return (
+                          <div key={cat}>
+                            <div className="px-3 py-2 flex items-center gap-2">
+                              <span className={meta.color}>{meta.icon}</span>
+                              <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">{cat}</span>
+                              <span className={`text-[9px] tabular-nums font-medium ${meta.color} opacity-60`}>{syms.length}</span>
+                              <div className="flex-1 h-px bg-white/[0.04]" />
+                            </div>
+                            <div className="grid grid-cols-3 gap-0.5 px-2 pb-1">
+                              {syms.map(sym => {
+                                const idx = globalIdx++;
+                                return (
+                                  <button
+                                    key={sym.tvSymbol}
+                                    id={`symbol-${idx}`}
+                                    role="option"
+                                    aria-selected={sym.tvSymbol === tvSymbol}
+                                    onClick={() => selectSymbol(sym)}
+                                    onMouseEnter={() => setFocusedIndex(idx)}
+                                    className={`flex items-center gap-2 px-2 py-[6px] rounded-lg text-left transition-all ${
+                                      sym.tvSymbol === tvSymbol
+                                        ? 'bg-hub-yellow/15 ring-1 ring-hub-yellow/30'
+                                        : focusedIndex === idx
+                                          ? 'bg-white/[0.08]'
+                                          : 'hover:bg-white/[0.04]'
+                                    }`}
+                                  >
+                                    <span className={`shrink-0 transition-opacity ${sym.tvSymbol === tvSymbol ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
+                                      <TokenIconSimple symbol={sym.icon || sym.label} size={18} />
+                                    </span>
+                                    <span className={`text-[11px] font-medium truncate ${
+                                      sym.tvSymbol === tvSymbol ? 'text-hub-yellow' : 'text-white'
+                                    }`}>
+                                      {sym.label}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()
+                  ) : (
+                    /* ── Flat list for search results & non-crypto ── */
+                    <>
+                      {!symbolQuery.trim() && (
+                        <div className="px-3 pt-1.5 pb-1 flex items-center gap-1.5">
+                          <Star className="w-3 h-3 text-hub-yellow/60" />
+                          <span className="text-[10px] font-medium text-neutral-600 uppercase tracking-wider">
+                            Popular {currentTab.label}
+                          </span>
                         </div>
-                      ) : null}
-                      <div className="flex-1 min-w-0">
-                        <span className={`text-[13px] font-medium ${
-                          sym.tvSymbol === tvSymbol ? 'text-hub-yellow' : 'text-white'
-                        }`}>
-                          {sym.label}
-                        </span>
-                        {sym.displayPair && (
-                          <span className="text-neutral-600 text-xs">{sym.displayPair}</span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-neutral-600 font-mono flex-shrink-0">
-                        {sym.tvSymbol.split(':')[0]}
-                      </span>
-                    </button>
-                  ))}
+                      )}
+                      {filteredSymbols.map((sym, idx) => (
+                        <button
+                          key={sym.tvSymbol}
+                          id={`symbol-${idx}`}
+                          role="option"
+                          aria-selected={sym.tvSymbol === tvSymbol}
+                          onClick={() => selectSymbol(sym)}
+                          onMouseEnter={() => setFocusedIndex(idx)}
+                          className={`w-full text-left px-3 py-1.5 transition-colors flex items-center gap-2 ${
+                            focusedIndex === idx
+                              ? 'bg-white/[0.08]'
+                              : sym.tvSymbol === tvSymbol
+                                ? 'bg-hub-yellow/10'
+                                : 'hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          {assetClass === 'crypto' && sym.icon ? (
+                            <TokenIconSimple symbol={sym.icon} size={18} />
+                          ) : assetClass !== 'crypto' ? (
+                            <div className={`w-[18px] h-[18px] rounded flex items-center justify-center text-[7px] font-bold flex-shrink-0 ${
+                              assetClass === 'stocks' ? 'bg-blue-500/15 text-blue-400' :
+                              assetClass === 'forex' ? 'bg-emerald-500/15 text-emerald-400' :
+                              assetClass === 'commodities' ? 'bg-amber-500/15 text-amber-400' :
+                              'bg-purple-500/15 text-purple-400'
+                            }`}>
+                              {sym.label.slice(0, 2).toUpperCase()}
+                            </div>
+                          ) : null}
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-[13px] font-medium ${
+                              sym.tvSymbol === tvSymbol ? 'text-hub-yellow' : 'text-white'
+                            }`}>
+                              {sym.label}
+                            </span>
+                            {sym.displayPair && (
+                              <span className="text-neutral-600 text-xs">{sym.displayPair}</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-neutral-600 font-mono flex-shrink-0">
+                            {sym.tvSymbol.split(':')[0]}
+                          </span>
+                        </button>
+                      ))}
+                    </>
+                  )}
                 </div>
 
                 {/* Hints */}
