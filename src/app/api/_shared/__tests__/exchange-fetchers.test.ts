@@ -69,7 +69,7 @@ describe('fetchAllExchangesWithHealth', () => {
     const broken = health.find(h => h.name === 'Broken');
     expect(broken).toBeDefined();
     expect(broken!.status).toBe('error');
-    expect(broken!.error).toBe('Connection refused');
+    expect(broken!.error).toBe('Exchange fetch failed');
     expect(broken!.count).toBe(0);
   });
 
@@ -180,7 +180,7 @@ describe('fetchAllExchangesWithHealth', () => {
 
     const { health } = await fetchAllExchangesWithHealth(configs, mockFetchFn);
 
-    expect(health[0].error).toBe('Rate limited');
+    expect(health[0].error).toBe('Exchange fetch failed');
   });
 
   it('handles non-Error throws gracefully', async () => {
@@ -193,7 +193,7 @@ describe('fetchAllExchangesWithHealth', () => {
     const { health } = await fetchAllExchangesWithHealth(configs, mockFetchFn);
 
     expect(health[0].status).toBe('error');
-    expect(health[0].error).toBe('Unknown error');
+    expect(health[0].error).toBe('Exchange fetch failed');
   });
 });
 

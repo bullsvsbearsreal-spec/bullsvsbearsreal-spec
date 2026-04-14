@@ -382,45 +382,75 @@ describe('Drift fetcher', () => {
   const fetcher = getFetcher('Drift');
 
   it('parses funding rate from Data API and negates for longs-pay convention', async () => {
-    const mockData = {
+    // Step 1 response: market list from /stats/markets/prices
+    const marketsListData = {
       markets: [
+        { marketType: 'perp', symbol: 'SOL-PERP' },
+      ],
+    };
+
+    // Step 2 response: per-market funding rate from /market/SOL-PERP/fundingRates?limit=1
+    const fundingRateData = {
+      data: [
         {
-          marketType: 'perp',
-          symbol: 'SOL-PERP',
-          oraclePrice: '150.00',
-          openInterest: { long: '50000', short: '48000' },
-          fundingRate: { long: '0.005' }, // positive = longs receive in Drift
+          fundingRate: '0.75',       // USD-denominated; positive = shorts pay longs
+          oraclePriceTwap: '150.00',
+          markPriceTwap: '150.50',
+          ts: String(Math.floor(Date.now() / 1000)),
         },
       ],
     };
 
-    const fetchFn = mockFetchOk(mockData);
+    const fetchFn = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/stats/markets/prices')) {
+        return { ok: true, json: async () => marketsListData };
+      }
+      if (url.includes('/market/SOL-PERP/fundingRates')) {
+        return { ok: true, json: async () => fundingRateData };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
     const results = await fetcher(fetchFn);
 
     expect(results).toHaveLength(1);
     expect(results[0].symbol).toBe('SOL');
     expect(results[0].exchange).toBe('Drift');
-    // frLong = 0.005, result = -0.005 (negated: positive = longs pay)
-    expect(results[0].fundingRate).toBeCloseTo(-0.005, 6);
+    // ratePct = -(0.75 / 150) * 100 = -0.5
+    expect(results[0].fundingRate).toBeCloseTo(-0.5, 4);
     expect(results[0].fundingInterval).toBe('1h');
     expect(results[0].type).toBe('dex');
-    expect(results[0].markPrice).toBeCloseTo(150);
+    expect(results[0].markPrice).toBeCloseTo(150.5);
   });
 
   it('strips 1M prefix from symbols like 1MBONK', async () => {
-    const mockData = {
+    const marketsListData = {
       markets: [
+        { marketType: 'perp', symbol: '1MBONK-PERP' },
+      ],
+    };
+
+    const fundingRateData = {
+      data: [
         {
-          marketType: 'perp',
-          symbol: '1MBONK-PERP',
-          oraclePrice: '0.025',
-          openInterest: { long: '100000000', short: '95000000' },
-          fundingRate: { long: '0.01' },
+          fundingRate: '0.0000025',
+          oraclePriceTwap: '0.025',
+          markPriceTwap: '0.025',
+          ts: String(Math.floor(Date.now() / 1000)),
         },
       ],
     };
 
-    const fetchFn = mockFetchOk(mockData);
+    const fetchFn = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/stats/markets/prices')) {
+        return { ok: true, json: async () => marketsListData };
+      }
+      if (url.includes('/market/1MBONK-PERP/fundingRates')) {
+        return { ok: true, json: async () => fundingRateData };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
     const results = await fetcher(fetchFn);
 
     expect(results).toHaveLength(1);
@@ -428,50 +458,73 @@ describe('Drift fetcher', () => {
   });
 
   it('strips -PERP suffix from symbol', async () => {
-    const mockData = {
+    const marketsListData = {
       markets: [
+        { marketType: 'perp', symbol: 'BTC-PERP' },
+      ],
+    };
+
+    const fundingRateData = {
+      data: [
         {
-          marketType: 'perp',
-          symbol: 'BTC-PERP',
-          oraclePrice: '68500',
-          openInterest: { long: '100', short: '100' },
-          fundingRate: { long: '-0.008' }, // negative = longs pay in Drift
+          fundingRate: '-5.48',       // negative = longs pay in Drift (shorts pay longs is positive)
+          oraclePriceTwap: '68500',
+          markPriceTwap: '68500',
+          ts: String(Math.floor(Date.now() / 1000)),
         },
       ],
     };
 
-    const fetchFn = mockFetchOk(mockData);
+    const fetchFn = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/stats/markets/prices')) {
+        return { ok: true, json: async () => marketsListData };
+      }
+      if (url.includes('/market/BTC-PERP/fundingRates')) {
+        return { ok: true, json: async () => fundingRateData };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
     const results = await fetcher(fetchFn);
 
     expect(results).toHaveLength(1);
     expect(results[0].symbol).toBe('BTC');
-    // frLong=-0.008, negated → 0.008 (longs pay)
-    expect(results[0].fundingRate).toBeCloseTo(0.008, 6);
+    // ratePct = -(-5.48 / 68500) * 100 = 0.008 (longs pay)
+    expect(results[0].fundingRate).toBeCloseTo(0.008, 3);
   });
 
   it('skips spot markets', async () => {
-    const mockData = {
+    const marketsListData = {
       markets: [
+        { marketType: 'spot', symbol: 'SOL' },           // no -PERP suffix → filtered out
+        { marketType: 'perp', symbol: 'BTC-PERP' },
+      ],
+    };
+
+    const fundingRateData = {
+      data: [
         {
-          marketType: 'spot',
-          symbol: 'SOL',
-          oraclePrice: '150.00',
-          openInterest: { long: '50000', short: '48000' },
-          fundingRate: { long: '0.005' },
-        },
-        {
-          marketType: 'perp',
-          symbol: 'BTC-PERP',
-          oraclePrice: '68500',
-          openInterest: { long: '100', short: '100' },
-          fundingRate: { long: '0.003' },
+          fundingRate: '2.055',
+          oraclePriceTwap: '68500',
+          markPriceTwap: '68500',
+          ts: String(Math.floor(Date.now() / 1000)),
         },
       ],
     };
 
-    const fetchFn = mockFetchOk(mockData);
+    const fetchFn = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/stats/markets/prices')) {
+        return { ok: true, json: async () => marketsListData };
+      }
+      if (url.includes('/market/BTC-PERP/fundingRates')) {
+        return { ok: true, json: async () => fundingRateData };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
     const results = await fetcher(fetchFn);
 
+    // Only BTC-PERP passes (spot SOL is filtered because it doesn't end with -PERP)
     expect(results).toHaveLength(1);
     expect(results[0].symbol).toBe('BTC');
   });
@@ -557,11 +610,10 @@ describe('GMX fetcher', () => {
     expect(results[0].fundingInterval).toBe('1h');
     expect(results[0].type).toBe('dex');
 
-    // GMX uses min(|fundingRateLong|, |fundingRateShort|) as base rate
-    // |fundingRateLong| = 5e28, |fundingRateShort| = 3e28 → base = 3e28
-    // hourlyBasePct = 3e28 / 1e30 / 8760 * 100 = 0.03 / 8760 * 100 ≈ 0.000342%
-    // rawL < 0 → longs pay → fundingL = +hourlyBasePct
-    const expectedFundingRate = 0.03 / 8760 * 100; // ≈ 0.000342%
+    // GMX V2: fundingL = -rawLHourlyPct where rawLHourlyPct = (rawL / 1e30 / 8760) * 100
+    // rawL = -5e28, rawLHourlyPct = (-5e28 / 1e30 / 8760) * 100 = (-0.05 / 8760) * 100
+    // fundingL = -rawLHourlyPct = (0.05 / 8760) * 100 ≈ 0.000570776%
+    const expectedFundingRate = (0.05 / 8760) * 100; // ≈ 0.000570776%
     expect(results[0].fundingRate).toBeCloseTo(expectedFundingRate, 6);
   });
 

@@ -200,7 +200,7 @@ describe('dYdX OI fetcher', () => {
 describe('Drift OI fetcher', () => {
   const fetcher = getFetcher('Drift');
 
-  it('sums long + short OI and multiplies by oracle price', async () => {
+  it('uses max(long, short) OI and multiplies by oracle price', async () => {
     const fetchFn = makeFetchFn({
       'stats/markets': {
         markets: [
@@ -217,8 +217,9 @@ describe('Drift OI fetcher', () => {
     const data = await fetcher(fetchFn);
     expect(data).toHaveLength(1);
     expect(data[0].symbol).toBe('SOL');
-    expect(data[0].openInterest).toBeCloseTo(480000);
-    expect(data[0].openInterestValue).toBeCloseTo(480000 * 148.5);
+    // Uses Math.max(|long|, |short|) to avoid double-counting
+    expect(data[0].openInterest).toBeCloseTo(250000);
+    expect(data[0].openInterestValue).toBeCloseTo(250000 * 148.5);
   });
 
   it('strips 1M prefix from symbols (1MBONK -> BONK)', async () => {
@@ -340,8 +341,9 @@ describe('Drift OI fetcher', () => {
     });
 
     const data = await fetcher(fetchFn);
-    expect(data[0].openInterest).toBeCloseTo(9000);
-    expect(data[0].openInterestValue).toBeCloseTo(9000 * 3500);
+    // Math.abs(-5000)=5000, Math.abs(4000)=4000 → Math.max(5000, 4000) = 5000
+    expect(data[0].openInterest).toBeCloseTo(5000);
+    expect(data[0].openInterestValue).toBeCloseTo(5000 * 3500);
   });
 
   it('returns empty on API failure', async () => {
@@ -383,7 +385,7 @@ describe('GMX OI fetcher', () => {
     expect(data).toHaveLength(1);
     expect(data[0].symbol).toBe('BTC');
     expect(data[0].openInterestValue).toBeCloseTo(95000000, -2); // ~$95M total
-    expect(data[0].openInterest).toBeCloseTo(95000000, -2); // Already in USD
+    expect(data[0].openInterest).toBe(0); // GMX OI is USD-denominated only, no coin count
   });
 
   it('parses symbol from "BTC/USD [WBTC.b-USDC]" format', async () => {
