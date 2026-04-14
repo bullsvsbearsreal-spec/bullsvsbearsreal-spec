@@ -508,20 +508,32 @@ export async function saveLiquidationSnapshot(entries: LiquidationSnapshotEntry[
   const sql = getSQL();
 
   let inserted = 0;
-  for (let i = 0; i < entries.length; i += 50) {
-    const chunk = entries.slice(i, i + 50);
-    const promises = chunk.map(e => {
-      // Round timestamp to nearest second and price to 2 decimals for better dedup
+  for (let i = 0; i < entries.length; i += 500) {
+    const chunk = entries.slice(i, i + 500);
+    const symbols = chunk.map(e => e.symbol);
+    const exchanges = chunk.map(e => e.exchange);
+    const sides = chunk.map(e => e.side);
+    const prices = chunk.map(e => Math.round(e.price * 100) / 100);
+    const quantities = chunk.map(e => e.quantity);
+    const valueUsds = chunk.map(e => e.valueUsd);
+    const timestamps = chunk.map(e => {
       const rawTs = e.timestamp ? new Date(e.timestamp) : new Date();
-      rawTs.setMilliseconds(0); // truncate ms for dedup
-      const ts = rawTs.toISOString();
-      const price = Math.round(e.price * 100) / 100; // round to cents
-      return sql`INSERT INTO liquidation_snapshots (symbol, exchange, side, price, quantity, value_usd, ts)
-          VALUES (${e.symbol}, ${e.exchange}, ${e.side}, ${price}, ${e.quantity}, ${e.valueUsd}, ${ts})
-          ON CONFLICT (symbol, exchange, side, price, ts) DO NOTHING RETURNING id`;
+      rawTs.setMilliseconds(0);
+      return rawTs.toISOString();
     });
-    const results = await Promise.all(promises);
-    inserted += results.filter(r => r.length > 0).length;
+    const result = await sql`
+      INSERT INTO liquidation_snapshots (symbol, exchange, side, price, quantity, value_usd, ts)
+      SELECT * FROM UNNEST(
+        ${sql.array(symbols)}::text[],
+        ${sql.array(exchanges)}::text[],
+        ${sql.array(sides)}::text[],
+        ${sql.array(prices)}::real[],
+        ${sql.array(quantities)}::real[],
+        ${sql.array(valueUsds)}::real[],
+        ${sql.array(timestamps)}::timestamptz[]
+      )
+      ON CONFLICT (symbol, exchange, side, price, ts) DO NOTHING`;
+    inserted += result.count ?? chunk.length;
   }
 
   return inserted;
