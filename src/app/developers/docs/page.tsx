@@ -199,6 +199,64 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
           ]} />
         </Section>
 
+        <Section id="tickers" title="Tickers">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/tickers</code></p>
+          <p className="text-gray-400 mb-4">Real-time price and volume data across exchanges.</p>
+          <ParamTable params={[
+            ['symbols', 'string', '—', 'Comma-separated symbols (e.g. BTC,ETH)'],
+            ['exchanges', 'string', '—', 'Comma-separated exchanges'],
+          ]} />
+          <CodeBlock title="Response fields">{`{
+  "symbol": "BTC",
+  "exchange": "Binance",
+  "lastPrice": 84250.5,
+  "high24h": 85100.0,
+  "low24h": 83200.0,
+  "volume24h": 12500000000,
+  "priceChange24hPct": 1.25
+}`}</CodeBlock>
+        </Section>
+
+        <Section id="liquidations" title="Liquidations">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/liquidations</code></p>
+          <p className="text-gray-400 mb-4">Recent liquidation events from the database (Binance, OKX, HTX, gTrade, Deribit).</p>
+          <ParamTable params={[
+            ['symbol', 'string', '—', 'Filter by symbol (e.g. BTC)'],
+            ['exchange', 'string', '—', 'Filter by exchange'],
+            ['side', 'string', '—', 'Filter by side: long or short'],
+            ['hours', 'number', '1', 'Lookback window (1-24 hours)'],
+            ['limit', 'number', '100', 'Max entries (1-500)'],
+          ]} />
+        </Section>
+
+        <Section id="spreads" title="Spreads">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/spreads</code></p>
+          <p className="text-gray-400 mb-4">Cross-exchange price spreads ranked by opportunity size.</p>
+          <ParamTable params={[
+            ['symbols', 'string', '—', 'Comma-separated symbols'],
+            ['minSpread', 'number', '0', 'Minimum spread % to include'],
+            ['limit', 'number', '50', 'Max results (1-200)'],
+          ]} />
+          <CodeBlock title="Response fields">{`{
+  "symbol": "BTC",
+  "spreadPct": 0.0312,
+  "spreadUsd": 26.30,
+  "highExchange": "Bitfinex",
+  "highPrice": 84276.30,
+  "lowExchange": "Binance",
+  "lowPrice": 84250.00,
+  "exchangeCount": 18
+}`}</CodeBlock>
+        </Section>
+
+        <Section id="fear-greed" title="Fear & Greed">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/fear-greed</code></p>
+          <p className="text-gray-400 mb-4">Crypto Fear & Greed Index (source: CoinMarketCap).</p>
+          <ParamTable params={[
+            ['history', 'boolean', 'false', 'Include 30-day historical values'],
+          ]} />
+        </Section>
+
         <Section id="exchanges" title="Exchanges">
           <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/exchanges</code></p>
           <p className="text-gray-400 mb-4">

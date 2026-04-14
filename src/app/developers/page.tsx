@@ -250,6 +250,10 @@ console.log(data);`}
                   ['GET', '/api/v1/funding/history', 'Historical funding snapshots (7d)'],
                   ['GET', '/api/v1/arbitrage', 'Arb opportunities with grades'],
                   ['GET', '/api/v1/openinterest', 'Open interest across exchanges'],
+                  ['GET', '/api/v1/tickers', 'Price & volume data across exchanges'],
+                  ['GET', '/api/v1/liquidations', 'Recent liquidation feed'],
+                  ['GET', '/api/v1/spreads', 'Cross-exchange price spreads'],
+                  ['GET', '/api/v1/fear-greed', 'Fear & Greed Index'],
                   ['GET', '/api/v1/exchanges', 'Exchange metadata + fees'],
                   ['GET', '/api/v1/status', 'API health (no auth)'],
                 ].map(([method, path, desc]) => (
