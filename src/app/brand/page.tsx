@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Header from '@/components/Header';
-import Logo from '@/components/Logo';
 import Footer from '@/components/Footer';
 import { Download, Copy, Check, ExternalLink, FileDown, Palette, Type, Image } from 'lucide-react';
 
