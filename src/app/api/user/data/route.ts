@@ -3,7 +3,7 @@ export const preferredRegion = 'bom1';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getUserData, setUserData, UserData } from '@/lib/db';
+import { getUserData, setUserData, UserData, getTelegramLinkByUser } from '@/lib/db';
 
 /**
  * GET /api/user/data — fetch the authenticated user's synced data
@@ -14,8 +14,16 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const data = await getUserData(session.user.id);
-  return NextResponse.json(data ?? {});
+  const [data, tgLink] = await Promise.all([
+    getUserData(session.user.id),
+    getTelegramLinkByUser(session.user.id).catch(() => null),
+  ]);
+  return NextResponse.json({
+    ...(data ?? {}),
+    telegramLink: tgLink
+      ? { linked: true, active: tgLink.active, mutedUntil: tgLink.muted_until?.toISOString() ?? null }
+      : { linked: false },
+  });
 }
 
 /**
