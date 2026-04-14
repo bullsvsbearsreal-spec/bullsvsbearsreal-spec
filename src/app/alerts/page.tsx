@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2, Smartphone, MessageCircle, Hash, Crosshair, Target } from 'lucide-react';
+import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, CheckCheck, Mail, Clock, Settings2, Smartphone, MessageCircle, Hash, Crosshair, Target, Send, Copy, Check, Loader2, Unlink } from 'lucide-react';
 import { SampleAlertsList } from '@/components/SampleDataPreview';
 import AuthPromptBanner from '@/components/AuthPromptBanner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -122,6 +122,16 @@ export default function AlertsPage() {
   const [whatsappEditing, setWhatsappEditing] = useState(false);
   const [prefsSaving, setPrefsSaving] = useState(false);
 
+  // Telegram link state
+  const [tgLinked, setTgLinked] = useState(false);
+  const [tgActive, setTgActive] = useState(false);
+  const [tgMutedUntil, setTgMutedUntil] = useState<string | null>(null);
+  const [tgCode, setTgCode] = useState<string | null>(null);
+  const [tgGenerating, setTgGenerating] = useState(false);
+  const [tgUnlinking, setTgUnlinking] = useState(false);
+  const [tgCopied, setTgCopied] = useState(false);
+  const [tgEditing, setTgEditing] = useState(false);
+
   // Form state
   const [formSymbol, setFormSymbol] = useState('BTC');
   const [formMetric, setFormMetric] = useState<AlertMetric>('price');
@@ -165,6 +175,60 @@ export default function AlertsPage() {
     })();
     return () => { mounted = false; };
   }, [session]);
+
+  // Fetch Telegram link status
+  useEffect(() => {
+    if (!session?.user) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/telegram/link-code');
+        if (res.ok && mounted) {
+          const json = await res.json();
+          setTgLinked(json.linked);
+          if (json.linked) {
+            setTgActive(json.active);
+            setTgMutedUntil(json.mutedUntil ?? null);
+          }
+        }
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [session]);
+
+  const tgGenerateCode = async () => {
+    setTgGenerating(true);
+    try {
+      const res = await fetch('/api/telegram/link-code', { method: 'POST' });
+      if (res.ok) {
+        const json = await res.json();
+        setTgCode(json.code);
+      }
+    } catch {}
+    setTgGenerating(false);
+  };
+
+  const tgCopyCode = async () => {
+    if (!tgCode) return;
+    try {
+      await navigator.clipboard.writeText(`/start ${tgCode}`);
+      setTgCopied(true);
+      setTimeout(() => setTgCopied(false), 2000);
+    } catch {}
+  };
+
+  const tgUnlink = async () => {
+    setTgUnlinking(true);
+    try {
+      const res = await fetch('/api/telegram/link-code', { method: 'DELETE' });
+      if (res.ok) {
+        setTgLinked(false);
+        setTgActive(false);
+        setTgCode(null);
+      }
+    } catch {}
+    setTgUnlinking(false);
+  };
 
   const handleAdd = () => {
     const val = parseFloat(formValue);
@@ -563,6 +627,80 @@ export default function AlertsPage() {
 
                 {/* Push notifications toggle */}
                 <PushToggle />
+
+                {/* Telegram */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Send className="w-4 h-4 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-white">Telegram notifications</p>
+                      <p className="text-xs text-neutral-600">
+                        {tgLinked
+                          ? tgActive
+                            ? tgMutedUntil ? `Muted until ${new Date(tgMutedUntil).toLocaleString()}` : 'Linked & receiving alerts'
+                            : 'Paused — send /start to the bot to resume'
+                          : 'Link via @InfoHubRadarBot'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {tgLinked ? (
+                      <>
+                        <span className={`w-2 h-2 rounded-full ${tgActive ? 'bg-green-500' : 'bg-neutral-600'}`} />
+                        <button
+                          onClick={tgUnlink}
+                          disabled={tgUnlinking}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                        >
+                          {tgUnlinking ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setTgEditing(!tgEditing)}
+                        className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                      >
+                        {tgEditing ? 'Close' : 'Setup'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {tgEditing && !tgLinked && (
+                  <div className="ml-6 space-y-2">
+                    {tgCode ? (
+                      <>
+                        <p className="text-xs text-neutral-500">
+                          Send this to{' '}
+                          <a href="https://t.me/InfoHubRadarBot" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">
+                            @InfoHubRadarBot
+                          </a>{' '}
+                          on Telegram:
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-hub-yellow font-mono select-all">
+                            /start {tgCode}
+                          </code>
+                          <button
+                            onClick={tgCopyCode}
+                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors"
+                          >
+                            {tgCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <p className="text-xs text-neutral-600">Expires in 10 minutes</p>
+                      </>
+                    ) : (
+                      <button
+                        onClick={tgGenerateCode}
+                        disabled={tgGenerating}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium bg-[#2AABEE]/10 border border-[#2AABEE]/20 text-[#2AABEE] hover:bg-[#2AABEE]/20 transition-colors disabled:opacity-50"
+                      >
+                        {tgGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                        Generate Link Code
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Discord webhook */}
                 <div className="flex items-center justify-between">
