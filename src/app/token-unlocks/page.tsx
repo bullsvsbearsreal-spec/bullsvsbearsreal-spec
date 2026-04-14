@@ -375,7 +375,7 @@ export default function TokenUnlocksPage() {
     const now = new Date();
     const upcoming = allUnlocks.filter(u => new Date(u.unlockDate) > now);
     const totalValue = upcoming.reduce((s, u) => s + u.unlockValue, 0);
-    const largest = upcoming.reduce((max, u) => (u.unlockValue > (max?.unlockValue ?? 0) ? u : max), upcoming[0] as TokenUnlock | undefined);
+    const largest = upcoming.length > 0 ? upcoming.reduce((max, u) => (u.unlockValue > max.unlockValue ? u : max)) : undefined;
     const avgPct = upcoming.length > 0 ? upcoming.reduce((s, u) => s + u.percentOfSupply, 0) / upcoming.length : 0;
     return { count: upcoming.length, totalValue, largest, avgPct };
   }, [allUnlocks]);
