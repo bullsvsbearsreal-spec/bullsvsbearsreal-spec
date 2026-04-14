@@ -54,7 +54,7 @@ export function useFundingPrefs() {
   const updatePrefs = useCallback((partial: Partial<FundingPrefs>) => {
     setPrefs(prev => {
       const next = { ...prev, ...partial };
-      localStorage.setItem(LS_KEY, JSON.stringify(next));
+      try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
   }, []);

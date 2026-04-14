@@ -501,7 +501,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => {
           // [symbol, bid, bidSize, ask, askSize, dailyChange, dailyChangePercent, lastPrice, volume, high, low]
           const lastPrice = parseFloat(ticker[7]) || 0;
-          let sym = ticker[0].replace('t', '').replace('F0:USTF0', '');
+          let sym = ticker[0].replace(/^t/, '').replace('F0:USTF0', '');
           if (sym === 'XBT') sym = 'BTC';
           return {
             symbol: sym,

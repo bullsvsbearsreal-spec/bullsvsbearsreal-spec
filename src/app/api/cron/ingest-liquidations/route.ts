@@ -254,55 +254,15 @@ async function fetchDeribitLiqs(): Promise<LiqRow[]> {
   return results.flat();
 }
 
-// ─── Bybit: GET /v5/market/recent-trade (liquidation trades) ──────
-const BYBIT_SYMBOLS = [
-  'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT',
-  'SUIUSDT', 'PEPEUSDT', 'LINKUSDT', 'AVAXUSDT', 'ADAUSDT',
-];
-
-async function fetchBybitLiqsForSymbol(symbol: string): Promise<LiqRow[]> {
-  try {
-    const resp = await fetch(
-      `https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${symbol}&limit=200`,
-      { signal: AbortSignal.timeout(6000) },
-    );
-    if (!resp.ok) return [];
-    const json = await resp.json();
-    const trades = json.result?.list || [];
-
-    return trades
-      .filter((t: any) => t.isBlockTrade === false && t.side)
-      .map((t: any) => {
-        const sym = normalizeLiqSymbol(symbol);
-        const price = parseFloat(t.price || '0');
-        const qty = parseFloat(t.size || '0');
-        return {
-          symbol: sym,
-          exchange: 'Bybit',
-          side: t.side === 'Sell' ? 'long' as const : 'short' as const,
-          price,
-          quantity: qty,
-          valueUsd: price * qty,
-          timestamp: parseInt(t.time || '0'),
-        };
-      })
-      .filter((r: LiqRow) => r.valueUsd > 1000 && r.price > 0 && isLiqCryptoSymbol(r.symbol));
-  } catch {
-    return [];
-  }
-}
+// ─── Bybit: no public REST endpoint for liquidations ─────────────
+// NOTE: Bybit /v5/market/recent-trade returns ALL trades, not just liquidations.
+// Only the WebSocket `allLiquidation` channel provides liquidation data.
+// Bybit liquidations are handled via the real-time WebSocket feed in
+// src/lib/liquidation-parsers.ts, not via cron polling.
 
 async function fetchBybitLiqs(): Promise<LiqRow[]> {
-  const batches: string[][] = [];
-  for (let i = 0; i < BYBIT_SYMBOLS.length; i += 5) {
-    batches.push(BYBIT_SYMBOLS.slice(i, i + 5));
-  }
-  const rows: LiqRow[] = [];
-  for (const batch of batches) {
-    const results = await Promise.all(batch.map(fetchBybitLiqsForSymbol));
-    rows.push(...results.flat());
-  }
-  return rows;
+  // No REST endpoint available — return empty
+  return [];
 }
 
 // ─── Handler ───────────────────────────────────────────────────────

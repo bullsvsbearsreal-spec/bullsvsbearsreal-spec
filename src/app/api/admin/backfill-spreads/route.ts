@@ -5,7 +5,11 @@ import { requireAdmin } from '@/lib/auth';
 export const maxDuration = 30;
 export const runtime = 'nodejs';
 
-const sql = postgres(process.env.DATABASE_URL || '', { max: 3 });
+let _sql: ReturnType<typeof postgres> | null = null;
+function getBackfillSQL() {
+  if (!_sql) _sql = postgres(process.env.DATABASE_URL || '', { max: 3 });
+  return _sql;
+}
 
 const SYMBOLS = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK'];
 
@@ -39,6 +43,7 @@ export async function POST(req: NextRequest) { return run(req); }
 async function run(req: NextRequest) {
   const adminErr = await requireAdmin();
   if (adminErr) return adminErr;
+  const sql = getBackfillSQL();
 
   const rawSym = req.nextUrl.searchParams.get('symbol')?.toUpperCase() || '';
   const singleSym = /^[A-Z0-9]+$/.test(rawSym) ? rawSym : '';

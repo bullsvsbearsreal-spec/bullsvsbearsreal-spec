@@ -27,11 +27,15 @@ export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<UIMessage[]>(() => {
     if (typeof window === 'undefined') return [];
-    return getMessages().map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-    }));
+    try {
+      return getMessages().map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+      }));
+    } catch {
+      return [];
+    }
   });
   const [isLoading, setIsLoading] = useState(false);
   const [activeToolName, setActiveToolName] = useState<string | undefined>();

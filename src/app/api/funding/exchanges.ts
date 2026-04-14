@@ -1014,7 +1014,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       return data
         .filter((item: any) => Array.isArray(item) && item.length > 15 && typeof item[0] === 'string' && item[0].endsWith('F0:USTF0'))
         .map((item: any) => {
-          let sym = item[0].replace('t', '').replace('F0:USTF0', '');
+          let sym = item[0].replace(/^t/, '').replace('F0:USTF0', '');
           if (sym === 'XBT') sym = 'BTC';
           return {
           symbol: sym,

@@ -498,7 +498,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
         .map((item: any) => {
           const oi = parseFloat(item[18]) || 0;
           const price = parseFloat(item[15]) || parseFloat(item[3]) || 0;
-          let sym = item[0].replace('t', '').replace('F0:USTF0', '');
+          let sym = item[0].replace(/^t/, '').replace('F0:USTF0', '');
           if (sym === 'XBT') sym = 'BTC';
           return {
             symbol: sym,
@@ -590,13 +590,14 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
   // Bitunix — no public OI endpoint available (tickers don't include open interest)
 
   // Drift Protocol (Solana DEX) — uses Data API with pre-parsed values
+  // /stats/markets endpoint is broken (returns empty since ~Apr 2026), use /stats/markets/prices
   {
     name: 'Drift',
     fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://data.api.drift.trade/stats/markets', {}, 12000);
+      const res = await fetchFn('https://data.api.drift.trade/stats/markets/prices', {}, 12000);
       if (!res.ok) return [];
       const json = await res.json();
-      const markets: any[] = json?.markets || [];
+      const markets: any[] = json?.markets || json?.data || json || [];
 
       const results: OIData[] = [];
       for (const m of markets) {
