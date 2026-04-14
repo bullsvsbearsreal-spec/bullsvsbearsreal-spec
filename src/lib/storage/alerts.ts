@@ -131,14 +131,23 @@ export function getUndismissedCount(): number {
 
 export function addTriggeredAlert(triggered: Omit<TriggeredAlert, 'triggeredAt' | 'dismissed'>): void {
   const list = readTriggered();
-  // Don't re-add if already triggered for this alert in last hour
-  const existing = list.find(
-    (t) => t.alertId === triggered.alertId && Date.now() - t.triggeredAt < 60 * 60 * 1000,
+  const now = Date.now();
+  // If already triggered for this alert recently, update it in place (refresh value + time)
+  const existingIdx = list.findIndex(
+    (t) => t.alertId === triggered.alertId && now - t.triggeredAt < 60 * 60 * 1000 && !t.dismissed,
   );
-  if (existing) return;
-  list.unshift({ ...triggered, triggeredAt: Date.now(), dismissed: false });
+  if (existingIdx !== -1) {
+    list[existingIdx] = { ...triggered, triggeredAt: now, dismissed: false };
+    writeTriggered(list);
+    return;
+  }
+  // Remove stale dismissed entries for this alert before adding fresh one
+  const cleaned = list.filter(
+    (t) => !(t.alertId === triggered.alertId && t.dismissed),
+  );
+  cleaned.unshift({ ...triggered, triggeredAt: now, dismissed: false });
   // Keep max 50 triggered alerts
-  writeTriggered(list.slice(0, 50));
+  writeTriggered(cleaned.slice(0, 50));
 }
 
 export function dismissTriggeredAlert(alertId: string): void {
