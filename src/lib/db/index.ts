@@ -362,6 +362,16 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_whale_notif_owner ON whale_alert_notifications(owner_id, sent_at DESC)`;
 
+  // Worker heartbeats — droplet/cron health monitoring
+  await sql`
+    CREATE TABLE IF NOT EXISTS worker_heartbeats (
+      worker TEXT PRIMARY KEY,
+      last_beat TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      status TEXT NOT NULL DEFAULT 'ok',
+      details JSONB DEFAULT NULL
+    )
+  `;
+
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -863,6 +873,7 @@ export async function getLiquidationsByExchange(
         AND ts > NOW() - ${intervalStr}::interval
       GROUP BY exchange
       ORDER BY value DESC
+      LIMIT 100
     `;
     return rows.map((r: any) => ({
       exchange: r.exchange,
@@ -1054,6 +1065,7 @@ export async function getOIHistory(
         AND ts > NOW() - ${intervalStr}::interval
       GROUP BY ts
       ORDER BY ts ASC
+      LIMIT 5000
     `;
     return rows.map((r: any) => ({ t: Number(r.t), oi: Number(r.oi) }));
   } catch (e) {
@@ -1426,7 +1438,7 @@ export async function getActiveTelegramLinks(): Promise<TelegramLink[]> {
 export async function getAllActiveTelegramChatIds(): Promise<number[]> {
   try {
     const sql = getSQL();
-    const rows = await sql`SELECT chat_id FROM telegram_links WHERE active = true`;
+    const rows = await sql`SELECT chat_id FROM telegram_links WHERE active = true LIMIT 10000`;
     return rows.map((r: any) => Number(r.chat_id));
   } catch (e) {
     console.error('DB getAllActiveTelegramChatIds error:', e);
@@ -1625,7 +1637,7 @@ export async function getUserConnectedProviders(userId: string): Promise<string[
   try {
     const sql = getSQL();
     const rows = await sql`
-      SELECT DISTINCT provider FROM accounts WHERE user_id = ${userId}
+      SELECT DISTINCT provider FROM accounts WHERE user_id = ${userId} LIMIT 50
     `;
     return rows.map((r: any) => r.provider as string);
   } catch (e) {
@@ -1642,7 +1654,7 @@ export async function getPushSubscriptionsForUser(
   try {
     const sql = getSQL();
     const rows = await sql`
-      SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ${userId}
+      SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ${userId} LIMIT 100
     `;
     return rows as any[];
   } catch (e) {
@@ -1785,6 +1797,7 @@ export async function getOIHistoryMulti(
       WHERE symbol = ${symbol}
         AND ts > NOW() - ${intervalStr}::interval
       ORDER BY exchange, ts ASC
+      LIMIT 50000
     `;
     const result: Record<string, Array<{ t: number; oi: number }>> = {};
     rows.forEach((r: any) => {
@@ -2319,6 +2332,8 @@ export interface WhaleTrackedWallet {
   // Notification config (joined from user_prefs when ownerType = 'user')
   discordWebhookUrl?: string;
   whatsappPhone?: string;
+  email?: string;
+  minValueUsd?: number;
 }
 
 export interface WhaleTradeEvent {
@@ -2350,6 +2365,7 @@ export async function addTrackedWallet(
   chain: string,
   label?: string,
   notifyChannels: string[] = ['telegram'],
+  minValueUsd?: number,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const sql = getSQL();
@@ -2360,11 +2376,12 @@ export async function addTrackedWallet(
       return { ok: false, error: `Maximum ${MAX_TRACKED_WALLETS_PER_OWNER} tracked wallets allowed` };
     }
     await sql`
-      INSERT INTO whale_tracked_wallets (owner_type, owner_id, address, chain, label, notify_channels)
-      VALUES (${ownerType}, ${ownerId}, ${address.toLowerCase()}, ${chain}, ${label || null}, ${notifyChannels})
+      INSERT INTO whale_tracked_wallets (owner_type, owner_id, address, chain, label, notify_channels, min_value_usd)
+      VALUES (${ownerType}, ${ownerId}, ${address.toLowerCase()}, ${chain}, ${label || null}, ${notifyChannels}, ${minValueUsd ?? null})
       ON CONFLICT (owner_id, address, chain) DO UPDATE SET
         label = COALESCE(EXCLUDED.label, whale_tracked_wallets.label),
-        notify_channels = EXCLUDED.notify_channels
+        notify_channels = EXCLUDED.notify_channels,
+        min_value_usd = EXCLUDED.min_value_usd
     `;
     return { ok: true };
   } catch (e) {
@@ -2489,9 +2506,12 @@ export async function getTradeSubscribers(address: string, chain: string): Promi
     const rows = await sql`
       SELECT w.id, w.owner_type, w.owner_id, w.address, w.chain, w.label, w.notify_channels, w.created_at,
              up.prefs->'notificationPrefs'->>'discordWebhookUrl' AS discord_webhook_url,
-             up.prefs->'notificationPrefs'->>'whatsappPhone' AS whatsapp_phone
+             up.prefs->'notificationPrefs'->>'whatsappPhone' AS whatsapp_phone,
+             u.email AS user_email,
+             w.min_value_usd
       FROM whale_tracked_wallets w
       LEFT JOIN user_prefs up ON w.owner_type = 'user' AND w.owner_id = up.user_id
+      LEFT JOIN users u ON w.owner_type = 'user' AND w.owner_id = u.id
       WHERE w.address = ${address.toLowerCase()} AND w.chain = ${chain}
     `;
     return rows.map((r: any) => ({
@@ -2500,6 +2520,8 @@ export async function getTradeSubscribers(address: string, chain: string): Promi
       notifyChannels: r.notify_channels || [], createdAt: r.created_at,
       discordWebhookUrl: r.discord_webhook_url || undefined,
       whatsappPhone: r.whatsapp_phone || undefined,
+      email: r.user_email || undefined,
+      minValueUsd: r.min_value_usd ? Number(r.min_value_usd) : undefined,
     }));
   } catch (e) {
     console.error('getTradeSubscribers error:', e);
@@ -2541,6 +2563,59 @@ export async function pruneOldWhaleData(keepDays = 30): Promise<{ events: number
   } catch (e) {
     console.error('pruneOldWhaleData error:', e);
     return { events: 0, notifs: 0 };
+  }
+}
+
+// ─── Worker Heartbeats ────────────────────────────────────────────────────
+
+export async function upsertWorkerHeartbeat(
+  worker: string,
+  status: string = 'ok',
+  details?: Record<string, any>,
+): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      INSERT INTO worker_heartbeats (worker, last_beat, status, details)
+      VALUES (${worker}, NOW(), ${status}, ${details ? JSON.stringify(details) : null})
+      ON CONFLICT (worker) DO UPDATE SET
+        last_beat = NOW(),
+        status = ${status},
+        details = ${details ? JSON.stringify(details) : null}
+    `;
+  } catch (e) {
+    console.error('upsertWorkerHeartbeat error:', e);
+  }
+}
+
+export interface WorkerHeartbeat {
+  worker: string;
+  lastBeat: string;
+  status: string;
+  details: Record<string, any> | null;
+  stale: boolean;
+}
+
+export async function getWorkerHeartbeats(staleMinutes: number = 15): Promise<WorkerHeartbeat[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT worker, last_beat, status, details,
+             last_beat < NOW() - ${staleMinutes + ' minutes'}::interval AS stale
+      FROM worker_heartbeats
+      ORDER BY worker ASC
+      LIMIT 100
+    `;
+    return rows.map((r: any) => ({
+      worker: r.worker,
+      lastBeat: r.last_beat,
+      status: r.status,
+      details: r.details,
+      stale: r.stale,
+    }));
+  } catch (e) {
+    console.error('getWorkerHeartbeats error:', e);
+    return [];
   }
 }
 
