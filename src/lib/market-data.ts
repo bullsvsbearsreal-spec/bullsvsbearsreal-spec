@@ -200,8 +200,8 @@ export function getMetricValue(data: MarketData, metric: AlertMetric, alert?: Al
 export function checkAlert(alert: Alert, data: MarketData): boolean {
   if (alert.metric === 'liqProximity' || alert.metric === 'tpProximity') {
     // Proximity check: fire when price is within proximityPct% of target price
-    if (!alert.proximityPct || data.price <= 0) return false;
-    const distancePct = Math.abs(data.price - alert.value) / data.price * 100;
+    if (!alert.proximityPct || data.price <= 0 || alert.value <= 0) return false;
+    const distancePct = Math.abs(data.price - alert.value) / alert.value * 100;
     return distancePct <= alert.proximityPct;
   }
   const val = getMetricValue(data, alert.metric, alert);

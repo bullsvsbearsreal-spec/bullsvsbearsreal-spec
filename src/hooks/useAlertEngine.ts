@@ -145,8 +145,8 @@ function getMetricValue(data: MarketData, metric: AlertMetric, alert?: Alert): n
 
 function checkAlert(alert: Alert, data: MarketData): boolean {
   if (alert.metric === 'liqProximity' || alert.metric === 'tpProximity') {
-    if (!alert.proximityPct || data.price <= 0) return false;
-    const distancePct = Math.abs(data.price - alert.value) / data.price * 100;
+    if (!alert.proximityPct || data.price <= 0 || alert.value <= 0) return false;
+    const distancePct = Math.abs(data.price - alert.value) / alert.value * 100;
     return distancePct <= alert.proximityPct;
   }
   const val = getMetricValue(data, alert.metric, alert);
@@ -185,7 +185,7 @@ export function useAlertEngine(intervalMs: number = 60_000) {
         if (lastFired && now - lastFired < ALERT_COOLDOWN_MS) return;
 
         lastFiredRef.current.set(alert.id, now);
-        const actualValue = getMetricValue(data, alert.metric);
+        const actualValue = getMetricValue(data, alert.metric, alert);
         addTriggeredAlert({
           alertId: alert.id,
           symbol: alert.symbol,
@@ -203,7 +203,7 @@ export function useAlertEngine(intervalMs: number = 60_000) {
           let body: string;
           if (alert.metric === 'liqProximity' || alert.metric === 'tpProximity') {
             const label = alert.metric === 'liqProximity' ? 'liquidation price' : 'take profit';
-            const distPct = data.price > 0 ? (Math.abs(data.price - alert.value) / data.price * 100).toFixed(1) : '?';
+            const distPct = alert.value > 0 ? (Math.abs(data.price - alert.value) / alert.value * 100).toFixed(1) : '?';
             body = `Price ($${data.price.toFixed(2)}) is within ${distPct}% of your ${label} ($${alert.value})`;
           } else {
             const opLabel = alert.operator === 'gt' ? 'above' : 'below';

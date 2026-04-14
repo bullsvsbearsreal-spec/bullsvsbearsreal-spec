@@ -20,7 +20,7 @@ import {
   reactivateTelegramChat, muteTelegramChat, unmuteTelegramChat, getTelegramLink,
   pruneExpiredLinkCodes,
 } from '@/lib/db';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual, createHash } from 'crypto';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -29,8 +29,9 @@ export const dynamic = 'force-dynamic';
 const WEBHOOK_SECRET = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
 
 function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
 }
 
 const MUTE_DURATIONS: Record<string, number> = {

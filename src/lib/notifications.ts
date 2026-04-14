@@ -70,7 +70,7 @@ function formatValue(metric: string, value: number): string {
 function formatCondition(a: TriggeredAlertInfo): string {
   if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
     const label = a.metric === 'liqProximity' ? 'liq price' : 'TP';
-    const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+    const distPct = a.threshold > 0 ? (Math.abs(a.actualValue - a.threshold) / a.threshold * 100).toFixed(1) : '?';
     return `within ${distPct}% of ${label} ${formatValue(a.metric, a.threshold)}`;
   }
   const opLabel = a.operator === 'gt' ? 'above' : 'below';
@@ -149,7 +149,7 @@ function buildTelegramMessage(alerts: TriggeredAlertInfo[]): string {
   const lines = alerts.map((a) => {
     if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
       const label = a.metric === 'liqProximity' ? 'liquidation price' : 'take profit';
-      const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+      const distPct = a.threshold > 0 ? (Math.abs(a.actualValue - a.threshold) / a.threshold * 100).toFixed(1) : '?';
       return `<b>${escapeHtml(a.symbol)}</b> ⚠️ Price within ${distPct}% of ${label}\nPrice: <b>${escapeHtml(formatValue('price', a.actualValue))}</b> | Target: ${escapeHtml(formatValue(a.metric, a.threshold))}`;
     }
     const opLabel = a.operator === 'gt' ? '▲ above' : '▼ below';
@@ -268,7 +268,7 @@ function buildDiscordEmbed(alerts: TriggeredAlertInfo[]): object {
     let value: string;
     if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
       const label = a.metric === 'liqProximity' ? 'liq price' : 'TP';
-      const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+      const distPct = a.threshold > 0 ? (Math.abs(a.actualValue - a.threshold) / a.threshold * 100).toFixed(1) : '?';
       value = `⚠️ Within ${distPct}% of ${label} ${formatValue(a.metric, a.threshold)}\nPrice: **${formatValue('price', a.actualValue)}**`;
     } else {
       const opLabel = a.operator === 'gt' ? '▲ above' : '▼ below';
@@ -327,7 +327,7 @@ function buildWhatsAppMessage(alerts: TriggeredAlertInfo[]): string {
   const lines = alerts.map((a) => {
     if (a.metric === 'liqProximity' || a.metric === 'tpProximity') {
       const label = a.metric === 'liqProximity' ? 'liq price' : 'TP';
-      const distPct = a.actualValue > 0 ? (Math.abs(a.actualValue - a.threshold) / a.actualValue * 100).toFixed(1) : '?';
+      const distPct = a.threshold > 0 ? (Math.abs(a.actualValue - a.threshold) / a.threshold * 100).toFixed(1) : '?';
       return `*${a.symbol}* ⚠️ Within ${distPct}% of ${label} ${formatValue(a.metric, a.threshold)}\nPrice: *${formatValue('price', a.actualValue)}*`;
     }
     const opLabel = a.operator === 'gt' ? '▲ above' : '▼ below';

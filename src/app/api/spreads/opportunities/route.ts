@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import postgres from 'postgres';
+import { getSQL, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 
-const sql = postgres(process.env.DATABASE_URL || '', { max: 2 });
+const sql = getSQL();
 
 export async function GET(req: NextRequest) {
+  if (!isDBConfigured()) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   const days = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('days') || '7', 10) || 7, 1), 30);
   const status = req.nextUrl.searchParams.get('status') || 'all'; // 'open', 'closed', 'all'
 

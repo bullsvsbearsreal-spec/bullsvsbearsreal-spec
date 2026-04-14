@@ -484,10 +484,10 @@ export async function saveLiquidationSnapshot(entries: LiquidationSnapshotEntry[
       const price = Math.round(e.price * 100) / 100; // round to cents
       return sql`INSERT INTO liquidation_snapshots (symbol, exchange, side, price, quantity, value_usd, ts)
           VALUES (${e.symbol}, ${e.exchange}, ${e.side}, ${price}, ${e.quantity}, ${e.valueUsd}, ${ts})
-          ON CONFLICT (symbol, exchange, side, price, ts) DO NOTHING`;
+          ON CONFLICT (symbol, exchange, side, price, ts) DO NOTHING RETURNING id`;
     });
-    await Promise.all(promises);
-    inserted += chunk.length;
+    const results = await Promise.all(promises);
+    inserted += results.filter(r => r.length > 0).length;
   }
 
   return inserted;
@@ -1932,7 +1932,7 @@ export async function getAlertHealthMetrics(): Promise<{
         COUNT(DISTINCT user_id) AS users_with_alerts,
         SUM(jsonb_array_length(COALESCE(prefs->'alerts','[]'::jsonb))) AS total_alerts
         FROM user_prefs WHERE jsonb_array_length(COALESCE(prefs->'alerts','[]'::jsonb)) > 0`,
-      db`SELECT COUNT(*) AS c FROM telegram_alerts WHERE enabled = true`.catch(() => [{ c: 0 }]),
+      db`SELECT COUNT(*) AS c FROM telegram_links WHERE active = true`.catch(() => [{ c: 0 }]),
     ]);
 
     const channelMap: Record<string, number> = {};

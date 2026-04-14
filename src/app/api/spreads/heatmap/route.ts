@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import postgres from 'postgres';
+import { getSQL, isDBConfigured } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 
-const sql = postgres(process.env.DATABASE_URL || '', { max: 2 });
+const sql = getSQL();
 
 // Cache for 5 minutes
 const cache = new Map<string, { data: any; ts: number }>();
 const CACHE_MS = 300_000;
 
 export async function GET(req: NextRequest) {
+  if (!isDBConfigured()) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   const symbol = (req.nextUrl.searchParams.get('symbol') || 'BTC').toUpperCase();
   const days = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('days') || '30', 10) || 30, 1), 90);
 

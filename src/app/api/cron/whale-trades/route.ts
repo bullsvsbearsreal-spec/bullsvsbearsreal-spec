@@ -136,10 +136,13 @@ async function notifySubscribers(
         try {
           if (channel === 'telegram' && sub.ownerType === 'telegram' && BOT_TOKEN) {
             const chatId = parseInt(sub.ownerId.replace('tg_', ''));
+            if (isNaN(chatId)) continue;
             const msg = `\u{1F40B} <b>Whale Trade Alert</b>\n\n${esc(formatTradeMessage(trade, sub.label))}`;
-            await sendMessage(chatId, msg);
-            await logWhaleNotification(sub.ownerId, eventId, channel);
-            sent++;
+            const ok = await sendMessage(chatId, msg);
+            if (ok) {
+              await logWhaleNotification(sub.ownerId, eventId, channel);
+              sent++;
+            }
           } else if (channel === 'push' && sub.ownerType === 'user') {
             await sendPush(sub.ownerId, trade, sub.label);
             await logWhaleNotification(sub.ownerId, eventId, channel);
