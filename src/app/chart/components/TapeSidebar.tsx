@@ -107,25 +107,65 @@ export default function TapeSidebar({ symbol, visible, onToggle }: TapeSidebarPr
 
           {/* Stats bar */}
           {stats.tradeCount > 0 && (
-            <div className="px-2 py-1 border-b border-white/[0.04] grid grid-cols-2 gap-x-2 gap-y-0.5">
-              <div>
-                <p className="text-[8px] text-neutral-600 uppercase">Buy Vol</p>
-                <p className="text-[10px] font-mono text-green-400 font-bold">{formatUSD(stats.buyVolume)}</p>
+            <div className="px-2 py-1 border-b border-white/[0.04] space-y-0.5">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                <div>
+                  <p className="text-[8px] text-neutral-600 uppercase">Buy Vol</p>
+                  <p className="text-[10px] font-mono text-green-400 font-bold">{formatUSD(stats.buyVolume)}</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-neutral-600 uppercase">Sell Vol</p>
+                  <p className="text-[10px] font-mono text-red-400 font-bold">{formatUSD(stats.sellVolume)}</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-neutral-600 uppercase">Net Delta</p>
+                  <p className={`text-[10px] font-mono font-bold ${stats.netDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {stats.netDelta >= 0 ? '+' : ''}{formatUSD(stats.netDelta)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-neutral-600 uppercase">Speed</p>
+                  <p className="text-[10px] font-mono text-neutral-300 font-bold">{stats.tradeSpeed}/s</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-neutral-600 uppercase">CVD</p>
+                  <p className={`text-[10px] font-mono font-bold ${stats.cvd >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {stats.cvd >= 0 ? '+' : ''}{formatUSD(stats.cvd)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-neutral-600 uppercase">VWAP</p>
+                  <p className="text-[10px] font-mono text-hub-yellow font-bold">
+                    {stats.vwap > 0 ? (stats.vwap >= 1000 ? `$${stats.vwap.toFixed(0)}` : `$${stats.vwap.toFixed(2)}`) : '—'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[8px] text-neutral-600 uppercase">Sell Vol</p>
-                <p className="text-[10px] font-mono text-red-400 font-bold">{formatUSD(stats.sellVolume)}</p>
-              </div>
-              <div>
-                <p className="text-[8px] text-neutral-600 uppercase">Net Delta</p>
-                <p className={`text-[10px] font-mono font-bold ${stats.netDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {stats.netDelta >= 0 ? '+' : ''}{formatUSD(stats.netDelta)}
-                </p>
-              </div>
-              <div>
-                <p className="text-[8px] text-neutral-600 uppercase">Speed</p>
-                <p className="text-[10px] font-mono text-neutral-300 font-bold">{stats.tradeSpeed}/s</p>
-              </div>
+              {/* CVD Sparkline */}
+              {stats.cvdHistory.length > 2 && (
+                <div className="pt-0.5">
+                  <svg viewBox="0 0 180 20" className="w-full h-4" preserveAspectRatio="none">
+                    {(() => {
+                      const pts = stats.cvdHistory;
+                      const min = Math.min(...pts);
+                      const max = Math.max(...pts);
+                      const range = max - min || 1;
+                      const zeroY = 2 + (1 - (0 - min) / range) * 16;
+                      const d = pts.map((v, i) => {
+                        const x = (i / (pts.length - 1)) * 180;
+                        const y = 2 + (1 - (v - min) / range) * 16;
+                        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+                      }).join(' ');
+                      const color = stats.cvd >= 0 ? '#22c55e' : '#ef4444';
+                      return (
+                        <>
+                          <line x1="0" y1={zeroY} x2="180" y2={zeroY} stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
+                          <path d={d} fill="none" stroke={color} strokeWidth="1.2" strokeLinejoin="round" />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+              )}
             </div>
           )}
 

@@ -254,6 +254,57 @@ async function fetchDeribitLiqs(): Promise<LiqRow[]> {
   return results.flat();
 }
 
+// ─── Bybit: GET /v5/market/recent-trade (liquidation trades) ──────
+const BYBIT_SYMBOLS = [
+  'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT',
+  'SUIUSDT', 'PEPEUSDT', 'LINKUSDT', 'AVAXUSDT', 'ADAUSDT',
+];
+
+async function fetchBybitLiqsForSymbol(symbol: string): Promise<LiqRow[]> {
+  try {
+    const resp = await fetch(
+      `https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${symbol}&limit=200`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (!resp.ok) return [];
+    const json = await resp.json();
+    const trades = json.result?.list || [];
+
+    return trades
+      .filter((t: any) => t.isBlockTrade === false && t.side)
+      .map((t: any) => {
+        const sym = normalizeLiqSymbol(symbol);
+        const price = parseFloat(t.price || '0');
+        const qty = parseFloat(t.size || '0');
+        return {
+          symbol: sym,
+          exchange: 'Bybit',
+          side: t.side === 'Sell' ? 'long' as const : 'short' as const,
+          price,
+          quantity: qty,
+          valueUsd: price * qty,
+          timestamp: parseInt(t.time || '0'),
+        };
+      })
+      .filter((r: LiqRow) => r.valueUsd > 1000 && r.price > 0 && isLiqCryptoSymbol(r.symbol));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchBybitLiqs(): Promise<LiqRow[]> {
+  const batches: string[][] = [];
+  for (let i = 0; i < BYBIT_SYMBOLS.length; i += 5) {
+    batches.push(BYBIT_SYMBOLS.slice(i, i + 5));
+  }
+  const rows: LiqRow[] = [];
+  for (const batch of batches) {
+    const results = await Promise.all(batch.map(fetchBybitLiqsForSymbol));
+    rows.push(...results.flat());
+  }
+  return rows;
+}
+
 // ─── Handler ───────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   // Verify cron auth — timing-safe comparison
@@ -266,21 +317,24 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch from all exchanges in parallel
-  const [binance, okx, htx, gtrade] = await Promise.all([
+  const [binance, okx, htx, gtrade, bybit, deribit] = await Promise.all([
     fetchBinanceLiqs(),
     fetchOKXLiqs(),
     fetchHTXLiqs(),
     fetchGTradeLiqs(),
-    // Deribit removed — unstable connection, mostly BTC/ETH only
+    fetchBybitLiqs(),
+    fetchDeribitLiqs(),
   ]);
 
-  const allRows = [...binance, ...okx, ...htx, ...gtrade];
+  const allRows = [...binance, ...okx, ...htx, ...gtrade, ...bybit, ...deribit];
 
   const fetched = {
     binance: binance.length,
     okx: okx.length,
     htx: htx.length,
     gtrade: gtrade.length,
+    bybit: bybit.length,
+    deribit: deribit.length,
   };
 
   if (allRows.length === 0) {

@@ -23,6 +23,9 @@ export interface TradeStats {
   tradeSpeed: number; // per second
   bigBuys: number;    // >$50K
   bigSells: number;
+  cvd: number;        // cumulative volume delta (session)
+  vwap: number;       // volume-weighted average price
+  cvdHistory: number[]; // last 60 CVD data points for sparkline
 }
 
 /** Time windows for stats aggregation */
@@ -53,7 +56,7 @@ const BIG_TRADE_USD = 50_000;
 export function useRealtimeTrades(symbol: string) {
   const [trades, setTrades] = useState<RealtimeTrade[]>([]);
   const [stats, setStats] = useState<TradeStats>({
-    buyVolume: 0, sellVolume: 0, netDelta: 0, tradeCount: 0, tradeSpeed: 0, bigBuys: 0, bigSells: 0,
+    buyVolume: 0, sellVolume: 0, netDelta: 0, tradeCount: 0, tradeSpeed: 0, bigBuys: 0, bigSells: 0, cvd: 0, vwap: 0, cvdHistory: [],
   });
   const [connected, setConnected] = useState(false);
   const [statsWindow, setStatsWindow] = useState<StatsWindow>('5m');
@@ -90,6 +93,30 @@ export function useRealtimeTrades(symbol: string) {
     const rawSpan = (now - oldest) / 1000;
     const spanSec = isFinite(rawSpan) && rawSpan > 0 ? rawSpan : 1;
 
+    // CVD: cumulative volume delta across all session trades
+    let cvd = 0;
+    let vwapNum = 0, vwapDen = 0;
+    const allTrades = allTradesRef.current;
+    for (let i = allTrades.length - 1; i >= 0; i--) {
+      const t = allTrades[i];
+      cvd += t.isBuy ? t.quoteQty : -t.quoteQty;
+      vwapNum += t.price * t.quoteQty;
+      vwapDen += t.quoteQty;
+    }
+    const vwap = vwapDen > 0 ? vwapNum / vwapDen : 0;
+
+    // CVD history: sample last 60 points from session data for sparkline
+    const cvdHistory: number[] = [];
+    if (allTrades.length > 0) {
+      const step = Math.max(1, Math.floor(allTrades.length / 60));
+      let runningCvd = 0;
+      for (let i = allTrades.length - 1; i >= 0; i--) {
+        const t = allTrades[i];
+        runningCvd += t.isBuy ? t.quoteQty : -t.quoteQty;
+        if ((allTrades.length - 1 - i) % step === 0) cvdHistory.push(runningCvd);
+      }
+    }
+
     setStats({
       buyVolume: buyVol,
       sellVolume: sellVol,
@@ -98,6 +125,9 @@ export function useRealtimeTrades(symbol: string) {
       tradeSpeed: Math.round(filtered.length / spanSec),
       bigBuys,
       bigSells,
+      cvd,
+      vwap,
+      cvdHistory,
     });
   }, []);
 
@@ -116,7 +146,7 @@ export function useRealtimeTrades(symbol: string) {
     // Reset state on symbol change
     allTradesRef.current = [];
     setTrades([]);
-    setStats({ buyVolume: 0, sellVolume: 0, netDelta: 0, tradeCount: 0, tradeSpeed: 0, bigBuys: 0, bigSells: 0 });
+    setStats({ buyVolume: 0, sellVolume: 0, netDelta: 0, tradeCount: 0, tradeSpeed: 0, bigBuys: 0, bigSells: 0, cvd: 0, vwap: 0, cvdHistory: [] });
 
     destroyedRef.current = false;
 

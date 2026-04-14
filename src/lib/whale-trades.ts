@@ -371,14 +371,171 @@ export async function detectSolanaSwaps(address: string): Promise<DetectedTrade[
   return trades;
 }
 
+// ─── Hyperliquid perp trade detection ─────────────────────────────────────
+
+export async function detectHyperliquidTrades(address: string): Promise<DetectedTrade[]> {
+  try {
+    const res = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'userFills', user: address }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const fills = await res.json();
+    if (!Array.isArray(fills) || fills.length === 0) return [];
+
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    const trades: DetectedTrade[] = [];
+
+    for (const fill of fills.slice(0, 50)) {
+      const fillTime = fill.time ? new Date(fill.time).getTime() : 0;
+      if (fillTime < tenMinAgo) continue;
+
+      const coin = fill.coin || '';
+      const sz = parseFloat(fill.sz || '0');
+      const px = parseFloat(fill.px || '0');
+      const valueUsd = sz * px;
+      const side = fill.side === 'B' ? 'buy' : 'sell';
+
+      trades.push({
+        address,
+        chain: 'arbitrum',
+        txHash: fill.hash || fill.tid || `hl-${fill.time}-${coin}`,
+        logIndex: fill.tid ? parseInt(fill.tid) : 0,
+        dex: 'Hyperliquid',
+        action: side,
+        tokenInSymbol: side === 'buy' ? coin : 'USDC',
+        tokenOutSymbol: side === 'buy' ? 'USDC' : coin,
+        amountIn: side === 'buy' ? sz : valueUsd,
+        amountOut: side === 'buy' ? valueUsd : sz,
+        valueUsd,
+        blockTime: new Date(fillTime),
+      });
+    }
+    return trades;
+  } catch {
+    return [];
+  }
+}
+
+// ─── dYdX V4 perp trade detection ────────────────────────────────────────
+
+export async function detectDydxTrades(address: string): Promise<DetectedTrade[]> {
+  try {
+    const res = await fetch(
+      `https://indexer.dydx.trade/v4/fills?address=${address}&subaccountNumber=0&limit=50`,
+      { signal: AbortSignal.timeout(8000) },
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    const fills = json.fills || [];
+    if (fills.length === 0) return [];
+
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    const trades: DetectedTrade[] = [];
+
+    for (const fill of fills) {
+      const fillTime = fill.createdAt ? new Date(fill.createdAt).getTime() : 0;
+      if (fillTime < tenMinAgo) continue;
+
+      const symbol = (fill.market || '').replace(/-USD$/, '');
+      const sz = parseFloat(fill.size || '0');
+      const px = parseFloat(fill.price || '0');
+      const valueUsd = sz * px;
+      const side = fill.side === 'BUY' ? 'buy' : 'sell';
+
+      trades.push({
+        address,
+        chain: 'ethereum',
+        txHash: fill.id || `dydx-${fill.createdAt}-${symbol}`,
+        logIndex: 0,
+        dex: 'dYdX',
+        action: side,
+        tokenInSymbol: side === 'buy' ? symbol : 'USDC',
+        tokenOutSymbol: side === 'buy' ? 'USDC' : symbol,
+        amountIn: side === 'buy' ? sz : valueUsd,
+        amountOut: side === 'buy' ? valueUsd : sz,
+        valueUsd,
+        blockTime: new Date(fillTime),
+      });
+    }
+    return trades;
+  } catch {
+    return [];
+  }
+}
+
+// ─── Drift Protocol trade detection (Solana) ─────────────────────────────
+
+export async function detectDriftTrades(address: string): Promise<DetectedTrade[]> {
+  try {
+    const res = await fetch(
+      `https://data.api.drift.trade/user/${address}/tradeHistory?limit=50`,
+      { signal: AbortSignal.timeout(8000) },
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    const fills = json.records || json.data || json || [];
+    if (!Array.isArray(fills) || fills.length === 0) return [];
+
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    const trades: DetectedTrade[] = [];
+
+    for (const fill of fills) {
+      const fillTime = fill.ts ? fill.ts * 1000 : (fill.filledAt ? new Date(fill.filledAt).getTime() : 0);
+      if (fillTime < tenMinAgo) continue;
+
+      const symbol = (fill.marketName || fill.symbol || '').replace(/-PERP$/, '').replace(/^1M/, '');
+      const sz = parseFloat(fill.baseAssetAmount || fill.size || '0') / 1e9; // BASE_PRECISION
+      const px = parseFloat(fill.oraclePrice || fill.price || '0') / 1e6; // PRICE_PRECISION
+      const valueUsd = Math.abs(sz * px);
+      const side = (fill.direction === 'long' || fill.takerSide === 'buy') ? 'buy' : 'sell';
+
+      if (valueUsd < 1) continue;
+
+      trades.push({
+        address,
+        chain: 'solana',
+        txHash: fill.txSig || fill.txSignature || `drift-${fillTime}-${symbol}`,
+        logIndex: fill.fillRecordId || 0,
+        dex: 'Drift',
+        action: side,
+        tokenInSymbol: side === 'buy' ? symbol : 'USDC',
+        tokenOutSymbol: side === 'buy' ? 'USDC' : symbol,
+        amountIn: side === 'buy' ? Math.abs(sz) : valueUsd,
+        amountOut: side === 'buy' ? valueUsd : Math.abs(sz),
+        valueUsd,
+        blockTime: new Date(fillTime),
+      });
+    }
+    return trades;
+  } catch {
+    return [];
+  }
+}
+
 // ─── Unified detection ─────────────────────────────────────────────────────
 
 export async function detectTrades(
   address: string,
   chain: string,
 ): Promise<DetectedTrade[]> {
-  if (chain === 'solana') return detectSolanaSwaps(address);
-  return detectEVMSwaps(address, chain);
+  // For EVM addresses, check DEX perps in parallel with on-chain swaps
+  if (chain === 'solana') {
+    const [solSwaps, drift] = await Promise.all([
+      detectSolanaSwaps(address),
+      detectDriftTrades(address),
+    ]);
+    return [...solSwaps, ...drift];
+  }
+
+  const [evmSwaps, hl, dydx] = await Promise.all([
+    detectEVMSwaps(address, chain),
+    detectHyperliquidTrades(address),
+    detectDydxTrades(address),
+  ]);
+  return [...evmSwaps, ...hl, ...dydx];
 }
 
 // ─── Chain detection helper ────────────────────────────────────────────────
@@ -404,12 +561,21 @@ export function formatTradeMessage(
 ): string {
   const who = label || `${trade.address.slice(0, 6)}...${trade.address.slice(-4)}`;
   const chain = EVM_CHAINS[trade.chain]?.name || trade.chain;
+  const usd = formatTradeValue(trade.valueUsd);
+  const usdStr = usd ? ` | ${usd}` : '';
+
+  // Perp DEX trades (buy/sell instead of swap)
+  const isPerpDex = ['Hyperliquid', 'dYdX', 'Drift'].includes(trade.dex);
+  if (isPerpDex) {
+    const symbol = trade.action === 'buy' ? trade.tokenInSymbol : trade.tokenOutSymbol;
+    const side = trade.action === 'buy' ? 'longed' : 'shorted';
+    return `${who} ${side} ${symbol} on ${trade.dex}${usdStr}`;
+  }
+
   const tokenIn = trade.tokenInSymbol || '???';
   const tokenOut = trade.tokenOutSymbol || '???';
   const amtOut = trade.amountOut ? trade.amountOut.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '?';
   const amtIn = trade.amountIn ? trade.amountIn.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '?';
-  const usd = formatTradeValue(trade.valueUsd);
-  const usdStr = usd ? ` | ${usd}` : '';
 
   return `${who} swapped ${amtOut} ${tokenOut} → ${amtIn} ${tokenIn} on ${trade.dex} (${chain})${usdStr}`;
 }
