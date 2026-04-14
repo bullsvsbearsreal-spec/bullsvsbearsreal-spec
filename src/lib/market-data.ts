@@ -32,6 +32,8 @@ export interface Alert {
   exchange?: string;
   /** For liqProximity/tpProximity: alert when price is within this % of the target price */
   proximityPct?: number;
+  /** Optional: restrict notifications to specific channels. Empty/undefined = use global prefs (all channels). */
+  channels?: string[];
 }
 
 /** Fetch JSON from an internal API with a 15s timeout. */

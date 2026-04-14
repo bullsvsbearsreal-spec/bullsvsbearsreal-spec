@@ -19,6 +19,7 @@ import {
   getPushSubscriptionsForUser,
   deletePushSubscription,
   getTelegramLinkByUser,
+  upsertWorkerHeartbeat,
 } from '@/lib/db';
 import {
   fetchMarketDataServer,
@@ -132,11 +133,18 @@ export async function GET(request: NextRequest) {
         const pushSubs = await getPushSubscriptionsForUser(user.userId);
         const hasPush = pushSubs.length > 0;
 
+        // Build a map from alertId → original alert (to access per-alert channels)
+        const alertMap = new Map<string, Alert>();
+        for (const a of enabledAlerts) alertMap.set(a.id, a);
+
         // Per-channel delivery with per-channel cooldown
         for (const ch of channels) {
-          // Filter to alerts not in cooldown for THIS channel
+          // Filter to alerts not in cooldown for THIS channel, respecting per-alert channel routing
           const toSend: TriggeredAlertInfo[] = [];
           for (const alert of firedAlerts) {
+            const orig = alertMap.get(alert.alertId);
+            // If the alert has per-alert channels set, skip channels not in the list
+            if (orig?.channels?.length && !orig.channels.includes(ch.name)) continue;
             const inCooldown = await getAlertCooldown(user.userId, alert.alertId, cooldownMins, ch.name);
             if (!inCooldown) toSend.push(alert);
           }
@@ -155,6 +163,8 @@ export async function GET(request: NextRequest) {
         if (hasPush) {
           const toSend: TriggeredAlertInfo[] = [];
           for (const alert of firedAlerts) {
+            const orig = alertMap.get(alert.alertId);
+            if (orig?.channels?.length && !orig.channels.includes('push')) continue;
             const inCooldown = await getAlertCooldown(user.userId, alert.alertId, cooldownMins, 'push');
             if (!inCooldown) toSend.push(alert);
           }
@@ -180,6 +190,10 @@ export async function GET(request: NextRequest) {
     if (Math.random() < 0.05) {
       await pruneAlertNotifications();
     }
+
+    await upsertWorkerHeartbeat('cron:alerts', 'ok', {
+      users: users.length, triggered: totalTriggered, notifications: totalNotifications,
+    }).catch(() => {});
 
     return NextResponse.json({
       ok: true,

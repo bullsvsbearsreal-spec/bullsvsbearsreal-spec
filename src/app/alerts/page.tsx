@@ -139,8 +139,13 @@ export default function AlertsPage() {
   const [formValue, setFormValue] = useState('');
   const [formExchange, setFormExchange] = useState('');
   const [formProximityPct, setFormProximityPct] = useState('10');
+  const [formChannels, setFormChannels] = useState<string[]>([]);
 
   const isProximityMetric = formMetric === 'liqProximity' || formMetric === 'tpProximity';
+
+  const toggleFormChannel = (ch: string) => {
+    setFormChannels((prev) => prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]);
+  };
 
   const refresh = useCallback(() => {
     setAlerts(getAlerts());
@@ -230,9 +235,11 @@ export default function AlertsPage() {
       enabled: true,
       ...(formMetric === 'fundingRate' && formExchange ? { exchange: formExchange } : {}),
       ...(isProx ? { proximityPct: parseFloat(formProximityPct) || 10 } : {}),
+      ...(formChannels.length > 0 ? { channels: formChannels } : {}),
     });
     setFormValue('');
     setFormExchange('');
+    setFormChannels([]);
     setShowForm(false);
     refresh();
   };
@@ -434,6 +441,35 @@ export default function AlertsPage() {
                     : 'Enter your take profit price. You will be alerted when the current price is within your selected % of that level.'}
                 </p>
               )}
+              {/* Per-alert channel routing */}
+              {status === 'authenticated' && (
+                <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                  <label className="text-xs text-neutral-500 block mb-1.5">Notify via (empty = all channels)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: 'email', label: 'Email', icon: Mail },
+                      { key: 'telegram', label: 'Telegram', icon: Send },
+                      { key: 'discord', label: 'Discord', icon: Hash },
+                      { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+                      { key: 'push', label: 'Push', icon: Smartphone },
+                    ].map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleFormChannel(key)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-colors border ${
+                          formChannels.includes(key)
+                            ? 'bg-hub-yellow/20 border-hub-yellow/40 text-hub-yellow'
+                            : 'bg-white/[0.03] border-white/[0.08] text-neutral-500 hover:text-neutral-300'
+                        }`}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -546,8 +582,16 @@ export default function AlertsPage() {
                             </>
                           )}
                         </p>
-                        <p className="text-xs text-neutral-600">
-                          Created {new Date(alert.createdAt).toLocaleDateString()}
+                        <p className="text-xs text-neutral-600 flex items-center gap-1.5 flex-wrap">
+                          <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
+                          {alert.channels && alert.channels.length > 0 && (
+                            <>
+                              <span className="text-neutral-700">·</span>
+                              {alert.channels.map((ch) => (
+                                <span key={ch} className="px-1.5 py-0.5 rounded bg-white/[0.04] text-neutral-500 text-[9px] uppercase">{ch}</span>
+                              ))}
+                            </>
+                          )}
                         </p>
                       </div>
                     </div>
