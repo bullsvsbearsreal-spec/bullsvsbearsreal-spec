@@ -35,7 +35,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/prediction-markets': {
     title: 'Prediction Market Arbitrage Scanner',
-    description: 'Find mispriced bets across Polymarket, Kalshi & Manifold. Real-time arbitrage scanner with liquidity scoring, quality filters, and cross-platform spread detection.',
+    description: 'Find mispriced bets across Polymarket & Kalshi. Real-time arbitrage scanner with liquidity scoring, quality filters, and cross-platform spread detection.',
   },
   '/funding-heatmap': {
     title: 'Funding Heatmap',

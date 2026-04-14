@@ -16,7 +16,6 @@ const ROWS_PER_PAGE = 20;
 const PLATFORM_CONFIG: { key: PredictionPlatform; label: string; color: string; dotColor: string; ringColor: string; desc: string }[] = [
   { key: 'polymarket', label: 'Polymarket', color: 'text-purple-400', dotColor: 'bg-purple-400', ringColor: 'ring-purple-500/20', desc: 'Crypto (USDC on Polygon)' },
   { key: 'kalshi', label: 'Kalshi', color: 'text-blue-400', dotColor: 'bg-blue-400', ringColor: 'ring-blue-500/20', desc: 'USD, US-regulated' },
-  { key: 'manifold', label: 'Manifold', color: 'text-green-400', dotColor: 'bg-green-400', ringColor: 'ring-green-500/20', desc: 'Play money (Mana)' },
 ];
 
 function pct(v: number): string {

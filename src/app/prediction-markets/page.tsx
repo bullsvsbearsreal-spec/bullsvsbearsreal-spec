@@ -25,13 +25,11 @@ type ViewMode = 'arbitrage' | 'browse';
 const PLATFORM_LABELS: Record<PredictionPlatform, string> = {
   polymarket: 'Polymarket',
   kalshi: 'Kalshi',
-  manifold: 'Manifold',
 };
 
 const PLATFORM_META: Record<PredictionPlatform, { color: string; type: string }> = {
   polymarket: { color: 'text-purple-400', type: 'Crypto (USDC)' },
   kalshi: { color: 'text-blue-400', type: 'USD (Regulated)' },
-  manifold: { color: 'text-green-400', type: 'Play Money' },
 };
 
 export default function PredictionMarketsPage() {
@@ -70,11 +68,10 @@ export default function PredictionMarketsPage() {
 
   const allArbitrage = Array.isArray(data?.arbitrage) ? data.arbitrage : [];
   const arbitrage = authLimit ? allArbitrage.slice(0, authLimit) : allArbitrage;
-  const allMarkets = data?.markets ?? { polymarket: [], kalshi: [], manifold: [] };
+  const allMarkets = data?.markets ?? { polymarket: [], kalshi: [] };
   const markets = authLimit ? {
     polymarket: allMarkets.polymarket.slice(0, 10),
     kalshi: allMarkets.kalshi.slice(0, 10),
-    manifold: allMarkets.manifold.slice(0, 10),
   } : allMarkets;
   const meta = data?.meta;
 
@@ -128,9 +125,8 @@ export default function PredictionMarketsPage() {
 
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white leading-tight mb-3" style={{ textWrap: 'balance' as any }}>
                   Find Mispriced Bets Across{' '}
-                  <span className="text-purple-400">Polymarket</span>,{' '}
-                  <span className="text-blue-400">Kalshi</span> &{' '}
-                  <span className="text-green-400">Manifold</span>
+                  <span className="text-purple-400">Polymarket</span> &{' '}
+                  <span className="text-blue-400">Kalshi</span>
                 </h1>
 
                 <p className="text-neutral-400 text-sm sm:text-base leading-relaxed max-w-xl">
@@ -274,7 +270,7 @@ export default function PredictionMarketsPage() {
             {authLimit && (
               <SoftAuthGate
                 freeLimit={viewMode === 'arbitrage' ? 5 : 10}
-                totalCount={viewMode === 'arbitrage' ? allArbitrage.length : (allMarkets.polymarket.length + allMarkets.kalshi.length + allMarkets.manifold.length)}
+                totalCount={viewMode === 'arbitrage' ? allArbitrage.length : (allMarkets.polymarket.length + allMarkets.kalshi.length)}
                 dataLabel={viewMode === 'arbitrage' ? 'arb opportunities' : 'markets'}
               />
             )}
@@ -292,7 +288,6 @@ export default function PredictionMarketsPage() {
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-neutral-600">
                 <span><span className="text-purple-400/70">Polymarket</span> — Crypto (USDC on Polygon)</span>
                 <span><span className="text-blue-400/70">Kalshi</span> — USD, US-regulated</span>
-                <span><span className="text-green-400/70">Manifold</span> — Play money (Mana)</span>
               </div>
               <p className="text-neutral-600 text-[10px]">
                 Execution risk, fees, withdrawal limits, and market liquidity all affect real-world returns. This tool surfaces pricing data — not financial advice.
@@ -342,7 +337,7 @@ function HowItWorks() {
     {
       icon: Target,
       title: 'Match',
-      desc: 'We scan Polymarket, Kalshi, and Manifold for events that reference the same real-world outcome. Curated matches are hand-verified. Auto-matches use fuzzy question similarity.',
+      desc: 'We scan Polymarket and Kalshi for events that reference the same real-world outcome. Curated matches are hand-verified. Auto-matches use fuzzy question similarity.',
       color: 'text-purple-400',
       bg: 'bg-purple-500/10',
     },
@@ -370,7 +365,7 @@ function HowItWorks() {
   ];
 
   const reasons = [
-    { icon: Globe, text: 'Different user bases price risk independently — Polymarket (global crypto), Kalshi (US regulated), Manifold (play money).' },
+    { icon: Globe, text: 'Different user bases price risk independently — Polymarket (global crypto) vs Kalshi (US regulated). Same event, different prices.' },
     { icon: BarChart3, text: 'Spreads appear on every major event — elections, Fed decisions, crypto milestones, sports. Prices almost never match.' },
     { icon: Clock, text: 'Manual scanning doesn\'t scale. InfoHub checks every active market across all platforms every 60 seconds.' },
     { icon: DollarSign, text: 'Each platform takes a cut via overround (YES + NO > 100%). We calculate and display the vig so you see the real edge.' },

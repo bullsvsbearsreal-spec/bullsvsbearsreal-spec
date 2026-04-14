@@ -22,7 +22,6 @@ const ROWS_PER_PAGE = 20;
 const PLATFORM_STYLE: Record<PredictionPlatform, { dot: string; text: string; bg: string; label: string }> = {
   polymarket: { dot: 'bg-purple-400', text: 'text-purple-400', bg: 'bg-purple-500/10', label: 'Polymarket' },
   kalshi: { dot: 'bg-blue-400', text: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Kalshi' },
-  manifold: { dot: 'bg-green-400', text: 'text-green-400', bg: 'bg-green-500/10', label: 'Manifold' },
 };
 
 // ─── Liquidity quality scoring ────────────────────────────────
@@ -45,7 +44,7 @@ function depthSignal(market: PredictionMarket): number {
   let score = 0;
   let signals = 0;
 
-  // Liquidity (Polymarket, Manifold report this)
+  // Liquidity (Polymarket reports this)
   if (market.liquidity > 0) {
     signals++;
     if (market.liquidity >= 100000) score += 1;
@@ -96,13 +95,11 @@ function computeQuality(item: PredictionArbitrage): QualityScore {
   const score = Math.round(Math.min(100, raw));
 
   // Check for specific warnings
-  const hasManifold = item.platformA.platform === 'manifold' || item.platformB.platform === 'manifold';
   const bothNoLiq = item.platformA.liquidity === 0 && item.platformB.liquidity === 0;
   const oneNoVol = item.platformA.volume24h === 0 || item.platformB.volume24h === 0;
 
   let warning: string | undefined;
-  if (hasManifold) warning = 'Manifold uses play money — not real USD';
-  else if (bothNoLiq && score < 30) warning = 'No liquidity data on one or both sides';
+  if (bothNoLiq && score < 30) warning = 'No liquidity data on one or both sides';
   else if (oneNoVol && score < 40) warning = 'No 24h volume on one side';
 
   if (score >= 60) {
