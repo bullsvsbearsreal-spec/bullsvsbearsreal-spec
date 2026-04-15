@@ -192,8 +192,11 @@ function HeroTerminal() {
           </div>
           <span className="text-[11px] text-gray-500 font-mono ml-2">info-hub.io</span>
           <div className="ml-auto flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-[10px] text-green-400/70 font-mono">connected</span>
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-40" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+            </span>
+            <span className="text-[10px] text-green-400/60 font-mono">live</span>
           </div>
         </div>
         {/* Terminal body */}
@@ -216,8 +219,11 @@ function HeroTerminal() {
           {visibleLines >= TERMINAL_LINES.length && (
             <>
               <div className="mt-3 flex items-center gap-2">
-                <span className="text-[10px] text-gray-600 bg-white/[0.04] px-2 py-0.5 rounded">200 OK</span>
-                <span className="text-[10px] text-green-500/60 bg-green-500/[0.06] px-2 py-0.5 rounded">47ms</span>
+                <span className="inline-flex items-center gap-1 text-[10px] text-green-400/70 bg-green-500/[0.06] border border-green-500/10 px-2 py-0.5 rounded-md">
+                  <span className="w-1 h-1 rounded-full bg-green-400/70" />
+                  success
+                </span>
+                <span className="text-[10px] text-gray-600">responded in 47ms</span>
               </div>
               <div className="mt-2 text-green-400/50">
                 <span className="text-green-400 select-none">$ </span>
@@ -412,9 +418,12 @@ export default function DevelopersPage() {
                 <div className="flex items-center gap-3 mb-6">
                   <Logo size="xl" animated />
                   <div className="h-7 w-px bg-white/10" />
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-[11px] font-semibold tracking-wide uppercase">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                    API v1 Live
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-green-500/25 bg-green-500/[0.07] text-green-300 text-[11px] font-medium shadow-[0_0_12px_rgb(34,197,94,0.06)]">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-50" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                    </span>
+                    Serving live data
                   </div>
                 </div>
 

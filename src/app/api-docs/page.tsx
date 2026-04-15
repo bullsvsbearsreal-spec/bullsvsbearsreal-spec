@@ -241,13 +241,30 @@ function LiveStatus() {
       .catch(() => setStatus('offline'));
   }, []);
   return (
-    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-xs">
-      <span className={`w-1.5 h-1.5 rounded-full ${status === 'online' ? 'bg-green-400 animate-pulse' : status === 'offline' ? 'bg-red-400' : 'bg-gray-500 animate-pulse'}`} />
-      <span className={status === 'online' ? 'text-green-400 font-semibold' : 'text-gray-400'}>
-        {status === 'online' ? 'API Online' : status === 'offline' ? 'Offline' : 'Checking...'}
+    <div className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-full text-xs transition-all duration-500 ${
+      status === 'online'
+        ? 'bg-green-500/[0.08] border border-green-500/20 shadow-[0_0_12px_rgb(34,197,94,0.08)]'
+        : status === 'offline'
+        ? 'bg-red-500/[0.08] border border-red-500/20'
+        : 'bg-white/[0.03] border border-white/[0.06]'
+    }`}>
+      <span className="relative flex h-2 w-2">
+        {status !== 'offline' && (
+          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-50 ${
+            status === 'online' ? 'bg-green-400' : 'bg-gray-400'
+          }`} />
+        )}
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${
+          status === 'online' ? 'bg-green-400' : status === 'offline' ? 'bg-red-400' : 'bg-gray-400'
+        }`} />
+      </span>
+      <span className={`font-medium ${
+        status === 'online' ? 'text-green-300' : status === 'offline' ? 'text-red-300' : 'text-gray-400'
+      }`}>
+        {status === 'online' ? 'All systems operational' : status === 'offline' ? 'Having trouble connecting' : 'Waking up...'}
       </span>
       {status === 'online' && latency > 0 && (
-        <span className="text-gray-600 font-mono">{latency}ms</span>
+        <span className="text-green-400/40 font-mono text-[10px]">{latency}ms</span>
       )}
     </div>
   );
@@ -428,9 +445,12 @@ export default function ApiDocsPage() {
                 onClick={() => setShowResponse(!showResponse)}
                 className="w-full flex items-center gap-2 px-4 sm:px-5 py-3 text-left hover:bg-white/[0.02] transition-colors"
               >
-                <span className="text-[10px] text-green-400 font-mono font-bold bg-green-500/10 px-2 py-0.5 rounded">200 OK</span>
-                <span className="text-[10px] text-neutral-600 font-mono">application/json</span>
-                <span className="text-[10px] text-neutral-700 font-mono ml-1">~47ms</span>
+                <span className="inline-flex items-center gap-1.5 text-[10px] text-green-400 font-medium bg-green-500/[0.08] border border-green-500/10 px-2 py-0.5 rounded-md">
+                  <span className="w-1 h-1 rounded-full bg-green-400" />
+                  Success
+                </span>
+                <span className="text-[10px] text-neutral-600">JSON</span>
+                <span className="text-[10px] text-neutral-700 ml-1">responded in ~47ms</span>
                 <ChevronRight className={`w-3 h-3 text-neutral-600 ml-auto transition-transform duration-200 ${showResponse ? 'rotate-90' : ''}`} />
                 <span className="text-[10px] text-neutral-600">{showResponse ? 'Hide' : 'Show'} response</span>
               </button>
