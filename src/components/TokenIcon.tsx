@@ -33,7 +33,7 @@ function ForexIcon({ base, quote, size, className }: { base: string; quote: stri
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`/flags/${quote}.svg`}
-        alt=""
+        alt={`${quote.toUpperCase()} flag`}
         width={flagSize}
         height={flagSize}
         className="absolute rounded-full"
@@ -42,7 +42,7 @@ function ForexIcon({ base, quote, size, className }: { base: string; quote: stri
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`/flags/${base}.svg`}
-        alt=""
+        alt={`${base.toUpperCase()} flag`}
         width={flagSize}
         height={flagSize}
         className="absolute rounded-full ring-1 ring-[#0a0a0a]"

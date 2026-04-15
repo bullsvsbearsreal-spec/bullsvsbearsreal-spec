@@ -61,7 +61,7 @@ function CoinLogo({ symbol, size = 20 }: { symbol: string; size?: number }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
-      alt=""
+      alt={`${symbol} icon`}
       className="rounded-full flex-shrink-0 object-cover"
       style={{ width: size, height: size }}
       onError={() => setFailed(true)}

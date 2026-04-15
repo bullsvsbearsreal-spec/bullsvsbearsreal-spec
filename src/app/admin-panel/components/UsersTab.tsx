@@ -187,7 +187,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       {u.image ? (
-                        <img src={u.image} alt="" className="w-6 h-6 rounded-full" />
+                        <img src={u.image} alt={`${u.name || 'User'} avatar`} className="w-6 h-6 rounded-full" />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-white/[0.08] flex items-center justify-center text-[10px] text-neutral-500 font-medium">
                           {(u.name?.[0] || u.email?.[0] || '?').toUpperCase()}

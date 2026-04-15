@@ -52,7 +52,7 @@ function StickySpreadBarInner({ stats, sym, tf, wsPrices, wsCount, selCount, sta
           {/* Symbol */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={getCoinIcon(sym)} alt="" className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <img src={getCoinIcon(sym)} alt={`${sym} icon`} className="w-5 h-5 rounded-full" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             <span className="text-sm font-bold text-white">{sym}</span>
             <span className="text-[10px] text-neutral-500">Perp</span>
           </div>

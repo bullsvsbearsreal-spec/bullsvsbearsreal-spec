@@ -14,6 +14,8 @@ export const preferredRegion = 'bom1';
 export async function GET(request: NextRequest) {
   const auth = await authenticateV1Request(request);
   if (!auth.ok) return auth.response;
+
+  try {
   const FUNDING_INTERVALS: Record<string, string> = {
     'Binance': '8h', 'Bybit': '8h', 'OKX': '8h', 'Bitget': '8h',
     'MEXC': '8h', 'BingX': '8h', 'Phemex': '8h', 'KuCoin': '8h',
@@ -55,4 +57,8 @@ export async function GET(request: NextRequest) {
   }, {
     headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' },
   });
+  } catch (e) {
+    console.error('v1/exchanges error:', e);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
 }

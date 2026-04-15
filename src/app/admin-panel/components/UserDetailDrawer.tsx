@@ -85,7 +85,7 @@ export default function UserDetailDrawer({ userId, onClose, canManageRoles, curr
               {/* profile */}
               <div className="flex items-center gap-3">
                 {data.image ? (
-                  <img src={data.image} alt="" className="w-10 h-10 rounded-full" />
+                  <img src={data.image} alt={`${data.name || 'User'} avatar`} className="w-10 h-10 rounded-full" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center text-neutral-500 text-sm font-medium">
                     {(data.name?.[0] || data.email?.[0] || '?').toUpperCase()}

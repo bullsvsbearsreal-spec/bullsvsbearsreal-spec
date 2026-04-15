@@ -20,16 +20,22 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  await initDB();
-  const revoked = await revokeApiKey(id, session.user.id);
-  if (revoked) clearApiKeyCache(); // Invalidate cached keys so revocation takes effect immediately
 
-  if (!revoked) {
-    return NextResponse.json(
-      { success: false, error: 'Key not found or already revoked' },
-      { status: 404 },
-    );
+  try {
+    await initDB();
+    const revoked = await revokeApiKey(id, session.user.id);
+    if (revoked) clearApiKeyCache(); // Invalidate cached keys so revocation takes effect immediately
+
+    if (!revoked) {
+      return NextResponse.json(
+        { success: false, error: 'Key not found or already revoked' },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true, message: 'API key revoked' });
+  } catch (e) {
+    console.error('v1/keys/[id] DELETE error:', e);
+    return NextResponse.json({ success: false, error: 'Failed to revoke key' }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true, message: 'API key revoked' });
 }
