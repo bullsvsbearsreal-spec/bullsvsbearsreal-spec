@@ -23,7 +23,7 @@ interface ApiKeyInfo {
   createdAt: string;
 }
 
-/* ─── Typing animation for the hero terminal ─── */
+/* Typing animation for the hero terminal */
 const TERMINAL_LINES = [
   { type: 'cmd' as const, text: 'curl -s -H "Authorization: Bearer ih_k7x..." \\' },
   { type: 'cmd' as const, text: '  "https://infohub.trade/api/v1/arbitrage?grade=A"' },
@@ -46,7 +46,7 @@ function HeroTerminal() {
   const [cursorVisible, setCursorVisible] = useState(true);
 
   useEffect(() => {
-    // Typing effect — reveal lines progressively
+    // Typing effect: reveal lines progressively
     if (visibleLines < TERMINAL_LINES.length) {
       const delay = visibleLines < 2 ? 600 : visibleLines === 2 ? 300 : 80;
       const t = setTimeout(() => setVisibleLines(v => v + 1), delay);
@@ -71,7 +71,7 @@ function HeroTerminal() {
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
             <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
           </div>
-          <span className="text-[11px] text-gray-500 font-mono ml-2">Terminal — infohub.trade</span>
+          <span className="text-[11px] text-gray-500 font-mono ml-2">Terminal  infohub.trade</span>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <span className="text-[10px] text-green-400/70 font-mono">connected</span>
@@ -110,7 +110,7 @@ function HeroTerminal() {
   );
 }
 
-/* ─── Animated counter ─── */
+/* Animated counter */
 function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
   const [value, setValue] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
@@ -272,7 +272,7 @@ export default function DevelopersPage() {
       <Header />
       <main id="main-content">
 
-        {/* ─── Hero ──────────────────────────────────────────── */}
+        {/* Hero */}
         <section className="relative overflow-hidden">
           {/* Background effects */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,184,0,0.12),transparent)]" />
@@ -286,7 +286,7 @@ export default function DevelopersPage() {
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-24">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
-              {/* Left — Copy */}
+              {/* Left copy */}
               <div>
                 <div className="flex items-center gap-3 mb-6">
                   <Logo size="xl" animated />
@@ -304,10 +304,10 @@ export default function DevelopersPage() {
                 </h1>
 
                 <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-4 max-w-lg">
-                  Funding rates, open interest, liquidations, spreads, options, and arbitrage — aggregated from 33 exchanges into a single REST API.
+                  Funding rates, open interest, liquidations, spreads, options, and arbitrage aggregated from 33 exchanges into a single REST API.
                 </p>
                 <p className="text-gray-500 text-sm leading-relaxed mb-8 max-w-lg">
-                  Built by traders, for traders. Whether you're running a funding bot, building a dashboard, or doing research — get live data in one call instead of managing 33 API keys.
+                  Built by traders, for traders. Whether you're running a funding bot, building a dashboard, or doing research, get live data in one call instead of managing 33 API keys.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 mb-10">
@@ -350,7 +350,7 @@ export default function DevelopersPage() {
                 </div>
               </div>
 
-              {/* Right — Terminal */}
+              {/* Right terminal */}
               <div className="hidden lg:block">
                 <HeroTerminal />
               </div>
@@ -358,14 +358,14 @@ export default function DevelopersPage() {
           </div>
         </section>
 
-        {/* ─── Mobile terminal (below fold) ───────────────────── */}
+        {/* Mobile terminal (below fold) */}
         <div className="lg:hidden max-w-xl mx-auto px-4 -mt-4 mb-12">
           <HeroTerminal />
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
-        {/* ─── Use Cases ─────────────────────────────────────── */}
+        {/* Use Cases */}
         <div className="mb-14 sm:mb-20">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-2">What people build with it</h2>
@@ -376,7 +376,7 @@ export default function DevelopersPage() {
               {
                 emoji: '\u{1F916}',
                 title: 'Funding rate bots',
-                desc: 'Automatically long on cheap exchanges, short on expensive ones. The /arbitrage endpoint does the math for you — just filter by grade and execute.',
+                desc: 'Automatically long on cheap exchanges, short on expensive ones. The /arbitrage endpoint does the math for you. Just filter by grade and execute.',
               },
               {
                 emoji: '\u{1F4CA}',
@@ -398,12 +398,12 @@ export default function DevelopersPage() {
           </div>
         </div>
 
-        {/* ─── Auth prompt (not signed in) ────────────────────── */}
+        {/* Auth prompt (not signed in) */}
         {!session?.user && (
           <AuthPromptBanner variant="api-key" dismissible={false} className="mb-10" />
         )}
 
-        {/* ─── API Key Management (signed in) ─────────────────── */}
+        {/* API Key Management (signed in) */}
         {session?.user && (
           <div id="api-keys" className="mb-14 sm:mb-20 scroll-mt-20">
             {/* New key banner */}
@@ -411,7 +411,7 @@ export default function DevelopersPage() {
               <div className="bg-green-950/40 border border-green-800/50 rounded-xl p-5 mb-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Check className="w-4 h-4 text-green-400" />
-                  <p className="text-green-400 font-semibold text-sm">API Key Created — Copy it now</p>
+                  <p className="text-green-400 font-semibold text-sm">API Key Created. Copy it now</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 bg-black/60 text-green-300 px-4 py-2.5 rounded-lg font-mono text-sm break-all border border-green-900/50">
@@ -495,7 +495,7 @@ export default function DevelopersPage() {
           </div>
         )}
 
-        {/* ─── Endpoints by Category ─────────────────────────── */}
+        {/* Endpoints by Category */}
         <div className="mb-14 sm:mb-20">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -532,7 +532,7 @@ export default function DevelopersPage() {
           </div>
         </div>
 
-        {/* ─── Quick Start ───────────────────────────────────── */}
+        {/* Quick Start */}
         <div className="mb-14 sm:mb-20">
           <div className="mb-6">
             <h2 className="text-2xl font-bold">Quick Start</h2>
@@ -583,7 +583,7 @@ console.log(data);`,
           </div>
         </div>
 
-        {/* ─── Rate Limits ───────────────────────────────────── */}
+        {/* Rate Limits */}
         <div className="mb-14 sm:mb-20">
           <div className="mb-6">
             <h2 className="text-2xl font-bold">Rate Limits</h2>
@@ -646,7 +646,7 @@ console.log(data);`,
           </div>
         </div>
 
-        {/* ─── CTA Banner ───────────────────────────────────── */}
+        {/* CTA Banner */}
         <div className="mb-14 sm:mb-20">
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 p-8 sm:p-10">
             <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
