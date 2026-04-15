@@ -61,6 +61,8 @@ module.exports = {
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'breathe': 'breathe 3s ease-in-out infinite',
+        'breathe-fast': 'breathe 2s ease-in-out infinite',
         'shimmer': 'shimmer 2s linear infinite',
         'float': 'float 6s ease-in-out infinite',
         'slide-up': 'slideUp 0.3s ease-out',
@@ -73,6 +75,10 @@ module.exports = {
         'enter': 'enterUp 0.3s ease-out both',
       },
       keyframes: {
+        breathe: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.6' },
+          '50%': { transform: 'scale(1.8)', opacity: '0' },
+        },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },

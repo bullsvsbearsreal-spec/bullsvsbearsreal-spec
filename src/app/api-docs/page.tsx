@@ -241,30 +241,35 @@ function LiveStatus() {
       .catch(() => setStatus('offline'));
   }, []);
   return (
-    <div className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-full text-xs transition-all duration-500 ${
+    <div className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-full text-xs transition-all duration-700 ${
       status === 'online'
-        ? 'bg-green-500/[0.08] border border-green-500/20 shadow-[0_0_12px_rgb(34,197,94,0.08)]'
+        ? 'bg-emerald-500/[0.06] border border-emerald-500/15'
         : status === 'offline'
-        ? 'bg-red-500/[0.08] border border-red-500/20'
+        ? 'bg-red-500/[0.06] border border-red-500/15'
         : 'bg-white/[0.03] border border-white/[0.06]'
     }`}>
       <span className="relative flex h-2 w-2">
-        {status !== 'offline' && (
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-50 ${
-            status === 'online' ? 'bg-green-400' : 'bg-gray-400'
-          }`} />
+        {status === 'online' && (
+          <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+        )}
+        {status === 'loading' && (
+          <span className="animate-breathe-fast absolute inline-flex h-full w-full rounded-full bg-gray-400" />
         )}
         <span className={`relative inline-flex rounded-full h-2 w-2 ${
-          status === 'online' ? 'bg-green-400' : status === 'offline' ? 'bg-red-400' : 'bg-gray-400'
+          status === 'online'
+            ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]'
+            : status === 'offline'
+            ? 'bg-red-400'
+            : 'bg-neutral-500'
         }`} />
       </span>
       <span className={`font-medium ${
-        status === 'online' ? 'text-green-300' : status === 'offline' ? 'text-red-300' : 'text-gray-400'
+        status === 'online' ? 'text-emerald-300/90' : status === 'offline' ? 'text-red-300/80' : 'text-neutral-400'
       }`}>
-        {status === 'online' ? 'All systems operational' : status === 'offline' ? 'Having trouble connecting' : 'Waking up...'}
+        {status === 'online' ? 'Everything looks good' : status === 'offline' ? 'Trouble reaching the API' : 'Checking...'}
       </span>
       {status === 'online' && latency > 0 && (
-        <span className="text-green-400/40 font-mono text-[10px]">{latency}ms</span>
+        <span className="text-emerald-400/30 font-mono text-[10px]">{latency}ms</span>
       )}
     </div>
   );

@@ -497,14 +497,14 @@ function FooterInner() {
             href="/funding"
             className="group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.02] border border-hub-subtle hover:border-hub-hover hover:bg-white/[0.04] transition-all order-2 lg:order-3 max-w-full"
           >
-            <span className="relative flex h-2 w-2 flex-shrink-0">
+            <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
               {stats && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500/60 opacity-75" />
+                <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
               )}
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${stats ? 'bg-green-500 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-neutral-600'}`} />
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${stats ? 'bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.4)]' : 'bg-neutral-600'}`} />
             </span>
             <span className="text-[10px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-400 transition-colors">
-              {stats ? 'Live' : 'Offline'}
+              {stats ? 'Streaming' : 'Offline'}
             </span>
             <span className="h-3 w-px bg-white/[0.08]" />
             <span className={`text-[11px] font-semibold tabular-nums ${stats ? 'text-neutral-200' : 'text-neutral-600'}`}>

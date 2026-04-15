@@ -193,10 +193,10 @@ function HeroTerminal() {
           <span className="text-[11px] text-gray-500 font-mono ml-2">info-hub.io</span>
           <div className="ml-auto flex items-center gap-1.5">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-40" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+              <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]" />
             </span>
-            <span className="text-[10px] text-green-400/60 font-mono">live</span>
+            <span className="text-[10px] text-emerald-400/50 font-mono">connected</span>
           </div>
         </div>
         {/* Terminal body */}
@@ -418,10 +418,10 @@ export default function DevelopersPage() {
                 <div className="flex items-center gap-3 mb-6">
                   <Logo size="xl" animated />
                   <div className="h-7 w-px bg-white/10" />
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-green-500/25 bg-green-500/[0.07] text-green-300 text-[11px] font-medium shadow-[0_0_12px_rgb(34,197,94,0.06)]">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-300/90 text-[11px] font-medium">
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-50" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                      <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
                     </span>
                     Serving live data
                   </div>

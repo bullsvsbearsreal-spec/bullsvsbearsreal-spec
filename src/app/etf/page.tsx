@@ -375,12 +375,12 @@ export default function ETFPage() {
                   </p>
                 </div>
                 {hasLiveData && (
-                  <span className="flex items-center gap-1.5 text-[10px] text-green-400">
+                  <span className="flex items-center gap-1.5 text-[10px] text-emerald-400/70">
                     <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                      <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.4)]" />
                     </span>
-                    Live
+                    Up to date
                   </span>
                 )}
               </div>

@@ -190,12 +190,12 @@ export default function DocsPage() {
 
             {/* Header */}
             <div className="mb-12 pb-10 border-b border-white/[0.04]">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-amber-500/20 bg-amber-500/[0.06] text-amber-300 text-[11px] font-medium mb-4">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-amber-500/15 bg-amber-500/[0.05] text-amber-300/80 text-[11px] font-medium mb-4">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-40" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
+                  <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-amber-400" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.35)]" />
                 </span>
-                v1 Reference, always up to date
+                v1 reference, kept in sync
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold mb-3">
                 <span className="text-white">API </span>

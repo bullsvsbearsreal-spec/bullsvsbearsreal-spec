@@ -62,12 +62,12 @@ export default function EventsCalendar({ symbol, limit = 10, showFilters = true 
             <p className="text-hub-gray-text text-sm">Real-time market updates</p>
           </div>
         </div>
-        <span className="flex items-center gap-1 text-xs text-success">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+        <span className="flex items-center gap-1.5 text-[11px] text-emerald-400/70">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.35)]" />
           </span>
-          Live
+          Updating
         </span>
       </div>
 

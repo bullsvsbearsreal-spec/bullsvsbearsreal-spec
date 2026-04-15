@@ -97,12 +97,12 @@ function StickySpreadBarInner({ stats, sym, tf, wsPrices, wsCount, selCount, sta
           <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
             {wsCount > 0 && status !== 'disconnected' && (
               <span className="relative flex h-2 w-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-50 ${status === 'degraded' ? 'bg-yellow-400' : 'bg-green-400'}`} />
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${status === 'degraded' ? 'bg-yellow-400' : 'bg-green-400'}`} />
+                <span className={`animate-breathe absolute inline-flex h-full w-full rounded-full ${status === 'degraded' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${status === 'degraded' ? 'bg-amber-400 shadow-[0_0_4px_rgba(251,191,36,0.3)]' : 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.4)]'}`} />
               </span>
             )}
             {status === 'disconnected' && (
-              <span className="w-2 h-2 rounded-full bg-red-400" />
+              <span className="w-2 h-2 rounded-full bg-red-400/80" />
             )}
             <span className="text-[10px] text-neutral-500 tabular-nums">
               {wsCount}/{selCount} live

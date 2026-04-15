@@ -163,8 +163,8 @@ function TickerStripInner({ stats, exs, wsPrices, wsSpread, wsCount, sym }: Tick
           <div className="flex items-center gap-1.5">
             {wsCount > 0 && (
               <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-50" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+                <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400 shadow-[0_0_3px_rgba(52,211,153,0.4)]" />
               </span>
             )}
             {ageSec !== null && (() => {
