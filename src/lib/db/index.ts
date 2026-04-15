@@ -224,6 +224,18 @@ async function _doInitDB(): Promise<void> {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_twofa_login_codes_email ON twofa_login_codes (email, used, expires_at)`;
+
+  // 2FA nonces (issued after successful 2FA validation)
+  await sql`
+    CREATE TABLE IF NOT EXISTS twofa_nonces (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      nonce TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '5 minutes',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
 
   // Two-factor authentication
   await sql`

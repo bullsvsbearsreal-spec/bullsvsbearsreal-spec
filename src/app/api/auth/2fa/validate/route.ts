@@ -10,18 +10,10 @@ import { isDBConfigured, getSQL, initDB } from '@/lib/db';
 async function issueNonce(userId: string): Promise<string> {
   const db = getSQL();
   const nonce = crypto.randomBytes(32).toString('hex');
-  // Ensure table exists (idempotent)
-  await db`
-    CREATE TABLE IF NOT EXISTS twofa_nonces (
-      id SERIAL PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      nonce TEXT NOT NULL UNIQUE,
-      expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '5 minutes',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  // Clean up expired nonces opportunistically
-  await db`DELETE FROM twofa_nonces WHERE expires_at < NOW()`;
+  // Clean up expired nonces probabilistically (~10% of calls)
+  if (Math.random() < 0.1) {
+    await db`DELETE FROM twofa_nonces WHERE expires_at < NOW()`.catch(() => {});
+  }
   await db`INSERT INTO twofa_nonces (user_id, nonce) VALUES (${userId}, ${nonce})`;
   return nonce;
 }
