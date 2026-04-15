@@ -81,7 +81,7 @@ export default function AdminPanelPage() {
     let mounted = true;
     const check = async () => {
       try {
-        const res = await fetch('/api/funding?assetClass=crypto');
+        const res = await fetch('/api/funding?assetClass=crypto', { signal: AbortSignal.timeout(15000) });
         if (!res.ok) return;
         const json = await res.json();
         const entries: { exchange: string; updatedAt?: string }[] = json?.data || [];
@@ -128,7 +128,7 @@ export default function AdminPanelPage() {
   // Load stats
   const loadStats = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/stats');
+      const res = await fetch('/api/admin/stats', { signal: AbortSignal.timeout(15000) });
       if (res.ok) setStats(await res.json());
     } catch {}
     setLastRefresh(new Date());

@@ -26,7 +26,7 @@ export default function AlertsTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/monitoring/alerts')
+    fetch('/api/admin/monitoring/alerts', { signal: AbortSignal.timeout(10000) })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(setData)
       .catch((e) => setError(e?.message || 'Failed to load alerts'))

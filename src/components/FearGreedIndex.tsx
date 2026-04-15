@@ -37,7 +37,7 @@ export default function FearGreedIndex() {
     let mounted = true;
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/fear-greed?history=true&limit=7');
+        const res = await fetch('/api/fear-greed?history=true&limit=7', { signal: AbortSignal.timeout(10000) });
         if (res.ok) {
           const data = await res.json();
           if (mounted) {

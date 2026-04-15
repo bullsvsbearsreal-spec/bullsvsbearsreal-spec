@@ -39,9 +39,9 @@ export default function DashboardHeader({ userName }: { userName: string }) {
     let mounted = true;
     const load = async () => {
       const [tickerRes, fgRes, globalRes] = await Promise.allSettled([
-        fetch('/api/tickers').then(r => r.ok ? r.json() : null),
-        fetch('/api/fear-greed').then(r => r.ok ? r.json() : null),
-        fetch('/api/global-stats').then(r => r.ok ? r.json() : null),
+        fetch('/api/tickers', { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
+        fetch('/api/fear-greed', { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
+        fetch('/api/global-stats', { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
       ]);
 
       if (!mounted) return;

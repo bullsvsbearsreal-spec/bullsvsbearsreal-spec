@@ -28,6 +28,8 @@ interface UseApiOptions<T> extends SWRConfiguration<T> {
   refreshInterval?: number;
   /** Disable fetching */
   enabled?: boolean;
+  /** Timeout in ms for the fetcher (default: 15000) */
+  timeout?: number;
 }
 
 export function useApi<T>({
@@ -35,15 +37,35 @@ export function useApi<T>({
   fetcher,
   refreshInterval,
   enabled = true,
+  timeout = 15000,
   ...swrConfig
 }: UseApiOptions<T>): UseApiReturn<T> {
   const lastUpdateRef = useRef<Date | null>(null);
 
   const effectiveKey = enabled ? key : null;
 
+  // Wrap the fetcher with a timeout to prevent hung requests
+  const timedFetcher = useCallback(async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const result = await Promise.race([
+        fetcher(),
+        new Promise<never>((_, reject) => {
+          controller.signal.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted due to timeout', 'TimeoutError')),
+          );
+        }),
+      ]);
+      return result;
+    } finally {
+      clearTimeout(timer);
+    }
+  }, [fetcher, timeout]);
+
   const { data, error, isLoading, isValidating, mutate } = useSWR<T>(
     effectiveKey,
-    fetcher,
+    timedFetcher,
     {
       refreshInterval,
       onSuccess: () => {

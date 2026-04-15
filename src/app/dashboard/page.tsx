@@ -42,7 +42,7 @@ export default function DashboardPage() {
       // Try DB first (logged-in users)
       if (session?.user) {
         try {
-          const res = await fetch('/api/user/data');
+          const res = await fetch('/api/user/data', { signal: AbortSignal.timeout(10000) });
           if (!mounted) return;
           if (res.ok) {
             const data = await res.json();

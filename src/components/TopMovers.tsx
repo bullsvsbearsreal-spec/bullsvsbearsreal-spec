@@ -40,7 +40,7 @@ export default function TopMovers() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/top-movers');
+        const res = await fetch('/api/top-movers', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error(`Top movers API ${res.status}`);
         const data = await res.json();
         setGainers(data.gainers || []);
