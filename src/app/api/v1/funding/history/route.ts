@@ -37,7 +37,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const history = await getBulkFundingHistory(symbols, days);
+    const historyMap = await getBulkFundingHistory(symbols, days);
+
+    // Convert Map to plain object for JSON serialization
+    const history: Record<string, Array<{ day: string; rate: number }>> = {};
+    historyMap.forEach((value, key) => { history[key] = value; });
 
     return NextResponse.json({
       success: true,

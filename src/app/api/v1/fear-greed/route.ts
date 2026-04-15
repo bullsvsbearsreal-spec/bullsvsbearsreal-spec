@@ -54,7 +54,7 @@ function respond(data: any, includeHistory: boolean) {
     success: true,
     data: {
       value: data.value ?? data.data?.value ?? null,
-      label: data.label ?? data.data?.label ?? null,
+      label: data.label ?? data.classification ?? data.data?.label ?? data.data?.classification ?? null,
       timestamp: data.timestamp ?? Date.now(),
     },
     meta: { timestamp: Date.now() },
