@@ -35,8 +35,10 @@ export async function GET(request: NextRequest) {
       raw = cached.data;
     } else {
       const origin = request.nextUrl.origin;
+      // Internal route expects BTCUSDT format for Binance; append USDT if bare symbol
+      const internalSymbol = /USDT$/i.test(symbol) ? symbol : `${symbol}USDT`;
       const res = await fetch(
-        `${origin}/api/longshort?symbol=${symbol}&period=${period}&source=${source}`,
+        `${origin}/api/longshort?symbol=${internalSymbol}&period=${period}&source=${source}&limit=30`,
         { signal: AbortSignal.timeout(12000), headers: { 'User-Agent': 'InfoHub-v1-internal' } },
       );
       if (!res.ok) return NextResponse.json({ success: false, error: 'Upstream fetch failed' }, { status: 502 });
@@ -49,18 +51,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Internal API returns { points: [...] } for limit>1, or flat { longRatio, shortRatio } for limit=1
+    const points = raw.points ?? [];
+    const latest = points.length > 0 ? points[points.length - 1] : raw;
+
     return NextResponse.json({
       success: true,
       data: {
         symbol,
         period,
         source,
-        longRatio: raw.longRatio ?? null,
-        shortRatio: raw.shortRatio ?? null,
-        longAccount: raw.longAccount ?? null,
-        shortAccount: raw.shortAccount ?? null,
+        longRatio: latest.longRatio ?? raw.longRatio ?? null,
+        shortRatio: latest.shortRatio ?? raw.shortRatio ?? null,
         exchange: raw.exchange ?? null,
-        history: raw.history ?? [],
+        history: points,
       },
       meta: { timestamp: Date.now() },
     }, {

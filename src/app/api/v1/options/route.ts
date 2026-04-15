@@ -42,17 +42,31 @@ export async function GET(request: NextRequest) {
       l1Cache.set(currency, { data: raw, ts: Date.now() });
     }
 
+    // Derive ATM IV from ivSmile (strike closest to underlying price)
+    let ivAtm: number | null = null;
+    if (raw.ivSmile?.length > 0 && raw.underlyingPrice > 0) {
+      const closest = raw.ivSmile.reduce((best: any, s: any) =>
+        Math.abs(s.strike - raw.underlyingPrice) < Math.abs(best.strike - raw.underlyingPrice) ? s : best
+      );
+      ivAtm = closest.callIV > 0 ? closest.callIV : closest.putIV > 0 ? closest.putIV : null;
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         currency,
+        underlyingPrice: raw.underlyingPrice ?? null,
         maxPain: raw.maxPain ?? null,
         putCallRatio: raw.putCallRatio ?? null,
         totalCallOI: raw.totalCallOI ?? null,
         totalPutOI: raw.totalPutOI ?? null,
-        ivAtm: raw.ivAtm ?? null,
-        exchanges: raw.exchanges ?? [],
-        expirations: raw.expirations ?? [],
+        totalOI: raw.totalOI ?? null,
+        instrumentCount: raw.instrumentCount ?? null,
+        ivAtm,
+        exchanges: raw.exchangeBreakdown ?? [],
+        expirations: raw.expiryBreakdown ?? [],
+        strikeData: raw.strikeData ?? [],
+        ivSmile: raw.ivSmile ?? [],
       },
       meta: { timestamp: Date.now() },
     }, {

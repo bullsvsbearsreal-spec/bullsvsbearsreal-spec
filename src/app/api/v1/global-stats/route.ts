@@ -36,13 +36,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        altcoinSeasonIndex: raw.altcoinSeasonIndex ?? null,
-        btcDominance: raw.btcDominance ?? null,
-        totalMarketCap: raw.totalMarketCap ?? null,
-        totalMarketCapChange24h: raw.totalMarketCapChange24h ?? null,
-        totalVolume24h: raw.totalVolume24h ?? null,
-        btcPrice: raw.btcPrice ?? null,
-        ethPrice: raw.ethPrice ?? null,
+        altcoinSeasonIndex: raw.altcoin_season_index ?? null,
+        btcDominance: raw.market_cap_percentage?.btc ?? null,
+        ethDominance: raw.market_cap_percentage?.eth ?? null,
+        totalMarketCap: raw.total_market_cap?.usd ?? null,
+        totalMarketCapChange24h: raw.market_cap_change_percentage_24h_usd ?? null,
+        totalVolume24h: raw.total_volume?.usd ?? null,
+        totalDerivativesOI: raw.total_derivatives_oi ?? null,
+        activeCryptocurrencies: raw.active_cryptocurrencies ?? null,
       },
       meta: { timestamp: Date.now() },
     }, {
