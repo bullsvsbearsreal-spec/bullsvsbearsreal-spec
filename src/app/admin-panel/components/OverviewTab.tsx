@@ -32,18 +32,18 @@ export default function OverviewTab({ onNavigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchHealth = useCallback(async (isRefresh = false) => {
+  const fetchHealth = useCallback(async (isRefresh = false, signal?: AbortSignal) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const r = await fetch('/api/admin/actions/health-check', { method: 'POST' });
+      const r = await fetch('/api/admin/actions/health-check', { method: 'POST', signal });
       const d = await r.json();
       if (d.success && d.healthResult) {
         setHealth(d.healthResult);
       } else {
         setHealth({ status: 'unknown', errors: d.error ? [{ exchange: 'system', error: d.error }] : [] });
       }
-    } catch {
-      setHealth({ status: 'unknown' });
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') setHealth({ status: 'unknown' });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -51,10 +51,12 @@ export default function OverviewTab({ onNavigate }: Props) {
   }, []);
 
   useEffect(() => {
-    fetchHealth();
-    // Auto-refresh every 2 min
-    const iv = setInterval(() => fetchHealth(), 120_000);
-    return () => clearInterval(iv);
+    const controller = new AbortController();
+    fetchHealth(false, controller.signal);
+    const iv = setInterval(() => {
+      if (!controller.signal.aborted) fetchHealth(false, controller.signal);
+    }, 120_000);
+    return () => { controller.abort(); clearInterval(iv); };
   }, [fetchHealth]);
 
   // Normalize status

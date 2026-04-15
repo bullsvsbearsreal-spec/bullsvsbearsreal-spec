@@ -22,16 +22,26 @@ function downloadCSV(data: any, filename: string) {
 export default function DatabaseTab() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/monitoring/database')
-      .then((r) => r.json())
+    fetch('/api/admin/monitoring/database', { signal: AbortSignal.timeout(15000) })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(setData)
-      .catch(() => {})
+      .catch((e) => setError(e?.message || 'Failed to load database stats'))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <TableSkeleton rows={6} />;
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-500/20 bg-red-500/[0.03] p-6 text-center">
+        <p className="text-sm text-red-400 mb-2">Failed to load database stats: {error}</p>
+        <button onClick={() => window.location.reload()} className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white">Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

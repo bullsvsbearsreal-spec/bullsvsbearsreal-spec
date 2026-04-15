@@ -34,16 +34,20 @@ export default function UserDetailDrawer({ userId, onClose, canManageRoles, curr
 
   useEffect(() => {
     if (!userId) { setData(null); return; }
+    let mounted = true;
+    const controller = new AbortController();
     setLoading(true);
     setError('');
-    fetch(`/api/admin/users/${userId}`)
+    fetch(`/api/admin/users/${userId}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
+        if (!mounted) return;
         if (d.error) throw new Error(d.error);
         setData(d.user);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e) => { if (mounted && e.name !== 'AbortError') setError(e.message); })
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; controller.abort(); };
   }, [userId]);
 
   useEffect(() => {
