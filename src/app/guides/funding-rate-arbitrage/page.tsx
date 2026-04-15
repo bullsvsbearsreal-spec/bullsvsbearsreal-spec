@@ -215,7 +215,7 @@ export default function FundingRateArbitragePage() {
 
           <Section id="finding-opportunities" title="4. Finding opportunities on InfoHub">
             <p className="text-neutral-300 text-sm leading-relaxed mb-4">
-              InfoHub aggregates funding rates from <strong className="text-white">30+ exchanges</strong> in real-time.
+              InfoHub aggregates funding rates from <strong className="text-white">33 exchanges</strong> in real-time.
               Here&apos;s how to use it to find arb opportunities:
             </p>
 
@@ -373,7 +373,7 @@ export default function FundingRateArbitragePage() {
           <div className="bg-hub-yellow/5 border border-hub-yellow/20 rounded-xl p-6 text-center mb-8">
             <h3 className="text-white font-bold text-lg mb-2">Ready to scan for arb?</h3>
             <p className="text-neutral-400 text-sm mb-4">
-              InfoHub shows live funding rates from 30+ exchanges. The Arbitrage view calculates spreads for you.
+              InfoHub shows live funding rates from 33 exchanges. The Arbitrage view calculates spreads for you.
             </p>
             <div className="flex items-center justify-center gap-3">
               <Link href="/funding" className="inline-flex items-center gap-2 px-5 py-2.5 bg-hub-yellow text-black text-sm font-bold rounded-lg hover:bg-hub-yellow/90 transition-colors">

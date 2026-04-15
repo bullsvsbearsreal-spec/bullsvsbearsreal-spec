@@ -116,7 +116,7 @@ const jsonLd = {
       browserRequirements: 'Requires a modern web browser with JavaScript enabled',
       softwareVersion: '2.0',
       featureList: [
-        'Real-time funding rates across 30+ exchanges',
+        'Real-time funding rates across 33 exchanges',
         'Open interest aggregation and tracking',
         'Liquidation heatmaps and alerts',
         'Funding rate arbitrage calculator',

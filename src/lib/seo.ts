@@ -211,7 +211,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/spreads': {
     title: 'Price Spreads',
-    description: 'Real-time cross-exchange price spread tracker for crypto perpetual futures. Compare bid/ask prices across 30 exchanges to find arbitrage opportunities.',
+    description: 'Real-time cross-exchange price spread tracker for crypto perpetual futures. Compare bid/ask prices across 33 exchanges to find arbitrage opportunities.',
   },
   '/spread-scanner': {
     title: 'Spread Scanner',
@@ -219,7 +219,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/dashboard': {
     title: 'Dashboard',
-    description: 'InfoHub crypto derivatives dashboard — funding rates, open interest, liquidations, spreads, and market data from 30+ exchanges at a glance.',
+    description: 'InfoHub crypto derivatives dashboard — funding rates, open interest, liquidations, spreads, and market data from 33 exchanges at a glance.',
   },
   '/referrals': {
     title: 'Referrals',

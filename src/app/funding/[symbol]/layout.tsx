@@ -7,8 +7,8 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { symbol } = await params;
   const sym = symbol.toUpperCase();
-  const title = `${sym} Funding Rates Across 30+ Exchanges`;
-  const description = `Live ${sym} perpetual futures funding rates compared across Binance, Bybit, OKX, Hyperliquid, and 26+ more exchanges. Track funding history, find arbitrage opportunities.`;
+  const title = `${sym} Funding Rates Across 33 Exchanges`;
+  const description = `Live ${sym} perpetual futures funding rates compared across Binance, Bybit, OKX, Hyperliquid, and 29 more exchanges. Track funding history, find arbitrage opportunities.`;
 
   return {
     title,
