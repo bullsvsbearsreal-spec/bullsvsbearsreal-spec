@@ -289,11 +289,11 @@ export default function DevelopersPage() {
               {/* Left — Copy */}
               <div>
                 <div className="flex items-center gap-3 mb-6">
-                  <Logo size="lg" />
-                  <div className="h-6 w-px bg-white/10" />
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-[11px] font-medium tracking-wide uppercase">
+                  <Logo size="xl" animated />
+                  <div className="h-7 w-px bg-white/10" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-[11px] font-semibold tracking-wide uppercase">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                    API v1
+                    API v1 Live
                   </div>
                 </div>
 
@@ -303,8 +303,11 @@ export default function DevelopersPage() {
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-500">every crypto exchange</span>
                 </h1>
 
-                <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-8 max-w-lg">
-                  Funding rates, open interest, liquidations, spreads, options, and arbitrage — aggregated from 33 exchanges into a single REST API. Built for trading bots, dashboards, and research.
+                <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-4 max-w-lg">
+                  Funding rates, open interest, liquidations, spreads, options, and arbitrage — aggregated from 33 exchanges into a single REST API.
+                </p>
+                <p className="text-gray-500 text-sm leading-relaxed mb-8 max-w-lg">
+                  Built by traders, for traders. Whether you're running a funding bot, building a dashboard, or doing research — get live data in one call instead of managing 33 API keys.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 mb-10">
@@ -361,6 +364,39 @@ export default function DevelopersPage() {
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
+
+        {/* ─── Use Cases ─────────────────────────────────────── */}
+        <div className="mb-14 sm:mb-20">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-2">What people build with it</h2>
+            <p className="text-gray-500 text-sm">From side projects to production trading systems</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {([
+              {
+                emoji: '\u{1F916}',
+                title: 'Funding rate bots',
+                desc: 'Automatically long on cheap exchanges, short on expensive ones. The /arbitrage endpoint does the math for you — just filter by grade and execute.',
+              },
+              {
+                emoji: '\u{1F4CA}',
+                title: 'Custom dashboards',
+                desc: 'Build Grafana panels, Discord bots, or Telegram alerts using real-time OI, liquidation, and spread data from a single endpoint.',
+              },
+              {
+                emoji: '\u{1F9EA}',
+                title: 'Quant research',
+                desc: 'Backtest strategies using historical funding snapshots, track cross-exchange spread patterns, and monitor market sentiment shifts.',
+              },
+            ] as const).map(c => (
+              <div key={c.title} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition-colors">
+                <span className="text-2xl mb-3 block">{c.emoji}</span>
+                <h3 className="text-sm font-bold text-white mb-1.5">{c.title}</h3>
+                <p className="text-gray-500 text-[13px] leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* ─── Auth prompt (not signed in) ────────────────────── */}
         {!session?.user && (
