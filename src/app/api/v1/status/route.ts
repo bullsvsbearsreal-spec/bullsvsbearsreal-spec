@@ -35,7 +35,7 @@ export async function GET() {
       free: { rateLimit: '100 req/min', dailyLimit: '5,000 req/day' },
       pro: { rateLimit: '500 req/min', dailyLimit: 'unlimited' },
     },
-    documentation: 'https://infohub.trade/developers/docs',
+    documentation: 'https://info-hub.io/developers/docs',
     timestamp: Date.now(),
   }, {
     headers: { 'Cache-Control': 'public, s-maxage=60' },

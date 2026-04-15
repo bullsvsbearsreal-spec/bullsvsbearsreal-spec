@@ -9,7 +9,7 @@ import Link from 'next/link';
 import AuthPromptBanner from '@/components/AuthPromptBanner';
 import {
   Key, Copy, Check, Trash2, Zap, BarChart3, TrendingUp, Shield, Clock, Globe,
-  ArrowRight, Terminal, Code2, Activity, Layers, LineChart, AlertTriangle,
+  ArrowRight, Terminal, Code2, Activity, Layers, LineChart,
   ChevronRight, Database, Wifi, ChevronDown, Hash,
 } from 'lucide-react';
 
