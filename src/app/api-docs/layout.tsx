@@ -6,7 +6,7 @@ const apiJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebAPI',
   name: 'InfoHub Crypto Derivatives API',
-  description: 'REST API for real-time funding rates, open interest, tickers, liquidations, and prediction markets data across 30+ exchanges.',
+  description: 'REST API for real-time funding rates, open interest, tickers, spreads, liquidations, and arbitrage data across 33 exchanges.',
   url: 'https://info-hub.io/api-docs',
   provider: {
     '@type': 'Organization',
