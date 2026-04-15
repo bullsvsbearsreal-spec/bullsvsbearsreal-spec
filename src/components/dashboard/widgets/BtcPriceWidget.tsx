@@ -24,7 +24,7 @@ export default function BtcPriceWidget({ widgetId }: { wide?: boolean; widgetId?
     setError(false);
     const load = async () => {
       try {
-        const res = await fetch(`/api/tickers?symbols=${symbol}`);
+        const res = await fetch(`/api/tickers?symbols=${symbol}`, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data = Array.isArray(json) ? json : json?.data || [];

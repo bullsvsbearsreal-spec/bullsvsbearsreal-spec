@@ -19,7 +19,7 @@ export default function AltseasonWidget() {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/global-stats');
+        const res = await fetch('/api/global-stats', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         if (Number.isFinite(json.altcoin_season_index) && mounted) {

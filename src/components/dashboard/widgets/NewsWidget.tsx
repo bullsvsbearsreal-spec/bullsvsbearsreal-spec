@@ -47,7 +47,7 @@ export default function NewsWidget({ wide }: { wide?: boolean }) {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/news');
+        const res = await fetch('/api/news', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         const articles = json?.articles || [];

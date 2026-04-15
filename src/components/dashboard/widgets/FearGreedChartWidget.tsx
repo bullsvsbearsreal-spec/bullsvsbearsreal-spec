@@ -27,7 +27,7 @@ export default function FearGreedChartWidget({ wide }: { wide?: boolean }) {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/fear-greed?history=true&limit=30');
+        const res = await fetch('/api/fear-greed?history=true&limit=30', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         if (json.history && Array.isArray(json.history) && json.history.length > 0 && mounted) {

@@ -175,7 +175,7 @@ export default function CommandPalette({ onClose, onShowShortcuts }: CommandPale
     setIsLoadingCoins(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/coin-search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/coin-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(5000) });
         if (!res.ok) throw new Error();
         const json = await res.json();
         if (mounted) setCoinResults((json.results || []).slice(0, 5));

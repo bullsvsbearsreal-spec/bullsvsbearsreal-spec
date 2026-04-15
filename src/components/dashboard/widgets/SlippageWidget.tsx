@@ -29,7 +29,7 @@ export default function SlippageWidget({ wide, widgetId }: { wide?: boolean; wid
     setVenues(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/execution-costs?asset=${symbol}&size=100000&direction=long`);
+        const res = await fetch(`/api/execution-costs?asset=${symbol}&size=100000&direction=long`, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         if (!mounted) return;

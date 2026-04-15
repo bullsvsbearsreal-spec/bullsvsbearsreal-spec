@@ -28,7 +28,7 @@ export default function CVDWidget({ wide, widgetId }: { wide?: boolean; widgetId
     setBuckets(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/aggtrades?symbol=${symbol}&limit=500`);
+        const res = await fetch(`/api/aggtrades?symbol=${symbol}&limit=500`, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         if (!mounted) return;

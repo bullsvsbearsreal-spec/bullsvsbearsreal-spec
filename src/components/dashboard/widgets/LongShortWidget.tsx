@@ -24,7 +24,7 @@ export default function LongShortWidget({ widgetId }: { wide?: boolean; widgetId
     setData(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/longshort?symbol=${symbol}USDT&source=global&limit=1`);
+        const res = await fetch(`/api/longshort?symbol=${symbol}USDT&source=global&limit=1`, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         if (!mounted) return;

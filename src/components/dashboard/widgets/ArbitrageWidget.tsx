@@ -30,7 +30,7 @@ export default function ArbitrageWidget({ wide }: { wide?: boolean }) {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/funding?assetClass=crypto');
+        const res = await fetch('/api/funding?assetClass=crypto', { signal: AbortSignal.timeout(15000) });
         if (!res.ok) return;
         const json = await res.json();
         const data: FundingEntry[] = json?.data || [];

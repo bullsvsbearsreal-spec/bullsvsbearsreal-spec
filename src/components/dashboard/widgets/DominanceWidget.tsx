@@ -21,7 +21,7 @@ export default function DominanceWidget() {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/dominance');
+        const res = await fetch('/api/dominance', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.dominance || data.data || [];

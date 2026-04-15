@@ -40,7 +40,7 @@ export default function LiquidationsWidget({ wide, widgetId }: { wide?: boolean;
     setLiqs(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/liquidations?symbol=${symbol}&limit=10`);
+        const res = await fetch(`/api/liquidations?symbol=${symbol}&limit=10`, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         const rawItems = json?.data || [];

@@ -43,7 +43,7 @@ export default function FundingHeatmapWidget() {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/funding?limit=30');
+        const res = await fetch('/api/funding?limit=30', { signal: AbortSignal.timeout(15000) });
         if (!res.ok) return;
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.data || data.rates || [];
