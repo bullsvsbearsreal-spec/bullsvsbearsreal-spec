@@ -60,6 +60,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/developers', priority: 0.5, changeFrequency: 'weekly' as const },
     { path: '/referrals', priority: 0.4, changeFrequency: 'monthly' as const },
     { path: '/guides/funding-rate-arbitrage', priority: 0.5, changeFrequency: 'monthly' as const },
+    { path: '/guides/reading-open-interest', priority: 0.5, changeFrequency: 'monthly' as const },
+    { path: '/developers/docs', priority: 0.5, changeFrequency: 'weekly' as const },
     { path: '/login', priority: 0.3, changeFrequency: 'monthly' as const },
     { path: '/signup', priority: 0.3, changeFrequency: 'monthly' as const },
   ];
