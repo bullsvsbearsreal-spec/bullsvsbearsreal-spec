@@ -895,16 +895,19 @@ option { background: #171717; color: #fff; }
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #22c55e;
-    animation: heartbeat 2s ease-in-out infinite;
+    background: #34d399;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.35);
+    animation: heartbeat 3s ease-in-out infinite;
     flex-shrink: 0;
   }
   .heartbeat-dot-stale {
     background: #f59e0b;
+    box-shadow: none;
     animation: none;
   }
   .heartbeat-dot-dead {
     background: #ef4444;
+    box-shadow: none;
     animation: none;
   }
 
@@ -1324,8 +1327,8 @@ option { background: #171717; color: #fff; }
 
 /* PH×Coinglass: Dopamine animations */
 @keyframes heartbeat {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
 }
 @keyframes micro-glow {
   0% { box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.3); }

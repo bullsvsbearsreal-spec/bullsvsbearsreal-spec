@@ -109,7 +109,7 @@ export default function TopStatsBar() {
           {/* Live heartbeat */}
           <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
             <span className="heartbeat-dot" />
-            <span className="text-[9px] text-neutral-600 font-medium">LIVE</span>
+            <span className="text-[9px] text-neutral-600 font-medium tracking-wide">streaming</span>
           </div>
         </div>
       </div>

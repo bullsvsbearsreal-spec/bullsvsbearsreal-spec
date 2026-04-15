@@ -338,7 +338,7 @@ export default function SpotArbitrageView({ spotPrices, onRefresh, currencyStatu
           title={autoRefresh ? 'Auto-refresh ON (30s)' : 'Auto-refresh OFF'}
         >
           {autoRefresh ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-          <span className="hidden sm:inline">{autoRefresh ? 'LIVE' : 'PAUSED'}</span>
+          <span className="hidden sm:inline text-[10px]">{autoRefresh ? 'Auto' : 'Paused'}</span>
         </button>
       </div>
 
