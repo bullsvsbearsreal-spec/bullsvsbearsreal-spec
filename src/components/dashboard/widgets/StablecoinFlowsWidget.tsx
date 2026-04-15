@@ -32,7 +32,7 @@ export default function StablecoinFlowsWidget() {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/stablecoins');
+        const res = await fetch('/api/stablecoins', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         const data: any[] = json?.stablecoins || [];

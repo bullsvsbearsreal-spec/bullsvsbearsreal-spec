@@ -37,7 +37,7 @@ export default function TokenUnlocksWidget({ wide }: { wide?: boolean }) {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/token-unlocks');
+        const res = await fetch('/api/token-unlocks', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         const items: UnlockItem[] = json?.unlocks || [];

@@ -655,7 +655,7 @@ export default function FundingHeatmapView({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (e.ctrlKey || e.metaKey) {
-                      window.open(`/funding/${rect.symbol}`, '_blank');
+                      window.open(`/funding/${rect.symbol}`, '_blank', 'noopener,noreferrer');
                     } else {
                       setSelectedTreemapSym(prev => prev === rect.symbol ? null : rect.symbol);
                     }

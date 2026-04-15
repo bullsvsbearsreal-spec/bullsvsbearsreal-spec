@@ -236,7 +236,7 @@ function ExportActionsInner({ data, exchanges, symbol, stats, tf }: ExportAction
 
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
+    const win = window.open(url, '_blank', 'noopener,noreferrer');
     if (win) {
       win.onload = () => {
         setTimeout(() => win.print(), 500);

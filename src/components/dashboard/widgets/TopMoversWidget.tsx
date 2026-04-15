@@ -22,7 +22,7 @@ export default function TopMoversWidget({ wide }: { wide?: boolean }) {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/tickers');
+        const res = await fetch('/api/tickers', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data = Array.isArray(json) ? json : json?.data || [];

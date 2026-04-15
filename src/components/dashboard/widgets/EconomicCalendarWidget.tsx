@@ -32,7 +32,7 @@ export default function EconomicCalendarWidget({ wide }: { wide?: boolean }) {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/economic-calendar');
+        const res = await fetch('/api/economic-calendar', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;

@@ -27,7 +27,7 @@ export default function OiChartWidget() {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/open-interest?limit=10');
+        const res = await fetch('/api/open-interest?limit=10', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.data || [];

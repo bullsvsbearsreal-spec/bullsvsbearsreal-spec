@@ -20,7 +20,7 @@ export default function ExchangeStatusWidget() {
     let retries = 0;
     const load = async () => {
       try {
-        const res = await fetch('/api/funding?assetClass=crypto');
+        const res = await fetch('/api/funding?assetClass=crypto', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data: { exchange: string }[] = json?.data || [];

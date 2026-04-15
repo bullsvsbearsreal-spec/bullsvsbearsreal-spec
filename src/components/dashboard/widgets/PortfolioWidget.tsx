@@ -30,7 +30,7 @@ export default function PortfolioWidget({ wide }: { wide?: boolean }) {
 
     const load = async () => {
       try {
-        const res = await fetch('/api/tickers');
+        const res = await fetch('/api/tickers', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         const data = Array.isArray(json) ? json : json?.data || [];
