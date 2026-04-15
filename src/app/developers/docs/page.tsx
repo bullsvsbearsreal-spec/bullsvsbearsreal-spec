@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
-import { Copy, Check, ArrowLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Copy, Check, ArrowLeft, ChevronRight, ExternalLink, Link as LinkIcon } from 'lucide-react';
 
 /* Copy button for code blocks */
 function CopyBtn({ text }: { text: string }) {
@@ -12,7 +12,7 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); }}
-      className="absolute top-2.5 right-2.5 text-gray-600 hover:text-gray-300 transition-colors bg-black/60 backdrop-blur-sm border border-white/[0.06] rounded-md p-1.5"
+      className="absolute top-2.5 right-2.5 text-gray-600 hover:text-gray-300 transition-colors bg-black/60 backdrop-blur-sm border border-white/[0.06] rounded-md p-1.5 z-10"
       title="Copy"
     >
       {ok ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
@@ -20,18 +20,21 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
+/* Section with anchor link on hover */
 function Section({ id, title, method, path, children }: {
   id: string; title: string; method?: string; path?: string; children: React.ReactNode;
 }) {
   return (
     <section id={id} className="mb-14 scroll-mt-24">
-      <div className="flex items-center gap-3 mb-4">
+      <a href={`#${id}`} className="group flex items-center gap-2 mb-4 no-underline">
         <h2 className="text-xl font-bold text-white">{title}</h2>
-      </div>
+        <LinkIcon className="w-4 h-4 text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </a>
       {method && path && (
-        <div className="flex items-center gap-2 mb-4 bg-white/[0.02] border border-white/[0.06] rounded-lg px-4 py-2.5 w-fit">
-          <span className="text-xs text-green-400 font-mono font-bold">{method}</span>
+        <div className="flex items-center gap-2.5 mb-5 bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3 w-fit relative pr-12">
+          <span className="text-[11px] text-green-400 font-mono font-bold bg-green-500/[0.08] px-2 py-0.5 rounded">{method}</span>
           <code className="text-sm text-amber-400/90 font-mono">{path}</code>
+          <CopyBtn text={`https://info-hub.io${path}`} />
         </div>
       )}
       {children}
@@ -39,13 +42,16 @@ function Section({ id, title, method, path, children }: {
   );
 }
 
-function CodeBlock({ children, title }: { children: string; title?: string }) {
+function CodeBlock({ children, title, lang }: { children: string; title?: string; lang?: string }) {
   return (
-    <div className="mb-4 relative">
+    <div className="mb-5 relative">
       {title && <div className="text-[11px] text-gray-500 uppercase tracking-wider font-medium mb-1.5">{title}</div>}
-      <div className="relative">
+      <div className="relative group">
         <CopyBtn text={children.trim()} />
-        <pre className="bg-[#0a0a0a] border border-white/[0.06] rounded-xl p-4 pr-12 text-[13px] text-green-400/90 font-mono overflow-x-auto whitespace-pre leading-relaxed">
+        {lang && (
+          <span className="absolute top-2.5 left-3 text-[9px] text-gray-600 uppercase tracking-wider font-medium">{lang}</span>
+        )}
+        <pre className={`bg-[#0a0a0a] border border-white/[0.06] rounded-xl p-4 pr-12 ${lang ? 'pt-7' : ''} text-[13px] text-green-400/90 font-mono overflow-x-auto whitespace-pre leading-relaxed`}>
           {children}
         </pre>
       </div>
@@ -55,29 +61,53 @@ function CodeBlock({ children, title }: { children: string; title?: string }) {
 
 function ParamTable({ params }: { params: Array<[string, string, string, string]> }) {
   return (
-    <div className="overflow-x-auto mb-5">
+    <div className="overflow-x-auto mb-5 bg-white/[0.01] border border-white/[0.04] rounded-xl">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-gray-500 border-b border-white/[0.06] text-[11px] uppercase tracking-wider">
-            <th className="text-left py-2 pr-4 font-medium">Parameter</th>
-            <th className="text-left py-2 pr-4 font-medium">Type</th>
-            <th className="text-left py-2 pr-4 font-medium">Default</th>
-            <th className="text-left py-2 font-medium">Description</th>
+          <tr className="text-gray-500 border-b border-white/[0.06] text-[10px] uppercase tracking-widest">
+            <th className="text-left py-3 px-4 font-medium">Parameter</th>
+            <th className="text-left py-3 pr-4 font-medium">Type</th>
+            <th className="text-left py-3 pr-4 font-medium">Default</th>
+            <th className="text-left py-3 pr-4 font-medium">Description</th>
           </tr>
         </thead>
         <tbody className="text-gray-300">
-          {params.map(([name, type, def, desc]) => (
-            <tr key={name} className="border-b border-white/[0.03]">
-              <td className="py-2.5 pr-4"><code className="text-amber-400 text-xs bg-amber-500/[0.08] px-1.5 py-0.5 rounded">{name}</code></td>
-              <td className="py-2.5 pr-4 text-gray-500 text-xs font-mono">{type}</td>
-              <td className="py-2.5 pr-4 text-gray-500 text-xs">{def}</td>
-              <td className="py-2.5 text-gray-400 text-[13px]">{desc}</td>
+          {params.map(([name, type, def, desc], i) => (
+            <tr key={name} className={i < params.length - 1 ? 'border-b border-white/[0.03]' : ''}>
+              <td className="py-3 px-4"><code className="text-amber-400 text-xs bg-amber-500/[0.08] px-1.5 py-0.5 rounded font-medium">{name}</code></td>
+              <td className="py-3 pr-4 text-purple-300/70 text-xs font-mono">{type}</td>
+              <td className="py-3 pr-4 text-gray-600 text-xs font-mono">{def}</td>
+              <td className="py-3 pr-4 text-gray-400 text-[13px]">{desc}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+/* Hook to track which section is in view for sidebar highlighting */
+function useActiveSection(sectionIds: string[]) {
+  const [active, setActive] = useState('');
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActive(entry.target.id);
+            break;
+          }
+        }
+      },
+      { rootMargin: '-100px 0px -60% 0px', threshold: 0 }
+    );
+    sectionIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [sectionIds]);
+  return active;
 }
 
 const NAV_SECTIONS = [
@@ -112,27 +142,34 @@ const NAV_SECTIONS = [
 ];
 
 export default function DocsPage() {
+  const allIds = NAV_SECTIONS.flatMap(g => g.items.map(i => i.id));
+  const activeSection = useActiveSection(allIds);
+
   return (
     <div className="min-h-screen bg-black text-white">
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <div className="flex gap-10">
+        <div className="flex gap-0 lg:gap-0">
 
           {/* Sidebar nav */}
-          <aside className="hidden lg:block w-56 shrink-0 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <aside className="hidden lg:block w-60 shrink-0 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto pr-6 border-r border-white/[0.04]">
             <Link href="/developers" className="inline-flex items-center gap-1.5 text-gray-500 hover:text-white text-sm mb-6 transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" /> Back to API
             </Link>
-            <nav className="space-y-5">
+            <nav className="space-y-5 pb-8">
               {NAV_SECTIONS.map(g => (
                 <div key={g.group}>
-                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold mb-2">{g.group}</div>
+                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold mb-2 px-3">{g.group}</div>
                   <div className="space-y-0.5">
                     {g.items.map(item => (
                       <a
                         key={item.id}
                         href={`#${item.id}`}
-                        className="block text-[13px] text-gray-400 hover:text-white hover:bg-white/[0.03] px-2.5 py-1.5 rounded-lg transition-colors"
+                        className={`block text-[13px] px-3 py-1.5 rounded-lg transition-all border-l-2 ${
+                          activeSection === item.id
+                            ? 'text-amber-400 bg-amber-500/[0.06] border-amber-400 font-medium'
+                            : 'text-gray-400 hover:text-white hover:bg-white/[0.03] border-transparent'
+                        }`}
                       >
                         {item.label}
                       </a>
@@ -144,7 +181,7 @@ export default function DocsPage() {
           </aside>
 
           {/* Main content */}
-          <main id="main-content" className="flex-1 min-w-0">
+          <main id="main-content" className="flex-1 min-w-0 lg:pl-10">
 
             {/* Mobile back link */}
             <Link href="/developers" className="lg:hidden inline-flex items-center gap-1.5 text-gray-500 hover:text-white text-sm mb-4 transition-colors">
@@ -152,7 +189,7 @@ export default function DocsPage() {
             </Link>
 
             {/* Header */}
-            <div className="mb-10">
+            <div className="mb-12 pb-10 border-b border-white/[0.04]">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/20 bg-amber-500/[0.06] text-amber-400 text-[11px] font-semibold tracking-wide uppercase mb-4">
                 v1 Reference
               </div>
@@ -160,12 +197,23 @@ export default function DocsPage() {
                 <span className="text-white">API </span>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">Documentation</span>
               </h1>
-              <p className="text-gray-400 text-base max-w-2xl">
+              <p className="text-gray-400 text-base max-w-2xl mb-4">
                 Complete reference for the InfoHub Public API. Real-time derivatives data from 33 exchanges, aggregated into 14 REST endpoints.
               </p>
-              <p className="text-gray-500 text-sm mt-2">
-                Base URL: <code className="text-amber-400/80 bg-amber-500/[0.06] px-1.5 py-0.5 rounded text-xs">https://info-hub.io/api/v1</code>
-              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Base URL</span>
+                  <code className="text-amber-400/80 text-sm font-mono">https://info-hub.io/api/v1</code>
+                </div>
+                <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Format</span>
+                  <span className="text-white text-sm">JSON</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Auth</span>
+                  <span className="text-white text-sm">Bearer Token</span>
+                </div>
+              </div>
             </div>
 
             {/* Mobile TOC */}
@@ -241,6 +289,12 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
             </Section>
 
             {/* Funding Rates */}
+            {/* Market Data */}
+            <div className="flex items-center gap-3 mb-8 mt-4">
+              <div className="text-[10px] text-blue-400/70 uppercase tracking-widest font-bold">Market Data</div>
+              <div className="flex-1 h-px bg-gradient-to-r from-blue-500/20 to-transparent" />
+            </div>
+
             <Section id="funding" title="Funding Rates" method="GET" path="/api/v1/funding">
               <p className="text-gray-400 mb-4">Real-time funding rates across 33 exchanges. Rates are expressed as percentages in the exchange's native interval.</p>
               <ParamTable params={[
@@ -338,6 +392,12 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
             </Section>
 
             {/* Arbitrage */}
+            {/* Trading Intelligence */}
+            <div className="flex items-center gap-3 mb-8 mt-4">
+              <div className="text-[10px] text-green-400/70 uppercase tracking-widest font-bold">Trading Intelligence</div>
+              <div className="flex-1 h-px bg-gradient-to-r from-green-500/20 to-transparent" />
+            </div>
+
             <Section id="arbitrage" title="Arbitrage" method="GET" path="/api/v1/arbitrage">
               <p className="text-gray-400 mb-4">
                 Funding rate arbitrage opportunities with feasibility grades, PnL projections, and OI data.
@@ -472,6 +532,12 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
             </Section>
 
             {/* Top Movers */}
+            {/* Market Context */}
+            <div className="flex items-center gap-3 mb-8 mt-4">
+              <div className="text-[10px] text-purple-400/70 uppercase tracking-widest font-bold">Market Context</div>
+              <div className="flex-1 h-px bg-gradient-to-r from-purple-500/20 to-transparent" />
+            </div>
+
             <Section id="top-movers" title="Top Movers" method="GET" path="/api/v1/top-movers">
               <p className="text-gray-400 mb-4">Top gaining and losing coins by 24h price change.</p>
               <ParamTable params={[
@@ -547,6 +613,12 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
             </Section>
 
             {/* Exchanges */}
+            {/* Reference */}
+            <div className="flex items-center gap-3 mb-8 mt-4">
+              <div className="text-[10px] text-gray-400/70 uppercase tracking-widest font-bold">Reference</div>
+              <div className="flex-1 h-px bg-gradient-to-r from-gray-500/20 to-transparent" />
+            </div>
+
             <Section id="exchanges" title="Exchanges" method="GET" path="/api/v1/exchanges">
               <p className="text-gray-400 mb-4">
                 Metadata for all 33 supported exchanges including fees, funding intervals, and trade URL patterns.
