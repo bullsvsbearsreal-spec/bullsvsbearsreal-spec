@@ -42,8 +42,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Claude
+# Claude (root and any nested)
 .claude/
+**/.claude/
 
 # One-off scripts and temp files
 scripts/
@@ -56,7 +57,4 @@ C:*
 
 .vercel
 
-.env*.local
 src/remotion/
-
-.env*.local
