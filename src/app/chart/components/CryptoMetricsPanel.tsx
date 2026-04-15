@@ -73,7 +73,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
   const { data: fundingData } = useApi<{ data: FundingEntry[] }>({
     key: 'chart-funding-crypto',
     fetcher: async () => {
-      const res = await fetch('/api/funding?assetClass=crypto');
+      const res = await fetch('/api/funding?assetClass=crypto', { signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error('funding fetch failed');
       return res.json();
     },
@@ -83,7 +83,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
   const { data: oiData } = useApi<{ data: OIEntry[] }>({
     key: 'chart-oi-all',
     fetcher: async () => {
-      const res = await fetch('/api/openinterest');
+      const res = await fetch('/api/openinterest', { signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error('oi fetch failed');
       return res.json();
     },
@@ -93,7 +93,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
   const { data: tickerData } = useApi<{ data: TickerEntry[] }>({
     key: 'chart-tickers-all',
     fetcher: async () => {
-      const res = await fetch('/api/tickers');
+      const res = await fetch('/api/tickers', { signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error('tickers fetch failed');
       return res.json();
     },
@@ -103,7 +103,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
   const { data: historyData } = useApi<{ points: FundingHistoryPoint[] }>({
     key: `chart-funding-history-${symbol}`,
     fetcher: async () => {
-      const res = await fetch(`/api/history/funding?symbol=${symbol}&source=exchange&exchange=hyperliquid&days=7`);
+      const res = await fetch(`/api/history/funding?symbol=${symbol}&source=exchange&exchange=hyperliquid&days=7`, { signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error('history fetch failed');
       return res.json();
     },

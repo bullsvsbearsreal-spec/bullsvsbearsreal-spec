@@ -67,16 +67,29 @@ function eventLabel(metric: string): string {
 export default function AuditTimeline({ limit = 10 }: { limit?: number }) {
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/admin/audit-log?limit=${limit}`)
-      .then((r) => r.json())
+    setError(null);
+    fetch(`/api/admin/audit-log?limit=${limit}`, { signal: AbortSignal.timeout(10000) })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((d) => setEvents(d.events ?? []))
-      .catch(() => {})
+      .catch((e) => setError(e?.message || 'Failed to load audit log'))
       .finally(() => setLoading(false));
   }, [limit]);
 
   if (loading) return <TimelineSkeleton items={5} />;
+
+  if (error) {
+    return (
+      <p className="text-xs text-red-400/70 py-4 text-center">
+        {error}{' '}
+        <button onClick={() => { setLoading(true); setError(null); }} className="underline hover:text-red-300">
+          Retry
+        </button>
+      </p>
+    );
+  }
 
   if (events.length === 0) {
     return <p className="text-xs text-neutral-600 py-4 text-center">No audit events yet</p>;

@@ -236,7 +236,7 @@ function LiveStatus() {
   const [latency, setLatency] = useState(0);
   useEffect(() => {
     const t0 = Date.now();
-    fetch('/api/v1/status')
+    fetch('/api/v1/status', { signal: AbortSignal.timeout(5000) })
       .then(r => { if (r.ok) { setStatus('online'); setLatency(Date.now() - t0); } else setStatus('offline'); })
       .catch(() => setStatus('offline'));
   }, []);

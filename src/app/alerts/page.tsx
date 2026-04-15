@@ -164,7 +164,7 @@ export default function AlertsPage() {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch('/api/user/data');
+        const res = await fetch('/api/user/data', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const json = await res.json();
         const prefs = json.notificationPrefs;
@@ -192,7 +192,7 @@ export default function AlertsPage() {
   const tgGenerateCode = async () => {
     setTgGenerating(true);
     try {
-      const res = await fetch('/api/telegram/link-code', { method: 'POST' });
+      const res = await fetch('/api/telegram/link-code', { method: 'POST', signal: AbortSignal.timeout(10000) });
       if (res.ok) {
         const json = await res.json();
         setTgCode(json.code);
@@ -213,7 +213,7 @@ export default function AlertsPage() {
   const tgUnlink = async () => {
     setTgUnlinking(true);
     try {
-      const res = await fetch('/api/telegram/link-code', { method: 'DELETE' });
+      const res = await fetch('/api/telegram/link-code', { method: 'DELETE', signal: AbortSignal.timeout(10000) });
       if (res.ok) {
         setTgLinked(false);
         setTgActive(false);
@@ -286,6 +286,7 @@ export default function AlertsPage() {
             ...overrides,
           },
         }),
+        signal: AbortSignal.timeout(10000),
       });
     } catch {
       // Silently handle

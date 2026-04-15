@@ -63,6 +63,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(15000),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Action failed');

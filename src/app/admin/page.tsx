@@ -145,7 +145,7 @@ function ActionsPanel() {
     setLoading(label);
     setResult(null);
     try {
-      const res = await fetch(`/api/admin/actions/${path}`, { method: 'POST' });
+      const res = await fetch(`/api/admin/actions/${path}`, { method: 'POST', signal: AbortSignal.timeout(15000) });
       const data = await res.json();
       setResult(`${label}: ${res.ok ? 'OK' : 'Failed'} — ${JSON.stringify(data).slice(0, 100)}`);
     } catch (e) {
@@ -253,6 +253,7 @@ function BroadcastPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: message.trim() }),
+        signal: AbortSignal.timeout(15000),
       });
       const data = await res.json();
       setResult(res.ok ? `Sent to ${data.sent || 0} users` : `Error: ${data.error}`);
@@ -307,10 +308,10 @@ export default function AdminDashboard() {
     setError(null);
     try {
       const [statsRes, pipelineRes, usersRes, workersRes] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/monitoring/pipeline'),
-        fetch('/api/admin/users?limit=20'),
-        fetch('/api/admin/monitoring/workers'),
+        fetch('/api/admin/stats', { signal: AbortSignal.timeout(15000) }),
+        fetch('/api/admin/monitoring/pipeline', { signal: AbortSignal.timeout(15000) }),
+        fetch('/api/admin/users?limit=20', { signal: AbortSignal.timeout(15000) }),
+        fetch('/api/admin/monitoring/workers', { signal: AbortSignal.timeout(15000) }),
       ]);
 
       if (statsRes.status === 403 || pipelineRes.status === 403) {

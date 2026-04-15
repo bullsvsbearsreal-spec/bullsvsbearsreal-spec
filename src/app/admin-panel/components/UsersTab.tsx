@@ -56,7 +56,7 @@ export default function UsersTab({ userRole, currentUserId }: UsersTabProps) {
   const loadUsers = () => {
     setLoading(true);
     setError('');
-    fetch('/api/admin/users')
+    fetch('/api/admin/users', { signal: AbortSignal.timeout(15000) })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((d) => setUsers(d.users ?? []))
       .catch((e) => setError(e.message || 'Failed to load users'))

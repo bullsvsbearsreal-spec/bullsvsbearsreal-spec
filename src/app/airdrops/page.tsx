@@ -528,7 +528,7 @@ export default function AirdropsPage() {
   const { data, isLoading } = useApi<{ data: Airdrop[]; dataAsOf: string }>({
     key: 'airdrops',
     fetcher: async () => {
-      const res = await fetch('/api/airdrops');
+      const res = await fetch('/api/airdrops', { signal: AbortSignal.timeout(15000) });
       if (!res.ok) throw new Error('Failed to fetch airdrops');
       return res.json();
     },
