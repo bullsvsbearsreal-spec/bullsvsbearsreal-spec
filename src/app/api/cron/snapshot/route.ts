@@ -18,6 +18,12 @@ import {
   recordAdminMetric,
   upsertWorkerHeartbeat,
 } from '@/lib/db';
+import { getFundingData } from '../../_shared/funding-core';
+import { getOIData } from '../../_shared/oi-core';
+import { fetchWithTimeout, normalizeSymbol } from '../../_shared/fetch';
+import { fetchAllExchangesWithHealth } from '../../_shared/exchange-fetchers';
+import { dedupedFetch } from '../../_shared/inflight';
+import { tickerFetchers } from '../../tickers/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -39,15 +45,15 @@ export async function GET(request: NextRequest) {
   try {
     await initDB();
 
-    const origin = process.env.NEXTAUTH_URL || 'https://info-hub.io';
     // With 1-min cron: only do full funding+OI every 10 min (when minute is 0)
     const minute = new Date().getMinutes();
     const isFullRun = minute % 10 === 0;
 
-    const [fundingRes, oiRes] = isFullRun
+    // Fetch data directly (no self-referential HTTP — avoids serverless deadlocks)
+    const [fundingResult, oiResult] = isFullRun
       ? await Promise.all([
-          fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(25000) }),
-          fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(25000) }),
+          getFundingData('crypto').catch(() => null),
+          getOIData().catch(() => null),
         ])
       : [null, null];
 
@@ -56,9 +62,8 @@ export async function GET(request: NextRequest) {
     let liqInserted = 0;
 
     // Process funding rates (only on full runs every 10 min)
-    if (fundingRes?.ok) {
-      const fundingJson = await fundingRes.json();
-      const fundingData: any[] = fundingJson.data || [];
+    if (fundingResult) {
+      const fundingData: any[] = fundingResult.result.data || [];
 
       // Pick top symbols by exchange count
       const symbolCounts: Record<string, number> = {};
@@ -86,9 +91,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Process open interest (only on full runs every 10 min)
-    if (oiRes?.ok) {
-      const oiJson = await oiRes.json();
-      const oiData: any[] = oiJson.data || [];
+    if (oiResult) {
+      const oiData: any[] = oiResult.result.data || [];
 
       // Pick top symbols by exchange count
       const symbolCounts: Record<string, number> = {};
@@ -113,13 +117,15 @@ export async function GET(request: NextRequest) {
       oiInserted = await saveOISnapshot(oiEntries);
     }
 
-    // Process spread snapshots from tickers
+    // Process spread snapshots from tickers (direct call, no self-referential HTTP)
     let spreadInserted = 0;
     try {
-      const tickerRes = await fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(15000) });
-      if (tickerRes.ok) {
-        const tickerJson = await tickerRes.json();
-        const tickers: any[] = tickerJson.data || tickerJson || [];
+      const tickersResult = await dedupedFetch('tickers', () =>
+        fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout),
+      );
+      if (tickersResult?.data) {
+        const tickers: any[] = tickersResult.data;
+        tickers.forEach((e: any) => { e.symbol = normalizeSymbol(e.symbol); });
         // Group by symbol, compute spread for top symbols
         const bySymbol: Record<string, { exchange: string; price: number }[]> = {};
         for (const t of tickers) {

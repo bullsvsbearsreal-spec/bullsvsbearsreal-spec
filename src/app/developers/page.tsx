@@ -254,6 +254,10 @@ console.log(data);`}
                   ['GET', '/api/v1/liquidations', 'Recent liquidation feed'],
                   ['GET', '/api/v1/spreads', 'Cross-exchange price spreads'],
                   ['GET', '/api/v1/fear-greed', 'Fear & Greed Index'],
+                  ['GET', '/api/v1/top-movers', 'Top gainers & losers (24h)'],
+                  ['GET', '/api/v1/global-stats', 'Market stats: altcoin season, BTC dominance'],
+                  ['GET', '/api/v1/longshort', 'Long/short ratio (Binance, OKX)'],
+                  ['GET', '/api/v1/options', 'Options: max pain, P/C ratio, IV'],
                   ['GET', '/api/v1/exchanges', 'Exchange metadata + fees'],
                   ['GET', '/api/v1/status', 'API health (no auth)'],
                 ].map(([method, path, desc]) => (

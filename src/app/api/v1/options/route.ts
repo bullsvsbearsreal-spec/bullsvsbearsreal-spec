@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { authenticateV1Request } from '@/lib/api/v1-auth';
+
+export const runtime = 'nodejs';
+export const preferredRegion = 'bom1';
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
+let l1Cache = new Map<string, { data: any; ts: number }>();
+const L1_TTL = 60_000; // 1 min
+
+/**
+ * GET /api/v1/options
+ *
+ * Returns options market data: max pain, put/call ratio, OI by strike, IV.
+ * Query params:
+ *   ?currency=BTC — currency (BTC, ETH, SOL — default BTC)
+ */
+export async function GET(request: NextRequest) {
+  const auth = await authenticateV1Request(request);
+  if (!auth.ok) return auth.response;
+
+  const currency = (request.nextUrl.searchParams.get('currency') || 'BTC').toUpperCase();
+  const SUPPORTED = ['BTC', 'ETH', 'SOL'];
+  if (!SUPPORTED.includes(currency)) {
+    return NextResponse.json({ success: false, error: `Supported currencies: ${SUPPORTED.join(', ')}` }, { status: 400 });
+  }
+
+  try {
+    let raw: any;
+    const cached = l1Cache.get(currency);
+    if (cached && Date.now() - cached.ts < L1_TTL) {
+      raw = cached.data;
+    } else {
+      const origin = request.nextUrl.origin;
+      const res = await fetch(
+        `${origin}/api/options?currency=${currency}`,
+        { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'InfoHub-v1-internal' } },
+      );
+      if (!res.ok) return NextResponse.json({ success: false, error: 'Upstream fetch failed' }, { status: 502 });
+      raw = await res.json();
+      l1Cache.set(currency, { data: raw, ts: Date.now() });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        currency,
+        maxPain: raw.maxPain ?? null,
+        putCallRatio: raw.putCallRatio ?? null,
+        totalCallOI: raw.totalCallOI ?? null,
+        totalPutOI: raw.totalPutOI ?? null,
+        ivAtm: raw.ivAtm ?? null,
+        exchanges: raw.exchanges ?? [],
+        expirations: raw.expirations ?? [],
+      },
+      meta: { timestamp: Date.now() },
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    });
+  } catch (e) {
+    console.error('v1/options error:', e);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
+}

@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isDBConfigured, saveLiquidationSnapshot } from '@/lib/db';
+import { isDBConfigured, initDB, saveLiquidationSnapshot } from '@/lib/db';
 import { isLiqCryptoSymbol, normalizeLiqSymbol } from '@/lib/liquidation-parsers';
 
 export const runtime = 'nodejs';
@@ -275,6 +275,8 @@ export async function GET(request: NextRequest) {
   if (!isDBConfigured()) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
+
+  await initDB();
 
   // Fetch from all exchanges in parallel
   const [binance, okx, htx, gtrade, bybit, deribit] = await Promise.all([

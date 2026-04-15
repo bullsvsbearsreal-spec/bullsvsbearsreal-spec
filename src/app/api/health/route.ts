@@ -1,6 +1,12 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCircuitBreakerStatus } from '../_shared/exchange-fetchers';
+import { getFundingData } from '../_shared/funding-core';
+import { getOIData } from '../_shared/oi-core';
+import { fetchWithTimeout, normalizeSymbol } from '../_shared/fetch';
+import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
+import { dedupedFetch } from '../_shared/inflight';
+import { tickerFetchers } from '../tickers/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -10,7 +16,7 @@ const ADMIN_API_KEY = (process.env.ADMIN_API_KEY || '').trim();
 
 interface ExchangeHealth {
   name: string;
-  status: 'ok' | 'error' | 'empty';
+  status: 'ok' | 'error' | 'empty' | 'circuit-open';
   count: number;
   latencyMs: number;
   error?: string;
@@ -36,57 +42,56 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const origin = request.nextUrl.origin;
-
   const routes: Record<string, RouteHealth> = {};
   const errors: Array<{ exchange: string; route: string; error: string; latencyMs: number }> = [];
 
-  // Fetch all 3 routes in parallel — each gets its own 20s timeout
-  // so one slow route doesn't kill the entire health check
-  const [fundingRes, oiRes, tickersRes] = await Promise.all([
-    fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(20000) }).catch(() => null),
-    fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(20000) }).catch(() => null),
-    fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(20000) }).catch(() => null),
+  // Fetch all 3 data sources directly (no self-referential HTTP)
+  const [fundingResult, oiResult, tickersResult] = await Promise.all([
+    getFundingData('crypto').catch(() => null),
+    getOIData().catch(() => null),
+    dedupedFetch('tickers', () =>
+      fetchAllExchangesWithHealth(tickerFetchers, fetchWithTimeout),
+    ).catch(() => null),
   ]);
 
-  // Parse each route
-  for (const [name, res] of [
-    ['funding', fundingRes],
-    ['openinterest', oiRes],
-    ['tickers', tickersRes],
-  ] as const) {
-    if (!res || !res.ok) {
-      routes[name] = {
-        health: [],
-        cache: 'ERROR',
-        meta: { totalExchanges: 0, activeExchanges: 0, totalEntries: 0, timestamp: Date.now() },
-      };
-      continue;
-    }
-
-    const cache = res.headers.get('X-Cache') || 'UNKNOWN';
-    const json = await res.json();
-    const health: ExchangeHealth[] = json.health || [];
-    const meta = json.meta || {
-      totalExchanges: health.length,
-      activeExchanges: health.filter((h: ExchangeHealth) => h.status === 'ok').length,
-      totalEntries: Array.isArray(json.data) ? json.data.length : (Array.isArray(json) ? json.length : 0),
-      timestamp: Date.now(),
-    };
-
-    routes[name] = { health, cache, meta };
-
-    // Collect errors
+  // Process funding
+  if (fundingResult) {
+    const health: ExchangeHealth[] = fundingResult.result.health || [];
+    const meta = fundingResult.result.meta || { totalExchanges: 0, activeExchanges: 0, totalEntries: 0, timestamp: Date.now() };
+    routes.funding = { health, cache: fundingResult.cacheStatus || 'DIRECT', meta };
     for (const h of health) {
-      if (h.status === 'error') {
-        errors.push({
-          exchange: h.name,
-          route: name,
-          error: h.error || 'Unknown error',
-          latencyMs: h.latencyMs,
-        });
-      }
+      if (h.status === 'error') errors.push({ exchange: h.name, route: 'funding', error: h.error || 'Unknown', latencyMs: h.latencyMs });
     }
+  } else {
+    routes.funding = { health: [], cache: 'ERROR', meta: { totalExchanges: 0, activeExchanges: 0, totalEntries: 0, timestamp: Date.now() } };
+  }
+
+  // Process OI
+  if (oiResult) {
+    const health: ExchangeHealth[] = oiResult.result.health || [];
+    const meta = oiResult.result.meta || { totalExchanges: 0, activeExchanges: 0, totalEntries: 0, timestamp: Date.now() };
+    routes.openinterest = { health, cache: oiResult.cacheStatus || 'DIRECT', meta };
+    for (const h of health) {
+      if (h.status === 'error') errors.push({ exchange: h.name, route: 'openinterest', error: h.error || 'Unknown', latencyMs: h.latencyMs });
+    }
+  } else {
+    routes.openinterest = { health: [], cache: 'ERROR', meta: { totalExchanges: 0, activeExchanges: 0, totalEntries: 0, timestamp: Date.now() } };
+  }
+
+  // Process tickers
+  if (tickersResult) {
+    const health: ExchangeHealth[] = tickersResult.health || [];
+    const activeExchanges = health.filter((h: ExchangeHealth) => h.status === 'ok').length;
+    routes.tickers = {
+      health,
+      cache: 'DIRECT',
+      meta: { totalExchanges: health.length, activeExchanges, totalEntries: tickersResult.data?.length || 0, timestamp: Date.now() },
+    };
+    for (const h of health) {
+      if (h.status === 'error') errors.push({ exchange: h.name, route: 'tickers', error: h.error || 'Unknown', latencyMs: h.latencyMs });
+    }
+  } else {
+    routes.tickers = { health: [], cache: 'ERROR', meta: { totalExchanges: 0, activeExchanges: 0, totalEntries: 0, timestamp: Date.now() } };
   }
 
   // Determine overall status

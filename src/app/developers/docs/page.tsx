@@ -257,6 +257,37 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
           ]} />
         </Section>
 
+        <Section id="top-movers" title="Top Movers">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/top-movers</code></p>
+          <p className="text-gray-400 mb-4">Top gaining and losing coins by 24h price change (source: CoinMarketCap).</p>
+          <ParamTable params={[
+            ['limit', 'number', '20', 'Max gainers/losers (1-50)'],
+          ]} />
+        </Section>
+
+        <Section id="global-stats" title="Global Stats">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/global-stats</code></p>
+          <p className="text-gray-400 mb-4">Market-wide statistics: altcoin season index, BTC dominance, total market cap, 24h volume.</p>
+        </Section>
+
+        <Section id="longshort" title="Long/Short Ratio">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/longshort</code></p>
+          <p className="text-gray-400 mb-4">Long/short ratio data from Binance and OKX with historical values.</p>
+          <ParamTable params={[
+            ['symbol', 'string', 'BTC', 'Symbol (e.g. BTC, ETH, SOL)'],
+            ['period', 'string', '1h', 'Time period: 5m, 15m, 30m, 1h, 4h, 1d'],
+            ['source', 'string', 'global', 'Data source: global, topTraders, taker'],
+          ]} />
+        </Section>
+
+        <Section id="options" title="Options">
+          <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/options</code></p>
+          <p className="text-gray-400 mb-4">Options market data across Deribit, Binance, OKX, and Bybit: max pain, put/call ratio, open interest by strike, implied volatility.</p>
+          <ParamTable params={[
+            ['currency', 'string', 'BTC', 'Currency: BTC, ETH, or SOL'],
+          ]} />
+        </Section>
+
         <Section id="exchanges" title="Exchanges">
           <p className="text-gray-400 mb-2"><code className="text-green-400">GET</code> <code className="text-amber-400">/api/v1/exchanges</code></p>
           <p className="text-gray-400 mb-4">
