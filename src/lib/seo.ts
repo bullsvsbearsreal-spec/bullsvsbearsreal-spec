@@ -257,6 +257,14 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Set a new password for your InfoHub account.',
     noIndex: true,
   },
+  '/developers/docs': {
+    title: 'API Reference',
+    description: 'Complete API reference for the InfoHub v1 REST API. Endpoint documentation with request/response examples for funding rates, open interest, tickers, options, and more.',
+  },
+  '/guides/reading-open-interest': {
+    title: 'How to Read Open Interest',
+    description: 'Learn how to interpret open interest data for crypto perpetual futures. Understand what rising and falling OI means for price action and market positioning.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {
