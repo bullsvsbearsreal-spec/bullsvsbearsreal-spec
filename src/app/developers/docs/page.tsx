@@ -341,9 +341,11 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
       "symbol": "BTC",
       "exchange": "Binance",
       "openInterest": 4200000000,
-      "type": "cex"
+      "openInterestUsd": 4200000000,
+      "timestamp": 1713181800000
     }
-  ]
+  ],
+  "meta": { "timestamp": 1713181800000, "entries": 420, "exchanges": 26 }
 }`}</CodeBlock>
             </Section>
 
@@ -472,12 +474,14 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
   "success": true,
   "data": {
     "symbol": "BTC",
-    "longRatio": 0.5234,
-    "shortRatio": 0.4766,
-    "longShortRatio": 1.098,
+    "period": "1h",
+    "source": "global",
+    "longRatio": 52.34,
+    "shortRatio": 47.66,
+    "exchange": "binance",
     "history": [
-      { "timestamp": 1709244000, "ratio": 1.05 },
-      { "timestamp": 1709247600, "ratio": 1.098 }
+      { "longRatio": 52.1, "shortRatio": 47.9, "longShortRatio": 1.088, "timestamp": 1709244000 },
+      { "longRatio": 52.34, "shortRatio": 47.66, "longShortRatio": 1.098, "timestamp": 1709247600 }
     ]
   }
 }`}</CodeBlock>
@@ -498,14 +502,15 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
   "data": [
     {
       "symbol": "ETH",
-      "exchange": "Binance",
+      "exchange": "binance",
       "side": "long",
       "quantity": 12.5,
       "price": 3245.80,
-      "usdValue": 40572.50,
-      "timestamp": "2025-04-15T12:30:00Z"
+      "valueUsd": 40572.50,
+      "timestamp": 1713181800000
     }
-  ]
+  ],
+  "meta": { "timestamp": 1713181800000, "hours": 1, "entries": 1, "limit": 100 }
 }`}</CodeBlock>
             </Section>
 
@@ -519,17 +524,19 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
   "success": true,
   "data": {
     "currency": "BTC",
+    "underlyingPrice": 84250,
     "maxPain": 85000,
     "putCallRatio": 0.72,
+    "totalCallOI": 7200000000,
+    "totalPutOI": 5300000000,
     "totalOI": 12500000000,
-    "ivIndex": 48.5,
+    "instrumentCount": 4500,
+    "ivAtm": 48.5,
+    "exchanges": [
+      { "exchange": "Deribit", "callOI": 5100000000, "putOI": 3800000000, "totalOI": 8900000000, "share": 71.2 }
+    ],
     "expirations": [
-      {
-        "expiry": "2025-04-25",
-        "callOI": 450000000,
-        "putOI": 320000000,
-        "maxPain": 84000
-      }
+      { "date": "2026-04-25", "callOI": 450000000, "putOI": 320000000, "totalOI": 770000000, "maxPain": 84000 }
     ]
   }
 }`}</CodeBlock>
@@ -568,10 +575,12 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
   "data": {
     "altcoinSeasonIndex": 38,
     "btcDominance": 57.2,
+    "ethDominance": 8.1,
     "totalMarketCap": 2850000000000,
-    "total24hVolume": 98000000000,
-    "btcPrice": 84250.50,
-    "ethPrice": 3245.80
+    "totalMarketCapChange24h": -1.2,
+    "totalVolume24h": 98000000000,
+    "totalDerivativesOI": 55000000000,
+    "activeCryptocurrencies": 10200
   }
 }`}</CodeBlock>
             </Section>
@@ -606,13 +615,15 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
   "success": true,
   "data": {
     "BTC": [
-      {
-        "date": "2025-04-14",
-        "avgRate": 0.0082,
-        "exchanges": { "Binance": 0.0100, "Bybit": 0.0065 }
-      }
+      { "day": "2026-04-13", "rate": 0.0082 },
+      { "day": "2026-04-14", "rate": 0.0100 }
+    ],
+    "ETH": [
+      { "day": "2026-04-13", "rate": 0.0045 },
+      { "day": "2026-04-14", "rate": 0.0061 }
     ]
-  }
+  },
+  "meta": { "timestamp": 1713181800000, "symbols": 2, "days": 7 }
 }`}</CodeBlock>
             </Section>
 
@@ -631,15 +642,14 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
   "success": true,
   "data": [
     {
-      "id": "binance",
       "name": "Binance",
       "type": "cex",
-      "makerFee": 0.02,
-      "takerFee": 0.05,
+      "fees": { "takerPct": 0.05, "makerPct": 0.02, "roundTripPct": 0.10 },
       "fundingInterval": "8h",
-      "tradeUrl": "https://www.binance.com/en/futures/{symbol}USDT"
+      "tradeUrlPattern": "https://www.binance.com/en/futures/{SYMBOL}USDT"
     }
-  ]
+  ],
+  "meta": { "total": 33, "cex": 18, "dex": 15, "timestamp": 1713181800000 }
 }`}</CodeBlock>
             </Section>
 
@@ -647,11 +657,18 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
             <Section id="status" title="Status" method="GET" path="/api/v1/status">
               <p className="text-gray-400 mb-4">API health check. No authentication required. Use this for uptime monitoring.</p>
               <CodeBlock title="Response">{`{
+  "success": true,
   "status": "operational",
-  "version": "1.0.0",
-  "endpoints": 14,
+  "version": "v1",
+  "endpoints": [
+    { "path": "/api/v1/funding", "method": "GET", "description": "Real-time funding rates across 33 exchanges" }
+  ],
+  "tiers": {
+    "free": { "rateLimit": "100 req/min", "dailyLimit": "5,000 req/day" },
+    "pro": { "rateLimit": "500 req/min", "dailyLimit": "unlimited" }
+  },
   "documentation": "https://info-hub.io/developers/docs",
-  "timestamp": 1709248000
+  "timestamp": 1713181800000
 }`}</CodeBlock>
             </Section>
 
