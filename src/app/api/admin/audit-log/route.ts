@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const url = new URL(request.url);
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 200);
+    const rawLimit = parseInt(url.searchParams.get('limit') || '50', 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
     const events = await getAuditLog(limit);
     return NextResponse.json({ events });
   } catch (e) {

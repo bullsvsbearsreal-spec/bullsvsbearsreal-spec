@@ -42,6 +42,12 @@ export async function POST(req: Request) {
 
     const user = rows[0];
 
+    // Constant-time comparison: always run bcrypt even for OAuth accounts
+    // to prevent timing-based account type enumeration (~150ms bcrypt vs ~5ms early return).
+    const DUMMY_HASH = '$2a$12$000000000000000000000uGBOzFBKvLMbVaFMgvweDHL8dh3M3/ZW';
+    const hashToCompare = user.password_hash || DUMMY_HASH;
+    const valid = await bcrypt.compare(currentPassword, hashToCompare);
+
     // OAuth-only accounts have no password_hash
     if (!user.password_hash) {
       return NextResponse.json(
@@ -50,8 +56,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify current password
-    const valid = await bcrypt.compare(currentPassword, user.password_hash);
     if (!valid) {
       return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
     }
