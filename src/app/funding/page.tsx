@@ -287,8 +287,18 @@ export default function FundingPage() {
     if (categoryFilter === 'all') return null;
     if (categoryFilter === 'highest') return highestRateSymbols;
     if (categoryFilter === 'lowest') return lowestRateSymbols;
-    return activeCategories[categoryFilter]?.symbols || null;
-  }, [categoryFilter, highestRateSymbols, lowestRateSymbols, activeCategories]);
+    const cat = activeCategories[categoryFilter];
+    if (!cat) return null;
+    // Dynamic categories (stocks, forex, commodities) have empty symbols[] and
+    // a `dynamic` field that matches an assetClass. Filter by assetClass on data.
+    if (cat.dynamic && cat.symbols.length === 0) {
+      return allFundingRates
+        .filter(fr => fr.assetClass === cat.dynamic)
+        .map(fr => fr.symbol)
+        .filter((s, i, arr) => arr.indexOf(s) === i); // unique
+    }
+    return cat.symbols.length > 0 ? cat.symbols : null;
+  }, [categoryFilter, highestRateSymbols, lowestRateSymbols, activeCategories, allFundingRates]);
 
   // Pre-compute per-symbol abs avg rates for sorting (single pass)
   const symbolAbsAvgRates = useMemo(() => {
