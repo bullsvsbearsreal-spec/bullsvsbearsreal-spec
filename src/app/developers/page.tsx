@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Logo from '@/components/Logo';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import AuthPromptBanner from '@/components/AuthPromptBanner';
 import {
   Key, Copy, Check, Trash2, Zap, BarChart3, TrendingUp, Shield, Clock, Globe,
   ArrowRight, Terminal, Code2, Activity, Layers, LineChart, AlertTriangle,
+  ChevronRight, Database, Wifi,
 } from 'lucide-react';
 
 interface ApiKeyInfo {
@@ -21,12 +23,128 @@ interface ApiKeyInfo {
   createdAt: string;
 }
 
+/* ─── Typing animation for the hero terminal ─── */
+const TERMINAL_LINES = [
+  { type: 'cmd' as const, text: 'curl -s -H "Authorization: Bearer ih_k7x..." \\' },
+  { type: 'cmd' as const, text: '  "https://infohub.trade/api/v1/arbitrage?grade=A"' },
+  { type: 'blank' as const, text: '' },
+  { type: 'json' as const, text: '{' },
+  { type: 'json' as const, text: '  "success": true,' },
+  { type: 'json' as const, text: '  "data": [{' },
+  { type: 'json' as const, text: '    "symbol": "ETH",' },
+  { type: 'json' as const, text: '    "long": { "exchange": "Bybit", "rate": -0.0032 },' },
+  { type: 'json' as const, text: '    "short": { "exchange": "dYdX", "rate": 0.0187 },' },
+  { type: 'json' as const, text: '    "spread": 0.0219,' },
+  { type: 'json' as const, text: '    "annualized": "19.18%",' },
+  { type: 'json' as const, text: '    "grade": "A"' },
+  { type: 'json' as const, text: '  }]' },
+  { type: 'json' as const, text: '}' },
+];
+
+function HeroTerminal() {
+  const [visibleLines, setVisibleLines] = useState(0);
+  const [cursorVisible, setCursorVisible] = useState(true);
+
+  useEffect(() => {
+    // Typing effect — reveal lines progressively
+    if (visibleLines < TERMINAL_LINES.length) {
+      const delay = visibleLines < 2 ? 600 : visibleLines === 2 ? 300 : 80;
+      const t = setTimeout(() => setVisibleLines(v => v + 1), delay);
+      return () => clearTimeout(t);
+    }
+  }, [visibleLines]);
+
+  useEffect(() => {
+    const t = setInterval(() => setCursorVisible(v => !v), 530);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="relative group">
+      {/* Glow behind terminal */}
+      <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-amber-500/20 via-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
+      <div className="relative bg-[#0a0a0a] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+        {/* Title bar */}
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06]">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+          </div>
+          <span className="text-[11px] text-gray-500 font-mono ml-2">Terminal — infohub.trade</span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-[10px] text-green-400/70 font-mono">connected</span>
+          </div>
+        </div>
+        {/* Terminal body */}
+        <div className="p-4 sm:p-5 font-mono text-[11px] sm:text-xs leading-relaxed min-h-[280px] sm:min-h-[320px]">
+          {TERMINAL_LINES.slice(0, visibleLines).map((line, i) => (
+            <div key={i} className={`${
+              line.type === 'cmd' ? 'text-gray-300' :
+              line.type === 'blank' ? '' : 'text-amber-200/80'
+            }`}>
+              {line.type === 'cmd' && i === 0 && (
+                <span className="text-green-400 select-none">$ </span>
+              )}
+              {line.type === 'cmd' && i === 1 && (
+                <span className="text-transparent select-none">{'  '}</span>
+              )}
+              {line.text}
+              {/* Highlight specific JSON values */}
+              {line.text.includes('"A"') && ''}
+            </div>
+          ))}
+          {visibleLines < TERMINAL_LINES.length && (
+            <span className={`inline-block w-2 h-4 bg-amber-400/80 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
+          )}
+          {visibleLines >= TERMINAL_LINES.length && (
+            <div className="mt-2 text-green-400/50">
+              <span className="text-green-400 select-none">$ </span>
+              <span className={`inline-block w-2 h-4 bg-green-400/80 -mb-0.5 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Animated counter ─── */
+function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const [value, setValue] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !started.current) {
+        started.current = true;
+        const duration = 1200;
+        const start = performance.now();
+        const step = (now: number) => {
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setValue(Math.round(eased * target));
+          if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+    }, { threshold: 0.5 });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target]);
+
+  return <span ref={ref}>{value}{suffix}</span>;
+}
+
 const ENDPOINT_GROUPS = [
   {
     label: 'Market Data',
     icon: BarChart3,
     color: 'text-blue-400',
     bg: 'bg-blue-500/10',
+    border: 'border-blue-500/10',
     endpoints: [
       ['GET', '/api/v1/funding', 'Real-time funding rates across 33 exchanges'],
       ['GET', '/api/v1/openinterest', 'Open interest data across exchanges'],
@@ -39,6 +157,7 @@ const ENDPOINT_GROUPS = [
     icon: TrendingUp,
     color: 'text-green-400',
     bg: 'bg-green-500/10',
+    border: 'border-green-500/10',
     endpoints: [
       ['GET', '/api/v1/arbitrage', 'Funding arbitrage with feasibility grades'],
       ['GET', '/api/v1/longshort', 'Long/short ratios (Binance, OKX)'],
@@ -51,6 +170,7 @@ const ENDPOINT_GROUPS = [
     icon: Globe,
     color: 'text-purple-400',
     bg: 'bg-purple-500/10',
+    border: 'border-purple-500/10',
     endpoints: [
       ['GET', '/api/v1/top-movers', 'Top gainers & losers by 24h change'],
       ['GET', '/api/v1/global-stats', 'Altcoin season, BTC dominance, market cap'],
@@ -63,6 +183,7 @@ const ENDPOINT_GROUPS = [
     icon: Layers,
     color: 'text-neutral-400',
     bg: 'bg-neutral-500/10',
+    border: 'border-neutral-500/10',
     endpoints: [
       ['GET', '/api/v1/exchanges', 'Exchange metadata, fees & intervals'],
       ['GET', '/api/v1/status', 'API health status (no auth required)'],
@@ -70,11 +191,11 @@ const ENDPOINT_GROUPS = [
   },
 ];
 
-const FEATURES = [
-  { icon: Zap, title: '33 Exchanges', desc: '18 CEX + 15 DEX aggregated in real-time', color: 'text-amber-400' },
-  { icon: Clock, title: 'Sub-second', desc: 'In-memory L1 cache, 3-10s freshness', color: 'text-blue-400' },
-  { icon: Shield, title: 'Rate Limited', desc: '100 req/min free, 500 req/min pro', color: 'text-green-400' },
-  { icon: Activity, title: '14 Endpoints', desc: 'Funding, OI, spreads, liqs, options & more', color: 'text-purple-400' },
+const STATS = [
+  { value: 33, suffix: '', label: 'Exchanges', icon: Database },
+  { value: 14, suffix: '', label: 'Endpoints', icon: Wifi },
+  { value: 100, suffix: '/m', label: 'Free Requests', icon: Zap },
+  { value: 3, suffix: 's', label: 'Data Freshness', icon: Clock },
 ];
 
 export default function DevelopersPage() {
@@ -149,65 +270,106 @@ export default function DevelopersPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Header />
-      <main id="main-content" className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
+      <main id="main-content">
 
         {/* ─── Hero ──────────────────────────────────────────── */}
-        <div className="text-center mb-12 sm:mb-16">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-xs font-medium mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Live — 14 endpoints
+        <section className="relative overflow-hidden">
+          {/* Background effects */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,184,0,0.12),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_80%_at_80%_50%,rgba(255,140,0,0.06),transparent)]" />
+          {/* Subtle grid */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }} />
+
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-24">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+
+              {/* Left — Copy */}
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <Logo size="lg" />
+                  <div className="h-6 w-px bg-white/10" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-[11px] font-medium tracking-wide uppercase">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    API v1
+                  </div>
+                </div>
+
+                <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight leading-[1.1] mb-5">
+                  <span className="text-white">One API for</span>
+                  <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-500">every crypto exchange</span>
+                </h1>
+
+                <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-8 max-w-lg">
+                  Funding rates, open interest, liquidations, spreads, options, and arbitrage — aggregated from 33 exchanges into a single REST API. Built for trading bots, dashboards, and research.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3 mb-10">
+                  {session?.user ? (
+                    <button
+                      onClick={() => document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                      <Key className="w-4 h-4" /> Manage API Keys
+                    </button>
+                  ) : (
+                    <Link
+                      href="/login?callbackUrl=/developers"
+                      className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                      <Key className="w-4 h-4" /> Get Free API Key
+                    </Link>
+                  )}
+                  <Link
+                    href="/developers/docs"
+                    className="inline-flex items-center gap-2 border border-white/10 hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.06] text-gray-300 hover:text-white font-medium px-6 py-3.5 rounded-xl text-sm transition-all"
+                  >
+                    <Code2 className="w-4 h-4" /> Documentation <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                  </Link>
+                </div>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-6 sm:gap-8">
+                  {STATS.map(s => (
+                    <div key={s.label}>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <s.icon className="w-3.5 h-3.5 text-amber-400/60" />
+                        <span className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+                          <AnimatedNumber target={s.value} suffix={s.suffix} />
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-500 uppercase tracking-wider font-medium">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right — Terminal */}
+              <div className="hidden lg:block">
+                <HeroTerminal />
+              </div>
+            </div>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
-            <span className="text-white">InfoHub </span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-500">Public API</span>
-          </h1>
-          <p className="text-gray-400 text-lg sm:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
-            Programmatic access to funding rates, open interest, liquidations, spreads, options, and arbitrage opportunities across 33 exchanges. Built for trading bots, dashboards, and research.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {session?.user ? (
-              <button
-                onClick={() => document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold px-6 py-3 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/20"
-              >
-                <Key className="w-4 h-4" /> Manage API Keys
-              </button>
-            ) : (
-              <Link
-                href="/login?callbackUrl=/developers"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold px-6 py-3 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/20"
-              >
-                <Key className="w-4 h-4" /> Get API Key
-              </Link>
-            )}
-            <Link
-              href="/developers/docs"
-              className="inline-flex items-center gap-2 border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white font-medium px-6 py-3 rounded-xl text-sm transition-colors"
-            >
-              <Code2 className="w-4 h-4" /> Full Documentation
-            </Link>
-          </div>
+        </section>
+
+        {/* ─── Mobile terminal (below fold) ───────────────────── */}
+        <div className="lg:hidden max-w-xl mx-auto px-4 -mt-4 mb-12">
+          <HeroTerminal />
         </div>
 
-        {/* ─── Feature pills ─────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-12 sm:mb-16">
-          {FEATURES.map(f => (
-            <div key={f.title} className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3.5 text-center">
-              <f.icon className={`w-5 h-5 ${f.color} mx-auto mb-2`} />
-              <div className="text-white text-sm font-semibold">{f.title}</div>
-              <div className="text-gray-500 text-xs mt-0.5">{f.desc}</div>
-            </div>
-          ))}
-        </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* ─── Auth prompt (not signed in) ────────────────────── */}
         {!session?.user && (
-          <AuthPromptBanner variant="api-key" dismissible={false} className="mb-8" />
+          <AuthPromptBanner variant="api-key" dismissible={false} className="mb-10" />
         )}
 
         {/* ─── API Key Management (signed in) ─────────────────── */}
         {session?.user && (
-          <div id="api-keys" className="mb-12 sm:mb-16 scroll-mt-20">
+          <div id="api-keys" className="mb-14 sm:mb-20 scroll-mt-20">
             {/* New key banner */}
             {newKey && (
               <div className="bg-green-950/40 border border-green-800/50 rounded-xl p-5 mb-5">
@@ -298,30 +460,33 @@ export default function DevelopersPage() {
         )}
 
         {/* ─── Endpoints by Category ─────────────────────────── */}
-        <div className="mb-12 sm:mb-16">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl font-bold">Endpoints</h2>
-            <Link href="/developers/docs" className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1 transition-colors">
+        <div className="mb-14 sm:mb-20">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">API Endpoints</h2>
+              <p className="text-gray-500 text-sm mt-1">14 endpoints across 4 categories</p>
+            </div>
+            <Link href="/developers/docs" className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1 transition-colors font-medium">
               Full docs <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {ENDPOINT_GROUPS.map(g => (
-              <div key={g.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-3">
+              <div key={g.label} className={`bg-white/[0.02] border ${g.border} hover:border-white/[0.1] rounded-xl p-5 transition-colors group`}>
+                <div className="flex items-center gap-2 mb-4">
                   <div className={`p-1.5 rounded-lg ${g.bg}`}>
                     <g.icon className={`w-4 h-4 ${g.color}`} />
                   </div>
                   <h3 className="text-sm font-semibold text-white">{g.label}</h3>
-                  <span className="text-[10px] text-gray-600 ml-auto">{g.endpoints.length} endpoints</span>
+                  <span className="text-[10px] text-gray-600 ml-auto bg-white/[0.04] px-2 py-0.5 rounded-full">{g.endpoints.length}</span>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {g.endpoints.map(([method, path, desc]) => (
-                    <div key={path} className="flex items-start gap-2">
-                      <code className="text-[10px] text-green-400/70 font-mono mt-0.5 shrink-0 w-6">{method}</code>
+                    <div key={path} className="flex items-start gap-2.5 py-1 -mx-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors">
+                      <span className="text-[10px] text-green-400 font-mono mt-1 shrink-0 w-7 font-bold">{method}</span>
                       <div className="min-w-0">
-                        <code className="text-xs text-amber-400/80 font-mono">{(path as string).replace('/api/v1/', '')}</code>
-                        <p className="text-[11px] text-gray-500 leading-tight">{desc}</p>
+                        <code className="text-xs text-amber-400/90 font-mono font-medium">{(path as string).replace('/api/v1/', '/')}</code>
+                        <p className="text-[11px] text-gray-500 leading-snug mt-0.5">{desc}</p>
                       </div>
                     </div>
                   ))}
@@ -332,85 +497,150 @@ export default function DevelopersPage() {
         </div>
 
         {/* ─── Quick Start ───────────────────────────────────── */}
-        <div className="mb-12 sm:mb-16">
-          <h2 className="text-xl font-bold mb-5">Quick Start</h2>
+        <div className="mb-14 sm:mb-20">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">Quick Start</h2>
+            <p className="text-gray-500 text-sm mt-1">Get data in under 30 seconds</p>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Terminal className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-medium text-gray-300">curl</h3>
-              </div>
-              <pre className="bg-black/50 rounded-lg p-3 text-[11px] text-green-400 font-mono overflow-x-auto leading-relaxed">
-{`curl -H "Authorization: Bearer ih_..." \\
+            {([
+              {
+                icon: Terminal, iconColor: 'text-green-400', label: 'curl', labelExtra: 'Simplest',
+                code: `curl -s -H "Authorization: Bearer ih_..." \\
   "https://infohub.trade/api/v1/\\
-arbitrage?grade=A,B"`}
-              </pre>
-            </div>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Code2 className="w-4 h-4 text-blue-400" />
-                <h3 className="text-sm font-medium text-gray-300">Python</h3>
-              </div>
-              <pre className="bg-black/50 rounded-lg p-3 text-[11px] text-green-400 font-mono overflow-x-auto leading-relaxed">
-{`import requests
+arbitrage?grade=A,B" | jq .`,
+              },
+              {
+                icon: Code2, iconColor: 'text-blue-400', label: 'Python', labelExtra: 'Most popular',
+                code: `import requests
 
 h = {"Authorization": "Bearer ih_..."}
 r = requests.get(
   "https://infohub.trade/api/v1/funding",
   headers=h, params={"symbols": "BTC"}
 )
-print(r.json()["data"])`}
-              </pre>
-            </div>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Code2 className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-medium text-gray-300">JavaScript</h3>
-              </div>
-              <pre className="bg-black/50 rounded-lg p-3 text-[11px] text-green-400 font-mono overflow-x-auto leading-relaxed">
-{`const res = await fetch(
+print(r.json()["data"])`,
+              },
+              {
+                icon: Code2, iconColor: 'text-amber-400', label: 'JavaScript', labelExtra: 'fetch / Node',
+                code: `const res = await fetch(
   "https://infohub.trade/api/v1/spreads",
   { headers: {
     Authorization: "Bearer ih_..."
   }}
 );
-const { data } = await res.json();`}
-              </pre>
-            </div>
+const { data } = await res.json();
+console.log(data);`,
+              },
+            ] as const).map(ex => (
+              <div key={ex.label} className="bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] rounded-xl p-5 transition-colors">
+                <div className="flex items-center gap-2 mb-3">
+                  <ex.icon className={`w-4 h-4 ${ex.iconColor}`} />
+                  <h3 className="text-sm font-semibold text-gray-200">{ex.label}</h3>
+                  <span className="text-[10px] text-gray-600 ml-auto">{ex.labelExtra}</span>
+                </div>
+                <pre className="bg-black/60 border border-white/[0.04] rounded-lg p-3.5 text-[11px] text-green-400/90 font-mono overflow-x-auto leading-relaxed">
+{ex.code}
+                </pre>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* ─── Rate Limits ───────────────────────────────────── */}
-        <div className="mb-12">
-          <h2 className="text-xl font-bold mb-5">Rate Limits</h2>
+        <div className="mb-14 sm:mb-20">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">Rate Limits</h2>
+            <p className="text-gray-500 text-sm mt-1">Generous free tier, no credit card required</p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-white font-semibold text-sm">Free Tier</span>
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6 relative">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <span className="text-white font-bold text-sm block">Free Tier</span>
+                  <span className="text-gray-500 text-[11px]">Perfect for side projects</span>
+                </div>
               </div>
-              <div className="text-gray-400 text-sm space-y-1.5">
-                <div className="flex justify-between"><span>Requests / minute</span><span className="text-white font-mono">100</span></div>
-                <div className="flex justify-between"><span>Requests / day</span><span className="text-white font-mono">5,000</span></div>
-                <div className="flex justify-between"><span>Endpoints</span><span className="text-white">All 14</span></div>
+              <div className="text-sm space-y-3">
+                <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
+                  <span className="text-gray-400">Requests / min</span>
+                  <span className="text-white font-mono font-bold text-base">100</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
+                  <span className="text-gray-400">Requests / day</span>
+                  <span className="text-white font-mono font-bold text-base">5,000</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-gray-400">Endpoints</span>
+                  <span className="text-white font-semibold">All 14</span>
+                </div>
               </div>
             </div>
-            <div className="bg-white/[0.03] border border-amber-500/20 rounded-xl p-5 relative overflow-hidden">
-              <div className="absolute top-2 right-2 text-[10px] text-amber-500/60 font-medium px-1.5 py-0.5 border border-amber-500/20 rounded">
-                Coming soon
+            <div className="bg-gradient-to-br from-amber-500/[0.04] to-orange-500/[0.02] border border-amber-500/20 rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute top-3 right-3 text-[10px] text-amber-400/70 font-bold px-2 py-0.5 border border-amber-500/20 rounded-full bg-amber-500/10 uppercase tracking-wider">
+                Soon
               </div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500" />
-                <span className="text-white font-semibold text-sm">Pro Tier</span>
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-amber-300" />
+                </div>
+                <div>
+                  <span className="text-white font-bold text-sm block">Pro Tier</span>
+                  <span className="text-gray-500 text-[11px]">For production trading systems</span>
+                </div>
               </div>
-              <div className="text-gray-400 text-sm space-y-1.5">
-                <div className="flex justify-between"><span>Requests / minute</span><span className="text-white font-mono">500</span></div>
-                <div className="flex justify-between"><span>Requests / day</span><span className="text-white">Unlimited</span></div>
-                <div className="flex justify-between"><span>Support</span><span className="text-white">Priority</span></div>
+              <div className="text-sm space-y-3">
+                <div className="flex items-center justify-between py-2 border-b border-amber-500/10">
+                  <span className="text-gray-400">Requests / min</span>
+                  <span className="text-white font-mono font-bold text-base">500</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-amber-500/10">
+                  <span className="text-gray-400">Requests / day</span>
+                  <span className="text-amber-300 font-bold">Unlimited</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-gray-400">Support</span>
+                  <span className="text-amber-300 font-semibold">Priority</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* ─── CTA Banner ───────────────────────────────────── */}
+        <div className="mb-14 sm:mb-20">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 p-8 sm:p-10">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Ready to build?</h3>
+                <p className="text-gray-400 text-sm max-w-md">
+                  Create a free API key and start fetching real-time data from 33 exchanges in minutes.
+                </p>
+              </div>
+              {session?.user ? (
+                <button
+                  onClick={() => document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+                >
+                  <Key className="w-4 h-4" /> Manage Keys <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <Link
+                  href="/login?callbackUrl=/developers"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+                >
+                  <Key className="w-4 h-4" /> Get Free API Key <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+
+        </div>{/* close max-w-6xl container */}
       </main>
       <Footer />
     </div>
