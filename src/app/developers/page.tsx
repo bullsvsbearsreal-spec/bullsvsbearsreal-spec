@@ -10,7 +10,7 @@ import AuthPromptBanner from '@/components/AuthPromptBanner';
 import {
   Key, Copy, Check, Trash2, Zap, BarChart3, TrendingUp, Shield, Clock, Globe,
   ArrowRight, Terminal, Code2, Activity, Layers, LineChart, AlertTriangle,
-  ChevronRight, Database, Wifi,
+  ChevronRight, Database, Wifi, ChevronDown, Hash,
 } from 'lucide-react';
 
 interface ApiKeyInfo {
@@ -132,6 +132,27 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
+/* FAQ accordion item */
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-white/[0.06] rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <span className="text-sm font-medium text-white pr-4">{q}</span>
+        <ChevronDown className={`w-4 h-4 text-gray-500 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-5 pb-4 -mt-1">
+          <p className="text-[13px] text-gray-400 leading-relaxed">{a}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const EXCHANGE_NAMES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'KuCoin',
   'Hyperliquid', 'dYdX', 'Drift', 'GMX', 'Phemex', 'Bitunix', 'HTX', 'Coinbase',
@@ -158,9 +179,10 @@ function HeroTerminal() {
 
   return (
     <div className="relative group">
-      {/* Glow behind terminal */}
-      <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-amber-500/20 via-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
-      <div className="relative bg-[#0a0a0a] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+      {/* Ambient glow behind terminal */}
+      <div className="absolute -inset-1 rounded-2xl bg-gradient-to-b from-amber-500/15 via-amber-500/5 to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-500 blur-md" />
+      <div className="absolute -inset-4 rounded-3xl bg-amber-500/[0.03] blur-2xl" />
+      <div className="relative bg-[#0a0a0a] border border-white/[0.08] group-hover:border-amber-500/20 rounded-2xl overflow-hidden shadow-2xl shadow-black/50 transition-colors duration-500">
         {/* Title bar */}
         <div className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06]">
           <div className="flex gap-1.5">
@@ -434,16 +456,16 @@ export default function DevelopersPage() {
                 </div>
 
                 {/* Stats row */}
-                <div className="flex items-center gap-6 sm:gap-8">
+                <div className="grid grid-cols-4 gap-3">
                   {STATS.map(s => (
-                    <div key={s.label}>
+                    <div key={s.label} className="bg-white/[0.03] border border-white/[0.05] rounded-lg px-3 py-2.5">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <s.icon className="w-3.5 h-3.5 text-amber-400/60" />
-                        <span className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+                        <span className="text-xl sm:text-2xl font-bold text-white tabular-nums">
                           <AnimatedNumber target={s.value} suffix={s.suffix} />
                         </span>
                       </div>
-                      <span className="text-[11px] text-gray-500 uppercase tracking-wider font-medium">{s.label}</span>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">{s.label}</span>
                     </div>
                   ))}
                 </div>
@@ -481,6 +503,32 @@ export default function DevelopersPage() {
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
+
+        {/* How it works */}
+        <FadeIn className="mb-14 sm:mb-20">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold mb-2">Three steps to live data</h2>
+            <p className="text-gray-500 text-sm">From signup to first API call in under a minute</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
+            {/* Connecting line (desktop only) */}
+            <div className="hidden sm:block absolute top-10 left-[16.6%] right-[16.6%] h-px bg-gradient-to-r from-amber-500/20 via-amber-500/30 to-amber-500/20" />
+            {([
+              { step: 1, title: 'Create an account', desc: 'Sign up free. No credit card, no approval process. Takes 30 seconds.', icon: Key },
+              { step: 2, title: 'Generate an API key', desc: 'One click in the dashboard. Your key starts with ih_ and works instantly.', icon: Hash },
+              { step: 3, title: 'Make your first call', desc: 'Pass the key as a Bearer token. Get structured JSON back in ~50ms.', icon: Zap },
+            ] as const).map(s => (
+              <div key={s.step} className="relative text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 border border-amber-500/20 mb-4 relative z-10">
+                  <s.icon className="w-6 h-6 text-amber-400" />
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">{s.step}</span>
+                </div>
+                <h3 className="text-sm font-bold text-white mb-1.5">{s.title}</h3>
+                <p className="text-gray-500 text-[13px] leading-relaxed max-w-[240px] mx-auto">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </FadeIn>
 
         {/* Use Cases */}
         <FadeIn className="mb-14 sm:mb-20">
@@ -638,13 +686,14 @@ export default function DevelopersPage() {
                 </div>
                 <div className="space-y-2">
                   {g.endpoints.map(([method, path, desc]) => (
-                    <div key={path} className="flex items-start gap-2.5 py-1 -mx-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors">
+                    <Link key={path as string} href={`/developers/docs#${(path as string).split('/').pop()}`} className="flex items-start gap-2.5 py-1 -mx-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors group/ep">
                       <span className="text-[10px] text-green-400 font-mono mt-1 shrink-0 w-7 font-bold">{method}</span>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <code className="text-xs text-amber-400/90 font-mono font-medium">{(path as string).replace('/api/v1/', '/')}</code>
                         <p className="text-[11px] text-gray-500 leading-snug mt-0.5">{desc}</p>
                       </div>
-                    </div>
+                      <ArrowRight className="w-3 h-3 text-gray-700 group-hover/ep:text-amber-400/60 mt-1 shrink-0 transition-colors" />
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -766,6 +815,39 @@ console.log(data);`,
                 </div>
               </div>
             </div>
+          </div>
+        </FadeIn>
+
+        {/* FAQ */}
+        <FadeIn className="mb-14 sm:mb-20" delay={100}>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-2">Common questions</h2>
+          </div>
+          <div className="space-y-2">
+            <FaqItem
+              q="Is the API free?"
+              a="Yes. The free tier gives you 100 requests per minute and 5,000 per day with access to all 14 endpoints. No credit card required."
+            />
+            <FaqItem
+              q="What format does the API return?"
+              a='All endpoints return JSON with a consistent shape: { "success": true, "data": [...] }. Errors include a human-readable message field.'
+            />
+            <FaqItem
+              q="How fresh is the data?"
+              a="Most endpoints use an in-memory L1 cache with 3 to 10 second freshness. Funding rates update every few seconds. Historical endpoints cache for 5 minutes."
+            />
+            <FaqItem
+              q="Do I need separate API keys for each exchange?"
+              a="No. One InfoHub API key gives you aggregated data from all 33 exchanges. That's the whole point."
+            />
+            <FaqItem
+              q="Is there a WebSocket API?"
+              a="Not yet. The REST API is polled. We're evaluating WebSocket support for real-time funding and liquidation streams."
+            />
+            <FaqItem
+              q="What happens if I hit the rate limit?"
+              a="You'll get a 429 response with a Retry-After header. The limit resets every minute. Pro tier (coming soon) bumps this to 500/min with no daily cap."
+            />
           </div>
         </FadeIn>
 
