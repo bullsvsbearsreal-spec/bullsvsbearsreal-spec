@@ -23,10 +23,61 @@ interface ApiKeyInfo {
   createdAt: string;
 }
 
+/* Syntax-highlighted JSON line renderer */
+function JsonLine({ text }: { text: string }) {
+  // Colorize JSON: keys = purple, strings = green, numbers = amber, booleans = blue, brackets = gray
+  const parts: { text: string; color: string }[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    // Match JSON key: "key":
+    const keyMatch = remaining.match(/^(\s*")([\w]+)(":\s*)/);
+    if (keyMatch) {
+      parts.push({ text: keyMatch[1], color: 'text-gray-500' });
+      parts.push({ text: keyMatch[2], color: 'text-purple-300' });
+      parts.push({ text: keyMatch[3], color: 'text-gray-500' });
+      remaining = remaining.slice(keyMatch[0].length);
+      continue;
+    }
+    // Match string value: "..."
+    const strMatch = remaining.match(/^("(?:[^"\\]|\\.)*")/);
+    if (strMatch) {
+      parts.push({ text: strMatch[1], color: 'text-green-300' });
+      remaining = remaining.slice(strMatch[0].length);
+      continue;
+    }
+    // Match number
+    const numMatch = remaining.match(/^(-?\d+\.?\d*)/);
+    if (numMatch) {
+      parts.push({ text: numMatch[1], color: 'text-amber-300' });
+      remaining = remaining.slice(numMatch[0].length);
+      continue;
+    }
+    // Match boolean
+    const boolMatch = remaining.match(/^(true|false|null)/);
+    if (boolMatch) {
+      parts.push({ text: boolMatch[1], color: 'text-blue-300' });
+      remaining = remaining.slice(boolMatch[0].length);
+      continue;
+    }
+    // Everything else (brackets, commas, whitespace)
+    parts.push({ text: remaining[0], color: 'text-gray-500' });
+    remaining = remaining.slice(1);
+  }
+
+  return (
+    <>
+      {parts.map((p, i) => (
+        <span key={i} className={p.color}>{p.text}</span>
+      ))}
+    </>
+  );
+}
+
 /* Typing animation for the hero terminal */
 const TERMINAL_LINES = [
   { type: 'cmd' as const, text: 'curl -s -H "Authorization: Bearer ih_k7x..." \\' },
-  { type: 'cmd' as const, text: '  "https://infohub.trade/api/v1/arbitrage?grade=A"' },
+  { type: 'cmd' as const, text: '  "https://info-hub.io/api/v1/arbitrage?grade=A"' },
   { type: 'blank' as const, text: '' },
   { type: 'json' as const, text: '{' },
   { type: 'json' as const, text: '  "success": true,' },
@@ -39,6 +90,52 @@ const TERMINAL_LINES = [
   { type: 'json' as const, text: '    "grade": "A"' },
   { type: 'json' as const, text: '  }]' },
   { type: 'json' as const, text: '}' },
+];
+
+/* Fade-in on scroll wrapper */
+function FadeIn({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => setVisible(true), delay);
+        observer.disconnect();
+      }
+    }, { threshold: 0.1 });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [delay]);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* Tiny copy button for code blocks */
+function CopyBtn({ text }: { text: string }) {
+  const [ok, setOk] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); }}
+      className="absolute top-2.5 right-2.5 text-gray-600 hover:text-gray-300 transition-colors bg-black/60 backdrop-blur-sm border border-white/[0.06] rounded-md p-1.5"
+      title="Copy"
+    >
+      {ok ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+    </button>
+  );
+}
+
+const EXCHANGE_NAMES = [
+  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'KuCoin',
+  'Hyperliquid', 'dYdX', 'Drift', 'GMX', 'Phemex', 'Bitunix', 'HTX', 'Coinbase',
+  'Deribit', 'Aevo', 'Bitfinex', 'Gate.io',
 ];
 
 function HeroTerminal() {
@@ -71,7 +168,7 @@ function HeroTerminal() {
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
             <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
           </div>
-          <span className="text-[11px] text-gray-500 font-mono ml-2">Terminal  infohub.trade</span>
+          <span className="text-[11px] text-gray-500 font-mono ml-2">info-hub.io</span>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <span className="text-[10px] text-green-400/70 font-mono">connected</span>
@@ -80,29 +177,31 @@ function HeroTerminal() {
         {/* Terminal body */}
         <div className="p-4 sm:p-5 font-mono text-[11px] sm:text-xs leading-relaxed min-h-[280px] sm:min-h-[320px]">
           {TERMINAL_LINES.slice(0, visibleLines).map((line, i) => (
-            <div key={i} className={`${
-              line.type === 'cmd' ? 'text-gray-300' :
-              line.type === 'blank' ? '' : 'text-amber-200/80'
-            }`}>
+            <div key={i}>
               {line.type === 'cmd' && i === 0 && (
                 <span className="text-green-400 select-none">$ </span>
               )}
               {line.type === 'cmd' && i === 1 && (
                 <span className="text-transparent select-none">{'  '}</span>
               )}
-              {line.text}
-              {/* Highlight specific JSON values */}
-              {line.text.includes('"A"') && ''}
+              {line.type === 'cmd' && <span className="text-gray-300">{line.text}</span>}
+              {line.type === 'json' && <JsonLine text={line.text} />}
             </div>
           ))}
           {visibleLines < TERMINAL_LINES.length && (
             <span className={`inline-block w-2 h-4 bg-amber-400/80 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
           )}
           {visibleLines >= TERMINAL_LINES.length && (
-            <div className="mt-2 text-green-400/50">
-              <span className="text-green-400 select-none">$ </span>
-              <span className={`inline-block w-2 h-4 bg-green-400/80 -mb-0.5 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
-            </div>
+            <>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] text-gray-600 bg-white/[0.04] px-2 py-0.5 rounded">200 OK</span>
+                <span className="text-[10px] text-green-500/60 bg-green-500/[0.06] px-2 py-0.5 rounded">47ms</span>
+              </div>
+              <div className="mt-2 text-green-400/50">
+                <span className="text-green-400 select-none">$ </span>
+                <span className={`inline-block w-2 h-4 bg-green-400/80 -mb-0.5 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -363,10 +462,28 @@ export default function DevelopersPage() {
           <HeroTerminal />
         </div>
 
+        {/* Exchange trust ticker */}
+        <div className="border-y border-white/[0.04] bg-white/[0.01] py-4 mb-14 sm:mb-20 overflow-hidden">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] text-gray-600 uppercase tracking-widest font-medium shrink-0">Data from</span>
+              <div className="flex items-center gap-3 overflow-hidden mask-fade">
+                <div className="flex items-center gap-3 animate-scroll-x">
+                  {[...EXCHANGE_NAMES, ...EXCHANGE_NAMES].map((name, i) => (
+                    <span key={i} className="text-xs text-gray-500 font-medium whitespace-nowrap bg-white/[0.03] px-2.5 py-1 rounded-md border border-white/[0.04]">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* Use Cases */}
-        <div className="mb-14 sm:mb-20">
+        <FadeIn className="mb-14 sm:mb-20">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-2">What people build with it</h2>
             <p className="text-gray-500 text-sm">From side projects to production trading systems</p>
@@ -374,29 +491,32 @@ export default function DevelopersPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {([
               {
-                emoji: '\u{1F916}',
                 title: 'Funding rate bots',
+                accent: 'border-l-amber-500',
+                icon: Activity,
                 desc: 'Automatically long on cheap exchanges, short on expensive ones. The /arbitrage endpoint does the math for you. Just filter by grade and execute.',
               },
               {
-                emoji: '\u{1F4CA}',
                 title: 'Custom dashboards',
+                accent: 'border-l-blue-500',
+                icon: BarChart3,
                 desc: 'Build Grafana panels, Discord bots, or Telegram alerts using real-time OI, liquidation, and spread data from a single endpoint.',
               },
               {
-                emoji: '\u{1F9EA}',
                 title: 'Quant research',
+                accent: 'border-l-purple-500',
+                icon: LineChart,
                 desc: 'Backtest strategies using historical funding snapshots, track cross-exchange spread patterns, and monitor market sentiment shifts.',
               },
             ] as const).map(c => (
-              <div key={c.title} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition-colors">
-                <span className="text-2xl mb-3 block">{c.emoji}</span>
-                <h3 className="text-sm font-bold text-white mb-1.5">{c.title}</h3>
+              <div key={c.title} className={`bg-white/[0.02] border border-white/[0.06] border-l-2 ${c.accent} rounded-xl p-5 hover:border-white/[0.1] hover:bg-white/[0.03] transition-all`}>
+                <c.icon className="w-5 h-5 text-gray-500 mb-3" />
+                <h3 className="text-sm font-bold text-white mb-2">{c.title}</h3>
                 <p className="text-gray-500 text-[13px] leading-relaxed">{c.desc}</p>
               </div>
             ))}
           </div>
-        </div>
+        </FadeIn>
 
         {/* Auth prompt (not signed in) */}
         {!session?.user && (
@@ -496,7 +616,7 @@ export default function DevelopersPage() {
         )}
 
         {/* Endpoints by Category */}
-        <div className="mb-14 sm:mb-20">
+        <FadeIn className="mb-14 sm:mb-20">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold">API Endpoints</h2>
@@ -530,10 +650,10 @@ export default function DevelopersPage() {
               </div>
             ))}
           </div>
-        </div>
+        </FadeIn>
 
         {/* Quick Start */}
-        <div className="mb-14 sm:mb-20">
+        <FadeIn className="mb-14 sm:mb-20" delay={100}>
           <div className="mb-6">
             <h2 className="text-2xl font-bold">Quick Start</h2>
             <p className="text-gray-500 text-sm mt-1">Get data in under 30 seconds</p>
@@ -543,7 +663,7 @@ export default function DevelopersPage() {
               {
                 icon: Terminal, iconColor: 'text-green-400', label: 'curl', labelExtra: 'Simplest',
                 code: `curl -s -H "Authorization: Bearer ih_..." \\
-  "https://infohub.trade/api/v1/\\
+  "https://info-hub.io/api/v1/\\
 arbitrage?grade=A,B" | jq .`,
               },
               {
@@ -552,7 +672,7 @@ arbitrage?grade=A,B" | jq .`,
 
 h = {"Authorization": "Bearer ih_..."}
 r = requests.get(
-  "https://infohub.trade/api/v1/funding",
+  "https://info-hub.io/api/v1/funding",
   headers=h, params={"symbols": "BTC"}
 )
 print(r.json()["data"])`,
@@ -560,7 +680,7 @@ print(r.json()["data"])`,
               {
                 icon: Code2, iconColor: 'text-amber-400', label: 'JavaScript', labelExtra: 'fetch / Node',
                 code: `const res = await fetch(
-  "https://infohub.trade/api/v1/spreads",
+  "https://info-hub.io/api/v1/spreads",
   { headers: {
     Authorization: "Bearer ih_..."
   }}
@@ -575,16 +695,19 @@ console.log(data);`,
                   <h3 className="text-sm font-semibold text-gray-200">{ex.label}</h3>
                   <span className="text-[10px] text-gray-600 ml-auto">{ex.labelExtra}</span>
                 </div>
-                <pre className="bg-black/60 border border-white/[0.04] rounded-lg p-3.5 text-[11px] text-green-400/90 font-mono overflow-x-auto leading-relaxed">
+                <div className="relative">
+                  <CopyBtn text={ex.code} />
+                  <pre className="bg-black/60 border border-white/[0.04] rounded-lg p-3.5 pr-10 text-[11px] text-green-400/90 font-mono overflow-x-auto leading-relaxed">
 {ex.code}
-                </pre>
+                  </pre>
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        </FadeIn>
 
         {/* Rate Limits */}
-        <div className="mb-14 sm:mb-20">
+        <FadeIn className="mb-14 sm:mb-20" delay={100}>
           <div className="mb-6">
             <h2 className="text-2xl font-bold">Rate Limits</h2>
             <p className="text-gray-500 text-sm mt-1">Generous free tier, no credit card required</p>
@@ -644,10 +767,10 @@ console.log(data);`,
               </div>
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* CTA Banner */}
-        <div className="mb-14 sm:mb-20">
+        <FadeIn className="mb-14 sm:mb-20" delay={100}>
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 p-8 sm:p-10">
             <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
             <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
@@ -674,7 +797,7 @@ console.log(data);`,
               )}
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         </div>{/* close max-w-6xl container */}
       </main>
