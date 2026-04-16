@@ -77,6 +77,9 @@ function squarify(
     const fraction = partialSum / total;
     const remaining = 1 - fraction;
 
+    // Skip zero-weight splits to avoid Infinity ratios / infinite recursion
+    if (fraction <= 0 || remaining <= 0) continue;
+
     const r1 = vertical
       ? Math.max((length * fraction) / h, h / (length * fraction))
       : Math.max((length * fraction) / w, w / (length * fraction));

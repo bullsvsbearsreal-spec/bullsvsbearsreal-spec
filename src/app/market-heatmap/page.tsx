@@ -83,6 +83,9 @@ function squarify(coins: CoinData[], x: number, y: number, w: number, h: number)
     const fraction = partialSum / total;
     const remaining = 1 - fraction;
 
+    // Skip zero-weight splits to avoid Infinity ratios / infinite recursion
+    if (fraction <= 0 || remaining <= 0) continue;
+
     // Aspect ratio of the two halves
     const r1 = vertical
       ? Math.max((length * fraction) / h, h / (length * fraction))

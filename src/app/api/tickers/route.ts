@@ -19,7 +19,7 @@ const L1_TTL = 3 * 1000; // 3 seconds
 function filterBySymbols(body: any, symbols: Set<string>) {
   return {
     ...body,
-    data: body.data.filter((entry: any) => symbols.has(entry.symbol?.toUpperCase())),
+    data: (body.data || []).filter((entry: any) => symbols.has(entry.symbol?.toUpperCase())),
     meta: { ...body.meta, filtered: true, requestedSymbols: symbols.size },
   };
 }

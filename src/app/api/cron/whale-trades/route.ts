@@ -35,9 +35,20 @@ export async function GET(request: NextRequest) {
   if (!isDBConfigured()) {
     return NextResponse.json({ ok: false, error: 'DB not configured' }, { status: 503 });
   }
-  await initDB();
+  try {
+    await initDB();
+  } catch (e) {
+    console.error('[whale-trades] initDB failed:', e);
+    return NextResponse.json({ ok: false, error: 'DB init failed' }, { status: 503 });
+  }
 
-  const allWallets = await getDistinctTrackedWallets();
+  let allWallets: Awaited<ReturnType<typeof getDistinctTrackedWallets>>;
+  try {
+    allWallets = await getDistinctTrackedWallets();
+  } catch (e) {
+    console.error('[whale-trades] getDistinctTrackedWallets failed:', e);
+    return NextResponse.json({ ok: false, error: 'Failed to load wallets' }, { status: 500 });
+  }
   if (allWallets.length === 0) {
     return NextResponse.json({ ok: true, checked: 0, trades: 0, notifications: 0 });
   }

@@ -208,8 +208,8 @@ export default function OrderflowPage() {
           const col: HeatmapColumn = {
             timestamp: json.timestamp || Date.now(),
             midPrice: json.midPrice,
-            bids: json.bids.map((b: OrderLevel) => ({ price: b.price, quantity: b.quantity })),
-            asks: json.asks.map((a: OrderLevel) => ({ price: a.price, quantity: a.quantity })),
+            bids: (json.bids ?? []).map((b: OrderLevel) => ({ price: b.price, quantity: b.quantity })),
+            asks: (json.asks ?? []).map((a: OrderLevel) => ({ price: a.price, quantity: a.quantity })),
             trades: json.trades?.slice(0, 10).map((t: Trade) => ({
               price: t.price,
               quantity: t.quantity,

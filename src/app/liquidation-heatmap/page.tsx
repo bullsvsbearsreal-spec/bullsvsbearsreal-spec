@@ -177,7 +177,7 @@ function HeatmapVisualization({
           className="absolute z-20 pointer-events-none bg-hub-darker border border-white/10 rounded-lg px-3 py-2 shadow-xl"
           style={{
             left: Math.max(4, Math.min(tooltip.x + 8, containerWidth - 180)),
-            top: Math.max(4, Math.min(tooltip.y - 80, containerWidth > 0 ? 500 : 4)),
+            top: Math.max(4, Math.min(tooltip.y - 80, svgHeight - 90)),
           }}
         >
           <p className="text-[11px] font-semibold text-white mb-0.5">{tooltip.time}</p>
@@ -194,7 +194,7 @@ function HeatmapVisualization({
 
       <svg width={svgWidth} height={svgHeight} className="block">
         {/* Cells */}
-        {cells.map((cell) => {
+        {cells.filter(c => c.timeIdx < numCols && c.priceIdx < numRows).map((cell) => {
           const intensity = Math.min(cell.volume / maxVol, 1);
           const x = paddingLeft + cell.timeIdx * cellWidth;
           const y = paddingTop + (numRows - 1 - cell.priceIdx) * cellHeight;

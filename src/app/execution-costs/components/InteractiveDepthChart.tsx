@@ -48,6 +48,7 @@ export default function InteractiveDepthChart({
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
+    if (w === 0 || h === 0) return; // Skip degenerate first-paint before layout
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.scale(dpr, dpr);

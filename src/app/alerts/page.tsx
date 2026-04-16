@@ -106,7 +106,7 @@ function PushToggle() {
 }
 
 export default function AlertsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [triggered, setTriggered] = useState<TriggeredAlert[]>([]);
   const [showForm, setShowForm] = useState(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -267,7 +267,7 @@ function TxSkeleton() {
 /*  Page component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function WalletTrackerPage() {
+function WalletTrackerPageInner() {
   /* ---- local state ------------------------------------------------ */
   const { data: session } = useSession();
   const [savedWallets, setSavedWallets] = useState<SavedWallet[]>([]);
@@ -2281,5 +2281,13 @@ export default function WalletTrackerPage() {
       <ReferralBanner />
       <Footer />
     </div>
+  );
+}
+
+export default function WalletTrackerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-hub-black" />}>
+      <WalletTrackerPageInner />
+    </Suspense>
   );
 }

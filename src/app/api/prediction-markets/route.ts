@@ -6,6 +6,7 @@ import type { PredictionMarket, PredictionArbitrage, PredictionMarketsResponse, 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 // ─── Polymarket ──────────────────────────────────────────────
 async function fetchPolymarket(): Promise<PredictionMarket[]> {

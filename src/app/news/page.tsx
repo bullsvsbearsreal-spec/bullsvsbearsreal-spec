@@ -232,14 +232,27 @@ export default function NewsPage() {
     }
   }, [buildParams]);
 
-  // Fetch when page changes (user pagination)
+  // Single fetch effect — handles both page changes and filter changes
+  const isFirstMount = useRef(true);
   useEffect(() => {
+    if (isFirstMount.current) {
+      // First mount: fetch page 1 with initial filters
+      isFirstMount.current = false;
+      fetchNews(1, filter, timeRange, currency, debouncedSearch, sourceType);
+      return;
+    }
+    // Subsequent: page changed by user pagination
     fetchNews(page, filter, timeRange, currency, debouncedSearch, sourceType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, fetchNews]);
 
-  // Reset page and fetch page 1 when filters change
+  // Reset page and fetch page 1 when filters change (skip first mount)
+  const filterMountRef = useRef(true);
   useEffect(() => {
+    if (filterMountRef.current) {
+      filterMountRef.current = false;
+      return; // Skip — first mount already handled above
+    }
     setPage(1);
     fetchNews(1, filter, timeRange, currency, debouncedSearch, sourceType);
     // eslint-disable-next-line react-hooks/exhaustive-deps

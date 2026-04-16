@@ -753,8 +753,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Fetch from all sources in parallel
-  const [ccArticles, cpArticles, rssArticles, binanceAnn, okxAnn, bybitAnn, bitgetAnn, macroEvents] = await Promise.all([
+  // Fetch from all sources in parallel — use allSettled to prevent one failure from killing the route
+  const results = await Promise.allSettled([
     fetchCryptoCompare(currency || undefined),
     fetchCryptoPanic(filter, currency || undefined),
     fetchRSSFeeds(),
@@ -764,6 +764,8 @@ export async function GET(request: NextRequest) {
     fetchBitgetAnnouncements(),
     fetchMacroEvents(),
   ]);
+  const settled = results.map(r => r.status === 'fulfilled' ? r.value : []);
+  const [ccArticles, cpArticles, rssArticles, binanceAnn, okxAnn, bybitAnn, bitgetAnn, macroEvents] = settled as [any[], any[], any[], any[], any[], any[], any[], any[]];
 
   // Merge and deduplicate (exchange announcements first — highest signal, market-moving)
   let merged = deduplicateArticles([...binanceAnn, ...okxAnn, ...bybitAnn, ...bitgetAnn, ...cpArticles, ...rssArticles, ...ccArticles]);

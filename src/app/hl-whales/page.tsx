@@ -370,7 +370,10 @@ export default function HLWhalesPage() {
 
   /* ---- data fetching ------------------------------------------------ */
   const whaleFetcher = useCallback(
-    () => fetch('/api/hl-whales').then((r) => r.json()) as Promise<WhaleData[]>,
+    () => fetch('/api/hl-whales').then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }) as Promise<WhaleData[]>,
     [],
   );
 

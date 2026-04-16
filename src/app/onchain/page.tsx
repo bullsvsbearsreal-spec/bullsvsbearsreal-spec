@@ -221,7 +221,7 @@ export default function OnChainPage() {
   const puellFlash = useFlash(data?.puellMultiple?.current);
 
   const hashRateChange = data?.hashRate?.change30d;
-  const supplyPercent = data?.supply?.percentMined ?? ((data?.supply?.maxSupply ?? 0) > 0 ? (data!.supply!.current / data!.supply!.maxSupply!) * 100 : 0);
+  const supplyPercent = data?.supply?.percentMined ?? ((data?.supply?.maxSupply ?? 0) > 0 ? ((data?.supply?.current ?? 0) / (data?.supply?.maxSupply ?? 1)) * 100 : 0);
 
   return (
     <div className="min-h-screen bg-hub-black">

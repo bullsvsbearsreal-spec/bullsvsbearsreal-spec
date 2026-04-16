@@ -168,7 +168,7 @@ function LiquidationChart({
           const barWidth = volumeToWidth(level.estimatedVolume);
           const barHeight = Math.max(plotHeight / (levels.length + 2), 8);
           return (
-            <g key={`short-${level.leverage}`}>
+            <g key={`short-${level.leverage}-${level.price}`}>
               <rect
                 x={centerX - barWidth}
                 y={y - barHeight / 2}
@@ -211,7 +211,7 @@ function LiquidationChart({
           const barWidth = volumeToWidth(level.estimatedVolume);
           const barHeight = Math.max(plotHeight / (levels.length + 2), 8);
           return (
-            <g key={`long-${level.leverage}`}>
+            <g key={`long-${level.leverage}-${level.price}`}>
               <rect
                 x={centerX}
                 y={y - barHeight / 2}

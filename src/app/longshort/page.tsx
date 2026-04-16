@@ -259,11 +259,11 @@ export default function LongShortPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">Long</div>
-              <div className="text-lg font-bold text-green-400 font-mono">{latest.longRatio.toFixed(2)}%</div>
+              <div className="text-lg font-bold text-green-400 font-mono">{(latest.longRatio ?? 0).toFixed(2)}%</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">Short</div>
-              <div className="text-lg font-bold text-red-400 font-mono">{latest.shortRatio.toFixed(2)}%</div>
+              <div className="text-lg font-bold text-red-400 font-mono">{(latest.shortRatio ?? 0).toFixed(2)}%</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
               <div className="text-[11px] text-neutral-500 mb-1">L/S Ratio</div>
