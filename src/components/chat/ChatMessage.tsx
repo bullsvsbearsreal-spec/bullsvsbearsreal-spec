@@ -172,9 +172,26 @@ function formatMarkdown(text: string): string {
           }
         }
 
-        // Regular text line
-        output.push(formatInline(line) + '<br/>');
-        i++;
+        // Regular text — collect consecutive lines into a paragraph
+        const textLines: string[] = [];
+        while (
+          i < lines.length &&
+          lines[i].trim() !== '' &&
+          !lines[i].trim().startsWith('```') &&
+          !lines[i].trim().startsWith('> ') &&
+          !lines[i].trim().startsWith('### ') &&
+          !lines[i].trim().startsWith('## ') &&
+          !/^[-•*] /.test(lines[i].trim()) &&
+          !/^\d+[.)]\s/.test(lines[i].trim()) &&
+          !/^(-{3,}|\*{3,}|_{3,})$/.test(lines[i].trim()) &&
+          !(lines[i].trim().includes('|') && i + 1 < lines.length && /^\|?[\s-:|]+\|/.test(lines[i + 1]?.trim()))
+        ) {
+          textLines.push(formatInline(lines[i]));
+          i++;
+        }
+        if (textLines.length > 0) {
+          output.push(`<p class="my-0.5 leading-relaxed">${textLines.join('<br/>')}</p>`);
+        }
       }
 
       return output.join('');

@@ -42,9 +42,16 @@ export default function ChatMessages({
           <GuardIcon className="w-20 h-20" />
         </div>
         <h3 className="text-base font-bold text-white mb-1 tracking-tight">Hub</h3>
-        <p className="text-[11px] text-neutral-500 text-center mb-1">Your AI Trading Agent</p>
-        <p className="text-[11px] text-neutral-600 text-center mb-6 max-w-[260px] leading-relaxed">
-          Real-time data from {ALL_EXCHANGES.length} exchanges. Funding rates, OI, whale flows, arbitrage — ask anything.
+        <p className="text-[11px] text-neutral-500 text-center mb-1">Derivatives Intelligence Agent</p>
+        <div className="flex flex-wrap justify-center gap-1.5 mb-5 max-w-[300px]">
+          {['Funding', 'OI', 'Whales', 'Options', 'On-chain', 'Arb', 'Liquidations', 'Macro'].map(tag => (
+            <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-neutral-500">
+              {tag}
+            </span>
+          ))}
+        </div>
+        <p className="text-[11px] text-neutral-600 text-center mb-5 max-w-[280px] leading-relaxed">
+          Live data from {ALL_EXCHANGES.length} exchanges. Ask me anything about the market.
         </p>
         <ChatSuggestions onSelect={onSuggestionSelect} />
       </div>

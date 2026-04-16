@@ -127,9 +127,15 @@ export default function ChatInput({ onSend, isLoading, remaining }: ChatInputPro
 
   return (
     <div className="border-t border-white/[0.06] p-3">
-      {remaining !== undefined && remaining <= 10 && (
-        <div className="text-[10px] text-neutral-600 mb-1.5 text-center">
-          {remaining} messages remaining today
+      {remaining !== undefined && remaining <= 30 && (
+        <div className={`text-[10px] mb-1.5 text-center ${
+          remaining <= 5 ? 'text-red-400/70' : remaining <= 15 ? 'text-amber-500/50' : 'text-neutral-600'
+        }`}>
+          {remaining <= 0
+            ? 'Daily limit reached — resets at midnight UTC'
+            : remaining <= 5
+              ? `⚠ ${remaining} messages left today`
+              : `${remaining} messages remaining`}
         </div>
       )}
 

@@ -142,15 +142,15 @@ async function getFundingRates(input: ToolInput, ctx: ExecuteContext): Promise<s
     return `Funding rates for ${sym}:\n${rows.join('\n')}`;
   }
 
-  // Top 15 by absolute rate
+  // Top 12 by absolute rate — compressed for context budget
   const sorted = rates
     .sort((a: any, b: any) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
-    .slice(0, 15);
+    .slice(0, 12);
   const rows = sorted.map(
     (r: any) =>
       `${r.symbol} ${r.exchange}: ${r.fundingRate.toFixed(4)}% (${r.fundingInterval || '8h'})`,
   );
-  return `Top 15 funding rates by magnitude:\n${rows.join('\n')}\n\nTotal entries: ${rates.length}`;
+  return `Top funding rates (${rates.length} total entries):\n${rows.join('\n')}`;
 }
 
 async function getOpenInterest(input: ToolInput, ctx: ExecuteContext): Promise<string> {
@@ -169,7 +169,7 @@ async function getOpenInterest(input: ToolInput, ctx: ExecuteContext): Promise<s
     return `Open interest for ${sym}:\nTotal: $${formatNum(total)}\n${rows.join('\n')}`;
   }
 
-  // Aggregate by symbol, top 20
+  // Aggregate by symbol, top 15 — compressed
   const bySymbol = new Map<string, number>();
   entries.forEach((r: any) => {
     const cur = bySymbol.get(r.symbol) || 0;
@@ -177,10 +177,10 @@ async function getOpenInterest(input: ToolInput, ctx: ExecuteContext): Promise<s
   });
   const sorted = Array.from(bySymbol.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 20);
+    .slice(0, 15);
   const rows = sorted.map(([sym, oi]) => `${sym}: $${formatNum(oi)}`);
-  const totalOI = sorted.reduce((s, [, oi]) => s + oi, 0);
-  return `Top 20 by open interest (total shown: $${formatNum(totalOI)}):\n${rows.join('\n')}`;
+  const totalOI = entries.reduce((s: number, r: any) => s + (r.openInterestValue || 0), 0);
+  return `Open interest (${bySymbol.size} symbols, $${formatNum(totalOI)} total):\n${rows.join('\n')}`;
 }
 
 async function getFearGreed(ctx: ExecuteContext): Promise<string> {
@@ -254,19 +254,20 @@ async function getWhalePositions(input: ToolInput, ctx: ExecuteContext): Promise
     return `Whales with ${coinFilter} positions on Hyperliquid:\n${rows.join('\n')}`;
   }
 
-  // Top 10 whales overview
-  const whales = allWhales.slice(0, 10);
+  // Top 8 whales, 2 positions each — compressed for context budget
+  const whales = allWhales.slice(0, 8);
   const rows = whales.map((w: any) => {
-    const positions = (w.positions || [])
-      .slice(0, 3)
+    const topPos = (w.positions || [])
+      .sort((a: any, b: any) => Math.abs(b.positionValue || b.size * b.entryPrice) - Math.abs(a.positionValue || a.size * a.entryPrice))
+      .slice(0, 2)
       .map(
         (p: any) =>
-          `  ${p.coin} ${p.side}: $${formatNum(Math.abs(p.positionValue || p.size * p.entryPrice))} @ ${p.leverage}x (PnL: $${formatNum(p.unrealizedPnl)})`,
+          `  ${p.coin} ${p.side}: $${formatNum(Math.abs(p.positionValue || p.size * p.entryPrice))} ${p.leverage}x PnL:$${formatNum(p.unrealizedPnl)}`,
       )
       .join('\n');
-    return `${w.label || w.address?.slice(0, 10)}... | AV: $${formatNum(w.accountValue)} | Positions: ${w.positionCount}\n${positions}`;
+    return `${w.label || w.address?.slice(0, 10)}... AV:$${formatNum(w.accountValue)} (${w.positionCount} pos)\n${topPos}`;
   });
-  return `Top Hyperliquid Whales:\n${rows.join('\n\n')}`;
+  return `Top Hyperliquid Whales:\n${rows.join('\n')}`;
 }
 
 async function getTokenUnlocks(ctx: ExecuteContext): Promise<string> {
@@ -300,7 +301,7 @@ async function getTickers(input: ToolInput, ctx: ExecuteContext): Promise<string
     return `${sym} Price: $${formatNum(avgPrice)} (${change >= 0 ? '+' : ''}${change.toFixed(2)}% 24h)\n24h Volume: $${formatNum(totalVol)}\n\nBy exchange:\n${exchanges.join('\n')}`;
   }
 
-  // Top 20 by volume
+  // Top 15 by volume — compressed
   const bySymbol = new Map<string, { price: number; change: number; vol: number; count: number }>();
   tickers.forEach((t: any) => {
     const cur = bySymbol.get(t.symbol) || { price: 0, change: 0, vol: 0, count: 0 };
@@ -313,11 +314,11 @@ async function getTickers(input: ToolInput, ctx: ExecuteContext): Promise<string
   const sorted = Array.from(bySymbol.entries())
     .map(([sym, d]) => ({ sym, price: d.price / d.count, change: d.change, vol: d.vol }))
     .sort((a, b) => b.vol - a.vol)
-    .slice(0, 20);
+    .slice(0, 15);
   const rows = sorted.map(
-    (t) => `${t.sym}: $${formatNum(t.price)} (${t.change >= 0 ? '+' : ''}${t.change?.toFixed(2)}%) Vol: $${formatNum(t.vol)}`,
+    (t) => `${t.sym}: $${formatNum(t.price)} ${t.change >= 0 ? '+' : ''}${t.change?.toFixed(2)}% Vol:$${formatNum(t.vol)}`,
   );
-  return `Top 20 by 24h volume:\n${rows.join('\n')}`;
+  return `Top 15 by volume:\n${rows.join('\n')}`;
 }
 
 async function getFundingHistory(input: ToolInput, ctx: ExecuteContext): Promise<string> {
@@ -455,15 +456,15 @@ async function findArbitrage(input: ToolInput, ctx: ExecuteContext): Promise<str
   });
 
   opportunities.sort((a, b) => b.spread - a.spread);
-  const top = opportunities.slice(0, 10);
+  const top = opportunities.slice(0, 8);
 
   if (top.length === 0) return `No arbitrage opportunities with spread > ${minSpread}%.`;
 
   const rows = top.map(
     (o) =>
-      `${o.symbol}: Spread ${o.spread.toFixed(4)}% (${o.annualized.toFixed(0)}% APR)\n  Long on ${o.long.exchange} (${o.long.rate.toFixed(4)}%/${o.long.interval}) / Short on ${o.short.exchange} (${o.short.rate.toFixed(4)}%/${o.short.interval})`,
+      `${o.symbol}: ${o.spread.toFixed(4)}% spread (${o.annualized.toFixed(0)}% APR) — Long ${o.long.exchange} ${o.long.rate.toFixed(4)}%/${o.long.interval}, Short ${o.short.exchange} ${o.short.rate.toFixed(4)}%/${o.short.interval}`,
   );
-  return `Top Funding Arbitrage Opportunities:\n${rows.join('\n\n')}\n\nNote: Actual returns depend on exchange fees, withdrawal costs, and execution.`;
+  return `Funding Arb (${opportunities.length} found):\n${rows.join('\n')}\n\nNote: Returns depend on fees, withdrawal costs, execution.`;
 }
 
 // ---- New Tools: Liquidations, OI History, Correlation ----
