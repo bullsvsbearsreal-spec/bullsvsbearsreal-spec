@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Suspense, useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
@@ -79,7 +79,7 @@ const PERIODS: { label: string; value: Period }[] = [
 
 const MULTI_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'BNBUSDT', 'ADAUSDT', 'AVAXUSDT', 'LINKUSDT', 'DOTUSDT'];
 
-export default function LongShortPage() {
+function LongShortPageInner() {
   const searchParams = useSearchParams();
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [period, setPeriod] = useState<Period>('1h');
@@ -398,5 +398,13 @@ export default function LongShortPage() {
       <ReferralBanner />
       <Footer />
     </div>
+  );
+}
+
+export default function LongShortPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-hub-black" />}>
+      <LongShortPageInner />
+    </Suspense>
   );
 }
