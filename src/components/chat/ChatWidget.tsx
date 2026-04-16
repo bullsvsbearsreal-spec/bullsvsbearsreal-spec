@@ -266,7 +266,7 @@ export default function ChatWidget() {
             hover:shadow-amber-500/30 hover:border-amber-500/40 hover:scale-105
             active:scale-95 transition-all duration-200
             flex items-center justify-center group overflow-hidden"
-          aria-label="Open MK.II AI chat"
+          aria-label="Open Hub AI chat"
         >
           <GuardIcon className="w-14 h-14 group-hover:scale-110 transition-transform" />
         </button>
@@ -293,7 +293,7 @@ export default function ChatWidget() {
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0c0c0e]" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white leading-none tracking-tight">MK.II</h3>
+                <h3 className="text-sm font-bold text-white leading-none tracking-tight">Hub</h3>
                 <p className="text-[10px] text-neutral-500 mt-0.5">
                   {isLoading ? (
                     <span className="text-amber-400/70">

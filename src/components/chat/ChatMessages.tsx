@@ -39,8 +39,8 @@ export default function ChatMessages({
         <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/20 flex items-center justify-center mb-4 shadow-lg shadow-amber-500/10">
           <GuardIcon className="w-20 h-20" />
         </div>
-        <h3 className="text-base font-bold text-white mb-1 tracking-tight">MK.II</h3>
-        <p className="text-[11px] text-neutral-500 text-center mb-1">Derivatives Intelligence</p>
+        <h3 className="text-base font-bold text-white mb-1 tracking-tight">Hub</h3>
+        <p className="text-[11px] text-neutral-500 text-center mb-1">Your AI Trading Agent</p>
         <p className="text-[11px] text-neutral-600 text-center mb-6 max-w-[260px] leading-relaxed">
           Real-time data from {ALL_EXCHANGES.length} exchanges. Funding rates, OI, whale flows, arbitrage — ask anything.
         </p>

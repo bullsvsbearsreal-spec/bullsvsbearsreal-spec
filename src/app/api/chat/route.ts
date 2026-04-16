@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         .reduce((s: number, e) => s + (e.openInterestValue || 0), 0);
     }
   } catch {
-    // Non-critical — MK.II works fine without ambient context
+    // Non-critical — Hub works fine without ambient context
   }
 
   const systemPrompt = buildSystemPrompt({

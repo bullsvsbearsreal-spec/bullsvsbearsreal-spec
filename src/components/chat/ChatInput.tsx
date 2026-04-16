@@ -181,7 +181,7 @@ export default function ChatInput({ onSend, isLoading, remaining }: ChatInputPro
           value={input}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder={image ? 'Describe what to analyze...' : 'Ask MK.II anything...'}
+          placeholder={image ? 'Describe what to analyze...' : 'Ask Hub anything...'}
           rows={1}
           maxLength={1000}
           className="flex-1 resize-none bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5

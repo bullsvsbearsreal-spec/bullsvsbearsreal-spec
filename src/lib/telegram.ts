@@ -1,4 +1,4 @@
-// Telegram Bot API helper — InfoHub Radar alert bot
+// Telegram Bot API helper — Hub (InfoHub AI Agent)
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;

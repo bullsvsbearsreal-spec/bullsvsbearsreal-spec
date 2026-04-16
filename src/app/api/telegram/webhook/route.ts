@@ -1,5 +1,5 @@
 /**
- * Telegram Webhook — InfoHub Radar Bot
+ * Telegram Webhook — Hub (InfoHub AI Agent)
  *
  * Commands:
  *   /start CODE    Link your InfoHub account
@@ -8,11 +8,14 @@
  *   /status        Show link status & mute info
  *   /mute 1h       Mute notifications (1h, 2h, 4h, 8h, 12h, 24h)
  *   /unmute         Resume notifications early
+ *   /help          Show commands
+ *   <any text>     AI-powered market chat via Hub
  *
  * Security: Verifies x-telegram-bot-api-secret-token header.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import Anthropic from '@anthropic-ai/sdk';
 import { sendMessage } from '@/lib/telegram';
 import {
   initDB, isDBConfigured,
@@ -20,6 +23,9 @@ import {
   reactivateTelegramChat, muteTelegramChat, unmuteTelegramChat, getTelegramLink,
   pruneExpiredLinkCodes,
 } from '@/lib/db';
+import { buildSystemPrompt } from '@/app/api/chat/system-prompt';
+import { CHAT_TOOLS } from '@/app/api/chat/tools';
+import { executeTool } from '@/app/api/chat/tool-executor';
 import { timingSafeEqual, createHash } from 'crypto';
 
 export const runtime = 'nodejs';
@@ -96,6 +102,7 @@ export async function POST(request: NextRequest) {
         '• Price, funding & OI alerts\n' +
         '• Whale trade alerts\n' +
         '• Daily market summary\n\n' +
+        'You can also just chat with me. Ask anything about the market and I\'ll pull live data.\n\n' +
         'Commands:\n' +
         '/status — Check your link status\n' +
         '/mute 1h — Mute for 1/2/4/8/12/24h\n' +
@@ -119,13 +126,14 @@ export async function POST(request: NextRequest) {
       }
     } else {
       await sendMessage(chatId,
-        '👋 <b>Welcome to InfoHub Radar!</b>\n\n' +
-        'To get started:\n' +
+        '👋 <b>Welcome to Hub!</b>\n\n' +
+        'I\'m InfoHub\'s AI trading agent. I can answer market questions, pull live data from 33 exchanges, and send you alerts.\n\n' +
+        'To link your account:\n' +
         '1. Log in at <b>info-hub.io</b>\n' +
         '2. Go to <b>Settings</b> → Telegram\n' +
         '3. Click <b>Generate Code</b>\n' +
         '4. Send <code>/start CODE</code> here\n\n' +
-        'Your alerts, whale trades & daily summaries will appear here.',
+        'Or just ask me anything right now. Try: "What\'s BTC funding looking like?"',
       );
     }
     return NextResponse.json({ ok: true });
@@ -157,7 +165,7 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const isMuted = link.muted_until && link.muted_until > now;
     const lines = [
-      '📡 <b>InfoHub Radar Status</b>',
+      '📡 <b>Hub Status</b>',
       '',
       `Active: ${link.active ? '✅ Yes' : '⏸ Paused'}`,
     ];
@@ -213,18 +221,172 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // ─── /help or unknown ─────────────────────────────────────────────────────
-  if (text === '/help' || text.startsWith('/')) {
+  // ─── /help — Show commands ─────────────────────────────────────────────────
+  if (text === '/help') {
     await sendMessage(chatId,
-      '📡 <b>InfoHub Radar</b>\n\n' +
+      '📡 <b>Hub — InfoHub AI Agent</b>\n\n' +
+      '<b>Commands:</b>\n' +
       '/start — Link account or resume\n' +
       '/stop — Pause notifications\n' +
       '/status — Check status\n' +
       '/mute 1h — Mute (1h/2h/4h/8h/12h/24h)\n' +
       '/unmute — Resume early\n' +
-      '/help — Show this message',
+      '/help — Show this message\n\n' +
+      '<b>Or just ask me anything:</b>\n' +
+      '• "What\'s BTC funding right now?"\n' +
+      '• "Best arb opportunities"\n' +
+      '• "ETH whale positions"\n' +
+      '• "Market overview"',
     );
+    return NextResponse.json({ ok: true });
   }
 
+  // ─── Unknown commands ────────────────────────────────────────────────────
+  if (text.startsWith('/')) {
+    await sendMessage(chatId, 'Unknown command. Send /help for options, or just ask me a market question.');
+    return NextResponse.json({ ok: true });
+  }
+
+  // ─── AI Chat — Forward any non-command text to Hub ────────────────────────
+  await handleAIChat(chatId, text, request);
   return NextResponse.json({ ok: true });
+}
+
+
+// ─── Hub AI Chat via Telegram ─────────────────────────────────────────────────
+
+const TELEGRAM_MAX_TOKENS = 600; // Telegram messages cap at 4096 chars
+const TELEGRAM_MAX_TOOL_ROUNDS = 3;
+
+// Simple per-chat rate limit: 1 AI message per 5 seconds
+const chatLastRequest = new Map<number, number>();
+
+async function handleAIChat(chatId: number, userText: string, request: NextRequest) {
+  // Rate limit
+  const now = Date.now();
+  const lastReq = chatLastRequest.get(chatId) || 0;
+  if (now - lastReq < 5000) {
+    await sendMessage(chatId, 'Slow down. Give me a sec to think.');
+    return;
+  }
+  chatLastRequest.set(chatId, now);
+
+  // Evict old entries
+  if (chatLastRequest.size > 1000) {
+    const cutoff = now - 60_000;
+    Array.from(chatLastRequest.entries()).forEach(([id, ts]) => {
+      if (ts < cutoff) chatLastRequest.delete(id);
+    });
+  }
+
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+  if (!apiKey) {
+    await sendMessage(chatId, 'AI chat is not configured yet. Check back later.');
+    return;
+  }
+
+  try {
+    // Send typing indicator
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (botToken) {
+      fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, action: 'typing' }),
+      }).catch(() => {});
+    }
+
+    const origin = new URL(request.url).origin;
+    const systemPrompt = buildSystemPrompt({}) +
+      '\n\nPLATFORM: Telegram. Keep responses SHORT (under 300 words). Use plain text, no markdown headers. Bold with <b>tags</b> (HTML). Telegram users want quick answers.';
+
+    const client = new Anthropic({ apiKey });
+    let messages: Anthropic.MessageParam[] = [
+      { role: 'user', content: userText },
+    ];
+    let toolRounds = 0;
+    let finalText = '';
+
+    while (toolRounds <= TELEGRAM_MAX_TOOL_ROUNDS) {
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: TELEGRAM_MAX_TOKENS,
+        system: systemPrompt,
+        tools: CHAT_TOOLS,
+        messages,
+      });
+
+      // Extract text and tool calls
+      let roundText = '';
+      const toolCalls: Array<{ id: string; name: string; input: any }> = [];
+
+      for (const block of response.content) {
+        if (block.type === 'text') {
+          roundText += block.text;
+        } else if (block.type === 'tool_use') {
+          toolCalls.push({ id: block.id, name: block.name, input: block.input });
+        }
+      }
+
+      if (toolCalls.length === 0) {
+        finalText = roundText;
+        break;
+      }
+
+      toolRounds++;
+      if (toolRounds > TELEGRAM_MAX_TOOL_ROUNDS) {
+        finalText = roundText || 'Hit my data limit for this question. Try a simpler ask.';
+        break;
+      }
+
+      // Build assistant message with tool use
+      const assistantContent: Anthropic.ContentBlockParam[] = [];
+      if (roundText) assistantContent.push({ type: 'text', text: roundText });
+      for (const tc of toolCalls) {
+        assistantContent.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input });
+      }
+      messages.push({ role: 'assistant', content: assistantContent });
+
+      // Execute tools
+      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+      for (const tc of toolCalls) {
+        const result = await executeTool(tc.name, tc.input, { origin });
+        toolResults.push({ type: 'tool_result', tool_use_id: tc.id, content: result });
+      }
+      messages.push({ role: 'user', content: toolResults });
+    }
+
+    // Send response (split if > 4000 chars)
+    if (!finalText) finalText = 'No data found for that query.';
+
+    // Convert markdown bold to HTML bold for Telegram
+    finalText = finalText.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+
+    if (finalText.length <= 4000) {
+      await sendMessage(chatId, finalText);
+    } else {
+      // Split into chunks
+      const chunks = splitMessage(finalText, 4000);
+      for (const chunk of chunks) {
+        await sendMessage(chatId, chunk);
+      }
+    }
+
+  } catch (e) {
+    console.error('[telegram-hub] AI chat error:', e instanceof Error ? e.message : e);
+    await sendMessage(chatId, 'Something went wrong. Try again in a sec.');
+  }
+}
+
+function splitMessage(text: string, maxLen: number): string[] {
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > maxLen) {
+    let splitAt = remaining.lastIndexOf('\n', maxLen);
+    if (splitAt < maxLen * 0.5) splitAt = maxLen;
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+  if (remaining) chunks.push(remaining);
+  return chunks;
 }
