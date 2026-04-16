@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { sendMessage } from '@/lib/telegram';
+import { sendMessage, sendMessageWithId, editMessage, answerCallbackQuery, type InlineKeyboardMarkup } from '@/lib/telegram';
 import {
   initDB, isDBConfigured,
   consumeTelegramLinkCode, linkTelegramChat, unlinkTelegramChat,
@@ -65,12 +65,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // ─── Callback Queries (inline keyboard button taps) ────────────────────────
+  const callbackQuery = body?.callback_query;
+  if (callbackQuery) {
+    const cbChatId = callbackQuery.message?.chat?.id;
+    const cbData = callbackQuery.data as string;
+    await answerCallbackQuery(callbackQuery.id);
+    if (cbChatId && cbData) {
+      await handleCallbackQuery(cbChatId, cbData, request);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   const message = body?.message;
-  if (!message?.text || !message?.chat?.id) {
+  if (!message?.chat?.id) {
     return NextResponse.json({ ok: true });
   }
 
   const chatId = message.chat.id;
+
+  // ─── Reject group messages (bot is for private chats only) ─────────────────
+  if (message.chat.type !== 'private') {
+    return NextResponse.json({ ok: true });
+  }
+
+  // ─── Handle non-text messages gracefully ───────────────────────────────────
+  if (message.photo || message.document || message.video) {
+    await sendMessage(chatId, 'I can only read text right now. Try asking me a market question, or send /help.');
+    return NextResponse.json({ ok: true });
+  }
+  if (message.sticker || message.animation) {
+    await sendMessage(chatId, 'Nice! But I only speak market data. Try: "What\'s BTC funding?"');
+    return NextResponse.json({ ok: true });
+  }
+  if (!message.text) {
+    return NextResponse.json({ ok: true });
+  }
+
   const text = message.text.trim();
 
   await initDB();
@@ -398,20 +429,98 @@ async function handleAIChat(chatId: number, userText: string, request: NextReque
 
     // Convert markdown bold to HTML bold for Telegram
     finalText = finalText.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    // Convert markdown links [text](url) to HTML <a> for Telegram
+    finalText = finalText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+    // Build follow-up keyboard based on the question topic
+    const keyboard = buildFollowUpKeyboard(userText);
 
     if (finalText.length <= 4000) {
-      await sendMessage(chatId, finalText);
+      await sendMessage(chatId, finalText, 'HTML', keyboard);
     } else {
-      // Split into chunks
       const chunks = splitMessage(finalText, 4000);
-      for (const chunk of chunks) {
-        await sendMessage(chatId, chunk);
+      for (let i = 0; i < chunks.length; i++) {
+        // Only attach keyboard to the last chunk
+        await sendMessage(chatId, chunks[i], 'HTML', i === chunks.length - 1 ? keyboard : undefined);
       }
     }
 
   } catch (e) {
     console.error('[telegram-hub] AI chat error:', e instanceof Error ? e.message : e);
     await sendMessage(chatId, 'Something went wrong. Try again in a sec.');
+  }
+}
+
+// ─── Follow-up keyboards based on topic ──────────────────────────────────────
+
+function buildFollowUpKeyboard(query: string): InlineKeyboardMarkup | undefined {
+  const q = query.toLowerCase();
+
+  // BTC/ETH/specific coin queries → show related actions
+  const coinMatch = q.match(/\b(btc|eth|sol|doge|xrp|ada|bnb|avax|matic|dot|link|uni|aave)\b/);
+  if (coinMatch) {
+    const coin = coinMatch[1].toUpperCase();
+    return {
+      inline_keyboard: [
+        [
+          { text: `📊 ${coin} Funding`, callback_data: `q:${coin} funding rates across exchanges` },
+          { text: `📈 ${coin} OI`, callback_data: `q:${coin} open interest breakdown` },
+        ],
+        [
+          { text: '🐋 Whales', callback_data: `q:Whale positions for ${coin}` },
+          { text: '⚡ Arb Ops', callback_data: 'q:Best funding arb opportunities' },
+        ],
+      ],
+    };
+  }
+
+  // Market overview queries
+  if (q.includes('market') || q.includes('overview') || q.includes('pulse') || q.includes('vibe')) {
+    return {
+      inline_keyboard: [
+        [
+          { text: '🔥 Top Movers', callback_data: 'q:Top crypto movers right now' },
+          { text: '💰 ETF Flows', callback_data: 'q:Latest ETF inflows and outflows' },
+        ],
+        [
+          { text: '🐋 Whale Watch', callback_data: 'q:Top whale positions on Hyperliquid' },
+          { text: '📅 Events', callback_data: 'q:Upcoming catalysts and events this week' },
+        ],
+      ],
+    };
+  }
+
+  // Funding/arb queries
+  if (q.includes('funding') || q.includes('arb')) {
+    return {
+      inline_keyboard: [
+        [
+          { text: '⚡ Top Arbs', callback_data: 'q:Best funding arbitrage opportunities' },
+          { text: '📊 BTC Funding', callback_data: 'q:BTC funding rate history trend' },
+        ],
+      ],
+    };
+  }
+
+  // Default: generic follow-ups
+  return {
+    inline_keyboard: [
+      [
+        { text: '📊 Market Overview', callback_data: 'q:Quick market pulse right now' },
+        { text: '🐋 Whale Watch', callback_data: 'q:Top whale positions' },
+      ],
+    ],
+  };
+}
+
+// ─── Callback query handler (button taps) ────────────────────────────────────
+
+async function handleCallbackQuery(chatId: number, data: string, request: NextRequest) {
+  // Handle "q:" prefix — treat as a new AI chat query
+  if (data.startsWith('q:')) {
+    const query = data.slice(2);
+    await handleAIChat(chatId, query, request);
+    return;
   }
 }
 

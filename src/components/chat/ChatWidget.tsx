@@ -15,6 +15,40 @@ import {
 import { getHoldings } from '@/lib/storage/portfolio';
 import { getWatchlist } from '@/lib/storage/watchlist';
 
+const TOOL_LABELS: Record<string, string> = {
+  get_funding_rates: 'Checking funding rates',
+  get_open_interest: 'Pulling open interest',
+  get_tickers: 'Fetching prices',
+  get_fear_greed: 'Reading sentiment',
+  get_top_movers: 'Scanning top movers',
+  get_dominance: 'Checking dominance',
+  get_long_short_ratio: 'Analyzing positioning',
+  get_whale_positions: 'Tracking whales',
+  get_token_unlocks: 'Checking unlocks',
+  get_funding_history: 'Loading funding history',
+  get_economic_calendar: 'Checking events',
+  get_market_cycle: 'Reading cycle indicators',
+  get_onchain_metrics: 'Pulling on-chain data',
+  find_arbitrage_opportunities: 'Scanning for arb',
+  get_liquidations: 'Checking liquidations',
+  get_real_liquidations: 'Pulling real liqs',
+  get_correlation: 'Analyzing correlation',
+  get_news: 'Scanning headlines',
+  get_oi_history: 'Loading OI history',
+  get_options_data: 'Analyzing options flow',
+  get_etf_flows: 'Checking ETF flows',
+  get_stablecoin_flows: 'Tracking stablecoin flows',
+  get_oi_delta: 'Measuring OI momentum',
+  get_rsi_data: 'Computing RSI levels',
+  get_execution_costs: 'Estimating costs',
+  get_prediction_markets: 'Checking prediction markets',
+  analyze_portfolio: 'Analyzing your portfolio',
+};
+
+function humanizeToolName(name: string): string {
+  return TOOL_LABELS[name] || name.replace(/^get_/, '').replace(/_/g, ' ');
+}
+
 interface UIMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -312,8 +346,8 @@ export default function ChatWidget() {
                   {isLoading ? (
                     <span className="text-amber-400/70">
                       {activeToolName
-                        ? `Fetching ${activeToolName.replace(/^get_/, '').replace(/_/g, ' ')}...`
-                        : 'Analyzing...'}
+                        ? `${humanizeToolName(activeToolName)}...`
+                        : 'Thinking...'}
                     </span>
                   ) : (
                     'Derivatives Intelligence'

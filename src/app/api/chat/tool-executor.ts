@@ -91,7 +91,20 @@ export async function executeTool(
     }
   } catch (error) {
     console.error(`[chat] tool ${toolName} error:`, error instanceof Error ? error.message : error);
-    return `Error executing ${toolName}: tool unavailable`;
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('timed out') || msg.includes('timeout') || msg.includes('AbortError')) {
+      return `${toolName}: Data source timed out. Try a simpler query or try again.`;
+    }
+    if (msg.includes('429')) {
+      return `${toolName}: Rate limited. Try again in a minute.`;
+    }
+    if (msg.includes('404')) {
+      return `${toolName}: Data not available for this query.`;
+    }
+    if (msg.includes('500') || msg.includes('502') || msg.includes('503')) {
+      return `${toolName}: Data source temporarily down. Try again shortly.`;
+    }
+    return `${toolName}: Data unavailable right now.`;
   }
 }
 
@@ -101,6 +114,10 @@ async function fetchApi(ctx: ExecuteContext, path: string): Promise<any> {
     signal: AbortSignal.timeout(15_000), // 15s timeout — prevent hung requests
   });
   if (!res.ok) throw new Error(`API ${path} returned ${res.status}`);
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`API ${path} returned non-JSON (${res.status})`);
+  }
   return res.json();
 }
 

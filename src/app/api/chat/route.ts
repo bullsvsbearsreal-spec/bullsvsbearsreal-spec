@@ -10,6 +10,46 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
+// ─── BTC context cache (avoids 2 API calls per message) ──────────────────────
+let _btcCache: { price?: number; change?: number; oi?: number; ts: number } = { ts: 0 };
+const BTC_CACHE_TTL = 60_000; // 60s
+
+async function getCachedBTCContext(origin: string): Promise<{ btcPrice?: number; btcChange?: number; btcOI?: number }> {
+  const now = Date.now();
+  if (now - _btcCache.ts < BTC_CACHE_TTL) {
+    return { btcPrice: _btcCache.price, btcChange: _btcCache.change, btcOI: _btcCache.oi };
+  }
+  try {
+    const [tickerRes, oiRes] = await Promise.all([
+      fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(3_000) }).then((r) => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(3_000) }).then((r) => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    let price: number | undefined;
+    let change: number | undefined;
+    let oi: number | undefined;
+    if (tickerRes?.data) {
+      interface RawTicker { symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number }
+      const btcTickers = (tickerRes.data as RawTicker[]).filter((t) => t.symbol === 'BTC');
+      if (btcTickers.length > 0) {
+        price = btcTickers.reduce((s: number, t) => s + (t.lastPrice || 0), 0) / btcTickers.length;
+        const changes = btcTickers.map(t => t.priceChangePercent24h ?? t.change24h).filter((c): c is number => c != null);
+        change = changes.length > 0 ? changes.reduce((a, b) => a + b, 0) / changes.length : undefined;
+      }
+    }
+    if (oiRes?.data) {
+      interface RawOI { symbol: string; openInterestValue?: number }
+      oi = (oiRes.data as RawOI[])
+        .filter((e) => e.symbol === 'BTC')
+        .reduce((s: number, e) => s + (e.openInterestValue || 0), 0);
+    }
+    _btcCache = { price, change, oi, ts: now };
+    return { btcPrice: price, btcChange: change, btcOI: oi };
+  } catch {
+    // Return stale cache if available, otherwise undefined
+    return { btcPrice: _btcCache.price, btcChange: _btcCache.change, btcOI: _btcCache.oi };
+  }
+}
+
 const MAX_TOOL_ROUNDS = 5;
 const MAX_TOKENS = 1200; // enough room for tool results + synthesis
 const ADMIN_MAX_TOKENS = 2000; // admins get longer responses
@@ -84,32 +124,9 @@ export async function POST(request: NextRequest) {
 
   const origin = new URL(request.url).origin;
 
-  // Fetch live market context for system prompt (lightweight, cached)
-  let btcPrice: number | undefined;
-  let btcChange: number | undefined;
-  let btcOI: number | undefined;
-  try {
-    const [tickerRes, oiRes] = await Promise.all([
-      fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(8_000) }).then((r) => r.ok ? r.json() : null).catch(() => null),
-      fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(8_000) }).then((r) => r.ok ? r.json() : null).catch(() => null),
-    ]);
-    if (tickerRes?.data) {
-      interface RawTicker { symbol: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number }
-      const btcTickers = (tickerRes.data as RawTicker[]).filter((t) => t.symbol === 'BTC');
-      if (btcTickers.length > 0) {
-        btcPrice = btcTickers.reduce((s: number, t) => s + (t.lastPrice || 0), 0) / btcTickers.length;
-        btcChange = btcTickers[0]?.priceChangePercent24h ?? btcTickers[0]?.change24h;
-      }
-    }
-    if (oiRes?.data) {
-      interface RawOI { symbol: string; openInterestValue?: number }
-      btcOI = (oiRes.data as RawOI[])
-        .filter((e) => e.symbol === 'BTC')
-        .reduce((s: number, e) => s + (e.openInterestValue || 0), 0);
-    }
-  } catch {
-    // Non-critical — Hub works fine without ambient context
-  }
+  // Fetch live market context for system prompt (cached 60s to avoid 2 API calls per message)
+  const btcContext = await getCachedBTCContext(origin);
+  const { btcPrice, btcChange, btcOI } = btcContext;
 
   const systemPrompt = buildSystemPrompt({
     ...body.context,
