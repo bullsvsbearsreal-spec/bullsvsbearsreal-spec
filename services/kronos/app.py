@@ -202,7 +202,7 @@ def funding_to_ohlcv(history: list[FundingRatePoint], interval_hours: float) -> 
 
     This preserves the time series dynamics that Kronos was trained on.
     """
-    timestamps = pd.to_datetime([p.timestamp for p in history])
+    timestamps = pd.Series(pd.to_datetime([p.timestamp for p in history]))
     rates = np.array([p.rate for p in history], dtype=np.float64)
 
     # Scale rates to a price-like range for better tokenizer behavior
