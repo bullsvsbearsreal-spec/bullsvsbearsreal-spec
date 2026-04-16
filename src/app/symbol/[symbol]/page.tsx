@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { RefreshCw, Star, ArrowLeft, TrendingUp, TrendingDown, Info, Percent, LineChart, GitCompareArrows } from 'lucide-react';
+import { RefreshCw, Star, ArrowLeft, TrendingUp, TrendingDown, Info, Percent, LineChart, GitCompareArrows, BarChart3, Zap, ArrowLeftRight } from 'lucide-react';
 import Link from 'next/link';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { formatPrice, formatCompact, formatFundingRate } from '@/lib/utils/format';
@@ -297,7 +297,10 @@ export default function SymbolPage() {
             <span className="text-[10px] text-neutral-500 uppercase tracking-wider mr-1">Explore {symbol}:</span>
             {[
               { label: 'Funding History', href: `/funding/${symbol}`, icon: Percent },
-              { label: 'Chart', href: `/chart?s=${symbol}`, icon: LineChart },
+              { label: 'Chart', href: `/chart?s=${symbol}&tf=240`, icon: LineChart },
+              { label: 'Open Interest', href: `/open-interest?sym=${symbol}`, icon: BarChart3 },
+              { label: 'Spreads', href: `/spreads?sym=${symbol}`, icon: ArrowLeftRight },
+              { label: 'Liquidations', href: `/liquidations?sym=${symbol}`, icon: Zap },
               { label: 'Compare', href: `/compare?coins=${symbol}`, icon: GitCompareArrows },
             ].map(link => (
               <Link

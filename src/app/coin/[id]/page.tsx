@@ -10,7 +10,8 @@ import EventsCalendar from '@/components/EventsCalendar';
 import { getCoinData, CoinData, formatPrice, formatNumber, formatPercent } from '@/lib/api/coingecko';
 import { fetchCoinEvents, CryptoEvent, formatEventDate, getCategoryIcon } from '@/lib/api/coinmarketcal';
 import Image from 'next/image';
-import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Bell, Share2, ExternalLink, Flame, Lock, Unlock, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Bell, Share2, ExternalLink, Flame, Lock, Unlock, AlertTriangle, Percent, LineChart, BarChart3, Zap, ArrowLeftRight } from 'lucide-react';
 
 export default function CoinPage() {
   const params = useParams();
@@ -62,7 +63,7 @@ export default function CoinPage() {
         <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-20">
             <h1 className="text-2xl font-bold text-white mb-4">Coin not found</h1>
-            <p className="text-neutral-600 mb-6">The coin "{coinId}" could not be found.</p>
+            <p className="text-neutral-500 mb-6">The coin "{coinId}" could not be found.</p>
             <button
               onClick={() => router.push('/')}
               className="px-6 py-3 bg-hub-yellow text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
@@ -90,7 +91,7 @@ export default function CoinPage() {
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-neutral-600 hover:text-white mb-6 transition-colors"
+          className="flex items-center gap-2 text-neutral-500 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
@@ -105,8 +106,8 @@ export default function CoinPage() {
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-3xl font-bold text-white">{coin.name}</h1>
-                  <span className="text-xl text-neutral-600">{coin.symbol.toUpperCase()}</span>
-                  <span className="px-2 py-1 bg-white/[0.06] rounded-lg text-xs text-neutral-600">
+                  <span className="text-xl text-neutral-500">{coin.symbol.toUpperCase()}</span>
+                  <span className="px-2 py-1 bg-white/[0.06] rounded-lg text-xs text-neutral-500">
                     Rank #{coin.market_cap_rank}
                   </span>
                 </div>
@@ -123,10 +124,10 @@ export default function CoinPage() {
             {/* Actions */}
             <div className="flex items-center gap-3">
               <button aria-label="Set price alert" className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
-                <Bell className="w-5 h-5 text-neutral-600" />
+                <Bell className="w-5 h-5 text-neutral-500" />
               </button>
               <button aria-label="Share" className="p-3 bg-white/[0.04] hover:bg-white/[0.06] rounded-xl transition-colors">
-                <Share2 className="w-5 h-5 text-neutral-600" />
+                <Share2 className="w-5 h-5 text-neutral-500" />
               </button>
               <a
                 href={`https://coinmarketcap.com/currencies/${coinId}/`}
@@ -143,35 +144,56 @@ export default function CoinPage() {
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-hub-darker rounded-lg p-4">
-              <span className="text-xs text-neutral-600 block mb-1">Market Cap</span>
+              <span className="text-xs text-neutral-500 block mb-1">Market Cap</span>
               <span className="text-white font-bold text-lg">{formatNumber(coin.market_cap)}</span>
             </div>
             <div className="bg-hub-darker rounded-lg p-4">
-              <span className="text-xs text-neutral-600 block mb-1">24h Volume</span>
+              <span className="text-xs text-neutral-500 block mb-1">24h Volume</span>
               <span className="text-white font-bold text-lg">{formatNumber(coin.total_volume)}</span>
             </div>
             <div className="bg-hub-darker rounded-lg p-4">
-              <span className="text-xs text-neutral-600 block mb-1">All-Time High</span>
+              <span className="text-xs text-neutral-500 block mb-1">All-Time High</span>
               {coin.ath > 0 ? (
                 <>
                   <span className="text-success font-bold text-lg">{formatPrice(coin.ath)}</span>
-                  <span className="text-xs text-neutral-600 ml-2">{formatPercent(coin.ath_change_percentage)}</span>
+                  <span className="text-xs text-neutral-500 ml-2">{formatPercent(coin.ath_change_percentage)}</span>
                 </>
               ) : (
-                <span className="text-neutral-600 font-bold text-lg">N/A</span>
+                <span className="text-neutral-500 font-bold text-lg">N/A</span>
               )}
             </div>
             <div className="bg-hub-darker rounded-lg p-4">
-              <span className="text-xs text-neutral-600 block mb-1">All-Time Low</span>
+              <span className="text-xs text-neutral-500 block mb-1">All-Time Low</span>
               {coin.atl > 0 ? (
                 <>
                   <span className="text-error font-bold text-lg">{formatPrice(coin.atl)}</span>
                   <span className="text-xs text-success ml-2">{formatPercent(coin.atl_change_percentage)}</span>
                 </>
               ) : (
-                <span className="text-neutral-600 font-bold text-lg">N/A</span>
+                <span className="text-neutral-500 font-bold text-lg">N/A</span>
               )}
             </div>
+          </div>
+
+          {/* Derivatives quick-links */}
+          <div className="flex flex-wrap items-center gap-2 mt-6">
+            <span className="text-[10px] text-neutral-500 uppercase tracking-wider mr-1">Derivatives:</span>
+            {[
+              { label: 'Funding Rates', href: `/funding/${coin.symbol.toUpperCase()}`, icon: Percent },
+              { label: 'Chart', href: `/chart?s=${coin.symbol.toUpperCase()}&tf=240`, icon: LineChart },
+              { label: 'Open Interest', href: `/open-interest?sym=${coin.symbol.toUpperCase()}`, icon: BarChart3 },
+              { label: 'Spreads', href: `/spreads?sym=${coin.symbol.toUpperCase()}`, icon: ArrowLeftRight },
+              { label: 'Liquidations', href: `/liquidations?sym=${coin.symbol.toUpperCase()}`, icon: Zap },
+            ].map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all"
+              >
+                <link.icon className="w-3.5 h-3.5" />
+                {link.label}
+              </Link>
+            ))}
           </div>
         </div>
 
@@ -214,9 +236,9 @@ export default function CoinPage() {
                   ))
                 ) : (
                   <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
-                    <Calendar className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+                    <Calendar className="w-12 h-12 text-neutral-500 mx-auto mb-4" />
                     <h3 className="text-white font-semibold mb-2">No upcoming events</h3>
-                    <p className="text-neutral-600">There are no scheduled events for {coin.symbol.toUpperCase()} at this time.</p>
+                    <p className="text-neutral-500">There are no scheduled events for {coin.symbol.toUpperCase()} at this time.</p>
                   </div>
                 )}
               </div>
@@ -230,9 +252,9 @@ export default function CoinPage() {
                   ))
                 ) : (
                   <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
-                    <Lock className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+                    <Lock className="w-12 h-12 text-neutral-500 mx-auto mb-4" />
                     <h3 className="text-white font-semibold mb-2">No upcoming unlocks</h3>
-                    <p className="text-neutral-600">There are no scheduled token unlocks for {coin.symbol.toUpperCase()}.</p>
+                    <p className="text-neutral-500">There are no scheduled token unlocks for {coin.symbol.toUpperCase()}.</p>
                   </div>
                 )}
               </div>
@@ -248,7 +270,7 @@ export default function CoinPage() {
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-neutral-600">Circulating</span>
+                    <span className="text-neutral-500">Circulating</span>
                     <span className="text-white">{coin.circulating_supply?.toLocaleString()}</span>
                   </div>
                   {coin.max_supply && (
@@ -259,7 +281,7 @@ export default function CoinPage() {
                           style={{ width: `${coin.circulating_supply && coin.max_supply > 0 ? (coin.circulating_supply / coin.max_supply) * 100 : 0}%` }}
                         />
                       </div>
-                      <div className="flex justify-between text-xs mt-2 text-neutral-600">
+                      <div className="flex justify-between text-xs mt-2 text-neutral-500">
                         <span>{coin.circulating_supply && coin.max_supply > 0 ? ((coin.circulating_supply / coin.max_supply) * 100).toFixed(1) : '0.0'}%</span>
                         <span>Max: {coin.max_supply.toLocaleString()}</span>
                       </div>
@@ -268,7 +290,7 @@ export default function CoinPage() {
                 </div>
                 {coin.total_supply && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-600">Total Supply</span>
+                    <span className="text-neutral-500">Total Supply</span>
                     <span className="text-white">{coin.total_supply.toLocaleString()}</span>
                   </div>
                 )}
@@ -281,24 +303,24 @@ export default function CoinPage() {
               <div className="space-y-3">
                 {coin.high_24h > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-neutral-600 text-sm">24h High</span>
+                    <span className="text-neutral-500 text-sm">24h High</span>
                     <span className="text-success font-medium">{formatPrice(coin.high_24h)}</span>
                   </div>
                 )}
                 {coin.low_24h > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-neutral-600 text-sm">24h Low</span>
+                    <span className="text-neutral-500 text-sm">24h Low</span>
                     <span className="text-error font-medium">{formatPrice(coin.low_24h)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-neutral-600 text-sm">7d Change</span>
+                  <span className="text-neutral-500 text-sm">7d Change</span>
                   <span className={coin.price_change_percentage_7d_in_currency && coin.price_change_percentage_7d_in_currency >= 0 ? 'text-success' : 'text-error'}>
                     {formatPercent(coin.price_change_percentage_7d_in_currency)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-600 text-sm">30d Change</span>
+                  <span className="text-neutral-500 text-sm">30d Change</span>
                   <span className={coin.price_change_percentage_30d_in_currency && coin.price_change_percentage_30d_in_currency >= 0 ? 'text-success' : 'text-error'}>
                     {formatPercent(coin.price_change_percentage_30d_in_currency)}
                   </span>
@@ -312,7 +334,7 @@ export default function CoinPage() {
                 <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-warning text-sm font-medium">Research Before Investing</p>
-                  <p className="text-neutral-600 text-xs mt-1">Always do your own research. This is not financial advice.</p>
+                  <p className="text-neutral-500 text-xs mt-1">Always do your own research. This is not financial advice.</p>
                 </div>
               </div>
             </div>
@@ -339,7 +361,7 @@ function EventCard({ event }: { event: CryptoEvent }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 bg-white/[0.06] rounded text-xs text-neutral-600">
+                <span className="px-2 py-0.5 bg-white/[0.06] rounded text-xs text-neutral-500">
                   {event.categories[0]?.name || 'Event'}
                 </span>
                 {isHot && (
@@ -350,7 +372,7 @@ function EventCard({ event }: { event: CryptoEvent }) {
                 )}
               </div>
               <h4 className="text-white font-semibold text-lg">{event.title}</h4>
-              <p className="text-neutral-600 mt-2">{event.description}</p>
+              <p className="text-neutral-500 mt-2">{event.description}</p>
             </div>
             <div className="text-right flex-shrink-0">
               <span className={`text-lg font-semibold ${
@@ -362,13 +384,13 @@ function EventCard({ event }: { event: CryptoEvent }) {
           </div>
           <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/[0.06]">
             {event.percentage > 0 && (
-              <span className="flex items-center gap-1 text-sm text-neutral-600">
+              <span className="flex items-center gap-1 text-sm text-neutral-500">
                 <TrendingUp className="w-4 h-4" />
                 {event.percentage}% confidence
               </span>
             )}
             {event.vote_count > 0 && (
-              <span className="text-sm text-neutral-600">{event.vote_count} votes</span>
+              <span className="text-sm text-neutral-500">{event.vote_count} votes</span>
             )}
             {event.proof && (
               <a href={event.proof} target="_blank" rel="noopener noreferrer" className="text-sm text-hub-yellow hover:underline ml-auto flex items-center gap-1">
@@ -398,7 +420,7 @@ function UnlockCard({ event }: { event: CryptoEvent }) {
                 Token Unlock
               </span>
               <h4 className="text-white font-semibold text-lg">{event.title}</h4>
-              <p className="text-neutral-600 mt-2">{event.description}</p>
+              <p className="text-neutral-500 mt-2">{event.description}</p>
             </div>
             <div className="text-right flex-shrink-0">
               <span className={`text-lg font-semibold ${

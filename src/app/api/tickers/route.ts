@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   if (l1Cache && Date.now() - l1Cache.timestamp < L1_TTL) {
     const body = symbolFilter ? filterBySymbols(l1Cache.body, symbolFilter) : l1Cache.body;
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=20' },
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=40' },
     });
   }
 
@@ -90,7 +90,7 @@ export async function GET(request: Request) {
 
     const finalBody = symbolFilter ? filterBySymbols(responseBody, symbolFilter) : responseBody;
     return NextResponse.json(finalBody, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=20' },
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=40' },
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
     if (l1Cache) {
       const body = symbolFilter ? filterBySymbols(l1Cache.body, symbolFilter) : l1Cache.body;
       return NextResponse.json(body, {
-        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=20' },
+        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=40' },
       });
     }
 
