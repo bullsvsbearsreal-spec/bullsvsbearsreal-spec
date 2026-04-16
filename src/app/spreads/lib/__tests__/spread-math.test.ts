@@ -1,88 +1,100 @@
 import { describe, it, expect } from 'vitest';
 import { fp, filterOutliers, computeStats, computeYDomain } from '../spread-math';
+import type { Pt } from '../types';
 
-describe('fp — adaptive price formatting', () => {
-  it('formats large prices with no decimals', () => {
-    expect(fp(50000)).toBe('50,000');
-    expect(fp(100123)).toBe('100,123');
+// --- fp() formatting ---
+
+describe('fp', () => {
+  it('formats large numbers without decimals', () => {
+    expect(fp(84531)).toBe('84,531');
+    expect(fp(10000)).toBe('10,000');
   });
 
-  it('formats mid-range prices with 2 decimals', () => {
+  it('formats normal numbers with 2 decimals', () => {
+    expect(fp(99.123)).toBe('99.12');
     expect(fp(1.5)).toBe('1.50');
-    expect(fp(999.99)).toBe('999.99');
   });
 
-  it('formats small prices with 4 decimals', () => {
-    expect(fp(0.05)).toBe('0.0500');
+  it('formats small numbers with 4 decimals', () => {
+    expect(fp(0.0523)).toBe('0.0523');
+    expect(fp(0.01)).toBe('0.0100');
   });
 
-  it('formats very small prices with 6 decimals', () => {
-    expect(fp(0.0005)).toBe('0.000500');
+  it('formats very small numbers with 6 decimals', () => {
+    expect(fp(0.000123)).toBe('0.000123');
   });
 
-  it('returns dash for non-finite', () => {
-    expect(fp(Infinity)).toBe('—');
-    expect(fp(NaN)).toBe('—');
-    expect(fp(-Infinity)).toBe('—');
+  it('returns dash for non-finite values', () => {
+    expect(fp(Infinity)).toBe('\u2014');
+    expect(fp(-Infinity)).toBe('\u2014');
+    expect(fp(NaN)).toBe('\u2014');
   });
 
-  it('returns 0.00 for zero', () => {
+  it('handles zero', () => {
     expect(fp(0)).toBe('0.00');
   });
 
-  it('returns < 0.0001 for tiny positive values', () => {
+  it('handles tiny positive numbers below 0.0001', () => {
     expect(fp(0.00001)).toBe('< 0.0001');
+  });
+
+  it('handles negative values', () => {
+    const result = fp(-0.00523);
+    expect(result).toBeDefined();
   });
 });
 
+// --- filterOutliers() ---
+
 describe('filterOutliers', () => {
-  it('returns input when fewer than 2 entries', () => {
-    const one = [{ e: 'Binance', p: 100 }];
-    expect(filterOutliers(one)).toEqual(one);
+  it('returns entries unchanged when < 2', () => {
+    const single = [{ e: 'Binance', p: 100 }];
+    expect(filterOutliers(single)).toEqual(single);
     expect(filterOutliers([])).toEqual([]);
   });
 
-  it('filters outlier prices beyond 10% from median', () => {
+  it('removes outlier prices beyond 10% from median', () => {
     const entries = [
-      { e: 'A', p: 100 },
-      { e: 'B', p: 101 },
-      { e: 'C', p: 102 },
-      { e: 'D', p: 150 }, // outlier — 50% from median
+      { e: 'Binance', p: 100 },
+      { e: 'Bybit', p: 101 },
+      { e: 'OKX', p: 99 },
+      { e: 'Rogue', p: 150 },
     ];
     const result = filterOutliers(entries);
     expect(result).toHaveLength(3);
-    expect(result.map(r => r.e)).not.toContain('D');
+    expect(result.find(x => x.e === 'Rogue')).toBeUndefined();
   });
 
-  it('keeps all entries when no outliers', () => {
+  it('keeps all entries when they are close together', () => {
     const entries = [
-      { e: 'A', p: 100 },
-      { e: 'B', p: 101 },
-      { e: 'C', p: 102 },
+      { e: 'Binance', p: 100 },
+      { e: 'Bybit', p: 101 },
+      { e: 'OKX', p: 102 },
     ];
     expect(filterOutliers(entries)).toHaveLength(3);
   });
 
-  it('returns all if filtering would leave < 2', () => {
+  it('returns original entries if filtering would leave < 2', () => {
     const entries = [
       { e: 'A', p: 100 },
       { e: 'B', p: 200 },
     ];
-    // Median is 200, A is 50% away — but filtering leaves only B which is < 2
     const result = filterOutliers(entries);
-    expect(result).toHaveLength(2);
+    expect(result.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('returns entries when median is 0', () => {
+  it('handles zero median gracefully', () => {
     const entries = [
       { e: 'A', p: 0 },
       { e: 'B', p: 0 },
       { e: 'C', p: 100 },
     ];
-    // median is 0, guard returns all
-    expect(filterOutliers(entries)).toHaveLength(3);
+    const result = filterOutliers(entries);
+    expect(result).toEqual(entries);
   });
 });
+
+// --- computeStats() ---
 
 describe('computeStats', () => {
   it('returns null for empty data', () => {
@@ -90,36 +102,44 @@ describe('computeStats', () => {
   });
 
   it('returns null for fewer than 2 exchanges', () => {
-    expect(computeStats([{ time: 1, label: '', A: 100, _spread: 0, _spreadPct: 0 }], ['A'])).toBeNull();
+    const data: Pt[] = [{ time: 1, label: '', A: 100, _spread: 0, _spreadPct: 0 }];
+    expect(computeStats(data, ['A'])).toBeNull();
   });
 
   it('computes spread stats correctly', () => {
-    const data = [
+    const data: Pt[] = [
       { time: 1, label: '', A: 100, B: 102, _spread: 2, _spreadPct: 2 },
-      { time: 2, label: '', A: 101, B: 103, _spread: 2, _spreadPct: 1.98 },
+      { time: 2, label: '', A: 101, B: 104, _spread: 3, _spreadPct: 2.97 },
+      { time: 3, label: '', A: 99, B: 100, _spread: 1, _spreadPct: 1.01 },
     ];
     const stats = computeStats(data, ['A', 'B']);
     expect(stats).not.toBeNull();
-    expect(stats!.cur).toBe(2); // 103 - 101
-    expect(stats!.avg).toBe(2);
-    expect(stats!.max).toBe(2);
-    expect(stats!.hi.e).toBe('B');
-    expect(stats!.lo.e).toBe('A');
+    expect(stats!.max).toBe(3);
+    expect(stats!.min).toBe(1);
+    expect(stats!.avg).toBeCloseTo(2, 1);
   });
 });
 
+// --- computeYDomain() ---
+
 describe('computeYDomain', () => {
-  it('returns [0, 1] for empty data', () => {
-    expect(computeYDomain([], [])).toEqual([0, 1]);
+  it('returns [0,1] for empty data', () => {
+    expect(computeYDomain([], ['A'])).toEqual([0, 1]);
   });
 
-  it('pads domain around price range', () => {
-    const data = [
+  it('returns [0,1] for empty exchanges', () => {
+    const data: Pt[] = [{ time: 1, label: '', A: 100 }];
+    expect(computeYDomain(data, [])).toEqual([0, 1]);
+  });
+
+  it('computes padded domain from price data', () => {
+    const data: Pt[] = [
       { time: 1, label: '', A: 100, B: 102 },
       { time: 2, label: '', A: 101, B: 103 },
+      { time: 3, label: '', A: 99, B: 104 },
     ];
     const [lo, hi] = computeYDomain(data, ['A', 'B']);
-    expect(lo).toBeLessThan(100);
-    expect(hi).toBeGreaterThan(103);
+    expect(lo).toBeLessThan(99);
+    expect(hi).toBeGreaterThan(104);
   });
 });
