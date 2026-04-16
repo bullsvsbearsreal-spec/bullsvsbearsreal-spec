@@ -552,7 +552,7 @@ export default function SymbolFundingPage() {
                             </div>
                           </div>
                           {/* Exchange list */}
-                          {chartExchanges.sort().map(ex => {
+                          {[...chartExchanges].sort().map(ex => {
                             const visible = !hiddenExchanges.has(ex);
                             return (
                               <div

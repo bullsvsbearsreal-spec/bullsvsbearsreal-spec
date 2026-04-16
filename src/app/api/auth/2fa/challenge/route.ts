@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
     // Probabilistic cleanup of expired codes (~5% of requests)
     if (Math.random() < 0.05) {
-      db`DELETE FROM twofa_login_codes WHERE expires_at < NOW() - INTERVAL '1 hour'`.catch(() => {});
+      db`DELETE FROM twofa_login_codes WHERE expires_at < NOW() - INTERVAL '1 hour'`.catch(e => console.error('[2fa:challenge] cleanup error:', e));
     }
 
     // Send email

@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     const historyData = await fetchCMCHistory(limit);
     if (historyData) {
       historyCache[limit] = { data: historyData, time: Date.now() };
-      if (isDBConfigured()) setCache(cacheKey, historyData, 3600).catch(() => {});
+      if (isDBConfigured()) setCache(cacheKey, historyData, 3600).catch(e => console.warn('[fear-greed] cache write failed:', e));
       return NextResponse.json(historyData, {
         headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
       });
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
   if (entry) {
     cachedData = entry;
     cacheTime = Date.now();
-    if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
+    if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(e => console.warn('[fear-greed] cache write failed:', e));
     return NextResponse.json(cachedData, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });

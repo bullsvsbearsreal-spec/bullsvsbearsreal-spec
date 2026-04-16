@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
   // Prune expired codes ~10% of the time
   if (Math.random() < 0.1) {
-    pruneExpiredLinkCodes().catch(() => {});
+    pruneExpiredLinkCodes().catch(e => console.warn('[telegram] prune expired codes failed:', e));
   }
 
   // ─── /start CODE — Link account ───────────────────────────────────────────

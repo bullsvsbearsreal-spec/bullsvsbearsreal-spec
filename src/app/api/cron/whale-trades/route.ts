@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
   const batch = allWallets.slice(cursor, cursor + MAX_WALLETS_PER_CYCLE);
   const nextCursor = cursor + batch.length >= allWallets.length ? 0 : cursor + batch.length;
-  await setCache(CURSOR_CACHE_KEY, { cursor: nextCursor }, 600).catch(() => {});
+  await setCache(CURSOR_CACHE_KEY, { cursor: nextCursor }, 600).catch(e => console.error('[whale-trades] cache cursor error:', e));
 
   let totalTrades = 0;
   let totalNotifs = 0;
@@ -102,12 +102,12 @@ export async function GET(request: NextRequest) {
 
   // Prune old data (5% chance)
   if (Math.random() < 0.05) {
-    await pruneOldWhaleData(30).catch(() => {});
+    await pruneOldWhaleData(30).catch(e => console.error('[whale-trades] prune error:', e));
   }
 
   await upsertWorkerHeartbeat('cron:whale-trades', 'ok', {
     checked: batch.length, trades: totalTrades, notifications: totalNotifs,
-  }).catch(() => {});
+  }).catch(e => console.error('[whale-trades] heartbeat error:', e));
 
   return NextResponse.json({
     ok: true, checked: batch.length, totalTracked: allWallets.length,

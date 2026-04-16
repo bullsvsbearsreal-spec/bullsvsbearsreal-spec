@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
     if (first) memCache.delete(first);
   }
   if (isDBConfigured()) {
-    setCache(cacheKey, chains, 300).catch(() => {}); // 5 min
+    setCache(cacheKey, chains, 300).catch(e => console.warn('[wallet:multichain] cache write failed:', e)); // 5 min
   }
 
   return NextResponse.json({ chains });

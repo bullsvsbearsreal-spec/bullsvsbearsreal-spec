@@ -36,7 +36,7 @@ export async function POST() {
       fundingInserted: result?.fundingInserted ?? 0,
       oiInserted: result?.oiInserted ?? 0,
       liqInserted: result?.liqInserted ?? 0,
-    }).catch(() => {});
+    }).catch(e => console.error('[admin] audit snapshot error:', e));
 
     return NextResponse.json({
       success: result?.ok ?? false,

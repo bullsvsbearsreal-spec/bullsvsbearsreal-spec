@@ -6,6 +6,8 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp, LayoutGrid, List, Calendar, AlertTriangle, Bookmark, BookmarkCheck, Eye, EyeOff } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
+import SoundToggle from '@/components/SoundToggle';
+import { useSound } from '@/hooks/useSound';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -174,6 +176,7 @@ export default function NewsPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [bookmarks, setBookmarks] = useState<BookmarkedArticle[]>([]);
+  const { playAlert } = useSound();
 
   // Load read/bookmark state from localStorage on mount
   useEffect(() => {
@@ -252,13 +255,20 @@ export default function NewsPage() {
         const data: ApiResponse = await res.json();
         if (data.articles.length > 0 && latestIdRef.current && data.articles[0].id !== latestIdRef.current) {
           const idx = data.articles.findIndex(a => a.id === latestIdRef.current);
-          setNewCount(idx === -1 ? data.articles.length : idx);
+          const count = idx === -1 ? data.articles.length : idx;
+          setNewCount(count);
+          // Play alert sound if any new articles are breaking news (priority 1-2)
+          if (count > 0) {
+            const newArticles = data.articles.slice(0, count);
+            const hasBreaking = newArticles.some(a => isBreaking(a));
+            if (hasBreaking) playAlert();
+          }
         }
       } catch { /* silent */ }
     };
     const iv = setInterval(poll, 30_000);
     return () => clearInterval(iv);
-  }, [filter, timeRange, currency, debouncedSearch, sourceType, buildParams]);
+  }, [filter, timeRange, currency, debouncedSearch, sourceType, buildParams, playAlert]);
 
   const handleRefresh = () => {
     setNewCount(0);
@@ -304,6 +314,7 @@ export default function NewsPage() {
           </div>
           <div className="flex items-center gap-2">
             <DataFreshness exchangeCount={sources.length} lastUpdated={lastFetched} />
+            <SoundToggle />
             {/* View toggle */}
             <div className="flex items-center bg-white/[0.04] rounded-md overflow-hidden border border-white/[0.06]">
               <button

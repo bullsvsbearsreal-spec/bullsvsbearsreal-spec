@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
 
     await upsertWorkerHeartbeat('cron:alerts', 'ok', {
       users: users.length, triggered: totalTriggered, notifications: totalNotifications,
-    }).catch(() => {});
+    }).catch(e => console.error('[cron:alerts] heartbeat error:', e));
 
     return NextResponse.json({
       ok: true,

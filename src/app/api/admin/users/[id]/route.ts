@@ -77,7 +77,7 @@ export async function DELETE(
     await recordAuditEvent('admin_delete_user', {
       admin: session?.user?.email ?? 'unknown',
       deletedUser: userEmail ?? id,
-    }).catch(() => {});
+    }).catch(e => console.error('[admin] audit event error:', e));
 
     return NextResponse.json({ message: 'User deleted successfully' });
   } catch (e: any) {

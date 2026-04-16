@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
     await upsertWorkerHeartbeat('cron:snapshot', 'ok', {
       runType: isFullRun ? 'full' : 'price-only',
       fundingInserted, oiInserted, spreadInserted,
-    }).catch(() => {});
+    }).catch(e => console.error('[cron:snapshot] heartbeat error:', e));
 
     return NextResponse.json({
       ok: true,

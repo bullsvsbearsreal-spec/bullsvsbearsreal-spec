@@ -13,6 +13,7 @@ import { computeGrade, GRADE_COLORS, ROWS_PER_PAGE, formatUSD, formatPnl, format
 import { GradeBadge } from './GradeBadge';
 import { ComparisonDrawer } from './ComparisonDrawer';
 import { ExchangeSide, ExpandedPanel } from './ExpandedPanel';
+import { PredictionBadge } from './PredictionBadge';
 import WatchlistStar from '@/components/WatchlistStar';
 
 export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices, indexPrices, intervalMap, fundingPeriod, historicalSpreads }: FundingArbitrageViewProps) {
@@ -358,7 +359,10 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                   <span className="text-white text-sm font-bold">{summary.topPick.symbol}</span>
                   <span className={`px-1 py-0.5 rounded text-[8px] font-bold border ${GRADE_COLORS[summary.topPick.grade]}`}>{summary.topPick.grade}</span>
                 </div>
-                <div className="text-green-400 font-mono text-xs mt-0.5">+{summary.topPick.netAnnualized.toFixed(1)}% ann.</div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-green-400 font-mono text-xs">+{summary.topPick.netAnnualized.toFixed(1)}% ann.</span>
+                  <PredictionBadge symbol={summary.topPick.symbol} highExchange={summary.topPick.high.exchange} lowExchange={summary.topPick.low.exchange} />
+                </div>
                 <div className="text-neutral-600 text-[10px]">{summary.topPick.high.exchange} / {summary.topPick.low.exchange}</div>
               </>
             ) : (
@@ -613,6 +617,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
                           <span className="text-hub-yellow font-bold font-mono text-sm">{item.grossSpread.toFixed(4)}%</span>
                           {item.trend === 'widening' && <span title="Spread widening (last 24h > prior 6d)"><TrendingUp className="w-3 h-3 text-green-400" /></span>}
                           {item.trend === 'narrowing' && <span title="Spread narrowing (last 24h < prior 6d)"><TrendingDown className="w-3 h-3 text-red-400" /></span>}
+                          <PredictionBadge symbol={item.symbol} highExchange={item.high.exchange} lowExchange={item.low.exchange} />
                         </div>
                         <div className="flex items-center justify-end gap-1.5 text-[10px]">
                           {item.netSpread < item.grossSpread && (

@@ -67,7 +67,7 @@ export async function POST() {
       admin: session?.user?.email ?? 'unknown',
       status: healthResult.status,
       errorCount: healthResult.errors?.length ?? 0,
-    }).catch(() => {});
+    }).catch(e => console.error('[admin] audit health-check error:', e));
 
     return NextResponse.json({
       success: true,

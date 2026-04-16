@@ -553,7 +553,7 @@ export async function GET(request: NextRequest) {
       if (first) memCache.delete(first);
     }
     if (isDBConfigured()) {
-      setCache(cacheKey, data, CACHE_TTL).catch(() => {});
+      setCache(cacheKey, data, CACHE_TTL).catch(e => console.warn('[wallet] cache write failed:', e));
     }
 
     return jsonOk(data);

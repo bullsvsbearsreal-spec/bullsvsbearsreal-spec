@@ -12,7 +12,7 @@ async function issueNonce(userId: string): Promise<string> {
   const nonce = crypto.randomBytes(32).toString('hex');
   // Clean up expired nonces probabilistically (~10% of calls)
   if (Math.random() < 0.1) {
-    await db`DELETE FROM twofa_nonces WHERE expires_at < NOW()`.catch(() => {});
+    await db`DELETE FROM twofa_nonces WHERE expires_at < NOW()`.catch(e => console.error('[2fa:validate] nonce cleanup error:', e));
   }
   await db`INSERT INTO twofa_nonces (user_id, nonce) VALUES (${userId}, ${nonce})`;
   return nonce;

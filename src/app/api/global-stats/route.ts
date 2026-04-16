@@ -171,7 +171,7 @@ export async function GET() {
     }
 
     lastGood = result;
-    if (isDBConfigured()) setCache(DB_CACHE_KEY, result, DB_CACHE_TTL).catch(() => {});
+    if (isDBConfigured()) setCache(DB_CACHE_KEY, result, DB_CACHE_TTL).catch(e => console.warn('[global-stats] cache write failed:', e));
     return NextResponse.json(result, { headers: CACHE_HEADERS });
   }
 

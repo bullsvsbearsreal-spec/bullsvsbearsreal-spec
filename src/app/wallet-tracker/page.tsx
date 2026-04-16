@@ -6,7 +6,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3, Globe, Clock } from 'lucide-react';
+import { RefreshCw, Search, X, ExternalLink, ArrowUpRight, ArrowDownLeft, Copy, Check, AlertTriangle, Wallet, Coins, TrendingUp, ChevronDown, Star, Activity, CircleDollarSign, ArrowRightLeft, BarChart3, Globe, Clock, Bell, BellOff } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import DataFreshness from '@/components/DataFreshness';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getSavedWallets, addWallet, removeWallet, detectChain, SavedWallet } from '@/lib/storage/wallets';
@@ -268,6 +269,7 @@ function TxSkeleton() {
 
 export default function WalletTrackerPage() {
   /* ---- local state ------------------------------------------------ */
+  const { data: session } = useSession();
   const [savedWallets, setSavedWallets] = useState<SavedWallet[]>([]);
   const [addressInput, setAddressInput] = useState('');
   const [labelInput, setLabelInput] = useState('');
@@ -280,10 +282,67 @@ export default function WalletTrackerPage() {
   const [featuredSearch, setFeaturedSearch] = useState('');
   const [showFeatured, setShowFeatured] = useState(true);
 
+  /* ---- Trade alert tracking state --------------------------------- */
+  const [isTracked, setIsTracked] = useState(false);
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackMinValue, setTrackMinValue] = useState(1000);
+  const [trackChannels, setTrackChannels] = useState<string[]>(['push']);
+  const [showTrackPanel, setShowTrackPanel] = useState(false);
+
   // Auto-collapse featured wallets when tracking an address
   useEffect(() => {
     if (activeAddress) setShowFeatured(false);
   }, [activeAddress]);
+
+  // Check if active wallet is already tracked for trade alerts
+  useEffect(() => {
+    if (!session?.user || !activeAddress) { setIsTracked(false); setShowTrackPanel(false); return; }
+    setShowTrackPanel(false); // Reset panel when switching wallets
+    let cancelled = false;
+    fetch('/api/whale-trades/tracked')
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (cancelled || !json?.wallets) return;
+        const found = json.wallets.some((w: any) => w.address?.toLowerCase() === activeAddress.toLowerCase());
+        setIsTracked(found);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [session?.user, activeAddress]);
+
+  const handleTrackWallet = useCallback(async () => {
+    if (!activeAddress || !activeChain) return;
+    setTrackLoading(true);
+    try {
+      const res = await fetch('/api/whale-trades/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: activeAddress,
+          chain: activeChain,
+          label: null, // will use saved wallet label if available
+          notifyChannels: trackChannels,
+          minValueUsd: trackMinValue,
+        }),
+      });
+      if (res.ok) { setIsTracked(true); setShowTrackPanel(false); }
+    } catch {}
+    setTrackLoading(false);
+  }, [activeAddress, activeChain, trackChannels, trackMinValue]);
+
+  const handleUntrackWallet = useCallback(async () => {
+    if (!activeAddress) return;
+    setTrackLoading(true);
+    try {
+      const res = await fetch('/api/whale-trades/track', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: activeAddress, chain: activeChain }),
+      });
+      if (res.ok) { setIsTracked(false); setShowTrackPanel(false); }
+    } catch {}
+    setTrackLoading(false);
+  }, [activeAddress, activeChain]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: FAMOUS_WALLETS.length };
@@ -1065,6 +1124,114 @@ export default function WalletTrackerPage() {
                 </div>
               </div>
             ) : null}
+
+            {/* ========== TRADE ALERT TRACKING ============================ */}
+            {activeAddress && activeChain && (
+              <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">
+                <button
+                  onClick={() => {
+                    if (!session?.user) return;
+                    if (isTracked) handleUntrackWallet();
+                    else setShowTrackPanel(!showTrackPanel);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {isTracked ? (
+                      <Bell className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <BellOff className="w-4 h-4 text-neutral-500" />
+                    )}
+                    <span className="text-sm font-semibold text-white">Trade Alerts</span>
+                    {isTracked && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-medium">Active</span>
+                    )}
+                  </div>
+                  {!session?.user ? (
+                    <span className="text-[11px] text-neutral-600">Sign in to enable</span>
+                  ) : isTracked ? (
+                    <span className="text-[11px] text-neutral-500 hover:text-red-400 transition-colors">
+                      {trackLoading ? 'Removing...' : 'Remove'}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-hub-yellow">
+                      {showTrackPanel ? 'Cancel' : 'Set up'}
+                    </span>
+                  )}
+                </button>
+
+                {showTrackPanel && session?.user && !isTracked && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-white/[0.06] pt-3">
+                    {/* Min value threshold */}
+                    <div>
+                      <label className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5 block">
+                        Min Trade Value (USD)
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        {[100, 1000, 10000, 50000, 100000].map(val => (
+                          <button
+                            key={val}
+                            onClick={() => setTrackMinValue(val)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                              trackMinValue === val
+                                ? 'bg-hub-yellow text-black'
+                                : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
+                            }`}
+                          >
+                            {val >= 1000 ? `$${val / 1000}K` : `$${val}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Channel selection */}
+                    <div>
+                      <label className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5 block">
+                        Notify via
+                      </label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[
+                          { key: 'push', label: 'Push' },
+                          { key: 'email', label: 'Email' },
+                          { key: 'telegram', label: 'Telegram' },
+                          { key: 'discord', label: 'Discord' },
+                        ].map(ch => {
+                          const active = trackChannels.includes(ch.key);
+                          return (
+                            <button
+                              key={ch.key}
+                              onClick={() => setTrackChannels(prev =>
+                                active ? prev.filter(c => c !== ch.key) : [...prev, ch.key]
+                              )}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
+                                active
+                                  ? 'bg-hub-yellow/10 border-hub-yellow/30 text-hub-yellow'
+                                  : 'bg-white/[0.04] border-white/[0.06] text-neutral-500 hover:text-white'
+                              }`}
+                            >
+                              {ch.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Track button */}
+                    <button
+                      onClick={handleTrackWallet}
+                      disabled={trackLoading || trackChannels.length === 0}
+                      className="w-full py-2 rounded-lg text-sm font-semibold bg-hub-yellow text-black hover:bg-hub-yellow/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {trackLoading ? 'Tracking...' : 'Track Trades'}
+                    </button>
+                    <p className="text-[10px] text-neutral-600 leading-relaxed">
+                      Get notified when this wallet makes trades above ${trackMinValue.toLocaleString()} USD.
+                      Alerts are deduplicated — you won&apos;t get spammed.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ========== MULTICHAIN PORTFOLIO ============================ */}
             {isEvmAddress && (multichainLoading || (multichainData && multichainData.length > 1)) && (

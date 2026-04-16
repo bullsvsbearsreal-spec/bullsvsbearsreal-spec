@@ -1195,9 +1195,9 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
 
     // Also clean expired cache entries and stale auth codes
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
-    await sql`DELETE FROM email_verification_codes WHERE expires_at < NOW()`.catch(() => {});
-    await sql`DELETE FROM twofa_login_codes WHERE expires_at < NOW()`.catch(() => {});
-    await sql`DELETE FROM rate_limit_events WHERE created_at < NOW() - INTERVAL '1 day'`.catch(() => {});
+    await sql`DELETE FROM email_verification_codes WHERE expires_at < NOW()`.catch(e => console.warn('[db] email_verification cleanup:', e));
+    await sql`DELETE FROM twofa_login_codes WHERE expires_at < NOW()`.catch(e => console.warn('[db] twofa_login cleanup:', e));
+    await sql`DELETE FROM rate_limit_events WHERE created_at < NOW() - INTERVAL '1 day'`.catch(e => console.warn('[db] rate_limit cleanup:', e));
 
     return {
       funding: fr.count ?? 0,
@@ -2266,7 +2266,7 @@ export async function validateApiKey(rawKey: string): Promise<{ userId: string; 
     `;
     if (rows.length === 0) return null;
     // Update last_used timestamp async (don't block response)
-    db`UPDATE api_keys SET last_used_at = NOW(), requests_today = requests_today + 1 WHERE id = ${rows[0].id}`.catch(() => {});
+    db`UPDATE api_keys SET last_used_at = NOW(), requests_today = requests_today + 1 WHERE id = ${rows[0].id}`.catch(e => console.warn('[db] api_key last_used update:', e));
     return { userId: rows[0].user_id, tier: rows[0].tier, keyId: rows[0].id };
   } catch (e) {
     console.error('DB validateApiKey error:', e);

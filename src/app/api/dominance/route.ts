@@ -126,7 +126,7 @@ export async function GET() {
   if (result) {
     // Store in DB cache for fallback
     if (isDBConfigured()) {
-      setCache(CACHE_KEY, result, CACHE_TTL).catch(() => {});
+      setCache(CACHE_KEY, result, CACHE_TTL).catch(e => console.warn('[dominance] cache write failed:', e));
     }
     return NextResponse.json(result, { headers: CACHE_HEADERS });
   }

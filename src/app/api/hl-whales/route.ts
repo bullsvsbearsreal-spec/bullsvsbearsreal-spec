@@ -308,7 +308,7 @@ export async function GET(request: NextRequest) {
     // Cache results
     memCache = { data: whales, time: Date.now() };
     if (isDBConfigured()) {
-      setCache(CACHE_KEY, whales, DB_CACHE_TTL).catch(() => {});
+      setCache(CACHE_KEY, whales, DB_CACHE_TTL).catch(e => console.warn('[hl-whales] cache write failed:', e));
     }
 
     return NextResponse.json(whales, {

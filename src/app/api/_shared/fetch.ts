@@ -130,7 +130,7 @@ export async function getTop500Symbols(): Promise<Set<string>> {
       top500FailLogged = false;
       // Store in DB for other routes to reuse
       if (isDBConfigured()) {
-        setCache('top500-symbols', symbolArray, 1800).catch(() => {});
+        setCache('top500-symbols', symbolArray, 1800).catch(e => console.warn('[fetch] cache symbols failed:', e));
       }
     }
     return symbols;

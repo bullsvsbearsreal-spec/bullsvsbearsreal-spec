@@ -121,9 +121,9 @@ export async function GET(request: NextRequest) {
     // Also cache the full top-500 symbol list for getTop500Symbols() to reuse
     if (isDBConfigured()) {
       const allSymbols = (json.data || []).map((c: any) => c.symbol?.toUpperCase()).filter(Boolean);
-      setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(() => {});
-      setCache('top500-symbols', allSymbols, DB_CACHE_TTL).catch(() => {});
-      setCache('heatmap-coins', sorted, DB_CACHE_TTL).catch(() => {});
+      setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache write failed:', e));
+      setCache('top500-symbols', allSymbols, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache symbols failed:', e));
+      setCache('heatmap-coins', sorted, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache heatmap failed:', e));
     }
 
     const cacheHeaders = { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' };
