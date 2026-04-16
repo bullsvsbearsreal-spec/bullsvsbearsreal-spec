@@ -3,7 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
 import dynamic from 'next/dynamic'
-// const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
+const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -189,7 +189,7 @@ export default function RootLayout({
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         <Providers>
           {children}
-          {/* <ChatWidget /> */}
+          <ChatWidget />
           <AlertEngine />
           <Analytics />
           <SpeedInsights />
