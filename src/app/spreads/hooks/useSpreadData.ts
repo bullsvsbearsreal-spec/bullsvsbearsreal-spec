@@ -82,13 +82,13 @@ export function useSpreadData({
         }
       }).catch(() => {});
 
-    // DB sources in background — merge (don't replace) to supplement VPS data
-    Promise.allSettled([
-      fetch(`/api/history/price-multi?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/history/spreads?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([dbPriceRes]) => {
+    // DB price history in background — merge (don't replace) to supplement VPS data
+    fetch(`/api/history/price-multi?symbol=${sym}&days=${days}`, { signal: AbortSignal.timeout(5000) })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then((dbPriceJson) => {
       if (cancelled) return;
-      const dbPrices = (dbPriceRes.status === 'fulfilled' && dbPriceRes.value?.exchanges) || {};
+      const dbPrices = dbPriceJson?.exchanges || {};
       if (Object.keys(dbPrices).length > 0) {
         onMergeKlineData(
           Object.fromEntries(

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import ExchangeStatusBoard from './ExchangeStatusBoard';
 import CollectorHealth from './CollectorHealth';
+import WorkerHealthCard from './WorkerHealthCard';
 import DataQualityPanel from './DataQualityPanel';
 import { TableSkeleton, ChartSkeleton } from './AdminSkeletons';
 
@@ -67,6 +68,8 @@ export default function PipelineTab() {
       />
 
       <CollectorHealth collector={data?.collector ?? null} />
+
+      <WorkerHealthCard />
 
       <DataQualityPanel
         outliers={data?.outliers ?? []}

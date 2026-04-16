@@ -55,15 +55,16 @@ export default function SpreadsPage() {
   });
 
   // ── Close dropdowns on outside click ──
+  const { closeSymPicker, closeExPicker } = actions;
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (state.showSymPicker && !t.closest('[data-sym-picker]')) actions.closeSymPicker();
-      if (state.showExPicker && !t.closest('[data-ex-picker]')) actions.closeExPicker();
+      if (state.showSymPicker && !t.closest('[data-sym-picker]')) closeSymPicker();
+      if (state.showExPicker && !t.closest('[data-ex-picker]')) closeExPicker();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [state.showSymPicker, state.showExPicker, actions]);
+  }, [state.showSymPicker, state.showExPicker, closeSymPicker, closeExPicker]);
 
   // ── Data orchestration ──
   const {

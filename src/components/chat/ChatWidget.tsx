@@ -156,7 +156,7 @@ export default function ChatWidget() {
 
       const remainingHeader = res.headers.get('X-RateLimit-Remaining');
       if (remainingHeader !== null) {
-        setRemaining(parseInt(remainingHeader));
+        setRemaining(parseInt(remainingHeader, 10));
       }
 
       const reader = res.body?.getReader();

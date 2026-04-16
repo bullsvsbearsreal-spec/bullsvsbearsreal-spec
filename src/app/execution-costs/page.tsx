@@ -86,7 +86,7 @@ function ExecutionCostsInner() {
 
   // Multi-exchange slippage heatmap data
   const slippageFetcher = useCallback(
-    () => fetch(`/api/orderbook/multi?symbol=${asset}&exchanges=Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter&depth=true`)
+    () => fetch(`/api/orderbook/multi?symbol=${asset}&exchanges=Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter&depth=true`, { signal: AbortSignal.timeout(12000) })
       .then(r => r.ok ? r.json() : null).catch(() => null),
     [asset],
   );

@@ -89,7 +89,7 @@ export default function RSIHeatmapPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetcher = useCallback(async () => {
-    const res = await fetch('/api/rsi');
+    const res = await fetch('/api/rsi', { signal: AbortSignal.timeout(12000) });
     if (!res.ok) throw new Error(`Failed: ${res.status}`);
     const json = await res.json();
     return (json.data || []) as RSIData[];

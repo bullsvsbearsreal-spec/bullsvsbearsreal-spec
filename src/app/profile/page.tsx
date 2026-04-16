@@ -78,14 +78,14 @@ export default function ProfilePage() {
 
     (async () => {
       try {
-        const res = await fetch('/api/user/stats');
+        const res = await fetch('/api/user/stats', { signal: AbortSignal.timeout(10000) });
         if (res.ok && mounted) setAccountStats(await res.json());
       } catch {}
     })();
 
     (async () => {
       try {
-        const res = await fetch('/api/user/data');
+        const res = await fetch('/api/user/data', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;
