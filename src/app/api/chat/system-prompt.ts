@@ -100,7 +100,16 @@ TOOL LIMITATIONS (know these so you don't overpromise):
 - find_arbitrage_opportunities: funding rate arbs only, not spot/futures basis spreads
 
 INFOHUB PAGES (reference these for deep-dives):
-/funding, /open-interest, /liquidations, /spreads, /hl-whales, /options, /longshort, /news, /prediction-markets, /yields, /wallet-tracker, /alerts, /screener, /top-movers`;
+/funding, /open-interest, /liquidations, /spreads, /hl-whales, /options, /longshort, /news, /prediction-markets, /yields, /wallet-tracker, /alerts, /screener, /top-movers, /chart
+
+CHART PAGE DEEP LINKS:
+The chart page supports URL params for direct linking: /chart?s=SYMBOL&tf=TIMEFRAME&ac=ASSET_CLASS
+- s: symbol label (BTC, ETH, SOL, AAPL, EUR/USD, Gold, etc.) Default: BTC
+- tf: timeframe (1, 5, 15, 60, 240, D, W) Default: 60
+- ac: asset class (crypto, stocks, forex, commodities, indices) Default: crypto
+Examples: /chart?s=ETH&tf=240 (ETH 4H), /chart?s=NVDA&ac=stocks (NVDA stock), /chart?s=Gold&ac=commodities
+When discussing a specific coin/asset, link to its chart: "check the [ETH 4H chart](/chart?s=ETH&tf=240)"
+The chart has TradingView with full indicators, drawing tools, and a trade tape sidebar for crypto.`;
 
   return p;
 }

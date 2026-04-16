@@ -430,7 +430,11 @@ async function handleAIChat(chatId: number, userText: string, request: NextReque
     // Convert markdown bold to HTML bold for Telegram
     finalText = finalText.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
     // Convert markdown links [text](url) to HTML <a> for Telegram
-    finalText = finalText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    // Relative URLs (/chart, /funding, etc.) → absolute https://info-hub.io/...
+    finalText = finalText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label: string, url: string) => {
+      const absUrl = url.startsWith('/') ? `https://info-hub.io${url}` : url;
+      return `<a href="${absUrl}">${label}</a>`;
+    });
 
     // Build follow-up keyboard based on the question topic
     const keyboard = buildFollowUpKeyboard(userText);
@@ -456,8 +460,8 @@ async function handleAIChat(chatId: number, userText: string, request: NextReque
 function buildFollowUpKeyboard(query: string): InlineKeyboardMarkup | undefined {
   const q = query.toLowerCase();
 
-  // BTC/ETH/specific coin queries → show related actions
-  const coinMatch = q.match(/\b(btc|eth|sol|doge|xrp|ada|bnb|avax|matic|dot|link|uni|aave)\b/);
+  // BTC/ETH/specific coin queries → show related actions + chart link
+  const coinMatch = q.match(/\b(btc|eth|sol|doge|xrp|ada|bnb|avax|matic|dot|link|uni|aave|sui|apt|arb|op|ton|near|pepe|wif)\b/);
   if (coinMatch) {
     const coin = coinMatch[1].toUpperCase();
     return {
@@ -468,7 +472,7 @@ function buildFollowUpKeyboard(query: string): InlineKeyboardMarkup | undefined 
         ],
         [
           { text: '🐋 Whales', callback_data: `q:Whale positions for ${coin}` },
-          { text: '⚡ Arb Ops', callback_data: 'q:Best funding arb opportunities' },
+          { text: `📉 ${coin} Chart`, url: `https://info-hub.io/chart?s=${coin}&tf=240` },
         ],
       ],
     };
@@ -484,7 +488,7 @@ function buildFollowUpKeyboard(query: string): InlineKeyboardMarkup | undefined 
         ],
         [
           { text: '🐋 Whale Watch', callback_data: 'q:Top whale positions on Hyperliquid' },
-          { text: '📅 Events', callback_data: 'q:Upcoming catalysts and events this week' },
+          { text: '📉 BTC Chart', url: 'https://info-hub.io/chart?s=BTC&tf=240' },
         ],
       ],
     };
@@ -508,6 +512,10 @@ function buildFollowUpKeyboard(query: string): InlineKeyboardMarkup | undefined 
       [
         { text: '📊 Market Overview', callback_data: 'q:Quick market pulse right now' },
         { text: '🐋 Whale Watch', callback_data: 'q:Top whale positions' },
+      ],
+      [
+        { text: '🌐 Dashboard', url: 'https://info-hub.io' },
+        { text: '📉 Charts', url: 'https://info-hub.io/chart' },
       ],
     ],
   };
