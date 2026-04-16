@@ -528,7 +528,7 @@ export default function Header() {
                       <span className="flex items-center gap-2.5">
                         <cat.icon className="w-4 h-4" />
                         {cat.label}
-                        <span className="text-[10px] text-neutral-600 font-normal">
+                        <span className="text-[10px] text-neutral-500 font-normal">
                           {allItems(cat).length}
                         </span>
                       </span>
@@ -545,7 +545,7 @@ export default function Header() {
                         {cat.columns.map((group) => (
                           <div key={group.heading || 'default'}>
                             {group.heading && (
-                              <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 px-3 pt-2 pb-1">
+                              <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 px-3 pt-2 pb-1">
                                 {group.heading}
                               </div>
                             )}

@@ -9,7 +9,7 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
-import { ArrowLeft, TrendingUp, TrendingDown, Percent, Activity, DollarSign, Eye, EyeOff, Check } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Percent, Activity, DollarSign, Eye, EyeOff, Check, BarChart3, Zap, LineChart, ArrowLeftRight } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
 import { useFlash } from '@/hooks/useFlash';
 import { useApi } from '@/hooks/useSWRApi';
@@ -372,6 +372,25 @@ export default function SymbolFundingPage() {
             </p>
           </div>
           {lastUpdate && <DataFreshness exchangeCount={liveExchanges.length} lastUpdated={lastUpdate} />}
+        </div>
+
+        {/* Quick symbol links */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          {[
+            { href: `/chart?s=${symbol}&tf=240`, icon: LineChart, label: 'Chart' },
+            { href: `/open-interest?sym=${symbol}`, icon: BarChart3, label: 'Open Interest' },
+            { href: `/spreads?sym=${symbol}`, icon: ArrowLeftRight, label: 'Spreads' },
+            { href: `/liquidations?sym=${symbol}`, icon: Zap, label: 'Liquidations' },
+          ].map(link => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all"
+            >
+              <link.icon className="w-3.5 h-3.5" />
+              {symbol} {link.label}
+            </Link>
+          ))}
         </div>
 
         {isLoading ? (

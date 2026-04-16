@@ -351,8 +351,8 @@ export default function HomeOrange() {
                         </h4>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-[10px] text-hub-yellow/60 font-medium">{article.source_info?.name || article.source}</span>
-                          <span className="text-neutral-700">&middot;</span>
-                          <span className="text-[10px] text-neutral-600">{formatTimeAgo(article.published_on)}</span>
+                          <span className="text-neutral-500">&middot;</span>
+                          <span className="text-[10px] text-neutral-400">{formatTimeAgo(article.published_on)}</span>
                         </div>
                       </a>
                     ))}
@@ -430,8 +430,8 @@ export default function HomeOrange() {
                   <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Centralized</span>
                   <div className="flex items-center gap-1 text-[10px] font-mono">
                     <span className="text-green-500">{activeCex}</span>
-                    <span className="text-neutral-700">/</span>
-                    <span className="text-neutral-600">{cexExchanges.length}</span>
+                    <span className="text-neutral-500">/</span>
+                    <span className="text-neutral-400">{cexExchanges.length}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
@@ -482,8 +482,8 @@ export default function HomeOrange() {
                   <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Decentralized</span>
                   <div className="flex items-center gap-1 text-[10px] font-mono">
                     <span className="text-purple-400">{activeDex}</span>
-                    <span className="text-neutral-700">/</span>
-                    <span className="text-neutral-600">{dexExchanges.length}</span>
+                    <span className="text-neutral-500">/</span>
+                    <span className="text-neutral-400">{dexExchanges.length}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
