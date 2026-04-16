@@ -9,7 +9,6 @@ import type { ArbitrageItem, FeasibilityGrade, EnrichedArb } from './types';
 import { IntervalBadge } from './GradeBadge';
 import { formatUSD, formatPrice, getIntervalForExchange, GRADE_COLORS, getGradeBreakdown } from './utils';
 import { ProfitCalculator } from './ProfitCalculator';
-import { PredictionBadge } from './PredictionBadge';
 
 function formatCountdown(ms: number): string {
   if (ms <= 0) return 'now';
@@ -496,8 +495,6 @@ export function ExpandedPanel({ item, periodScale, intervalMap, oiMap }: {
       )}
       {/* Liquidity Depth */}
       <LiquidityDepth symbol={item.symbol} exchanges={item.sorted.map(e => e.exchange)} highExchange={item.high.exchange} lowExchange={item.low.exchange} />
-      {/* Kronos AI Spread Forecast */}
-      <PredictionBadge symbol={item.symbol} highExchange={item.high.exchange} lowExchange={item.low.exchange} variant="card" />
       {/* Profit Calculator — full width below */}
       <div>
         <button onClick={() => setShowCalc(!showCalc)} className="flex items-center gap-1.5 text-neutral-500 hover:text-white text-[11px] transition-colors">

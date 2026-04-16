@@ -58,6 +58,3 @@ C:*
 .vercel
 
 src/remotion/
-
-# Kronos cloned source (model code)
-services/kronos-src/
