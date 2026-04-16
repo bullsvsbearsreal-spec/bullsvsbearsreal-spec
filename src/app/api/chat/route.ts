@@ -10,9 +10,9 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
-const MAX_TOOL_ROUNDS = 4;
-const MAX_TOKENS = 700; // keep responses tight — forces conciseness
-const ADMIN_MAX_TOKENS = 1500; // admins get longer responses
+const MAX_TOOL_ROUNDS = 5;
+const MAX_TOKENS = 1200; // enough room for tool results + synthesis
+const ADMIN_MAX_TOKENS = 2000; // admins get longer responses
 
 // Content can be a plain string or multimodal array (with images)
 type MessageContent = string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;

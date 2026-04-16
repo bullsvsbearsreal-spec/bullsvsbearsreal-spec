@@ -255,11 +255,32 @@ export async function POST(request: NextRequest) {
 
 // ─── Hub AI Chat via Telegram ─────────────────────────────────────────────────
 
-const TELEGRAM_MAX_TOKENS = 600; // Telegram messages cap at 4096 chars
+const TELEGRAM_MAX_TOKENS = 800; // More room for tool synthesis
 const TELEGRAM_MAX_TOOL_ROUNDS = 3;
+const TELEGRAM_HISTORY_SIZE = 6; // Keep last 6 messages (3 turns) for context
 
 // Simple per-chat rate limit: 1 AI message per 5 seconds
 const chatLastRequest = new Map<number, number>();
+
+// In-memory conversation history per chat (lightweight, resets on cold start)
+const chatHistory = new Map<number, Array<{ role: 'user' | 'assistant'; content: string; ts: number }>>();
+
+function getChatHistory(chatId: number): Array<{ role: string; content: string }> {
+  const history = chatHistory.get(chatId);
+  if (!history) return [];
+  // Only keep messages from last 30 minutes for relevance
+  const cutoff = Date.now() - 30 * 60 * 1000;
+  const recent = history.filter(m => m.ts > cutoff);
+  return recent.slice(-TELEGRAM_HISTORY_SIZE).map(m => ({ role: m.role, content: m.content }));
+}
+
+function addToHistory(chatId: number, role: 'user' | 'assistant', content: string) {
+  if (!chatHistory.has(chatId)) chatHistory.set(chatId, []);
+  const history = chatHistory.get(chatId)!;
+  history.push({ role, content, ts: Date.now() });
+  // Keep only last 20 entries per chat to bound memory
+  if (history.length > 20) chatHistory.set(chatId, history.slice(-20));
+}
 
 async function handleAIChat(chatId: number, userText: string, request: NextRequest) {
   // Rate limit
@@ -271,11 +292,19 @@ async function handleAIChat(chatId: number, userText: string, request: NextReque
   }
   chatLastRequest.set(chatId, now);
 
-  // Evict old entries
+  // Evict old entries from rate limit map
   if (chatLastRequest.size > 1000) {
     const cutoff = now - 60_000;
     Array.from(chatLastRequest.entries()).forEach(([id, ts]) => {
       if (ts < cutoff) chatLastRequest.delete(id);
+    });
+  }
+
+  // Evict stale conversation histories
+  if (chatHistory.size > 500) {
+    const cutoff = now - 60 * 60 * 1000; // 1 hour
+    Array.from(chatHistory.entries()).forEach(([id, msgs]) => {
+      if (msgs.length === 0 || msgs[msgs.length - 1].ts < cutoff) chatHistory.delete(id);
     });
   }
 
@@ -298,11 +327,16 @@ async function handleAIChat(chatId: number, userText: string, request: NextReque
 
     const origin = new URL(request.url).origin;
     const systemPrompt = buildSystemPrompt({}) +
-      '\n\nPLATFORM: Telegram. Keep responses SHORT (under 300 words). Use plain text, no markdown headers. Bold with <b>tags</b> (HTML). Telegram users want quick answers.';
+      '\n\nPLATFORM: Telegram. Keep responses SHORT (under 300 words). Use plain text, no markdown headers. Bold with <b>tags</b> (HTML). Telegram users want quick, punchy answers. No code blocks. Use bullet points sparingly.';
+
+    // Build messages with conversation history
+    const history = getChatHistory(chatId);
+    addToHistory(chatId, 'user', userText);
 
     const client = new Anthropic({ apiKey });
     let messages: Anthropic.MessageParam[] = [
-      { role: 'user', content: userText },
+      ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      { role: 'user' as const, content: userText },
     ];
     let toolRounds = 0;
     let finalText = '';
@@ -358,6 +392,9 @@ async function handleAIChat(chatId: number, userText: string, request: NextReque
 
     // Send response (split if > 4000 chars)
     if (!finalText) finalText = 'No data found for that query.';
+
+    // Save assistant response to conversation history
+    addToHistory(chatId, 'assistant', finalText);
 
     // Convert markdown bold to HTML bold for Telegram
     finalText = finalText.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');

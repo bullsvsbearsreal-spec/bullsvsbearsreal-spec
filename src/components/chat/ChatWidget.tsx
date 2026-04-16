@@ -239,6 +239,20 @@ export default function ChatWidget() {
     }
   }, []);
 
+  const handleRetry = useCallback(() => {
+    // Find the last user message and resend it
+    const stored = getMessages();
+    const lastUser = [...stored].reverse().find((m) => m.role === 'user');
+    if (!lastUser || isLoading) return;
+    // Remove the failed assistant response from UI
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'assistant') return prev.slice(0, -1);
+      return prev;
+    });
+    sendMessage(lastUser.content);
+  }, [sendMessage, isLoading]);
+
   const handleClear = () => {
     clearChat();
     setMessages([]);
@@ -346,6 +360,7 @@ export default function ChatWidget() {
             isLoading={isLoading}
             activeToolName={activeToolName}
             onSuggestionSelect={sendMessage}
+            onRetry={handleRetry}
           />
 
           {/* Suggestions after last assistant message */}

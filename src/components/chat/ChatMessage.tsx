@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { User, Loader2 } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { User, Loader2, Copy, Check, RotateCcw } from 'lucide-react';
 import GuardIcon from './GuardIcon';
 
 interface ChatMessageProps {
@@ -10,6 +10,7 @@ interface ChatMessageProps {
   imageDataUrl?: string;
   isStreaming?: boolean;
   toolName?: string;
+  onRetry?: () => void;
 }
 
 function escapeHtml(text: string): string {
@@ -21,12 +22,20 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** Render inline markdown: bold, italic, inline code, links */
+/** Render inline markdown: bold, italic, strikethrough, inline code, links */
 function formatInline(text: string): string {
   // Escape HTML FIRST to prevent XSS, then apply markdown formatting
   return escapeHtml(text)
+    .replace(/\*\*\*(.*?)\*\*\*/g, '<strong class="text-white font-semibold italic">$1</strong>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
-    .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-white/[0.08] text-amber-400 text-[11px] font-mono">$1</code>');
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/~~(.*?)~~/g, '<del class="text-neutral-500">$1</del>')
+    .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-white/[0.08] text-amber-300 text-[11px] font-mono">$1</code>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label: string, url: string) => {
+      // Only allow safe URLs (http, https, relative paths)
+      const safeUrl = /^(https?:\/\/|\/[^/])/.test(url) ? url : '#';
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline underline-offset-2 decoration-amber-400/30 hover:decoration-amber-300/60 transition-colors">${label}</a>`;
+    });
 }
 
 /** Full markdown → HTML renderer for chat messages */
@@ -56,6 +65,26 @@ function formatMarkdown(text: string): string {
         if (!trimmed) {
           output.push('<div class="h-1.5"></div>');
           i++;
+          continue;
+        }
+
+        // Horizontal rule
+        if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+          output.push('<hr class="my-2 border-white/[0.08]" />');
+          i++;
+          continue;
+        }
+
+        // Blockquote
+        if (trimmed.startsWith('> ')) {
+          const quoteLines: string[] = [];
+          while (i < lines.length && lines[i].trim().startsWith('> ')) {
+            quoteLines.push(formatInline(lines[i].trim().slice(2)));
+            i++;
+          }
+          output.push(
+            `<blockquote class="my-1.5 pl-3 border-l-2 border-amber-500/30 text-neutral-400 italic">${quoteLines.join('<br/>')}</blockquote>`,
+          );
           continue;
         }
 
@@ -159,8 +188,19 @@ export default function ChatMessage({
   imageDataUrl,
   isStreaming,
   toolName,
+  onRetry,
 }: ChatMessageProps) {
   const isUser = role === 'user';
+  const [copied, setCopied] = useState(false);
+  const isError = !isUser && content?.startsWith('Error:');
+
+  const handleCopy = useCallback(() => {
+    if (!content) return;
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }, [content]);
 
   const formattedContent = useMemo(() => {
     if (!content) return '';
@@ -230,6 +270,28 @@ export default function ChatMessage({
         {/* Streaming cursor */}
         {isStreaming && content && (
           <span className="inline-block w-0.5 h-3.5 ml-0.5 bg-amber-400/60 animate-pulse align-middle" />
+        )}
+
+        {/* Action buttons — copy + retry */}
+        {!isUser && content && !isStreaming && (
+          <div className="flex items-center gap-1 mt-1.5 -mb-0.5">
+            <button
+              onClick={handleCopy}
+              className="p-1 rounded text-neutral-600 hover:text-neutral-400 hover:bg-white/[0.04] transition-colors"
+              title="Copy response"
+            >
+              {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            </button>
+            {isError && onRetry && (
+              <button
+                onClick={onRetry}
+                className="p-1 rounded text-neutral-600 hover:text-amber-400 hover:bg-amber-500/[0.06] transition-colors"
+                title="Retry"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

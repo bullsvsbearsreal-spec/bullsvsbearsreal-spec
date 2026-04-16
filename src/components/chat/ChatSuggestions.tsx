@@ -7,22 +7,23 @@ import {
 
 const POOLS = {
   trading: [
-    { label: 'BTC Outlook', prompt: 'BTC — bullish or bearish? Funding, OI, positioning.', icon: TrendingUp },
-    { label: 'Best Arbs', prompt: 'Best funding arb opportunities right now.', icon: Zap },
-    { label: 'Whale Watch', prompt: 'Top whale positions on Hyperliquid.', icon: Anchor },
-    { label: 'OI Shifts', prompt: 'Biggest OI changes — where is money flowing?', icon: BarChart3 },
+    { label: 'BTC Outlook', prompt: 'BTC right now. Funding, OI, positioning. Bullish or bearish?', icon: TrendingUp },
+    { label: 'Best Arbs', prompt: 'Top funding rate arbitrage opportunities across all exchanges.', icon: Zap },
+    { label: 'Whale Watch', prompt: 'Biggest whale positions on Hyperliquid right now. Who is loaded?', icon: Anchor },
+    { label: 'Money Flow', prompt: 'Where is smart money going? Show me the biggest OI changes in the last few hours.', icon: BarChart3 },
+    { label: 'ETH vs SOL', prompt: 'ETH vs SOL. Compare funding, OI, momentum. Which looks stronger?', icon: ArrowUpDown },
   ],
   macro: [
-    { label: 'Market Vibe', prompt: 'Quick market pulse — sentiment, movers, red flags.', icon: Activity },
-    { label: 'Catalysts', prompt: 'Upcoming macro events or token unlocks this week.', icon: Clock },
-    { label: 'Cycle Check', prompt: 'Where are we in the cycle? Pi Cycle, S2F, Rainbow.', icon: Gauge },
-    { label: 'Flows', prompt: 'Stablecoin + ETF flows — risk on or off?', icon: DollarSign },
+    { label: 'Market Pulse', prompt: 'Quick market overview. Sentiment, top movers, any red flags I should know about.', icon: Activity },
+    { label: 'This Week', prompt: 'What major events, token unlocks, or catalysts are coming this week?', icon: Clock },
+    { label: 'Cycle Check', prompt: 'Where are we in the market cycle? Check on-chain metrics and macro indicators.', icon: Gauge },
+    { label: 'Capital Flows', prompt: 'Stablecoin inflows + ETF flows. Is capital entering or leaving crypto?', icon: DollarSign },
   ],
   data: [
-    { label: 'Options', prompt: 'BTC options: max pain, PCR, key levels.', icon: Target },
-    { label: 'On-Chain', prompt: 'BTC on-chain health check.', icon: Landmark },
-    { label: 'OI Momentum', prompt: 'OI delta — which coins are loading up?', icon: ArrowUpDown },
-    { label: 'Polymarket', prompt: 'Prediction market arb spreads.', icon: PieChart },
+    { label: 'Options Flow', prompt: 'BTC options overview. Max pain, put/call ratio, key strikes, notable activity.', icon: Target },
+    { label: 'On-Chain', prompt: 'BTC on-chain health check. MVRV, Puell, exchange flows.', icon: Landmark },
+    { label: 'Squeeze Radar', prompt: 'Any coins with OI building against price? Looking for squeeze setups.', icon: ArrowUpDown },
+    { label: 'Top Yields', prompt: 'Best DeFi yields right now for stablecoins. Low risk, high APY.', icon: PieChart },
   ],
 };
 

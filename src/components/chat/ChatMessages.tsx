@@ -19,6 +19,7 @@ interface ChatMessagesProps {
   isLoading: boolean;
   activeToolName?: string;
   onSuggestionSelect: (prompt: string) => void;
+  onRetry?: () => void;
 }
 
 export default function ChatMessages({
@@ -26,6 +27,7 @@ export default function ChatMessages({
   isLoading,
   activeToolName,
   onSuggestionSelect,
+  onRetry,
 }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +53,7 @@ export default function ChatMessages({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin" aria-live="polite" aria-label="Chat messages">
-      {messages.map((msg) => (
+      {messages.map((msg, idx) => (
         <ChatMessage
           key={msg.id}
           role={msg.role}
@@ -59,6 +61,7 @@ export default function ChatMessages({
           imageDataUrl={msg.imageDataUrl}
           isStreaming={msg.isStreaming}
           toolName={msg.isStreaming ? activeToolName : undefined}
+          onRetry={msg.role === 'assistant' && idx === messages.length - 1 ? onRetry : undefined}
         />
       ))}
 
