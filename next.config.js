@@ -6,6 +6,9 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // output: 'standalone',  // disabled — DO App Platform Heroku buildpack runs `next start` directly.
+  // Vercel doesn't need standalone output either (it uses its own bundler).
+  // Re-enable only if you switch to a Dockerfile-based deploy that runs `node .next/standalone/server.js`.
   experimental: {
     serverComponentsExternalPackages: ['@napi-rs/canvas'],
   },
@@ -38,11 +41,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live https://*.tradingview.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.tradingview.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.sentry.io https://*.vercel-insights.com https://*.vercel.live https://va.vercel-scripts.com wss://fstream.binance.com wss://stream.bybit.com wss://ws.okx.com:8443 wss://ws.bitget.com wss://www.deribit.com wss://api.hbdm.com wss://backend-arbitrum.gains.trade wss://indexer.dydx.trade wss://api-pub.bitfinex.com wss://prices.info-hub.io https://prices.info-hub.io wss://api.hyperliquid.xyz https://api.hyperliquid.xyz",
+              "connect-src 'self' https://*.sentry.io wss://fstream.binance.com wss://stream.bybit.com wss://ws.okx.com:8443 wss://ws.bitget.com wss://www.deribit.com wss://api.hbdm.com wss://backend-arbitrum.gains.trade wss://indexer.dydx.trade wss://api-pub.bitfinex.com wss://prices.info-hub.io https://prices.info-hub.io wss://api.hyperliquid.xyz https://api.hyperliquid.xyz",
               "frame-src https://*.tradingview.com",
               "child-src https://*.tradingview.com",
               "frame-ancestors 'none'",
