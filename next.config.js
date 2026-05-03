@@ -1,7 +1,10 @@
 const { withSentryConfig } = require('@sentry/nextjs');
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
+// Bundle analyzer is a devDep; only require it when explicitly running ANALYZE=true.
+// Avoids a "Cannot find module '@next/bundle-analyzer'" crash in production
+// (DO App Platform installs prod-only deps).
+const withBundleAnalyzer = process.env.ANALYZE === 'true'
+  ? require('@next/bundle-analyzer')({ enabled: true })
+  : (config) => config;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
