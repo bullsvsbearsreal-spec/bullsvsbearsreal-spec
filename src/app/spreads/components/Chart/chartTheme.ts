@@ -23,7 +23,9 @@ export const chartOptions: DeepPartial<ChartOptions> = {
   rightPriceScale: {
     borderVisible: false,
     borderColor: 'rgba(255,255,255,0.06)',
-    scaleMargins: { top: 0.08, bottom: 0.08 },
+    scaleMargins: { top: 0.04, bottom: 0.04 },
+    autoScale: true,
+    mode: 0, // Normal — lightweight-charts auto-fits to visible data
   },
   timeScale: {
     borderVisible: false,

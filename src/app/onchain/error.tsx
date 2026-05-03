@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function OnchainError({
   error,
@@ -14,30 +15,52 @@ export default function OnchainError({
   }, [error]);
 
   return (
-    <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-20 flex flex-col items-center justify-center text-center">
-      <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-        <svg className="w-6 h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <h1 className="text-lg font-semibold text-white mb-2">Onchain data failed to load</h1>
-      <p className="text-neutral-400 text-sm mb-6 max-w-sm">
-        Something went wrong. This usually resolves on retry.
-      </p>
-      <div className="flex gap-3">
+    <div style={{ padding: '32px 22px', maxWidth: 720, margin: '0 auto' }}>
+      <div style={{
+        background: 'var(--hub-darker)',
+        border: '1px solid rgba(239,68,68,0.25)',
+        borderRadius: 14,
+        padding: 22,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        flexWrap: 'wrap',
+      }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 10,
+          background: 'rgba(239,68,68,0.10)',
+          border: '1px solid rgba(239,68,68,0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <AlertTriangle size={18} style={{ color: 'var(--rekt-mild)' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 700, color: 'var(--fg-default)',
+            letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4,
+          }}>
+            On-chain data unavailable
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+            Upstream provider returned no data. Usually resolves on retry — other pages should work normally.
+          </div>
+        </div>
         <button
           onClick={reset}
-          className="px-4 py-2 bg-hub-yellow text-black rounded-lg font-medium text-sm hover:bg-hub-yellow/90 transition-colors"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px',
+            borderRadius: 8,
+            background: 'var(--hub-accent)', color: '#000',
+            border: 'none', cursor: 'pointer',
+            fontSize: 11, fontWeight: 700,
+            letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}
         >
-          Try again
+          <RefreshCw size={12} /> Try again
         </button>
-        <a
-          href="/onchain"
-          className="px-4 py-2 border border-white/[0.1] text-neutral-300 rounded-lg text-sm hover:bg-white/[0.04] transition-colors"
-        >
-          Reload page
-        </a>
       </div>
-    </main>
+    </div>
   );
 }

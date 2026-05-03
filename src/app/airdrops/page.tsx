@@ -544,10 +544,8 @@ export default function AirdropsPage() {
   }), [airdrops]);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
-      <Header />
-
-      <main id="main-content" className="flex-1 max-w-[1400px] mx-auto w-full px-4 py-6 space-y-6">
+    <div className="w-full flex flex-col">
+      <div id="main-content" className="flex-1 w-full px-4 py-5 space-y-6">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
@@ -600,10 +598,7 @@ export default function AirdropsPage() {
         {!isLoading && activeTab === 'tracker' && <TrackerTab airdrops={airdrops} />}
         {!isLoading && activeTab === 'calendar' && <CalendarTab airdrops={airdrops} />}
         {!isLoading && activeTab === 'guides' && <GuidesTab airdrops={airdrops} />}
-      </main>
-
-      <ReferralBanner />
-      <Footer />
+      </div>
     </div>
   );
 }

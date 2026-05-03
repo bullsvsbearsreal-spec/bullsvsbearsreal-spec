@@ -408,9 +408,8 @@ export default function EconomicCalendarPage() {
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="min-h-screen bg-hub-black">
-      <Header />
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
+    <div className="w-full">
+      <div id="main-content" className="w-full px-4 py-5">
         {/* Page header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
@@ -1073,9 +1072,7 @@ export default function EconomicCalendarPage() {
             Economic events like FOMC rate decisions, CPI inflation data, and Non-Farm Payrolls significantly impact crypto markets. High-impact events (marked red) often cause 2-5% price swings in Bitcoin within hours. FOMC meetings are the most watched — hawkish surprises typically pressure crypto prices, while dovish signals drive rallies. Calendar data includes US, EU, and crypto-specific events. Dates are based on officially published schedules.
           </p>
         </div>
-      </main>
-      <ReferralBanner />
-      <Footer />
+      </div>
     </div>
   );
 }

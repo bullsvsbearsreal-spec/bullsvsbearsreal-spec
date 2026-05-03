@@ -121,7 +121,10 @@ async function fetchCryptoCompare(currency?: string): Promise<UnifiedNewsArticle
     });
     if (!res.ok) return [];
     const data = await res.json();
-    const articles: CCArticle[] = data.Data || [];
+    // CryptoCompare changed in 2025: without an API key the endpoint returns
+    // 200 OK but `Data: {}` (object, not array). Guard against that.
+    const articles: CCArticle[] = Array.isArray(data?.Data) ? data.Data : [];
+    if (articles.length === 0) return [];
 
     return articles
       .filter(a => a.published_on && !isNaN(a.published_on) && a.published_on > 0)
@@ -338,8 +341,13 @@ async function fetchBinanceAnnouncements(): Promise<UnifiedNewsArticle[]> {
         const res = await fetch(
           `https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=${id}&pageNo=1&pageSize=15`,
           {
-            signal: AbortSignal.timeout(6000),
-            headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
+            signal: AbortSignal.timeout(10_000),
+            redirect: 'follow',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+              'Accept': 'application/json, text/plain, */*',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
           },
         );
         if (!res.ok) return;
@@ -364,7 +372,7 @@ async function fetchBinanceAnnouncements(): Promise<UnifiedNewsArticle[]> {
     }),
   );
 
-  setCache('binance-announcements', all);
+  if (all.length > 0) setCache('binance-announcements', all);
   return all;
 }
 
@@ -383,7 +391,7 @@ async function fetchOKXAnnouncements(): Promise<UnifiedNewsArticle[]> {
         headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
       },
     );
-    if (!res.ok) { setCache('okx-announcements', all); return all; }
+    if (!res.ok) { return all; } // Don't cache on failure
     const json = await res.json();
     const items: any[] = json?.data?.notices || json?.data?.announcements || [];
     for (const item of items.slice(0, 20)) {
@@ -410,7 +418,7 @@ async function fetchOKXAnnouncements(): Promise<UnifiedNewsArticle[]> {
     console.error('OKX announcement fetch error:', err);
   }
 
-  setCache('okx-announcements', all);
+  if (all.length > 0) setCache('okx-announcements', all);
   return all;
 }
 
@@ -429,7 +437,7 @@ async function fetchBybitAnnouncements(): Promise<UnifiedNewsArticle[]> {
         headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
       },
     );
-    if (!res.ok) { setCache('bybit-announcements', all); return all; }
+    if (!res.ok) { return all; } // Don't cache on failure
     const json = await res.json();
     const items: any[] = json?.result?.list || [];
     for (const item of items) {
@@ -456,7 +464,7 @@ async function fetchBybitAnnouncements(): Promise<UnifiedNewsArticle[]> {
     console.error('Bybit announcement fetch error:', err);
   }
 
-  setCache('bybit-announcements', all);
+  if (all.length > 0) setCache('bybit-announcements', all);
   return all;
 }
 
@@ -476,7 +484,7 @@ async function fetchBitgetAnnouncements(): Promise<UnifiedNewsArticle[]> {
         headers: { 'User-Agent': 'Mozilla/5.0 InfoHub/1.0' },
       },
     );
-    if (!res.ok) { setCache('bitget-announcements', all); return all; }
+    if (!res.ok) { return all; } // Don't cache on failure
     const json = await res.json();
     const items: any[] = json?.data?.items || json?.data || [];
     for (const item of items.slice(0, 20)) {
@@ -503,7 +511,7 @@ async function fetchBitgetAnnouncements(): Promise<UnifiedNewsArticle[]> {
     console.error('Bitget announcement fetch error:', err);
   }
 
-  setCache('bitget-announcements', all);
+  if (all.length > 0) setCache('bitget-announcements', all);
   return all;
 }
 
@@ -511,25 +519,40 @@ async function fetchRSSFeeds(): Promise<UnifiedNewsArticle[]> {
   const cached = getCached<UnifiedNewsArticle[]>('rss-raw');
   if (cached) return cached;
 
+  // Many RSS hosts (CoinDesk, Decrypt, CryptoSlate) 403/308 any bot-looking UA.
+  // A common desktop Chrome UA gets through almost all of them.
+  const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
   const results = await Promise.allSettled(
     RSS_FEEDS.map(async (feed) => {
       try {
         const res = await fetch(feed.url, {
-          signal: AbortSignal.timeout(5000),
-          headers: { 'User-Agent': 'InfoHub/1.0 (news aggregator)' },
+          signal: AbortSignal.timeout(10_000),
+          redirect: 'follow',
+          headers: {
+            'User-Agent': BROWSER_UA,
+            'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
         });
-        if (!res.ok) return [];
+        if (!res.ok) {
+          console.warn(`RSS non-ok (${feed.name}): ${res.status}`);
+          return [];
+        }
         const xml = await res.text();
-        return parseFeedItems(xml, feed.name, feed.type);
+        const items = parseFeedItems(xml, feed.name, feed.type);
+        return items;
       } catch (err) {
-        console.error(`RSS fetch error (${feed.name}):`, err);
+        console.error(`RSS fetch error (${feed.name}):`, err instanceof Error ? err.message : err);
         return [];
       }
     })
   );
 
   const articles = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-  setCache('rss-raw', articles);
+  // Don't cache an empty result (common on transient failures). That way the
+  // next request retries instead of returning nothing for 5 minutes.
+  if (articles.length > 0) setCache('rss-raw', articles);
   return articles;
 }
 

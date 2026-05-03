@@ -18,6 +18,26 @@ export const dynamic = 'force-dynamic';
 const cache = new Map<string, { body: any; ts: number }>();
 const CACHE_TTL = 30_000;
 
+/**
+ * OKX perpetual contract sizes. `sz` from liquidation-orders is in CONTRACTS,
+ * not base units. Without this multiplier, BTC/ETH liquidation values were
+ * overstated 10-100×.
+ */
+const OKX_CONTRACT_MULTIPLIER: Record<string, number> = {
+  BTC: 0.01,
+  ETH: 0.1,
+  SOL: 1,
+  XRP: 100,
+  DOGE: 1000,
+  HYPE: 1,
+  ASTER: 10,
+  BNB: 0.01,
+  AVAX: 1,
+  LINK: 1,
+  SUI: 10,
+  LTC: 1,
+};
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const parsed = LiquidationsQuerySchema.safeParse({
@@ -62,6 +82,7 @@ export async function GET(request: NextRequest) {
 
     const json = await res.json();
     const entries: any[] = json?.data || [];
+    const contractMult = OKX_CONTRACT_MULTIPLIER[parsed.data.symbol] ?? 1;
 
     // OKX returns grouped by instrument, each with a details array
     const liquidations: any[] = [];
@@ -70,13 +91,16 @@ export async function GET(request: NextRequest) {
       for (const d of details) {
         // OKX side: "buy" = short liquidated (forced buy-back), "sell" = long liquidated (forced sell)
         const side = d.side === 'buy' ? 'short' : 'long';
-        const size = parseFloat(d.sz) || 0;
+        const contracts = parseFloat(d.sz) || 0;
         const price = parseFloat(d.bkPx) || 0; // bankruptcy price
+        // `sz` is in contracts, not base units — apply per-symbol multiplier.
+        // Size in base units × price = USD value.
+        const baseSize = contracts * contractMult;
         liquidations.push({
           side,
-          size,
+          size: baseSize,      // base units (BTC, ETH, SOL, etc.)
           price,
-          value: size * price,
+          value: baseSize * price,
           timestamp: parseInt(d.ts, 10),
         });
       }

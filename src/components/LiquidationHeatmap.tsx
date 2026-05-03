@@ -35,6 +35,9 @@ export default function LiquidationHeatmap() {
     persistKey: 'ih-liq-home',
     persistTtlMs: 3600000, // 1h
     onLiquidation,
+    // Hydrate from DB on mount so fresh visitors see real 24h totals, not just
+    // whatever their browser saw since page open. WS events merge on top.
+    hydrateFromApi: '/api/liquidations/aggregate?hours=24&limit=30',
   });
 
   const connectedCount = connections.filter(c => c.connected).length;

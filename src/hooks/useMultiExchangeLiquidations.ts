@@ -52,6 +52,12 @@ interface UseMultiExchangeLiquidationsOptions {
   onLiquidation?: (liq: Liquidation) => void;
   persistKey?: string; // localStorage key for persistence
   persistTtlMs?: number; // max age of persisted data in ms
+  /**
+   * Optional API URL to hydrate aggregated totals from on mount.
+   * Should return shape: { symbols: [{symbol, totalValue, longValue, shortValue, count}], totals: {longValue, shortValue, count} }
+   * Live WebSocket events then merge on top of this baseline.
+   */
+  hydrateFromApi?: string;
 }
 
 const RECONNECT_DELAY = 3000;
@@ -354,6 +360,7 @@ export function useMultiExchangeLiquidations({
   onLiquidation,
   persistKey = 'ih-liq-data',
   persistTtlMs = 3600000, // default 1h
+  hydrateFromApi,
 }: UseMultiExchangeLiquidationsOptions) {
   // Stabilize exchanges array reference — if the parent passes a new array literal
   // with the same content on every render, we keep the previous reference to avoid
@@ -383,6 +390,59 @@ export function useMultiExchangeLiquidations({
       aggRef.current = saved.aggregated;
     }
   }, [persistKey, persistTtlMs]);
+
+  // Hydrate aggregated totals from the DB-backed API once on mount.
+  // This gives fresh visitors a realistic baseline before any WS events arrive.
+  // Merging: DB totals seed the aggregated map + stats; live WS events then
+  // add on top. If localStorage already had fresher data for a symbol (more
+  // count), we keep the localStorage value to avoid regressing.
+  useEffect(() => {
+    if (!hydrateFromApi) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(hydrateFromApi, { signal: AbortSignal.timeout(10_000) });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled) return;
+        const apiSymbols: Array<{ symbol: string; totalValue: number; longValue: number; shortValue: number; count: number }> =
+          Array.isArray(json?.symbols) ? json.symbols : [];
+        const apiTotals = json?.totals || null;
+        if (!apiSymbols.length || !apiTotals) return;
+
+        // Merge API totals into aggregated map. Prefer bigger numbers per symbol
+        // (protects against localStorage having more recent WS events than DB).
+        setAggregated(prev => {
+          const next = new Map(prev);
+          for (const row of apiSymbols) {
+            const existing = next.get(row.symbol);
+            if (!existing || existing.totalValue < row.totalValue) {
+              next.set(row.symbol, { ...row });
+            }
+          }
+          aggRef.current = next;
+          return next;
+        });
+
+        // Upgrade stats when DB baseline is bigger than current WS-only stats
+        setStats(prev => {
+          if (prev.longValue + prev.shortValue >= (apiTotals.longValue || 0) + (apiTotals.shortValue || 0)) return prev;
+          const next: LiquidationStats = {
+            totalLongs: Math.max(prev.totalLongs, Math.round((apiTotals.count || 0) * ((apiTotals.longValue || 0) / ((apiTotals.longValue + apiTotals.shortValue) || 1)))),
+            totalShorts: Math.max(prev.totalShorts, Math.round((apiTotals.count || 0) * ((apiTotals.shortValue || 0) / ((apiTotals.longValue + apiTotals.shortValue) || 1)))),
+            longValue: apiTotals.longValue || 0,
+            shortValue: apiTotals.shortValue || 0,
+            largestLiq: prev.largestLiq,
+          };
+          statsRef.current = next;
+          return next;
+        });
+      } catch {
+        // Fail silent, the widget still works from WS alone
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [hydrateFromApi]);
 
   const minValueRef = useRef(minValue);
   const onLiquidationRef = useRef(onLiquidation);

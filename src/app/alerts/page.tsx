@@ -244,6 +244,22 @@ export default function AlertsPage() {
     refresh();
   };
 
+  const startSuggestedAlert = (suggestion: {
+    symbol: string;
+    metric: AlertMetric;
+    operator: AlertOperator;
+    value: string;
+    exchange?: string;
+  }) => {
+    setFormSymbol(suggestion.symbol);
+    setFormMetric(suggestion.metric);
+    setFormOperator(suggestion.operator);
+    setFormValue(suggestion.value);
+    setFormExchange(suggestion.exchange ?? '');
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleDelete = (id: string) => {
     deleteAlert(id);
     refresh();
@@ -547,6 +563,25 @@ export default function AlertsPage() {
                 <p className="text-neutral-600 text-xs mt-1">
                   Click &quot;New Alert&quot; to create your first condition-based alert.
                 </p>
+                <div className="mt-5 rounded-xl border border-white/[0.05] bg-white/[0.02] p-4 text-left">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-neutral-600">Quick starters</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {[
+                      { label: 'BTC breaks above $80k', symbol: 'BTC', metric: 'price' as AlertMetric, operator: 'gt' as AlertOperator, value: '80000' },
+                      { label: 'ETH drops below $2500', symbol: 'ETH', metric: 'price' as AlertMetric, operator: 'lt' as AlertOperator, value: '2500' },
+                      { label: 'SOL funding overheats', symbol: 'SOL', metric: 'fundingRate' as AlertMetric, operator: 'gt' as AlertOperator, value: '0.05' },
+                      { label: 'BTC OI cools off', symbol: 'BTC', metric: 'openInterest' as AlertMetric, operator: 'lt' as AlertOperator, value: '30000000000' },
+                    ].map((suggestion) => (
+                      <button
+                        key={suggestion.label}
+                        onClick={() => startSuggestedAlert(suggestion)}
+                        className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-left text-xs text-neutral-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <SampleAlertsList />
               </div>
             ) : (

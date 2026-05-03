@@ -94,26 +94,51 @@ function setCache(key: string, data: any): void {
   }
 }
 
-// Fetch REAL crypto news from CryptoCompare (FREE API)
+// Fetch REAL crypto news. Historically used CryptoCompare's public API but
+// they started requiring an API key in 2025 which also blocks browser CORS
+// with a generic "Failed to fetch". We now route through our own
+// `/api/news` aggregator (which already handles 21+ sources server-side).
+// Returned objects are mapped into the CryptoCompare NewsArticle shape so
+// existing callers (homepage widget) don't need to change.
 export async function fetchCryptoNews(limit: number = 20): Promise<NewsArticle[]> {
   const cacheKey = `news:${limit}`;
   const cached = getCached<NewsArticle[]>(cacheKey);
   if (cached) return cached;
 
   try {
-    const response = await fetch(
-      `${CRYPTOCOMPARE_NEWS_API}/?lang=EN&sortOrder=popular`,
-      { next: { revalidate: 300 } }
-    );
+    // Use a relative URL client-side; for server-side (SSR/prerender) use an
+    // absolute URL so fetch doesn't error with "Only absolute URLs supported".
+    const base = typeof window === 'undefined'
+      ? (process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io')
+      : '';
+    const response = await fetch(`${base}/api/news?limit=${limit}`, {
+      next: { revalidate: 300 },
+    });
+    if (!response.ok) return [];
 
-    if (response.ok) {
-      const data = await response.json();
-      const articles = (Array.isArray(data.Data) ? data.Data : []).slice(0, limit);
-      setCache(cacheKey, articles);
-      return articles;
-    }
+    const data = await response.json();
+    const src: Array<{
+      id?: string; title?: string; url?: string; source?: string;
+      publishedAt?: number; categories?: string; currencies?: string;
+    }> = Array.isArray(data?.articles) ? data.articles : [];
+
+    const articles: NewsArticle[] = src.slice(0, limit).map((a, i) => ({
+      id: a.id ?? `infohub-${i}`,
+      title: a.title ?? '',
+      body: '',                        // not stored by our aggregator
+      url: a.url ?? '',
+      imageurl: '',                    // ditto
+      source: a.source ?? 'InfoHub',
+      source_info: { name: a.source ?? 'InfoHub', img: '' },
+      published_on: a.publishedAt ?? Math.floor(Date.now() / 1000),
+      categories: a.categories ?? '',
+      tags: a.currencies ?? '',
+    }));
+
+    setCache(cacheKey, articles);
+    return articles;
   } catch (error) {
-    console.error('CryptoCompare News API error:', error);
+    console.error('fetchCryptoNews proxy error:', error);
   }
   return [];
 }
@@ -145,7 +170,8 @@ function isArticleRelevant(article: NewsArticle, symbol: string): boolean {
   return false;
 }
 
-// Fetch news for a specific coin, with client-side relevance filtering
+// Fetch news for a specific coin, with client-side relevance filtering.
+// Routes through our own /api/news aggregator and post-filters for symbol mentions.
 export async function fetchCoinNews(coinSymbol: string, limit: number = 10): Promise<NewsArticle[]> {
   const cacheKey = `news:${coinSymbol}:${limit}`;
   const cached = getCached<NewsArticle[]>(cacheKey);
@@ -154,52 +180,17 @@ export async function fetchCoinNews(coinSymbol: string, limit: number = 10): Pro
   const symbol = coinSymbol.toUpperCase();
 
   try {
-    // Try coin-specific category first
-    const response = await fetch(
-      `${CRYPTOCOMPARE_NEWS_API}/?categories=${symbol}&lang=EN&sortOrder=latest&extraParams=InfoHub`,
-      { next: { revalidate: 300 } }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      const articles: NewsArticle[] = Array.isArray(data.Data) ? data.Data : [];
-
-      // Filter for actual relevance — article must mention the symbol
-      const relevant = articles.filter(a => isArticleRelevant(a, symbol));
-
-      if (relevant.length >= 3) {
-        const result = relevant.slice(0, limit);
-        setCache(cacheKey, result);
-        return result;
-      }
-    }
+    // Pull a larger candidate pool from our aggregator so relevance filtering
+    // has something to work with — the aggregator doesn't support per-coin filtering.
+    const general = await fetchCryptoNews(80);
+    const relevant = general.filter(a => isArticleRelevant(a, symbol));
+    const result = relevant.slice(0, limit);
+    setCache(cacheKey, result);
+    return result;
   } catch (error) {
-    console.error('CryptoCompare News API error:', error);
+    console.error('fetchCoinNews error:', error);
   }
 
-  // Fallback: fetch general news and filter by relevance
-  try {
-    const response = await fetch(
-      `${CRYPTOCOMPARE_NEWS_API}/?lang=EN&sortOrder=latest&extraParams=InfoHub`,
-      { next: { revalidate: 300 } }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      const articles: NewsArticle[] = Array.isArray(data.Data) ? data.Data : [];
-      const relevant = articles.filter(a => isArticleRelevant(a, symbol));
-
-      if (relevant.length > 0) {
-        const result = relevant.slice(0, limit);
-        setCache(cacheKey, result);
-        return result;
-      }
-    }
-  } catch (error) {
-    console.error('CryptoCompare general news filter error:', error);
-  }
-
-  // If no relevant articles found, return empty instead of fake results
   setCache(cacheKey, []);
   return [];
 }

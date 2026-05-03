@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>InfoHub — All Pages</title>
+  <link rel="stylesheet" href="../colors_and_type.css"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; }
+    body { background: #07090d; color: #e6e6ea; font-family: var(--font-sans); overflow: hidden; }
+    @keyframes radar-ring { 0% { transform: scale(0.4); opacity: 0.9; } 100% { transform: scale(1.9); opacity: 0; } }
+    @keyframes radar-core { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+    @keyframes stream-bar { 0%,100% { height: 30%; } 50% { height: 100%; } }
+    @keyframes exch-pop { 0% { transform: scale(1); filter: brightness(1); } 15% { transform: scale(1.15); filter: brightness(1.5); } 100% { transform: scale(1); filter: brightness(1); } }
+    @keyframes tape-scroll { from { transform: translateX(0);} to { transform: translateX(-50%);} }
+    @keyframes tape-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+    @keyframes flash-cell { 0% { background: rgba(74,222,128,0.25); } 100% { background: transparent; } }
+    @keyframes flash-cell-down { 0% { background: rgba(248,113,113,0.25); } 100% { background: transparent; } }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="_shared.jsx"></script>
+  <script type="text/babel" src="_data_pages.jsx"></script>
+  <script type="text/babel" src="_other_pages.jsx"></script>
+  <script type="text/babel">
+    const { DesignCanvas, DCSection, DCArtboard } = window;
+
+    function App() {
+      return (
+        <DesignCanvas title="InfoHub — All Pages">
+          <DCSection id="archetypes" title="Page Archetypes (templates)">
+            <DCArtboard id="arch-data-table" label="Archetype · Data Table" width={1440} height={900}>
+              <window.FundingPage/>
+            </DCArtboard>
+            <DCArtboard id="arch-detail" label="Archetype · Detail/Chart" width={1440} height={900}>
+              <window.ChartPage/>
+            </DCArtboard>
+            <DCArtboard id="arch-feed" label="Archetype · Feed/Stream" width={1440} height={900}>
+              <window.LiquidationsPage/>
+            </DCArtboard>
+            <DCArtboard id="arch-marketing" label="Archetype · Marketing" width={1440} height={900}>
+              <window.MarketingHero/>
+            </DCArtboard>
+            <DCArtboard id="arch-settings" label="Archetype · Settings/Form" width={1440} height={900}>
+              <window.SettingsPage/>
+            </DCArtboard>
+            <DCArtboard id="arch-admin" label="Archetype · Admin Table" width={1440} height={900}>
+              <window.AdminUsers/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="hero" title="Hero Pages — public product">
+            <DCArtboard id="p-funding" label="Funding Rates" width={1440} height={900}><window.FundingPage/></DCArtboard>
+            <DCArtboard id="p-oi" label="Open Interest" width={1440} height={900}><window.OIPage/></DCArtboard>
+            <DCArtboard id="p-liq" label="Liquidations" width={1440} height={900}><window.LiquidationsPage/></DCArtboard>
+            <DCArtboard id="p-screener" label="Screener" width={1440} height={900}><window.ScreenerPage/></DCArtboard>
+            <DCArtboard id="p-chart" label="Chart" width={1440} height={900}><window.ChartPage/></DCArtboard>
+            <DCArtboard id="p-options" label="Options" width={1440} height={900}><window.OptionsPage/></DCArtboard>
+            <DCArtboard id="p-dashboard" label="User Dashboard" width={1440} height={900}><window.DashboardPage/></DCArtboard>
+            <DCArtboard id="p-heatmap" label="Heatmap" width={1440} height={900}><window.HeatmapPage/></DCArtboard>
+            <DCArtboard id="p-alerts" label="Alerts" width={1440} height={900}><window.AlertsPage/></DCArtboard>
+            <DCArtboard id="p-news" label="News" width={1440} height={900}><window.NewsPage/></DCArtboard>
+            <DCArtboard id="p-coin" label="Coin Detail" width={1440} height={900}><window.CoinDetailPage/></DCArtboard>
+          </DCSection>
+
+          <DCSection id="marketing" title="Marketing & Account">
+            <DCArtboard id="p-landing" label="Landing" width={1440} height={900}><window.MarketingHero/></DCArtboard>
+            <DCArtboard id="p-pricing" label="Pricing" width={1440} height={900}><window.PricingPage/></DCArtboard>
+            <DCArtboard id="p-login" label="Login" width={1440} height={900}><window.LoginPage/></DCArtboard>
+            <DCArtboard id="p-settings" label="Settings" width={1440} height={900}><window.SettingsPage/></DCArtboard>
+          </DCSection>
+
+          <DCSection id="admin" title="Admin Panel">
+            <DCArtboard id="a-overview" label="Admin · Overview" width={1440} height={900}><window.AdminOverview/></DCArtboard>
+            <DCArtboard id="a-users" label="Admin · Users" width={1440} height={900}><window.AdminUsers/></DCArtboard>
+            <DCArtboard id="a-venues" label="Admin · Exchange Venues" width={1440} height={900}><window.AdminVenues/></DCArtboard>
+            <DCArtboard id="a-content" label="Admin · Content" width={1440} height={900}><window.AdminContent/></DCArtboard>
+          </DCSection>
+
+          <DCSection id="mobile" title="Mobile">
+            <DCArtboard id="m-funding" label="Mobile · Funding" width={390} height={844}><window.MobileFunding/></DCArtboard>
+            <DCArtboard id="m-chart" label="Mobile · Chart" width={390} height={844}><window.MobileChart/></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

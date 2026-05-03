@@ -14,7 +14,7 @@ export function fp(v: number): string {
   return Number(v.toPrecision(4)).toString();
 }
 
-const OUTLIER_THRESHOLD = 0.10; // 10% from median
+const OUTLIER_THRESHOLD = 0.01; // 1% from median — was 10%, too lenient (let stale feeds through)
 
 /** Filter outlier prices — returns sane entries */
 export function filterOutliers(

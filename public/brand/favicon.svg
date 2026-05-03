@@ -1,0 +1,49 @@
+<svg width="32" height="32" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB800"></stop>
+      <stop offset="0.5" stop-color="#FF8C00"></stop>
+      <stop offset="1" stop-color="#E06600"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="80" fill="url(#bg)"></rect>
+
+  
+  <g stroke="#1A1A2E" stroke-linecap="round" fill="none" opacity="0.5">
+    <polyline points="100,155 60,155 60,80" stroke-width="5"></polyline>
+    <polyline points="200,155 240,155 240,100" stroke-width="5"></polyline>
+    <polyline points="100,385 60,385 60,440" stroke-width="5"></polyline>
+    <polyline points="200,385 240,385 240,445" stroke-width="5"></polyline>
+    <polyline points="400,155 445,155 445,95" stroke-width="5"></polyline>
+    <polyline points="280,155 280,105 310,105" stroke-width="5"></polyline>
+    <polyline points="400,385 445,385 445,445" stroke-width="5"></polyline>
+    <polyline points="280,385 280,440 310,440" stroke-width="5"></polyline>
+  </g>
+  <g fill="#1A1A2E" opacity="0.45">
+    <circle cx="60" cy="80" r="6"></circle><circle cx="240" cy="100" r="6"></circle>
+    <circle cx="60" cy="440" r="6"></circle><circle cx="240" cy="445" r="6"></circle>
+    <circle cx="445" cy="95" r="6"></circle><circle cx="310" cy="105" r="6"></circle>
+    <circle cx="445" cy="445" r="6"></circle><circle cx="310" cy="440" r="6"></circle>
+  </g>
+
+  
+  <line x1="100" y1="155" x2="200" y2="155" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"></line>
+  <line x1="150" y1="155" x2="150" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"></line>
+  <line x1="100" y1="385" x2="200" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"></line>
+  <rect x="128" y="63" width="44" height="44" rx="7" fill="#1A1A2E"></rect>
+  <circle cx="100" cy="155" r="15" fill="#1A1A2E"></circle>
+  <circle cx="200" cy="155" r="15" fill="#1A1A2E"></circle>
+  <circle cx="100" cy="385" r="15" fill="#1A1A2E"></circle>
+  <circle cx="200" cy="385" r="15" fill="#1A1A2E"></circle>
+
+  
+  <line x1="280" y1="155" x2="280" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"></line>
+  <line x1="400" y1="155" x2="400" y2="385" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"></line>
+  <line x1="280" y1="270" x2="400" y2="270" stroke="#1A1A2E" stroke-width="22" stroke-linecap="round"></line>
+  <circle cx="280" cy="155" r="15" fill="#1A1A2E"></circle>
+  <circle cx="280" cy="270" r="15" fill="#1A1A2E"></circle>
+  <circle cx="280" cy="385" r="15" fill="#1A1A2E"></circle>
+  <circle cx="400" cy="155" r="15" fill="#1A1A2E"></circle>
+  <circle cx="400" cy="270" r="15" fill="#1A1A2E"></circle>
+  <circle cx="400" cy="385" r="15" fill="#1A1A2E"></circle>
+</svg>

@@ -334,31 +334,98 @@ export default function AdminDashboard() {
     setLoading(false);
   }, []);
 
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const isAdmin = userRole === 'admin';
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/admin');
       return;
     }
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && isAdmin) {
       fetchAll();
     }
-  }, [status, router, fetchAll]);
+  }, [status, router, fetchAll, isAdmin]);
 
-  // Auto-refresh every 60s
+  // Auto-refresh every 60s — only when authenticated AND admin
   useEffect(() => {
+    if (!isAdmin) return;
     const interval = setInterval(fetchAll, 60000);
     return () => clearInterval(interval);
-  }, [fetchAll]);
+  }, [fetchAll, isAdmin]);
 
-  if (status === 'loading' || (status === 'authenticated' && loading && !stats)) {
+  if (status === 'authenticated' && !isAdmin) {
     return (
-      <div className="min-h-screen bg-black">
-        <Header />
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="flex items-center gap-3 text-neutral-400">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            Loading admin dashboard...
+      <div id="main-content" style={{ padding: '40px 22px', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{
+          background: 'var(--hub-darker)',
+          border: '1px solid rgba(245,158,11,0.25)',
+          borderRadius: 14,
+          padding: 28,
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: 56, height: 56,
+            margin: '0 auto 14px',
+            borderRadius: 14,
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Shield style={{ width: 28, height: 28, color: '#f59e0b' }} />
           </div>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--fg-default)', marginBottom: 6 }}>
+            Admin access required
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.55, marginBottom: 16, maxWidth: 460, margin: '0 auto 16px' }}>
+            This area is restricted to InfoHub administrators. Your account
+            {session?.user?.email ? <> (<span style={{ color: 'var(--fg-default)' }}>{session.user.email}</span>)</> : null} doesn&apos;t have admin permissions.
+          </p>
+          <div style={{ display: 'inline-flex', gap: 8 }}>
+            <button
+              onClick={() => router.push('/dashboard')}
+              style={{
+                padding: '8px 16px',
+                background: 'var(--hub-accent)', color: '#000',
+                border: 'none', borderRadius: 8,
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.04em',
+              }}
+            >
+              Go to Dashboard
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              style={{
+                padding: '8px 16px',
+                background: 'transparent', color: 'var(--fg-muted)',
+                border: '1px solid var(--hub-border-subtle)', borderRadius: 8,
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.04em',
+              }}
+            >
+              Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'loading' || (status === 'authenticated' && isAdmin && loading && !stats)) {
+    return (
+      <div id="main-content" style={{ padding: '40px 22px', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: 18,
+          background: 'var(--hub-darker)',
+          border: '1px solid var(--hub-border-subtle)',
+          borderRadius: 12,
+          color: 'var(--fg-muted)', fontSize: 12, fontWeight: 600,
+          letterSpacing: '0.04em', textTransform: 'uppercase',
+        }}>
+          <RefreshCw size={14} className="animate-spin" />
+          Loading admin dashboard…
         </div>
       </div>
     );
@@ -366,18 +433,50 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black">
-        <Header />
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="flex items-center gap-3 text-red-400">
-            <Shield className="w-5 h-5" />
-            <p>{error}</p>
+      <div id="main-content" style={{ padding: '40px 22px', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{
+          background: 'var(--hub-darker)',
+          border: '1px solid rgba(239,68,68,0.25)',
+          borderRadius: 14,
+          padding: 22,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: 'rgba(239,68,68,0.10)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Shield size={18} style={{ color: 'var(--rekt-mild)' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 700, color: 'var(--fg-default)',
+              letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4,
+            }}>
+              Admin data unavailable
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+              {error}
+            </div>
           </div>
           <button
             onClick={fetchAll}
-            className="mt-4 flex items-center gap-2 px-3 py-1.5 text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-300"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
+              borderRadius: 8,
+              background: 'var(--hub-accent)', color: '#000',
+              border: 'none', cursor: 'pointer',
+              fontSize: 11, fontWeight: 700,
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}
           >
-            <RefreshCw className="w-3 h-3" /> Retry
+            <RefreshCw size={12} /> Retry
           </button>
         </div>
       </div>
@@ -388,9 +487,8 @@ export default function AdminDashboard() {
   const totalExchanges = pipeline?.exchanges?.funding?.length ?? 0;
 
   return (
-    <div className="min-h-screen bg-black">
-      <Header />
-      <main className="max-w-7xl mx-auto px-4 py-6">
+    <div className="w-full">
+      <div className="w-full px-4 py-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -522,8 +620,7 @@ export default function AdminDashboard() {
 
         {/* Users Table */}
         <UsersTable users={users} />
-      </main>
-      <Footer />
+      </div>
     </div>
   );
 }

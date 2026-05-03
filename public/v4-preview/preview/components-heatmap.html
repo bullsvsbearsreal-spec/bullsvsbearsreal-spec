@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_base.css"></head>
+<body style="padding:20px">
+<div style="background:var(--hub-darker); border:1px solid var(--hub-border); border-radius:12px; padding:14px; height:100%; display:flex; flex-direction:column">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px">
+    <div style="font-size:11px; color:var(--fg-subtle); text-transform:uppercase; letter-spacing:.12em; font-weight:700">Liquidation Heatmap · BTC · 4h</div>
+    <div style="font-family:var(--font-mono); font-size:10px; color:var(--fg-subtle)">$2.41B rekt 24h</div>
+  </div>
+  <div style="flex:1; display:grid; grid-template-columns:repeat(16, 1fr); grid-auto-rows:1fr; gap:2px">
+    <script>
+      const cells=[];const total=16*6;
+      for(let i=0;i<total;i++){
+        const r=Math.random(); let bg='rgba(255,255,255,0.03)';
+        if(r>0.85) bg='rgba(230,57,70,0.85)';
+        else if(r>0.7) bg='rgba(239,84,100,0.5)';
+        else if(r>0.55) bg='rgba(248,113,113,0.25)';
+        else if(r<0.18) bg='rgba(34,211,138,0.5)';
+        else if(r<0.3) bg='rgba(74,222,128,0.2)';
+        cells.push(`<div style="background:${bg};border-radius:2px"></div>`);
+      }
+      document.currentScript.insertAdjacentHTML('beforebegin',cells.join(''));
+    </script>
+  </div>
+  <div style="display:flex; justify-content:space-between; margin-top:8px; font-family:var(--font-mono); font-size:9px; color:var(--fg-subtle)">
+    <span>16:00</span><span>18:00</span><span>20:00</span><span>22:00</span><span>00:00</span>
+  </div>
+</div>
+</body></html>

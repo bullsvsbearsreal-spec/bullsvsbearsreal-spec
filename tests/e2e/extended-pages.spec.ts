@@ -90,7 +90,7 @@ test.describe('Cumulative Volume Delta', () => {
     expect(body).toContain('Net Delta');
 
     // Buy/Sell pressure should add to ~100%
-    const pressureMatch = body.match(/Buy\s+(\d+\.\d+)%.*?Sell\s+(\d+\.\d+)%/s);
+    const pressureMatch = body.match(/Buy\s+(\d+\.\d+)%[\s\S]*?Sell\s+(\d+\.\d+)%/);
     if (pressureMatch) {
       const buy = parseFloat(pressureMatch[1]);
       const sell = parseFloat(pressureMatch[2]);

@@ -26,8 +26,35 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['4'], desc: '1 hour timeframe' },
       { keys: ['5'], desc: '4 hour timeframe' },
       { keys: ['6'], desc: '1 day timeframe' },
-      { keys: ['7'], desc: '1 week timeframe' },
+      { keys: ['7'], desc: '4 day timeframe' },
+      { keys: ['8'], desc: '1 week timeframe' },
       { keys: ['T'], desc: 'Toggle trade tape sidebar' },
+    ],
+  },
+  {
+    label: 'GMX Traders',
+    shortcuts: [
+      { keys: ['1'], desc: '7D window' },
+      { keys: ['2'], desc: '30D window' },
+      { keys: ['3'], desc: 'All-time window' },
+    ],
+  },
+  {
+    label: 'Hyperliquid Traders',
+    shortcuts: [
+      { keys: ['1'], desc: '1D window' },
+      { keys: ['2'], desc: '7D window' },
+      { keys: ['3'], desc: '30D window' },
+      { keys: ['4'], desc: 'All-time window' },
+    ],
+  },
+  {
+    label: 'Liquidation Levels',
+    shortcuts: [
+      { keys: ['1'], desc: '4H window' },
+      { keys: ['2'], desc: '12H window' },
+      { keys: ['3'], desc: '24H window' },
+      { keys: ['4'], desc: '48H window' },
     ],
   },
   {

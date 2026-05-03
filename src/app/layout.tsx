@@ -2,12 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
-import dynamic from 'next/dynamic'
-const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
+// ChatWidget hidden for now per user request — re-enable by importing + rendering
+// const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { ALL_EXCHANGES } from '@/lib/constants'
+import { ConditionalTerminalShell } from '@/components/design-system'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' })
@@ -188,8 +189,9 @@ export default function RootLayout({
         />
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         <Providers>
-          {children}
-          <ChatWidget />
+          <ConditionalTerminalShell>{children}</ConditionalTerminalShell>
+          {/* ChatWidget hidden for now per user request — re-enable by uncommenting */}
+          {/* <ChatWidget /> */}
           <AlertEngine />
           <Analytics />
           <SpeedInsights />

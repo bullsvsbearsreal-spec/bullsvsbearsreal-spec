@@ -63,6 +63,165 @@
 .text-fg-subtle { color: var(--fg-subtle); }
 .text-fg-faint  { color: var(--fg-faint); }
 
+/* ═══════════════════════════════════════════════════════════════════
+   POLISH PASS — premium trader terminal aesthetic
+   Linear motion · Vercel chrome · Coinglass density · Notion cards · Figma accent
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Premium typography ─── */
+.h1-pro {
+  font-size: clamp(28px, 3.2vw, 40px);
+  line-height: 1.04;
+  font-weight: 800;
+  letter-spacing: -0.028em;
+  color: var(--fg-default);
+  text-wrap: balance;
+}
+.h2-pro {
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  color: var(--fg-default);
+}
+.eyebrow-pro {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--fg-subtle);
+}
+.caption-pro {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-subtle);
+  letter-spacing: 0.005em;
+}
+
+/* ─── Numeric polish — Coinglass density ─── */
+.num, .num-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "ss01";
+  letter-spacing: -0.01em;
+}
+/* Auto-mono numbers for any element marked as data-numeric */
+[data-numeric] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* Subtle accent on numeric mono inside tables */
+table .num, table [class*="font-mono"] {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Cards — Notion soft + Vercel chrome ─── */
+.card-pro {
+  background: var(--hub-darker);
+  border: 1px solid var(--hub-border);
+  border-radius: 12px;
+  transition: border-color 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+.card-pro:hover {
+  border-color: var(--hub-border-hover);
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgb(var(--hub-accent-rgb) / 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.card-pro-glow:hover {
+  box-shadow:
+    0 0 0 1px rgb(var(--hub-accent-rgb) / 0.18),
+    0 0 32px rgb(var(--hub-accent-rgb) / 0.10),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Smooth global transitions ─── */
+a, button, [role="button"], [role="tab"], .interactive {
+  transition:
+    color 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ─── Page motion (Linear-style entry) ─── */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.page-enter   { animation: page-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.card-enter   { animation: card-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.card-enter-stagger > * { animation: card-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.card-enter-stagger > *:nth-child(1) { animation-delay:  20ms; }
+.card-enter-stagger > *:nth-child(2) { animation-delay:  60ms; }
+.card-enter-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.card-enter-stagger > *:nth-child(4) { animation-delay: 140ms; }
+.card-enter-stagger > *:nth-child(5) { animation-delay: 180ms; }
+.card-enter-stagger > *:nth-child(6) { animation-delay: 220ms; }
+
+/* ─── Apply page-enter to every <main> by default (cheap global polish) ─── */
+main { animation: page-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* ─── Row hover for tables (subtle accent tint) ─── */
+.row-hover { transition: background-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.row-hover:hover {
+  background: rgb(var(--hub-accent-rgb) / 0.045);
+}
+
+/* ─── Pro button polish (drop-in for primary actions) ─── */
+.btn-pro {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #FFB300, #FF8C00);
+  color: #0a0a0a;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  border: 1px solid rgb(var(--hub-accent-rgb) / 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 6px 16px -6px rgb(var(--hub-accent-rgb) / 0.4);
+  cursor: pointer;
+}
+.btn-pro:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 8px 22px -6px rgb(var(--hub-accent-rgb) / 0.55);
+}
+.btn-pro:active { transform: translateY(1px) scale(0.99); }
+
+.btn-ghost-pro {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg-default);
+  font-weight: 600; font-size: 13px;
+  border: 1px solid var(--hub-border);
+  cursor: pointer;
+}
+.btn-ghost-pro:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--hub-border-hover);
+}
+
 /* ═══ Theme: Light ═══ */
 [data-theme="light"] {
   /* Semantic foreground tokens — inverted for light mode */
@@ -126,8 +285,27 @@ html { scroll-behavior: smooth; }
 }
 .skip-to-content:focus { left: 0; }
 
-*:focus-visible { outline: 2px solid var(--hub-accent); outline-offset: 2px; border-radius: 4px; }
+/* ─── v4 terminal keyframes (radar pulse, stream bars, ticker, exchange pop) ─── */
+@keyframes radar-ring { 0% { transform: scale(0.4); opacity: 0.9; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes radar-core { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes stream-bar { 0%, 100% { height: 30%; } 50% { height: 100%; } }
+@keyframes exch-pop { 0% { transform: scale(1); filter: brightness(1); } 15% { transform: scale(1.15); filter: brightness(1.5); } 100% { transform: scale(1); filter: brightness(1); } }
+@keyframes tape-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* ─── Sharper accent focus ring (Vercel-style) ─── */
+*:focus-visible {
+  outline: 2px solid var(--hub-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+  transition: outline-color 120ms ease-out;
+}
 *:focus:not(:focus-visible) { outline: none; }
+/* Don't paint the ring on whole-cards when their inner focusable already shows it */
+button:focus-visible, a:focus-visible, [role="tab"]:focus-visible, [role="button"]:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  box-shadow: 0 0 0 3px rgb(var(--hub-accent-rgb) / 0.18);
+}
 
 /* Tooltip: also show on focus */
 .tooltip-trigger:focus-within .tooltip { @apply visible opacity-100; }

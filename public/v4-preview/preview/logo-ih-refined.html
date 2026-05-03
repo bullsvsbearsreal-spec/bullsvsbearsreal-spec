@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>InfoHub — IH icon, refined</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100vh;background:var(--hub-black);color:var(--fg-default);font-family:var(--font-sans);padding:36px 32px 60px}
+  .wrap{max-width:1340px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-0.025em}
+  .lede{font-size:12px;color:var(--fg-muted);font-family:var(--font-mono);max-width:860px;line-height:1.6}
+  .bench{background:var(--hub-darker);border:1px solid var(--hub-border);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:24px}
+  .bench-label{font-family:var(--font-mono);font-size:10px;color:var(--fg-subtle);letter-spacing:.16em;font-weight:700;text-transform:uppercase;min-width:120px}
+  .row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .opt{background:var(--hub-darker);border:1px solid var(--hub-border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+  .head{padding:14px 18px 12px;border-bottom:1px solid var(--hub-border-subtle)}
+  .num{font-family:var(--font-mono);font-size:10px;color:var(--hub-accent);letter-spacing:.18em;font-weight:700}
+  .name{font-size:13px;font-weight:700;letter-spacing:-0.01em;margin-top:4px}
+  .delta{padding:10px 18px 14px;font-size:11px;color:var(--fg-muted);font-family:var(--font-mono);line-height:1.55;border-bottom:1px solid var(--hub-border-subtle)}
+  .stage{min-height:200px;display:flex;align-items:center;justify-content:center;padding:28px;background:#07090d}
+  .strip{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--hub-border-subtle)}
+  .cell{padding:18px 12px;display:flex;align-items:center;justify-content:center;gap:8px;border-right:1px solid var(--hub-border-subtle);min-height:80px}
+  .cell:last-child{border-right:0}
+  .cell.dark{background:#07090d}
+  .cell.cream{background:#f4efe6}
+  .cell.brand{background:#FF9500}
+  .scale-row{padding:14px 18px;display:flex;align-items:center;gap:18px;border-top:1px solid var(--hub-border-subtle);background:rgba(0,0,0,.25);flex-wrap:wrap}
+  .grp{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .grp small{font-size:8px;color:var(--fg-subtle);text-transform:uppercase;letter-spacing:.14em;font-weight:700;font-family:var(--font-mono)}
+  .footer{padding:11px 18px;border-top:1px solid var(--hub-border-subtle);font-size:10px;color:var(--fg-subtle);font-family:var(--font-mono);background:rgba(0,0,0,.18);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <h1>IH icon — refining the existing serif monogram</h1>
+    <p class="lede">The current icon is a <strong>serif IH</strong> with bracket feet on the I and a horizontal-stroke serif H — solid concept, weak execution (radial gradient, glow filter, double-painted paths, drop-shadow underline). Three disciplined refinements below, all keeping the serif IH DNA.</p>
+  </div>
+
+  <!-- BENCHMARK: current -->
+  <div class="bench">
+    <div class="bench-label">Current →</div>
+    <div style="display:flex;align-items:center;gap:24px">
+      <img src="../assets/logo-icon.svg" width="84" height="84" style="border:1px solid var(--hub-border-subtle);border-radius:6px"/>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--fg-muted);line-height:1.6">
+        Issues: 5-stop radial gradient (muddy)<br>
+        Gaussian-blur glow (smudges edges at 32px)<br>
+        Phantom underline rectangle below baseline<br>
+        Border + bg gradient compete with letterforms
+      </div>
+    </div>
+  </div>
+
+  <!-- THREE REFINEMENTS -->
+  <div class="row">
+
+    <!-- ═══ R1 — TIGHTENED ═══ -->
+    <div class="opt">
+      <div class="head"><div class="num">R1 / TIGHTENED</div><div class="name">Same DNA, cleaner execution</div></div>
+      <div class="delta">Drop the gradient + glow + underline. Solid orange, single ink. Tighter serifs. Same letterforms.</div>
+      <div class="stage">
+        <svg width="180" height="180" viewBox="0 0 40 40">
+          <rect x="1" y="1" width="38" height="38" rx="6" fill="#0E1117"/>
+          <!-- I: bracket-serif -->
+          <path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/>
+          <!-- H -->
+          <path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/>
+        </svg>
+      </div>
+      <div class="strip">
+        <div class="cell dark"><svg width="48" height="48" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="6" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg></div>
+        <div class="cell cream"><svg width="48" height="48" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="6" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg></div>
+        <div class="cell brand"><svg width="48" height="48" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="6" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg></div>
+      </div>
+      <div class="scale-row">
+        <div class="grp"><svg width="14" height="14" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg><small>14</small></div>
+        <div class="grp"><svg width="20" height="20" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg><small>20</small></div>
+        <div class="grp"><svg width="32" height="32" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg><small>32</small></div>
+        <div class="grp"><svg width="48" height="48" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg><small>48</small></div>
+      </div>
+      <div class="footer">Most conservative. Same letterforms — just clean.</div>
+    </div>
+
+    <!-- ═══ R2 — INVERTED ═══ -->
+    <div class="opt">
+      <div class="head"><div class="num">R2 / INVERTED</div><div class="name">Orange tile, ink letters</div></div>
+      <div class="delta">Same serif IH but flipped — orange becomes the ground, letters cut in dark ink. Higher contrast, more "stamp."</div>
+      <div class="stage">
+        <svg width="180" height="180" viewBox="0 0 40 40">
+          <rect width="40" height="40" rx="6" fill="#FF9500"/>
+          <path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#0E1117"/>
+          <path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#0E1117"/>
+        </svg>
+      </div>
+      <div class="strip">
+        <div class="cell dark"><svg width="48" height="48" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#FF9500"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#0E1117"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#0E1117"/></svg></div>
+        <div class="cell cream"><svg width="48" height="48" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#0E1117"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#FF9500"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#FF9500"/></svg></div>
+        <div class="cell brand"><svg width="48" height="48" viewBox="0 0 40 40"><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#0E1117"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#0E1117"/></svg></div>
+      </div>
+      <div class="scale-row">
+        <div class="grp"><svg width="14" height="14" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="#FF9500"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#0E1117"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#0E1117"/></svg><small>14</small></div>
+        <div class="grp"><svg width="20" height="20" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="#FF9500"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#0E1117"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#0E1117"/></svg><small>20</small></div>
+        <div class="grp"><svg width="32" height="32" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#FF9500"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#0E1117"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#0E1117"/></svg><small>32</small></div>
+        <div class="grp"><svg width="48" height="48" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#FF9500"/><path d="M6 9.5 L13 9.5 L13 10.4 L11.2 11 L11.2 28 L13 28.6 L13 29.5 L6 29.5 L6 28.6 L7.8 28 L7.8 11 L6 10.4 Z" fill="#0E1117"/><path d="M15.5 9.5 L21.5 9.5 L21.5 10.4 L20 11 L20 18.8 L29.5 18.8 L29.5 11 L28 10.4 L28 9.5 L34 9.5 L34 10.4 L32.5 11 L32.5 28 L34 28.6 L34 29.5 L28 29.5 L28 28.6 L29.5 28 L29.5 20.5 L20 20.5 L20 28 L21.5 28.6 L21.5 29.5 L15.5 29.5 L15.5 28.6 L17 28 L17 11 L15.5 10.4 Z" fill="#0E1117"/></svg><small>48</small></div>
+      </div>
+      <div class="footer">Maximum visibility. App icon owns the screen. Most "Bloomberg amber."</div>
+    </div>
+
+    <!-- ═══ R3 — UNIFIED ═══ -->
+    <div class="opt">
+      <div class="head"><div class="num">R3 / UNIFIED</div><div class="name">IH joined as one ligature</div></div>
+      <div class="delta">The I and H share the right stem of the I = left stem of the H. Tighter, more proprietary, less generic. Still serif, still IH.</div>
+      <div class="stage">
+        <svg width="180" height="180" viewBox="0 0 40 40">
+          <rect width="40" height="40" rx="6" fill="#FF9500"/>
+          <!-- I (left): stem + serifs, but the right side has no serif (joins H) -->
+          <path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#0E1117"/>
+          <!-- H: shares left stem with I via shared crossbar; left stem at x=11.6, right stem far right -->
+          <rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#0E1117"/>
+          <path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#0E1117"/>
+        </svg>
+      </div>
+      <div class="strip">
+        <div class="cell dark"><svg width="48" height="48" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#FF9500"/><path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#0E1117"/><rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#0E1117"/><path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#0E1117"/></svg></div>
+        <div class="cell cream"><svg width="48" height="48" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#0E1117"/><path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#FF9500"/><rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#FF9500"/><path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#FF9500"/></svg></div>
+        <div class="cell brand"><svg width="48" height="48" viewBox="0 0 40 40"><path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#0E1117"/><rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#0E1117"/><path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#0E1117"/></svg></div>
+      </div>
+      <div class="scale-row">
+        <div class="grp"><svg width="14" height="14" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="#FF9500"/><path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#0E1117"/><rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#0E1117"/><path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#0E1117"/></svg><small>14</small></div>
+        <div class="grp"><svg width="20" height="20" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="#FF9500"/><path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#0E1117"/><rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#0E1117"/><path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#0E1117"/></svg><small>20</small></div>
+        <div class="grp"><svg width="32" height="32" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#FF9500"/><path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#0E1117"/><rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#0E1117"/><path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#0E1117"/></svg><small>32</small></div>
+        <div class="grp"><svg width="48" height="48" viewBox="0 0 40 40"><rect width="40" height="40" rx="6" fill="#FF9500"/><path d="M5 9.5 L13.5 9.5 L13.5 10.4 L11.6 11 L11.6 28 L13.5 28.6 L13.5 29.5 L5 29.5 L5 28.6 L7 28 L7 11 L5 10.4 Z" fill="#0E1117"/><rect x="11.6" y="18.6" width="20.5" height="2.6" fill="#0E1117"/><path d="M27.6 9.5 L36 9.5 L36 10.4 L34 11 L34 28 L36 28.6 L36 29.5 L27.6 29.5 L27.6 28.6 L29.5 28 L29.5 11 L27.6 10.4 Z" fill="#0E1117"/></svg><small>48</small></div>
+      </div>
+      <div class="footer">Most distinctive. Reads as IH but proprietary, not generic.</div>
+    </div>
+
+  </div>
+
+  <!-- VOTE -->
+  <div style="background:var(--hub-darker);border:1px solid var(--hub-border);border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px">
+    <div style="font-size:11px;font-family:var(--font-mono);color:var(--hub-accent);letter-spacing:.18em;font-weight:700;text-transform:uppercase">Pick →</div>
+    <div style="font-size:13px;color:var(--fg-default)">Reply <strong>R1</strong>, <strong>R2</strong>, or <strong>R3</strong>. I'll write the chosen SVG to <code style="font-family:var(--font-mono);background:rgba(255,165,0,0.08);padding:1px 6px;border-radius:3px;color:var(--hub-accent)">assets/logo-icon.svg</code> + favicon + app icons + the React <code style="font-family:var(--font-mono);background:rgba(255,165,0,0.08);padding:1px 6px;border-radius:3px;color:var(--hub-accent)">&lt;Logo /&gt;</code>.</div>
+  </div>
+
+</div>
+</body>
+</html>

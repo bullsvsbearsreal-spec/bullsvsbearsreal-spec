@@ -1,34 +1,36 @@
 'use client';
 
+// /chart — Terminal-styled trading chart.
+// TradingView Advanced Chart at the core, surrounded by a Bloomberg-style
+// control bar, live-stat strip, and optional trade tape side panel.
+
 import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign, Wheat, Globe2, Layers, Cpu, Flame, Zap } from 'lucide-react';
-import Logo from '@/components/Logo';
+import dynamic from 'next/dynamic';
+import {
+  ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign,
+  Wheat, Globe2, Layers, Cpu, Flame, Zap, Activity, Volume2,
+} from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import CryptoMetricsPanel from './components/CryptoMetricsPanel';
 import ChartErrorBoundary from './components/ChartErrorBoundary';
 import SoundToggle from '@/components/SoundToggle';
-import FeatureHint from '@/components/FeatureHint';
-import dynamic from 'next/dynamic';
+import { SatPing, StreamBars } from '@/components/design-system';
 
-const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), {
-  ssr: false,
-  loading: () => null,
-});
+const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
+const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Asset class definitions
-   ═══════════════════════════════════════════════════════════════════════ */
-
+// ────────────────────────────────────────────────────────────────────
+// Asset definitions
+// ────────────────────────────────────────────────────────────────────
 type AssetClass = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'indices';
 
 interface AssetSymbol {
-  label: string;          // Display name: "BTC", "AAPL", "EUR/USD"
-  tvSymbol: string;       // TradingView symbol: "BINANCE:BTCUSDT", "NASDAQ:AAPL"
-  displayPair?: string;   // Optional pair display: "/USDT", ""
-  icon?: string;          // For crypto we use TokenIconSimple
-  cat?: string;           // Category grouping for grid display
+  label: string;
+  tvSymbol: string;
+  displayPair?: string;
+  icon?: string;
+  cat?: string;
 }
 
 interface AssetTab {
@@ -40,9 +42,7 @@ interface AssetTab {
 
 const ASSET_TABS: AssetTab[] = [
   {
-    id: 'crypto',
-    label: 'Crypto',
-    icon: <TrendingUp className="w-3.5 h-3.5" />,
+    id: 'crypto', label: 'Crypto', icon: <TrendingUp size={12} />,
     pinned: [
       { label: 'BTC', tvSymbol: 'BITSTAMP:BTCUSD', displayPair: '/USD', icon: 'btc', cat: 'Top' },
       { label: 'ETH', tvSymbol: 'BITSTAMP:ETHUSD', displayPair: '/USD', icon: 'eth', cat: 'Top' },
@@ -63,13 +63,11 @@ const ASSET_TABS: AssetTab[] = [
       { label: 'LTC', tvSymbol: 'COINBASE:LTCUSD', displayPair: '/USD', icon: 'ltc', cat: 'Top' },
       { label: 'BCH', tvSymbol: 'COINBASE:BCHUSD', displayPair: '/USD', icon: 'bch', cat: 'Top' },
       { label: 'HBAR', tvSymbol: 'BINANCE:HBARUSDT', displayPair: '/USDT', icon: 'hbar', cat: 'Top' },
-      { label: 'MATIC', tvSymbol: 'COINBASE:MATICUSD', displayPair: '/USD', icon: 'matic', cat: 'L2' },
-      { label: 'OP', tvSymbol: 'COINBASE:OPUSD', displayPair: '/USD', icon: 'op', cat: 'L2' },
+      { label: 'OP',  tvSymbol: 'COINBASE:OPUSD',  displayPair: '/USD', icon: 'op',  cat: 'L2' },
       { label: 'ARB', tvSymbol: 'COINBASE:ARBUSD', displayPair: '/USD', icon: 'arb', cat: 'L2' },
       { label: 'SEI', tvSymbol: 'COINBASE:SEIUSD', displayPair: '/USD', icon: 'sei', cat: 'L2' },
       { label: 'TIA', tvSymbol: 'COINBASE:TIAUSD', displayPair: '/USD', icon: 'tia', cat: 'L2' },
       { label: 'INJ', tvSymbol: 'COINBASE:INJUSD', displayPair: '/USD', icon: 'inj', cat: 'L2' },
-      { label: 'STX', tvSymbol: 'COINBASE:STXUSD', displayPair: '/USD', icon: 'stx', cat: 'L2' },
       { label: 'UNI', tvSymbol: 'COINBASE:UNIUSD', displayPair: '/USD', icon: 'uni', cat: 'DeFi' },
       { label: 'AAVE', tvSymbol: 'COINBASE:AAVEUSD', displayPair: '/USD', icon: 'aave', cat: 'DeFi' },
       { label: 'MKR', tvSymbol: 'COINBASE:MKRUSD', displayPair: '/USD', icon: 'mkr', cat: 'DeFi' },
@@ -90,9 +88,7 @@ const ASSET_TABS: AssetTab[] = [
     ],
   },
   {
-    id: 'stocks',
-    label: 'Stocks',
-    icon: <BarChart3 className="w-3.5 h-3.5" />,
+    id: 'stocks', label: 'Stocks', icon: <BarChart3 size={12} />,
     pinned: [
       { label: 'AAPL', tvSymbol: 'NASDAQ:AAPL', displayPair: '' },
       { label: 'MSFT', tvSymbol: 'NASDAQ:MSFT', displayPair: '' },
@@ -101,103 +97,106 @@ const ASSET_TABS: AssetTab[] = [
       { label: 'AMZN', tvSymbol: 'NASDAQ:AMZN', displayPair: '' },
       { label: 'TSLA', tvSymbol: 'NASDAQ:TSLA', displayPair: '' },
       { label: 'META', tvSymbol: 'NASDAQ:META', displayPair: '' },
-      { label: 'AMD', tvSymbol: 'NASDAQ:AMD', displayPair: '' },
+      { label: 'AMD',  tvSymbol: 'NASDAQ:AMD',  displayPair: '' },
       { label: 'NFLX', tvSymbol: 'NASDAQ:NFLX', displayPair: '' },
-      { label: 'JPM', tvSymbol: 'NYSE:JPM', displayPair: '' },
-      { label: 'V', tvSymbol: 'NYSE:V', displayPair: '' },
-      { label: 'BA', tvSymbol: 'NYSE:BA', displayPair: '' },
-      { label: 'DIS', tvSymbol: 'NYSE:DIS', displayPair: '' },
+      { label: 'JPM',  tvSymbol: 'NYSE:JPM', displayPair: '' },
+      { label: 'V',    tvSymbol: 'NYSE:V', displayPair: '' },
+      { label: 'BA',   tvSymbol: 'NYSE:BA', displayPair: '' },
+      { label: 'DIS',  tvSymbol: 'NYSE:DIS', displayPair: '' },
       { label: 'COIN', tvSymbol: 'NASDAQ:COIN', displayPair: '' },
       { label: 'MSTR', tvSymbol: 'NASDAQ:MSTR', displayPair: '' },
       { label: 'PLTR', tvSymbol: 'NASDAQ:PLTR', displayPair: '' },
       { label: 'SMCI', tvSymbol: 'NASDAQ:SMCI', displayPair: '' },
-      { label: 'ARM', tvSymbol: 'NASDAQ:ARM', displayPair: '' },
+      { label: 'ARM',  tvSymbol: 'NASDAQ:ARM', displayPair: '' },
     ],
   },
   {
-    id: 'forex',
-    label: 'Forex',
-    icon: <DollarSign className="w-3.5 h-3.5" />,
+    id: 'forex', label: 'Forex', icon: <DollarSign size={12} />,
     pinned: [
-      { label: 'EUR/USD', tvSymbol: 'FX:EURUSD', displayPair: '' },
-      { label: 'GBP/USD', tvSymbol: 'FX:GBPUSD', displayPair: '' },
-      { label: 'USD/JPY', tvSymbol: 'FX:USDJPY', displayPair: '' },
-      { label: 'USD/CHF', tvSymbol: 'FX:USDCHF', displayPair: '' },
-      { label: 'AUD/USD', tvSymbol: 'FX:AUDUSD', displayPair: '' },
-      { label: 'USD/CAD', tvSymbol: 'FX:USDCAD', displayPair: '' },
-      { label: 'NZD/USD', tvSymbol: 'FX:NZDUSD', displayPair: '' },
-      { label: 'EUR/GBP', tvSymbol: 'FX:EURGBP', displayPair: '' },
-      { label: 'EUR/JPY', tvSymbol: 'FX:EURJPY', displayPair: '' },
-      { label: 'GBP/JPY', tvSymbol: 'FX:GBPJPY', displayPair: '' },
-      { label: 'EUR/CHF', tvSymbol: 'FX:EURCHF', displayPair: '' },
-      { label: 'AUD/JPY', tvSymbol: 'FX:AUDJPY', displayPair: '' },
-      { label: 'EUR/AUD', tvSymbol: 'FX:EURAUD', displayPair: '' },
-      { label: 'USD/MXN', tvSymbol: 'FX:USDMXN', displayPair: '' },
-      { label: 'USD/TRY', tvSymbol: 'FX:USDTRY', displayPair: '' },
-      { label: 'USD/ZAR', tvSymbol: 'FX:USDZAR', displayPair: '' },
-      { label: 'DXY', tvSymbol: 'TVC:DXY', displayPair: '' },
+      { label: 'EUR/USD', tvSymbol: 'FX:EURUSD' }, { label: 'GBP/USD', tvSymbol: 'FX:GBPUSD' },
+      { label: 'USD/JPY', tvSymbol: 'FX:USDJPY' }, { label: 'USD/CHF', tvSymbol: 'FX:USDCHF' },
+      { label: 'AUD/USD', tvSymbol: 'FX:AUDUSD' }, { label: 'USD/CAD', tvSymbol: 'FX:USDCAD' },
+      { label: 'NZD/USD', tvSymbol: 'FX:NZDUSD' }, { label: 'EUR/GBP', tvSymbol: 'FX:EURGBP' },
+      { label: 'EUR/JPY', tvSymbol: 'FX:EURJPY' }, { label: 'GBP/JPY', tvSymbol: 'FX:GBPJPY' },
+      { label: 'EUR/CHF', tvSymbol: 'FX:EURCHF' }, { label: 'AUD/JPY', tvSymbol: 'FX:AUDJPY' },
+      { label: 'USD/MXN', tvSymbol: 'FX:USDMXN' }, { label: 'USD/TRY', tvSymbol: 'FX:USDTRY' },
+      { label: 'DXY',     tvSymbol: 'TVC:DXY' },
     ],
   },
   {
-    id: 'commodities',
-    label: 'Commodities',
-    icon: <Wheat className="w-3.5 h-3.5" />,
+    id: 'commodities', label: 'Commodities', icon: <Wheat size={12} />,
     pinned: [
-      { label: 'Gold', tvSymbol: 'TVC:GOLD', displayPair: '' },
-      { label: 'Silver', tvSymbol: 'TVC:SILVER', displayPair: '' },
-      { label: 'Crude Oil', tvSymbol: 'TVC:USOIL', displayPair: '' },
-      { label: 'Brent', tvSymbol: 'TVC:UKOIL', displayPair: '' },
-      { label: 'Natural Gas', tvSymbol: 'PEPPERSTONE:NATGAS', displayPair: '' },
-      { label: 'Copper', tvSymbol: 'PEPPERSTONE:COPPER', displayPair: '' },
-      { label: 'Platinum', tvSymbol: 'TVC:PLATINUM', displayPair: '' },
-      { label: 'Palladium', tvSymbol: 'TVC:PALLADIUM', displayPair: '' },
-      { label: 'Wheat', tvSymbol: 'PEPPERSTONE:WHEAT', displayPair: '' },
-      { label: 'Corn', tvSymbol: 'PEPPERSTONE:CORN', displayPair: '' },
-      { label: 'Soybeans', tvSymbol: 'PEPPERSTONE:SOYBEAN', displayPair: '' },
-      { label: 'Coffee', tvSymbol: 'PEPPERSTONE:COFFEE', displayPair: '' },
-      { label: 'Cocoa', tvSymbol: 'PEPPERSTONE:COCOA', displayPair: '' },
-      { label: 'Sugar', tvSymbol: 'PEPPERSTONE:SUGAR', displayPair: '' },
-      { label: 'Cotton', tvSymbol: 'PEPPERSTONE:COTTON', displayPair: '' },
+      { label: 'Gold',     tvSymbol: 'TVC:GOLD' },     { label: 'Silver', tvSymbol: 'TVC:SILVER' },
+      { label: 'Crude Oil', tvSymbol: 'TVC:USOIL' },   { label: 'Brent',  tvSymbol: 'TVC:UKOIL' },
+      { label: 'Natural Gas', tvSymbol: 'PEPPERSTONE:NATGAS' },
+      { label: 'Copper',   tvSymbol: 'PEPPERSTONE:COPPER' },
+      { label: 'Platinum', tvSymbol: 'TVC:PLATINUM' }, { label: 'Palladium', tvSymbol: 'TVC:PALLADIUM' },
+      { label: 'Wheat',    tvSymbol: 'PEPPERSTONE:WHEAT' }, { label: 'Corn', tvSymbol: 'PEPPERSTONE:CORN' },
     ],
   },
   {
-    id: 'indices',
-    label: 'Indices',
-    icon: <Globe2 className="w-3.5 h-3.5" />,
+    id: 'indices', label: 'Indices', icon: <Globe2 size={12} />,
     pinned: [
-      { label: 'S&P 500', tvSymbol: 'FOREXCOM:SPX500', displayPair: '' },
-      { label: 'NASDAQ 100', tvSymbol: 'FOREXCOM:NSXUSD', displayPair: '' },
-      { label: 'Dow Jones', tvSymbol: 'FOREXCOM:DJI', displayPair: '' },
-      { label: 'Russell 2000', tvSymbol: 'FOREXCOM:RUSS2000', displayPair: '' },
-      { label: 'VIX', tvSymbol: 'CAPITALCOM:VIX', displayPair: '' },
-      { label: 'DAX', tvSymbol: 'FOREXCOM:DEU40', displayPair: '' },
-      { label: 'FTSE 100', tvSymbol: 'FOREXCOM:UK100', displayPair: '' },
-      { label: 'CAC 40', tvSymbol: 'FOREXCOM:FRA40', displayPair: '' },
-      { label: 'Nikkei 225', tvSymbol: 'FOREXCOM:JPN225', displayPair: '' },
-      { label: 'Hang Seng', tvSymbol: 'FOREXCOM:HKG33', displayPair: '' },
-      { label: 'Euro Stoxx 50', tvSymbol: 'FOREXCOM:EU50', displayPair: '' },
-      { label: 'ASX 200', tvSymbol: 'FOREXCOM:AUS200', displayPair: '' },
-      { label: 'Spain 35', tvSymbol: 'FOREXCOM:ESP35', displayPair: '' },
-      { label: 'SPY ETF', tvSymbol: 'AMEX:SPY', displayPair: '' },
-      { label: 'QQQ ETF', tvSymbol: 'NASDAQ:QQQ', displayPair: '' },
+      { label: 'S&P 500', tvSymbol: 'FOREXCOM:SPX500' }, { label: 'NASDAQ 100', tvSymbol: 'FOREXCOM:NSXUSD' },
+      { label: 'Dow Jones', tvSymbol: 'FOREXCOM:DJI' },  { label: 'Russell 2000', tvSymbol: 'FOREXCOM:RUSS2000' },
+      { label: 'VIX',     tvSymbol: 'CAPITALCOM:VIX' },  { label: 'DAX',     tvSymbol: 'FOREXCOM:DEU40' },
+      { label: 'FTSE 100', tvSymbol: 'FOREXCOM:UK100' }, { label: 'Nikkei 225', tvSymbol: 'FOREXCOM:JPN225' },
+      { label: 'Hang Seng', tvSymbol: 'FOREXCOM:HKG33' },
     ],
   },
 ];
 
 const TIMEFRAMES = [
-  { label: '1m', value: '1', key: '1' },
-  { label: '5m', value: '5', key: '2' },
-  { label: '15m', value: '15', key: '3' },
-  { label: '1H', value: '60', key: '4' },
-  { label: '4H', value: '240', key: '5' },
-  { label: '1D', value: 'D', key: '6' },
-  { label: '1W', value: 'W', key: '7' },
+  { label: '1m',  value: '1',   key: '1' },
+  { label: '5m',  value: '5',   key: '2' },
+  { label: '15m', value: '15',  key: '3' },
+  { label: '1H',  value: '60',  key: '4' },
+  { label: '4H',  value: '240', key: '5' },
+  { label: '1D',  value: 'D',   key: '6' },
+  { label: '1W',  value: 'W',   key: '7' },
 ] as const;
 
-/* ═══════════════════════════════════════════════════════════════════════
-   TradingView Widget — full-featured
-   ═══════════════════════════════════════════════════════════════════════ */
+// ────────────────────────────────────────────────────────────────────
+// Live ticker fetch (used for the stat strip)
+// ────────────────────────────────────────────────────────────────────
+interface TickerStat { price?: number; change24h?: number; high24h?: number; low24h?: number; volume24h?: number; }
 
+function useTickerStats(symbol: string, isCrypto: boolean): TickerStat {
+  const [stat, setStat] = useState<TickerStat>({});
+  useEffect(() => {
+    if (!isCrypto) { setStat({}); return; }
+    let cancelled = false;
+    async function load() {
+      try {
+        const r = await fetch(`/api/tickers`);
+        if (!r.ok) return;
+        const v = await r.json();
+        const arr = Array.isArray(v) ? v : v?.data ?? [];
+        const matches = arr.filter((t: { symbol: string }) => t.symbol === symbol);
+        if (!matches.length) return;
+        // Pick the one with max price (most likely USD-denominated, not e.g. BTC pair)
+        const best = matches.reduce((a: { lastPrice?: number; price?: number }, b: { lastPrice?: number; price?: number }) =>
+          ((a.lastPrice ?? a.price ?? 0) > (b.lastPrice ?? b.price ?? 0) ? a : b));
+        if (cancelled) return;
+        setStat({
+          price: best.lastPrice ?? best.price,
+          change24h: best.priceChangePercent24h ?? best.change24h ?? best.changePercent24h,
+          high24h: best.highPrice24h ?? best.high24h,
+          low24h: best.lowPrice24h ?? best.low24h,
+          volume24h: best.volume24h ?? best.quoteVolume24h,
+        });
+      } catch {}
+    }
+    load();
+    const id = setInterval(load, 15_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [symbol, isCrypto]);
+  return stat;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// TradingView widget
+// ────────────────────────────────────────────────────────────────────
 function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
@@ -233,126 +232,110 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
       details: true,
       hotlist: true,
       show_popup_button: true,
-      popup_width: '1000',
-      popup_height: '650',
+      popup_width: '1000', popup_height: '650',
       studies: [],
-      enabled_features: [
-        'study_templates',
-      ],
+      enabled_features: ['study_templates'],
       overrides: {
         'paneProperties.backgroundType': 'solid',
         'paneProperties.background': '#000000',
-        'mainSeriesProperties.candleStyle.upColor': '#eab308',
+        'mainSeriesProperties.candleStyle.upColor': '#22c55e',
         'mainSeriesProperties.candleStyle.downColor': '#ef4444',
-        'mainSeriesProperties.candleStyle.borderUpColor': '#eab308',
+        'mainSeriesProperties.candleStyle.borderUpColor': '#22c55e',
         'mainSeriesProperties.candleStyle.borderDownColor': '#ef4444',
-        'mainSeriesProperties.candleStyle.wickUpColor': '#eab308',
+        'mainSeriesProperties.candleStyle.wickUpColor': '#22c55e',
         'mainSeriesProperties.candleStyle.wickDownColor': '#ef4444',
       },
     });
-
-    // Hide loading skeleton once TradingView iframe loads
     script.onload = () => setTimeout(() => setLoading(false), 600);
     script.onerror = () => setLoading(false);
 
     const widgetContainer = document.createElement('div');
     widgetContainer.className = 'tradingview-widget-container';
     widgetContainer.style.height = '100%';
-    widgetContainer.style.width = '100%';
-
+    widgetContainer.style.width  = '100%';
     const widgetInner = document.createElement('div');
     widgetInner.className = 'tradingview-widget-container__widget';
     widgetInner.style.height = 'calc(100% - 32px)';
-    widgetInner.style.width = '100%';
-
+    widgetInner.style.width  = '100%';
     widgetContainer.appendChild(widgetInner);
     widgetContainer.appendChild(script);
     containerRef.current.appendChild(widgetContainer);
 
     const container = containerRef.current;
-    return () => {
-      if (container) {
-        container.innerHTML = '';
-      }
-    };
+    return () => { if (container) container.innerHTML = ''; };
   }, [tvSymbol, interval]);
 
   return (
-    <div className="w-full h-full relative">
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {loading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black" aria-hidden="true">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
-            <span className="text-[11px] text-neutral-600 font-medium">Loading chart...</span>
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#000',
+        }} aria-hidden="true">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 24, height: 24, borderRadius: 999,
+              border: '2px solid rgba(var(--hub-accent-rgb), 0.25)',
+              borderTopColor: 'var(--hub-accent)',
+              animation: 'spin 700ms linear infinite',
+            }} />
+            <span style={{ fontSize: 11, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+              Loading chart…
+            </span>
           </div>
         </div>
       )}
-      <div ref={containerRef} className="w-full h-full" />
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Page component
-   ═══════════════════════════════════════════════════════════════════════ */
-
+// ────────────────────────────────────────────────────────────────────
+// Page
+// ────────────────────────────────────────────────────────────────────
 function ChartPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  /* ─── Initialize state from URL params ─────────────────────────────── */
   const initialSymbolLabel = searchParams.get('s') || 'BTC';
-  const initialInterval = searchParams.get('tf') || '60';
-  const initialAssetClass = (searchParams.get('ac') as AssetClass) || 'crypto';
-
-  // Find the matching symbol from URL params
-  const initialTab = ASSET_TABS.find(t => t.id === initialAssetClass) ?? ASSET_TABS[0];
-  const initialSymbol = initialTab.pinned.find(
-    s => s.label.toUpperCase() === initialSymbolLabel.toUpperCase()
-  ) ?? initialTab.pinned[0];
+  const initialInterval    = searchParams.get('tf') || '60';
+  const initialAssetClass  = (searchParams.get('ac') as AssetClass) || 'crypto';
+  const initialTab    = ASSET_TABS.find(t => t.id === initialAssetClass) ?? ASSET_TABS[0];
+  const initialSymbol = initialTab.pinned.find(s => s.label.toUpperCase() === initialSymbolLabel.toUpperCase()) ?? initialTab.pinned[0];
 
   const [assetClass, setAssetClass] = useState<AssetClass>(initialTab.id);
-  const [tvSymbol, setTvSymbol] = useState(initialSymbol.tvSymbol);
+  const [tvSymbol, setTvSymbol]     = useState(initialSymbol.tvSymbol);
   const [displayLabel, setDisplayLabel] = useState(initialSymbol.label);
-  const [displayPair, setDisplayPair] = useState(initialSymbol.displayPair ?? '');
-  const [interval, setInterval_] = useState(
-    TIMEFRAMES.some(tf => tf.value === initialInterval) ? initialInterval : '60'
-  );
+  const [displayPair,  setDisplayPair]  = useState(initialSymbol.displayPair ?? '');
+  const [interval, setInterval_] = useState(TIMEFRAMES.some(tf => tf.value === initialInterval) ? initialInterval : '60');
 
-  // Bottom panel
-  const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
-
-  // Tape sidebar (only for crypto)
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
   const [tapeVisible, setTapeVisible] = useState(false);
 
-  // Symbol dropdown
-  const [symbolOpen, setSymbolOpen] = useState(false);
+  const [symbolOpen,  setSymbolOpen]  = useState(false);
   const [symbolQuery, setSymbolQuery] = useState('');
-  const symbolRef = useRef<HTMLDivElement>(null);
+  const symbolRef      = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
-  const currentTab = useMemo(
-    () => ASSET_TABS.find(t => t.id === assetClass)!,
-    [assetClass],
-  );
+  const isCrypto    = assetClass === 'crypto';
+  const tickerStat  = useTickerStats(displayLabel, isCrypto);
+  const currentTab  = useMemo(() => ASSET_TABS.find(t => t.id === assetClass)!, [assetClass]);
 
-  // Filter pinned symbols by search
   const filteredSymbols = useMemo(() => {
     const q = symbolQuery.trim().toLowerCase();
     if (!q) return currentTab.pinned;
     return currentTab.pinned.filter(s =>
-      s.label.toLowerCase().includes(q) ||
-      s.tvSymbol.toLowerCase().includes(q)
+      s.label.toLowerCase().includes(q) || s.tvSymbol.toLowerCase().includes(q),
     );
   }, [symbolQuery, currentTab]);
 
-  /* ─── Sync state to URL params (shallow, no navigation) ────────────── */
   const updateURL = useCallback((label: string, tf: string, ac: AssetClass) => {
     const params = new URLSearchParams();
-    if (label !== 'BTC') params.set('s', label);
-    if (tf !== '60') params.set('tf', tf);
-    if (ac !== 'crypto') params.set('ac', ac);
+    if (label !== 'BTC')  params.set('s',  label);
+    if (tf !== '60')      params.set('tf', tf);
+    if (ac !== 'crypto')  params.set('ac', ac);
     const qs = params.toString();
     router.replace(`/chart${qs ? `?${qs}` : ''}`, { scroll: false });
   }, [router]);
@@ -370,7 +353,6 @@ function ChartPageInner() {
   const switchAssetClass = useCallback((ac: AssetClass) => {
     setAssetClass(ac);
     setSymbolQuery('');
-    // Auto-select first symbol in the new asset class
     const tab = ASSET_TABS.find(t => t.id === ac)!;
     const first = tab.pinned[0];
     setTvSymbol(first.tvSymbol);
@@ -384,384 +366,417 @@ function ChartPageInner() {
     updateURL(displayLabel, tf, assetClass);
   }, [displayLabel, assetClass, updateURL]);
 
-  /* ─── Keyboard shortcuts for timeframes + Escape ───────────────────── */
+  // Keyboard: timeframe number keys + Esc + T (tape)
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement).isContentEditable) return;
-
-      // Escape closes dropdown
-      if (e.key === 'Escape' && symbolOpen) {
-        setSymbolOpen(false);
-        setFocusedIndex(-1);
-        return;
-      }
-
-      // T key toggles tape sidebar
-      if (e.key === 't' && assetClass === 'crypto' && !symbolOpen) {
-        setTapeVisible(v => !v);
-        return;
-      }
-
-      // Number keys for timeframes
+      const t = e.target;
+      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || (t as HTMLElement).isContentEditable) return;
+      if (e.key === 'Escape' && symbolOpen) { setSymbolOpen(false); setFocusedIndex(-1); return; }
+      if (e.key === 't' && isCrypto && !symbolOpen) { setTapeVisible(v => !v); return; }
       const idx = parseInt(e.key) - 1;
-      if (idx >= 0 && idx < TIMEFRAMES.length) {
-        setIntervalAndSync(TIMEFRAMES[idx].value);
-      }
+      if (idx >= 0 && idx < TIMEFRAMES.length) setIntervalAndSync(TIMEFRAMES[idx].value);
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [symbolOpen, assetClass, setIntervalAndSync]);
+  }, [symbolOpen, isCrypto, setIntervalAndSync]);
 
-  /* ─── Keyboard navigation within dropdown ──────────────────────────── */
   const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setFocusedIndex(i => Math.min(i + 1, filteredSymbols.length - 1));
+      e.preventDefault(); setFocusedIndex(i => Math.min(i + 1, filteredSymbols.length - 1));
     } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedIndex(i => Math.max(i - 1, 0));
+      e.preventDefault(); setFocusedIndex(i => Math.max(i - 1, 0));
     } else if (e.key === 'Enter' && focusedIndex >= 0 && focusedIndex < filteredSymbols.length) {
-      e.preventDefault();
-      selectSymbol(filteredSymbols[focusedIndex]);
+      e.preventDefault(); selectSymbol(filteredSymbols[focusedIndex]);
     } else if (e.key === 'Escape') {
-      setSymbolOpen(false);
-      setFocusedIndex(-1);
+      setSymbolOpen(false); setFocusedIndex(-1);
     }
   }, [filteredSymbols, focusedIndex, selectSymbol]);
 
-  /* ─── Close dropdown on outside click ──────────────────────────────── */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (symbolRef.current && !symbolRef.current.contains(e.target as Node)) {
-        setSymbolOpen(false);
-        setFocusedIndex(-1);
+        setSymbolOpen(false); setFocusedIndex(-1);
       }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  /* ─── Focus search when dropdown opens ─────────────────────────────── */
   useEffect(() => {
-    if (symbolOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-      setFocusedIndex(-1);
-    }
+    if (symbolOpen && searchInputRef.current) { searchInputRef.current.focus(); setFocusedIndex(-1); }
   }, [symbolOpen]);
 
+  const positive = (tickerStat.change24h ?? 0) >= 0;
+  const priceColor = positive ? 'var(--pump-mild)' : 'var(--rekt-mild)';
+
   return (
-    <div id="main-content" className="h-screen w-screen bg-black flex flex-col overflow-hidden">
-      <h1 className="sr-only">Chart</h1>
-      {/* ─── Header ─────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-white/[0.08] bg-[#060606] relative z-20">
-        <div className="flex items-center px-2 sm:px-3 py-1.5 gap-1.5 sm:gap-2">
-          {/* Logo + back */}
-          <Link
-            href="/"
-            aria-label="Back to home"
-            className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors flex-shrink-0"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden md:block"><Logo variant="full" size="xs" /></span>
-          </Link>
+    <div id="main-content" style={{
+      display: 'flex', flexDirection: 'column',
+      width: '100%', height: '100%', minHeight: 0,
+      background: '#000', overflow: 'hidden',
+    }}>
+      <h1 className="sr-only">Chart · {displayLabel}</h1>
 
-          <div className="w-px h-5 bg-white/[0.06] flex-shrink-0" />
-
-          {/* Asset class tabs */}
-          <div className="flex items-center gap-0.5 flex-shrink-0" role="tablist" aria-label="Asset class">
-            {ASSET_TABS.map(tab => (
+      {/* ─── Top control bar ─── */}
+      <div style={{
+        flexShrink: 0,
+        background: 'rgba(7,9,13,0.94)',
+        borderBottom: '1px solid var(--hub-border-subtle)',
+        padding: '8px 14px',
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10,
+        backdropFilter: 'blur(6px)',
+        position: 'relative', zIndex: 30,
+      }}>
+        {/* Asset class tabs */}
+        <div style={{
+          display: 'inline-flex',
+          background: 'var(--hub-darker)',
+          border: '1px solid var(--hub-border-subtle)',
+          borderRadius: 8, overflow: 'hidden',
+        }} role="tablist" aria-label="Asset class">
+          {ASSET_TABS.map(tab => {
+            const on = assetClass === tab.id;
+            return (
               <button
                 key={tab.id}
                 role="tab"
-                aria-selected={assetClass === tab.id}
+                aria-selected={on}
                 onClick={() => switchAssetClass(tab.id)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  assetClass === tab.id
-                    ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/25'
-                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04] border border-transparent'
-                }`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '6px 11px',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
+                  background: on ? 'var(--hub-accent)' : 'transparent',
+                  color: on ? '#000' : 'var(--fg-muted)',
+                  border: 'none', cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  transition: 'background 150ms',
+                }}
               >
                 {tab.icon}
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
-          <div className="w-px h-5 bg-white/[0.06] flex-shrink-0" />
+        {/* Symbol selector */}
+        <div ref={symbolRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setSymbolOpen(!symbolOpen)}
+            aria-expanded={symbolOpen}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '6px 12px',
+              borderRadius: 8,
+              background: 'var(--hub-darker)',
+              border: '1px solid var(--hub-border)',
+              color: 'var(--fg-default)',
+              fontSize: 13, fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'border-color 150ms',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--hub-accent)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--hub-border)'; }}
+          >
+            {isCrypto && <TokenIconSimple symbol={displayLabel} size={18} />}
+            <span style={{ letterSpacing: '-0.01em' }}>{displayLabel}</span>
+            {displayPair && <span style={{ color: 'var(--fg-muted)', fontWeight: 500, fontSize: 11 }}>{displayPair}</span>}
+            <ChevronDown size={12} style={{
+              color: 'var(--fg-muted)',
+              transform: symbolOpen ? 'rotate(180deg)' : 'none',
+              transition: 'transform 150ms',
+            }} />
+          </button>
 
-          {/* Symbol selector */}
-          <div ref={symbolRef} className="relative flex-shrink-0">
-            <button
-              onClick={() => setSymbolOpen(!symbolOpen)}
-              aria-expanded={symbolOpen}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors focus:ring-2 focus:ring-hub-yellow/30"
+          {symbolOpen && (
+            <div
+              role="dialog"
+              aria-label="Symbol picker"
+              onKeyDown={handleDropdownKeyDown}
+              style={{
+                position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+                width: 320,
+                background: 'rgba(15,18,24,0.98)',
+                border: '1px solid var(--hub-border-hover)',
+                borderRadius: 10,
+                boxShadow: '0 18px 40px -12px rgba(0,0,0,0.7)',
+                zIndex: 50,
+                overflow: 'hidden',
+                animation: 'page-enter 180ms ease-out',
+              }}
             >
-              {assetClass === 'crypto' && (
-                <TokenIconSimple symbol={displayLabel} size={16} />
-              )}
-              <span className="text-[13px] font-bold text-white">
-                {displayLabel}
-                {displayPair && <span className="text-neutral-500 font-normal text-xs">{displayPair}</span>}
-              </span>
-              <ChevronDown className={`w-3 h-3 text-neutral-500 transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {symbolOpen && (
-              <div
-                className="absolute top-full left-0 mt-1 z-50 w-72 sm:w-80 bg-[#0a0a0a] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden animate-scale-in"
-                role="dialog"
-                aria-label="Symbol picker"
-                onKeyDown={handleDropdownKeyDown}
-              >
-                {/* Search */}
-                <div className="relative px-3 py-2 border-b border-white/[0.06]">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    aria-label="Search symbols"
-                    aria-activedescendant={focusedIndex >= 0 ? `symbol-${focusedIndex}` : undefined}
-                    placeholder={`Search ${currentTab.label.toLowerCase()}...`}
-                    value={symbolQuery}
-                    onChange={e => { setSymbolQuery(e.target.value); setFocusedIndex(-1); }}
-                    className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30 focus-visible:ring-2 focus-visible:ring-hub-yellow/50"
-                  />
-                  {symbolQuery && (
-                    <button
-                      onClick={() => setSymbolQuery('')}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Asset class sub-tabs inside dropdown */}
-                <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/[0.04] overflow-x-auto scrollbar-none">
-                  {ASSET_TABS.map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => {
-                        switchAssetClass(tab.id);
-                        setSymbolQuery('');
-                      }}
-                      className={`flex-shrink-0 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
-                        assetClass === tab.id
-                          ? 'bg-hub-yellow/15 text-hub-yellow'
-                          : 'text-neutral-600 hover:text-neutral-400'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Symbol grid */}
-                <div className="max-h-[60vh] overflow-y-auto py-1 scrollbar-thin" role="listbox">
-                  {filteredSymbols.length === 0 && (
-                    <div className="px-4 py-3 text-xs text-neutral-500 text-center">
-                      No symbols found. Use TradingView search in the chart for more.
-                    </div>
-                  )}
-                  {assetClass === 'crypto' && !symbolQuery.trim() ? (
-                    /* ── Categorized grid for crypto ── */
-                    (() => {
-                      const CAT_META: Record<string, { icon: React.ReactNode; color: string }> = {
-                        Top: { icon: <Star className="w-3 h-3" />, color: 'text-hub-yellow' },
-                        L2: { icon: <Layers className="w-3 h-3" />, color: 'text-blue-400' },
-                        DeFi: { icon: <Zap className="w-3 h-3" />, color: 'text-emerald-400' },
-                        AI: { icon: <Cpu className="w-3 h-3" />, color: 'text-purple-400' },
-                        Meme: { icon: <Flame className="w-3 h-3" />, color: 'text-orange-400' },
-                        Perps: { icon: <TrendingUp className="w-3 h-3" />, color: 'text-cyan-400' },
-                      };
-                      const cats = ['Top', 'L2', 'DeFi', 'AI', 'Meme', 'Perps'];
-                      const grouped = new Map<string, AssetSymbol[]>();
-                      for (const sym of filteredSymbols) {
-                        const c = sym.cat || 'Top';
-                        if (!grouped.has(c)) grouped.set(c, []);
-                        grouped.get(c)!.push(sym);
-                      }
-                      let globalIdx = 0;
-                      return cats.filter(c => grouped.has(c)).map(cat => {
-                        const syms = grouped.get(cat)!;
-                        const meta = CAT_META[cat] || CAT_META.Top;
-                        return (
-                          <div key={cat}>
-                            <div className="px-3 py-2 flex items-center gap-2">
-                              <span className={meta.color}>{meta.icon}</span>
-                              <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">{cat}</span>
-                              <span className={`text-[9px] tabular-nums font-medium ${meta.color} opacity-60`}>{syms.length}</span>
-                              <div className="flex-1 h-px bg-white/[0.04]" />
-                            </div>
-                            <div className="grid grid-cols-3 gap-0.5 px-2 pb-1">
-                              {syms.map(sym => {
-                                const idx = globalIdx++;
-                                return (
-                                  <button
-                                    key={sym.tvSymbol}
-                                    id={`symbol-${idx}`}
-                                    role="option"
-                                    aria-selected={sym.tvSymbol === tvSymbol}
-                                    onClick={() => selectSymbol(sym)}
-                                    onMouseEnter={() => setFocusedIndex(idx)}
-                                    className={`flex items-center gap-2 px-2 py-[6px] rounded-lg text-left transition-all ${
-                                      sym.tvSymbol === tvSymbol
-                                        ? 'bg-hub-yellow/15 ring-1 ring-hub-yellow/30'
-                                        : focusedIndex === idx
-                                          ? 'bg-white/[0.08]'
-                                          : 'hover:bg-white/[0.04]'
-                                    }`}
-                                  >
-                                    <span className={`shrink-0 transition-opacity ${sym.tvSymbol === tvSymbol ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
-                                      <TokenIconSimple symbol={sym.icon || sym.label} size={18} />
-                                    </span>
-                                    <span className={`text-[11px] font-medium truncate ${
-                                      sym.tvSymbol === tvSymbol ? 'text-hub-yellow' : 'text-white'
-                                    }`}>
-                                      {sym.label}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()
-                  ) : (
-                    /* ── Flat list for search results & non-crypto ── */
-                    <>
-                      {!symbolQuery.trim() && (
-                        <div className="px-3 pt-1.5 pb-1 flex items-center gap-1.5">
-                          <Star className="w-3 h-3 text-hub-yellow/60" />
-                          <span className="text-[10px] font-medium text-neutral-600 uppercase tracking-wider">
-                            Popular {currentTab.label}
-                          </span>
-                        </div>
-                      )}
-                      {filteredSymbols.map((sym, idx) => (
-                        <button
-                          key={sym.tvSymbol}
-                          id={`symbol-${idx}`}
-                          role="option"
-                          aria-selected={sym.tvSymbol === tvSymbol}
-                          onClick={() => selectSymbol(sym)}
-                          onMouseEnter={() => setFocusedIndex(idx)}
-                          className={`w-full text-left px-3 py-1.5 transition-colors flex items-center gap-2 ${
-                            focusedIndex === idx
-                              ? 'bg-white/[0.08]'
-                              : sym.tvSymbol === tvSymbol
-                                ? 'bg-hub-yellow/10'
-                                : 'hover:bg-white/[0.04]'
-                          }`}
-                        >
-                          {assetClass === 'crypto' && sym.icon ? (
-                            <TokenIconSimple symbol={sym.icon} size={18} />
-                          ) : assetClass !== 'crypto' ? (
-                            <div className={`w-[18px] h-[18px] rounded flex items-center justify-center text-[7px] font-bold flex-shrink-0 ${
-                              assetClass === 'stocks' ? 'bg-blue-500/15 text-blue-400' :
-                              assetClass === 'forex' ? 'bg-emerald-500/15 text-emerald-400' :
-                              assetClass === 'commodities' ? 'bg-amber-500/15 text-amber-400' :
-                              'bg-purple-500/15 text-purple-400'
-                            }`}>
-                              {sym.label.slice(0, 2).toUpperCase()}
-                            </div>
-                          ) : null}
-                          <div className="flex-1 min-w-0">
-                            <span className={`text-[13px] font-medium ${
-                              sym.tvSymbol === tvSymbol ? 'text-hub-yellow' : 'text-white'
-                            }`}>
-                              {sym.label}
-                            </span>
-                            {sym.displayPair && (
-                              <span className="text-neutral-600 text-xs">{sym.displayPair}</span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-neutral-600 font-mono flex-shrink-0">
-                            {sym.tvSymbol.split(':')[0]}
-                          </span>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </div>
-
-                {/* Hints */}
-                <div className="px-3 py-1.5 border-t border-white/[0.04] flex items-center justify-between">
-                  <span className="text-[10px] text-neutral-600">
-                    <kbd className="px-1 py-0.5 bg-white/[0.06] rounded text-[9px]">↑↓</kbd> navigate
-                    <kbd className="ml-1.5 px-1 py-0.5 bg-white/[0.06] rounded text-[9px]">↵</kbd> select
-                    <kbd className="ml-1.5 px-1 py-0.5 bg-white/[0.06] rounded text-[9px]">esc</kbd> close
-                  </span>
-                </div>
+              <div style={{ position: 'relative', padding: '10px 12px', borderBottom: '1px solid var(--hub-border-subtle)' }}>
+                <Search size={13} style={{ position: 'absolute', left: 22, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-muted)' }} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  aria-label="Search symbols"
+                  placeholder={`Search ${currentTab.label.toLowerCase()}…`}
+                  value={symbolQuery}
+                  onChange={(e) => { setSymbolQuery(e.target.value); setFocusedIndex(-1); }}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--hub-border-subtle)',
+                    borderRadius: 8,
+                    padding: '6px 10px 6px 30px',
+                    fontSize: 12, color: 'var(--fg-default)',
+                    outline: 'none',
+                  }}
+                />
+                {symbolQuery && (
+                  <button
+                    onClick={() => setSymbolQuery('')}
+                    style={{ position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--fg-muted)', cursor: 'pointer' }}
+                    aria-label="Clear search"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
+
+              {/* Asset class strip */}
+              <div style={{
+                display: 'flex', gap: 4, padding: '6px 8px',
+                borderBottom: '1px solid var(--hub-border-subtle)',
+                overflowX: 'auto',
+              }}>
+                {ASSET_TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => { switchAssetClass(tab.id); setSymbolQuery(''); }}
+                    style={{
+                      flexShrink: 0,
+                      padding: '4px 8px',
+                      borderRadius: 5,
+                      background: assetClass === tab.id ? 'rgba(var(--hub-accent-rgb), 0.15)' : 'transparent',
+                      color: assetClass === tab.id ? 'var(--hub-accent)' : 'var(--fg-muted)',
+                      border: 'none',
+                      fontSize: 10, fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >{tab.label}</button>
+                ))}
+              </div>
+
+              {/* Symbol list */}
+              <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: 6 }} role="listbox">
+                {filteredSymbols.length === 0 && (
+                  <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--fg-muted)' }}>
+                    No symbols found.
+                  </div>
+                )}
+                {isCrypto && !symbolQuery.trim() ? (
+                  <CategorizedSymbolGrid
+                    symbols={filteredSymbols}
+                    activeTv={tvSymbol}
+                    focusedIndex={focusedIndex}
+                    setFocusedIndex={setFocusedIndex}
+                    onSelect={selectSymbol}
+                  />
+                ) : (
+                  <FlatSymbolList
+                    symbols={filteredSymbols}
+                    activeTv={tvSymbol}
+                    focusedIndex={focusedIndex}
+                    setFocusedIndex={setFocusedIndex}
+                    onSelect={selectSymbol}
+                    isCrypto={isCrypto}
+                    showPopularLabel={!symbolQuery.trim()}
+                    currentLabel={currentTab.label}
+                  />
+                )}
+              </div>
+
+              {/* Hints */}
+              <div style={{
+                padding: '6px 12px',
+                borderTop: '1px solid var(--hub-border-subtle)',
+                fontSize: 9, color: 'var(--fg-muted)',
+                fontFamily: 'var(--font-mono)',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <Kbd>↑↓</Kbd> nav <Kbd>↵</Kbd> select <Kbd>esc</Kbd> close
+                {isCrypto && <><span style={{ flex: 1 }} /><Kbd>T</Kbd> tape</>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Live price strip (crypto only) */}
+        {isCrypto && tickerStat.price != null && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 14,
+            padding: '4px 12px',
+            borderRadius: 8,
+            background: `linear-gradient(135deg, ${priceColor}10 0%, transparent 70%)`,
+            border: `1px solid ${priceColor}33`,
+            fontFamily: 'var(--font-mono)',
+          }}>
+            <SatPing size={8} color={priceColor} />
+            <span style={{
+              fontSize: 15, fontWeight: 800, color: 'var(--fg-default)', letterSpacing: '-0.01em',
+            }}>
+              {tickerStat.price >= 100 ? `$${tickerStat.price.toFixed(2)}`
+                : tickerStat.price >= 1   ? `$${tickerStat.price.toFixed(3)}`
+                : `$${tickerStat.price.toFixed(6)}`}
+            </span>
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: priceColor,
+              padding: '1px 7px', borderRadius: 999,
+              background: positive ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
+              border: `1px solid ${positive ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+            }}>
+              {tickerStat.change24h != null ? `${tickerStat.change24h >= 0 ? '+' : ''}${tickerStat.change24h.toFixed(2)}%` : '—'}
+            </span>
+            {tickerStat.high24h != null && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--fg-muted)' }}>
+                H <span style={{ color: 'var(--pump-mild)' }}>${tickerStat.high24h.toFixed(2)}</span>
+              </span>
+            )}
+            {tickerStat.low24h != null && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--fg-muted)' }}>
+                L <span style={{ color: 'var(--rekt-mild)' }}>${tickerStat.low24h.toFixed(2)}</span>
+              </span>
+            )}
+            {tickerStat.volume24h != null && tickerStat.volume24h > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--fg-muted)' }}>
+                <Volume2 size={10} />
+                <span style={{ color: 'var(--fg-default)' }}>
+                  {tickerStat.volume24h >= 1e9 ? `$${(tickerStat.volume24h / 1e9).toFixed(2)}B`
+                    : tickerStat.volume24h >= 1e6 ? `$${(tickerStat.volume24h / 1e6).toFixed(1)}M`
+                    : `$${(tickerStat.volume24h / 1e3).toFixed(0)}K`}
+                </span>
+              </span>
             )}
           </div>
+        )}
 
-          <div className="flex-1" />
+        <div style={{ flex: 1 }} />
 
-          {/* Sound toggle */}
-          {assetClass === 'crypto' && <SoundToggle />}
+        {/* Sound toggle for crypto */}
+        {isCrypto && <SoundToggle />}
 
-          {/* Timeframe buttons */}
-          <div className="flex items-center flex-wrap gap-0.5 flex-shrink-0" role="group" aria-label="Timeframe">
-            {TIMEFRAMES.map(tf => (
+        {/* Timeframe pills */}
+        <div style={{
+          display: 'inline-flex',
+          background: 'var(--hub-darker)',
+          border: '1px solid var(--hub-border-subtle)',
+          borderRadius: 8, overflow: 'hidden',
+        }} role="group" aria-label="Timeframe">
+          {TIMEFRAMES.map(tf => {
+            const on = interval === tf.value;
+            return (
               <button
                 key={tf.value}
                 onClick={() => setIntervalAndSync(tf.value)}
-                aria-pressed={interval === tf.value}
-                className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors flex-shrink-0 ${
-                  interval === tf.value
-                    ? 'bg-hub-yellow text-black font-bold'
-                    : 'text-neutral-500 hover:text-white hover:bg-white/[0.06]'
-                }`}
+                aria-pressed={on}
                 title={`${tf.label} (Shortcut: ${tf.key})`}
-              >
-                {tf.label}
-              </button>
-            ))}
-          </div>
+                style={{
+                  padding: '5px 10px',
+                  fontSize: 11, fontWeight: 700,
+                  background: on ? 'var(--hub-accent)' : 'transparent',
+                  color: on ? '#000' : 'var(--fg-muted)',
+                  border: 'none', cursor: 'pointer',
+                  letterSpacing: '0.02em',
+                }}
+              >{tf.label}</button>
+            );
+          })}
         </div>
+
+        {/* Tape toggle (crypto) */}
+        {isCrypto && (
+          <button
+            onClick={() => setTapeVisible(v => !v)}
+            title="Toggle trade tape (T)"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '5px 10px',
+              borderRadius: 8,
+              background: tapeVisible ? 'rgba(var(--hub-accent-rgb), 0.15)' : 'var(--hub-darker)',
+              border: `1px solid ${tapeVisible ? 'var(--hub-accent)' : 'var(--hub-border-subtle)'}`,
+              color: tapeVisible ? 'var(--hub-accent)' : 'var(--fg-muted)',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}
+          >
+            <Activity size={11} />
+            Tape
+          </button>
+        )}
+
+        {/* Bottom panel toggle (crypto) */}
+        {isCrypto && (
+          <button
+            onClick={() => setBottomPanelOpen(v => !v)}
+            title="Toggle metrics panel"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '5px 10px',
+              borderRadius: 8,
+              background: bottomPanelOpen ? 'rgba(var(--hub-accent-rgb), 0.15)' : 'var(--hub-darker)',
+              border: `1px solid ${bottomPanelOpen ? 'var(--hub-accent)' : 'var(--hub-border-subtle)'}`,
+              color: bottomPanelOpen ? 'var(--hub-accent)' : 'var(--fg-muted)',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}
+          >
+            <BarChart3 size={11} />
+            Metrics
+          </button>
+        )}
       </div>
 
-      {/* ─── Quick symbol bar ───────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-white/[0.04] bg-black/40">
-        <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 overflow-x-auto scrollbar-none" role="tablist" aria-label="Quick symbols">
-          {currentTab.pinned.slice(0, 14).map(sym => (
+      {/* ─── Quick symbol bar ─── */}
+      <div style={{
+        flexShrink: 0,
+        background: 'rgba(0,0,0,0.5)',
+        borderBottom: '1px solid var(--hub-border-subtle)',
+        padding: '6px 14px',
+        display: 'flex', alignItems: 'center', gap: 4,
+        overflowX: 'auto',
+      }} role="tablist" aria-label="Quick symbols">
+        {currentTab.pinned.slice(0, 16).map(sym => {
+          const on = sym.tvSymbol === tvSymbol;
+          return (
             <button
               key={sym.tvSymbol}
               role="tab"
-              aria-selected={sym.tvSymbol === tvSymbol}
+              aria-selected={on}
               onClick={() => selectSymbol(sym)}
-              className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
-                sym.tvSymbol === tvSymbol
-                  ? 'bg-hub-yellow/15 text-hub-yellow'
-                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
-              }`}
+              style={{
+                flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '4px 9px',
+                borderRadius: 6,
+                background: on ? 'rgba(var(--hub-accent-rgb), 0.18)' : 'transparent',
+                color: on ? 'var(--hub-accent)' : 'var(--fg-muted)',
+                border: on ? '1px solid rgba(var(--hub-accent-rgb), 0.4)' : '1px solid transparent',
+                fontSize: 11, fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseLeave={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
-              {assetClass === 'crypto' && sym.icon && (
-                <TokenIconSimple symbol={sym.icon} size={12} />
-              )}
+              {isCrypto && sym.icon && <TokenIconSimple symbol={sym.icon} size={13} />}
               {sym.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* ─── Feature hint (first visit only) ────── */}
-      <div className="flex-shrink-0 px-2">
-        <FeatureHint page="/chart" />
-      </div>
-
-      {/* ─── TradingView Chart + Tape Sidebar + Metrics Panel ────── */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-1 flex min-h-0 relative z-0" style={{ minHeight: '250px' }}>
-          <div className="flex-1 relative overflow-hidden">
+      {/* ─── Chart + side tape ─── */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', position: 'relative' }}>
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
             <ChartErrorBoundary name="TradingView Chart" minHeight="250px">
               <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
             </ChartErrorBoundary>
           </div>
-          {assetClass === 'crypto' && (
+          {isCrypto && tapeVisible && (
             <ChartErrorBoundary name="Trade Tape">
               <TapeSidebar
                 symbol={displayLabel}
@@ -770,9 +785,8 @@ function ChartPageInner() {
               />
             </ChartErrorBoundary>
           )}
-
         </div>
-        {assetClass === 'crypto' && (
+        {isCrypto && (
           <ChartErrorBoundary name="Crypto Metrics">
             <CryptoMetricsPanel
               symbol={displayLabel}
@@ -786,9 +800,193 @@ function ChartPageInner() {
   );
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Sub-components
+// ────────────────────────────────────────────────────────────────────
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '1px 5px',
+      borderRadius: 3,
+      background: 'rgba(255,255,255,0.06)',
+      border: '1px solid var(--hub-border-subtle)',
+      fontSize: 9, fontFamily: 'var(--font-mono)',
+      color: 'var(--fg-default)',
+    }}>{children}</kbd>
+  );
+}
+
+function CategorizedSymbolGrid({
+  symbols, activeTv, focusedIndex, setFocusedIndex, onSelect,
+}: {
+  symbols: AssetSymbol[];
+  activeTv: string;
+  focusedIndex: number;
+  setFocusedIndex: (i: number) => void;
+  onSelect: (s: AssetSymbol) => void;
+}) {
+  const CAT_META: Record<string, { icon: React.ReactNode; color: string }> = {
+    Top:   { icon: <Star size={10} />,    color: 'var(--hub-accent)' },
+    L2:    { icon: <Layers size={10} />,  color: '#60a5fa' },
+    DeFi:  { icon: <Zap size={10} />,     color: 'var(--pump-mild)' },
+    AI:    { icon: <Cpu size={10} />,     color: '#a78bfa' },
+    Meme:  { icon: <Flame size={10} />,   color: '#fb923c' },
+    Perps: { icon: <TrendingUp size={10} />, color: '#22d3ee' },
+  };
+  const cats = ['Top', 'L2', 'DeFi', 'AI', 'Meme', 'Perps'];
+  const grouped = new Map<string, AssetSymbol[]>();
+  for (const sym of symbols) {
+    const c = sym.cat || 'Top';
+    if (!grouped.has(c)) grouped.set(c, []);
+    grouped.get(c)!.push(sym);
+  }
+  let idx = 0;
+  return (
+    <>
+      {cats.filter(c => grouped.has(c)).map(cat => {
+        const syms = grouped.get(cat)!;
+        const meta = CAT_META[cat];
+        return (
+          <div key={cat}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 6px 4px',
+            }}>
+              <span style={{ color: meta.color, display: 'inline-flex' }}>{meta.icon}</span>
+              <span style={{
+                fontSize: 9, fontWeight: 700, color: 'var(--fg-muted)',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+              }}>{cat}</span>
+              <span style={{ fontSize: 9, color: meta.color, opacity: 0.6, fontFamily: 'var(--font-mono)' }}>{syms.length}</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--hub-border-subtle)' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+              {syms.map(sym => {
+                const i = idx++;
+                const on  = sym.tvSymbol === activeTv;
+                const fok = focusedIndex === i;
+                return (
+                  <button
+                    key={sym.tvSymbol}
+                    role="option"
+                    aria-selected={on}
+                    onClick={() => onSelect(sym)}
+                    onMouseEnter={() => setFocusedIndex(i)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      border: 'none', textAlign: 'left',
+                      background: on ? 'rgba(var(--hub-accent-rgb), 0.18)'
+                        : fok ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      color: on ? 'var(--hub-accent)' : 'var(--fg-default)',
+                      fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <TokenIconSimple symbol={sym.icon || sym.label} size={16} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sym.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function FlatSymbolList({
+  symbols, activeTv, focusedIndex, setFocusedIndex, onSelect, isCrypto, showPopularLabel, currentLabel,
+}: {
+  symbols: AssetSymbol[];
+  activeTv: string;
+  focusedIndex: number;
+  setFocusedIndex: (i: number) => void;
+  onSelect: (s: AssetSymbol) => void;
+  isCrypto: boolean;
+  showPopularLabel: boolean;
+  currentLabel: string;
+}) {
+  return (
+    <>
+      {showPopularLabel && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 8px 4px',
+        }}>
+          <Star size={10} style={{ color: 'var(--hub-accent)' }} />
+          <span style={{
+            fontSize: 9, fontWeight: 700, color: 'var(--fg-muted)',
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+          }}>Popular {currentLabel}</span>
+        </div>
+      )}
+      {symbols.map((sym, i) => {
+        const on  = sym.tvSymbol === activeTv;
+        const fok = focusedIndex === i;
+        return (
+          <button
+            key={sym.tvSymbol}
+            role="option"
+            aria-selected={on}
+            onClick={() => onSelect(sym)}
+            onMouseEnter={() => setFocusedIndex(i)}
+            style={{
+              width: '100%',
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '7px 10px',
+              borderRadius: 6,
+              border: 'none', textAlign: 'left',
+              background: on ? 'rgba(var(--hub-accent-rgb), 0.18)'
+                : fok ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: on ? 'var(--hub-accent)' : 'var(--fg-default)',
+              fontSize: 12, fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {isCrypto && sym.icon ? (
+              <TokenIconSimple symbol={sym.icon} size={18} />
+            ) : (
+              <div style={{
+                width: 18, height: 18, borderRadius: 4,
+                background: 'rgba(255,255,255,0.06)',
+                color: 'var(--fg-muted)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 8, fontWeight: 800,
+              }}>
+                {sym.label.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <span style={{ flex: 1, fontWeight: 600 }}>{sym.label}</span>
+            {sym.displayPair && <span style={{ color: 'var(--fg-muted)', fontSize: 10 }}>{sym.displayPair}</span>}
+            <span style={{ color: 'var(--fg-faint)', fontSize: 9, fontFamily: 'var(--font-mono)' }}>
+              {sym.tvSymbol.split(':')[0]}
+            </span>
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Default export with Suspense
+// ────────────────────────────────────────────────────────────────────
 export default function ChartPage() {
   return (
-    <Suspense fallback={<div className="h-screen w-screen bg-black" />}>
+    <Suspense fallback={
+      <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          width: 24, height: 24, borderRadius: 999,
+          border: '2px solid rgba(var(--hub-accent-rgb), 0.25)',
+          borderTopColor: 'var(--hub-accent)',
+          animation: 'spin 700ms linear infinite',
+        }} />
+      </div>
+    }>
       <ChartPageInner />
     </Suspense>
   );

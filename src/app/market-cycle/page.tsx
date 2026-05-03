@@ -144,9 +144,8 @@ export default function MarketCyclePage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-hub-black">
-      <Header />
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
+    <div className="w-full">
+      <div id="main-content" className="w-full px-4 py-5">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
@@ -441,9 +440,7 @@ export default function MarketCyclePage() {
             </p>
           </div>
         )}
-      </main>
-      <ReferralBanner />
-      <Footer />
+      </div>
     </div>
   );
 }

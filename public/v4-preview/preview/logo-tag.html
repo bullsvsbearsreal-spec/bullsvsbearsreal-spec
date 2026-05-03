@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>InfoHub — wordmark + tag lockup</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100vh;background:var(--hub-black);color:var(--fg-default);font-family:var(--font-sans);padding:36px 32px 60px}
+  .wrap{max-width:1340px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-0.025em}
+  .lede{font-size:12px;color:var(--fg-muted);font-family:var(--font-mono);max-width:820px;line-height:1.6}
+
+  .card{background:var(--hub-darker);border:1px solid var(--hub-border);border-radius:14px;overflow:hidden}
+  .stage{display:flex;align-items:center;justify-content:center;padding:60px 32px;background:#000}
+  .stage.cream{background:#f4efe6}
+
+  /* The lockup */
+  .lockup{display:inline-flex;align-items:stretch;font-family:var(--font-sans);font-weight:900;letter-spacing:-0.045em;line-height:1}
+  .lockup .left{color:#f5f5f7;padding-right:.12em}
+  .lockup .tag{background:#FF9500;color:#0a0a0a;padding:.06em .22em .12em;border-radius:.14em;display:inline-flex;align-items:center}
+  .lockup.cream .left{color:#0a0a0a}
+  .lockup.cream .tag{background:#0a0a0a;color:#FF9500}
+
+  .meta{padding:14px 20px;border-top:1px solid var(--hub-border-subtle);display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.22)}
+  .tagpill{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--hub-accent);background:rgb(255 165 0 / .1);border:1px solid rgb(255 165 0 / .25);padding:3px 8px;border-radius:4px;font-family:var(--font-mono)}
+  .title{font-size:13px;font-weight:600}
+  .desc{font-size:10px;color:var(--fg-muted);margin-left:auto;font-family:var(--font-mono)}
+
+  .row{display:grid;grid-template-columns:repeat(var(--cols,2),1fr);gap:14px}
+
+  .sub{background:#000;padding:36px 28px;display:flex;align-items:center;justify-content:center}
+  .sub.cream{background:#f4efe6}
+
+  .scale-row{padding:18px 22px;display:flex;align-items:center;gap:26px;background:rgba(0,0,0,.28);border-top:1px solid var(--hub-border-subtle);flex-wrap:wrap}
+  .scale-row .grp{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .scale-row small{font-size:8.5px;color:var(--fg-subtle);text-transform:uppercase;letter-spacing:.14em;font-weight:700;font-family:var(--font-mono)}
+
+  .ctx-bar{height:48px;border-radius:8px;display:flex;align-items:center;padding:0 14px;gap:12px;background:rgba(7,9,13,0.96);border:1px solid var(--hub-border)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <h1>InfoHub — wordmark with highlighted "Hub"</h1>
+    <p class="lede">Wordmark-only. The second word "Hub" sits inside a flat orange tag, like a sticker stamped onto the line of type. Bold, recognizable at a glance, no icon required. One ink, no gradient, no glow.</p>
+  </div>
+
+  <!-- HERO -->
+  <div class="card">
+    <div class="stage" style="padding:90px 40px">
+      <span class="lockup" style="font-size:120px">
+        <span class="left">Info</span><span class="tag">Hub</span>
+      </span>
+    </div>
+    <div class="meta">
+      <span class="tagpill">primary</span>
+      <span class="title">Master lockup · dark</span>
+      <span class="desc">Inter Black 900 · -0.045em tracking · solid #FF9500 tag</span>
+    </div>
+  </div>
+
+  <!-- DARK / CREAM / INVERTED -->
+  <div class="row" style="--cols:3">
+    <div class="card">
+      <div class="sub"><span class="lockup" style="font-size:44px"><span class="left">Info</span><span class="tag">Hub</span></span></div>
+      <div class="meta"><span class="tagpill">on dark</span><span class="title">Default</span></div>
+    </div>
+    <div class="card">
+      <div class="sub cream"><span class="lockup cream" style="font-size:44px"><span class="left">Info</span><span class="tag">Hub</span></span></div>
+      <div class="meta"><span class="tagpill">on cream</span><span class="title">Inverted · ink tag</span></div>
+    </div>
+    <div class="card">
+      <div class="sub" style="background:#FF9500">
+        <span class="lockup" style="font-size:44px"><span class="left" style="color:#0a0a0a">Info</span><span class="tag" style="background:#0a0a0a;color:#FF9500">Hub</span></span>
+      </div>
+      <div class="meta"><span class="tagpill">on brand</span><span class="title">Reversed for swag / promo</span></div>
+    </div>
+  </div>
+
+  <!-- SCALE -->
+  <div class="card">
+    <div class="scale-row">
+      <div class="grp"><span class="lockup" style="font-size:14px"><span class="left">Info</span><span class="tag">Hub</span></span><small>14</small></div>
+      <div class="grp"><span class="lockup" style="font-size:18px"><span class="left">Info</span><span class="tag">Hub</span></span><small>18</small></div>
+      <div class="grp"><span class="lockup" style="font-size:24px"><span class="left">Info</span><span class="tag">Hub</span></span><small>24</small></div>
+      <div class="grp"><span class="lockup" style="font-size:36px"><span class="left">Info</span><span class="tag">Hub</span></span><small>36</small></div>
+      <div class="grp"><span class="lockup" style="font-size:56px"><span class="left">Info</span><span class="tag">Hub</span></span><small>56</small></div>
+      <div class="grp"><span class="lockup" style="font-size:84px"><span class="left">Info</span><span class="tag">Hub</span></span><small>84</small></div>
+    </div>
+    <div class="meta"><span class="tagpill">scale</span><span class="title">14 → 84px</span><span class="desc">Holds shape at every size · the tag stays legible</span></div>
+  </div>
+
+  <!-- IN CONTEXT -->
+  <div class="row" style="--cols:2">
+
+    <div class="card">
+      <div class="stage" style="padding:32px 24px;display:block">
+        <div style="font-size:9px;color:var(--fg-subtle);text-transform:uppercase;letter-spacing:.14em;font-weight:700;font-family:var(--font-mono);margin-bottom:14px">Sticky header · 56px</div>
+        <div class="ctx-bar" style="height:56px">
+          <span class="lockup" style="font-size:18px"><span class="left">Info</span><span class="tag">Hub</span></span>
+          <span style="margin-left:24px;font-family:var(--font-mono);font-size:11px;color:var(--fg-muted);display:flex;gap:14px">
+            <span>Funding</span><span>OI</span><span>Liq</span><span>Options</span>
+          </span>
+          <span style="margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--fg-subtle)">BTC · 0.0089%</span>
+        </div>
+      </div>
+      <div class="meta"><span class="tagpill">app chrome</span><span class="title">Sticky terminal header</span></div>
+    </div>
+
+    <div class="card">
+      <div class="stage" style="padding:24px;display:block;background:#07090d">
+        <div style="font-size:9px;color:var(--fg-subtle);text-transform:uppercase;letter-spacing:.14em;font-weight:700;font-family:var(--font-mono);margin-bottom:14px">Favicon &amp; app icon</div>
+        <div style="display:flex;align-items:center;gap:18px">
+          <!-- 16 favicon -->
+          <div style="width:16px;height:16px;background:#FF9500;border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-weight:900;color:#0a0a0a;font-size:10px;letter-spacing:-0.04em">H</div>
+          <!-- 32 -->
+          <div style="width:32px;height:32px;background:#FF9500;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-weight:900;color:#0a0a0a;font-size:20px;letter-spacing:-0.04em">H</div>
+          <!-- 64 -->
+          <div style="width:64px;height:64px;background:#FF9500;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-weight:900;color:#0a0a0a;font-size:42px;letter-spacing:-0.04em">H</div>
+          <!-- 96 -->
+          <div style="width:96px;height:96px;background:#FF9500;border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-weight:900;color:#0a0a0a;font-size:64px;letter-spacing:-0.04em">H</div>
+        </div>
+      </div>
+      <div class="meta"><span class="tagpill">icon</span><span class="title">Reduces to the orange tag with "H"</span></div>
+    </div>
+
+  </div>
+
+  <!-- VOTE -->
+  <div style="background:var(--hub-darker);border:1px solid var(--hub-border);border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px">
+    <div style="font-size:11px;font-family:var(--font-mono);color:var(--hub-accent);letter-spacing:.18em;font-weight:700;text-transform:uppercase">Like this →</div>
+    <div style="font-size:13px;color:var(--fg-default);line-height:1.5">Confirm and I'll commit it: SVG into <code style="font-family:var(--font-mono);background:rgba(255,165,0,0.08);padding:1px 6px;border-radius:3px;color:var(--hub-accent)">assets/</code>, update the React <code style="font-family:var(--font-mono);background:rgba(255,165,0,0.08);padding:1px 6px;border-radius:3px;color:var(--hub-accent)">&lt;Logo /&gt;</code>, and replace the terminal header.</div>
+  </div>
+
+</div>
+</body>
+</html>

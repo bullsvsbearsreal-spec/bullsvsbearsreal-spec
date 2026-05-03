@@ -1,12 +1,78 @@
 import type { Metadata } from 'next';
 import { ALL_EXCHANGES } from '@/lib/constants';
 
+type OGVariant =
+  | 'default'
+  | 'funding'
+  | 'liquidations'
+  | 'oi'
+  | 'screener'
+  | 'news'
+  | 'heatmap'
+  | 'chart'
+  | 'donate'
+  | 'ratios'
+  | 'etf'
+  | 'options';
+
 type PageMeta = {
   title: string;
   description: string;
   ogDesc?: string;
   noIndex?: boolean;
+  ogVariant?: OGVariant;
 };
+
+// Maps a path to its OG variant when `ogVariant` isn't explicitly set.
+// Substring match on path (so e.g. /funding-heatmap → 'heatmap').
+const VARIANT_BY_PATH_PREFIX: { match: string; variant: OGVariant }[] = [
+  { match: 'funding-heatmap', variant: 'heatmap' },
+  { match: 'liquidation-heatmap', variant: 'heatmap' },
+  { match: 'rsi-heatmap', variant: 'heatmap' },
+  { match: 'stock-heatmap', variant: 'heatmap' },
+  { match: 'market-heatmap', variant: 'heatmap' },
+  { match: 'oi-heatmap', variant: 'heatmap' },
+  { match: 'liquidations', variant: 'liquidations' },
+  { match: 'liq-', variant: 'liquidations' },
+  { match: 'open-interest', variant: 'oi' },
+  { match: 'oi-', variant: 'oi' },
+  { match: 'longshort', variant: 'ratios' },
+  { match: 'long-short', variant: 'ratios' },
+  { match: 'funding', variant: 'funding' },
+  { match: 'screener', variant: 'screener' },
+  { match: 'top-movers', variant: 'screener' },
+  { match: 'momentum', variant: 'screener' },
+  { match: 'breakouts', variant: 'screener' },
+  { match: 'outperformers', variant: 'screener' },
+  { match: 'trending-tokens', variant: 'screener' },
+  { match: 'news', variant: 'news' },
+  { match: 'economic-calendar', variant: 'news' },
+  { match: 'token-unlocks', variant: 'news' },
+  { match: 'airdrops', variant: 'news' },
+  { match: 'listings', variant: 'news' },
+  { match: 'donate', variant: 'donate' },
+  { match: 'referrals', variant: 'donate' },
+  { match: 'points', variant: 'donate' },
+  { match: 'chart', variant: 'chart' },
+  { match: 'symbol', variant: 'chart' },
+  { match: 'coin', variant: 'chart' },
+  { match: 'fear-greed', variant: 'chart' },
+  { match: 'etf', variant: 'etf' },
+  { match: 'hl-vaults', variant: 'etf' },
+  { match: 'staking', variant: 'etf' },
+  { match: 'options-iv', variant: 'options' },
+  { match: 'max-pain', variant: 'options' },
+  { match: 'options', variant: 'options' },
+];
+
+function pickVariant(path: string, explicit?: OGVariant): OGVariant {
+  if (explicit) return explicit;
+  const p = path.replace(/^\//, '').toLowerCase();
+  for (const entry of VARIANT_BY_PATH_PREFIX) {
+    if (p.includes(entry.match)) return entry.variant;
+  }
+  return 'default';
+}
 
 export const PAGE_META: Record<string, PageMeta> = {
   '/etf': {
@@ -265,11 +331,146 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'How to Read Open Interest',
     description: 'Learn how to interpret open interest data for crypto perpetual futures. Understand what rising and falling OI means for price action and market positioning.',
   },
+  '/gmx-traders': {
+    title: 'GMX Traders Leaderboard',
+    description: 'Top on-chain perpetual traders on GMX V2 (Arbitrum + Avalanche). Ranked by realized PnL, volume, and win rate. See their open positions, recent trades, and 30-day PnL sparklines.',
+  },
+  '/hl-traders': {
+    title: 'Hyperliquid Traders Leaderboard',
+    description: 'Top Hyperliquid perp traders ranked by window PnL. Live positions with leverage, entry price, and liquidation levels. Scanned across 34,000+ active accounts.',
+  },
+  '/trader': {
+    title: 'Cross-Platform Trader Profile',
+    description: 'Unified view of any wallet across GMX V2 (Arbitrum + Avalanche) and Hyperliquid. See all positions, total notional, unrealized PnL, and venue-specific stats in one place.',
+  },
+  '/funding-arb': {
+    title: 'Funding Rate Arbitrage Scanner',
+    description: 'Cross-exchange funding rate divergence scanner across 30+ venues. Identify cash-and-carry opportunities, annualized APR estimates, and CEX↔DEX arbs in real-time.',
+  },
+  '/smart-money': {
+    title: 'Smart Money Wallets',
+    description: 'Track wallets with proven alpha — high lifetime PnL, high volume, consistent win rate. See what the pros are positioned in right now with aggregate sentiment gauge.',
+  },
+  '/liquidation-levels': {
+    title: 'Liquidation Levels & Cascade Forecast',
+    description: 'Where are liquidations clustering? Empirical liquidation histogram from OKX + forecast of long/short clusters at each leverage tier using aggregate OI.',
+  },
+  '/points': {
+    title: 'Points & Airdrop Hub',
+    description: 'Curated directory of active crypto points programs — Hyperliquid, Aster, Lighter, Paradex, Backpack, Drift, and more. Deep-link to each program with your wallet pre-filled.',
+  },
+  '/compare-traders': {
+    title: 'Compare Traders',
+    description: 'Side-by-side comparison of up to 3 wallets across GMX V2 (Arbitrum + Avalanche) and Hyperliquid. Stats rolled up across venues with best-value highlighting.',
+  },
+  '/stablecoin-peg': {
+    title: 'Stablecoin Peg Monitor',
+    description: 'Live peg-deviation tracker for major USD stablecoins — USDT, USDC, DAI, FDUSD, PYUSD, USDe, and more. 25bp watch threshold · 100bp depeg alert · updates every 30 seconds.',
+  },
+  '/protocol-revenue': {
+    title: 'Protocol Revenue Leaderboard',
+    description: 'Which crypto protocols actually make money. 24h / 7d / 30d fee revenue ranking across DEXs, perps, lending, L1s, and stablecoin issuers — sourced from DeFiLlama.',
+  },
+  '/perp-dex-volume': {
+    title: 'Perp DEX Volume Race',
+    description: 'Daily and weekly market-share leaderboard for on-chain perp DEXs. Fees tracked in real time with implied notional volume, change%, and concentration stats.',
+  },
+  '/premiums': {
+    title: 'Regional Premiums · Coinbase + Kimchi',
+    description: 'Live BTC / ETH price gaps between Coinbase (US), Upbit (Korea), bitFlyer (Japan) and global Binance. Track institutional and regional demand in real time.',
+  },
+  '/gas-tracker': {
+    title: 'Gas Tracker · Ethereum + L2s',
+    description: 'Live gas prices and transaction costs across Ethereum mainnet, Base, Arbitrum, Optimism, Polygon, and BNB Chain. Transfer and swap cost estimates in USD.',
+  },
+  '/altseason': {
+    title: 'Altseason Index',
+    description: 'Live Altseason Index — % of top-50 altcoins outperforming Bitcoin over 90 days. BTC dominance, stablecoin share, and per-coin relative performance.',
+  },
+  '/leverage': {
+    title: 'Leverage Dashboard',
+    description: 'OI-weighted funding rates, spot-vs-perp volume ratio, and aggregate leverage pressure across 33 venues. One lens on real positioning vs retail noise.',
+  },
+  '/rekt': {
+    title: 'Rekt Leaderboard · Biggest Hyperliquid Liquidations',
+    description: 'Most-liquidated wallets on Hyperliquid, scored 0-1000 by bounce.tech. Claim BOUNCE rewards for past liquidations — the worse the rekt, the bigger the potential upside.',
+  },
+  '/bounce': {
+    title: 'bounce.tech on InfoHub · Leveraged Tokens + Rekt Profiles',
+    description: 'Check any Hyperliquid wallet\'s bounce.tech rekt profile: liquidation score, per-asset breakdown, monthly history, and claim status. Plus an overview of bounce.tech\'s leveraged-tokens protocol on HyperEVM.',
+  },
+  '/bounce/leaderboard': {
+    title: 'Rekt Leaderboard · Biggest Hyperliquid Liquidations',
+    description: 'Most-liquidated wallets on Hyperliquid scored 0-1000 by bounce.tech. The worse the rekt, the bigger the potential BOUNCE claim.',
+  },
+  '/bounce/check': {
+    title: 'Check Wallet Rekt Profile · bounce.tech',
+    description: 'Look up any Hyperliquid-active wallet to see its bounce.tech rekt profile — score, per-asset breakdown, monthly history, claim status.',
+  },
+  '/bounce/claim': {
+    title: 'How to Claim BOUNCE · Rekt Rebate Guide',
+    description: 'Step-by-step walkthrough for claiming BOUNCE tokens for your Hyperliquid liquidation history. Check score, register, claim.',
+  },
+  '/donate': {
+    title: 'Support InfoHub · Crypto Donations',
+    description: 'Help keep InfoHub free, no-ads, no-signup. Accepting BTC, ETH (+ all L2s), SOL, HYPE, USDT-TRC20. Every tip funds hosting, APIs, and shipping velocity.',
+  },
+  '/outperformers': {
+    title: 'Altcoin Outperformance · vs BTC + ETH',
+    description: 'Which altcoins are beating BTC and ETH over the rolling window. Sort by relative performance, top-100 screened, stablecoins + BTC/ETH wrappers excluded.',
+  },
+  '/exchange-fees': {
+    title: 'Exchange Fee Comparison · 20 CEX + DEX',
+    description: 'Maker and taker fees side-by-side across Binance, Bybit, OKX, Bitget, MEXC, Kraken, Coinbase, BingX, KuCoin, Hyperliquid, GMX, dYdX, Aster, Lighter, and more. Affiliate commission rates included.',
+  },
+  '/max-pain': {
+    title: 'Max Pain Tracker · BTC + ETH Options Expiries',
+    description: 'Max pain strike for every BTC and ETH options expiry on Deribit. Weighted average, spot-to-pain gap, next big expiry callout, dealer-hedging pressure direction.',
+  },
+  '/breakouts': {
+    title: 'Breakout Scanner · Near ATH, 24h Highs, Strong Trends',
+    description: 'Crypto breakout screener across 220+ liquid coins. Five signal modes: near all-time high, 24h breakout, multi-window uptrend, breakdown to ATL, and recovery plays.',
+  },
+  '/hl-vaults': {
+    title: 'Hyperliquid Vaults',
+    description: 'Public vaults on Hyperliquid ranked by TVL, APR, and PnL across day/week/month/all-time. See every active leader vault on HL, their age, size, and performance.',
+  },
+  '/staking': {
+    title: 'Staking + Restaking Yields',
+    description: 'Ethereum liquid staking (LST), liquid restaking (LRT), and synthetic yield protocols ranked by TVL. Lido, Rocket Pool, Ether.fi, Renzo, Kelp, Ethena, Usual, and more. Base + reward APY, 30d mean, 7d change.',
+  },
+  '/options-iv': {
+    title: 'Options IV Dashboard · BTC + ETH',
+    description: 'Implied vol term structure, put/call OI ratio, 25-delta skew, and max pain per expiry for BTC and ETH options. Real-time data from Deribit.',
+  },
+  '/momentum': {
+    title: 'Momentum Screener',
+    description: 'Crypto momentum setup screener scoring coins on price move, volume surge, funding alignment, and OI backing. Surfaces long-biased and short-biased setups across 30+ venues.',
+  },
+  '/liq-calculator': {
+    title: 'Liquidation Calculator',
+    description: 'Linear perp liquidation price, breakeven, and PnL scenarios. Given entry, leverage, margin, and maintenance margin, computes your liquidation price and risk tier. USDT/USDC-margined BTC, ETH, alts.',
+  },
+  '/listings': {
+    title: 'Exchange Listings Tracker',
+    description: 'New listings and delistings from Binance, Bybit, OKX, Coinbase, Upbit, Kraken, MEXC, KuCoin, and more, aggregated from official announcements. Spot, perps, futures, and earn products.',
+  },
+  '/trending-tokens': {
+    title: 'Trending Tokens · Memecoin Screener',
+    description: 'Boosted / promoted tokens across Solana, Ethereum, Base, BNB Chain, and more. Live price, volume, buy/sell ratio, liquidity, and age via DexScreener. Raw memecoin screener for hunters.',
+  },
+  '/position-size': {
+    title: 'Position Size Calculator · R:R + Kelly',
+    description: 'Compute exact position size given account, risk %, entry, and stop. Plus R:R ratio, leverage required, take-profit scenarios, and Kelly sizing for systematic traders.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {
   const meta = PAGE_META[path];
   if (!meta) return {};
+
+  const variant = pickVariant(path, meta.ogVariant);
+  const ogUrl = `/api/og?title=${encodeURIComponent(meta.title)}&desc=${encodeURIComponent(meta.ogDesc || meta.description)}&v=${variant}`;
 
   const result: Metadata = {
     title: meta.title,
@@ -280,12 +481,12 @@ export function pageMetadata(path: string): Metadata {
     openGraph: {
       title: `${meta.title} | InfoHub`,
       description: meta.ogDesc || meta.description,
-      images: [`/api/og?title=${encodeURIComponent(meta.title)}&desc=${encodeURIComponent(meta.ogDesc || meta.description)}`],
+      images: [ogUrl],
     },
     twitter: {
       title: `${meta.title} | InfoHub`,
       description: meta.ogDesc || meta.description,
-      images: [`/api/og?title=${encodeURIComponent(meta.title)}&desc=${encodeURIComponent(meta.ogDesc || meta.description)}`],
+      images: [ogUrl],
     },
   };
 

@@ -135,7 +135,8 @@ function SpreadChartInner({ data, exchanges, viewMode, height = 420 }: SpreadCha
       || exchanges.some((e, i) => e !== prevExchangesRef.current[i]);
     prevExchangesRef.current = exchanges;
 
-    // Detect outliers — exchanges far from median get a separate hidden scale
+    // Detect outliers — exchanges far from median or with stale (flat) data
+    // get pushed to a separate hidden scale so they don't squash the main view.
     const outlierExchanges = new Set<string>();
     if (viewMode === 'price' && data.length > 0) {
       const last = data[data.length - 1];
@@ -145,9 +146,29 @@ function SpreadChartInner({ data, exchanges, viewMode, height = 420 }: SpreadCha
       if (prices.length >= 3) {
         const sorted = prices.map(x => x.p).sort((a, b) => a - b);
         const median = sorted[Math.floor(sorted.length / 2)];
-        const threshold = Math.max(median * 0.015, 1);
+        // 0.5% of median — catches sub-percent gaps that flat-line a venue
+        const threshold = Math.max(median * 0.005, 1);
         for (const x of prices) {
           if (Math.abs(x.p - median) > threshold) outlierExchanges.add(x.e);
+        }
+      }
+
+      // Stale-data detection — a venue whose range over the time window is
+      // < 0.05% of median while others are moving is likely a stuck feed.
+      if (data.length >= 4 && prices.length >= 3) {
+        const med = prices.map(x => x.p).sort((a, b) => a - b)[Math.floor(prices.length / 2)];
+        const flatThreshold = Math.max(med * 0.0005, 1);
+        for (const ex of exchanges) {
+          let lo = Infinity, hi = -Infinity, n = 0;
+          for (const pt of data) {
+            const v = pt[ex] as number;
+            if (typeof v === 'number' && v > 0) {
+              if (v < lo) lo = v;
+              if (v > hi) hi = v;
+              n++;
+            }
+          }
+          if (n >= 4 && hi - lo < flatThreshold) outlierExchanges.add(ex);
         }
       }
     }
@@ -177,7 +198,8 @@ function SpreadChartInner({ data, exchanges, viewMode, height = 420 }: SpreadCha
       const isOutlier = outlierExchanges.has(ex);
 
       if (!series) {
-        const lw: 1 | 2 | 3 | 4 = i < 3 ? 2 : 1;
+        // All series use width 2 so tightly-clustered lines are still visible.
+        const lw: 1 | 2 | 3 | 4 = 2;
         const opts = makeLineOptions(getExchangeColor(ex, i), lw, shortName(ex), getLineStyle(i));
         if (isOutlier) {
           (opts as any).priceScaleId = `outlier_${ex}`;
@@ -204,6 +226,8 @@ function SpreadChartInner({ data, exchanges, viewMode, height = 420 }: SpreadCha
     // Only auto-fit on initial load or exchange change
     if (isInitialFit.current || exchangesChanged) {
       chart.timeScale().fitContent();
+      // Also force the price scale to auto-fit so tight data ranges fill the chart
+      chart.priceScale('right').applyOptions({ autoScale: true });
       isInitialFit.current = false;
     }
   }, [data, exchanges, viewMode]);

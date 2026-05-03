@@ -115,9 +115,8 @@ function ExecutionCostsInner() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <Header />
-      <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
+    <div className="text-white w-full">
+      <div id="main-content" className="w-full px-4 sm:px-6 py-5">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
@@ -323,9 +322,7 @@ function ExecutionCostsInner() {
             DEX perpetuals only. Refreshes every 15s. Trade links open the exchange directly.
           </p>
         </div>
-      </main>
-      <ReferralBanner />
-      <Footer />
+      </div>
     </div>
   );
 }

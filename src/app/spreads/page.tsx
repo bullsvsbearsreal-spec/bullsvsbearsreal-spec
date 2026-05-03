@@ -114,9 +114,8 @@ export default function SpreadsPage() {
   const showOverlapHint = state.viewMode === 'price' && stats && stats.pct < 0.05 && exs.length >= 2;
 
   return (
-    <div className="min-h-screen bg-background text-white flex flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6 relative">
+    <div className="text-white flex flex-col w-full">
+      <div id="main-content" className="flex-1 w-full px-4 sm:px-6 py-5 relative">
         <FeatureHint page="/spreads" />
 
         {/* Toast */}
@@ -417,10 +416,8 @@ export default function SpreadsPage() {
           </div>
         </div>
 
-      </main>
+      </div>
       <RelatedPages />
-      <ReferralBanner />
-      <Footer />
     </div>
   );
 }

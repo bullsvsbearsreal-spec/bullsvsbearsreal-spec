@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>InfoHub — Terminal</title>
+  <link rel="stylesheet" href="../../colors_and_type.css"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; overflow: hidden; }
+    body {
+      background:
+        radial-gradient(1200px 700px at 50% -10%, rgba(255,165,0,0.015), transparent 60%),
+        var(--hub-black);
+      color: var(--fg-default);
+      font-family: var(--font-sans);
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--hub-border-hover); border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* Live-signal animations */
+    @keyframes radar-ring { 0% { transform: scale(0.4); opacity: 0.9; } 100% { transform: scale(1.9); opacity: 0; } }
+    @keyframes radar-core { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+    @keyframes stream-bar { 0%,100% { height: 30%; } 50% { height: 100%; } }
+    @keyframes exch-pop { 0% { transform: scale(1); filter: brightness(1); } 15% { transform: scale(1.15); filter: brightness(1.5); } 100% { transform: scale(1); filter: brightness(1); } }
+    @keyframes tape-scroll { from { transform: translateX(0);} to { transform: translateX(-50%);} }
+    @keyframes tape-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+    @keyframes flash-cell { 0% { background: rgba(74,222,128,0.25); } 100% { background: transparent; } }
+
+    kbd { font-family: var(--font-mono); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="_store.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel" src="Logo.jsx"></script>
+  <script type="text/babel" src="LiveSignals.jsx"></script>
+  <script type="text/babel" src="ExchangeStrip.jsx"></script>
+  <script type="text/babel" src="Header.jsx"></script>
+  <script type="text/babel" src="MarketTape.jsx"></script>
+  <script type="text/babel" src="RecentChips.jsx"></script>
+  <script type="text/babel" src="StatCard.jsx"></script>
+  <script type="text/babel" src="StatCardV2.jsx"></script>
+  <script type="text/babel" src="FundingTable.jsx"></script>
+  <script type="text/babel" src="LiquidationHeatmap.jsx"></script>
+  <script type="text/babel" src="Sidebar.jsx"></script>
+  <script type="text/babel" src="MarketDetail.jsx"></script>
+  <script type="text/babel" src="Footer.jsx"></script>
+
+  <script type="text/babel" src="PagesMain.jsx"></script>
+  <script type="text/babel" src="PagesAux.jsx"></script>
+  <script type="text/babel" src="PagesNew.jsx"></script>
+
+  <script type="text/babel" src="CommandPalette.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+    const {
+      IH, Header, MarketTape, Sidebar, Footer, MarketDetail, RecentChips,
+      FundingTable, StatCardV2, STAT_ICONS, LiquidationHeatmap,
+      OIPage, LiquidationsPage, ScreenerPage, ChartPage,
+      OptionsPage, DashboardPage, AlertsPage,
+      FundingHeatmapPage, FundingArbPage, OIHeatmapPage,
+      LiqHeatmapPage, LiqMapPage, LiqLevelsPage, LongShortPage, ETFPage,
+      CommandPalette,
+      TweaksPanel, useTweaks, TweakSection, TweakSlider, TweakToggle, TweakRadio, TweakColor,
+      ThroughputCounter,
+    } = window;
+
+    // ── Funding page (kept inline; uses StatCardV2 and shared heatmap) ──
+    function FundingPage({ filter, setSelected, selected, showHeatmap }) {
+      const all = IH.useCoins(filter);
+      const meta = IH.useStreamMeta();
+      const rows = useMemo(() => all.map(c => ({
+        symbol: c.sym + '/USDT', venue: c.venue, price: c.px, funding: c.fund,
+        oi: IH.fmtUSD(c.oi, { dp: 0 }), ls: c.ls, chg: c.chg, iconBg: c.iconBg, sym: c.sym,
+        flashDir: c.flashDir,
+      })), [all]);
+      const totals = useMemo(() => {
+        const totVol = IH.state.coins.reduce((s, c) => s + c.vol24, 0);
+        const totOI  = IH.state.coins.reduce((s, c) => s + c.oi, 0);
+        const totMkts = 1329;
+        const sorted = [...IH.state.coins].sort((a,b) => b.chg - a.chg);
+        const top = sorted[0]; const bot = sorted[sorted.length - 1];
+        return { totVol, totOI, totMkts, top, bot };
+      }, [all]);
+
+      return (
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', minHeight: 0, overflow: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>Funding Rates</h1>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-subtle)' }}>
+              Real-time across 33 exchanges · <span style={{ color: 'var(--pump-mild)' }}>streaming</span>
+            </span>
+            <div style={{ flex: 1 }}/>
+            <ThroughputCounter mps={meta.msgPerSec}/>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+            <StatCardV2 icon={STAT_ICONS.dollar}  label="24H Volume"   value={IH.fmtUSD(totals.totVol)}  sub="Perp · 17 exchanges"/>
+            <StatCardV2 icon={STAT_ICONS.oi}      label="Open Interest" value={IH.fmtUSD(totals.totOI)} sub="26 exchanges aggregated"/>
+            <StatCardV2 icon={STAT_ICONS.up}      label="Top Gainer"
+              value={<span><span style={{ color: 'var(--fg-default)' }}>{totals.top.sym}</span> <span style={{ color: 'var(--pump-mild)' }}>+{totals.top.chg.toFixed(1)}%</span></span>}/>
+            <StatCardV2 icon={STAT_ICONS.down}    label="Top Loser"
+              value={<span><span style={{ color: 'var(--fg-default)' }}>{totals.bot.sym}</span> <span style={{ color: 'var(--rekt-mild)' }}>{totals.bot.chg.toFixed(1)}%</span></span>}/>
+            <StatCardV2 icon={STAT_ICONS.markets} label="Markets" value={totals.totMkts.toLocaleString()}/>
+          </div>
+
+          {showHeatmap && <LiquidationHeatmap/>}
+
+          <FundingTable rows={rows} onRowClick={(r) => setSelected(IH.getCoin(r.sym))} selectedSymbol={selected ? selected.sym + '/USDT' : null}/>
+
+          <div style={{ fontSize: 10, color: 'var(--fg-faint)', textAlign: 'center', padding: '8px 0', fontFamily: 'var(--font-mono)' }}>
+            Not financial advice. Third-party data, may be delayed. DYOR.
+          </div>
+        </div>
+      );
+    }
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "speed": 1.2,
+      "density": "comfy",
+      "showHeatmap": true,
+      "accent": "#FFA500",
+      "showTape": true,
+      "showChips": true
+    }/*EDITMODE-END*/;
+
+    function AppTweaks({ onChange }) {
+      const [tw, setTw] = useTweaks(TWEAK_DEFAULTS);
+      useEffect(() => { IH.setSpeed(tw.speed); }, [tw.speed]);
+      useEffect(() => { document.documentElement.style.setProperty('--hub-accent', tw.accent); }, [tw.accent]);
+      useEffect(() => { document.documentElement.dataset.density = tw.density; }, [tw.density]);
+      useEffect(() => { onChange?.(tw); }, [tw]);
+
+      return (
+        <TweaksPanel title="Tweaks">
+          <TweakSection title="Live data">
+            <TweakSlider label="Stream speed" value={tw.speed} onChange={v => setTw('speed', v)}
+              min={0.2} max={3} step={0.1} format={v => v.toFixed(1) + '×'}/>
+          </TweakSection>
+          <TweakSection title="Layout">
+            <TweakRadio label="Density" value={tw.density} onChange={v => setTw('density', v)}
+              options={[{ value: 'cozy', label: 'Cozy' },{ value: 'comfy', label: 'Comfy' },{ value: 'compact', label: 'Compact' }]}/>
+            <TweakToggle label="Market tape"      value={tw.showTape}    onChange={v => setTw('showTape', v)}/>
+            <TweakToggle label="Recent / pinned"  value={tw.showChips}   onChange={v => setTw('showChips', v)}/>
+            <TweakToggle label="Liq heatmap"      value={tw.showHeatmap} onChange={v => setTw('showHeatmap', v)}/>
+          </TweakSection>
+          <TweakSection title="Theme">
+            <TweakColor label="Accent" value={tw.accent} onChange={v => setTw('accent', v)}/>
+          </TweakSection>
+        </TweaksPanel>
+      );
+    }
+
+    function App() {
+      const [active, setActive] = useState('funding');
+      const [filter, setFilter] = useState('all');
+      const [selected, setSelected] = useState(null);
+      const [paletteOpen, setPaletteOpen] = useState(false);
+      const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+      const [recent, setRecent] = useState(['liq', 'funding', 'dashboard']);
+      const [, forceTick] = useState(0);
+      useEffect(() => IH.on('tick', () => forceTick(t => t + 1)), []);
+
+      // Track recent visited pages
+      const setActiveTracked = (id) => {
+        setActive(id);
+        setRecent(prev => [id, ...prev.filter(p => p !== id)].slice(0, 5));
+      };
+
+      useEffect(() => {
+        const onKey = (e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setPaletteOpen(o => !o); }
+          else if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') { e.preventDefault(); setPaletteOpen(true); }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, []);
+
+      const renderPage = useMemo(() => {
+        const map = {
+          funding:          () => <FundingPage filter={filter} setSelected={setSelected} selected={selected} showHeatmap={tweaks.showHeatmap !== false}/>,
+          'funding-heatmap':() => <FundingHeatmapPage/>,
+          'funding-arb':    () => <FundingArbPage/>,
+          oi:               () => <OIPage/>,
+          'oi-heatmap':     () => <OIHeatmapPage/>,
+          liq:              () => <LiquidationsPage/>,
+          'liq-heatmap':    () => <LiqHeatmapPage/>,
+          'liq-map':        () => <LiqMapPage/>,
+          'liq-levels':     () => <LiqLevelsPage/>,
+          'long-short':     () => <LongShortPage/>,
+          etf:              () => <ETFPage/>,
+          screener:         () => <ScreenerPage openDetail={(c) => setSelected(c)}/>,
+          chart:            () => <ChartPage symbol={selected?.sym || 'BTC'}/>,
+          options:          () => <OptionsPage/>,
+          spreads:          () => <FundingArbPage/>, // alias for now
+          dashboard:        () => <DashboardPage openDetail={(c) => setSelected(c)}/>,
+          watchlist:        () => <DashboardPage openDetail={(c) => setSelected(c)}/>, // reuse
+          alerts:           () => <AlertsPage/>,
+          news:             () => <NewsStub/>,
+          reports:          () => <ComingSoon page="Reports"/>,
+          calendar:         () => <ComingSoon page="Event Calendar"/>,
+          positions:        () => <DashboardPage openDetail={(c) => setSelected(c)}/>,
+          settings:         () => <ComingSoon page="Settings"/>,
+        };
+        return (map[active] || map.funding)();
+      }, [active, filter, selected, tweaks.showHeatmap]);
+
+      // Recent chip items resolve via NAV_FLAT
+      const recentItems = recent.map(id => {
+        const it = window.NAV_FLAT.find(n => n.id === id);
+        return it ? { id, label: it.label } : null;
+      }).filter(Boolean);
+      const pinnedItems = [
+        { id: 'funding-heatmap', label: 'Funding Heatmap', prefix: 'VIRTUAL' },
+        { id: 'etf', label: 'ETF Tracker' },
+        { id: 'long-short', label: 'L/S Ratio' },
+      ];
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 1280 }}>
+          <Header active={active} setActive={setActiveTracked} onSearch={() => setPaletteOpen(true)}/>
+          {tweaks.showTape !== false && (
+            <MarketTape items={IH.state.coins.slice(0, 12).map(c => ({ sym: c.sym, price: c.px, chg: c.chg }))}/>
+          )}
+          {tweaks.showChips !== false && (
+            <RecentChips active={active} setActive={setActiveTracked} recent={recentItems} pinned={pinnedItems}/>
+          )}
+
+          <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+            <Sidebar active={active} setActive={setActiveTracked}/>
+            <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+              {renderPage}
+            </main>
+          </div>
+
+          <Footer/>
+
+          <MarketDetail row={selected ? {
+            symbol: selected.sym + '/USDT', venue: selected.venue, price: selected.px,
+            funding: selected.fund, oi: IH.fmtUSD(selected.oi, {dp:0}), ls: selected.ls, chg: selected.chg, iconBg: selected.iconBg,
+          } : null} onClose={() => setSelected(null)}/>
+
+          <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)}
+            onNav={(id) => setActiveTracked(id)}
+            onPickCoin={(c) => { setSelected(c); }}/>
+
+          <AppTweaks onChange={setTweaks}/>
+        </div>
+      );
+    }
+
+    function ComingSoon({ page }) {
+      return (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--fg-muted)' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--fg-default)', letterSpacing: '-0.02em' }}>{page}</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-subtle)', letterSpacing: '0.08em' }}>COMING SOON</div>
+        </div>
+      );
+    }
+
+    function NewsStub() {
+      const items = [
+        { t: '2m ago', tag: 'MACRO', txt: 'Fed minutes signal patient stance — risk assets bid' },
+        { t: '14m ago', tag: 'CHAIN', txt: 'Ethereum supply down 2.4k ETH past 24h on burn' },
+        { t: '38m ago', tag: 'WHALE', txt: 'Anonymous wallet moves 8,400 BTC to Coinbase Prime' },
+        { t: '1h ago', tag: 'REG', txt: 'SEC drops investigation into spot-ETF custodian' },
+        { t: '2h ago', tag: 'PROD', txt: 'Hyperliquid launches HIP-3 — pre-listing markets live' },
+        { t: '4h ago', tag: 'MACRO', txt: 'CPI prints 2.6% — slightly hot vs 2.5% expected' },
+      ];
+      return (
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, height: '100%', overflow: 'auto' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>News & Signals</h1>
+          {items.map((it, i) => (
+            <div key={i} style={{ background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 10, padding: '14px 18px', display: 'flex', gap: 14, alignItems: 'baseline' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 4,
+                background: it.tag === 'MACRO' ? 'rgba(255,165,0,0.12)' : it.tag === 'WHALE' ? 'rgba(168,85,247,0.15)' : it.tag === 'REG' ? 'rgba(248,113,113,0.12)' : 'rgba(74,222,128,0.12)',
+                color: it.tag === 'MACRO' ? 'var(--hub-accent)' : it.tag === 'WHALE' ? '#a855f7' : it.tag === 'REG' ? 'var(--rekt-mild)' : 'var(--pump-mild)',
+                letterSpacing: '0.08em' }}>{it.tag}</span>
+              <span style={{ fontSize: 13, color: 'var(--fg-default)', flex: 1 }}>{it.txt}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg-subtle)' }}>{it.t}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

@@ -40,7 +40,7 @@ export default function TopStatsBar() {
     return (
       <div className="sticky top-[49px] z-40 border-b border-white/[0.04] bg-hub-dark/95 backdrop-blur-md">
         <div className="max-w-[1400px] mx-auto px-4 py-2">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide top-stats-bar-items">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center gap-2 animate-pulse">
                 <div className="h-4 w-14 bg-white/[0.06] rounded" />
