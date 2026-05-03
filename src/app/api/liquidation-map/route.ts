@@ -6,10 +6,15 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 // ---------------------------------------------------------------------------
-// L1: In-memory cache (60s TTL)
+// L1: Per-symbol in-memory cache (5-min TTL).
+//
+// Was a single-slot cache with 60s TTL — every BTC↔ETH↔SOL switch trashed it
+// and triggered an 8s+ rebuild (the rebuild fetches the entire 600KB OI feed
+// over HTTP just to filter to one symbol). Per-symbol storage + longer TTL
+// keeps switching between the 3 supported symbols cheap.
 // ---------------------------------------------------------------------------
-let l1Cache: { body: LiquidationMapResponse; timestamp: number } | null = null;
-const L1_TTL = 60 * 1000; // 60 seconds
+const l1Cache = new Map<string, { body: LiquidationMapResponse; timestamp: number }>();
+const L1_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,15 +100,14 @@ async function fetchCurrentPrice(symbol: SupportedSymbol): Promise<number> {
 // ---------------------------------------------------------------------------
 async function fetchSymbolOI(symbol: string): Promise<{ totalOI: number; exchangeCount: number }> {
   try {
-    const baseUrl = process.env.NEXTAUTH_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
-
-    if (!baseUrl) {
-      return { totalOI: 0, exchangeCount: 0 };
-    }
+    // Stale `process.env.VERCEL_URL` removed — we're on DO now and the public
+    // origin is always info-hub.io (or whatever NEXT_PUBLIC_BASE_URL says).
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+      || process.env.NEXTAUTH_URL
+      || 'https://info-hub.io';
 
     const res = await fetch(`${baseUrl}/api/openinterest`, {
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(8000),
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) return { totalOI: 0, exchangeCount: 0 };
@@ -199,12 +203,15 @@ export async function GET(request: NextRequest) {
     ? (rawSymbol as SupportedSymbol)
     : 'BTC';
 
-  // L1: Return cached data if fresh and same symbol
-  if (l1Cache && Date.now() - l1Cache.timestamp < L1_TTL && l1Cache.body.symbol === symbol) {
-    return NextResponse.json(l1Cache.body, {
+  // L1: Per-symbol cache lookup
+  const cached = l1Cache.get(symbol);
+  if (cached && Date.now() - cached.timestamp < L1_TTL) {
+    return NextResponse.json(cached.body, {
       headers: {
         'X-Cache': 'HIT',
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        // CF edge cache: 2 min fresh, 5 min stale-while-revalidate.
+        // Liquidation-map is computed/estimated, not real-time — long cache OK.
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
       },
     });
   }
@@ -237,24 +244,25 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now(),
     };
 
-    // Update L1 cache
-    l1Cache = { body: responseBody, timestamp: Date.now() };
+    // Update L1 cache (per-symbol)
+    l1Cache.set(symbol, { body: responseBody, timestamp: Date.now() });
 
     return NextResponse.json(responseBody, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
       },
     });
   } catch (error) {
     console.error('[Liq-map]', error instanceof Error ? error.message : error);
 
     // Return stale cache if available
-    if (l1Cache && l1Cache.body.symbol === symbol) {
-      return NextResponse.json(l1Cache.body, {
+    const stale = l1Cache.get(symbol);
+    if (stale) {
+      return NextResponse.json(stale.body, {
         headers: {
           'X-Cache': 'STALE',
-          'Cache-Control': 'public, s-maxage=15',
+          'Cache-Control': 'public, s-maxage=30',
         },
       });
     }

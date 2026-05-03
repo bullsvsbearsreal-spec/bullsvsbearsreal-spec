@@ -96,7 +96,7 @@ async function fetchKlines(
   try {
     const res = await fetch(
       `https://fapi.binance.com/fapi/v1/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
-      { signal: AbortSignal.timeout(6000) },
+      { signal: AbortSignal.timeout(3500) },
     );
     if (res.ok) {
       const data: unknown[][] = await res.json();
@@ -115,7 +115,7 @@ async function fetchKlines(
       const instId = `${symbol}-USDT-SWAP`;
       const res = await fetch(
         `https://www.okx.com/api/v5/market/candles?instId=${instId}&bar=${okxBar}&limit=${limit}`,
-        { signal: AbortSignal.timeout(6000) },
+        { signal: AbortSignal.timeout(3500) },
       );
       if (res.ok) {
         const json = await res.json();
@@ -139,7 +139,7 @@ async function fetchKlines(
     try {
       const res = await fetch(
         `https://api.bybit.com/v5/market/kline?category=linear&symbol=${pair}&interval=${bybitInterval}&limit=${limit}`,
-        { signal: AbortSignal.timeout(6000) },
+        { signal: AbortSignal.timeout(3500) },
       );
       if (res.ok) {
         const json = await res.json();
@@ -160,7 +160,7 @@ async function fetchKlines(
   try {
     const res = await fetch(
       `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
-      { signal: AbortSignal.timeout(6000) },
+      { signal: AbortSignal.timeout(3500) },
     );
     if (res.ok) {
       const data: unknown[][] = await res.json();
@@ -320,9 +320,12 @@ export async function GET() {
   try {
     // Fetch 24h tickers and RSI data concurrently
     // Tickers are fetched once (single call), RSI is batched per-symbol
+    // Batch size 10 (was 3) — kline endpoints have generous limits and
+    // datacenter IPs aren't getting rate-limited at this volume.
+    // 50 symbols / 10 = 5 batches × ~700ms = ~3.5s vs the old ~12s.
     const [tickerMap, rsiMap] = await Promise.all([
       fetch24hTickers(),
-      processInBatches(TOP_SYMBOLS, 3, fetchSymbolRSI),
+      processInBatches(TOP_SYMBOLS, 10, fetchSymbolRSI),
     ]);
 
     const data: RsiEntry[] = [];

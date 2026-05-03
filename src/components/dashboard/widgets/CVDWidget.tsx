@@ -29,43 +29,37 @@ export default function CVDWidget({ wide, widgetId }: { wide?: boolean; widgetId
     const load = async () => {
       try {
         const res = await fetch(`/api/aggtrades?symbol=${symbol}&limit=500`, { signal: AbortSignal.timeout(10000) });
-        if (!res.ok) return;
+        if (!res.ok) {
+          // 502 = all upstream trade sources failed (symbol not on Binance/Bybit/etc).
+          // Render an empty state instead of leaving the widget perpetually loading.
+          if (mounted && res.status === 502) setBuckets([]);
+          return;
+        }
         const json = await res.json();
         if (!mounted) return;
 
-        const trades: Array<{ price: number; quantity: number; isBuyerMaker: boolean; time: number }> =
-          json.trades || json.data || json || [];
+        // /api/aggtrades already buckets trades into 1-min intervals and
+        // computes cumulative delta server-side — use those directly.
+        // Previous code read `json.trades` which doesn't exist on the
+        // response, then fell through to `json` itself and tried to iterate
+        // it, throwing "TypeError: <x> is not iterable" for every symbol.
+        const apiBuckets = Array.isArray(json?.buckets) ? json.buckets : [];
 
-        // Bucket trades into 30s intervals
-        const BUCKET_MS = 30_000;
-        const bucketMap = new Map<number, CVDBucket>();
-        let cumDelta = 0;
-
-        for (const t of trades) {
-          const key = Math.floor(t.time / BUCKET_MS) * BUCKET_MS;
-          let b = bucketMap.get(key);
-          if (!b) {
-            b = { time: key, buyVol: 0, sellVol: 0, delta: 0, cvd: 0 };
-            bucketMap.set(key, b);
-          }
-          const vol = t.quantity * t.price;
-          if (t.isBuyerMaker) {
-            b.sellVol += vol;
-          } else {
-            b.buyVol += vol;
-          }
-        }
-
-        const sorted = Array.from(bucketMap.values()).sort((a, b) => a.time - b.time);
-        for (const b of sorted) {
-          b.delta = b.buyVol - b.sellVol;
-          cumDelta += b.delta;
-          b.cvd = cumDelta;
-        }
+        const sorted: CVDBucket[] = apiBuckets
+          .filter((b: any) => b && typeof b.time === 'number')
+          .map((b: any) => ({
+            time: b.time,
+            buyVol: Number(b.buyVol) || 0,
+            sellVol: Number(b.sellVol) || 0,
+            delta: Number(b.delta) || 0,
+            cvd: Number(b.cvd) || 0,
+          }))
+          .sort((a: CVDBucket, b: CVDBucket) => a.time - b.time);
 
         setBuckets(sorted);
         setUpdatedAt(Date.now());
       } catch (err) {
+        // Network/abort errors — keep prior buckets (don't clear).
         console.error(`[CVDWidget] fetch error for ${symbol}:`, err);
       }
     };

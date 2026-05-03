@@ -143,27 +143,35 @@ export async function fetchCryptoNews(limit: number = 20): Promise<NewsArticle[]
   return [];
 }
 
+// Coerce a field that "should" be a pipe-separated string to one — handles
+// upstream feeds that occasionally return an array of strings instead.
+function toStringField(v: unknown): string {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v)) return v.filter(x => typeof x === 'string').join('|');
+  return '';
+}
+
 // Check if a news article is actually relevant to the searched coin symbol
 function isArticleRelevant(article: NewsArticle, symbol: string): boolean {
   const sym = symbol.toUpperCase();
 
   // Check title (most important signal)
-  const title = (article.title || '').toUpperCase();
+  const title = toStringField(article.title).toUpperCase();
   if (title.includes(sym) || title.includes(`$${sym}`)) return true;
 
-  // Check tags (pipe-separated)
-  const tags = (article.tags || '').toUpperCase();
+  // Check tags (pipe-separated; some feeds send an array — coerce safely)
+  const tags = toStringField(article.tags).toUpperCase();
   const tagList = tags.split('|').map(t => t.trim());
   if (tagList.includes(sym)) return true;
 
   // Check categories (pipe-separated)
-  const cats = (article.categories || '').toUpperCase();
+  const cats = toStringField(article.categories).toUpperCase();
   const catList = cats.split('|').map(c => c.trim());
   if (catList.includes(sym)) return true;
 
   // Check body (first 500 chars to avoid false positives in long articles)
   // Use word boundary check to avoid partial matches (e.g., "ARENA" matching "ENA")
-  const body = (article.body || '').substring(0, 500);
+  const body = toStringField(article.body).substring(0, 500);
   const wordBoundaryRegex = new RegExp(`\\b${sym}\\b`, 'i');
   if (wordBoundaryRegex.test(body)) return true;
 
@@ -282,8 +290,11 @@ export async function fetchUpcomingEvents(limit: number = 20): Promise<CryptoEve
 function convertNewsToEvents(articles: NewsArticle[], coinId?: string): CryptoEvent[] {
   return articles.map((article, index) => {
     const publishedDate = new Date(article.published_on * 1000);
-    const categories = article.categories?.split('|') || ['News'];
-    const tags = article.tags?.split('|') || [];
+    // Defensive coercion: upstream sometimes returns arrays instead of pipe-strings.
+    const catsStr = toStringField(article.categories);
+    const tagsStr = toStringField(article.tags);
+    const categories = catsStr ? catsStr.split('|').filter(Boolean) : ['News'];
+    const tags = tagsStr ? tagsStr.split('|').filter(Boolean) : [];
 
     // Extract coin symbols from tags
     const coinSymbols = tags.filter(tag => tag.length <= 6 && tag === tag.toUpperCase());
