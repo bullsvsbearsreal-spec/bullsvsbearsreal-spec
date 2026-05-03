@@ -141,13 +141,26 @@ export function middleware(request: NextRequest) {
 
   cleanup();
 
-  // Prefer x-real-ip (set by Vercel, not spoofable) over x-forwarded-for (client-controlled leftmost value)
+  // Prefer x-real-ip (set by upstream proxy/load balancer, not spoofable) over
+  // x-forwarded-for (client-controlled leftmost value). On DO App Platform this
+  // is set by the platform's edge router; behind Cloudflare proxy (orange cloud)
+  // prefer cf-connecting-ip if added in future.
   const ip = request.headers.get('x-real-ip')
     || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || 'unknown';
 
-  // Auth routes — strict limits + no-store cache
-  if (AUTH_PATHS.has(pathname) || pathname.startsWith('/api/auth/')) {
+  // Auth WRITE routes — strict limits + no-store cache.
+  // Read-only NextAuth endpoints (/api/auth/session, /csrf, /providers) are
+  // hit on every page load by useSession() — they MUST fall through to the
+  // moderate API bucket below, otherwise normal browsing trips the 5/15min
+  // limiter and breaks the whole app with auth errors.
+  const isAuthWrite =
+    AUTH_PATHS.has(pathname)
+    || (pathname.startsWith('/api/auth/')
+        && request.method !== 'GET'
+        && request.method !== 'HEAD'
+        && request.method !== 'OPTIONS');
+  if (isAuthWrite) {
     const key = `auth:${ip}`;
     const { limited, retryAfter } = isRateLimited(authBuckets, key, AUTH_LIMIT, AUTH_WINDOW);
     if (limited) {

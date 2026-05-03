@@ -5,8 +5,6 @@ import Providers from '@/components/Providers'
 // ChatWidget hidden for now per user request — re-enable by importing + rendering
 // const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
-import { Analytics } from '@vercel/analytics/next'
-import { SpeedInsights } from '@vercel/speed-insights/next'
 import { ALL_EXCHANGES } from '@/lib/constants'
 import { ConditionalTerminalShell } from '@/components/design-system'
 
@@ -193,8 +191,6 @@ export default function RootLayout({
           {/* ChatWidget hidden for now per user request — re-enable by uncommenting */}
           {/* <ChatWidget /> */}
           <AlertEngine />
-          <Analytics />
-          <SpeedInsights />
         </Providers>
       </body>
     </html>

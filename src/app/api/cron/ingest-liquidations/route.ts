@@ -1,6 +1,7 @@
 /**
- * Vercel Cron: Poll exchange REST APIs for recent liquidations.
- * Runs serverlessly on Vercel Pro (every 1 minute via vercel.json).
+ * Cron: Poll exchange REST APIs for recent liquidations.
+ * Runs every 1 minute via systemd timer on the aggregator droplet
+ * (see /etc/systemd/system/infohub-cron-ingest-liquidations.timer).
  *
  * Exchanges with REST liquidation endpoints:
  *  - Binance: GET /fapi/v1/allForceOrders (direct)
