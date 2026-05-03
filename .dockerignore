@@ -1,0 +1,33 @@
+# Heavy / regen-on-build / not needed at runtime
+node_modules
+.next
+.git
+.github
+.vscode
+.idea
+.cache
+coverage
+playwright-report
+test-results
+.DS_Store
+
+# Local env (we set vars via DO App Platform)
+.env
+.env.local
+.env.production
+.env.production-pull
+.env.prod
+.env.tmp.check
+
+# Dev artifacts
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docs / handoff scratch
+.design-handoff
+docs
+
+# Vercel-specific
+.vercel
