@@ -21,7 +21,6 @@ const teamMembers: TeamMember[] = [
     image: '/team/ocelot.jpg',
     bio: 'Honestly just wanted one clean page to compare funding rates. Every tool out there was either ugly, expensive, or both. Built a quick thing for himself, showed it to a few traders, and they wouldn’t stop asking for more features. Still hasn’t stopped adding them.',
     stats: [
-      { label: 'Building Since', value: '2024' },
       { label: 'Ships', value: 'Daily' },
     ],
     socials: { twitter: 'https://x.com/ocelotIH' },

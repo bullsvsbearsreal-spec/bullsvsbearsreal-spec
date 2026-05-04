@@ -306,31 +306,61 @@ export default function AdminDashboard() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [statsRes, pipelineRes, usersRes, workersRes] = await Promise.all([
-        fetch('/api/admin/stats', { signal: AbortSignal.timeout(15000) }),
-        fetch('/api/admin/monitoring/pipeline', { signal: AbortSignal.timeout(15000) }),
-        fetch('/api/admin/users?limit=20', { signal: AbortSignal.timeout(15000) }),
-        fetch('/api/admin/monitoring/workers', { signal: AbortSignal.timeout(15000) }),
-      ]);
+    // Use allSettled so one stale endpoint doesn't blank the whole page —
+    // partial admin data is still useful (e.g. you can see users even when
+    // the pipeline collector is mid-rotation).
+    const safeFetch = (path: string) => fetch(path, { signal: AbortSignal.timeout(15000) });
+    const [statsRes, pipelineRes, usersRes, workersRes] = await Promise.allSettled([
+      safeFetch('/api/admin/stats'),
+      safeFetch('/api/admin/monitoring/pipeline'),
+      safeFetch('/api/admin/users?limit=20'),
+      safeFetch('/api/admin/monitoring/workers'),
+    ]);
 
-      if (statsRes.status === 403 || pipelineRes.status === 403) {
-        setError('Access denied. Admin role required.');
-        setLoading(false);
-        return;
-      }
-
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (pipelineRes.ok) setPipeline(await pipelineRes.json());
-      if (workersRes.ok) setWorkers(await workersRes.json());
-      if (usersRes.ok) {
-        const data = await usersRes.json();
-        setUsers(data.users || data || []);
-      }
-      setLastRefresh(new Date());
-    } catch (e) {
-      setError('Failed to load admin data');
+    // 403 on stats OR pipeline → caller is not actually admin (server check).
+    // Surface clearly and abort the rest.
+    const isForbidden = (r: typeof statsRes) =>
+      r.status === 'fulfilled' && r.value.status === 403;
+    if (isForbidden(statsRes) || isForbidden(pipelineRes)) {
+      setError('Access denied. Admin role required.');
+      setLoading(false);
+      return;
     }
+
+    const failures: string[] = [];
+
+    // Stats
+    if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+      try { setStats(await statsRes.value.json()); }
+      catch { failures.push('stats'); }
+    } else { failures.push('stats'); }
+
+    // Pipeline
+    if (pipelineRes.status === 'fulfilled' && pipelineRes.value.ok) {
+      try { setPipeline(await pipelineRes.value.json()); }
+      catch { failures.push('pipeline'); }
+    } else { failures.push('pipeline'); }
+
+    // Workers (optional — page renders fine without)
+    if (workersRes.status === 'fulfilled' && workersRes.value.ok) {
+      try { setWorkers(await workersRes.value.json()); } catch { /* non-critical */ }
+    }
+
+    // Users (optional)
+    if (usersRes.status === 'fulfilled' && usersRes.value.ok) {
+      try {
+        const data = await usersRes.value.json();
+        setUsers(data.users || data || []);
+      } catch { /* non-critical */ }
+    }
+
+    // Only escalate to full error if BOTH critical endpoints (stats + pipeline)
+    // failed — anything less just renders a partial dashboard.
+    if (failures.length === 2) {
+      setError(`Failed to load: ${failures.join(', ')}. Check /api/admin/* in the network tab.`);
+    }
+
+    setLastRefresh(new Date());
     setLoading(false);
   }, []);
 
