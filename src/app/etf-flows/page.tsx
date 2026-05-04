@@ -18,6 +18,8 @@ interface ApiResponse {
   cumulative7d: number;
   cumulative30d: number;
   latestDay: FlowDay | null;
+  dataAvailable?: boolean;
+  note?: string;
   ts: number;
 }
 
@@ -152,7 +154,24 @@ export default function EtfFlowsPage() {
           <div className="card-premium p-12 text-center text-neutral-500 text-sm">Loading flow data…</div>
         )}
 
-        {data && (
+        {data && data.dataAvailable === false && (
+          <div className="card-premium p-6 text-center mb-4">
+            <div className="text-base font-bold text-amber-300 mb-2">Data temporarily unavailable</div>
+            <p className="text-sm text-neutral-400 mb-3 max-w-md mx-auto">
+              {data.note ?? 'Source unreachable.'}
+            </p>
+            <a
+              href="https://farside.co.uk/bitcoin-etf-flow-all-data/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-hub-yellow hover:underline"
+            >
+              View raw data on Farside →
+            </a>
+          </div>
+        )}
+
+        {data && data.dataAvailable !== false && (
           <>
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">

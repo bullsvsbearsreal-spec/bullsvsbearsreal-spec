@@ -34,10 +34,17 @@ interface ApiResponse {
   cumulative30d: number;
   /** Yesterday's net flow */
   latestDay: FlowDay | null;
+  /** True when upstream returned usable data this fetch. */
+  dataAvailable: boolean;
+  /** Human-readable note if data unavailable / stale. */
+  note?: string;
   ts: number;
 }
 
-const TIMEOUT = 12_000;
+// Farside is on Cloudflare and rate-limits datacenter IPs aggressively.
+// Use a tighter timeout so the route fails fast rather than hitting DO's
+// gateway timeout — page can show stale/unavailable cleanly.
+const TIMEOUT = 7_000;
 const l1Cache = new Map<string, { body: ApiResponse; ts: number }>();
 const L1_TTL = 30 * 60 * 1000;
 
@@ -149,27 +156,54 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Empty fallback used when Farside is unreachable / returns non-RSS HTML.
+  // Always returns 200 so the page can render a clean "data unavailable" state
+  // instead of exposing 500/502 to clients.
+  const emptyBody: ApiResponse = {
+    asset,
+    issuers: [],
+    days: [],
+    cumulative7d: 0,
+    cumulative30d: 0,
+    latestDay: null,
+    dataAvailable: false,
+    note: 'Source temporarily unreachable from this datacenter. Visit farside.co.uk for raw data; this page will retry every 30 minutes.',
+    ts: Date.now(),
+  };
+
   try {
     const res = await fetchWithTimeout(
       farsideUrl(asset),
       {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml',
-          'Accept-Language': 'en-US,en;q=0.9',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-GB,en;q=0.9',
+          'Cache-Control': 'no-cache',
         },
       },
       TIMEOUT,
     );
     if (!res.ok) {
       if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
-      return NextResponse.json({ error: `Farside HTTP ${res.status}` }, { status: 502 });
+      return NextResponse.json({ ...emptyBody, note: `Farside returned HTTP ${res.status}. Retrying in 30 min.` }, {
+        headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
+      });
     }
     const html = await res.text();
+    // Detect Cloudflare challenge / Just-a-moment page returning 200 with HTML.
+    if (/just a moment|cf-browser-verification|cf-challenge|attention required/i.test(html)) {
+      if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
+      return NextResponse.json({ ...emptyBody, note: 'Farside upstream returned a bot-protection page. Retrying in 30 min.' }, {
+        headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
+      });
+    }
     const parsed = parseFarsideTable(html);
     if (!parsed || parsed.days.length === 0) {
       if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
-      return NextResponse.json({ error: 'failed to parse Farside table', hint: 'Their HTML structure may have changed.' }, { status: 502 });
+      return NextResponse.json({ ...emptyBody, note: 'Could not parse Farside table — their HTML may have changed.' }, {
+        headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
+      });
     }
 
     const last7 = parsed.days.slice(0, 7);
@@ -184,6 +218,7 @@ export async function GET(request: NextRequest) {
       cumulative7d,
       cumulative30d,
       latestDay: parsed.days[0] ?? null,
+      dataAvailable: true,
       ts: Date.now(),
     };
 
@@ -195,8 +230,8 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'failed' },
-      { status: 502 },
+      { ...emptyBody, note: `Upstream error: ${e instanceof Error ? e.message : 'unknown'}` },
+      { headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' } },
     );
   }
 }
