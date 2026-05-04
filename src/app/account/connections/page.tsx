@@ -311,8 +311,14 @@ interface AlertRule {
   lastFiredAt: string | null;
 }
 
-const ALL_CHANNELS = ['telegram', 'email'] as const;
+const ALL_CHANNELS = ['telegram', 'email', 'browser_push'] as const;
 type Channel = typeof ALL_CHANNELS[number];
+
+const CHANNEL_LABELS: Record<Channel, string> = {
+  telegram: 'Telegram',
+  email: 'Email',
+  browser_push: 'Browser push',
+};
 
 function FundingFlipAlert() {
   const [rules, setRules] = useState<AlertRule[] | null>(null);
@@ -421,7 +427,7 @@ function FundingFlipAlert() {
                         }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-400' : 'bg-neutral-700'}`} />
-                        {c === 'telegram' ? 'Telegram' : 'Email'}
+                        {CHANNEL_LABELS[c]}
                       </button>
                     );
                   })}

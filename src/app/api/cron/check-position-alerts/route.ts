@@ -13,9 +13,14 @@
  * position into one message so the user doesn't get one ping per coin.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isDBConfigured, listEnabledAlertsWithPositions, markAlertFired, getTelegramLinkByUser, getUserEmail, getSQL } from '@/lib/db';
+import {
+  isDBConfigured, listEnabledAlertsWithPositions, markAlertFired,
+  getTelegramLinkByUser, getUserEmail, getSQL,
+  getPushSubscriptionsForUser, deletePushSubscription,
+} from '@/lib/db';
 import { sendMessage } from '@/lib/telegram';
 import { Resend } from 'resend';
+import webpush from 'web-push';
 import { verifyCronAuth } from '../_auth';
 
 export const runtime = 'nodejs';
@@ -141,6 +146,24 @@ function getResend(): Resend | null {
   return _resend;
 }
 
+let _vapidConfigured = false;
+function ensureVapid(): boolean {
+  if (_vapidConfigured) return true;
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return false;
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:noreply@info-hub.io',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY,
+    );
+    _vapidConfigured = true;
+    return true;
+  } catch (e) {
+    console.error('[alerts] VAPID setup failed:', e);
+    return false;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const authErr = verifyCronAuth(req);
   if (authErr) return authErr;
@@ -248,9 +271,39 @@ export async function GET(req: NextRequest) {
     }
 
     if (rule.channels.includes('browser_push')) {
-      // browser_push wiring lands in a follow-up — push subscriptions table
-      // already exists from the price-alert system, just need to plumb it in.
-      channelResults.push('browser_push=not yet implemented');
+      const subs = await getPushSubscriptionsForUser(rule.userId);
+      if (subs.length === 0) {
+        channelResults.push('browser_push=no subscriptions');
+      } else if (!ensureVapid()) {
+        channelResults.push('browser_push=VAPID keys unset');
+      } else {
+        const payload = JSON.stringify({
+          title: `⚠️ Funding flipped on ${triggered.length} position${triggered.length > 1 ? 's' : ''}`,
+          body: triggered
+            .map(p => `${p.symbol} ${p.side.toUpperCase()} on ${p.exchange} — funding now against you`)
+            .join('\n')
+            .slice(0, 240),
+          tag: `funding-flip-${rule.id}`,
+          url: '/positions',
+        });
+        let pushSent = 0;
+        await Promise.all(subs.map(async (sub) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload,
+            );
+            pushSent++;
+          } catch (err: any) {
+            // 410 Gone / 404 → subscription is dead, evict to avoid retries forever
+            if (err?.statusCode === 410 || err?.statusCode === 404) {
+              await deletePushSubscription(sub.endpoint).catch(() => undefined);
+            }
+          }
+        }));
+        channelResults.push(`browser_push=${pushSent}/${subs.length} delivered`);
+        if (pushSent > 0) anyDelivered = true;
+      }
     }
 
     if (anyDelivered) {
