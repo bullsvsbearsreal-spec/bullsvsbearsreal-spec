@@ -9,10 +9,26 @@ export const preferredRegion = 'bom1';
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB (already resized client-side)
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
+// Vercel Blob stores are team-scoped (not project-scoped) so the token survived
+// our Vercel project deletion. But if BLOB_READ_WRITE_TOKEN ever goes missing
+// from DO env, @vercel/blob throws a cryptic generic error. Detect it once at
+// request time and return a clean, actionable 503 instead.
+function blobConfigured(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!blobConfigured()) {
+    console.error('[avatar] BLOB_READ_WRITE_TOKEN missing — set it in DO env vars');
+    return NextResponse.json(
+      { error: 'Avatar uploads are temporarily unavailable.' },
+      { status: 503 },
+    );
   }
 
   try {
@@ -68,8 +84,11 @@ export async function DELETE() {
     const rows = await db`SELECT image FROM users WHERE id = ${session.user.id}`;
     const currentImage = rows[0]?.image as string | null;
 
-    // Delete from Vercel Blob if it's a blob URL
-    if (currentImage && currentImage.includes('blob.vercel-storage.com')) {
+    // Delete from Vercel Blob if it's a blob URL and the token is configured.
+    // Missing-token case is non-fatal — clearing the DB row is the user-visible
+    // action; the orphaned blob can be cleaned up later if/when the token is
+    // restored.
+    if (currentImage && currentImage.includes('blob.vercel-storage.com') && blobConfigured()) {
       try {
         await del(currentImage);
       } catch (err) {
