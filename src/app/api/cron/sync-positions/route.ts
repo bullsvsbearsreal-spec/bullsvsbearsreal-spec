@@ -23,7 +23,8 @@ import {
 } from '@/lib/db';
 import { decryptSecret, isEncryptionConfigured } from '@/lib/crypto/exchange-keys';
 import { getExchangeClient } from '@/lib/exchange-clients';
-import { isSupportedExchange } from '@/lib/portfolio/supported-exchanges';
+import { getWalletClient } from '@/lib/wallet-clients';
+import { isSupportedExchange, isSupportedChain } from '@/lib/portfolio/supported-exchanges';
 import { verifyCronAuth } from '../_auth';
 
 export const runtime = 'nodejs';
@@ -42,10 +43,17 @@ interface KeySyncStat {
   error?: string;
 }
 
+interface WalletSyncStat {
+  walletId: number;
+  chain: string;
+  positions: number;
+  error?: string;
+}
+
 interface UserSyncStat {
   userId: string;
   keys: KeySyncStat[];
-  wallets: number;
+  wallets: WalletSyncStat[];
 }
 
 export async function GET(req: NextRequest) {
@@ -71,7 +79,7 @@ export async function GET(req: NextRequest) {
   let totalErrors = 0;
 
   for (const target of targets) {
-    const stat: UserSyncStat = { userId: target.userId, keys: [], wallets: 0 };
+    const stat: UserSyncStat = { userId: target.userId, keys: [], wallets: [] };
 
     // ─── CEX keys ───────────────────────────────────────
     const keys = target.exchangeKeys.slice(0, MAX_KEYS_PER_USER);
@@ -122,11 +130,57 @@ export async function GET(req: NextRequest) {
     }));
 
     // ─── DEX wallets ────────────────────────────────────
-    // Wallet position fetching (Hyperliquid + others) is stubbed for now —
-    // existing /api/wallet/positions handles single-wallet HL lookups; we'll
-    // wire it into the loop in a follow-up so this commit stays focused.
-    // For now we just count them so the UI can surface "wallet sync pending".
-    stat.wallets = Math.min(target.wallets.length, MAX_WALLETS_PER_USER);
+    // Hyperliquid is fully wired here. EVM-chain wallets (ethereum / arbitrum
+    // / base / solana) currently fall through to "no client" — those need
+    // per-DEX subgraph queries (GMX, Aevo, etc.) and land in follow-ups.
+    const wallets = target.wallets.slice(0, MAX_WALLETS_PER_USER);
+    await Promise.all(wallets.map(async (w) => {
+      const ws: WalletSyncStat = { walletId: w.id, chain: w.chain, positions: 0 };
+      try {
+        if (!isSupportedChain(w.chain)) {
+          ws.error = `unsupported chain: ${w.chain}`;
+          stat.wallets.push(ws);
+          return;
+        }
+        const client = getWalletClient(w.chain);
+        if (!client) {
+          ws.error = `no fetcher implemented for ${w.chain} yet`;
+          stat.wallets.push(ws);
+          return;
+        }
+        const positions = await client.fetchPositions(w.address);
+        // For wallets we use a synthetic exchange name based on the chain so
+        // the /positions UI can group/filter — "Hyperliquid" for the HL chain.
+        const exchangeLabel = w.chain === 'hyperliquid' ? 'Hyperliquid' : w.chain.toUpperCase();
+        await replaceUserPositionsForSource(
+          target.userId,
+          'dex',
+          w.id,
+          positions.map(p => ({
+            exchange: exchangeLabel,
+            symbol: p.symbol,
+            side: p.side,
+            size: p.size,
+            entryPrice: p.entryPrice,
+            markPrice: p.markPrice,
+            positionValue: p.positionValue,
+            unrealizedPnl: p.unrealizedPnl,
+            leverage: p.leverage,
+            marginUsed: p.marginUsed,
+            liquidationPrice: p.liquidationPrice,
+            tpPrice: p.tpPrice,
+            slPrice: p.slPrice,
+            cumulativeFunding: p.cumulativeFunding,
+          })),
+        );
+        ws.positions = positions.length;
+        totalPositions += positions.length;
+      } catch (err) {
+        ws.error = err instanceof Error ? err.message : String(err);
+        totalErrors++;
+      }
+      stat.wallets.push(ws);
+    }));
 
     userStats.push(stat);
   }
