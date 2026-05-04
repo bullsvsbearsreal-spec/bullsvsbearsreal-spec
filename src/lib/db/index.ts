@@ -396,6 +396,26 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_rle_lookup ON rate_limit_events(limiter, key, created_at)`;
 
+  // Social-feed posts — KOL Twitter/X posts pulled via the social-fetch cron.
+  // `id` is the natural composite "${handle}_${tweetId}" so re-fetches are
+  // idempotent. `source` tracks the upstream (nitter / rsshub / rss.app /
+  // x-api) so we can debug feeds breaking when a source dies.
+  await sql`
+    CREATE TABLE IF NOT EXISTS social_posts (
+      id           TEXT PRIMARY KEY,
+      handle       TEXT NOT NULL,
+      display_name TEXT,
+      body         TEXT NOT NULL,
+      body_html    TEXT,
+      link         TEXT NOT NULL,
+      pub_date     TIMESTAMPTZ NOT NULL,
+      fetched_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      source       TEXT NOT NULL DEFAULT 'nitter'
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_social_posts_pub_date ON social_posts(pub_date DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_social_posts_handle ON social_posts(handle, pub_date DESC)`;
+
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -2666,6 +2686,139 @@ export async function getWorkerHeartbeats(staleMinutes: number = 15): Promise<Wo
     }));
   } catch (e) {
     console.error('getWorkerHeartbeats error:', e);
+    return [];
+  }
+}
+
+// ─── Social posts (KOL Twitter feed) ────────────────────────────────────────
+
+export interface SocialPostRow {
+  id: string;
+  handle: string;
+  displayName: string | null;
+  body: string;
+  bodyHtml: string | null;
+  link: string;
+  pubDate: Date;
+  fetchedAt: Date;
+  source: string;
+}
+
+interface SocialPostInsert {
+  id: string;
+  handle: string;
+  displayName?: string;
+  body: string;
+  bodyHtml?: string;
+  link: string;
+  pubDate: Date;
+  source?: string;
+}
+
+/**
+ * Bulk-upsert social posts. Uses ON CONFLICT (id) DO NOTHING so the cron is
+ * idempotent — re-fetching the same handle's RSS feed every 15 min is fine.
+ * Returns the count of NEW rows inserted (excluding dupes).
+ */
+export async function saveSocialPosts(posts: SocialPostInsert[]): Promise<number> {
+  if (posts.length === 0) return 0;
+  const sql = getSQL();
+
+  let inserted = 0;
+  for (let i = 0; i < posts.length; i += 200) {
+    const chunk = posts.slice(i, i + 200);
+    const result = await sql`
+      INSERT INTO social_posts (id, handle, display_name, body, body_html, link, pub_date, source)
+      SELECT * FROM UNNEST(
+        ${sql.array(chunk.map(p => p.id))}::text[],
+        ${sql.array(chunk.map(p => p.handle))}::text[],
+        ${sql.array(chunk.map(p => p.displayName ?? null))}::text[],
+        ${sql.array(chunk.map(p => p.body))}::text[],
+        ${sql.array(chunk.map(p => p.bodyHtml ?? null))}::text[],
+        ${sql.array(chunk.map(p => p.link))}::text[],
+        ${sql.array(chunk.map(p => p.pubDate.toISOString()))}::timestamptz[],
+        ${sql.array(chunk.map(p => p.source ?? 'nitter'))}::text[]
+      )
+      ON CONFLICT (id) DO NOTHING
+    `;
+    // postgres-js exposes affected rows on the returned result.
+    inserted += (result as unknown as { count?: number }).count ?? 0;
+  }
+
+  return inserted;
+}
+
+/**
+ * Read recent posts for the social-feed UI.
+ * @param limit  Cap rows returned (1..200, defaults to 50).
+ * @param handle Optional case-insensitive handle filter (no `@`).
+ */
+export async function getRecentSocialPosts(
+  limit: number = 50,
+  handle?: string,
+): Promise<SocialPostRow[]> {
+  try {
+    const sql = getSQL();
+    const cappedLimit = Math.min(Math.max(limit, 1), 200);
+    const rows = handle
+      ? await sql`
+          SELECT id, handle, display_name, body, body_html, link, pub_date, fetched_at, source
+          FROM social_posts
+          WHERE handle = ${handle.toLowerCase()}
+          ORDER BY pub_date DESC
+          LIMIT ${cappedLimit}
+        `
+      : await sql`
+          SELECT id, handle, display_name, body, body_html, link, pub_date, fetched_at, source
+          FROM social_posts
+          ORDER BY pub_date DESC
+          LIMIT ${cappedLimit}
+        `;
+    return rows.map((r: any) => ({
+      id: r.id,
+      handle: r.handle,
+      displayName: r.display_name,
+      body: r.body,
+      bodyHtml: r.body_html,
+      link: r.link,
+      pubDate: r.pub_date,
+      fetchedAt: r.fetched_at,
+      source: r.source,
+    }));
+  } catch (e) {
+    console.error('getRecentSocialPosts error:', e);
+    return [];
+  }
+}
+
+/**
+ * Watchdog query — returns handles whose latest post is older than `hours`,
+ * or who have no posts at all. Used to detect when an upstream (nitter)
+ * silently breaks for a specific account.
+ */
+export async function getStaleSocialHandles(
+  watchedHandles: readonly string[],
+  hours: number = 12,
+): Promise<{ handle: string; latestPubDate: Date | null }[]> {
+  if (watchedHandles.length === 0) return [];
+  try {
+    const sql = getSQL();
+    const lower = watchedHandles.map(h => h.toLowerCase());
+    const rows = await sql`
+      WITH watched AS (
+        SELECT UNNEST(${sql.array(lower)}::text[]) AS handle
+      )
+      SELECT w.handle, MAX(s.pub_date) AS latest
+      FROM watched w
+      LEFT JOIN social_posts s ON s.handle = w.handle
+      GROUP BY w.handle
+      HAVING MAX(s.pub_date) IS NULL
+          OR MAX(s.pub_date) < NOW() - ${hours + ' hours'}::interval
+      ORDER BY w.handle
+    `;
+    return rows.map((r: any) => ({ handle: r.handle, latestPubDate: r.latest }));
+  } catch (e) {
+    console.error('getStaleSocialHandles error:', e);
     return [];
   }
 }
