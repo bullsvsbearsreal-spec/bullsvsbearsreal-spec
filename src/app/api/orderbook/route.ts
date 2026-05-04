@@ -118,7 +118,10 @@ export async function GET(request: NextRequest) {
   const cacheKey = `ob_${pair}_${limit}`;
   const cached = l1Cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < L1_TTL) {
-    return NextResponse.json(cached.body, { headers: { 'X-Cache': 'HIT' } });
+    // Match MISS-path Cache-Control so CF can edge-cache HITs too.
+    return NextResponse.json(cached.body, {
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5' },
+    });
   }
 
   // Try sources in order: Binance → Bybit → OKX

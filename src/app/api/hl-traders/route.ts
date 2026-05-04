@@ -108,7 +108,10 @@ export async function GET(request: NextRequest) {
   const cacheKey = `hl-traders:${period}:${sort}:${limit}:${minVol}`;
   const cached = shapedCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < SHAPED_TTL) {
-    return NextResponse.json(cached.body, { headers: { 'X-Cache': 'HIT' } });
+    // Match MISS-path Cache-Control so CF can edge-cache HITs too.
+    return NextResponse.json(cached.body, {
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+    });
   }
 
   try {

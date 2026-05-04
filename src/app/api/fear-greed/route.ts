@@ -89,6 +89,12 @@ async function fetchCMCCurrent(): Promise<FearGreedEntry | null> {
   }
 }
 
+// CF edge cache header used by every cache-HIT path. Without setting this on
+// the L1/L2 hit branches, CF can't edge-cache and every user globally re-trips
+// to FRA1 even when our own cache is warm. Fear-and-greed updates daily at most.
+const PUBLIC_CACHE = 'public, s-maxage=300, stale-while-revalidate=600';
+const STALE_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const wantsHistory = searchParams.get('history') === 'true';
@@ -102,7 +108,9 @@ export async function GET(request: NextRequest) {
     // L1: In-memory history cache
     const cached = historyCache[limit];
     if (cached && Date.now() - cached.time < HISTORY_CACHE_TTL) {
-      return NextResponse.json(cached.data);
+      return NextResponse.json(cached.data, {
+        headers: { 'X-Cache': 'L1', 'Cache-Control': PUBLIC_CACHE },
+      });
     }
 
     // L2: DB cache
@@ -111,7 +119,9 @@ export async function GET(request: NextRequest) {
         const dbData = await getCache<HistoryResponse>(cacheKey);
         if (dbData) {
           historyCache[limit] = { data: dbData, time: Date.now() };
-          return NextResponse.json(dbData);
+          return NextResponse.json(dbData, {
+            headers: { 'X-Cache': 'L2', 'Cache-Control': PUBLIC_CACHE },
+          });
         }
       } catch { /* DB miss — proceed to fetch */ }
     }
@@ -122,19 +132,27 @@ export async function GET(request: NextRequest) {
       historyCache[limit] = { data: historyData, time: Date.now() };
       if (isDBConfigured()) setCache(cacheKey, historyData, 3600).catch(e => console.warn('[fear-greed] cache write failed:', e));
       return NextResponse.json(historyData, {
-        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+        headers: { 'X-Cache': 'MISS', 'Cache-Control': PUBLIC_CACHE },
       });
     }
 
     // Fallback: return stale cache or unavailable signal
-    if (cached) return NextResponse.json(cached.data);
-    return NextResponse.json({ current: { value: 50, classification: 'Neutral', timestamp: Date.now(), unavailable: true }, history: [] });
+    if (cached) return NextResponse.json(cached.data, {
+      headers: { 'X-Cache': 'STALE', 'Cache-Control': STALE_CACHE },
+    });
+    // Truly empty — don't cache
+    return NextResponse.json(
+      { current: { value: 50, classification: 'Neutral', timestamp: Date.now(), unavailable: true }, history: [] },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 
   // --- Current value mode ---
   // L1: Return in-memory cache if fresh
   if (cachedData && Date.now() - cacheTime < CACHE_TTL) {
-    return NextResponse.json(cachedData);
+    return NextResponse.json(cachedData, {
+      headers: { 'X-Cache': 'L1', 'Cache-Control': PUBLIC_CACHE },
+    });
   }
 
   // L2: Check DB cache (survives cold starts)
@@ -144,7 +162,9 @@ export async function GET(request: NextRequest) {
       if (dbData) {
         cachedData = dbData;
         cacheTime = Date.now();
-        return NextResponse.json(cachedData);
+        return NextResponse.json(cachedData, {
+          headers: { 'X-Cache': 'L2', 'Cache-Control': PUBLIC_CACHE },
+        });
       }
     } catch { /* DB miss or error — proceed to fetch */ }
   }
@@ -156,19 +176,19 @@ export async function GET(request: NextRequest) {
     cacheTime = Date.now();
     if (isDBConfigured()) setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(e => console.warn('[fear-greed] cache write failed:', e));
     return NextResponse.json(cachedData, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': PUBLIC_CACHE },
     });
   }
 
   // Return stale cache or neutral fallback
   if (cachedData) {
-    return NextResponse.json(cachedData);
+    return NextResponse.json(cachedData, {
+      headers: { 'X-Cache': 'STALE', 'Cache-Control': STALE_CACHE },
+    });
   }
 
-  return NextResponse.json({
-    value: 50,
-    classification: 'Neutral',
-    timestamp: Date.now(),
-    unavailable: true,
-  });
+  return NextResponse.json(
+    { value: 50, classification: 'Neutral', timestamp: Date.now(), unavailable: true },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
 }
