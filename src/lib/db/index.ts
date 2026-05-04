@@ -459,6 +459,28 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_user_wallets_user ON user_wallets(user_id)`;
 
+  // user_position_alerts: minimal MVP alert rules. One row per (user, kind)
+  //   combination — Phase D ships with a single global "funding flip" rule per
+  //   user. More granular per-position rules can come later by adding more
+  //   `kind` values + a JSONB `params` column.
+  //
+  //   `last_fired_at` is consulted by the cron to enforce a cooldown so a
+  //   user doesn't get spammed every 5 min while funding stays flipped.
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_position_alerts (
+      id              SERIAL PRIMARY KEY,
+      user_id         TEXT NOT NULL,
+      kind            TEXT NOT NULL,
+      enabled         BOOLEAN NOT NULL DEFAULT true,
+      channels        TEXT[] NOT NULL DEFAULT ARRAY['telegram'],
+      cooldown_min    INT NOT NULL DEFAULT 60,
+      last_fired_at   TIMESTAMPTZ,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, kind)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_alerts_user ON user_position_alerts(user_id)`;
+
   // user_positions: aggregated open positions, refreshed by the position
   //   sync cron every minute. `source_type` tells us whether the source row
   //   lives in user_exchange_keys (cex) or user_wallets (dex). UPSERT key is
@@ -3260,6 +3282,107 @@ export async function listAllSyncTargets(): Promise<Array<{
     map.set(w.user_id, entry);
   }
   return Array.from(map.values());
+}
+
+// ─── Position alerts (Phase D) ──────────────────────────────────────────────
+
+export interface PositionAlertRule {
+  id: number;
+  userId: string;
+  kind: string;            // 'funding_flip' for the MVP
+  enabled: boolean;
+  channels: string[];      // ['telegram'] | ['telegram','email'] | …
+  cooldownMin: number;
+  lastFiredAt: Date | null;
+  createdAt: Date;
+}
+
+export async function listUserAlertRules(userId: string): Promise<PositionAlertRule[]> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const rows = await sql`
+    SELECT id, user_id, kind, enabled, channels, cooldown_min,
+           last_fired_at, created_at
+    FROM user_position_alerts
+    WHERE user_id = ${userId}
+    ORDER BY id
+  `;
+  return rows.map((r: any) => ({
+    id: r.id,
+    userId: r.user_id,
+    kind: r.kind,
+    enabled: r.enabled,
+    channels: r.channels ?? [],
+    cooldownMin: r.cooldown_min,
+    lastFiredAt: r.last_fired_at,
+    createdAt: r.created_at,
+  }));
+}
+
+/**
+ * Upsert a rule by (user_id, kind). Creating the row on first call, updating
+ * `enabled`/`channels`/`cooldown_min` on subsequent calls. Used by the simple
+ * "Enable funding flip alerts" toggle in /account/connections.
+ */
+export async function upsertUserAlertRule(params: {
+  userId: string;
+  kind: string;
+  enabled: boolean;
+  channels: string[];
+  cooldownMin?: number;
+}): Promise<{ id: number }> {
+  const sql = getSQL();
+  const cd = params.cooldownMin ?? 60;
+  const rows = await sql`
+    INSERT INTO user_position_alerts (user_id, kind, enabled, channels, cooldown_min)
+    VALUES (${params.userId}, ${params.kind}, ${params.enabled},
+            ${sql.array(params.channels)}::text[], ${cd})
+    ON CONFLICT (user_id, kind) DO UPDATE
+      SET enabled = EXCLUDED.enabled,
+          channels = EXCLUDED.channels,
+          cooldown_min = EXCLUDED.cooldown_min
+    RETURNING id
+  `;
+  return { id: rows[0].id };
+}
+
+export async function markAlertFired(ruleId: number): Promise<void> {
+  const sql = getSQL();
+  await sql`UPDATE user_position_alerts SET last_fired_at = NOW() WHERE id = ${ruleId}`;
+}
+
+/**
+ * For the alert cron — pull every enabled rule across all users in one shot,
+ * paired with that user's open positions. Single round-trip.
+ */
+export async function listEnabledAlertsWithPositions(): Promise<Array<{
+  rule: PositionAlertRule;
+  positions: UserPositionRow[];
+}>> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const rules = await sql`
+    SELECT id, user_id, kind, enabled, channels, cooldown_min,
+           last_fired_at, created_at
+    FROM user_position_alerts
+    WHERE enabled = true
+  `;
+  const out: Array<{ rule: PositionAlertRule; positions: UserPositionRow[] }> = [];
+  for (const r of rules as any[]) {
+    const rule: PositionAlertRule = {
+      id: r.id,
+      userId: r.user_id,
+      kind: r.kind,
+      enabled: r.enabled,
+      channels: r.channels ?? [],
+      cooldownMin: r.cooldown_min,
+      lastFiredAt: r.last_fired_at,
+      createdAt: r.created_at,
+    };
+    const positions = await listUserPositions(rule.userId);
+    out.push({ rule, positions });
+  }
+  return out;
 }
 
 // ─── Check if DB is available ───────────────────────────────────────────────

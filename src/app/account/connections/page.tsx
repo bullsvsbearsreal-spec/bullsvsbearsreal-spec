@@ -13,6 +13,8 @@ import {
   Loader2,
   ShieldCheck,
   ExternalLink,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 
 interface ExchangeKey {
@@ -282,6 +284,9 @@ export default function ConnectionsPage() {
           )}
         </section>
 
+        {/* ─── Alert rules (Phase D) ─── */}
+        <FundingFlipAlert />
+
         {/* Footer link */}
         <div className="text-center mt-8 text-xs text-neutral-600">
           Once connected, your unified portfolio appears at{' '}
@@ -292,6 +297,112 @@ export default function ConnectionsPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+// ─── Funding-flip alert toggle (Phase D) ───────────────────────────────────
+
+interface AlertRule {
+  id: number;
+  kind: string;
+  enabled: boolean;
+  channels: string[];
+  cooldownMin: number;
+  lastFiredAt: string | null;
+}
+
+function FundingFlipAlert() {
+  const [rules, setRules] = useState<AlertRule[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/account/alerts', { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return;
+      const json = await res.json();
+      setRules(json.rules || []);
+    } catch { /* swallow */ }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const fundingFlip = rules?.find(r => r.kind === 'funding_flip') ?? null;
+  const enabled = Boolean(fundingFlip?.enabled);
+
+  const toggle = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/account/alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'funding_flip',
+          enabled: !enabled,
+          channels: ['telegram'],
+          cooldownMin: 60,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="w-4 h-4 text-amber-400" />
+        <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Alerts</h2>
+      </div>
+      <div className="card-premium p-4">
+        <div className="flex items-start gap-3">
+          <div className={`w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 ${enabled ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-neutral-600'}`}>
+            {enabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Funding flip alerts</h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Telegram ping when funding on any open position flips against your direction.
+                  Cooldown 60 min — bundles every flipped position into one message.
+                </p>
+              </div>
+              <button
+                onClick={toggle}
+                disabled={saving}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  enabled
+                    ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 hover:bg-amber-500/30'
+                    : 'bg-sky-500 text-black hover:bg-sky-400'
+                }`}
+              >
+                {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                {enabled ? 'Enabled · click to disable' : 'Enable'}
+              </button>
+            </div>
+            {fundingFlip?.lastFiredAt && (
+              <div className="text-[10px] text-neutral-600 mt-1.5">
+                Last fired: {new Date(fundingFlip.lastFiredAt).toLocaleString()}
+              </div>
+            )}
+            {error && (
+              <div className="text-xs text-red-400 mt-2">{error}</div>
+            )}
+            <div className="text-[10px] text-neutral-600 mt-2">
+              Need a Telegram link?{' '}
+              <a href="/settings/notifications" className="text-hub-yellow hover:underline">Connect on /settings/notifications</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
