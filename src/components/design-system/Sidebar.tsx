@@ -148,8 +148,11 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   ]},
   { id: 'tools', label: 'Tools', items: [
     { href: '/dashboard',          label: 'Dashboard',     color: ACC,  icon: I.dash },
+    { href: '/positions',          label: 'Positions',     color: ACC,  icon: I.briefcase },
+    { href: '/account/connections', label: 'Connections',  color: ACC,  icon: I.user },
+    { href: '/social',             label: 'KOL Feed',      color: MUTE, icon: I.news },
     { href: '/watchlist',          label: 'Watchlists',    color: ACC,  icon: I.watch },
-    { href: '/portfolio',          label: 'Portfolio',     color: ACC,  icon: I.briefcase },
+    { href: '/portfolio',          label: 'Portfolio (manual)', color: MUTE, icon: I.briefcase },
     { href: '/compare',            label: 'Compare',       color: MUTE, icon: I.scale },
   ]},
   { id: 'account', label: 'Account', items: [
