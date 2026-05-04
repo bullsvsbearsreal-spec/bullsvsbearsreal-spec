@@ -53,12 +53,15 @@ describe('filterOutliers', () => {
     expect(filterOutliers([])).toEqual([]);
   });
 
-  it('removes outlier prices beyond 10% from median', () => {
+  it('removes outlier prices beyond 1% from median', () => {
+    // Threshold was tightened 10% → 1% in spread-math.ts to catch stale
+    // exchange feeds. Prices within ±1% of the median survive; anything
+    // beyond gets dropped.
     const entries = [
       { e: 'Binance', p: 100 },
-      { e: 'Bybit', p: 101 },
-      { e: 'OKX', p: 99 },
-      { e: 'Rogue', p: 150 },
+      { e: 'Bybit', p: 100.5 },   // 0.5% above median — kept
+      { e: 'OKX', p: 99.5 },       // 0.5% below median — kept
+      { e: 'Rogue', p: 150 },      // 50% above — dropped
     ];
     const result = filterOutliers(entries);
     expect(result).toHaveLength(3);
