@@ -311,6 +311,9 @@ interface AlertRule {
   lastFiredAt: string | null;
 }
 
+const ALL_CHANNELS = ['telegram', 'email'] as const;
+type Channel = typeof ALL_CHANNELS[number];
+
 function FundingFlipAlert() {
   const [rules, setRules] = useState<AlertRule[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -329,8 +332,9 @@ function FundingFlipAlert() {
 
   const fundingFlip = rules?.find(r => r.kind === 'funding_flip') ?? null;
   const enabled = Boolean(fundingFlip?.enabled);
+  const channels: Channel[] = (fundingFlip?.channels?.filter((c): c is Channel => (ALL_CHANNELS as readonly string[]).includes(c)) ?? ['telegram']);
 
-  const toggle = async () => {
+  const persist = async (nextEnabled: boolean, nextChannels: Channel[]) => {
     setSaving(true);
     setError(null);
     try {
@@ -339,8 +343,8 @@ function FundingFlipAlert() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           kind: 'funding_flip',
-          enabled: !enabled,
-          channels: ['telegram'],
+          enabled: nextEnabled,
+          channels: nextChannels.length > 0 ? nextChannels : ['telegram'],
           cooldownMin: 60,
         }),
       });
@@ -352,6 +356,17 @@ function FundingFlipAlert() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleEnabled = () => persist(!enabled, channels);
+  const toggleChannel = (c: Channel) => {
+    const next = channels.includes(c) ? channels.filter(x => x !== c) : [...channels, c];
+    if (next.length === 0) {
+      // never persist an empty channel set — silently keep current
+      setError('At least one channel required');
+      return;
+    }
+    persist(enabled, next);
   };
 
   return (
@@ -370,12 +385,12 @@ function FundingFlipAlert() {
               <div>
                 <h3 className="text-sm font-semibold text-white">Funding flip alerts</h3>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  Telegram ping when funding on any open position flips against your direction.
-                  Cooldown 60 min — bundles every flipped position into one message.
+                  Get notified when funding on any open position flips against your direction.
+                  60-min cooldown bundles every flipped position into one notification.
                 </p>
               </div>
               <button
-                onClick={toggle}
+                onClick={toggleEnabled}
                 disabled={saving}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-md inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed ${
                   enabled
@@ -387,17 +402,42 @@ function FundingFlipAlert() {
                 {enabled ? 'Enabled · click to disable' : 'Enable'}
               </button>
             </div>
+
+            {enabled && (
+              <div className="mt-3 pt-3 border-t border-white/[0.05]">
+                <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5 font-medium">Channels</div>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_CHANNELS.map(c => {
+                    const on = channels.includes(c);
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => toggleChannel(c)}
+                        disabled={saving}
+                        className={`text-[11px] px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition-colors ${
+                          on
+                            ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/40 hover:bg-emerald-500/25'
+                            : 'bg-white/[0.04] text-neutral-500 hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-400' : 'bg-neutral-700'}`} />
+                        {c === 'telegram' ? 'Telegram' : 'Email'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {fundingFlip?.lastFiredAt && (
-              <div className="text-[10px] text-neutral-600 mt-1.5">
+              <div className="text-[10px] text-neutral-600 mt-2">
                 Last fired: {new Date(fundingFlip.lastFiredAt).toLocaleString()}
               </div>
             )}
-            {error && (
-              <div className="text-xs text-red-400 mt-2">{error}</div>
-            )}
-            <div className="text-[10px] text-neutral-600 mt-2">
-              Need a Telegram link?{' '}
-              <a href="/settings/notifications" className="text-hub-yellow hover:underline">Connect on /settings/notifications</a>
+            {error && <div className="text-xs text-red-400 mt-2">{error}</div>}
+            <div className="text-[10px] text-neutral-600 mt-2 leading-relaxed">
+              Telegram requires a linked chat (<a href="/settings/notifications" className="text-hub-yellow hover:underline">connect</a>).
+              Email goes to your account address — verify it on <a href="/account" className="text-hub-yellow hover:underline">/account</a> if you haven&apos;t.
             </div>
           </div>
         </div>

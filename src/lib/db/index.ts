@@ -3351,6 +3351,25 @@ export async function markAlertFired(ruleId: number): Promise<void> {
   await sql`UPDATE user_position_alerts SET last_fired_at = NOW() WHERE id = ${ruleId}`;
 }
 
+/** Used by the alert cron when sending via email channel. Returns the user's
+ *  verified email or null if absent. */
+export async function getUserEmail(userId: string): Promise<string | null> {
+  if (!DATABASE_URL) return null;
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT email, email_verified FROM users WHERE id = ${userId} LIMIT 1
+    `;
+    if (rows.length === 0) return null;
+    const r = rows[0] as any;
+    if (!r.email || !r.email_verified) return null;
+    return String(r.email);
+  } catch (e) {
+    console.error('getUserEmail error:', e);
+    return null;
+  }
+}
+
 /**
  * For the alert cron — pull every enabled rule across all users in one shot,
  * paired with that user's open positions. Single round-trip.
