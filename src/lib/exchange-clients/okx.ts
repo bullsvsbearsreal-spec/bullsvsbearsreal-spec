@@ -170,9 +170,35 @@ export const okxClient: ExchangeClient = {
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
         tpPrice: Number.isFinite(tp) && tp > 0 ? tp : null,
         slPrice: Number.isFinite(sl) && sl > 0 ? sl : null,
-        cumulativeFunding: null, // /api/v5/account/bills (Phase B+)
+        cumulativeFunding: null, // populated by sync cron via fetchCumulativeFunding
       });
     }
     return out;
+  },
+
+  async fetchCumulativeFunding(creds, sinceMs?: number): Promise<Map<string, number>> {
+    const since = sinceMs ?? Date.now() - 30 * 86400_000;
+    const map = new Map<string, number>();
+    // OKX /api/v5/account/bills type=8 = funding fee. Pagination via `before`
+    // (item id), but for a 30-day window single call usually suffices.
+    // Cap at 5 pages (= 500 rows) so a degenerate account can't blow our budget.
+    let beforeId: string | undefined = undefined;
+    for (let page = 0; page < 5; page++) {
+      const qs = ['type=8', 'instType=SWAP', `begin=${since}`, 'limit=100'];
+      if (beforeId) qs.push(`before=${beforeId}`);
+      const json: { code: string; data: Array<{ instId: string; bal: string; balChg: string; ts: string; billId: string }> } =
+        await signedGet('/api/v5/account/bills', qs.join('&'), creds);
+      const rows = json.data ?? [];
+      if (rows.length === 0) break;
+      for (const r of rows) {
+        const v = parseFloat(r.balChg);
+        if (!Number.isFinite(v) || v === 0) continue;
+        map.set(instIdToSymbol(r.instId), (map.get(instIdToSymbol(r.instId)) ?? 0) + v);
+      }
+      // Walk backwards in time
+      beforeId = rows[rows.length - 1].billId;
+      if (rows.length < 100) break;
+    }
+    return map;
   },
 };

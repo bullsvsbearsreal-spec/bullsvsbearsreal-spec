@@ -86,6 +86,21 @@ interface BinancePositionRisk {
   notional: string;
 }
 
+interface BinanceIncomeRow {
+  symbol: string;
+  incomeType: string;
+  income: string;        // USD value as string (e.g. "-0.0125")
+  time: number;
+  info?: string;
+}
+
+function symbolToBase(s: string): string {
+  let sym = s.replace(/USDT$|USDC$|BUSD$/, '');
+  if (sym.startsWith('1000')) sym = sym.slice(4);
+  if (sym.startsWith('1M')) sym = sym.slice(2);
+  return sym;
+}
+
 export const binanceClient: ExchangeClient = {
   exchange: 'Binance',
 
@@ -126,10 +141,7 @@ export const binanceClient: ExchangeClient = {
       const lev = parseFloat(r.leverage);
       const margin = parseFloat(r.isolatedMargin);
 
-      // Symbol normalisation: BTCUSDT -> BTC, 1000PEPEUSDT -> PEPE etc.
-      let symbol = r.symbol.replace(/USDT$|USDC$|BUSD$/, '');
-      if (symbol.startsWith('1000')) symbol = symbol.slice(4);
-      if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+      const symbol = symbolToBase(r.symbol);
 
       out.push({
         symbol,
@@ -144,9 +156,29 @@ export const binanceClient: ExchangeClient = {
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
         tpPrice: null,
         slPrice: null,
-        cumulativeFunding: null, // not on positionRisk; needs /fapi/v1/income (Phase B+)
+        cumulativeFunding: null, // populated post-hoc by sync cron via fetchCumulativeFunding
       });
     }
     return out;
+  },
+
+  async fetchCumulativeFunding(creds, sinceMs?: number): Promise<Map<string, number>> {
+    const since = sinceMs ?? Date.now() - 30 * 86400_000;
+    const map = new Map<string, number>();
+    // Binance /fapi/v1/income returns up to 1000 rows per call. For a 30-day
+    // window even active traders rarely exceed this — single call is enough.
+    const rows = await signedGet<BinanceIncomeRow[]>(
+      '/fapi/v1/income',
+      { incomeType: 'FUNDING_FEE', startTime: since, limit: 1000 },
+      creds,
+    );
+    for (const r of rows) {
+      if (r.incomeType !== 'FUNDING_FEE') continue;
+      const v = parseFloat(r.income);
+      if (!Number.isFinite(v)) continue;
+      const sym = symbolToBase(r.symbol);
+      map.set(sym, (map.get(sym) ?? 0) + v);
+    }
+    return map;
   },
 };

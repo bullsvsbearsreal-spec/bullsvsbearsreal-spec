@@ -169,9 +169,44 @@ export const bybitClient: ExchangeClient = {
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
         tpPrice: Number.isFinite(tp) && tp > 0 ? tp : null,
         slPrice: Number.isFinite(sl) && sl > 0 ? sl : null,
-        cumulativeFunding: null,
+        cumulativeFunding: null, // populated by sync cron via fetchCumulativeFunding
       });
     }
     return out;
+  },
+
+  async fetchCumulativeFunding(creds, sinceMs?: number): Promise<Map<string, number>> {
+    const since = sinceMs ?? Date.now() - 30 * 86400_000;
+    const map = new Map<string, number>();
+    // Bybit V5 transaction-log: type=SETTLEMENT entries are funding payments.
+    // Pagination via cursor — keep going until empty or 5 pages (= 250 rows max).
+    let cursor: string | undefined = undefined;
+    for (let page = 0; page < 5; page++) {
+      const params: Record<string, string> = {
+        category: 'linear',
+        type: 'SETTLEMENT',
+        startTime: String(since),
+        limit: '50',
+      };
+      if (cursor) params.cursor = cursor;
+      const json: { result: { list: Array<{ symbol: string; funding: string; cashFlow: string; type: string }>; nextPageCursor: string } } =
+        await signedGet('/v5/account/transaction-log', params, creds);
+      const list = json.result?.list ?? [];
+      if (list.length === 0) break;
+      for (const r of list) {
+        if (r.type !== 'SETTLEMENT') continue;
+        // Bybit reports funding as `funding` (signed; negative = paid out).
+        // Fall back to `cashFlow` if the field shape changes.
+        const v = parseFloat(r.funding) || parseFloat(r.cashFlow) || 0;
+        if (!Number.isFinite(v) || v === 0) continue;
+        let sym = r.symbol.replace(/USDT$|USDC$/, '');
+        if (sym.startsWith('1000')) sym = sym.slice(4);
+        if (sym.startsWith('1M')) sym = sym.slice(2);
+        map.set(sym, (map.get(sym) ?? 0) + v);
+      }
+      cursor = json.result?.nextPageCursor;
+      if (!cursor) break;
+    }
+    return map;
   },
 };

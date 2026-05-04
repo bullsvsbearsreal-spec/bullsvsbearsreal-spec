@@ -166,9 +166,39 @@ export const bitgetClient: ExchangeClient = {
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
         tpPrice: null,   // Bitget exposes TP/SL via /position/tpsl-position-details (Phase B+)
         slPrice: null,
-        cumulativeFunding: null,
+        cumulativeFunding: null, // populated by sync cron via fetchCumulativeFunding
       });
     }
     return out;
+  },
+
+  async fetchCumulativeFunding(creds, sinceMs?: number): Promise<Map<string, number>> {
+    const since = sinceMs ?? Date.now() - 30 * 86400_000;
+    const map = new Map<string, number>();
+    // Bitget V2 /api/v2/mix/account/bill returns up to 100 rows, paginated by
+    // `idLessThan` (cursor on bill id). Filter by businessType=funding.
+    let idLessThan: string | undefined = undefined;
+    for (let page = 0; page < 5; page++) {
+      const qs = [
+        'productType=USDT-FUTURES',
+        'businessType=funding',
+        `startTime=${since}`,
+        'limit=100',
+      ];
+      if (idLessThan) qs.push(`idLessThan=${idLessThan}`);
+      const json: { code: string; data: { bills: Array<{ symbol: string; amount: string; businessType: string; billId: string }>; endId?: string } } =
+        await signedGet('/api/v2/mix/account/bill', qs.join('&'), creds);
+      const rows = json.data?.bills ?? [];
+      if (rows.length === 0) break;
+      for (const r of rows) {
+        if (r.businessType !== 'funding') continue;
+        const v = parseFloat(r.amount);
+        if (!Number.isFinite(v) || v === 0) continue;
+        map.set(symbolToBase(r.symbol), (map.get(symbolToBase(r.symbol)) ?? 0) + v);
+      }
+      idLessThan = json.data?.endId;
+      if (!idLessThan || rows.length < 100) break;
+    }
+    return map;
   },
 };

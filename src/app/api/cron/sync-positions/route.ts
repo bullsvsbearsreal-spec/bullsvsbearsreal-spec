@@ -96,6 +96,17 @@ export async function GET(req: NextRequest) {
           passphrase: k.encryptedPassphrase ? decryptSecret(k.encryptedPassphrase) : undefined,
         };
         const positions = await client.fetchPositions(creds);
+        // Cumulative funding (last 30d). Best-effort — if the income endpoint
+        // errors we still ship positions with NULL funding rather than failing
+        // the whole sync.
+        let fundingMap = new Map<string, number>();
+        if (positions.length > 0 && client.fetchCumulativeFunding) {
+          try {
+            fundingMap = await client.fetchCumulativeFunding(creds);
+          } catch (e) {
+            console.warn(`[sync-positions] cumulative funding failed for ${k.exchange} key ${k.id}:`, e instanceof Error ? e.message : e);
+          }
+        }
         await replaceUserPositionsForSource(
           target.userId,
           'cex',
@@ -114,7 +125,7 @@ export async function GET(req: NextRequest) {
             liquidationPrice: p.liquidationPrice,
             tpPrice: p.tpPrice,
             slPrice: p.slPrice,
-            cumulativeFunding: p.cumulativeFunding,
+            cumulativeFunding: fundingMap.get(p.symbol) ?? p.cumulativeFunding,
           })),
         );
         ks.positions = positions.length;

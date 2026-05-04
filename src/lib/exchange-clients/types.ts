@@ -67,4 +67,20 @@ export interface ExchangeClient {
 
   /** Fetch all open perp positions for the account. Empty array = no positions. */
   fetchPositions(creds: ExchangeCredentials): Promise<NormalizedPosition[]>;
+
+  /**
+   * Sum funding paid/received per symbol over the last `sinceMs` window
+   * (default 30 days). Returns Map<base-symbol, total USD>.
+   *   positive = received funding (favourable)
+   *   negative = paid funding   (unfavourable)
+   *
+   * Approximation: a fixed lookback rather than tracking per-position
+   * `opened_at`. For positions newer than the window this is exact;
+   * for older positions it's an under-count of total funding paid.
+   *
+   * Optional — clients that don't expose income history return an empty map.
+   * The sync cron treats missing keys as "unknown" (NULL in user_positions),
+   * which the UI shows as "—" — same as today.
+   */
+  fetchCumulativeFunding?(creds: ExchangeCredentials, sinceMs?: number): Promise<Map<string, number>>;
 }
