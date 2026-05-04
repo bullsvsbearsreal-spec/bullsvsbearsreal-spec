@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs when a new commit is pushed to the same branch/PR
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: tsc --noEmit
+        run: npm run typecheck
+
+  build:
+    name: Next.js build
+    runs-on: ubuntu-latest
+    # Build needs almost all the same env vars production does or it'll fail
+    # at compile-time (Next inlines NEXT_PUBLIC_* into the client bundle).
+    # Use harmless placeholder values for CI — we're only verifying the build
+    # compiles, not that anything connects to a real backend.
+    env:
+      NEXT_PUBLIC_BASE_URL: https://info-hub.io
+      NEXT_TELEMETRY_DISABLED: "1"
+      SENTRY_SUPPRESS_INSTRUMENTATION_FILE_WARNING: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: next build
+        run: npm run build

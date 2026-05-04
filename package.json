@@ -14,9 +14,7 @@
     "test:unit:watch": "vitest",
     "analyze": "ANALYZE=true next build",
     "worker:liq": "npx tsx workers/liquidation-ingester.ts",
-    "video:preview": "npx remotion studio src/remotion/index.ts",
-    "video:render": "npx tsx src/remotion/render.ts",
-    "video:data": "npx tsx src/remotion/render.ts --preview"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -37,7 +35,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.12.0",
-    "remotion": "^4.0.438",
     "resend": "^6.9.4",
     "swr": "^2.4.1",
     "web-push": "^3.6.7",
@@ -53,7 +50,6 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/web-push": "^3.6.4",
-    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.0",
     "canvas": "^3.2.1",
