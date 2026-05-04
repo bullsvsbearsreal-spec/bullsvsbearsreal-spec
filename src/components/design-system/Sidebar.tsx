@@ -85,6 +85,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/options-iv',               label: 'Options IV',      color: MUTE, icon: I.options },
     { href: '/max-pain',                 label: 'Max Pain',        color: MUTE, icon: I.flame },
     { href: '/skew',                     label: 'Skew',            color: MUTE, icon: I.signal },
+    { href: '/rv-iv',                    label: 'RV vs IV',        color: MUTE, icon: I.signal },
     { href: '/longshort',                label: 'Long / Short',    color: PUR,  icon: I.ls },
     { href: '/etf',                      label: 'ETF Tracker',     color: ACC,  icon: I.etf },
     { href: '/etf-flows',                label: 'ETF Flows',       color: ACC,  icon: I.etf },

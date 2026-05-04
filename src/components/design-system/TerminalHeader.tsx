@@ -24,6 +24,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'chart',        label: 'Chart',             href: '/chart',              hint: 'Candles + book + tape' },
       { id: 'options',      label: 'Options',           href: '/options',   hint: 'Chain · Greeks · IV' },
       { id: 'options-iv',   label: 'Options IV',        href: '/options-iv',         hint: 'IV smile + skew' },
+      { id: 'rv-iv',        label: 'RV vs IV',          href: '/rv-iv',              hint: 'Realized vs implied premium' },
       { id: 'max-pain',     label: 'Max Pain',          href: '/max-pain',           hint: 'Pin levels' },
       { id: 'skew',         label: 'Skew',              href: '/skew',               hint: 'Put-call IV per expiry' },
       { id: 'spreads',      label: 'Spreads',           href: '/spreads',            hint: 'Cross-venue arb' },
