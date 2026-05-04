@@ -133,6 +133,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/altseason',         label: 'Altseason',      color: ACC,  icon: I.flame },
     { href: '/sectors',           label: 'Sector Rotation', color: ACC, icon: I.layers },
     { href: '/market-cycle',      label: 'Market Cycle',   color: MUTE, icon: I.signal },
+    { href: '/cycle-phase',       label: 'Cycle Phase',    color: ACC,  icon: I.signal },
   ]},
   { id: 'onchain', label: 'On-Chain & Flows', items: [
     { href: '/onchain',           label: 'On-Chain',       color: PUR,  icon: I.cube },
