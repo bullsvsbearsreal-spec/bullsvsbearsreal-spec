@@ -202,6 +202,33 @@ export async function GET(request: NextRequest) {
   const sorted = Array.from(byAddr.values()).sort((a, b) => b.realizedPnl - a.realizedPnl);
   const toEnrich = sorted.slice(0, Math.min(30, limit));
 
+  // Per-coin aggregation — populated by `enrich` calls below. Keyed by upper-case symbol.
+  interface CoinAgg {
+    longNotional: number;
+    shortNotional: number;
+    longWallets: number;
+    shortWallets: number;
+    unrealizedPnl: number;
+  }
+  const byCoinAgg = new Map<string, CoinAgg>();
+
+  function pushCoin(symbol: string, sizeUsd: number, isLong: boolean, unrealized: number) {
+    const key = symbol.toUpperCase();
+    let a = byCoinAgg.get(key);
+    if (!a) {
+      a = { longNotional: 0, shortNotional: 0, longWallets: 0, shortWallets: 0, unrealizedPnl: 0 };
+      byCoinAgg.set(key, a);
+    }
+    if (isLong) {
+      a.longNotional += sizeUsd;
+      a.longWallets += 1;
+    } else {
+      a.shortNotional += sizeUsd;
+      a.shortWallets += 1;
+    }
+    a.unrealizedPnl += unrealized;
+  }
+
   async function enrich(w: SmartWallet): Promise<void> {
     // Try HL first since it's the single canonical source across all coins.
     // Fall back to GMX on whichever chain the wallet actually trades.
@@ -221,8 +248,13 @@ export async function GET(request: NextRequest) {
       let unrealized = 0;
       for (const p of positions) {
         const size = Number(p.sizeUsd) || 0;
+        const u = Number(p.unrealizedPnl) || 0;
         if (p.isLong) longNotional += size; else shortNotional += size;
-        unrealized += Number(p.unrealizedPnl) || 0;
+        unrealized += u;
+        // Per-coin breakdown for /smart-money-composite. Symbol can come in
+        // as `coin`, `symbol`, `market`, or `pair` depending on venue.
+        const sym = (p.coin ?? p.symbol ?? p.market ?? p.pair ?? '').toString();
+        if (sym && size > 0) pushCoin(sym, size, !!p.isLong, u);
       }
       const total = longNotional + shortNotional;
       w.liveNotional = total;
@@ -266,9 +298,31 @@ export async function GET(request: NextRequest) {
     crossVenueCount: final.filter(w => w.venues.length > 1).length,
   };
 
+  // Per-coin aggregate — used by /smart-money-composite. Each entry shows
+  // how many enriched SM wallets are long vs short the coin and the notional
+  // bias.
+  const byCoin = Array.from(byCoinAgg.entries())
+    .map(([symbol, a]) => {
+      const total = a.longNotional + a.shortNotional;
+      return {
+        symbol,
+        longNotional: Math.round(a.longNotional),
+        shortNotional: Math.round(a.shortNotional),
+        totalNotional: Math.round(total),
+        longWallets: a.longWallets,
+        shortWallets: a.shortWallets,
+        netBias: total > 0 ? (a.longNotional - a.shortNotional) / total : 0,
+        longPct: total > 0 ? (a.longNotional / total) * 100 : 50,
+        unrealizedPnl: Math.round(a.unrealizedPnl),
+      };
+    })
+    .filter(c => c.totalNotional > 0)
+    .sort((a, b) => b.totalNotional - a.totalNotional);
+
   const body = {
     data: final,
     summary,
+    byCoin,
     meta: {
       minPnl, minVolume, minWr, minTrades, include, limit,
       sources: ['gmx-arbitrum', 'gmx-avalanche', 'hyperliquid'],

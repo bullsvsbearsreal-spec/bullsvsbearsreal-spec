@@ -151,6 +151,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   ]},
   { id: 'whales', label: 'Smart Money & Whales', items: [
     { href: '/smart-money',       label: 'Smart Money',    color: PUR,  icon: I.signal },
+    { href: '/smart-money-composite', label: 'SM Composite', color: PUR, icon: I.pieChart },
     { href: '/hl-traders',        label: 'HL Traders',     color: PUR,  icon: I.user },
     { href: '/hl-vaults',         label: 'HL Vaults',      color: PUR,  icon: I.shield },
     { href: '/hl-whales',         label: 'HL Whales',      color: PUR,  icon: I.whale },
@@ -161,6 +162,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   { id: 'macro', label: 'Macro & Events', items: [
     { href: '/economic-calendar', label: 'Event Calendar', color: ACC,  icon: I.calendar },
     { href: '/token-unlocks',     label: 'Token Unlocks',  color: ACC,  icon: I.calendar },
+    { href: '/cliff-watch',       label: 'Cliff Watch',    color: ACC,  icon: I.calendar },
     { href: '/airdrops',          label: 'Airdrops',       color: ACC,  icon: I.gift },
     { href: '/bitcoin-treasuries', label: 'BTC Treasuries', color: ACL, icon: I.bitcoin },
     { href: '/fear-greed',        label: 'Fear & Greed',   color: ACC,  icon: I.flame },
