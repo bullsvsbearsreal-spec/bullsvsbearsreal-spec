@@ -67,6 +67,8 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   { id: 'derivatives', label: 'Derivatives', items: [
     { href: '/funding',                  label: 'Funding Rates',   color: PUMP, icon: I.fundRate },
     { href: '/funding-heatmap',          label: 'Funding Heatmap', color: PUMP, icon: I.fundHeat },
+    { href: '/funding-countdown',        label: 'Funding Countdown', color: PUMP, icon: I.fundRate },
+    { href: '/funding-paid',             label: 'Funding Paid 30d', color: PUMP, icon: I.coin },
     { href: '/spread-scanner',           label: 'Funding Arb',     color: PUMP, icon: I.fundArb },
     { href: '/funding-arb',              label: 'Funding Arb (alt)', color: PUMP, icon: I.fundArb },
     { href: '/basis',                    label: 'Basis',           color: PUMP, icon: I.scale },
@@ -77,6 +79,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/options',                  label: 'Options',         color: MUTE, icon: I.options },
     { href: '/options-iv',               label: 'Options IV',      color: MUTE, icon: I.options },
     { href: '/max-pain',                 label: 'Max Pain',        color: MUTE, icon: I.flame },
+    { href: '/skew',                     label: 'Skew',            color: MUTE, icon: I.signal },
     { href: '/longshort',                label: 'Long / Short',    color: PUR,  icon: I.ls },
     { href: '/etf',                      label: 'ETF Tracker',     color: ACC,  icon: I.etf },
   ]},
@@ -116,6 +119,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/dominance',         label: 'Dominance',      color: ACC,  icon: I.pieChart },
     { href: '/correlation',       label: 'Correlation',    color: MUTE, icon: I.signal },
     { href: '/altseason',         label: 'Altseason',      color: ACC,  icon: I.flame },
+    { href: '/sectors',           label: 'Sector Rotation', color: ACC, icon: I.layers },
     { href: '/market-cycle',      label: 'Market Cycle',   color: MUTE, icon: I.signal },
   ]},
   { id: 'onchain', label: 'On-Chain & Flows', items: [
