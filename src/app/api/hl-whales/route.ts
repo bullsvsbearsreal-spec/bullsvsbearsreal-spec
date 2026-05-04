@@ -283,10 +283,15 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // All-whales view is public, non-personalised data — let Cloudflare cache
+  // it at the edge so users globally don't all pay the 8s cold-fetch cost.
+  // (The single-address branch above keeps no-store because it's user-supplied.)
+  const PUBLIC_CACHE = 'public, s-maxage=120, stale-while-revalidate=600';
+
   // All whales — check caches
   if (memCache && Date.now() - memCache.time < MEM_CACHE_TTL) {
     return NextResponse.json(memCache.data, {
-      headers: { 'Cache-Control': 'no-store, max-age=0' },
+      headers: { 'X-Cache': 'L1', 'Cache-Control': PUBLIC_CACHE },
     });
   }
 
@@ -296,7 +301,7 @@ export async function GET(request: NextRequest) {
       if (dbData) {
         memCache = { data: dbData, time: Date.now() };
         return NextResponse.json(dbData, {
-          headers: { 'Cache-Control': 'no-store, max-age=0' },
+          headers: { 'X-Cache': 'L2', 'Cache-Control': PUBLIC_CACHE },
         });
       }
     } catch { /* miss */ }
@@ -312,13 +317,13 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(whales, {
-      headers: { 'Cache-Control': 'no-store, max-age=0' },
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': PUBLIC_CACHE },
     });
   } catch (err) {
     // Return stale cache on error
     if (memCache) {
       return NextResponse.json(memCache.data, {
-        headers: { 'Cache-Control': 'no-store, max-age=0' },
+        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=30' },
       });
     }
     console.error('[hl-whales]', err instanceof Error ? err.message : err);

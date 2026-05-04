@@ -374,8 +374,24 @@ function buildArbitrage(
   };
 }
 
+// ─── L1 in-memory cache ───────────────────────────────────────
+// Polymarket + Kalshi together take ~10s cold. Without L1, every cache miss at
+// the CF edge falls through and hits upstream — that 10s spike was visible to
+// users on /predictions. Cached responses come back in ~50ms.
+let l1Cache: { body: PredictionMarketsResponse; ts: number } | null = null;
+const L1_TTL = 3 * 60 * 1000; // 3 minutes — prediction prices move slowly
+
 // ─── Main handler ────────────────────────────────────────────
 export async function GET(_request: NextRequest) {
+  if (l1Cache && Date.now() - l1Cache.ts < L1_TTL) {
+    return NextResponse.json(l1Cache.body, {
+      headers: {
+        'X-Cache': 'HIT',
+        'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=600',
+      },
+    });
+  }
+
   const errors: string[] = [];
 
   const [polyResult, kalshiResult] = await Promise.allSettled([
@@ -406,7 +422,16 @@ export async function GET(_request: NextRequest) {
     },
   };
 
+  // Cache only when at least one platform succeeded — don't pin a fully-empty
+  // response if both upstreams were down.
+  if (poly.length > 0 || kalshi.length > 0) {
+    l1Cache = { body: response, ts: Date.now() };
+  }
+
   return NextResponse.json(response, {
-    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=600',
+    },
   });
 }
