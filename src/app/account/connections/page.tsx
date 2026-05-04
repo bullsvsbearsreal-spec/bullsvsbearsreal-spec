@@ -325,6 +325,8 @@ function FundingFlipAlert() {
   const [rules, setRules] = useState<AlertRule[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; results: string[] } | null>(null);
   const push = usePushNotifications();
 
   const load = useCallback(async () => {
@@ -367,6 +369,25 @@ function FundingFlipAlert() {
   };
 
   const toggleEnabled = () => persist(!enabled, channels);
+
+  const sendTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    setError(null);
+    try {
+      const res = await fetch('/api/account/alerts/test', { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json?.error || `HTTP ${res.status}`);
+        return;
+      }
+      setTestResult({ ok: Boolean(json.ok), results: json.results || [] });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send test');
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const toggleChannel = async (c: Channel) => {
     const isSelected = channels.includes(c);
@@ -468,6 +489,23 @@ function FundingFlipAlert() {
               </div>
             )}
 
+            {enabled && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={sendTest}
+                  disabled={testing}
+                  className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08] inline-flex items-center gap-1 disabled:opacity-40"
+                >
+                  {testing && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {testing ? 'Sending…' : 'Send test notification'}
+                </button>
+                {testResult && (
+                  <span className={`text-[10px] font-mono ${testResult.ok ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {testResult.results.join(' · ')}
+                  </span>
+                )}
+              </div>
+            )}
             {fundingFlip?.lastFiredAt && (
               <div className="text-[10px] text-neutral-600 mt-2">
                 Last fired: {new Date(fundingFlip.lastFiredAt).toLocaleString()}
