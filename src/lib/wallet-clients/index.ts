@@ -8,9 +8,11 @@
 import type { SupportedChain } from '@/lib/portfolio/supported-exchanges';
 import type { WalletClient } from './types';
 import { hyperliquidWalletClient } from './hyperliquid';
+import { gmxWalletClient } from './gmx';
 
 const CLIENTS: Partial<Record<SupportedChain, WalletClient>> = {
   hyperliquid: hyperliquidWalletClient,
+  arbitrum: gmxWalletClient, // GMX V2 is the dominant arbitrum perp DEX
 };
 
 /** Returns null for chains we haven't implemented a fetcher for yet. */

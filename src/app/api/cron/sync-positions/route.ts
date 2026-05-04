@@ -161,8 +161,12 @@ export async function GET(req: NextRequest) {
         }
         const positions = await client.fetchPositions(w.address);
         // For wallets we use a synthetic exchange name based on the chain so
-        // the /positions UI can group/filter — "Hyperliquid" for the HL chain.
-        const exchangeLabel = w.chain === 'hyperliquid' ? 'Hyperliquid' : w.chain.toUpperCase();
+        // the /positions UI can group/filter — "Hyperliquid" for HL,
+        // "GMX" for arbitrum (GMX V2 is the only arbitrum DEX wired today).
+        const exchangeLabel =
+          w.chain === 'hyperliquid' ? 'Hyperliquid' :
+          w.chain === 'arbitrum'    ? 'GMX' :
+          w.chain.toUpperCase();
         await replaceUserPositionsForSource(
           target.userId,
           'dex',
