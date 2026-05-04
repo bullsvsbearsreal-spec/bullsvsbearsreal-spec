@@ -31,6 +31,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'basis',        label: 'Basis',             href: '/basis',              hint: 'Spot-perp premium' },
       { id: 'premiums',     label: 'Premiums',          href: '/premiums',           hint: 'Perp premiums' },
       { id: 'execution',    label: 'Execution Costs',   href: '/execution-costs',    hint: 'Slippage + fees' },
+      { id: 'trade-opt',    label: 'Trade Optimizer',   href: '/trade-optimizer',    hint: 'Cheapest venue per trade' },
       { id: 'fees',         label: 'Exchange Fees',     href: '/exchange-fees',      hint: 'Maker/taker tiers' },
       { id: 'predictions',  label: 'Prediction Markets', href: '/prediction-markets', hint: 'Polymarket + others' },
     ]},

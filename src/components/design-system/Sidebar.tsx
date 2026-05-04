@@ -103,6 +103,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/chart',             label: 'Chart',        color: MUTE, icon: I.chart },
     { href: '/spreads',           label: 'Spreads',      color: MUTE, icon: I.spreads },
     { href: '/execution-costs',   label: 'Execution Cost', color: MUTE, icon: I.scale },
+    { href: '/trade-optimizer',   label: 'Trade Optimizer', color: ACC, icon: I.scale },
     { href: '/exchange-comparison', label: 'Exchanges',    color: MUTE, icon: I.building },
     { href: '/exchange-fees',     label: 'Exchange Fees', color: MUTE, icon: I.coin },
     { href: '/exchange-reserves', label: 'Reserves',     color: MUTE, icon: I.building },
