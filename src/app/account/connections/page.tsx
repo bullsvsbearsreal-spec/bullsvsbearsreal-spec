@@ -16,6 +16,7 @@ import {
   Bell,
   BellOff,
 } from 'lucide-react';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface ExchangeKey {
   id: number;
@@ -324,6 +325,7 @@ function FundingFlipAlert() {
   const [rules, setRules] = useState<AlertRule[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const push = usePushNotifications();
 
   const load = useCallback(async () => {
     try {
@@ -365,10 +367,33 @@ function FundingFlipAlert() {
   };
 
   const toggleEnabled = () => persist(!enabled, channels);
-  const toggleChannel = (c: Channel) => {
-    const next = channels.includes(c) ? channels.filter(x => x !== c) : [...channels, c];
+
+  const toggleChannel = async (c: Channel) => {
+    const isSelected = channels.includes(c);
+
+    // Special path: Browser push needs an active OS-level subscription before
+    // we can route alerts to it. If user is enabling the channel for the first
+    // time, prompt them to subscribe; only persist the selection if they accept.
+    if (c === 'browser_push' && !isSelected) {
+      if (!push.isSupported) {
+        setError("Browser push isn't supported in this browser. Try Chrome / Firefox / Edge.");
+        return;
+      }
+      if (!push.isSubscribed) {
+        const ok = await push.subscribe();
+        if (!ok) {
+          setError(
+            push.permission === 'denied'
+              ? 'Notifications blocked — re-enable in your browser site settings.'
+              : 'Could not register for push notifications.',
+          );
+          return;
+        }
+      }
+    }
+
+    const next = isSelected ? channels.filter(x => x !== c) : [...channels, c];
     if (next.length === 0) {
-      // never persist an empty channel set — silently keep current
       setError('At least one channel required');
       return;
     }
@@ -415,12 +440,19 @@ function FundingFlipAlert() {
                 <div className="flex flex-wrap gap-2">
                   {ALL_CHANNELS.map(c => {
                     const on = channels.includes(c);
+                    const pushBlocked = c === 'browser_push' && (push.permission === 'denied' || push.isLoading);
+                    const tip = c === 'browser_push'
+                      ? push.permission === 'denied'
+                        ? 'Notifications blocked — re-enable in your browser site settings'
+                        : push.isSubscribed ? 'Subscribed to this device' : 'Click to grant permission + subscribe'
+                      : undefined;
                     return (
                       <button
                         key={c}
                         onClick={() => toggleChannel(c)}
-                        disabled={saving}
-                        className={`text-[11px] px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition-colors ${
+                        disabled={saving || pushBlocked}
+                        title={tip}
+                        className={`text-[11px] px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           on
                             ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/40 hover:bg-emerald-500/25'
                             : 'bg-white/[0.04] text-neutral-500 hover:bg-white/[0.08]'
@@ -428,6 +460,7 @@ function FundingFlipAlert() {
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-400' : 'bg-neutral-700'}`} />
                         {CHANNEL_LABELS[c]}
+                        {c === 'browser_push' && push.isLoading && <Loader2 className="w-2.5 h-2.5 animate-spin ml-0.5" />}
                       </button>
                     );
                   })}
