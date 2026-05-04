@@ -24,6 +24,11 @@ const CMC_API_KEY = process.env.CMC_API_KEY || '';
 const DB_CACHE_KEY = 'top-movers';
 const DB_CACHE_TTL = 1800; // 30 min
 
+// CF edge-cache header used on every response path. CMC top-500 data only
+// changes at 5-minute granularity, so a 90s edge cache is plenty fresh and
+// massively reduces origin load for global users.
+const PUBLIC_CACHE = 'public, s-maxage=90, stale-while-revalidate=300';
+
 export async function GET(request: NextRequest) {
   const mode = request.nextUrl.searchParams.get('mode');
   const isHeatmap = mode === 'heatmap';
@@ -32,15 +37,21 @@ export async function GET(request: NextRequest) {
   if (cachedData && Date.now() - cacheTime < CACHE_TTL) {
     if (isHeatmap) {
       if (allCoinsCache) {
-        return NextResponse.json({ coins: allCoinsCache });
+        return NextResponse.json({ coins: allCoinsCache }, {
+          headers: { 'X-Cache': 'L1', 'Cache-Control': PUBLIC_CACHE },
+        });
       }
       // Reconstruct heatmap from gainers+losers if allCoinsCache missing
       const combined = [...(cachedData.gainers || []), ...(cachedData.losers || [])];
       if (combined.length > 0) {
-        return NextResponse.json({ coins: combined });
+        return NextResponse.json({ coins: combined }, {
+          headers: { 'X-Cache': 'L1', 'Cache-Control': PUBLIC_CACHE },
+        });
       }
     }
-    return NextResponse.json(cachedData);
+    return NextResponse.json(cachedData, {
+      headers: { 'X-Cache': 'L1', 'Cache-Control': PUBLIC_CACHE },
+    });
   }
 
   // L2: DB cache
@@ -51,7 +62,9 @@ export async function GET(request: NextRequest) {
         if (dbCoins) {
           allCoinsCache = dbCoins;
           cacheTime = Date.now();
-          return NextResponse.json({ coins: dbCoins });
+          return NextResponse.json({ coins: dbCoins }, {
+            headers: { 'X-Cache': 'L2', 'Cache-Control': PUBLIC_CACHE },
+          });
         }
       }
       const dbData = await getCache<typeof cachedData>(DB_CACHE_KEY);
@@ -61,7 +74,9 @@ export async function GET(request: NextRequest) {
         if (isHeatmap) {
           // DB had top-movers but not heatmap — fall through to fetch
         } else {
-          return NextResponse.json(cachedData);
+          return NextResponse.json(cachedData, {
+            headers: { 'X-Cache': 'L2', 'Cache-Control': PUBLIC_CACHE },
+          });
         }
       }
     } catch { /* proceed to fetch */ }
@@ -126,7 +141,7 @@ export async function GET(request: NextRequest) {
       setCache('heatmap-coins', sorted, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache heatmap failed:', e));
     }
 
-    const cacheHeaders = { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' };
+    const cacheHeaders = { 'X-Cache': 'MISS', 'Cache-Control': PUBLIC_CACHE };
     if (isHeatmap) {
       return NextResponse.json({ coins: sorted }, { headers: cacheHeaders });
     }
@@ -161,7 +176,7 @@ export async function GET(request: NextRequest) {
         allCoinsCache = sorted;
         cacheTime = Date.now();
 
-        const headers = { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' };
+        const headers = { 'X-Cache': 'MISS-CG', 'Cache-Control': PUBLIC_CACHE };
         if (isHeatmap) return NextResponse.json({ coins: sorted }, { headers });
         return NextResponse.json(cachedData, { headers });
       }
@@ -169,18 +184,25 @@ export async function GET(request: NextRequest) {
       console.error('Top movers CoinGecko fallback also failed:', cgErr);
     }
 
-    // Final fallback: use cached data if available
+    // Final fallback: use cached data if available — short edge cache so the
+    // world doesn't freeze on stale data when upstreams come back.
+    const STALE = { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=120' };
     if (isHeatmap && allCoinsCache) {
-      return NextResponse.json({ coins: allCoinsCache });
+      return NextResponse.json({ coins: allCoinsCache }, { headers: STALE });
     }
     if (cachedData) {
       if (isHeatmap) {
-        return NextResponse.json({ coins: [...(cachedData.gainers || []), ...(cachedData.losers || [])] });
+        return NextResponse.json(
+          { coins: [...(cachedData.gainers || []), ...(cachedData.losers || [])] },
+          { headers: STALE },
+        );
       }
-      return NextResponse.json(cachedData);
+      return NextResponse.json(cachedData, { headers: STALE });
     }
-    if (isHeatmap) return NextResponse.json({ coins: [] });
-    return NextResponse.json({ gainers: [], losers: [] });
+    // Truly empty — don't cache the empty body.
+    const NOCACHE = { 'Cache-Control': 'no-store' };
+    if (isHeatmap) return NextResponse.json({ coins: [] }, { headers: NOCACHE });
+    return NextResponse.json({ gainers: [], losers: [] }, { headers: NOCACHE });
   }
 }
 

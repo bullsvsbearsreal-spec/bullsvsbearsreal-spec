@@ -93,7 +93,10 @@ export async function GET(request: NextRequest) {
   const cacheKey = `momentum:${minScore}:${limit}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
-    return NextResponse.json(cached.body, { headers: { 'X-Cache': 'HIT' } });
+    return NextResponse.json(cached.body, {
+      // Match the MISS-path Cache-Control so CF can still edge-cache HITs.
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=90, stale-while-revalidate=180' },
+    });
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';

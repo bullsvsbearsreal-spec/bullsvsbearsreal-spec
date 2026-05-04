@@ -18,7 +18,11 @@ export async function GET(req: NextRequest) {
   const key = `${symbol}-${days}`;
   const cached = cache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_MS) {
-    return NextResponse.json(cached.data);
+    // L1 hit must also set CF Cache-Control — otherwise the edge can't cache
+    // it and every user globally re-hits FRA1 even though we have the answer.
+    return NextResponse.json(cached.data, {
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    });
   }
 
   try {
