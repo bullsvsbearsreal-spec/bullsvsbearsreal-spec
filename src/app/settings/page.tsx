@@ -116,8 +116,12 @@ export default function SettingsPage() {
           <ConnectedAccountsSection connectedProviders={accountStats?.connectedProviders ?? []} />
           <SecuritySection />
           <TwoFactorSection email={email} />
-          <NotificationsSection email={email} />
-          <TelegramSection />
+          <div id="notifications" className="scroll-mt-24">
+            <NotificationsSection email={email} />
+          </div>
+          <div id="telegram" className="scroll-mt-24">
+            <TelegramSection />
+          </div>
 
           {/* Display (theme toggle — tiny, kept inline) */}
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
