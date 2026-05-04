@@ -416,6 +416,80 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_social_posts_pub_date ON social_posts(pub_date DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_social_posts_handle ON social_posts(handle, pub_date DESC)`;
 
+  // ─── Portfolio: user-supplied exchange keys + wallets + aggregated positions
+  //
+  // user_exchange_keys: API key (encrypted) for a CEX. AES-256-GCM with the
+  //   key from EXCHANGE_KEY_ENCRYPTION_KEY env var. Encrypted blob format is
+  //   "nonce.ciphertext.tag" (base64-joined). `key_prefix` is the first 8
+  //   chars of the API key — safe to display in UI for identification.
+  //   `permissions` is whatever the exchange returned at validation time
+  //   (free-form jsonb so we don't lock the schema to a single exchange).
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_exchange_keys (
+      id              SERIAL PRIMARY KEY,
+      user_id         TEXT NOT NULL,
+      exchange        TEXT NOT NULL,
+      label           TEXT,
+      key_prefix      TEXT NOT NULL,
+      encrypted_key   TEXT NOT NULL,
+      encrypted_secret TEXT NOT NULL,
+      encrypted_passphrase TEXT,
+      permissions     JSONB,
+      last_synced_at  TIMESTAMPTZ,
+      last_error      TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, exchange, key_prefix)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_exchange_keys_user ON user_exchange_keys(user_id)`;
+
+  // user_wallets: read-only wallet addresses (DEX position tracking).
+  // No private keys ever stored. `chain` is one of 'ethereum', 'arbitrum',
+  // 'solana', 'base', 'hyperliquid' (HL is its own L1).
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_wallets (
+      id          SERIAL PRIMARY KEY,
+      user_id     TEXT NOT NULL,
+      chain       TEXT NOT NULL,
+      address     TEXT NOT NULL,
+      label       TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, chain, address)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_wallets_user ON user_wallets(user_id)`;
+
+  // user_positions: aggregated open positions, refreshed by the position
+  //   sync cron every minute. `source_type` tells us whether the source row
+  //   lives in user_exchange_keys (cex) or user_wallets (dex). UPSERT key is
+  //   (user_id, source_type, source_id, exchange, symbol, side) so closing
+  //   a position deletes its row on the next sync.
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_positions (
+      id                SERIAL PRIMARY KEY,
+      user_id           TEXT NOT NULL,
+      source_type       TEXT NOT NULL,
+      source_id         INT NOT NULL,
+      exchange          TEXT NOT NULL,
+      symbol            TEXT NOT NULL,
+      side              TEXT NOT NULL,
+      size              DOUBLE PRECISION NOT NULL,
+      entry_price       DOUBLE PRECISION NOT NULL,
+      mark_price        DOUBLE PRECISION,
+      position_value    DOUBLE PRECISION,
+      unrealized_pnl    DOUBLE PRECISION,
+      leverage          DOUBLE PRECISION,
+      margin_used       DOUBLE PRECISION,
+      liquidation_price DOUBLE PRECISION,
+      tp_price          DOUBLE PRECISION,
+      sl_price          DOUBLE PRECISION,
+      cumulative_funding DOUBLE PRECISION,
+      updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, source_type, source_id, exchange, symbol, side)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_positions_user ON user_positions(user_id, updated_at DESC)`;
+
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -2821,6 +2895,165 @@ export async function getStaleSocialHandles(
     console.error('getStaleSocialHandles error:', e);
     return [];
   }
+}
+
+// ─── Portfolio: user-supplied exchange keys + wallets + positions ──────────
+//
+// These helpers never expose the raw encrypted blobs through the API layer.
+// `getDecryptedExchangeKey` returns plaintext — only call it from a server-
+// side context that's about to make an authenticated upstream call.
+
+export interface ExchangeKeyMeta {
+  id: number;
+  exchange: string;
+  label: string | null;
+  keyPrefix: string;
+  permissions: unknown | null;
+  lastSyncedAt: Date | null;
+  lastError: string | null;
+  createdAt: Date;
+}
+
+export interface ExchangeKeySecrets {
+  exchange: string;
+  apiKey: string;
+  apiSecret: string;
+  passphrase?: string;
+}
+
+export interface UserWallet {
+  id: number;
+  chain: string;
+  address: string;
+  label: string | null;
+  createdAt: Date;
+}
+
+export async function listUserExchangeKeys(userId: string): Promise<ExchangeKeyMeta[]> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const rows = await sql`
+    SELECT id, exchange, label, key_prefix, permissions,
+           last_synced_at, last_error, created_at
+    FROM user_exchange_keys
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r: any) => ({
+    id: r.id,
+    exchange: r.exchange,
+    label: r.label,
+    keyPrefix: r.key_prefix,
+    permissions: r.permissions,
+    lastSyncedAt: r.last_synced_at,
+    lastError: r.last_error,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function addUserExchangeKey(params: {
+  userId: string;
+  exchange: string;
+  label: string | null;
+  keyPrefix: string;
+  encryptedKey: string;
+  encryptedSecret: string;
+  encryptedPassphrase: string | null;
+  permissions: unknown | null;
+}): Promise<{ id: number }> {
+  const sql = getSQL();
+  const rows = await sql`
+    INSERT INTO user_exchange_keys
+      (user_id, exchange, label, key_prefix, encrypted_key, encrypted_secret,
+       encrypted_passphrase, permissions)
+    VALUES
+      (${params.userId}, ${params.exchange}, ${params.label}, ${params.keyPrefix},
+       ${params.encryptedKey}, ${params.encryptedSecret},
+       ${params.encryptedPassphrase}, ${params.permissions as any})
+    RETURNING id
+  `;
+  return { id: rows[0].id };
+}
+
+export async function deleteUserExchangeKey(userId: string, id: number): Promise<boolean> {
+  const sql = getSQL();
+  const rows = await sql`
+    DELETE FROM user_exchange_keys
+    WHERE user_id = ${userId} AND id = ${id}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Server-side only — returns the decrypted secrets for a single key.
+ * Throws if the row doesn't exist or doesn't belong to the user.
+ * Caller is responsible for never sending these over the wire.
+ */
+export async function getDecryptedExchangeKey(
+  userId: string,
+  id: number,
+  decryptFn: (blob: string) => string,
+): Promise<ExchangeKeySecrets | null> {
+  const sql = getSQL();
+  const rows = await sql`
+    SELECT exchange, encrypted_key, encrypted_secret, encrypted_passphrase
+    FROM user_exchange_keys
+    WHERE user_id = ${userId} AND id = ${id}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0] as any;
+  return {
+    exchange: r.exchange,
+    apiKey: decryptFn(r.encrypted_key),
+    apiSecret: decryptFn(r.encrypted_secret),
+    passphrase: r.encrypted_passphrase ? decryptFn(r.encrypted_passphrase) : undefined,
+  };
+}
+
+export async function listUserWallets(userId: string): Promise<UserWallet[]> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const rows = await sql`
+    SELECT id, chain, address, label, created_at
+    FROM user_wallets
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r: any) => ({
+    id: r.id,
+    chain: r.chain,
+    address: r.address,
+    label: r.label,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function addUserWallet(params: {
+  userId: string;
+  chain: string;
+  address: string;
+  label: string | null;
+}): Promise<{ id: number }> {
+  const sql = getSQL();
+  const rows = await sql`
+    INSERT INTO user_wallets (user_id, chain, address, label)
+    VALUES (${params.userId}, ${params.chain}, ${params.address.toLowerCase()}, ${params.label})
+    ON CONFLICT (user_id, chain, address) DO UPDATE SET label = EXCLUDED.label
+    RETURNING id
+  `;
+  return { id: rows[0].id };
+}
+
+export async function deleteUserWallet(userId: string, id: number): Promise<boolean> {
+  const sql = getSQL();
+  const rows = await sql`
+    DELETE FROM user_wallets
+    WHERE user_id = ${userId} AND id = ${id}
+    RETURNING id
+  `;
+  return rows.length > 0;
 }
 
 // ─── Check if DB is available ───────────────────────────────────────────────
