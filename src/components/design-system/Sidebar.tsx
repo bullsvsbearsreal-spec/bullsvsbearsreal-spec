@@ -108,6 +108,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/exchange-fees',     label: 'Exchange Fees', color: MUTE, icon: I.coin },
     { href: '/exchange-reserves', label: 'Reserves',     color: MUTE, icon: I.building },
     { href: '/listings',          label: 'New Listings', color: MUTE, icon: I.layers },
+    { href: '/tge-calendar',      label: 'TGE Calendar', color: MUTE, icon: I.layers },
     { href: '/prediction-markets', label: 'Prediction Markets', color: MUTE, icon: I.trophy },
   ]},
   { id: 'discovery', label: 'Movers & Discovery', items: [
@@ -129,6 +130,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   ]},
   { id: 'onchain', label: 'On-Chain & Flows', items: [
     { href: '/onchain',           label: 'On-Chain',       color: PUR,  icon: I.cube },
+    { href: '/hash-ribbons',      label: 'Hash Ribbons',   color: PUR,  icon: I.signal },
     { href: '/cvd',               label: 'CVD',            color: PUR,  icon: I.signal },
     { href: '/orderflow',         label: 'Order Flow',     color: PUR,  icon: I.signal },
     { href: '/stablecoin-flows',  label: 'Stablecoin Flows', color: ACC, icon: I.coin },
