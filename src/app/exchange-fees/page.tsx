@@ -47,7 +47,6 @@ const FEES: ExchangeFee[] = [
   { name: 'GMX',         kind: 'DEX', spot: { maker: 0.000, taker: 0.000 }, perp: { maker: 0.050, taker: 0.070 }, notes: 'GLP-backed. Borrow fees on top of open/close.', color: '#3fcfcf' },
   { name: 'Aster',       kind: 'DEX', spot: { maker: 0.000, taker: 0.000 }, perp: { maker: 0.000, taker: 0.035 }, notes: '0% maker, points earning on trades.', color: '#bf00ff' },
   { name: 'Lighter',     kind: 'DEX', spot: { maker: 0.000, taker: 0.000 }, perp: { maker: 0.000, taker: 0.000 }, notes: 'RWA pairs 0 fees. Perps fees set tier-by-tier.', color: '#a855f7' },
-  { name: 'Drift',       kind: 'DEX', spot: { maker: 0.000, taker: 0.000 }, perp: { maker: 0.010, taker: 0.100 }, notes: 'Solana-based.', color: '#ff3b9a' },
 ];
 
 type Sort = 'perpTaker' | 'spotTaker' | 'affiliate' | 'name';

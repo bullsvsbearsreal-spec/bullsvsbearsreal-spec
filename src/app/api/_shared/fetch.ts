@@ -60,8 +60,8 @@ const PROXIED_DOMAINS = new Set([
   'omni-client-api.prod.ap-northeast-1.variational.io', // Variational
   'query1.finance.yahoo.com',
   'query2.finance.yahoo.com',
-  'data.api.drift.trade', // Drift data API — unreliable from Vercel bom1; route through DO droplet
-  'dlob.drift.trade',     // Drift DLOB API (fallback price data)
+  // Drift data/DLOB hosts removed alongside the Drift fetcher — indexer
+  // frozen since Apr 2026.
   // Gate.io (api.gateio.ws) and edgeX (pro.edgex.exchange) work directly from FRA1
   // but fail through CF Worker proxy — keep them direct-only
 ]);

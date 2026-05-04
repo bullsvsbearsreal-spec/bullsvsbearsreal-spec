@@ -15,7 +15,6 @@ import {
   fetchBitgetBook,
   fetchHyperliquidBook,
   fetchDydxBook,
-  fetchDriftBook,
   fetchAsterBook,
   fetchAevoBook,
   fetchLighterBook,
@@ -25,7 +24,8 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
-// Map exchange name (case-insensitive) → fetcher function
+// Map exchange name (case-insensitive) → fetcher function.
+// Drift removed — indexer frozen since Apr 2026, see funding/exchanges.ts.
 const EXCHANGE_FETCHERS: Record<string, (asset: string, fetchFn: typeof fetch) => Promise<RawBookData | null>> = {
   binance: fetchBinanceBook,
   bybit: fetchBybitBook,
@@ -33,7 +33,6 @@ const EXCHANGE_FETCHERS: Record<string, (asset: string, fetchFn: typeof fetch) =
   bitget: fetchBitgetBook,
   hyperliquid: fetchHyperliquidBook,
   dydx: fetchDydxBook,
-  drift: fetchDriftBook,
   aster: fetchAsterBook,
   'aster dex': fetchAsterBook,
   aevo: fetchAevoBook,
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const rawSymbol = (searchParams.get('symbol') || 'BTC').toUpperCase();
   const symbol = /^[A-Z0-9]+$/.test(rawSymbol) ? rawSymbol : 'BTC';
-  const exchangesParam = searchParams.get('exchanges') || 'Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter';
+  const exchangesParam = searchParams.get('exchanges') || 'Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Aster,Aevo,Lighter';
   const requestedExchanges = exchangesParam.split(',').map(e => e.trim()).filter(Boolean);
   const includeDepth = searchParams.get('depth') === 'true';
 

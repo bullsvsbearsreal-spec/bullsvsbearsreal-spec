@@ -714,39 +714,7 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // Drift Protocol (Solana DEX) — /stats/markets broken since ~Apr 2026, use /stats/markets/prices
-  {
-    name: 'Drift',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://data.api.drift.trade/stats/markets/prices', {}, 12000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const markets: any[] = json?.markets || json?.data || json || [];
-      if (!Array.isArray(markets)) return [];
-      return markets
-        .filter((m: any) => (m.marketType === 'perp' || m.type === 'perp') && (m.oraclePrice || m.price))
-        .map((m: any) => {
-          let symbol = (m.symbol || '').replace('-PERP', '');
-          if (!symbol) return null;
-          if (symbol.startsWith('1M')) symbol = symbol.slice(2);
-          const lastPrice = parseFloat(m.oraclePrice || m.price) || 0;
-          const priceChange = parseFloat(m.priceChange24hPercent) || parseFloat(m.priceChange24h?.percent) || 0;
-          return {
-            symbol,
-            exchange: 'Drift',
-            lastPrice,
-            price: lastPrice,
-            priceChangePercent24h: priceChange,
-            changePercent24h: priceChange,
-            high24h: parseFloat(m.priceHigh?.oracle || m.high24h) || 0,
-            low24h: parseFloat(m.priceLow?.oracle || m.low24h) || 0,
-            volume24h: parseFloat(m.baseVolume || m.volume24h) || 0,
-            quoteVolume24h: parseFloat(m.quoteVolume || m.quoteVolume24h) || 0,
-          };
-        })
-        .filter((item: any) => item && item.lastPrice > 0);
-    },
-  },
+  // Drift removed — indexer frozen since Apr 2026.
 
   // BitMEX — CloudFlare-blocked, requires PROXY_URL
   {

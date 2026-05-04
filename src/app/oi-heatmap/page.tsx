@@ -598,7 +598,7 @@ export default function OIHeatmapPage() {
             </span>
           </p>
           <p className="text-[10px] text-neutral-500 mt-2 ml-6">
-            Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, KuCoin, Deribit, HTX, Hyperliquid, dYdX, Drift, GMX, and more. Refreshes every 3 min.
+            Sources: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, KuCoin, Deribit, HTX, Hyperliquid, dYdX, GMX, and more. Refreshes every 3 min.
           </p>
         </div>
       </main>

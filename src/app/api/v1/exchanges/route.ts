@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     'CoinEx': '8h', 'Aster': '8h', 'gTrade': '8h', 'Bitunix': '8h',
     'Kraken': '4h',
     'Hyperliquid': '1h', 'dYdX': '1h', 'Aevo': '1h', 'Coinbase': '1h',
-    'Drift': '1h', 'GMX': '1h', 'Extended': '1h', 'Lighter': '1h',
+    'GMX': '1h', 'Extended': '1h', 'Lighter': '1h',
     'Variational': '1h',
   };
 

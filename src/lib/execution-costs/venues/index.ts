@@ -1,6 +1,6 @@
 export { fetchHyperliquidBook } from './hyperliquid';
 export { fetchDydxBook } from './dydx';
-export { fetchDriftBook } from './drift';
+// Drift removed — indexer frozen since Apr 2026.
 export { fetchAsterBook } from './aster';
 export { fetchAevoBook } from './aevo';
 export { fetchLighterBook } from './lighter';

@@ -176,7 +176,7 @@ function FundingTimeline({ exchanges, nextFundingTimes, intervals, highExchange,
 // Supported exchanges for orderbook fetching
 const DEPTH_EXCHANGES = new Set([
   'Binance', 'Bybit', 'OKX', 'Bitget',
-  'Hyperliquid', 'dYdX', 'Drift', 'Aster', 'Aevo', 'Lighter',
+  'Hyperliquid', 'dYdX', 'Aster', 'Aevo', 'Lighter',
 ]);
 
 interface DepthData {

@@ -13,7 +13,7 @@ interface ExchangeLogoProps {
 const PNG_EXCHANGES = new Set([
   'binance', 'bybit', 'okx', 'bitget', 'deribit', 'htx', 'kucoin',
   'mexc', 'kraken', 'bingx', 'phemex', 'hyperliquid', 'gmx', 'dydx',
-  'aevo', 'vertex', 'drift', 'gtrade', 'bitfinex', 'whitebit',
+  'aevo', 'vertex', 'gtrade', 'bitfinex', 'whitebit',
   'coinbase', 'coinex', 'aster', 'bitunix', 'lighter',
   'bitmex', 'gate', 'gate.io', 'edgex', 'variational', 'extended', 'nado',
   'backpack', 'orderly', 'paradex',
@@ -41,7 +41,6 @@ export const exchangeColors: Record<string, string> = {
   dydx: '#6966FF',
   aevo: '#000000',
   vertex: '#5AB8F5',
-  drift: '#8B5CF6',
   gtrade: '#14B8A6',
   aster: '#EC4899',
   lighter: '#1A1A2E',
@@ -68,7 +67,7 @@ export const exchangeLogos: Record<string, React.ComponentType<ExchangeLogoProps
 const NEEDS_LIGHT_BG = new Set([
   'dydx', 'bingx', 'htx', 'lighter', 'aevo', 'extended',
   'whitebit', 'okx', 'backpack', 'kraken', 'deribit', 'nado',
-  'variational', 'drift',
+  'variational',
 ]);
 
 // Normalize exchange key to file-safe name

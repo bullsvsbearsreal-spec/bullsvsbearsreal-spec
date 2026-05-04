@@ -86,7 +86,7 @@ function ExecutionCostsInner() {
 
   // Multi-exchange slippage heatmap data
   const slippageFetcher = useCallback(
-    () => fetch(`/api/orderbook/multi?symbol=${asset}&exchanges=Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Drift,Aster,Aevo,Lighter&depth=true`, { signal: AbortSignal.timeout(12000) })
+    () => fetch(`/api/orderbook/multi?symbol=${asset}&exchanges=Binance,Bybit,OKX,Bitget,Hyperliquid,dYdX,Aster,Aevo,Lighter&depth=true`, { signal: AbortSignal.timeout(12000) })
       .then(r => r.ok ? r.json() : null).catch(() => null),
     [asset],
   );
@@ -313,7 +313,7 @@ function ExecutionCostsInner() {
             <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
             <span>
               <span className="text-hub-yellow font-medium">Total cost</span> = Fee + Spread + Impact.
-              CLOB venues (Hyperliquid, dYdX, Drift, Aster, Aevo, Lighter, edgeX) use real-time orderbook depth.
+              CLOB venues (Hyperliquid, dYdX, Aster, Aevo, Lighter, edgeX) use real-time orderbook depth.
               AMM venues (gTrade, GMX) use formula-based pricing with no spread.
               Venues with stale prices (&gt;5% from consensus) are automatically excluded.
             </span>

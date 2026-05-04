@@ -162,7 +162,7 @@ const FEATURES = [
   { icon: Zap, title: 'Real-time Data', desc: 'All data refreshed every 60 seconds. Funding, OI, tickers, spreads, and arbitrage from a single API.', gradient: 'from-amber-500/20 to-orange-500/20' },
   { icon: Shield, title: 'Secure by Default', desc: 'Bearer token auth with SHA256 hashing, per-key rate limits, and automatic usage tracking.', gradient: 'from-blue-500/20 to-cyan-500/20' },
   { icon: Clock, title: 'Generous Free Tier', desc: '100 req/min and 5,000/day. Enough for most bots, dashboards, and research workflows.', gradient: 'from-green-500/20 to-emerald-500/20' },
-  { icon: Database, title: '33 CEX + DEX', desc: 'Binance, Bybit, OKX, Hyperliquid, dYdX, Drift, GMX, Kraken, Bitget, MEXC, and 23 more.', gradient: 'from-purple-500/20 to-pink-500/20' },
+  { icon: Database, title: '32 CEX + DEX', desc: 'Binance, Bybit, OKX, Hyperliquid, dYdX, GMX, Kraken, Bitget, MEXC, and 22 more.', gradient: 'from-purple-500/20 to-pink-500/20' },
 ];
 
 const ENDPOINT_GROUPS = [
@@ -219,7 +219,7 @@ const USE_CASES = [
 const EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'Phemex',
   'Bitunix', 'KuCoin', 'HTX', 'Bitfinex', 'WhiteBIT', 'Coinbase', 'CoinEx', 'Gate.io',
-  'Hyperliquid', 'dYdX', 'Drift', 'GMX',
+  'Hyperliquid', 'dYdX', 'GMX',
 ];
 
 const STEPS = [

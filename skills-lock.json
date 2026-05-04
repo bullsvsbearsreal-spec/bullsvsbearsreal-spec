@@ -1,6 +1,36 @@
 {
   "version": 1,
   "skills": {
+    "a-b-test-design": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "392f9b382ffb63dca4a7f38dab00799f358740950a4b2ae5d612d1f9058c175f"
+    },
+    "accessibility-audit": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "750aa15e0c1307e5d64ce3ad93a42d713addf0b40344223549b5c1b3a6f97424"
+    },
+    "accessibility-test-plan": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "e322787d37cf58544aa56502121b42550168917551d89b8438474258cb03e16b"
+    },
+    "affinity-diagram": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "8dbb9a234485cd4bf2f1420171a09c4936c6df6ca3bd966884f752fd8b1ff33d"
+    },
+    "algorithmic-art": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "987b24aa98171a0d3690420173b2cdb6eaafd57981ed716b5d50371affa82ea3"
+    },
+    "animation-principles": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "4a676e849b19b28b7bf9820bfbb95aee1a25c5bf9990c3d8de854124687e877a"
+    },
     "api-design": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
@@ -10,6 +40,26 @@
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "6456e45aca107569db0bf67910f58b60af891330864bfdb3fc1c7a9df1ceffbc"
+    },
+    "brand-guidelines": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "c82f0b24cdcc7e2693a963d30c810558b7bb89ed84508b2328228d21256ef865"
+    },
+    "canvas-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "4e8bbc31d3b159efdd32d31a63ba8cd5a44d84911e924c1f2c709c50cbcdd0ec"
+    },
+    "card-sort-analysis": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "45fc0a19882e2e33f2f53e5f2c2592f07aa52bfead0c6eab14548bf6727a3079"
+    },
+    "case-study": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "f5993efa6ce18889f0b3b2f9e369d35482ab6ce11fa553d02f05c4dafae57b39"
     },
     "ckm:banner-design": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
@@ -41,6 +91,16 @@
       "sourceType": "github",
       "computedHash": "b5f892864e479f969820c353f44faeedc61981bf2d7a854367069a80e0a264e1"
     },
+    "claude-api": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "1b065ff6b5dab1568c15b647192763a4ffba56251ec3e8130863a7dea4c11ba5"
+    },
+    "click-test-plan": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "a0921b07319a1ee3c9eda6441099d587b8bce4b19780904aecefaf20a99bff26"
+    },
     "clickhouse-io": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
@@ -50,6 +110,21 @@
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "574803faf98d8a698c2b2151d7ed211208bb084320d411bd3a0919e6b08e48f6"
+    },
+    "color-system": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "6f0e9f54bf6178a60aeab9884f61f68d5bbd78295bc8bf9c88e4e433d91debcb"
+    },
+    "competitive-analysis": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "d2f042a56aa6a7d0c1ac5adc220140df1c0471997211338e3804468ae20f0827"
+    },
+    "component-spec": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "c4bf956e532dff56c4e9c114dff4b353844736b0d47fca888161e6040ec70048"
     },
     "configure-ecc": {
       "source": "affaan-m/everything-claude-code",
@@ -86,6 +161,16 @@
       "sourceType": "github",
       "computedHash": "7140648b8ce5d620935b3c02d39b004d0f07e7739fa216d1a08bed2d7f85996e"
     },
+    "dark-mode-design": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "6df4bb51ea8f87f5fe77b02d0876b610de47b47c19229ad7ddc663b5c09cb09e"
+    },
+    "data-visualization": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "b56640d21b0cf7df95712f06c1ad8f8fdff2099e2d8233197ca2d299b44414a8"
+    },
     "database-migrations": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
@@ -100,6 +185,61 @@
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "1a8a000f5ca0d10119ecc332d6dfe14e10c275219b87e78aaa9436a38e0caa75"
+    },
+    "design-brief": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "d8f481beddf80db77b0aa4a973834ed924c913c06eee8b7fb32ee320af0aeb0e"
+    },
+    "design-critique": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "b7f0e1befebf6a0aad92f35d9d0a7fa1f5ddc0118a755396b22b73cf85c0fcee"
+    },
+    "design-principles": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "bacdd1d449ed9e694d57bf17b7a611ecdf53c35c0577862f38030e9fd6b44a7d"
+    },
+    "design-qa-checklist": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "68acf9604d45f926d00a31d3a7b981eef5223ffd97646f82cbc4fda73afdc182"
+    },
+    "design-rationale": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "e3a9e101015b373a2757eb147b14e70b4f149485967547abf6e6f432a417e09b"
+    },
+    "design-review-process": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "bd84c7079703dfa562efa3c2a8d0ab3e7130896337b0aa98eb27cba593b299cc"
+    },
+    "design-sprint-plan": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "cb95e1a2d0a8ea3f333f5c633badc7926750822d040ff1646475ed309ae9bde0"
+    },
+    "design-system-adoption": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "3af7995733a2df724c1bf15aa336e2755c79d070c4730a4b971403e963618a65"
+    },
+    "design-token": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "f47893e64fd06f08803148b6a136245e2013ea7bec69cb0855f78cb2624f0ba6"
+    },
+    "design-token-audit": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "5de0b3161e0ea3c389679f29dfa57f4a3054658572ea1a5eec3711419b6ce786"
+    },
+    "diary-study-plan": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "689a262445df2b1e093c0ce6fa4525edd891145c83548ac306c34d925d759d58"
     },
     "django-patterns": {
       "source": "affaan-m/everything-claude-code",
@@ -121,30 +261,75 @@
       "sourceType": "github",
       "computedHash": "1a229ce6d010e22d45be0436cbc4ab909ec9a0e0112a87adbcc03ea7b557313c"
     },
+    "doc-coauthoring": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "62cd7744438ee2aecc986c520bb603988a78ff6aaaf70a471bf4584fe0b78dae"
+    },
     "docker-patterns": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "a028783213034aee06d0aa0487c7e6096ae755d24bdd05de9475425306057fcd"
+    },
+    "documentation-template": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "7dc9d9db6dd6191030fd6eba75dc813da4d7d725d0d1e0213408d3950861346f"
+    },
+    "docx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "150be87ff7b18f273ad07da303adb1cf2ca21cc3e76db7a2cf0373405178a278"
     },
     "e2e-testing": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "8e3ac8d268f7ccd4994fa3368e551df13fa48f489674ed57a6c764bcb31b7d00"
     },
+    "empathy-map": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "453a046b358a8356d567c33806ec054e9356ba05a00d0247e9313e70748256b0"
+    },
+    "error-handling-ux": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "af75160dba9f75b17ad7defdbdbf4e21202ccf3a2b0709f90ad2741674fb74e2"
+    },
     "eval-harness": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "f9d214022c55b1ee92d208e535b95662fb0730ef20030f02dde375fae30ead7c"
+    },
+    "experience-map": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "161a2b1e3ed27516df6b5630281e8a2d77c54f6f42f4533440a1c36b08dec097"
+    },
+    "feedback-patterns": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "de7557d21be03caca1fb28e78f60b386c91a26647945e27d5d7caf376ad5c123"
     },
     "foundation-models-on-device": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "ac531cd6bb94ecbb400ad8954a10030cf3f212c57bfda489efa91510fc1f5d90"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
     "frontend-patterns": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "d7a58ffcc4668e1521c5eb185f9283459b569fdcb708e2fa89f9686491b72f9a"
+    },
+    "gesture-patterns": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "84f95ccf11d4a08d617896c43e1e125e8f9903ea3cee1203cedcd90240468b06"
     },
     "golang-patterns": {
       "source": "affaan-m/everything-claude-code",
@@ -156,6 +341,36 @@
       "sourceType": "github",
       "computedHash": "1f263c92e24067adcf574000dd078d3bd0baf9a6568becb2510df1af31c906ef"
     },
+    "handoff-spec": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "360e38c0a4ea40566f03a6a2bba4bde27ad77725b306a93c969c5d1306932dc8"
+    },
+    "heuristic-evaluation": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "2b113c48d272bd27874adef0387da1480aa29d71f96623bb4a3d4152c52a04da"
+    },
+    "icon-system": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "3a7f9354026a5b6faa9b5a49de1f3ffb4cf7c7e6577a92e19e271628637fc7dd"
+    },
+    "illustration-style": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "fbd8bf859847185733c9b8d2b990156cc553039422fb2e2ceebbece9959bfc29"
+    },
+    "internal-comms": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "cf3dba93fd569d7380505db211f89a467869c1a2ef301941148d06f33ed17332"
+    },
+    "interview-script": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "66be0c330cdbd2ffea4aed1195b4c63195deb5230903c91c05dfda71c98150fe"
+    },
     "iterative-retrieval": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
@@ -166,30 +381,105 @@
       "sourceType": "github",
       "computedHash": "1a9fb2648f810758d8d102be8c3d0aa89ae8553a9a5f97434b6b0abb4e685341"
     },
+    "jobs-to-be-done": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "14044f145e8f744f1521ff72462f0d2c6c41637cd8254f8da37f58b50cbb7d6a"
+    },
+    "journey-map": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "6a4d3121a2ad285ff0659a24e3939fd9c96792f9bfb0a48c4fa68bbd07f53bd2"
+    },
     "jpa-patterns": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "9e81a5773027f8ea3079cbdd3fbbee01ec1e7891f8dd663a4cef3cf3ba208061"
+    },
+    "layout-grid": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "a98766b2c4780675bd410c2e687ad461230c7f471be31245e4a7847533d18c96"
     },
     "liquid-glass-design": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "18c81c59796c6280db62d5fb9ac544c094259c51a9c69cfc225ba6c428b9ed57"
     },
+    "loading-states": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "0fdc9b6e647d99cb08a69ce7f7f5beaaa236ee9c6791386e69d28af0f22fcd9c"
+    },
+    "mcp-builder": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "6498a736a8dc5c645047c8a875b8ea7417e2ad97146f005200e50d20a9337ada"
+    },
+    "metrics-definition": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "ebbb0161909fee2e1a59af1bf08759f8d4f97cb3e173072d96927a13ff5f2878"
+    },
+    "micro-interaction-spec": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "0a0eab1d98ca58843e379bc7aae7f2afe334d80c960ed9674431fb7226d7ef56"
+    },
+    "naming-convention": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "69fbdbd7c13ed8f9e803fa8223b9ee181d237442173909d4302feee1dba432ad"
+    },
+    "north-star-vision": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "732432434bf4ae69b6ea06f6131c0ab700e8d57daedaebb3c56a7c0f406268d2"
+    },
     "nutrient-document-processing": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "459943f4733291806a0e77fb27fc2ae6d6e8149c018c9791686bdc9aa9dd235e"
+    },
+    "opportunity-framework": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "26d640497f60b3c364c3d7deb437d1b11bc4296a950bb6c12cb2534e798ac71c"
+    },
+    "pattern-library": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "f57b0dc39c76943b79741ec5b8a0693cb2702cf6fcc6672abbab5053acd49a97"
+    },
+    "pdf": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "37226d4220d844377e6b2a386c51a011df4cd130855ff0b80bcc22f9c28abd57"
     },
     "postgres-patterns": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "5f34713206a8cb66ca39427602405a655447a60f8a6141bf1ff39f474b47c132"
     },
+    "pptx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "2275e4d8dba1790d52f6619b3e2fed04edc948beef545a2ad18e4a1be644426d"
+    },
+    "presentation-deck": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "c2fde2203b1e6d814e19b53c6a3041c967f9c1e7f9ff2684529104030515ddc6"
+    },
     "project-guidelines-example": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "dfa7d74f0656b6b18b77eb1ccdae4e824781386e702c666cb0b73ed8ba7ebf98"
+    },
+    "prototype-strategy": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "80eefbc58e38253619298704f7d15db96758ea65e043231f4ab9f40f484a8e1d"
     },
     "python-patterns": {
       "source": "affaan-m/everything-claude-code",
@@ -206,6 +496,11 @@
       "sourceType": "github",
       "computedHash": "a44fb29cb58d4613e83d6d180914eceb293aa65d2b7345472d78cf06e73cb7b4"
     },
+    "responsive-design": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "bf5fe0640aef383034213724f7de3e62fb9ededee19c0f38dceb6914b6ac0b06"
+    },
     "search-first": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
@@ -220,6 +515,26 @@
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "da0906902dd47d54357b9d80d50c4dcc9c350137dbe5a7fb7fc9830245a57c1e"
+    },
+    "shadcn": {
+      "source": "shadcn-ui/ui",
+      "sourceType": "github",
+      "computedHash": "03365c7543539f6e6689a754e65b3d8ea023ba9d6ea12a9b5550462bf060af8c"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "7e3c9cd74e9e2b4828527a857170e86310f2dab5ea8030a9043df2c7e6c88857"
+    },
+    "slack-gif-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "a36e1ceb3f07eb37bdc259f1bfb18e48cc0e809b2e1651cb2369286cd66b2107"
+    },
+    "spacing-system": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "4960331cd1d675b0246774ee8ab380ff379d21bb1adaec3e6e30e5d30a295a90"
     },
     "springboot-patterns": {
       "source": "affaan-m/everything-claude-code",
@@ -241,10 +556,25 @@
       "sourceType": "github",
       "computedHash": "4d3b3ad668a5f0a2806f65b345df6f7bb646e3a2d33c16309d13b8af88aa0345"
     },
+    "stakeholder-alignment": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "59b906b17a1dc59687023142c2c0abaa6003e78deb8ec175b7d77a7fbf2c95bb"
+    },
+    "state-machine": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "f54f14a0555113cbf78a679890b7ba250915e48da8c998f98b86ffd0641c683c"
+    },
     "strategic-compact": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "b662e43a0b26c9b3803dfbde24823be1b6a32263030f4d38551d59bba3b00f44"
+    },
+    "summarize-interview": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "d59e6d88b568b86cdab1e81b83d1675f5944c557143f4e4d69e9e8567aaeb812"
     },
     "swift-actor-persistence": {
       "source": "affaan-m/everything-claude-code",
@@ -271,10 +601,65 @@
       "sourceType": "github",
       "computedHash": "b043ab9a253352d5ab49d359cf8f92b9826f6008daf9a9831fd0445c09482df4"
     },
+    "team-workflow": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "6874bd40453b19ac35f4b30965313fb2ddd7d64e183ded5528c0b9d82a4b373c"
+    },
+    "template-skill": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "daf176f2cd0030d321982d3e813fd1a794a0b4744c5a92d2931a37001bb40fb9"
+    },
+    "test-scenario": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "e9ca802b6510e2d8bab524496f47bc1bfdbd15acb9db68c44f371b3039f51ac4"
+    },
+    "theme-factory": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "e9ec1fe85faa729e9f3d1731cd7e4e485f98c099ccc7c1c0d198f473aa4b654a"
+    },
+    "theming-system": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "94450f7d290ddd0605716655fc247311058ea25013b90dfd72c14fa2461f5817"
+    },
+    "typography-scale": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "035de19db99b8072fe048ec4efaa1f7f7b8c351b92f2ce0c7b7de95545eea645"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "computedHash": "6337038fe1fe6bbe1b9f252ab678ee575859190bab6f0f246f4061824eb40875"
+    },
+    "usability-test-plan": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "b2817e7916bb160ab0fd7e04e1a9f8f96598206434ad4d6b93f10105bfd3c4b6"
+    },
+    "user-flow-diagram": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "3b4036b869dea07f588b678874da438b602112bc05ef49f4bdc2e55a56f87ac5"
+    },
+    "user-persona": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "8322b4cc10efb759ca9acec07a36a773cb92716ee9cb4fb4934a413709cbad7c"
+    },
+    "ux-designer": {
+      "source": "szilu/ux-designer-skill",
+      "sourceType": "github",
+      "computedHash": "035ff2fce1e58aa43fad0ed61587c1e00c43d08a44292786f39774ac13574d87"
+    },
+    "ux-writing": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "c1c91de4018f4a2d466352f847b070e08e7a8efc92d6eb819a068916e277060e"
     },
     "vercel-cli-with-tokens": {
       "source": "vercel-labs/agent-skills",
@@ -306,15 +691,45 @@
       "sourceType": "github",
       "computedHash": "c936d8f1c28920133a6dd6b4c70e9784315f64f71b8d8bb69e61fa8e044cb175"
     },
+    "version-control-strategy": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "df5ce434dbd161b76fd8a3e745bd93e53cdca6dadcf5ad956d8d38cb78d9babb"
+    },
     "visa-doc-translate": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
       "computedHash": "6704dc7fa167cfcb71e076708739148073c1968bf1206a9fd8491b9deec23189"
     },
+    "visual-hierarchy": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "84716269e53847173e89f92654f0ede6d0d7303ad4739de64eb56ef2aad8a9a8"
+    },
+    "web-artifacts-builder": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "fdddbe9bb720ea1aea9292ee513ec10b2a8f4912e2c343bdc246ab3febd7c9b3"
+    },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
+    },
+    "webapp-testing": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "3f14af7f5690695209c22fbf8c8d133769a86d64892602c09bb13f135e14e857"
+    },
+    "wireframe-spec": {
+      "source": "Owl-Listener/designer-skills",
+      "sourceType": "github",
+      "computedHash": "5965ce300f9012e08794ce8022356098bff58a73da3f91dca30de0b5dc8e7b57"
+    },
+    "xlsx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "cb7fba2177d0d35d14b3244272b25d1b05246e99b3468a087fe06c84193dbd20"
     }
   }
 }

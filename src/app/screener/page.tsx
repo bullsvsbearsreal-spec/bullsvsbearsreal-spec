@@ -920,7 +920,7 @@ export default function ScreenerPage() {
           <div className="text-[10px] text-neutral-500 leading-relaxed">
             <span className="text-neutral-400 font-medium">Sources:</span>{' '}
             CEX: Binance, Bybit, OKX, Bitget, MEXC, Kraken, BingX, Phemex, Bitunix, KuCoin, HTX, Bitfinex, CoinEx, Deribit{' · '}
-            DEX: Hyperliquid, dYdX, Aster, Lighter, Aevo, Drift, GMX, gTrade, Extended, Variational, edgeX, Nado{' · '}
+            DEX: Hyperliquid, dYdX, Aster, Lighter, Aevo, GMX, gTrade, Extended, Variational, edgeX, Nado{' · '}
             Refreshes every 30s
           </div>
         </div>

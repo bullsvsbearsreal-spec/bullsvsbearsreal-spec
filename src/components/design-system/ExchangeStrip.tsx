@@ -6,7 +6,7 @@ import Image from 'next/image';
 const EXCHANGES = [
   'binance','bybit','okx','bitget','mexc',
   'kraken','bingx','phemex','bitunix','hyperliquid','dydx','aster','lighter',
-  'aevo','drift','gmx','kucoin','deribit','htx','bitfinex','whitebit',
+  'aevo','gmx','kucoin','deribit','htx','bitfinex','whitebit',
   'coinbase','coinex','gtrade','extended','variational',
   'bitmex','gate','edgex','nado',
   'backpack','orderly','paradex',

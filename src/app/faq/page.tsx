@@ -60,7 +60,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'What DEX exchanges do you support?',
-    a: 'We currently track Hyperliquid, dYdX, Drift, GMX, Aevo, Lighter, gTrade, Aster DEX, Extended, edgeX, Nado, and Variational. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.',
+    a: 'We currently track Hyperliquid, dYdX, GMX, Aevo, Lighter, gTrade, Aster DEX, Extended, edgeX, Nado, and Variational. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.',
   },
   {
     category: 'Data & Features',
@@ -97,7 +97,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Trading Concepts',
     q: 'How are funding rates normalized?',
-    a: 'All funding rates are converted to an 8-hour basis for comparison. Exchanges that settle hourly (like Drift or Hyperliquid) have their rates multiplied accordingly, so you can compare rates across exchanges without doing the math yourself.',
+    a: 'All funding rates are converted to an 8-hour basis for comparison. Exchanges that settle hourly (like Hyperliquid or Aevo) have their rates multiplied accordingly, so you can compare rates across exchanges without doing the math yourself.',
   },
   {
     category: 'Trading Concepts',

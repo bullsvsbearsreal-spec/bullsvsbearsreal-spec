@@ -686,7 +686,7 @@ export default function FundingPage() {
                         { label: 'Top 5 CEX', fn: () => setSelectedExchanges(new Set(['Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC'])) },
                         { label: 'All CEX', fn: () => setSelectedExchanges(new Set(ALL_EXCHANGES.filter(e => !isExchangeDex(e)))) },
                         { label: 'All DEX', fn: () => setSelectedExchanges(new Set(ALL_EXCHANGES.filter(e => isExchangeDex(e)))) },
-                        { label: 'Top 3 DEX', fn: () => setSelectedExchanges(new Set(['Hyperliquid', 'dYdX', 'Drift'])) },
+                        { label: 'Top 3 DEX', fn: () => setSelectedExchanges(new Set(['Hyperliquid', 'dYdX', 'Aster'])) },
                       ].map(({ label, fn }) => (
                         <button
                           key={label}

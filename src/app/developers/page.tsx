@@ -155,7 +155,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 const EXCHANGE_NAMES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'KuCoin',
-  'Hyperliquid', 'dYdX', 'Drift', 'GMX', 'Phemex', 'Bitunix', 'HTX', 'Coinbase',
+  'Hyperliquid', 'dYdX', 'GMX', 'Phemex', 'Bitunix', 'HTX', 'Coinbase',
   'Deribit', 'Aevo', 'Bitfinex', 'Gate.io',
 ];
 

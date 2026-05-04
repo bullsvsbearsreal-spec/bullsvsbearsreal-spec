@@ -2,7 +2,7 @@ import { Direction, VenueCost, RawBookData } from './types';
 import { walkBook, computeCostFromWalk, maxFillableUsd } from './book-walker';
 import { EXCHANGE_FEES } from '@/lib/constants/exchanges';
 import {
-  fetchHyperliquidBook, fetchDydxBook, fetchDriftBook,
+  fetchHyperliquidBook, fetchDydxBook,
   fetchAsterBook, fetchAevoBook, fetchLighterBook,
   fetchExtendedBook, fetchEdgexBook, fetchVariationalQuotes,
   fetchGTradeParams, computeGTradeCost,
@@ -63,14 +63,13 @@ export async function calculateAllVenueCosts(
   fetchFn: FetchFn = fetch,
 ): Promise<VenueCost[]> {
   const [
-    hlBook, dydxBook, driftBook, asterBook, aevoBook,
+    hlBook, dydxBook, asterBook, aevoBook,
     lighterBook, extendedBook, edgexBook,
     gtradeParams, gmxParams,
     variationalBook,
   ] = await Promise.all([
     fetchHyperliquidBook(asset, fetchFn),
     fetchDydxBook(asset, fetchFn),
-    fetchDriftBook(asset, fetchFn),
     fetchAsterBook(asset, fetchFn),
     fetchAevoBook(asset, fetchFn),
     fetchLighterBook(asset, fetchFn),
@@ -83,8 +82,8 @@ export async function calculateAllVenueCosts(
 
   const results: VenueCost[] = [];
 
-  // CLOB venues
-  const clobBooks = [hlBook, dydxBook, driftBook, asterBook, aevoBook, lighterBook, extendedBook, edgexBook];
+  // CLOB venues — Drift removed (indexer frozen since Apr 2026)
+  const clobBooks = [hlBook, dydxBook, asterBook, aevoBook, lighterBook, extendedBook, edgexBook];
   for (const book of clobBooks) {
     const cost = clobToVenueCost(book, orderSizeUsd, direction);
     if (cost) {

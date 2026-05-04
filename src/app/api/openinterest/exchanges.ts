@@ -589,49 +589,7 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
 
   // Bitunix — no public OI endpoint available (tickers don't include open interest)
 
-  // Drift Protocol (Solana DEX) — uses Data API with pre-parsed values
-  // /stats/markets endpoint is broken (returns empty since ~Apr 2026), use /stats/markets/prices
-  {
-    name: 'Drift',
-    fetcher: async (fetchFn) => {
-      const res = await fetchFn('https://data.api.drift.trade/stats/markets/prices', {}, 12000);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const markets: any[] = json?.markets || json?.data || json || [];
-
-      const results: OIData[] = [];
-      for (const m of markets) {
-        try {
-          if (m.marketType !== 'perp') continue;
-
-          let symbol = (m.symbol || '').replace('-PERP', '');
-          if (!symbol) continue;
-          if (symbol.startsWith('1M')) symbol = symbol.slice(2);
-
-          const price = parseFloat(m.oraclePrice) || 0;
-          if (price <= 0) continue;
-
-          // OI values are in base asset units (e.g., SOL count)
-          // OI long ≈ short in a balanced market; use max to avoid double-counting
-          const oiLong = Math.abs(parseFloat(m.openInterest?.long) || 0);
-          const oiShort = Math.abs(parseFloat(m.openInterest?.short) || 0);
-          const totalOI = Math.max(oiLong, oiShort);
-          const oiValue = totalOI * price;
-          if (oiValue < 1000) continue;
-
-          results.push({
-            symbol,
-            exchange: 'Drift',
-            openInterest: totalOI,
-            openInterestValue: oiValue,
-          });
-        } catch {
-          continue;
-        }
-      }
-      return results;
-    },
-  },
+  // Drift removed — see funding/exchanges.ts. Indexer frozen since Apr 2026.
 
   // GMX V2 (Arbitrum DEX) — OI values are BigInt strings at 1e30 precision, directly in USD
   {

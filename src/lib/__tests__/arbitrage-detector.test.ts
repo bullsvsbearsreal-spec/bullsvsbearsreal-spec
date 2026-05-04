@@ -55,13 +55,13 @@ describe('detectPriceArbitrage', () => {
     const tickers: TickerEntry[] = [
       { symbol: 'PEPE', exchange: 'Binance', lastPrice: 0.00001, quoteVolume24h: 1_000_000 },
       { symbol: 'PEPE', exchange: 'Bybit', lastPrice: 0.000011, quoteVolume24h: 1_000_000 },
-      { symbol: 'PEPE', exchange: 'Drift', lastPrice: 10.0, quoteVolume24h: 1_000_000 }, // 1M denomination
+      { symbol: 'PEPE', exchange: 'GMX', lastPrice: 10.0, quoteVolume24h: 1_000_000 }, // 1M denomination
     ];
     const arbs = detectPriceArbitrage(tickers, 0);
     // Should NOT include Drift as it's a denomination mismatch
     arbs.forEach(a => {
-      expect(a.lowExchange).not.toBe('Drift');
-      expect(a.highExchange).not.toBe('Drift');
+      expect(a.lowExchange).not.toBe('GMX');
+      expect(a.highExchange).not.toBe('GMX');
     });
   });
 

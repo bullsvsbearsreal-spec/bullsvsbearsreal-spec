@@ -1,8 +1,9 @@
-// Canonical list of active exchanges
+// Canonical list of active exchanges. Drift removed — indexer frozen since
+// Apr 2026 (data API serves stale snapshots indefinitely with no path back).
 export const ALL_EXCHANGES = [
   'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC',
   'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
-  'Aevo', 'Drift', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
+  'Aevo', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
   'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'Variational',
   'BitMEX', 'Gate.io', 'edgeX', 'Nado',
   'Backpack', 'Orderly', 'Paradex',
@@ -26,7 +27,6 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'Aster': 'bg-pink-500',
   'Lighter': 'bg-emerald-400',
   'Aevo': 'bg-rose-400',
-  'Drift': 'bg-indigo-400',
   'GMX': 'bg-indigo-500',
   'KuCoin': 'bg-green-500',
   'Deribit': 'bg-blue-400',
@@ -63,7 +63,6 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'Aster': 'bg-pink-500/20 text-pink-400',
   'Lighter': 'bg-emerald-400/20 text-emerald-300',
   'Aevo': 'bg-rose-400/20 text-rose-300',
-  'Drift': 'bg-indigo-400/20 text-indigo-300',
   'GMX': 'bg-indigo-500/20 text-indigo-400',
   'KuCoin': 'bg-green-500/20 text-green-400',
   'Deribit': 'bg-blue-400/20 text-blue-300',
@@ -86,7 +85,7 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
 
 // DEX exchanges (on-chain / decentralized perpetual protocols)
 export const DEX_EXCHANGES: ReadonlySet<string> = new Set([
-  'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'Drift', 'GMX', 'gTrade',
+  'Hyperliquid', 'dYdX', 'Aster', 'Lighter', 'Aevo', 'GMX', 'gTrade',
   'Extended', 'Variational', 'edgeX', 'Nado',
   'Backpack', 'Orderly', 'Paradex',
 ]);
@@ -135,7 +134,6 @@ export const EXCHANGE_FEES: Record<string, ExchangeFees> = {
   'Coinbase':     { taker: 0.0300, maker: 0.0000 }, // promotional rate
   'CoinEx':       { taker: 0.0500, maker: 0.0300 },
   'gTrade':       { taker: 0.0500, maker: 0.0500 }, // flat open+close fee (no orderbook)
-  'Drift':        { taker: 0.0350, maker: 0.0000 }, // maker rebate ignored
   'GMX':          { taker: 0.0700, maker: 0.0500 }, // position open+close fee
   'Extended':     { taker: 0.0250, maker: 0.0000 },
   'Variational':  { taker: 0.0000, maker: 0.0000 }, // zero explicit fees
@@ -177,7 +175,6 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Aster':      return `https://app.aster.finance/?ref=48aFb9#/perpetual/${s}USDT`;
     case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT?referral=7162321B`;
     case 'Aevo':       return `https://app.aevo.xyz/perpetual/${s.toLowerCase()}`;
-    case 'Drift':      return `https://app.drift.trade/trade/${s}-PERP`;
     case 'GMX':        return `https://app.gmx.io/#/trade/?ref=${Math.random() < 0.5 ? 'Q9ENQ' : 'snakether'}`;
     case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM?rcode=${Math.random() < 0.5 ? 'CXEJE3SG' : 'QBS4DW6N'}`;
     case 'Deribit':    return `https://www.deribit.com/futures/${s}`;

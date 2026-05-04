@@ -31,7 +31,7 @@ export const CEX_EXCHANGES = [
 ];
 
 export const DEX_EXCHANGES = [
-  'Hyperliquid','dYdX','gTrade','Aster','Lighter','Aevo','Drift',
+  'Hyperliquid','dYdX','gTrade','Aster','Lighter','Aevo',
   'Extended','Variational','Nado','Backpack','Orderly','Paradex',
 ];
 
