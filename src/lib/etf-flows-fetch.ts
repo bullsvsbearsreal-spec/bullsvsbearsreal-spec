@@ -1,0 +1,134 @@
+/**
+ * Shared Farside ETF flow fetcher + parser. Imported by both
+ * /api/etf-flows and /api/etf-counterfactual so the latter doesn't have
+ * to round-trip through the former (which would create a serial fetch
+ * chain that hits DO's gateway timeout when Farside throttles).
+ */
+
+export interface FlowDay {
+  date: string;
+  perIssuer: (number | null)[];
+  total: number;
+}
+
+export interface FarsideResult {
+  asset: 'btc' | 'eth';
+  issuers: string[];
+  days: FlowDay[];
+  /** True when upstream returned usable data this fetch. */
+  dataAvailable: boolean;
+  /** Human-readable note if data unavailable / stale. */
+  note?: string;
+}
+
+const TIMEOUT = 7_000;
+
+export function farsideUrl(asset: 'btc' | 'eth'): string {
+  return asset === 'btc'
+    ? 'https://farside.co.uk/bitcoin-etf-flow-all-data/'
+    : 'https://farside.co.uk/ethereum-etf-flow-all-data/';
+}
+
+export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideResult> {
+  const empty: FarsideResult = {
+    asset,
+    issuers: [],
+    days: [],
+    dataAvailable: false,
+    note: 'Source temporarily unreachable from this datacenter.',
+  };
+
+  try {
+    const res = await fetch(farsideUrl(asset), {
+      signal: AbortSignal.timeout(TIMEOUT),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-GB,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+    });
+    if (!res.ok) return { ...empty, note: `Farside HTTP ${res.status}.` };
+    const html = await res.text();
+    if (/just a moment|cf-browser-verification|cf-challenge|attention required/i.test(html)) {
+      return { ...empty, note: 'Bot-protection page returned.' };
+    }
+    const parsed = parseFarsideTable(html);
+    if (!parsed || parsed.days.length === 0) {
+      return { ...empty, note: 'Could not parse Farside table — HTML may have changed.' };
+    }
+    return { asset, issuers: parsed.issuers, days: parsed.days, dataAvailable: true };
+  } catch (e) {
+    return { ...empty, note: e instanceof Error ? e.message : 'fetch error' };
+  }
+}
+
+/* ─── HTML parsing ────────────────────────────────────────────────────── */
+
+function parseFarsideTable(html: string): { issuers: string[]; days: FlowDay[] } | null {
+  const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+  if (!tableMatch) return null;
+  const tableHtml = tableMatch[1];
+
+  const headerRowMatch = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/i);
+  if (!headerRowMatch) return null;
+  const headerCells = Array.from(headerRowMatch[1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi))
+    .map(m => m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim())
+    .filter(Boolean);
+  let issuers = headerCells.slice(1);
+  if (/^total$/i.test(issuers[issuers.length - 1] ?? '')) {
+    issuers = issuers.slice(0, -1);
+  }
+
+  const bodyRows = Array.from(tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
+    .slice(1)
+    .map(m => m[1]);
+
+  const days: FlowDay[] = [];
+  for (const row of bodyRows) {
+    const cells = Array.from(row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi))
+      .map(m => m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
+    if (cells.length === 0) continue;
+
+    const dateRaw = cells[0];
+    if (!dateRaw || /^total/i.test(dateRaw) || /^minimum|^maximum|^average/i.test(dateRaw)) continue;
+    const isoDate = parseFarsideDate(dateRaw);
+    if (!isoDate) continue;
+
+    const issuerCells = cells.slice(1, 1 + issuers.length);
+    const perIssuer: (number | null)[] = issuerCells.map(parseFlowCell);
+    const total = perIssuer.reduce<number>((s, x) => s + (x ?? 0), 0);
+
+    days.push({ date: isoDate, perIssuer, total: Math.round(total * 10) / 10 });
+  }
+
+  days.reverse();
+  return { issuers, days };
+}
+
+function parseFlowCell(s: string): number | null {
+  const trimmed = s.trim();
+  if (!trimmed || trimmed === '-' || trimmed === '–') return null;
+  const isNegative = /^\(/.test(trimmed);
+  const numStr = trimmed.replace(/[(),]/g, '').trim();
+  const n = parseFloat(numStr);
+  if (!Number.isFinite(n)) return null;
+  return isNegative ? -n : n;
+}
+
+function parseFarsideDate(s: string): string | null {
+  const m = s.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  const monthName = m[2].toLowerCase();
+  const year = parseInt(m[3], 10);
+  const monthMap: Record<string, number> = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+  const monthIdx = monthMap[monthName.slice(0, 3)];
+  if (monthIdx == null) return null;
+  const d = new Date(Date.UTC(year, monthIdx, day));
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}

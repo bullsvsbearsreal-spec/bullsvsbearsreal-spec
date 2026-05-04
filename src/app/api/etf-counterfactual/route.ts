@@ -20,6 +20,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
+import { fetchFarsideFlows } from '@/lib/etf-flows-fetch';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -70,18 +71,12 @@ async function fetchPriceHistory(asset: 'btc' | 'eth'): Promise<Array<{ date: st
   }));
 }
 
-async function fetchEtfFlows(asset: 'btc' | 'eth', request: NextRequest): Promise<FarsideFlowDay[]> {
-  // Reuse the etf-flows endpoint we already built — same Farside source,
-  // already cached server-side. Build absolute URL using the request origin.
-  const origin = request.nextUrl.origin;
-  const res = await fetchWithTimeout(
-    `${origin}/api/etf-flows?asset=${asset}`,
-    {},
-    TIMEOUT,
-  );
-  if (!res.ok) return [];
-  const json = await res.json() as { days?: Array<{ date: string; total: number }> };
-  return (json.days ?? []).map(d => ({ date: d.date, total: d.total }));
+async function fetchEtfFlows(asset: 'btc' | 'eth'): Promise<FarsideFlowDay[]> {
+  // Use the shared Farside fetcher directly (no HTTP hop) so DO's gateway
+  // doesn't time out the parent request when Farside throttles.
+  const result = await fetchFarsideFlows(asset);
+  if (!result.dataAvailable) return [];
+  return result.days.map(d => ({ date: d.date, total: d.total }));
 }
 
 /** Pearson correlation. */
@@ -135,7 +130,7 @@ export async function GET(request: NextRequest) {
   try {
     const [priceHist, flows] = await Promise.all([
       fetchPriceHistory(asset),
-      fetchEtfFlows(asset, request),
+      fetchEtfFlows(asset),
     ]);
 
     if (priceHist.length < 30 || flows.length < 30) {

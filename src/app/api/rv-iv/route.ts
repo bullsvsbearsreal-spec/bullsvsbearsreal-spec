@@ -42,16 +42,44 @@ const L1_TTL = 15 * 60 * 1000;
 
 async function fetchPrices(asset: 'BTC' | 'ETH'): Promise<Array<{ time: number; close: number }>> {
   const id = asset === 'BTC' ? 'bitcoin' : 'ethereum';
+
+  // Primary: CoinGecko market_chart. Free tier rate-limits aggressively from
+  // datacenter IPs; if it 429s or times out, fall back to Binance daily klines.
   try {
     const res = await fetchWithTimeout(
       `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=60&interval=daily`,
       { headers: { Accept: 'application/json' } },
       TIMEOUT,
     );
+    if (res.ok) {
+      const json = await res.json() as CGMarketChart;
+      const prices = (json.prices ?? []).map(([ms, close]) => ({ time: ms, close })).sort((a, b) => a.time - b.time);
+      if (prices.length >= 30) return prices;
+    } else {
+      console.warn(`[rv-iv] CoinGecko ${asset} returned HTTP ${res.status}, falling back to Binance`);
+    }
+  } catch (e) {
+    console.warn(`[rv-iv] CoinGecko ${asset} fetch error: ${e instanceof Error ? e.message : String(e)}, falling back to Binance`);
+  }
+
+  // Fallback: Binance USDT spot klines, daily, 60 candles.
+  try {
+    const symbol = `${asset}USDT`;
+    const res = await fetchWithTimeout(
+      `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=60`,
+      { headers: { Accept: 'application/json' } },
+      TIMEOUT,
+    );
     if (!res.ok) return [];
-    const json = await res.json() as CGMarketChart;
-    return (json.prices ?? []).map(([ms, close]) => ({ time: ms, close })).sort((a, b) => a.time - b.time);
-  } catch { return []; }
+    const arr = await res.json() as Array<[number, string, string, string, string, ...unknown[]]>;
+    if (!Array.isArray(arr)) return [];
+    return arr.map(k => ({ time: k[0], close: Number(k[4]) || 0 }))
+      .filter(p => p.close > 0)
+      .sort((a, b) => a.time - b.time);
+  } catch (e) {
+    console.warn(`[rv-iv] Binance fallback failed: ${e instanceof Error ? e.message : String(e)}`);
+    return [];
+  }
 }
 
 /** Annualised realised vol (std dev of log returns × sqrt(365)). */

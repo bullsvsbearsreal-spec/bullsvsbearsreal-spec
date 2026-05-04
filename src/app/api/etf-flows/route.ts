@@ -10,136 +10,26 @@
  * day after market close so a long cache is appropriate.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchWithTimeout } from '../_shared/fetch';
+import { fetchFarsideFlows, type FlowDay } from '@/lib/etf-flows-fetch';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
-interface FlowDay {
-  date: string;          // ISO YYYY-MM-DD
-  /** Per-issuer net flows in $M. Same column order as `issuers` below. */
-  perIssuer: (number | null)[];
-  /** Total net flow that day in $M. Positive = inflow. */
-  total: number;
-}
-
 interface ApiResponse {
   asset: 'btc' | 'eth';
   issuers: string[];
-  /** Most recent day first */
   days: FlowDay[];
-  /** 7d / 30d cumulative net flow ($M) */
   cumulative7d: number;
   cumulative30d: number;
-  /** Yesterday's net flow */
   latestDay: FlowDay | null;
-  /** True when upstream returned usable data this fetch. */
   dataAvailable: boolean;
-  /** Human-readable note if data unavailable / stale. */
   note?: string;
   ts: number;
 }
 
-// Farside is on Cloudflare and rate-limits datacenter IPs aggressively.
-// Use a tighter timeout so the route fails fast rather than hitting DO's
-// gateway timeout — page can show stale/unavailable cleanly.
-const TIMEOUT = 7_000;
 const l1Cache = new Map<string, { body: ApiResponse; ts: number }>();
 const L1_TTL = 30 * 60 * 1000;
-
-function farsideUrl(asset: 'btc' | 'eth'): string {
-  return asset === 'btc'
-    ? 'https://farside.co.uk/bitcoin-etf-flow-all-data/'
-    : 'https://farside.co.uk/ethereum-etf-flow-all-data/';
-}
-
-/**
- * Parse a Farside HTML table dump. Rows look like:
- * <tr><td>02 May 2026</td><td>123.4</td><td>56.7</td>...<td>987.6</td></tr>
- *
- * Numbers are in $M. Dashes (`-`) and empty strings mean "no creation",
- * which we represent as `null` (not 0 — issuer didn't trade that day).
- */
-function parseFarsideTable(html: string): { issuers: string[]; days: FlowDay[] } | null {
-  // Find the main `data-table` table block (Farside uses a CSS class `etf-flow-table` historically,
-  // but the structure is just <table>…<thead><tr>…header cells…</tr></thead><tbody>…</tbody>…</table>).
-  const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
-  if (!tableMatch) return null;
-  const tableHtml = tableMatch[1];
-
-  // Issuer column headers — they're in the first <tr> with <th> tags.
-  // Skip the leftmost "Date" header.
-  const headerRowMatch = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/i);
-  if (!headerRowMatch) return null;
-  const headerCells = Array.from(headerRowMatch[1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi))
-    .map(m => m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim())
-    .filter(Boolean);
-  // Drop the first ("Date") + last column ("Total") if present
-  let issuers = headerCells.slice(1);
-  // Farside totals column varies — sometimes "Total", sometimes empty header.
-  if (/^total$/i.test(issuers[issuers.length - 1] ?? '')) {
-    issuers = issuers.slice(0, -1);
-  }
-
-  // Body rows
-  const bodyRows = Array.from(tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
-    .slice(1) // skip header
-    .map(m => m[1]);
-
-  const days: FlowDay[] = [];
-  for (const row of bodyRows) {
-    const cells = Array.from(row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi))
-      .map(m => m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
-    if (cells.length === 0) continue;
-
-    const dateRaw = cells[0];
-    if (!dateRaw || /^total/i.test(dateRaw) || /^minimum|^maximum|^average/i.test(dateRaw)) continue;
-    const isoDate = parseFarsideDate(dateRaw);
-    if (!isoDate) continue;
-
-    const issuerCells = cells.slice(1, 1 + issuers.length);
-    const perIssuer: (number | null)[] = issuerCells.map(parseFlowCell);
-    const total = perIssuer.reduce<number>((s, x) => s + (x ?? 0), 0);
-
-    days.push({ date: isoDate, perIssuer, total: Math.round(total * 10) / 10 });
-  }
-
-  // Reverse so most recent is first (Farside renders chronologically)
-  days.reverse();
-
-  return { issuers, days };
-}
-
-/** Parse "(123.4)" as -123.4, "123.4" as 123.4, "-" / "" as null. */
-function parseFlowCell(s: string): number | null {
-  const trimmed = s.trim();
-  if (!trimmed || trimmed === '-' || trimmed === '–') return null;
-  // Parens denote negative
-  const isNegative = /^\(/.test(trimmed);
-  const numStr = trimmed.replace(/[(),]/g, '').trim();
-  const n = parseFloat(numStr);
-  if (!Number.isFinite(n)) return null;
-  return isNegative ? -n : n;
-}
-
-/** "02 May 2026" → "2026-05-02" */
-function parseFarsideDate(s: string): string | null {
-  const m = s.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
-  if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const monthName = m[2].toLowerCase();
-  const year = parseInt(m[3], 10);
-  const monthMap: Record<string, number> = {
-    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-  };
-  const monthIdx = monthMap[monthName.slice(0, 3)];
-  if (monthIdx == null) return null;
-  const d = new Date(Date.UTC(year, monthIdx, day));
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -156,82 +46,45 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Empty fallback used when Farside is unreachable / returns non-RSS HTML.
-  // Always returns 200 so the page can render a clean "data unavailable" state
-  // instead of exposing 500/502 to clients.
-  const emptyBody: ApiResponse = {
-    asset,
-    issuers: [],
-    days: [],
-    cumulative7d: 0,
-    cumulative30d: 0,
-    latestDay: null,
-    dataAvailable: false,
-    note: 'Source temporarily unreachable from this datacenter. Visit farside.co.uk for raw data; this page will retry every 30 minutes.',
-    ts: Date.now(),
-  };
+  const result = await fetchFarsideFlows(asset);
 
-  try {
-    const res = await fetchWithTimeout(
-      farsideUrl(asset),
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-GB,en;q=0.9',
-          'Cache-Control': 'no-cache',
-        },
-      },
-      TIMEOUT,
-    );
-    if (!res.ok) {
-      if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
-      return NextResponse.json({ ...emptyBody, note: `Farside returned HTTP ${res.status}. Retrying in 30 min.` }, {
-        headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
-      });
-    }
-    const html = await res.text();
-    // Detect Cloudflare challenge / Just-a-moment page returning 200 with HTML.
-    if (/just a moment|cf-browser-verification|cf-challenge|attention required/i.test(html)) {
-      if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
-      return NextResponse.json({ ...emptyBody, note: 'Farside upstream returned a bot-protection page. Retrying in 30 min.' }, {
-        headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
-      });
-    }
-    const parsed = parseFarsideTable(html);
-    if (!parsed || parsed.days.length === 0) {
-      if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
-      return NextResponse.json({ ...emptyBody, note: 'Could not parse Farside table — their HTML may have changed.' }, {
-        headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
-      });
-    }
-
-    const last7 = parsed.days.slice(0, 7);
-    const last30 = parsed.days.slice(0, 30);
-    const cumulative7d = Math.round(last7.reduce((s, d) => s + d.total, 0) * 10) / 10;
-    const cumulative30d = Math.round(last30.reduce((s, d) => s + d.total, 0) * 10) / 10;
-
-    const body: ApiResponse = {
-      asset,
-      issuers: parsed.issuers,
-      days: parsed.days.slice(0, 90),
-      cumulative7d,
-      cumulative30d,
-      latestDay: parsed.days[0] ?? null,
-      dataAvailable: true,
-      ts: Date.now(),
-    };
-
-    l1Cache.set(cacheKey, { body, ts: Date.now() });
-
-    return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
-    });
-  } catch (e) {
+  if (!result.dataAvailable) {
     if (cached) return NextResponse.json(cached.body, { headers: { 'X-Cache': 'STALE' } });
     return NextResponse.json(
-      { ...emptyBody, note: `Upstream error: ${e instanceof Error ? e.message : 'unknown'}` },
+      {
+        asset,
+        issuers: [],
+        days: [],
+        cumulative7d: 0,
+        cumulative30d: 0,
+        latestDay: null,
+        dataAvailable: false,
+        note: result.note ?? 'Source unavailable.',
+        ts: Date.now(),
+      },
       { headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' } },
     );
   }
+
+  const last7 = result.days.slice(0, 7);
+  const last30 = result.days.slice(0, 30);
+  const cumulative7d = Math.round(last7.reduce((s, d) => s + d.total, 0) * 10) / 10;
+  const cumulative30d = Math.round(last30.reduce((s, d) => s + d.total, 0) * 10) / 10;
+
+  const body: ApiResponse = {
+    asset,
+    issuers: result.issuers,
+    days: result.days.slice(0, 90),
+    cumulative7d,
+    cumulative30d,
+    latestDay: result.days[0] ?? null,
+    dataAvailable: true,
+    ts: Date.now(),
+  };
+
+  l1Cache.set(cacheKey, { body, ts: Date.now() });
+
+  return NextResponse.json(body, {
+    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
+  });
 }

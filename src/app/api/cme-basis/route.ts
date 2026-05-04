@@ -124,7 +124,7 @@ export async function GET() {
 
   const [btcCme, ethCme, spotPrices] = await Promise.all([
     fetchYahooQuote('BTC=F'),
-    fetchYahooQuote('ETHUSD=F'),
+    fetchYahooQuote('ETH=F'),
     fetchSpot(['bitcoin', 'ethereum']),
   ]);
 
@@ -153,7 +153,7 @@ export async function GET() {
       daysToExpiry: days,
       basisPct,
       annualizedPct: basisPct * (365 / days),
-      cmeSource: 'Yahoo ETHUSD=F',
+      cmeSource: 'Yahoo ETH=F',
       spotSource: 'CoinGecko',
     });
   }
