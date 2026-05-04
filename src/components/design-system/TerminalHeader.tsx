@@ -44,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'funding-heatmap', label: 'Funding Heatmap', href: '/funding-heatmap',   hint: 'Asset × venue grid' },
       { id: 'funding-countdown', label: 'Funding Countdown', href: '/funding-countdown', hint: 'Next settlement clocks' },
       { id: 'funding-paid',    label: 'Funding Paid · 30d', href: '/funding-paid',     hint: 'Most expensive longs' },
+      { id: 'funding-lb',      label: 'Funding Leaderboard', href: '/funding-leaderboard', hint: 'Per-exchange flow ranking' },
       { id: 'funding-flips',   label: 'Funding Flips',    href: '/funding-flips',     hint: 'Sentiment shift radar' },
       { id: 'funding-predictor', label: 'Funding Predictor', href: '/funding-predictor', hint: 'Next-window rate from premium' },
       { id: 'ob-imbalance',    label: 'OB Imbalance',     href: '/orderbook-imbalance', hint: 'Bid vs ask depth ratio' },

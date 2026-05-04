@@ -69,6 +69,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/funding-heatmap',          label: 'Funding Heatmap', color: PUMP, icon: I.fundHeat },
     { href: '/funding-countdown',        label: 'Funding Countdown', color: PUMP, icon: I.fundRate },
     { href: '/funding-paid',             label: 'Funding Paid 30d', color: PUMP, icon: I.coin },
+    { href: '/funding-leaderboard',      label: 'Funding Leaderboard', color: PUMP, icon: I.coin },
     { href: '/funding-flips',            label: 'Funding Flips',  color: PUMP, icon: I.signal },
     { href: '/funding-predictor',        label: 'Funding Predictor', color: PUMP, icon: I.signal },
     { href: '/orderbook-imbalance',      label: 'OB Imbalance',   color: PUMP, icon: I.scale },
