@@ -295,9 +295,9 @@ export default function PositionsPage() {
           </div>
         )}
 
-        {/* ─── Positions table ─── */}
+        {/* ─── Positions: desktop table ─── */}
         {data && data.positions.length > 0 && (
-          <div className="card-premium overflow-x-auto">
+          <div className="card-premium overflow-x-auto hidden md:block">
             <table className="w-full text-xs">
               <thead className="bg-white/[0.03] border-b border-white/[0.06]">
                 <tr className="text-[10px] uppercase tracking-wider text-neutral-500">
@@ -324,6 +324,15 @@ export default function PositionsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ─── Positions: mobile card list ─── */}
+        {data && data.positions.length > 0 && (
+          <div className="space-y-2 md:hidden">
+            {filtered.map(p => (
+              <PositionCardMobile key={p.id} p={p} />
+            ))}
           </div>
         )}
 
@@ -397,5 +406,88 @@ function PositionRow({ p }: { p: Position }) {
       </td>
       <td className="px-2 py-2 text-[11px] text-neutral-500">{p.exchange}</td>
     </tr>
+  );
+}
+
+// ─── Mobile card (single position, < md breakpoint) ────────────────────
+//
+// Re-renders the same data as PositionRow but as a stacked card so users
+// don't horizontal-scroll through 15 columns on a phone. Prioritizes the
+// fields a trader actually checks first: symbol/side/exchange, P&L, the
+// three funding context columns. Less-critical (size/entry/TP/SL/Liq)
+// gets a smaller secondary grid.
+
+function PositionCardMobile({ p }: { p: Position }) {
+  const pnl = p.unrealizedPnl;
+  const pnlClass = pnl === null ? 'text-neutral-500' : pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const cur = fundingTone(p.side, p.currentFunding);
+  const a24 = fundingTone(p.side, p.avg24hFunding);
+  const a48 = fundingTone(p.side, p.avg48hFunding);
+
+  return (
+    <div className="card-premium p-3">
+      {/* Header row: symbol + side + exchange + p&l */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-base font-bold text-white">{p.symbol}</span>
+          {p.side === 'long' ? (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+              <ArrowUpRight className="w-2.5 h-2.5" /> LONG
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
+              <ArrowDownRight className="w-2.5 h-2.5" /> SHORT
+            </span>
+          )}
+          <span className="text-[10px] text-neutral-500 truncate">{p.exchange}</span>
+        </div>
+        <div className={`text-right tabular-nums font-bold text-sm ${pnlClass}`}>
+          {fmtUsd(pnl, { sign: true })}
+        </div>
+      </div>
+
+      {/* Funding row — the killer feature, gets prominent placement */}
+      <div className="grid grid-cols-3 gap-1 mb-2 text-[10px]">
+        <FundingMini label="Now" value={fmtPct(p.currentFunding, { sign: true, digits: 4 })} tone={cur} />
+        <FundingMini label="24h" value={fmtPct(p.avg24hFunding, { sign: true, digits: 4 })} tone={a24} />
+        <FundingMini label="48h" value={fmtPct(p.avg48hFunding, { sign: true, digits: 4 })} tone={a48} />
+      </div>
+
+      {/* Secondary grid */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
+        <SecondaryRow label="Value" value={fmtUsd(p.positionValue)} />
+        <SecondaryRow label="Size" value={fmtSize(p.size)} />
+        <SecondaryRow label="Entry" value={fmtPrice(p.entryPrice)} />
+        <SecondaryRow label="Mark" value={fmtPrice(p.markPrice)} />
+        {p.tpPrice && <SecondaryRow label="TP" value={fmtPrice(p.tpPrice)} valueClass="text-emerald-400" />}
+        {p.slPrice && <SecondaryRow label="SL" value={fmtPrice(p.slPrice)} valueClass="text-red-400" />}
+        {p.liquidationPrice && <SecondaryRow label="Liq." value={fmtPrice(p.liquidationPrice)} valueClass="text-amber-400" />}
+        {p.cumulativeFunding !== null && (
+          <SecondaryRow
+            label="Σ funding"
+            value={fmtUsd(p.cumulativeFunding, { sign: true })}
+            valueClass={p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400'}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FundingMini({ label, value, tone }: { label: string; value: string; tone: 'good' | 'bad' | 'neutral' }) {
+  return (
+    <div className="bg-white/[0.02] rounded px-2 py-1.5 text-center">
+      <div className="text-[9px] uppercase tracking-wider text-neutral-600 font-medium">{label}</div>
+      <div className={`tabular-nums font-mono text-[11px] mt-0.5 ${TONE_CLASS[tone]}`}>{value}</div>
+    </div>
+  );
+}
+
+function SecondaryRow({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+  return (
+    <div className="flex items-center justify-between border-b border-white/[0.03] py-1 last:border-0">
+      <span className="text-neutral-500 text-[10px] uppercase tracking-wider">{label}</span>
+      <span className={`tabular-nums font-mono ${valueClass ?? 'text-neutral-200'}`}>{value}</span>
+    </div>
   );
 }
