@@ -3056,6 +3056,212 @@ export async function deleteUserWallet(userId: string, id: number): Promise<bool
   return rows.length > 0;
 }
 
+// ─── User positions sync (Phase B) ──────────────────────────────────────────
+
+export interface UserPositionRow {
+  id: number;
+  userId: string;
+  sourceType: 'cex' | 'dex';
+  sourceId: number;
+  exchange: string;
+  symbol: string;
+  side: 'long' | 'short';
+  size: number;
+  entryPrice: number;
+  markPrice: number | null;
+  positionValue: number | null;
+  unrealizedPnl: number | null;
+  leverage: number | null;
+  marginUsed: number | null;
+  liquidationPrice: number | null;
+  tpPrice: number | null;
+  slPrice: number | null;
+  cumulativeFunding: number | null;
+  updatedAt: Date;
+}
+
+interface UpsertPosition {
+  exchange: string;
+  symbol: string;
+  side: 'long' | 'short';
+  size: number;
+  entryPrice: number;
+  markPrice: number | null;
+  positionValue: number | null;
+  unrealizedPnl: number | null;
+  leverage: number | null;
+  marginUsed: number | null;
+  liquidationPrice: number | null;
+  tpPrice: number | null;
+  slPrice: number | null;
+  cumulativeFunding: number | null;
+}
+
+/**
+ * Replace every position for a single (user, source) pair atomically:
+ * - Delete the existing rows for this source
+ * - Insert the freshly fetched ones
+ *
+ * "Source" here means a single exchange-key OR a single wallet — never mixed.
+ * The transaction means a user never sees a half-synced state where some
+ * positions are gone and others are stale.
+ */
+export async function replaceUserPositionsForSource(
+  userId: string,
+  sourceType: 'cex' | 'dex',
+  sourceId: number,
+  positions: UpsertPosition[],
+): Promise<{ deleted: number; inserted: number }> {
+  const sqlx = getSQL();
+  // postgres-js exposes the transaction via tagged templates at runtime,
+  // but the inferred type omits the call signature in this version. Cast
+  // to `any` so we keep the BEGIN/COMMIT atomicity without TS noise.
+  return sqlx.begin(async (txRaw) => {
+    const tx = txRaw as any;
+    const del = await tx`
+      DELETE FROM user_positions
+      WHERE user_id = ${userId} AND source_type = ${sourceType} AND source_id = ${sourceId}
+      RETURNING id
+    `;
+    if (positions.length === 0) {
+      return { deleted: del.length, inserted: 0 };
+    }
+    await tx`
+      INSERT INTO user_positions
+        (user_id, source_type, source_id, exchange, symbol, side, size,
+         entry_price, mark_price, position_value, unrealized_pnl,
+         leverage, margin_used, liquidation_price, tp_price, sl_price,
+         cumulative_funding, updated_at)
+      SELECT * FROM UNNEST(
+        ${tx.array(positions.map(() => userId))}::text[],
+        ${tx.array(positions.map(() => sourceType))}::text[],
+        ${tx.array(positions.map(() => sourceId))}::int[],
+        ${tx.array(positions.map(p => p.exchange))}::text[],
+        ${tx.array(positions.map(p => p.symbol))}::text[],
+        ${tx.array(positions.map(p => p.side))}::text[],
+        ${tx.array(positions.map(p => p.size))}::float8[],
+        ${tx.array(positions.map(p => p.entryPrice))}::float8[],
+        ${tx.array(positions.map(p => p.markPrice ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.positionValue ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.unrealizedPnl ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.leverage ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.marginUsed ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.liquidationPrice ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.tpPrice ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.slPrice ?? null))}::float8[],
+        ${tx.array(positions.map(p => p.cumulativeFunding ?? null))}::float8[],
+        ${tx.array(positions.map(() => new Date().toISOString()))}::timestamptz[]
+      )
+    `;
+    return { deleted: del.length, inserted: positions.length };
+  });
+}
+
+/** Mark a key's last sync result. NULL `error` clears the previous error. */
+export async function setExchangeKeyLastSync(
+  keyId: number,
+  error: string | null,
+  permissions: unknown | null,
+): Promise<void> {
+  const sql = getSQL();
+  if (permissions !== null && permissions !== undefined) {
+    await sql`
+      UPDATE user_exchange_keys
+      SET last_synced_at = NOW(), last_error = ${error}, permissions = ${permissions as any}
+      WHERE id = ${keyId}
+    `;
+  } else {
+    await sql`
+      UPDATE user_exchange_keys
+      SET last_synced_at = NOW(), last_error = ${error}
+      WHERE id = ${keyId}
+    `;
+  }
+}
+
+/** Read all positions for one user, newest-updated first. */
+export async function listUserPositions(userId: string): Promise<UserPositionRow[]> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const rows = await sql`
+    SELECT id, user_id, source_type, source_id, exchange, symbol, side, size,
+           entry_price, mark_price, position_value, unrealized_pnl,
+           leverage, margin_used, liquidation_price, tp_price, sl_price,
+           cumulative_funding, updated_at
+    FROM user_positions
+    WHERE user_id = ${userId}
+    ORDER BY position_value DESC NULLS LAST, updated_at DESC
+  `;
+  return rows.map((r: any) => ({
+    id: r.id,
+    userId: r.user_id,
+    sourceType: r.source_type,
+    sourceId: r.source_id,
+    exchange: r.exchange,
+    symbol: r.symbol,
+    side: r.side,
+    size: Number(r.size),
+    entryPrice: Number(r.entry_price),
+    markPrice: r.mark_price === null ? null : Number(r.mark_price),
+    positionValue: r.position_value === null ? null : Number(r.position_value),
+    unrealizedPnl: r.unrealized_pnl === null ? null : Number(r.unrealized_pnl),
+    leverage: r.leverage === null ? null : Number(r.leverage),
+    marginUsed: r.margin_used === null ? null : Number(r.margin_used),
+    liquidationPrice: r.liquidation_price === null ? null : Number(r.liquidation_price),
+    tpPrice: r.tp_price === null ? null : Number(r.tp_price),
+    slPrice: r.sl_price === null ? null : Number(r.sl_price),
+    cumulativeFunding: r.cumulative_funding === null ? null : Number(r.cumulative_funding),
+    updatedAt: r.updated_at,
+  }));
+}
+
+/**
+ * For the sync cron: enumerate every user that has at least one connected
+ * source, returning the source list per user. Used as `for (const u of users)
+ * for (const s of u.sources) sync(s)`.
+ */
+export async function listAllSyncTargets(): Promise<Array<{
+  userId: string;
+  exchangeKeys: Array<{ id: number; exchange: string; encryptedKey: string; encryptedSecret: string; encryptedPassphrase: string | null }>;
+  wallets: Array<{ id: number; chain: string; address: string }>;
+}>> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const keys = await sql`
+    SELECT user_id, id, exchange, encrypted_key, encrypted_secret, encrypted_passphrase
+    FROM user_exchange_keys
+    ORDER BY user_id, id
+  `;
+  const wallets = await sql`
+    SELECT user_id, id, chain, address
+    FROM user_wallets
+    ORDER BY user_id, id
+  `;
+  type SyncEntry = {
+    userId: string;
+    exchangeKeys: Array<{ id: number; exchange: string; encryptedKey: string; encryptedSecret: string; encryptedPassphrase: string | null }>;
+    wallets: Array<{ id: number; chain: string; address: string }>;
+  };
+  const map = new Map<string, SyncEntry>();
+  for (const k of keys) {
+    const entry: SyncEntry = map.get(k.user_id) ?? { userId: k.user_id, exchangeKeys: [], wallets: [] };
+    entry.exchangeKeys.push({
+      id: k.id,
+      exchange: k.exchange,
+      encryptedKey: k.encrypted_key,
+      encryptedSecret: k.encrypted_secret,
+      encryptedPassphrase: k.encrypted_passphrase,
+    });
+    map.set(k.user_id, entry);
+  }
+  for (const w of wallets) {
+    const entry: SyncEntry = map.get(w.user_id) ?? { userId: w.user_id, exchangeKeys: [], wallets: [] };
+    entry.wallets.push({ id: w.id, chain: w.chain, address: w.address });
+    map.set(w.user_id, entry);
+  }
+  return Array.from(map.values());
+}
+
 // ─── Check if DB is available ───────────────────────────────────────────────
 
 export function isDBConfigured(): boolean {
