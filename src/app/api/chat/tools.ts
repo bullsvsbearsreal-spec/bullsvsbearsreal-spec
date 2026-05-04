@@ -5,7 +5,7 @@ type Tool = Anthropic.Tool;
 export const CHAT_TOOLS: Tool[] = [
   {
     name: 'get_funding_rates',
-    description: 'Current funding rates across 33 exchanges. Shows rate + predicted rate per exchange for a symbol, or top rates by magnitude. Use ONLY for funding rate questions, carry trade analysis, or market directional bias. NOT for prices — use get_tickers instead.',
+    description: 'Current funding rates across 32 exchanges. Shows rate + predicted rate per exchange for a symbol, or top rates by magnitude. Use ONLY for funding rate questions, carry trade analysis, or market directional bias. NOT for prices — use get_tickers instead.',
     input_schema: {
       type: 'object' as const,
       properties: {

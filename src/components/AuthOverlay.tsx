@@ -23,7 +23,7 @@ export default function AuthOverlay() {
             Sign in to continue
           </h2>
           <p className="text-neutral-500 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
-            Sign in to access all features across 33 exchanges.
+            Sign in to access all features across 32 exchanges.
           </p>
 
           <div className="space-y-3">

@@ -6,7 +6,7 @@ import ExchangeStrip from './ExchangeStrip';
 
 interface StatusBarProps { venuesActive?: number; venuesTotal?: number; apiBase?: number; wsBase?: number; version?: string; className?: string; }
 
-export default function StatusBar({ venuesActive = 33, venuesTotal = 33, apiBase = 142, wsBase = 38, version = 'v2.0', className }: StatusBarProps) {
+export default function StatusBar({ venuesActive = 32, venuesTotal = 32, apiBase = 142, wsBase = 38, version = 'v2.0', className }: StatusBarProps) {
   return (
     <footer className={className} style={{ height: 36, flexShrink: 0, background: 'var(--hub-dark)', borderTop: '1px solid var(--hub-border-subtle)', display: 'flex', alignItems: 'center', padding: '0 18px', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg-subtle)', whiteSpace: 'nowrap', overflow: 'hidden' }} aria-label="System status">
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--pump-mild)', fontWeight: 600 }}>

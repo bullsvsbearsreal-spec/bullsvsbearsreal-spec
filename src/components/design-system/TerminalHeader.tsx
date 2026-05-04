@@ -36,7 +36,7 @@ const NAV_GROUPS: NavGroup[] = [
   { key: 'monitor', label: 'Monitor',
     icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg>,
     items: [
-      { id: 'funding',         label: 'Funding Rates',   href: '/funding',          hint: 'Live across 33 venues' },
+      { id: 'funding',         label: 'Funding Rates',   href: '/funding',          hint: 'Live across 32 venues' },
       { id: 'funding-heatmap', label: 'Funding Heatmap', href: '/funding-heatmap',   hint: 'Asset × venue grid' },
       { id: 'oi',              label: 'Open Interest',   href: '/open-interest',       hint: 'OI changes, dominance' },
       { id: 'oi-heatmap',      label: 'OI Heatmap',      href: '/oi-heatmap',        hint: 'OI flux grid' },
@@ -127,6 +127,7 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
   const { data: session, status } = useSession();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   // Search palette state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -137,7 +138,12 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
   const callbackUrl = encodeURIComponent(pathname || '/');
   const isAuthed = status === 'authenticated';
   const userName = session?.user?.name || session?.user?.email?.split('@')[0] || '';
+  const userImage = session?.user?.image || null;
+  const showAvatar = !!userImage && !avatarError;
   const initials = userName ? userName.slice(0, 2).toUpperCase() : 'JD';
+
+  // Reset error state when avatar URL changes (e.g. fresh upload).
+  useEffect(() => { setAvatarError(false); }, [userImage]);
 
   // Build search index — flatten NAV_GROUPS pages + popular symbols
   const searchResults = useMemo(() => {
@@ -349,12 +355,26 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
             style={{
               width: 32, height: 32, borderRadius: 999, padding: 0,
               border: '1px solid var(--hub-border)',
-              background: 'linear-gradient(135deg,#FFB800,#FF8C00)',
+              background: showAvatar ? 'transparent' : 'linear-gradient(135deg,#FFB800,#FF8C00)',
               color: '#07090d', fontFamily: 'var(--font-sans)', fontSize: 12, fontWeight: 800,
               cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
             }}
           >
-            {initials}
+            {showAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={userImage!}
+                alt={userName}
+                width={32}
+                height={32}
+                referrerPolicy="no-referrer"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={() => setAvatarError(true)}
+              />
+            ) : (
+              initials
+            )}
           </button>
           {userMenuOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 0, minWidth: 220, background: 'rgba(15,18,24,0.98)', backdropFilter: 'blur(8px)', border: '1px solid var(--hub-border-hover)', borderRadius: 10, boxShadow: '0 18px 40px -12px rgba(0,0,0,0.7)', padding: 6, marginTop: 4, zIndex: 50 }}>

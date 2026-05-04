@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     } else {
       await sendMessage(chatId,
         '👋 <b>Welcome to Hub!</b>\n\n' +
-        'I\'m InfoHub\'s AI trading agent. I can answer market questions, pull live data from 33 exchanges, and send you alerts.\n\n' +
+        'I\'m InfoHub\'s AI trading agent. I can answer market questions, pull live data from 32 exchanges, and send you alerts.\n\n' +
         'To link your account:\n' +
         '1. Log in at <b>info-hub.io</b>\n' +
         '2. Go to <b>Settings</b> → Telegram\n' +

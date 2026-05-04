@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
-// 33 venues — must stay in sync with src/lib/constants/exchanges.ts ALL_EXCHANGES
+// 32 venues — must stay in sync with src/lib/constants/exchanges.ts ALL_EXCHANGES
 const EXCHANGES = [
   'binance','bybit','okx','bitget','mexc',
   'kraken','bingx','phemex','bitunix','hyperliquid','dydx','aster','lighter',

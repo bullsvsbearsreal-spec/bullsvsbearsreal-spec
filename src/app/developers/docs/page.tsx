@@ -202,7 +202,7 @@ export default function DocsPage() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">Documentation</span>
               </h1>
               <p className="text-gray-400 text-base max-w-2xl mb-4">
-                Complete reference for the InfoHub Public API. Real-time derivatives data from 33 exchanges, aggregated into 14 REST endpoints.
+                Complete reference for the InfoHub Public API. Real-time derivatives data from 32 exchanges, aggregated into 14 REST endpoints.
               </p>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2">
@@ -300,7 +300,7 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
             </div>
 
             <Section id="funding" title="Funding Rates" method="GET" path="/api/v1/funding">
-              <p className="text-gray-400 mb-4">Real-time funding rates across 33 exchanges. Rates are expressed as percentages in the exchange's native interval.</p>
+              <p className="text-gray-400 mb-4">Real-time funding rates across 32 exchanges. Rates are expressed as percentages in the exchange's native interval.</p>
               <ParamTable params={[
                 ['symbols', 'string', 'all', 'Comma-separated symbols (e.g. BTC,ETH,SOL)'],
                 ['exchanges', 'string', 'all', 'Comma-separated exchanges (e.g. binance,bybit)'],
@@ -636,7 +636,7 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
 
             <Section id="exchanges" title="Exchanges" method="GET" path="/api/v1/exchanges">
               <p className="text-gray-400 mb-4">
-                Metadata for all 33 supported exchanges including fees, funding intervals, and trade URL patterns.
+                Metadata for all 32 supported exchanges including fees, funding intervals, and trade URL patterns.
               </p>
               <CodeBlock title="Response">{`{
   "success": true,
@@ -649,7 +649,7 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
       "tradeUrlPattern": "https://www.binance.com/en/futures/{SYMBOL}USDT"
     }
   ],
-  "meta": { "total": 33, "cex": 18, "dex": 15, "timestamp": 1713181800000 }
+  "meta": { "total": 32, "cex": 18, "dex": 14, "timestamp": 1713181800000 }
 }`}</CodeBlock>
             </Section>
 
@@ -661,7 +661,7 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
   "status": "operational",
   "version": "v1",
   "endpoints": [
-    { "path": "/api/v1/funding", "method": "GET", "description": "Real-time funding rates across 33 exchanges" }
+    { "path": "/api/v1/funding", "method": "GET", "description": "Real-time funding rates across 32 exchanges" }
   ],
   "tiers": {
     "free": { "rateLimit": "100 req/min", "dailyLimit": "5,000 req/day" },

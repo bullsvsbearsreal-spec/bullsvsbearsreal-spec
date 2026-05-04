@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Link from 'next/link';
 import { ALL_EXCHANGES } from '@/lib/constants';
 
 interface TeamMember {
@@ -18,8 +19,11 @@ const teamMembers: TeamMember[] = [
     name: '0x.0celot',
     role: 'Founder',
     image: '/team/ocelot.jpg',
-    bio: 'Honestly just wanted one clean page to compare funding rates. Every tool out there was either ugly, expensive, or both. Built a quick thing for himself, showed it to a few traders, and they wouldn\u2019t stop asking for more features. Still hasn\u2019t stopped adding them.',
-    stats: [],
+    bio: 'Honestly just wanted one clean page to compare funding rates. Every tool out there was either ugly, expensive, or both. Built a quick thing for himself, showed it to a few traders, and they wouldn’t stop asking for more features. Still hasn’t stopped adding them.',
+    stats: [
+      { label: 'Building Since', value: '2024' },
+      { label: 'Ships', value: 'Daily' },
+    ],
     socials: { twitter: 'https://x.com/ocelotIH' },
     ringColor: 'from-hub-yellow via-hub-orange to-hub-yellow-dark',
     roleBadgeColor: 'bg-hub-yellow/15 text-hub-yellow border-hub-yellow/20',
@@ -28,7 +32,7 @@ const teamMembers: TeamMember[] = [
     name: 'snakether',
     role: 'Advisor',
     image: '/team/mf0x.jpg',
-    bio: 'Went from trading rates at a desk to trading perps from his couch. 15 years in and derivatives are still the only thing that gets him out of bed. Lives on Hyperliquid, dYdX, and Drift. The kind of person who DMs you at 4am because one number looked slightly off.',
+    bio: 'Went from trading rates at a desk to trading perps from his couch. 15 years in and derivatives are still the only thing that gets him out of bed. Lives on Hyperliquid, dYdX, and GMX. The kind of person who DMs you at 4am because one number looked slightly off.',
     stats: [
       { label: 'Annual Volume', value: '$1B+' },
       { label: 'In Markets', value: '15+ yrs' },
@@ -40,10 +44,38 @@ const teamMembers: TeamMember[] = [
 ];
 
 const projectStats = [
-  { value: `${ALL_EXCHANGES.length}`, label: 'Exchanges' },
-  { value: '8,000+', label: 'Pairs' },
-  { value: 'Live', label: 'Data' },
-  { value: '24/7', label: 'Uptime' },
+  { value: `${ALL_EXCHANGES.length}`, label: 'Exchanges', sub: 'CEX + DEX' },
+  { value: '8,000+', label: 'Pairs', sub: 'Updated live' },
+  { value: '60s', label: 'Refresh', sub: 'Funding cadence' },
+  { value: '24/7', label: 'Uptime', sub: 'No batch jobs' },
+];
+
+const principles = [
+  {
+    title: 'Build it because we use it',
+    body: 'Every dashboard exists because we needed it open in another tab. If it isn’t useful for live trading, it doesn’t ship.',
+  },
+  {
+    title: 'No fluff data',
+    body: 'No vanity metrics, no padded “sentiment scores”. Just the numbers that move PnL: funding, OI, liquidations, basis, flow.',
+  },
+  {
+    title: 'Free tier that’s actually free',
+    body: 'You should never hit a paywall on a public market data point. The free tier is the whole product, the paid tier just removes friction.',
+  },
+  {
+    title: 'Ship fast, fix faster',
+    body: 'When something breaks we’d rather hear it from you than pretend it’s fine. Every stale number is a bug, not a feature.',
+  },
+];
+
+const milestones = [
+  { date: '2024 Q3', event: 'First funding rate dashboard, single page, no auth.' },
+  { date: '2024 Q4', event: 'Added open interest, liquidations, multi-exchange support.' },
+  { date: '2025 Q1', event: 'Smart money + on-chain perps (Hyperliquid, GMX) integrated.' },
+  { date: '2025 Q3', event: 'Funding arb scanner, leverage dashboard, public API.' },
+  { date: '2026 Q1', event: 'Portfolio sync + alerts across CEX and DEX wallets.' },
+  { date: '2026 Q2', event: 'KOL feed, Telegram bot v2, browser push, deeper alerts.' },
 ];
 
 export default function TeamPage() {
@@ -65,6 +97,11 @@ export default function TeamPage() {
           />
 
           <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-400 text-[11px] font-medium">Active build</span>
+            </div>
+
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
               Who&apos;s behind{' '}
               <span className="text-gradient">InfoHub</span>
@@ -178,12 +215,48 @@ export default function TeamPage() {
           ))}
         </section>
 
+        {/* ── Principles ── */}
+        <section className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              How we build
+            </h2>
+            <p className="text-sm text-neutral-500 mt-1.5 max-w-md mx-auto">
+              Four rules we keep coming back to.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            {principles.map((p, i) => (
+              <div
+                key={p.title}
+                className="relative bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-hub-yellow/15 hover:bg-hub-yellow/[0.015] transition-all duration-200"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-hub-yellow/[0.06] border border-hub-yellow/15 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-hub-yellow font-mono">
+                    {String(i + 1).padStart(2, '0')}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-white mb-1.5 tracking-tight">
+                      {p.title}
+                    </h3>
+                    <p className="text-xs text-neutral-500 leading-relaxed">
+                      {p.body}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── Project Stats ── */}
         <section className="mb-16">
           <div className="text-center mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               InfoHub today
             </h2>
+            <p className="text-sm text-neutral-500 mt-1.5">Live numbers, no marketing fluff.</p>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -198,8 +271,52 @@ export default function TeamPage() {
                 <div className="text-sm font-semibold text-white">
                   {stat.label}
                 </div>
+                <div className="text-[10px] text-neutral-600 mt-0.5 uppercase tracking-wider font-medium">
+                  {stat.sub}
+                </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── Timeline ── */}
+        <section className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              The road so far
+            </h2>
+            <p className="text-sm text-neutral-500 mt-1.5">From one funding table to a full data terminal.</p>
+          </div>
+
+          <div className="relative max-w-2xl mx-auto">
+            {/* vertical line */}
+            <div className="absolute left-4 sm:left-[7.5rem] top-2 bottom-2 w-px bg-gradient-to-b from-hub-yellow/40 via-white/[0.08] to-transparent" />
+            <ol className="space-y-4">
+              {milestones.map((m, i) => (
+                <li
+                  key={m.date}
+                  className="relative flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-6 pl-10 sm:pl-0"
+                >
+                  {/* dot */}
+                  <span
+                    className={`absolute left-3 sm:left-[7.25rem] top-1.5 w-2 h-2 rounded-full ring-4 ring-hub-black ${
+                      i === milestones.length - 1
+                        ? 'bg-hub-yellow shadow-[0_0_12px_rgba(255,165,0,0.55)]'
+                        : 'bg-white/30'
+                    }`}
+                  />
+                  <div className="hidden sm:block w-28 text-right text-[11px] font-mono text-neutral-500 uppercase tracking-wider pt-1">
+                    {m.date}
+                  </div>
+                  <div className="flex-1">
+                    <div className="sm:hidden text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-0.5">
+                      {m.date}
+                    </div>
+                    <p className="text-sm text-neutral-300 leading-relaxed">{m.event}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
@@ -215,8 +332,8 @@ export default function TeamPage() {
                 Missing an exchange or feature?
               </h3>
               <p className="text-neutral-500 text-sm sm:text-base mb-6 max-w-lg mx-auto leading-relaxed">
-                DM us on X or send an email. Bug reports, exchange requests,
-                feature ideas — all welcome.
+                DM us on X, drop into Telegram, or send an email. Bug reports,
+                exchange requests, feature ideas, all welcome.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -230,6 +347,18 @@ export default function TeamPage() {
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                   Follow @info_hub69
+                </a>
+
+                <a
+                  href="https://t.me/+Z6SQGJ57SlwyY2Rk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" />
+                  </svg>
+                  Join Telegram
                 </a>
 
                 <a
@@ -252,6 +381,20 @@ export default function TeamPage() {
                   Email us
                 </a>
 
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-white/[0.04] flex flex-wrap items-center justify-center gap-4 text-[11px] text-neutral-600">
+                <Link href="/donate" className="hover:text-hub-yellow transition-colors">
+                  Support InfoHub
+                </Link>
+                <span className="text-neutral-700">·</span>
+                <Link href="/developers" className="hover:text-hub-yellow transition-colors">
+                  Build with our API
+                </Link>
+                <span className="text-neutral-700">·</span>
+                <Link href="/social" className="hover:text-hub-yellow transition-colors">
+                  Follow the KOL feed
+                </Link>
               </div>
             </div>
           </div>

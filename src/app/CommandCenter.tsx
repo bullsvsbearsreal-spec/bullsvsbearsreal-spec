@@ -288,7 +288,7 @@ export default function CommandCenter() {
                 Command Center
               </h1>
               <p className="text-[13px] text-[var(--fg-3)] leading-relaxed max-w-2xl">
-                Real-time derivatives intelligence. Funding, OI, liquidations across 33 exchanges, one screen.
+                Real-time derivatives intelligence. Funding, OI, liquidations across 32 exchanges, one screen.
               </p>
             </div>
             <div className="flex flex-col items-end gap-1 text-[11px] font-mono tabular-nums text-[var(--fg-4)]">
@@ -300,7 +300,7 @@ export default function CommandCenter() {
                 <span className="text-[var(--fg-5)]">·</span>
                 <span>streaming</span>
               </div>
-              <div>33 exchanges <span className="text-[var(--fg-5)]">·</span> v2.0</div>
+              <div>32 exchanges <span className="text-[var(--fg-5)]">·</span> v2.0</div>
             </div>
           </div>
 
@@ -343,7 +343,7 @@ export default function CommandCenter() {
                   Funding · 8h <span className="text-[var(--fg-3)] font-medium">— who&apos;s paying whom</span>
                 </h2>
               </div>
-              <div className="meta-ds">2s lag <span className="text-[var(--fg-5)]">·</span> 33 exchanges</div>
+              <div className="meta-ds">2s lag <span className="text-[var(--fg-5)]">·</span> 32 exchanges</div>
             </div>
             <div className="bg-hub-darker border border-[var(--hub-border)] rounded-[var(--radius-lg)] overflow-hidden">
               <div className="overflow-x-auto">

@@ -273,7 +273,7 @@ const ENDPOINT_GROUPS = [
     bg: 'bg-blue-500/10',
     border: 'border-blue-500/10',
     endpoints: [
-      ['GET', '/api/v1/funding', 'Real-time funding rates across 33 exchanges'],
+      ['GET', '/api/v1/funding', 'Real-time funding rates across 32 exchanges'],
       ['GET', '/api/v1/openinterest', 'Open interest data across exchanges'],
       ['GET', '/api/v1/tickers', 'Price & volume across all exchanges'],
       ['GET', '/api/v1/spreads', 'Cross-exchange price spreads'],
@@ -434,7 +434,7 @@ export default function DevelopersPage() {
                 </h1>
 
                 <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-4 max-w-lg">
-                  Funding rates, open interest, liquidations, spreads, options, and arbitrage aggregated from 33 exchanges into a single REST API.
+                  Funding rates, open interest, liquidations, spreads, options, and arbitrage aggregated from 32 exchanges into a single REST API.
                 </p>
                 <p className="text-gray-500 text-sm leading-relaxed mb-8 max-w-lg">
                   Built by traders, for traders. Whether you're running a funding bot, building a dashboard, or doing research, get live data in one call instead of managing 33 API keys.
@@ -847,7 +847,7 @@ console.log(data);`,
             />
             <FaqItem
               q="Do I need separate API keys for each exchange?"
-              a="No. One InfoHub API key gives you aggregated data from all 33 exchanges. That's the whole point."
+              a="No. One InfoHub API key gives you aggregated data from all 32 exchanges. That's the whole point."
             />
             <FaqItem
               q="Is there a WebSocket API?"
@@ -868,7 +868,7 @@ console.log(data);`,
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Ready to build?</h3>
                 <p className="text-gray-400 text-sm max-w-md">
-                  Create a free API key and start fetching real-time data from 33 exchanges in minutes.
+                  Create a free API key and start fetching real-time data from 32 exchanges in minutes.
                 </p>
               </div>
               {session?.user ? (

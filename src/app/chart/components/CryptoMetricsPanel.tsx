@@ -212,7 +212,7 @@ export default function CryptoMetricsPanel({ symbol, open, onToggle }: CryptoMet
             >
               {metrics.exchangeCount}x
               <span className="pointer-events-none absolute left-0 top-full mt-1.5 z-50 w-[200px] rounded-md bg-[#141414] border border-white/[0.08] px-2.5 py-1.5 text-[9px] text-neutral-400 leading-snug shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
-                {metrics.exchangeCount} funding entries from 33 exchanges. Some list multiple contract types per symbol.
+                {metrics.exchangeCount} funding entries from 32 exchanges. Some list multiple contract types per symbol.
               </span>
             </span>
           )}

@@ -10,7 +10,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
   ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign,
-  Wheat, Globe2, Layers, Cpu, Flame, Zap, Activity, Volume2,
+  Wheat, Globe2, Layers, Cpu, Flame, Zap, Activity, Volume2, Clock,
 } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import ChartErrorBoundary from './components/ChartErrorBoundary';
@@ -83,8 +83,8 @@ const ASSET_TABS: AssetTab[] = [
       { label: 'BONK', tvSymbol: 'COINBASE:BONKUSD', displayPair: '/USD', icon: 'bonk', cat: 'Meme' },
       { label: 'FLOKI', tvSymbol: 'COINBASE:FLOKIUSD', displayPair: '/USD', icon: 'floki', cat: 'Meme' },
       { label: 'HYPE', tvSymbol: 'BINANCE:HYPEUSDT', displayPair: '/USDT', icon: 'hype', cat: 'Perps' },
-      { label: 'DRIFT', tvSymbol: 'BINANCE:DRIFTUSDT', displayPair: '/USDT', icon: 'drift', cat: 'Perps' },
       { label: 'DYDX', tvSymbol: 'COINBASE:DYDXUSD', displayPair: '/USD', icon: 'dydx', cat: 'Perps' },
+      { label: 'GMX',  tvSymbol: 'BINANCE:GMXUSDT', displayPair: '/USDT', icon: 'gmx',  cat: 'Perps' },
     ],
   },
   {
@@ -155,6 +155,35 @@ const TIMEFRAMES = [
   { label: '1D',  value: 'D',   key: '6' },
   { label: '1W',  value: 'W',   key: '7' },
 ] as const;
+
+// ────────────────────────────────────────────────────────────────────
+// Favorites + Recents — localStorage backed
+// ────────────────────────────────────────────────────────────────────
+const FAVS_KEY = 'chart:favs:v1';
+const RECENTS_KEY = 'chart:recents:v1';
+const RECENTS_MAX = 8;
+
+function loadList(key: string): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : [];
+  } catch { return []; }
+}
+
+function saveList(key: string, list: string[]) {
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch {}
+}
+
+function findSymbolByTv(tv: string): AssetSymbol | undefined {
+  for (const tab of ASSET_TABS) {
+    const hit = tab.pinned.find(s => s.tvSymbol === tv);
+    if (hit) return hit;
+  }
+  return undefined;
+}
 
 // ────────────────────────────────────────────────────────────────────
 // Live ticker fetch (used for the stat strip)
@@ -319,6 +348,28 @@ function ChartPageInner() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
+  // Favorites + recents (localStorage-backed)
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [recents, setRecents] = useState<string[]>([]);
+  useEffect(() => { setFavorites(loadList(FAVS_KEY)); setRecents(loadList(RECENTS_KEY)); }, []);
+
+  const isFavorited = favorites.includes(tvSymbol);
+  const toggleFavorite = useCallback(() => {
+    setFavorites(prev => {
+      const next = prev.includes(tvSymbol) ? prev.filter(s => s !== tvSymbol) : [tvSymbol, ...prev];
+      saveList(FAVS_KEY, next);
+      return next;
+    });
+  }, [tvSymbol]);
+
+  const pushRecent = useCallback((tv: string) => {
+    setRecents(prev => {
+      const next = [tv, ...prev.filter(s => s !== tv)].slice(0, RECENTS_MAX);
+      saveList(RECENTS_KEY, next);
+      return next;
+    });
+  }, []);
+
   const isCrypto    = assetClass === 'crypto';
   const tickerStat  = useTickerStats(displayLabel, isCrypto);
   const currentTab  = useMemo(() => ASSET_TABS.find(t => t.id === assetClass)!, [assetClass]);
@@ -347,8 +398,9 @@ function ChartPageInner() {
     setSymbolOpen(false);
     setSymbolQuery('');
     setFocusedIndex(-1);
+    pushRecent(sym.tvSymbol);
     updateURL(sym.label, interval, assetClass);
-  }, [interval, assetClass, updateURL]);
+  }, [interval, assetClass, updateURL, pushRecent]);
 
   const switchAssetClass = useCallback((ac: AssetClass) => {
     setAssetClass(ac);
@@ -567,6 +619,30 @@ function ChartPageInner() {
                     No symbols found.
                   </div>
                 )}
+                {/* Favorites + recents shown first when no search active */}
+                {!symbolQuery.trim() && (
+                  <PinnedShortcutsSection
+                    title="Favorites"
+                    icon={<Star size={10} fill="currentColor" />}
+                    iconColor="var(--hub-accent)"
+                    tvSymbols={favorites}
+                    activeTv={tvSymbol}
+                    onSelect={selectSymbol}
+                    isCrypto={isCrypto}
+                    emptyHint="Star a symbol to pin it here for quick access."
+                  />
+                )}
+                {!symbolQuery.trim() && recents.length > 0 && (
+                  <PinnedShortcutsSection
+                    title="Recent"
+                    icon={<Clock size={10} />}
+                    iconColor="#60a5fa"
+                    tvSymbols={recents}
+                    activeTv={tvSymbol}
+                    onSelect={selectSymbol}
+                    isCrypto={isCrypto}
+                  />
+                )}
                 {isCrypto && !symbolQuery.trim() ? (
                   <CategorizedSymbolGrid
                     symbols={filteredSymbols}
@@ -595,14 +671,35 @@ function ChartPageInner() {
                 borderTop: '1px solid var(--hub-border-subtle)',
                 fontSize: 9, color: 'var(--fg-muted)',
                 fontFamily: 'var(--font-mono)',
-                display: 'flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
               }}>
                 <Kbd>↑↓</Kbd> nav <Kbd>↵</Kbd> select <Kbd>esc</Kbd> close
-                {isCrypto && <><span style={{ flex: 1 }} /><Kbd>T</Kbd> tape</>}
+                <span style={{ flex: 1 }} />
+                <Kbd>1-7</Kbd> timeframe
+                {isCrypto && <Kbd>T</Kbd>}{isCrypto && 'tape'}
               </div>
             </div>
           )}
         </div>
+
+        {/* Star/favorite toggle */}
+        <button
+          onClick={toggleFavorite}
+          aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+          title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+          style={{
+            width: 30, height: 30, borderRadius: 8,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: isFavorited ? 'rgba(var(--hub-accent-rgb), 0.12)' : 'var(--hub-darker)',
+            border: `1px solid ${isFavorited ? 'rgba(var(--hub-accent-rgb), 0.4)' : 'var(--hub-border-subtle)'}`,
+            color: isFavorited ? 'var(--hub-accent)' : 'var(--fg-muted)',
+            cursor: 'pointer',
+            transition: 'all 150ms',
+            flexShrink: 0,
+          }}
+        >
+          <Star size={13} fill={isFavorited ? 'currentColor' : 'none'} />
+        </button>
 
         {/* Live price strip (crypto only) */}
         {isCrypto && tickerStat.price != null && (
@@ -729,7 +826,9 @@ function ChartPageInner() {
         )}
       </div>
 
-      {/* ─── Quick symbol bar ─── */}
+      {/* ─── Quick symbol bar ───
+          Order: favorites → recents → top pinned. Dedupes across sources.
+          Section dividers separate favorites from recents from popular. */}
       <div style={{
         flexShrink: 0,
         background: 'rgba(0,0,0,0.5)',
@@ -738,34 +837,53 @@ function ChartPageInner() {
         display: 'flex', alignItems: 'center', gap: 4,
         overflowX: 'auto',
       }} role="tablist" aria-label="Quick symbols">
-        {currentTab.pinned.slice(0, 16).map(sym => {
-          const on = sym.tvSymbol === tvSymbol;
-          return (
-            <button
-              key={sym.tvSymbol}
-              role="tab"
-              aria-selected={on}
-              onClick={() => selectSymbol(sym)}
-              style={{
-                flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '4px 9px',
-                borderRadius: 6,
-                background: on ? 'rgba(var(--hub-accent-rgb), 0.18)' : 'transparent',
-                color: on ? 'var(--hub-accent)' : 'var(--fg-muted)',
-                border: on ? '1px solid rgba(var(--hub-accent-rgb), 0.4)' : '1px solid transparent',
-                fontSize: 11, fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 150ms',
-              }}
-              onMouseEnter={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
-              onMouseLeave={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-            >
-              {isCrypto && sym.icon && <TokenIconSimple symbol={sym.icon} size={13} />}
-              {sym.label}
-            </button>
-          );
-        })}
+        {(() => {
+          const favSyms = favorites.map(findSymbolByTv).filter((s): s is AssetSymbol => !!s && (s.tvSymbol.startsWith('BINANCE:') || s.tvSymbol.startsWith('COINBASE:') || s.tvSymbol.startsWith('BITSTAMP:')) === isCrypto);
+          const recSyms = recents.map(findSymbolByTv).filter((s): s is AssetSymbol => !!s).filter(s => !favorites.includes(s.tvSymbol));
+          const seen = new Set([...favorites, ...recents]);
+          const popular = currentTab.pinned.filter(s => !seen.has(s.tvSymbol)).slice(0, Math.max(2, 18 - favSyms.length - recSyms.length));
+          const sections: Array<{ items: AssetSymbol[]; key: string; tone: string }> = [];
+          if (favSyms.length) sections.push({ items: favSyms, key: 'fav', tone: 'fav' });
+          if (recSyms.length) sections.push({ items: recSyms, key: 'rec', tone: 'rec' });
+          sections.push({ items: popular, key: 'pop', tone: 'pop' });
+          return sections.map((sec, sIdx) => (
+            <div key={sec.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              {sIdx > 0 && (
+                <span style={{ width: 1, height: 16, background: 'var(--hub-border-subtle)', margin: '0 4px' }} aria-hidden />
+              )}
+              {sec.tone === 'fav' && <Star size={10} style={{ color: 'var(--hub-accent)', flexShrink: 0 }} fill="currentColor" />}
+              {sec.tone === 'rec' && <Clock size={10} style={{ color: '#60a5fa', flexShrink: 0 }} />}
+              {sec.items.map(sym => {
+                const on = sym.tvSymbol === tvSymbol;
+                return (
+                  <button
+                    key={sym.tvSymbol}
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => selectSymbol(sym)}
+                    style={{
+                      flexShrink: 0,
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '4px 9px',
+                      borderRadius: 6,
+                      background: on ? 'rgba(var(--hub-accent-rgb), 0.18)' : 'transparent',
+                      color: on ? 'var(--hub-accent)' : 'var(--fg-muted)',
+                      border: on ? '1px solid rgba(var(--hub-accent-rgb), 0.4)' : '1px solid transparent',
+                      fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                    onMouseEnter={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  >
+                    {isCrypto && sym.icon && <TokenIconSimple symbol={sym.icon} size={13} />}
+                    {sym.label}
+                  </button>
+                );
+              })}
+            </div>
+          ));
+        })()}
       </div>
 
       {/* ─── Chart + side tape ─── */}
@@ -814,6 +932,89 @@ function Kbd({ children }: { children: React.ReactNode }) {
       fontSize: 9, fontFamily: 'var(--font-mono)',
       color: 'var(--fg-default)',
     }}>{children}</kbd>
+  );
+}
+
+function PinnedShortcutsSection({
+  title, icon, iconColor, tvSymbols, activeTv, onSelect, isCrypto, emptyHint,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  iconColor: string;
+  tvSymbols: string[];
+  activeTv: string;
+  onSelect: (s: AssetSymbol) => void;
+  isCrypto: boolean;
+  emptyHint?: string;
+}) {
+  const resolved = tvSymbols.map(findSymbolByTv).filter((s): s is AssetSymbol => !!s);
+  if (resolved.length === 0 && !emptyHint) return null;
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '6px 6px 4px',
+      }}>
+        <span style={{ color: iconColor, display: 'inline-flex' }}>{icon}</span>
+        <span style={{
+          fontSize: 9, fontWeight: 700, color: 'var(--fg-muted)',
+          letterSpacing: '0.1em', textTransform: 'uppercase',
+        }}>{title}</span>
+        {resolved.length > 0 && (
+          <span style={{ fontSize: 9, color: iconColor, opacity: 0.6, fontFamily: 'var(--font-mono)' }}>
+            {resolved.length}
+          </span>
+        )}
+        <div style={{ flex: 1, height: 1, background: 'var(--hub-border-subtle)' }} />
+      </div>
+      {resolved.length === 0 && emptyHint ? (
+        <div style={{
+          padding: '6px 8px', fontSize: 10, color: 'var(--fg-faint)',
+          fontStyle: 'italic',
+        }}>{emptyHint}</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+          {resolved.map(sym => {
+            const on = sym.tvSymbol === activeTv;
+            return (
+              <button
+                key={`${title}-${sym.tvSymbol}`}
+                role="option"
+                aria-selected={on}
+                onClick={() => onSelect(sym)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 8px',
+                  borderRadius: 6,
+                  border: 'none', textAlign: 'left',
+                  background: on ? 'rgba(var(--hub-accent-rgb), 0.18)' : 'rgba(255,255,255,0.025)',
+                  color: on ? 'var(--hub-accent)' : 'var(--fg-default)',
+                  fontSize: 11, fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 120ms',
+                }}
+                onMouseEnter={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; }}
+                onMouseLeave={(e) => { if (!on) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.025)'; }}
+              >
+                {isCrypto && sym.icon ? (
+                  <TokenIconSimple symbol={sym.icon} size={14} />
+                ) : (
+                  <div style={{
+                    width: 14, height: 14, borderRadius: 3,
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'var(--fg-muted)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 7, fontWeight: 800,
+                  }}>{sym.label.slice(0, 2).toUpperCase()}</div>
+                )}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sym.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

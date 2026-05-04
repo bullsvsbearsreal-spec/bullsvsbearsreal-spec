@@ -26,7 +26,7 @@ interface FundingTableProps {
 
 const COLS = '32px 1.4fr 1fr 1fr 1fr 0.8fr 1fr';
 
-export default function FundingTable({ rows, title = 'Top Funding', period = '8h', updatedAgo, venueCount = 33, selectedSymbol, onRowClick, onPeriodChange, className }: FundingTableProps) {
+export default function FundingTable({ rows, title = 'Top Funding', period = '8h', updatedAgo, venueCount = 32, selectedSymbol, onRowClick, onPeriodChange, className }: FundingTableProps) {
   return (
     <div className={className} style={{ background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 12, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--hub-border-subtle)', gap: 10 }}>

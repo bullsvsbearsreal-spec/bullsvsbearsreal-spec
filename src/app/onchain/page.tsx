@@ -34,7 +34,8 @@ interface HistoryPoint {
 }
 
 interface MetricData {
-  current: number;
+  /** May be null when upstream data is partial / Puell needs 365d history. */
+  current: number | null;
   history: HistoryPoint[];
   signal?: string;
   change30d?: number;
@@ -287,7 +288,7 @@ export default function OnChainPage() {
               <SummaryCard
                 icon={<Cpu className="w-4 h-4" />}
                 label="Hash Rate"
-                value={formatHashRate(data.hashRate.current)}
+                value={data.hashRate?.current != null ? formatHashRate(data.hashRate.current) : '—'}
                 flash={hashFlash}
                 sub={
                   hashRateChange != null
@@ -317,11 +318,11 @@ export default function OnChainPage() {
               <SummaryCard
                 icon={<BarChart3 className="w-4 h-4" />}
                 label="MVRV Z-Score"
-                value={data.mvrv.current.toFixed(2)}
-                accent={mvrvColor(data.mvrv.current)}
+                value={data.mvrv?.current != null ? data.mvrv.current.toFixed(2) : '—'}
+                accent={data.mvrv?.current != null ? mvrvColor(data.mvrv.current) : undefined}
                 flash={mvrvFlash}
               >
-                {data.mvrv.signal && (
+                {data.mvrv?.signal && (
                   <span
                     className={`inline-block mt-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${signalColor(data.mvrv.signal)} ${signalBgColor(data.mvrv.signal)}`}
                   >
@@ -333,8 +334,8 @@ export default function OnChainPage() {
               <SummaryCard
                 icon={<Activity className="w-4 h-4" />}
                 label="Puell Multiple"
-                value={data.puellMultiple.current.toFixed(2)}
-                accent={puellColor(data.puellMultiple.current)}
+                value={data.puellMultiple?.current != null ? data.puellMultiple.current.toFixed(2) : '—'}
+                accent={data.puellMultiple?.current != null ? puellColor(data.puellMultiple.current) : undefined}
                 flash={puellFlash}
               >
                 {data.puellMultiple.signal && (

@@ -73,7 +73,7 @@ export default function FundingPage() {
       // Restore saved exchange selection from localStorage.
       // If the saved set is too small (< 5), treat it as stale and reset to all exchanges.
       // This prevents first-time users from seeing a nearly-empty table due to a
-      // previously saved narrow selection (e.g. only 2/33 exchanges).
+      // previously saved narrow selection (e.g. only 2/32 exchanges).
       const savedExchanges = localStorage.getItem('infohub:funding:exchanges');
       if (savedExchanges) {
         const arr = JSON.parse(savedExchanges) as string[];

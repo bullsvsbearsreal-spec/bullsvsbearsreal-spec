@@ -22,7 +22,7 @@ export default function LeverageError({
       </div>
       <h1 className="text-lg font-semibold text-white mb-2">Leverage feed hit an issue</h1>
       <p className="text-neutral-400 text-sm mb-6 max-w-sm">
-        The dashboard aggregates funding, OI, and volume across 33 venues — if any upstream stalls, a retry typically fixes it.
+        The dashboard aggregates funding, OI, and volume across 32 venues — if any upstream stalls, a retry typically fixes it.
       </p>
       <div className="flex gap-3">
         <button

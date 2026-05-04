@@ -56,7 +56,7 @@ const upcomingGuides = [
   },
   {
     title: 'Don\'t Blow Up: Risk Management',
-    desc: 'The most important guide we\'ll write. Position sizing, hedging, and the mental frameworks that keep you in the game long-term.',
+    desc: 'The most important guide we\'ll write. Position sizing, hedging, and the mental frameworks that keep you in the game over time.',
     icon: PieChart,
     tag: 'Risk',
     difficulty: 'Beginner',
@@ -106,7 +106,7 @@ export default function GuidesPage() {
             </h1>
 
             <p className="text-neutral-400 text-sm sm:text-base max-w-xl leading-relaxed mb-3">
-              We&apos;re putting together a collection of no-BS guides on derivatives trading.
+              We&apos;re putting together a collection of honest, no nonsense guides on derivatives trading.
               Real strategies, real examples, using real data from InfoHub.
             </p>
             <p className="text-neutral-600 text-xs sm:text-sm max-w-xl leading-relaxed">
@@ -119,7 +119,7 @@ export default function GuidesPage() {
             {[
               { icon: Coffee, label: 'Plain English', desc: 'No jargon walls. We explain things like we\'re talking to a friend.' },
               { icon: BarChart3, label: 'Live examples', desc: 'Every concept backed by real charts and data from InfoHub.' },
-              { icon: Pencil, label: 'Actionable', desc: 'Step-by-step playbooks you can actually use tomorrow.' },
+              { icon: Pencil, label: 'Actionable', desc: 'Clear playbooks you can actually use tomorrow.' },
             ].map((item) => (
               <div key={item.label} className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center flex-shrink-0 mt-0.5">

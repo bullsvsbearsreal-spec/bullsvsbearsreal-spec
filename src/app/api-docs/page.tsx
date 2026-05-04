@@ -169,7 +169,7 @@ const ENDPOINT_GROUPS = [
   {
     label: 'Market Data', color: 'blue' as const,
     endpoints: [
-      { path: '/api/v1/funding', desc: 'Real-time funding rates across 33 exchanges', icon: Activity },
+      { path: '/api/v1/funding', desc: 'Real-time funding rates across 32 exchanges', icon: Activity },
       { path: '/api/v1/funding/history', desc: 'Historical funding snapshots, up to 14 days', icon: History },
       { path: '/api/v1/openinterest', desc: 'Open interest data across exchanges in USD', icon: BarChart3 },
       { path: '/api/v1/tickers', desc: 'Live price, volume, and 24h change data', icon: TrendingUp },
@@ -210,7 +210,7 @@ const COLOR_MAP = {
 };
 
 const USE_CASES = [
-  { title: 'Funding Rate Bots', desc: 'Scan 33 exchanges for rate discrepancies and execute delta-neutral arb strategies automatically.', color: 'border-l-amber-500/60', icon: '⚡' },
+  { title: 'Funding Rate Bots', desc: 'Scan 32 exchanges for rate discrepancies and execute delta-neutral arb strategies automatically.', color: 'border-l-amber-500/60', icon: '⚡' },
   { title: 'Trading Dashboards', desc: 'Build internal tools showing live OI, spreads, liquidations, and long/short ratios in one view.', color: 'border-l-blue-500/60', icon: '📊' },
   { title: 'Quant Research', desc: 'Backtest funding strategies with 14 days of historical data. Correlate OI shifts with price action.', color: 'border-l-green-500/60', icon: '🔬' },
   { title: 'Alert Systems', desc: 'Monitor extreme funding, whale liquidations, or fear/greed shifts. Push to Telegram, Discord, or email.', color: 'border-l-purple-500/60', icon: '🔔' },
@@ -312,7 +312,7 @@ export default function ApiDocsPage() {
             </h1>
 
             <p className="text-neutral-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-2">
-              Real-time derivatives data from 33 exchanges, delivered through 14 REST endpoints.
+              Real-time derivatives data from 32 exchanges, delivered through 14 REST endpoints.
             </p>
             <p className="text-neutral-600 text-sm mb-10">
               Built for trading bots, dashboards, and quantitative research.
@@ -339,7 +339,7 @@ export default function ApiDocsPage() {
             {/* Animated stats */}
             <div className="inline-flex items-center gap-6 sm:gap-10 bg-white/[0.02] border border-white/[0.06] rounded-2xl px-8 py-5">
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-white font-mono"><AnimatedNumber target={33} /></div>
+                <div className="text-2xl sm:text-3xl font-bold text-white font-mono"><AnimatedNumber target={32} /></div>
                 <div className="text-[10px] text-neutral-500 uppercase tracking-wider mt-1">Exchanges</div>
               </div>
               <div className="w-px h-10 bg-white/[0.06]" />

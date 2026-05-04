@@ -1,39 +1,90 @@
 /**
- * Nitter RSS fetcher.
+ * Nitter RSS fetcher with multi-instance failover.
  *
- * Nitter is a community-maintained Twitter mirror. Right now `nitter.net`
- * is the only public instance returning real data — others are dead or
- * 403-blocked. If `nitter.net` itself goes down, override via env var:
+ * Why multi-instance: nitter.net has been intermittently rate-limiting
+ * datacenter IPs (incl. our droplet) since late 2025. Hitting a single
+ * mirror means the feed silently goes empty. We rotate through several
+ * known-good public mirrors and accept the first one that returns items.
  *
- *   NITTER_BASE=https://your-self-hosted-nitter.example.com
+ * Override the order via env:
+ *   NITTER_INSTANCES=https://a.example,https://b.example,...
  *
  * Or swap the whole fetcher in the cron handler to RSSHub / rss.app / X API.
  */
 import type { SocialFetcher, SocialPost } from './types';
 
-const NITTER_BASE = (process.env.NITTER_BASE || 'https://nitter.net').replace(/\/$/, '');
+// Default instance list, ordered by reliability (May 2026 snapshot).
+// xcancel.com and nitter.privacydev.net have been the most stable for
+// datacenter IPs; nitter.net and nitter.poast.org as backups.
+const DEFAULT_INSTANCES = [
+  'https://xcancel.com',
+  'https://nitter.privacydev.net',
+  'https://nitter.poast.org',
+  'https://nitter.net',
+];
+
+const NITTER_INSTANCES: string[] = (() => {
+  const raw = process.env.NITTER_INSTANCES;
+  if (raw && raw.trim()) {
+    return raw.split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+  }
+  return DEFAULT_INSTANCES.map(u => u.replace(/\/$/, ''));
+})();
+
+// Browser UA — many mirrors block obvious bot UAs.
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+const FETCH_TIMEOUT_MS = 12_000;
 
 export const nitterFetcher: SocialFetcher = {
   name: 'nitter',
   async fetchHandle(handle: string): Promise<SocialPost[]> {
-    const url = `${NITTER_BASE}/${encodeURIComponent(handle)}/rss`;
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(15_000),
-      headers: {
-        'User-Agent': 'InfoHubSocialFetcher/1.0 (+https://info-hub.io)',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-      },
-    });
-    if (!res.ok) {
-      throw new Error(`nitter ${handle}: HTTP ${res.status}`);
+    let lastErr: unknown = null;
+    for (const base of NITTER_INSTANCES) {
+      const url = `${base}/${encodeURIComponent(handle)}/rss`;
+      try {
+        const res = await fetch(url, {
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          // Cache-bust to avoid edge / Cloudflare staleness on the mirror's side
+          cache: 'no-store',
+          headers: {
+            'User-Agent': BROWSER_UA,
+            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+        });
+        if (!res.ok) {
+          lastErr = new Error(`${base} ${handle}: HTTP ${res.status}`);
+          continue;
+        }
+        const xml = await res.text();
+        // Some mirrors return HTML 200s with rate-limit / captcha pages.
+        // Real RSS will start with `<?xml` and contain `<rss` / `<channel`.
+        if (!/^<\?xml/i.test(xml.trim()) && !/<rss[\s>]|<channel>/.test(xml)) {
+          lastErr = new Error(`${base} ${handle}: non-RSS response (likely rate-limit)`);
+          continue;
+        }
+        if (!xml.includes('<item>')) {
+          // Empty channel — could mean zero posts, suspended, or stub. Treat
+          // as a clean empty list so we don't spam errors. If ALL mirrors say
+          // empty, the watchdog (>12h stale) catches it later.
+          return [];
+        }
+        const posts = parseRssXml(xml, handle);
+        if (posts.length > 0) return posts;
+        // 0 parseable posts — try next mirror
+        lastErr = new Error(`${base} ${handle}: 0 parseable posts`);
+      } catch (e) {
+        lastErr = e;
+        // Fall through to next instance
+      }
     }
-    const xml = await res.text();
-    if (!xml.includes('<item>')) {
-      // No items at all — could be account suspended, private, or nitter
-      // returning a stub. Surface it as a clean empty list, not an error.
-      return [];
-    }
-    return parseRssXml(xml, handle);
+    throw new Error(
+      `nitter ${handle}: all ${NITTER_INSTANCES.length} instances failed — ` +
+      `last error: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
+    );
   },
 };
 
