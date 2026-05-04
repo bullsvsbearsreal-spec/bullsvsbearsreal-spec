@@ -82,6 +82,9 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/skew',                     label: 'Skew',            color: MUTE, icon: I.signal },
     { href: '/longshort',                label: 'Long / Short',    color: PUR,  icon: I.ls },
     { href: '/etf',                      label: 'ETF Tracker',     color: ACC,  icon: I.etf },
+    { href: '/etf-flows',                label: 'ETF Flows',       color: ACC,  icon: I.etf },
+    { href: '/etf-counterfactual',       label: 'ETF Counterfactual', color: ACC, icon: I.etf },
+    { href: '/crypto-stocks',            label: 'Crypto Stocks',   color: ACC,  icon: I.building },
   ]},
   { id: 'risk', label: 'Risk & Liquidations', items: [
     { href: '/liquidations',             label: 'Liquidations',    color: REKT, icon: I.liq },
@@ -113,6 +116,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/bounce',            label: 'Bounce',         color: PUMP, icon: I.trending },
     { href: '/outperformers',     label: 'Outperformers',  color: PUMP, icon: I.trending },
     { href: '/trending-tokens',   label: 'Trending Tokens', color: PUMP, icon: I.flame },
+    { href: '/memecoin-radar',    label: 'Memecoin Radar', color: PUMP, icon: I.flame },
     { href: '/market-heatmap',    label: 'Market Heatmap', color: ACL,  icon: I.fundHeat },
     { href: '/stock-heatmap',     label: 'Stock Heatmap',  color: ACL,  icon: I.fundHeat },
     { href: '/rsi-heatmap',       label: 'RSI Heatmap',    color: ACL,  icon: I.signal },
