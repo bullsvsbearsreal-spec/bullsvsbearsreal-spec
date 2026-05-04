@@ -1,7 +1,7 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { isCryptoSymbol } from '../_shared/fetch';
 
-const PROXY_BASE = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://info-hub.io';
+const PROXY_BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
 
 type TickerData = {
   symbol: string;

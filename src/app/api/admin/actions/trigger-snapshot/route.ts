@@ -14,8 +14,9 @@ export async function POST() {
   const session = await auth();
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+      || process.env.NEXTAUTH_URL
+      || 'http://localhost:3000';
     const cronSecret = process.env.CRON_SECRET || '';
 
     const res = await fetch(`${baseUrl}/api/cron/snapshot`, {

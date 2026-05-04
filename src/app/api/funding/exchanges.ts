@@ -2,7 +2,7 @@ import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { fetchWithTimeout, isCryptoSymbol } from '../_shared/fetch';
 import { normalizeSymbol, GTRADE_GROUP_ASSET_CLASS, type AssetClass } from './normalize';
 
-const PROXY_BASE = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://info-hub.io';
+const PROXY_BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
 
 type FundingData = {
   symbol: string;
