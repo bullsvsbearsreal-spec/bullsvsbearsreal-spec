@@ -25,6 +25,19 @@ interface FundingContext {
   avg48h: number | null;
 }
 
+/**
+ * Strip chain-disambiguation suffixes from a position symbol so the
+ * funding-snapshots join uses the canonical ticker.
+ *
+ * GMX positions on Avalanche get a "(Avax)" suffix to disambiguate from
+ * the Arbitrum entry of the same symbol — but funding_snapshots stores
+ * rates by the bare ticker only, so without stripping we'd never find a
+ * funding row for any cross-chain duplicate.
+ */
+function canonicalSymbol(sym: string): string {
+  return sym.replace(/\s*\((?:Avax|Avalanche|Arb|Arbitrum)\)\s*$/i, '').trim();
+}
+
 async function loadFundingContext(
   pairs: { exchange: string; symbol: string }[],
 ): Promise<Map<string, FundingContext>> {
@@ -32,8 +45,15 @@ async function loadFundingContext(
   if (pairs.length === 0) return out;
 
   const sql = getSQL();
-  const exchanges = pairs.map(p => p.exchange);
-  const symbols = pairs.map(p => p.symbol);
+  // Map (display symbol) → canonical for the SQL filter, but persist the
+  // result back under the ORIGINAL display symbol so the upstream lookup
+  // by `${exchange}|${symbol}` (which uses the display form) still hits.
+  const canonical = pairs.map(p => ({
+    ...p,
+    canonicalSymbol: canonicalSymbol(p.symbol),
+  }));
+  const exchanges = canonical.map(p => p.exchange);
+  const symbols = canonical.map(p => p.canonicalSymbol);
 
   // Single query: latest rate + 24h avg + 48h avg per (exchange, symbol).
   // Filter list keeps the working set small even when funding_snapshots
@@ -77,12 +97,21 @@ async function loadFundingContext(
     LEFT JOIN avg48  ON avg48.exchange  = w.exchange AND avg48.symbol  = w.symbol
   `;
 
+  // Build an intermediate map keyed by canonical symbol from the SQL rows…
+  const byCanonical = new Map<string, FundingContext>();
   for (const r of rows as any[]) {
-    out.set(`${r.exchange}|${r.symbol}`, {
+    byCanonical.set(`${r.exchange}|${r.symbol}`, {
       current: r.current === null ? null : Number(r.current),
       avg24h: r.avg24h === null ? null : Number(r.avg24h),
       avg48h: r.avg48h === null ? null : Number(r.avg48h),
     });
+  }
+  // …then re-index back to the ORIGINAL display symbol so callers that look
+  // up `${exchange}|${displaySymbol}` (e.g. "GMX|AVAX (Avax)") still find
+  // the funding context that came back keyed by "GMX|AVAX".
+  for (const p of canonical) {
+    const ctx = byCanonical.get(`${p.exchange}|${p.canonicalSymbol}`);
+    if (ctx) out.set(`${p.exchange}|${p.symbol}`, ctx);
   }
   return out;
 }
