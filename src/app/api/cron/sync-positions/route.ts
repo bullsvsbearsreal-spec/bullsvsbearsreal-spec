@@ -23,7 +23,7 @@ import {
 } from '@/lib/db';
 import { decryptSecret, isEncryptionConfigured } from '@/lib/crypto/exchange-keys';
 import { getExchangeClient } from '@/lib/exchange-clients';
-import { getWalletClient } from '@/lib/wallet-clients';
+import { getWalletClients, fetchAllPositionsForChain } from '@/lib/wallet-clients';
 import { isSupportedExchange, isSupportedChain } from '@/lib/portfolio/supported-exchanges';
 import { verifyCronAuth } from '../_auth';
 
@@ -153,19 +153,21 @@ export async function GET(req: NextRequest) {
           stat.wallets.push(ws);
           return;
         }
-        const client = getWalletClient(w.chain);
-        if (!client) {
+        const clients = getWalletClients(w.chain);
+        if (clients.length === 0) {
           ws.error = `no fetcher implemented for ${w.chain} yet`;
           stat.wallets.push(ws);
           return;
         }
-        const positions = await client.fetchPositions(w.address);
+        const positions = await fetchAllPositionsForChain(w.chain, w.address);
         // For wallets we use a synthetic exchange name based on the chain so
-        // the /positions UI can group/filter — "Hyperliquid" for HL,
-        // "GMX" for arbitrum (GMX V2 is the only arbitrum DEX wired today).
+        // the /positions UI can group/filter. Multi-DEX chains use the
+        // chain name; the symbol column already disambiguates DEX-specific
+        // markets (e.g. "(Avax)" / "(Poly)" suffixes when applicable).
         const exchangeLabel =
           w.chain === 'hyperliquid' ? 'Hyperliquid' :
-          w.chain === 'arbitrum'    ? 'GMX' :
+          w.chain === 'arbitrum'    ? 'Arbitrum DEX' :
+          w.chain === 'ethereum'    ? 'Lighter' :
           w.chain.toUpperCase();
         await replaceUserPositionsForSource(
           target.userId,
