@@ -150,6 +150,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/yields',            label: 'Yields',         color: PUMP, icon: I.trending },
     { href: '/staking',           label: 'Staking',        color: PUMP, icon: I.shield },
     { href: '/validators',        label: 'Validator Econ', color: PUMP, icon: I.shield },
+    { href: '/restaking-delta',   label: 'Restaking Delta', color: PUMP, icon: I.shield },
     { href: '/insider-transfers', label: 'Insider Watch',  color: PUR,  icon: I.user },
   ]},
   { id: 'whales', label: 'Smart Money & Whales', items: [
