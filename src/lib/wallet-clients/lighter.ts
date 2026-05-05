@@ -77,12 +77,18 @@ async function loadMarkets(): Promise<Map<number, LighterMarketMeta>> {
 
 async function fetchAccountIndex(l1Address: string): Promise<number | null> {
   try {
-    const res = await fetch(`${BASE_URL}/account?l1_address=${encodeURIComponent(l1Address)}`, {
+    // Lighter's /account endpoint takes `by` (filter type) + `value` (filter
+    // value). For wallet lookups we use by=l1_address. A 404-shaped response
+    // means "account not registered" — totally fine, return null.
+    const url = `${BASE_URL}/account?by=l1_address&value=${encodeURIComponent(l1Address)}`;
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: { 'Accept': 'application/json' },
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as LighterAccountResp;
+    const json = (await res.json()) as LighterAccountResp & { code?: number };
+    // Lighter wraps errors in 200 OK with `code` !== 200. Code 21100 = account not found.
+    if (json.code != null && json.code !== 200) return null;
     const first = (json.accounts ?? [])[0];
     return first?.index ?? null;
   } catch {
