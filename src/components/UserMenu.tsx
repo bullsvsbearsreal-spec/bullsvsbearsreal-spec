@@ -150,6 +150,28 @@ export default function UserMenu() {
             </Link>
           )}
 
+          {/* Admin-only utility links */}
+          {session.user?.role === 'admin' && (
+            <>
+              <Link
+                href="/changelog"
+                onClick={() => setOpen(false)}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-hub-yellow hover:text-hub-yellow hover:bg-hub-yellow/[0.06] transition-colors"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Changelog
+              </Link>
+              <Link
+                href="/health"
+                onClick={() => setOpen(false)}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-hub-yellow hover:text-hub-yellow hover:bg-hub-yellow/[0.06] transition-colors"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Endpoint Health
+              </Link>
+            </>
+          )}
+
           {/* Sign out */}
           <button
             onClick={() => {

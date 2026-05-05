@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Activity, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Activity, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Shield } from 'lucide-react';
 
 interface EndpointDef {
   name: string;
@@ -157,11 +160,23 @@ async function runChecks(): Promise<CheckResult[]> {
 }
 
 export default function HealthPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const isAdmin = userRole === 'admin';
+
   const [rows, setRows] = useState<CheckResult[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRun, setLastRun] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const inflightRef = useRef(false);
+
+  // Send unauthenticated users to login.
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/login?callbackUrl=/health');
+    }
+  }, [status, router]);
 
   const load = useCallback(async () => {
     if (inflightRef.current) return;
@@ -178,10 +193,11 @@ export default function HealthPage() {
   }, []);
 
   useEffect(() => {
+    if (!isAdmin) return;
     load();
     const id = setInterval(() => load(), 60_000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, isAdmin]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -215,6 +231,70 @@ export default function HealthPage() {
   }, [grouped]);
 
   const fresh = lastRun ? Math.max(0, Math.floor((now - lastRun) / 1000)) : 0;
+
+  // Loading state while session resolves.
+  if (status === 'loading') {
+    return (
+      <>
+        <Header />
+        <main className="max-w-[1400px] mx-auto w-full px-4 py-12">
+          <div className="card-premium p-12 text-center text-neutral-500 text-sm">Checking access…</div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Authenticated but not admin → access-denied card.
+  if (status === 'authenticated' && !isAdmin) {
+    return (
+      <>
+        <Header />
+        <main id="main-content" className="max-w-[640px] mx-auto w-full px-4 py-12">
+          <div className="card-premium p-8 text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-amber-500/[0.12] border border-amber-400/30 flex items-center justify-center">
+              <Shield className="w-7 h-7 text-amber-400" />
+            </div>
+            <h1 className="text-lg font-bold text-white mb-2">Admin access required</h1>
+            <p className="text-sm text-neutral-400 mb-5 max-w-md mx-auto leading-relaxed">
+              The endpoint-health monitor is restricted to InfoHub administrators.
+              Your account
+              {session?.user?.email ? <> (<span className="text-white">{session.user.email}</span>)</> : null}
+              {' '}doesn&apos;t have admin permissions.
+            </p>
+            <div className="inline-flex gap-2">
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider rounded bg-hub-yellow text-black hover:bg-hub-yellow/90 transition-colors"
+              >
+                Go to Dashboard
+              </Link>
+              <Link
+                href="/"
+                className="px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded bg-transparent border border-white/[0.08] text-neutral-400 hover:text-white transition-colors"
+              >
+                Home
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Unauthenticated state (briefly visible before router.replace fires).
+  if (status === 'unauthenticated') {
+    return (
+      <>
+        <Header />
+        <main className="max-w-[640px] mx-auto w-full px-4 py-12">
+          <div className="card-premium p-8 text-center text-neutral-400 text-sm">Redirecting to sign in…</div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>

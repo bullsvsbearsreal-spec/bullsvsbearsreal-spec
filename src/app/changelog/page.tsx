@@ -1,10 +1,13 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { CHANGELOG, type ChangelogEntry, type ChangelogTag } from '@/lib/changelog';
-import { Sparkles, ArrowRight, Printer, Download } from 'lucide-react';
+import { Sparkles, ArrowRight, Printer, Shield } from 'lucide-react';
 
 const TAG_TONES: Record<ChangelogTag, string> = {
   new:        'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
@@ -68,9 +71,88 @@ function EntryCard({ entry }: { entry: ChangelogEntry }) {
 }
 
 export default function ChangelogPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const isAdmin = userRole === 'admin';
+
+  // Send unauthenticated users to login; non-admins see a clean access-denied card.
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/login?callbackUrl=/changelog');
+    }
+  }, [status, router]);
+
   const handlePrint = () => {
     if (typeof window !== 'undefined') window.print();
   };
+
+  // Loading state while session resolves.
+  if (status === 'loading') {
+    return (
+      <>
+        <Header />
+        <main className="max-w-[900px] mx-auto w-full px-4 py-8">
+          <div className="card-premium p-12 text-center text-neutral-500 text-sm">
+            Checking access…
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Authenticated but not admin → access-denied card.
+  if (status === 'authenticated' && !isAdmin) {
+    return (
+      <>
+        <Header />
+        <main id="main-content" className="max-w-[640px] mx-auto w-full px-4 py-12">
+          <div className="card-premium p-8 text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-amber-500/[0.12] border border-amber-400/30 flex items-center justify-center">
+              <Shield className="w-7 h-7 text-amber-400" />
+            </div>
+            <h1 className="text-lg font-bold text-white mb-2">Admin access required</h1>
+            <p className="text-sm text-neutral-400 mb-5 max-w-md mx-auto leading-relaxed">
+              The changelog is restricted to InfoHub administrators. Your account
+              {session?.user?.email ? <> (<span className="text-white">{session.user.email}</span>)</> : null}
+              {' '}doesn&apos;t have admin permissions.
+            </p>
+            <div className="inline-flex gap-2">
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider rounded bg-hub-yellow text-black hover:bg-hub-yellow/90 transition-colors"
+              >
+                Go to Dashboard
+              </Link>
+              <Link
+                href="/"
+                className="px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded bg-transparent border border-white/[0.08] text-neutral-400 hover:text-white transition-colors"
+              >
+                Home
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Unauthenticated state (briefly visible before router.replace fires).
+  if (status === 'unauthenticated') {
+    return (
+      <>
+        <Header />
+        <main className="max-w-[640px] mx-auto w-full px-4 py-12">
+          <div className="card-premium p-8 text-center text-neutral-400 text-sm">
+            Redirecting to sign in…
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>

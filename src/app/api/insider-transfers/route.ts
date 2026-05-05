@@ -139,15 +139,17 @@ export async function GET() {
 
   if (!apiKey) {
     // No key → return empty transfers, page falls back to static directory.
+    // Important: do NOT cache this response. If the operator sets the env var
+    // mid-deploy, the next request should pick it up immediately rather than
+    // serving the no-key body for the full TTL window.
     const body: ApiResponse = {
       walletsTracked,
       transfers: [],
       hasApiKey: false,
       ts: Date.now(),
     };
-    l1 = { body, ts: Date.now() };
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=240, stale-while-revalidate=600' },
+      headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
     });
   }
 

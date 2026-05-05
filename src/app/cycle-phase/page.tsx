@@ -167,13 +167,16 @@ export default function CyclePhasePage() {
               {(['hashRibbons', 'puell', 'mvrv', 'funding', 'sma200'] as const).map(key => {
                 const s = data.signals[key];
                 return (
-                  <div key={key} className="grid grid-cols-[180px,140px,110px,1fr] gap-3 px-3 py-2 items-center border-b border-white/[0.03] last:border-b-0">
+                  <div
+                    key={key}
+                    className="flex flex-col md:grid md:grid-cols-[180px,140px,110px,1fr] gap-1 md:gap-3 px-3 py-2 md:items-center border-b border-white/[0.03] last:border-b-0"
+                  >
                     <div className="text-sm text-white font-bold">{s.name}</div>
                     <div className="text-xs text-neutral-300 font-mono">{fmtValue(s.name, s.value)}</div>
                     <div className={`text-xs font-mono ${scoreTone(s.score)}`}>
                       {scoreLabel(s.score)}
                     </div>
-                    <div className="text-xs text-neutral-500 italic">{s.reading}</div>
+                    <div className="text-xs text-neutral-500 italic md:truncate">{s.reading}</div>
                   </div>
                 );
               })}

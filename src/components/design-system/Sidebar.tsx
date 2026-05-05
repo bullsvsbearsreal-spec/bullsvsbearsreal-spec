@@ -136,8 +136,6 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/market-cycle',      label: 'Market Cycle',   color: MUTE, icon: I.signal },
     { href: '/cycle-phase',       label: 'Cycle Phase',    color: ACC,  icon: I.signal },
     { href: '/crowdedness',       label: 'Crowdedness',    color: ACC,  icon: I.signal },
-    { href: '/health',            label: 'Endpoint Health', color: MUTE, icon: I.signal },
-    { href: '/changelog',         label: 'Changelog',      color: MUTE, icon: I.calendar },
   ]},
   { id: 'onchain', label: 'On-Chain & Flows', items: [
     { href: '/onchain',           label: 'On-Chain',       color: PUR,  icon: I.cube },
