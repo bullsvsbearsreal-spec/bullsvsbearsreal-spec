@@ -11,7 +11,7 @@ making infra-shaped changes.
 | --- | --- | --- |
 | Web (Next.js 14, App Router) | DigitalOcean App Platform · FRA1 · 2 GB | Auto-deploys on push to `main` |
 | Price aggregator (WS) | DigitalOcean droplet `infohub-aggregator` (FRA1, `46.101.247.54`) | systemd unit `infohub-aggregator.service` running `/opt/infohub-aggregator/index.mjs` |
-| Crons (6 jobs) | Same droplet, systemd timers | All hit `https://info-hub.io/api/cron/<name>` with `Authorization: Bearer $CRON_SECRET` |
+| Crons (9 jobs) | Same droplet, systemd timers | All hit `https://info-hub.io/api/cron/<name>` with `Authorization: Bearer $CRON_SECRET` |
 | DNS | Cloudflare (gray cloud / DNS-only) → CNAME flatten → `infohub-web-hg4id.ondigitalocean.app` | Cloudflare proxy is gray for now — DO's CDN already fronts the app via `*.ondigitalocean.app` |
 | SSL | Let's Encrypt via DO App Platform | Auto-renewed |
 | Domain registrar | Njalla | DNS delegated to Cloudflare |
@@ -47,14 +47,17 @@ journalctl -u 'infohub-cron@*' --since '10 minutes ago' --output=cat | grep 'HTT
 cat /etc/infohub-cron.env   # mode 600, contains only CRON_SECRET=...
 ```
 
-The 6 cron timers and their schedules:
+The 9 cron timers and their schedules:
 
 | Endpoint | Schedule |
 | --- | --- |
 | `/api/cron/snapshot` | every minute |
 | `/api/cron/ingest-liquidations` | every minute |
+| `/api/cron/sync-positions` | every minute |
 | `/api/cron/whale-trades` | every 2 min |
 | `/api/cron/alerts` | every 5 min |
+| `/api/cron/check-position-alerts` | every 5 min |
+| `/api/cron/social-fetch` | every 15 min |
 | `/api/cron/portfolio-snapshot` | daily at 12:00 UTC |
 | `/api/cron/telegram-daily` | daily at 08:00 UTC |
 

@@ -19,6 +19,8 @@ interface ApiResponse {
   fitR: number;
   days: DayPoint[];
   latest: { date: string; actualPrice: number; counterfactualPrice: number; gapPct: number } | null;
+  dataAvailable?: boolean;
+  note?: string;
   ts: number;
 }
 
@@ -145,7 +147,17 @@ export default function EtfCounterfactualPage() {
           <div className="card-premium p-12 text-center text-neutral-500 text-sm">Fitting model…</div>
         )}
 
-        {data && data.latest && (
+        {data && data.dataAvailable === false && (
+          <div className="card-premium p-6 text-center mb-4">
+            <div className="text-base font-bold text-amber-300 mb-2">Model temporarily unavailable</div>
+            <p className="text-sm text-neutral-400 mb-3 max-w-md mx-auto">
+              {data.note ?? 'Upstream sources unreachable.'}
+            </p>
+            <a href="/etf-flows" className="text-sm text-hub-yellow hover:underline">View ETF flows directly →</a>
+          </div>
+        )}
+
+        {data && data.dataAvailable !== false && data.latest && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
             <div className="card-premium p-3">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium">Actual</div>

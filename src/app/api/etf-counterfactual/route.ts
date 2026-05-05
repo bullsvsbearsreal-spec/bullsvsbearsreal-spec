@@ -45,6 +45,10 @@ interface ApiResponse {
   }>;
   /** Latest day */
   latest: { date: string; actualPrice: number; counterfactualPrice: number; gapPct: number } | null;
+  /** True when fit succeeded; false when upstream data was insufficient. */
+  dataAvailable: boolean;
+  /** Human-readable reason when dataAvailable is false. */
+  note?: string;
   ts: number;
 }
 
@@ -158,9 +162,25 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (priceHist.length < 30 || flows.length < 30) {
+      // Graceful degradation — Farside or CG throttling can leave us short
+      // of data. Return 200 with empty body + a note so the page renders a
+      // clean "data unavailable" state instead of a hard error.
+      const note = flows.length < 30
+        ? 'ETF flow data temporarily unreachable from this datacenter — Farside throttles datacenter IPs.'
+        : 'Price history temporarily unavailable.';
       return NextResponse.json(
-        { error: 'insufficient overlap for fit', hint: 'Need 30+ days of both flow and price.' },
-        { status: 503 },
+        {
+          asset,
+          impactPerBillion: 0,
+          fitN: 0,
+          fitR: 0,
+          days: [],
+          latest: null,
+          dataAvailable: false,
+          note,
+          ts: Date.now(),
+        } satisfies ApiResponse,
+        { headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' } },
       );
     }
 
@@ -182,8 +202,18 @@ export async function GET(request: NextRequest) {
 
     if (aligned.length < 30) {
       return NextResponse.json(
-        { error: 'too few aligned days', hint: 'Need 30+ overlapping flow+price days.' },
-        { status: 503 },
+        {
+          asset,
+          impactPerBillion: 0,
+          fitN: aligned.length,
+          fitR: 0,
+          days: [],
+          latest: null,
+          dataAvailable: false,
+          note: `Only ${aligned.length} overlapping flow+price days — need 30+ for a meaningful fit.`,
+          ts: Date.now(),
+        } satisfies ApiResponse,
+        { headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' } },
       );
     }
 
@@ -233,6 +263,7 @@ export async function GET(request: NextRequest) {
       fitR: Math.round(r * 100) / 100,
       days: days.slice(0, 90),
       latest,
+      dataAvailable: true,
       ts: Date.now(),
     };
 
@@ -242,9 +273,21 @@ export async function GET(request: NextRequest) {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
     });
   } catch (e) {
+    // Final safety net — return a 200 with empty body so the page can render
+    // a clean "data unavailable" state.
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'failed' },
-      { status: 502 },
+      {
+        asset,
+        impactPerBillion: 0,
+        fitN: 0,
+        fitR: 0,
+        days: [],
+        latest: null,
+        dataAvailable: false,
+        note: e instanceof Error ? `Upstream error: ${e.message}` : 'Upstream fetch failed.',
+        ts: Date.now(),
+      } satisfies ApiResponse,
+      { headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' } },
     );
   }
 }
