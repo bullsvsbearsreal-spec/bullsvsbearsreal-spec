@@ -24,6 +24,16 @@ const CLIENTS: Partial<Record<SupportedChain, WalletClient[]>> = {
 };
 
 /**
+ * A position tagged with the DEX it came from. Used by sync-positions so
+ * persisted rows carry the per-DEX `exchange` label (which the funding-
+ * rate join in /api/account/positions matches against funding_snapshots).
+ */
+export interface TaggedPosition extends NormalizedPosition {
+  /** DEX display name — "Hyperliquid", "GMX", "gTrade", "Lighter", etc. */
+  exchange: string;
+}
+
+/**
  * Returns the FIRST registered client for a chain (back-compat for callers
  * that still expect a single client). Most callers should use
  * `getWalletClients()` and aggregate.
@@ -38,21 +48,24 @@ export function getWalletClients(chain: SupportedChain): WalletClient[] {
 }
 
 /**
- * Convenience: fetch positions across every client registered for the chain
- * in parallel and concatenate. One client failing doesn't block the others.
+ * Fetch positions from every client registered for the chain in parallel
+ * and concatenate, tagging each row with the source DEX's display name.
+ * One client failing doesn't block the others.
  */
 export async function fetchAllPositionsForChain(
   chain: SupportedChain,
   address: string,
-): Promise<NormalizedPosition[]> {
+): Promise<TaggedPosition[]> {
   const clients = getWalletClients(chain);
   if (clients.length === 0) return [];
   const results = await Promise.allSettled(
-    clients.map(c => c.fetchPositions(address)),
+    clients.map(async c => ({ name: c.displayName, rows: await c.fetchPositions(address) })),
   );
-  const out: NormalizedPosition[] = [];
+  const out: TaggedPosition[] = [];
   for (const r of results) {
-    if (r.status === 'fulfilled') out.push(...r.value);
+    if (r.status === 'fulfilled') {
+      for (const p of r.value.rows) out.push({ ...p, exchange: r.value.name });
+    }
   }
   return out;
 }

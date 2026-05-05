@@ -22,6 +22,7 @@ import type { NormalizedPosition, WalletClient } from './types';
 
 export const gtradeWalletClient: WalletClient = {
   chain: 'arbitrum',
+  displayName: 'gTrade',
   async fetchPositions(_address: string): Promise<NormalizedPosition[]> {
     // Returns empty until we implement the on-chain reader. See file header
     // for the contract addresses + method signatures we'll need.

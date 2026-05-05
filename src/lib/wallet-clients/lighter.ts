@@ -98,6 +98,7 @@ async function fetchAccountIndex(l1Address: string): Promise<number | null> {
 
 export const lighterWalletClient: WalletClient = {
   chain: 'ethereum',  // Lighter resolves L1 addresses; users register on Ethereum mainnet
+  displayName: 'Lighter',
   async fetchPositions(address: string): Promise<NormalizedPosition[]> {
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return [];
 

@@ -163,6 +163,7 @@ export const gmxWalletClient: WalletClient = {
   // and concatenates. The router exposes this client under `arbitrum` since
   // most users add their EVM wallet there; Avalanche is a transparent bonus.
   chain: 'arbitrum',
+  displayName: 'GMX',
 
   async fetchPositions(address: string): Promise<NormalizedPosition[]> {
     const [arbPositions, avaxPositions] = await Promise.all([

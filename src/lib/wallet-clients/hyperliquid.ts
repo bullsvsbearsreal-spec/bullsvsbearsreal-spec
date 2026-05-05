@@ -55,6 +55,7 @@ interface HLClearingHouseState {
 
 export const hyperliquidWalletClient: WalletClient = {
   chain: 'hyperliquid',
+  displayName: 'Hyperliquid',
 
   async fetchPositions(address: string): Promise<NormalizedPosition[]> {
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return [];

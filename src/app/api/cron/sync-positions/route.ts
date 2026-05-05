@@ -159,22 +159,19 @@ export async function GET(req: NextRequest) {
           stat.wallets.push(ws);
           return;
         }
+        // Each position is tagged by `fetchAllPositionsForChain` with the
+        // DEX it came from (Hyperliquid / GMX / gTrade / Lighter). Using
+        // the per-position label means the funding-rate join in
+        // /api/account/positions can match each row to funding_snapshots
+        // rows with matching exchange — otherwise GMX positions would
+        // show no funding context, etc.
         const positions = await fetchAllPositionsForChain(w.chain, w.address);
-        // For wallets we use a synthetic exchange name based on the chain so
-        // the /positions UI can group/filter. Multi-DEX chains use the
-        // chain name; the symbol column already disambiguates DEX-specific
-        // markets (e.g. "(Avax)" / "(Poly)" suffixes when applicable).
-        const exchangeLabel =
-          w.chain === 'hyperliquid' ? 'Hyperliquid' :
-          w.chain === 'arbitrum'    ? 'Arbitrum DEX' :
-          w.chain === 'ethereum'    ? 'Lighter' :
-          w.chain.toUpperCase();
         await replaceUserPositionsForSource(
           target.userId,
           'dex',
           w.id,
           positions.map(p => ({
-            exchange: exchangeLabel,
+            exchange: p.exchange,
             symbol: p.symbol,
             side: p.side,
             size: p.size,
