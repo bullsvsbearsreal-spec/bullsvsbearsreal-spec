@@ -140,6 +140,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'donate',     label: 'Donate',        href: '/donate',             hint: 'Support InfoHub' },
       { id: 'points',     label: 'Points',        href: '/points',             hint: 'Loyalty rewards' },
       { id: 'settings',   label: 'Settings',      href: '/settings',           hint: 'Account + API' },
+      { id: 'health',     label: 'Endpoint Health', href: '/health',           hint: 'Live status of every API' },
       { id: 'login',      label: 'Sign In',       href: '/login',              hint: 'Existing account' },
       { id: 'signup',     label: 'Sign Up',       href: '/signup',             hint: 'Create account' },
       { id: 'forgot',     label: 'Forgot Password', href: '/forgot-password',  hint: 'Reset' },
