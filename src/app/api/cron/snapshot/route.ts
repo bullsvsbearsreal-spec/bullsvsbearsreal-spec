@@ -30,7 +30,11 @@ export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const MAX_SYMBOLS = 200; // Store top 200 symbols — balances coverage vs DB growth
+// Top symbols by # of exchanges that list them. Bumped from 200 → 500 so that
+// long-tail DEX-only / synthetic-only listings (e.g. ORDI / TAO / PENGU on
+// GMX, MOODENG / kPEPE on HL) make it into funding_snapshots — otherwise
+// /positions can't show the live/24h/48h funding columns for those rows.
+const MAX_SYMBOLS = 500;
 
 export async function GET(request: NextRequest) {
   // Verify auth — timing-safe comparison
