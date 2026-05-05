@@ -2,7 +2,9 @@ import { RawBookData, OrderbookLevel } from '../types';
 
 export async function fetchAevoBook(asset: string, fetchFn: typeof fetch): Promise<RawBookData | null> {
   try {
-    const res = await fetchFn(`https://api.aevo.xyz/orderbook?asset=${asset}`, { signal: AbortSignal.timeout(5000) });
+    // Aevo expects `instrument_name=BTC-PERP` (not `asset=BTC`). The old
+    // shape was returning HTTP 400 silently → venue invisible in /trade-optimizer.
+    const res = await fetchFn(`https://api.aevo.xyz/orderbook?instrument_name=${asset}-PERP`, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.bids || !data.asks) return null;

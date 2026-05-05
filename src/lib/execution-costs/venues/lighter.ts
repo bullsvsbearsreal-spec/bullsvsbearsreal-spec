@@ -6,16 +6,22 @@ export async function fetchLighterBook(asset: string, fetchFn: typeof fetch): Pr
     if (!marketsRes.ok) return null;
     const markets = await marketsRes.json();
 
-    const marketList = Array.isArray(markets) ? markets : markets.order_books || [];
+    // Lighter API moved from `{ order_books: [...] }` (older shape) to
+    // `{ code, order_book_details: [...] }` with a `symbol` field instead
+    // of `ticker`/`name`. Support both for forwards-compat.
+    const marketList = Array.isArray(markets)
+      ? markets
+      : (markets.order_book_details || markets.order_books || []);
     const market = marketList.find((m: any) => {
-      const name = (m.ticker || m.name || '').toUpperCase();
-      return name.startsWith(asset) && (name.includes('USD') || name.includes('USDT'));
+      const sym = (m.symbol || m.ticker || m.name || '').toUpperCase();
+      return sym === asset.toUpperCase()
+        || (sym.startsWith(asset.toUpperCase()) && (sym.includes('USD') || sym.includes('USDT')));
     });
     if (!market) return null;
 
-    const marketId = market.order_book_id ?? market.market_id;
-    const decimals = market.price_decimals ?? 2;
-    const sizeDecimals = market.size_decimals ?? 4;
+    const marketId = market.market_id ?? market.order_book_id;
+    const decimals = market.price_decimals ?? market.supported_price_decimals ?? 2;
+    const sizeDecimals = market.size_decimals ?? market.supported_size_decimals ?? 4;
 
     const ordersRes = await fetchFn(`https://mainnet.zklighter.elliot.ai/api/v1/orderBookOrders?market_id=${marketId}&limit=250`, { signal: AbortSignal.timeout(5000) });
     if (!ordersRes.ok) return null;
