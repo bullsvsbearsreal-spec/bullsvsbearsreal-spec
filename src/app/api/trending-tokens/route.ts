@@ -138,8 +138,22 @@ export async function GET(request: NextRequest) {
   // Filter by chain if requested
   const filtered = chain === 'all' ? boosts : boosts.filter(b => normalizeChain(b.chainId) === chain);
 
+  // Dedupe by token address — DexScreener returns the same boost campaign
+  // multiple times when renewed, which surfaces as N identical rows in the
+  // table. Keep the entry with the highest totalAmount per address (the
+  // most-recent / largest boost) and drop the rest.
+  const byAddress = new Map<string, BoostedToken>();
+  for (const b of filtered) {
+    const key = `${normalizeChain(b.chainId)}:${b.tokenAddress.toLowerCase()}`;
+    const existing = byAddress.get(key);
+    const cur = (b.totalAmount || b.amount || 0);
+    const prev = existing ? (existing.totalAmount || existing.amount || 0) : -Infinity;
+    if (!existing || cur > prev) byAddress.set(key, b);
+  }
+  const deduped = Array.from(byAddress.values());
+
   // Enrich with pair data — fetch each token in parallel, bounded
-  const toFetch = filtered.slice(0, Math.min(limit * 2, 60));  // fetch extra in case some fail
+  const toFetch = deduped.slice(0, Math.min(limit * 2, 60));  // fetch extra in case some fail
   const enriched = await Promise.all(
     toFetch.map(async (b) => {
       const pairs = await fetchJson<{ pairs?: DexPair[] }>(
