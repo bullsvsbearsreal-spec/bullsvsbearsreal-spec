@@ -1259,13 +1259,21 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
     // Single-pass conditional aggregation. The WHERE clause limits the scan
     // to the last ~24h of data. statement_timeout prevents runaway queries
     // from exhausting Neon's connection pool.
+    //
+    // CRITICAL: each "reference" window is the SAME width (12 min) as the
+    // "current" window. The previous version used 20-min reference windows
+    // which caught ≈2 cron ticks, while the 12-min current window caught
+    // only 1 — so SUM(reference) was ~2× SUM(current), producing a fake
+    // -50% to -65% decline across every symbol on /oi-heatmap. Matching
+    // window widths means each side sums the same number of (exchange,
+    // symbol) datapoints and the percentage delta becomes meaningful.
     const rows = await sql`
       SELECT
         symbol,
         SUM(CASE WHEN ts >= NOW() - INTERVAL '12 minutes' THEN oi_usd ELSE 0 END) AS current_oi,
-        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '70 minutes' AND NOW() - INTERVAL '50 minutes' THEN oi_usd ELSE 0 END) AS oi_1h,
-        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '250 minutes' AND NOW() - INTERVAL '230 minutes' THEN oi_usd ELSE 0 END) AS oi_4h,
-        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '1450 minutes' AND NOW() - INTERVAL '1430 minutes' THEN oi_usd ELSE 0 END) AS oi_24h
+        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '66 minutes' AND NOW() - INTERVAL '54 minutes' THEN oi_usd ELSE 0 END) AS oi_1h,
+        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '246 minutes' AND NOW() - INTERVAL '234 minutes' THEN oi_usd ELSE 0 END) AS oi_4h,
+        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '1446 minutes' AND NOW() - INTERVAL '1434 minutes' THEN oi_usd ELSE 0 END) AS oi_24h
       FROM oi_snapshots
       WHERE ts >= NOW() - INTERVAL '1450 minutes'
       GROUP BY symbol
