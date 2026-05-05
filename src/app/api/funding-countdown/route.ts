@@ -121,22 +121,28 @@ async function fromOkx(): Promise<CountdownRow[]> {
 
 async function fromBitget(): Promise<CountdownRow[]> {
   try {
-    const res = await fetchWithTimeout(
-      'https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES',
-      {}, TIMEOUT,
-    );
-    if (!res.ok) return [];
-    const json = await res.json() as { data?: Array<{ symbol: string; fundingRate: string; nextFundingTime: string }> };
-    const list = json.data ?? [];
+    // Bitget V2 tickers don't include `nextFundingTime` — only `fundingRate`.
+    // Pair with the `current-fund-rate` endpoint (single batch call) which
+    // returns `{ fundingRate, fundingRateInterval, nextUpdate }`.
+    const [tickersRes, ratesRes] = await Promise.all([
+      fetchWithTimeout('https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES', {}, TIMEOUT),
+      fetchWithTimeout('https://api.bitget.com/api/v2/mix/market/current-fund-rate?productType=USDT-FUTURES', {}, TIMEOUT),
+    ]);
+    if (!tickersRes.ok || !ratesRes.ok) return [];
+    const tickers = await tickersRes.json() as { data?: Array<{ symbol: string; fundingRate: string }> };
+    const rates = await ratesRes.json() as { data?: Array<{ symbol: string; fundingRate: string; fundingRateInterval: string; nextUpdate: string }> };
+    const tickerList = tickers.data ?? [];
+    const rateList = rates.data ?? [];
     return SYMBOLS.flatMap(sym => {
-      const m = list.find(t => t.symbol === `${sym}USDT`);
-      if (!m) return [];
+      const t = tickerList.find(x => x.symbol === `${sym}USDT`);
+      const r = rateList.find(x => x.symbol === `${sym}USDT`);
+      if (!t || !r) return [];
       return [{
         exchange: 'Bitget',
         symbol: sym,
-        fundingRate: Number(m.fundingRate) || 0,
-        nextFundingMs: Number(m.nextFundingTime) || 0,
-        intervalHours: 8,
+        fundingRate: Number(r.fundingRate || t.fundingRate) || 0,
+        nextFundingMs: Number(r.nextUpdate) || 0,
+        intervalHours: Number(r.fundingRateInterval) || 8,
       }];
     });
   } catch { return []; }

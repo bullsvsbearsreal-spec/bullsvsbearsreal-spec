@@ -16,19 +16,27 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Crosshair, RefreshCw, ExternalLink, TrendingUp, TrendingDown, ChevronDown, Search } from 'lucide-react';
+import { getExchangeTradeUrl } from '@/lib/constants/exchanges';
 
 interface FundingRow { exchange: string; symbol: string; fundingRate: number; nextFundingMs: number; intervalHours: number }
 interface FundingApi { rows: FundingRow[]; symbols: string[]; ts: number }
 
+// /api/execution-costs returns fields in PERCENT (not bps) and uses
+// `fee/spread/priceImpact/totalCost` — NOT the bps-suffixed names. We
+// convert to bps inside the merge step (multiply by 100).
 interface ExecutionVenue {
   exchange: string;
   available: boolean;
-  totalCostBps: number | null;
-  feeBps: number | null;
-  spreadBps: number | null;
-  impactBps: number | null;
-  midPrice: number | null;
-  tradeUrl?: string;
+  fee: number;
+  spread: number;
+  priceImpact: number;
+  totalCost: number;
+  executionPrice: number;
+  midPrice: number;
+  maxFillableSize: number | null;
+  depthLevels?: number;
+  method: 'clob' | 'amm_formula' | 'amm_rpc' | 'quote';
+  error?: string;
 }
 
 interface ExecutionApi {
@@ -296,21 +304,30 @@ export default function TradeOptimizerPage() {
         fundingHoldBps = decimal * 10_000; // → bps
       }
 
-      const total = (v.totalCostBps != null)
-        ? (v.totalCostBps + (fundingHoldBps ?? 0))
+      // Convert API's percent units → bps (multiply by 100). When the venue
+      // was returned as `available:false` (e.g., Variational with no quotes)
+      // its fee/spread/impact fields are zero placeholders — treat them as
+      // null so the table renders "—" instead of misleading "0.0".
+      const feeBps = v.available ? v.fee * 100 : null;
+      const spreadBps = v.available ? v.spread * 100 : null;
+      const impactBps = v.available ? v.priceImpact * 100 : null;
+      const execBps = v.available ? v.totalCost * 100 : null;
+
+      const total = (execBps != null)
+        ? (execBps + (fundingHoldBps ?? 0))
         : (fundingHoldBps != null ? fundingHoldBps : null);
 
       combined.push({
         exchange: v.exchange,
-        feeBps: v.feeBps,
-        spreadBps: v.spreadBps,
-        impactBps: v.impactBps,
+        feeBps,
+        spreadBps,
+        impactBps,
         fundingRate: f?.fundingRate ?? null,
         fundingIntervalHours: f?.intervalHours ?? 8,
         fundingHoldBps,
         totalBps: total,
         available: v.available,
-        tradeUrl: v.tradeUrl,
+        tradeUrl: getExchangeTradeUrl(v.exchange, asset) ?? undefined,
       });
     }
 
@@ -338,6 +355,7 @@ export default function TradeOptimizerPage() {
           fundingHoldBps,
           totalBps: feeBps + fundingHoldBps,
           available: true,
+          tradeUrl: getExchangeTradeUrl(f.exchange, asset) ?? undefined,
         });
       } else if (!existing.available || existing.totalBps == null) {
         // Existing row from execution-costs had no usable data — upgrade
