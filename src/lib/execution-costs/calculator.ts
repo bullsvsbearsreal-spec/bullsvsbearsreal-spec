@@ -23,10 +23,14 @@ function clobToVenueCost(
   const fee = EXCHANGE_FEES[book.exchange]?.taker ?? 0;
 
   if (levels.length === 0) {
+    // Empty book on the relevant side — we cannot fill the order at all.
+    // Returning available:true with 0bps would misleadingly rank this venue
+    // as cheapest (it happens to be Lighter often when their indexer
+    // returns empty data). Mark unavailable so it falls to the bottom.
     return {
-      exchange: book.exchange, available: true, fee, spread: 0, priceImpact: 0,
-      totalCost: fee, executionPrice: book.midPrice, midPrice: book.midPrice,
-      maxFillableSize: 0, depthLevels: 0, method: book.method,
+      exchange: book.exchange, available: false, fee: 0, spread: 0, priceImpact: 0,
+      totalCost: 0, executionPrice: 0, midPrice: book.midPrice,
+      maxFillableSize: 0, depthLevels: 0, method: book.method, error: 'Empty book',
     };
   }
 
@@ -37,6 +41,21 @@ function clobToVenueCost(
 
   const spread = isFinite(costs.spread) ? costs.spread : 0;
   const priceImpact = isFinite(costs.priceImpact) ? costs.priceImpact : 0;
+
+  // Partial-fill guard: if the book couldn't absorb at least 50% of the
+  // requested size, the resulting cost numbers are extrapolations from
+  // an order that wouldn't actually fill. Mark unavailable so we don't
+  // recommend a venue that can't take the trade.
+  const fillRatio = orderSizeUsd > 0 ? result.filledUsd / orderSizeUsd : 1;
+  if (fillRatio < 0.5) {
+    return {
+      exchange: book.exchange, available: false, fee: 0, spread: 0, priceImpact: 0,
+      totalCost: 0, executionPrice: 0, midPrice: book.midPrice,
+      maxFillableSize: isFinite(maxFill) ? maxFill : 0,
+      depthLevels: result.levelsConsumed, method: book.method,
+      error: `Insufficient depth ($${(maxFill / 1000).toFixed(0)}k available)`,
+    };
+  }
 
   return {
     exchange: book.exchange,
