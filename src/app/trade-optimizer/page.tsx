@@ -314,15 +314,19 @@ export default function TradeOptimizerPage() {
       });
     }
 
-    // Add CEX-only funding venues that the execution endpoint doesn't return
-    // (since /api/execution-costs is DEX-only) so users see CEX funding.
+    // For each funded venue, if it's missing from `combined` OR present but
+    // unavailable, add/upgrade with funding context + 5 bps taker estimate.
+    // The first loop already merged funding for execution rows that DID
+    // have a matching funding entry — we only fall back here when the
+    // execution side gave nothing useful.
     for (const f of fundForAsset) {
-      if (!combined.find(c => c.exchange.toLowerCase() === f.exchange.toLowerCase())) {
-        const intervals = holdHours / Math.max(1, f.intervalHours);
-        const sign = side === 'long' ? 1 : -1;
-        const fundingHoldBps = f.fundingRate * intervals * sign * 10_000;
-        // For CEX without orderbook sample, assume retail-tier taker fee 5 bps
-        // and no live spread/impact data. Mark fees as estimate.
+      const intervals = holdHours / Math.max(1, f.intervalHours);
+      const sign = side === 'long' ? 1 : -1;
+      const fundingHoldBps = f.fundingRate * intervals * sign * 10_000;
+      const existing = combined.find(c => c.exchange.toLowerCase() === f.exchange.toLowerCase());
+
+      if (!existing) {
+        // Wholly new venue — add fallback row.
         const feeBps = 5;
         combined.push({
           exchange: f.exchange,
@@ -335,7 +339,19 @@ export default function TradeOptimizerPage() {
           totalBps: feeBps + fundingHoldBps,
           available: true,
         });
+      } else if (!existing.available || existing.totalBps == null) {
+        // Existing row from execution-costs had no usable data — upgrade
+        // in place. (We don't double-count funding because the first loop
+        // didn't compute totalBps for unavailable rows.)
+        existing.fundingRate = f.fundingRate;
+        existing.fundingIntervalHours = f.intervalHours;
+        existing.fundingHoldBps = fundingHoldBps;
+        existing.feeBps = existing.feeBps ?? 5;
+        existing.totalBps = (existing.feeBps ?? 5) + fundingHoldBps;
+        existing.available = true;
       }
+      // else: existing row has live execution data + funding was already
+      // merged in the first loop. Don't touch it.
     }
 
     // Hide rows with no usable data — DEX venues that returned `available:

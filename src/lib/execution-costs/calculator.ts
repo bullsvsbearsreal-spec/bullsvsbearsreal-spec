@@ -7,6 +7,7 @@ import {
   fetchExtendedBook, fetchEdgexBook, fetchVariationalQuotes,
   fetchGTradeParams, computeGTradeCost,
   fetchGMXParams, computeGMXCost,
+  fetchBinanceBook, fetchBybitBook, fetchOKXBook, fetchBitgetBook,
 } from './venues';
 
 type FetchFn = typeof fetch;
@@ -67,6 +68,7 @@ export async function calculateAllVenueCosts(
     lighterBook, extendedBook, edgexBook,
     gtradeParams, gmxParams,
     variationalBook,
+    binanceBook, bybitBook, okxBook, bitgetBook,
   ] = await Promise.all([
     fetchHyperliquidBook(asset, fetchFn),
     fetchDydxBook(asset, fetchFn),
@@ -78,12 +80,21 @@ export async function calculateAllVenueCosts(
     fetchGTradeParams(asset, fetchFn),
     fetchGMXParams(asset, fetchFn),
     fetchVariationalQuotes(asset, fetchFn),
+    fetchBinanceBook(asset, fetchFn),
+    fetchBybitBook(asset, fetchFn),
+    fetchOKXBook(asset, fetchFn),
+    fetchBitgetBook(asset, fetchFn),
   ]);
 
   const results: VenueCost[] = [];
 
   // CLOB venues — Drift removed (indexer frozen since Apr 2026)
-  const clobBooks = [hlBook, dydxBook, asterBook, aevoBook, lighterBook, extendedBook, edgexBook];
+  // Now includes the 4 main CEX perp venues so /trade-optimizer can quote
+  // the full DEX + CEX universe side-by-side instead of just DEX-only.
+  const clobBooks = [
+    hlBook, dydxBook, asterBook, aevoBook, lighterBook, extendedBook, edgexBook,
+    binanceBook, bybitBook, okxBook, bitgetBook,
+  ];
   for (const book of clobBooks) {
     const cost = clobToVenueCost(book, orderSizeUsd, direction);
     if (cost) {
