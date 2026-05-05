@@ -24,6 +24,11 @@ export interface MarketInfo {
   fullName: string;          // original GMX name
   pair: string;              // e.g. "BTC-USD"
   collateralPair: string;    // e.g. "WBTC.b-USDC"
+  /** Lowercase address of the index token (the asset being tracked). Used
+   *  to look up the per-token decimals from the tickers table — without
+   *  this, `sizeInTokens` for non-18-decimal tokens (BTC=8, SOL=9, etc.)
+   *  divides by the wrong precision and renders as size=0. */
+  indexToken: string;
   isDeprecated: boolean;
 }
 
@@ -96,6 +101,7 @@ async function fetchMarketsFor(url: string): Promise<Map<string, MarketInfo>> {
       fullName: m.name,
       pair: parsed.pair,
       collateralPair: parsed.collateralPair,
+      indexToken: (m.indexToken || '').toLowerCase(),
       isDeprecated: parsed.isDeprecated,
     });
   }
@@ -144,6 +150,7 @@ export async function resolveMarket(
     fullName: `${lower.slice(0, 6)}…${lower.slice(-4)}`,
     pair: '',
     collateralPair: '',
+    indexToken: '',
     isDeprecated: false,
   };
 }

@@ -29,7 +29,12 @@ const CACHE_TTL_MS = 60_000;
 
 // GMX V2 fixed-point precision (1e30 for USD-denominated values)
 const PREC_USD = 1e30;
-const PREC_TOKENS = 1e18;
+// Default index-token precision when we can't resolve it from tickers.
+// Most synthetic / EVM tokens are 18 decimals — kept as a fallback only.
+const PREC_TOKENS_DEFAULT = 1e18;
+// Dust threshold — positions smaller than this in USD are residual state
+// from positions that closed/got liquidated and should be filtered out.
+const DUST_USD_MIN = 1;
 
 interface GmxRawPosition {
   key: string;
@@ -125,15 +130,26 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
   const out: NormalizedPosition[] = [];
   for (const p of mine) {
     const sizeUsd = bigToNumber(p.sizeInUsd, PREC_USD);
-    if (sizeUsd <= 0) continue;
+    // Filter dust — positions under $1 are residual state, not active trades.
+    if (sizeUsd < DUST_USD_MIN) continue;
 
     const market = markets.get(p.marketAddress.toLowerCase());
     if (!market) continue;
 
-    const sizeTokens = bigToNumber(p.sizeInTokens, PREC_TOKENS);
+    // Resolve index-token decimals from the ticker table. Without this,
+    // sizeInTokens for BTC (8 decimals) or SOL (9 decimals) gets divided
+    // by 1e18 and renders as ~0, even though sizeUsd is multi-million.
+    const indexTicker = market.indexToken
+      ? tickers.byAddress.get(market.indexToken)
+      : tickers.bySymbol.get(market.symbol);
+    const tokenPrec = indexTicker?.decimals
+      ? Math.pow(10, indexTicker.decimals)
+      : PREC_TOKENS_DEFAULT;
+
+    const sizeTokens = bigToNumber(p.sizeInTokens, tokenPrec);
     const entryPrice = sizeTokens > 0 ? sizeUsd / sizeTokens : 0;
 
-    const ticker = tickers.bySymbol.get(market.symbol);
+    const ticker = indexTicker ?? tickers.bySymbol.get(market.symbol);
     const markPrice = ticker?.priceUsd ?? null;
     const positionValue = markPrice && sizeTokens > 0 ? sizeTokens * markPrice : sizeUsd;
 

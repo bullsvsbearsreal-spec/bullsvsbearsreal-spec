@@ -15,6 +15,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import FreshnessLabel from '@/components/FreshnessLabel';
 import { Crosshair, RefreshCw, ExternalLink, TrendingUp, TrendingDown, ChevronDown, Search } from 'lucide-react';
 import { getExchangeTradeUrl } from '@/lib/constants/exchanges';
 
@@ -43,6 +44,7 @@ interface ExecutionApi {
   asset: string;
   size: number;
   direction: string;
+  timestamp?: number;
   venues: ExecutionVenue[];
 }
 
@@ -409,14 +411,19 @@ export default function TradeOptimizerPage() {
             <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
               fees + spread + impact + funding
             </span>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-              refresh
-            </button>
+            <div className="ml-auto flex items-center gap-3">
+              {execution?.timestamp && (
+                <FreshnessLabel ts={execution.timestamp} refreshIntervalMs={10_000} />
+              )}
+              <button
+                onClick={load}
+                disabled={loading}
+                className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                refresh
+              </button>
+            </div>
           </div>
           <p className="text-sm text-neutral-500 max-w-2xl">
             Given a position you want to open, find the cheapest venue when

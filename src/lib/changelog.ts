@@ -95,7 +95,6 @@ export const CHANGELOG: ChangelogEntry[] = [
       '/orderbook-imbalance — bid vs ask depth ratio per venue, configurable depth band',
       '/stablecoin-supply — USDT/USDC/DAI/etc 1d/7d/30d circulating supply changes',
       '/validators — liquid-staking + restaking yields per asset',
-      '/insider-transfers — curated team/VC/market-maker wallet directory',
     ],
   },
   {

@@ -41,7 +41,6 @@ const ENDPOINTS: EndpointDef[] = [
   { name: 'On-Chain (BTC)',     path: '/api/onchain',         group: 'On-Chain', minBytes: 1000 },
   { name: 'Cycle Phase',        path: '/api/cycle-phase',     group: 'Synthesis', minBytes: 200 },
   { name: 'Crowdedness',        path: '/api/crowdedness',     group: 'Synthesis', minBytes: 500 },
-  { name: 'Insider Watch',      path: '/api/insider-transfers', group: 'Synthesis', minBytes: 50 },
   { name: 'Smart Money',        path: '/api/smart-money?limit=10', group: 'Synthesis', minBytes: 500 },
   { name: 'OB Imbalance',       path: '/api/orderbook/multi?symbol=BTC&exchanges=Binance,Bybit&depth=true', group: 'Tools', minBytes: 200 },
 ];

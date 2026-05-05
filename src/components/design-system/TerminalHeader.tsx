@@ -117,7 +117,6 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'staking',         label: 'Staking',         href: '/staking',               hint: 'Validator yields' },
       { id: 'validators',      label: 'Validator Econ',  href: '/validators',            hint: 'LST + restaking yields' },
       { id: 'restaking-delta', label: 'Restaking Delta', href: '/restaking-delta',       hint: 'LST vs restaking yield premium' },
-      { id: 'insiders',        label: 'Insider Watch',   href: '/insider-transfers',     hint: 'Foundation + MM + whale tracker' },
       { id: 'reserves',        label: 'Exchange Reserves', href: '/exchange-reserves',   hint: 'CEX balances' },
       { id: 'listings',        label: 'New Listings',    href: '/listings',              hint: 'Recent debuts' },
       { id: 'guides',          label: 'Guides',          href: '/guides',                hint: 'Trading tutorials' },
