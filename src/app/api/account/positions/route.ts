@@ -10,7 +10,7 @@
  * "current" funding rate column comes from the most-recent row, the 24h/48h
  * average over the matching window.
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { isDBConfigured, listUserPositions, getSQL } from '@/lib/db';
 
@@ -87,7 +87,7 @@ async function loadFundingContext(
   return out;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
@@ -102,6 +102,11 @@ export async function GET() {
   const fundingMap = await loadFundingContext(
     positions.map(p => ({ exchange: p.exchange, symbol: p.symbol })),
   );
+
+  // Diagnostics: ?debug=1 returns which (exchange, symbol) pairs missed
+  // the funding-snapshots join. Helps figure out whether the issue is
+  // a stale label vs a missing cron ingestion vs a symbol case mismatch.
+  const debug = request.nextUrl.searchParams.get('debug') === '1';
 
   // ─── Summary roll-up (matches christian's mockup top row) ───────────
   let totalLong = 0;
@@ -154,6 +159,35 @@ export async function GET() {
     };
   });
 
+  // Build debug payload only when explicitly asked (admin / dev tooling).
+  let debugPayload: Record<string, unknown> | undefined;
+  if (debug) {
+    const sql = getSQL();
+    const missing = positions
+      .filter(p => {
+        const f = fundingMap.get(`${p.exchange}|${p.symbol}`);
+        return !f || (f.current == null && f.avg24h == null && f.avg48h == null);
+      })
+      .map(p => ({ exchange: p.exchange, symbol: p.symbol, side: p.side }));
+    // What does funding_snapshots actually have for those pairs (any time)?
+    const exList = Array.from(new Set(missing.map(m => m.exchange)));
+    const symList = Array.from(new Set(missing.map(m => m.symbol)));
+    const evidenceRows = exList.length > 0 && symList.length > 0
+      ? await sql`
+          SELECT exchange, symbol, MAX(ts) AS last_ts, COUNT(*) AS row_count
+          FROM funding_snapshots
+          WHERE exchange = ANY(${sql.array(exList)}::text[])
+            AND symbol   = ANY(${sql.array(symList)}::text[])
+          GROUP BY exchange, symbol
+        `
+      : [];
+    debugPayload = {
+      missingPairs: missing,
+      evidenceForMissing: evidenceRows,
+      fundingMapKeys: Array.from(fundingMap.keys()),
+    };
+  }
+
   return NextResponse.json(
     {
       summary: {
@@ -167,6 +201,7 @@ export async function GET() {
       },
       positions: decorated,
       ts: Date.now(),
+      ...(debugPayload ? { debug: debugPayload } : {}),
     },
     { headers: NO_STORE },
   );
