@@ -94,21 +94,23 @@ async function fromBybit(): Promise<CountdownRow[]> {
 
 async function fromOkx(): Promise<CountdownRow[]> {
   try {
-    // OKX requires per-symbol calls for funding-rate endpoint
+    // OKX naming gotcha: `fundingTime` is the IMMINENT next settlement; their
+    // `nextFundingTime` is the one AFTER that. We want the imminent one
+    // (otherwise the countdown over-shoots by one full 8h cycle).
     const promises = SYMBOLS.map(async sym => {
       const r = await fetchWithTimeout(
         `https://www.okx.com/api/v5/public/funding-rate?instId=${sym}-USDT-SWAP`,
         {}, TIMEOUT,
       );
       if (!r.ok) return null;
-      const j = await r.json() as { data?: Array<{ fundingRate: string; nextFundingTime: string }> };
+      const j = await r.json() as { data?: Array<{ fundingRate: string; fundingTime: string; nextFundingTime: string }> };
       const d = j.data?.[0];
       if (!d) return null;
       return {
         exchange: 'OKX',
         symbol: sym,
         fundingRate: Number(d.fundingRate) || 0,
-        nextFundingMs: Number(d.nextFundingTime) || 0,
+        nextFundingMs: Number(d.fundingTime) || 0,
         intervalHours: 8,
       } satisfies CountdownRow;
     });

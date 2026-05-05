@@ -547,14 +547,25 @@ export default function TradeOptimizerPage() {
           </div>
         )}
 
-        {/* Hidden venues hint — explains why fewer rows than expected */}
-        {hiddenVenueCount > 0 && rows.length > 0 && (
-          <div className="mb-3 px-3 py-2 rounded-lg border border-white/[0.06] bg-white/[0.02] text-[11px] text-neutral-500 flex items-center gap-2">
-            <span className="text-neutral-400 font-mono">{hiddenVenueCount} venue{hiddenVenueCount === 1 ? '' : 's'} hidden</span>
-            <span className="text-neutral-700">·</span>
-            <span>they don&apos;t list <span className="text-white font-mono">{asset}</span> perps. Try BTC, ETH, SOL, AVAX or ARB to see all venues.</span>
-          </div>
-        )}
+        {/* Hidden venues hint — explains why fewer rows than expected. Don't
+         *  recommend the current asset back to the user (was happening when
+         *  they were on BTC: "Try BTC, ETH, SOL…"). */}
+        {hiddenVenueCount > 0 && rows.length > 0 && (() => {
+          const suggestions = ['BTC', 'ETH', 'SOL', 'AVAX', 'ARB']
+            .filter(s => s !== asset);
+          return (
+            <div className="mb-3 px-3 py-2 rounded-lg border border-white/[0.06] bg-white/[0.02] text-[11px] text-neutral-500 flex items-center gap-2">
+              <span className="text-neutral-400 font-mono">{hiddenVenueCount} venue{hiddenVenueCount === 1 ? '' : 's'} hidden</span>
+              <span className="text-neutral-700">·</span>
+              <span>
+                they don&apos;t list <span className="text-white font-mono">{asset}</span> perps
+                {suggestions.length > 0 && (
+                  <> — try {suggestions.slice(0, 4).join(', ')} to see more venues</>
+                )}.
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Empty state — no usable venues for this asset */}
         {!loading && rows.length === 0 && !error && (funding || execution) && (
