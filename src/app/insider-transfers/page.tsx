@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
-  Eye, RefreshCw, ExternalLink, AlertTriangle,
+  Eye, RefreshCw, ExternalLink,
   ArrowUpRight, ArrowDownLeft, Info,
 } from 'lucide-react';
 import { INSIDER_WALLETS, explorerUrl, arkhamUrl } from '@/lib/insider-wallets';
@@ -125,18 +125,18 @@ export default function InsiderTransfersPage() {
           </p>
         </div>
 
-        {/* No-API banner */}
+        {/* No-API banner (informational only — feed still works keyless) */}
         {data && !data.hasApiKey && (
-          <div className="mb-4 px-4 py-3 rounded-xl border border-amber-400/30 bg-amber-500/[0.04] text-amber-200 flex items-start gap-3 flex-wrap">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div className="mb-4 px-4 py-3 rounded-xl border border-blue-400/20 bg-blue-500/[0.04] text-blue-200 flex items-start gap-3 flex-wrap">
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div className="text-xs flex-1 min-w-0">
-              <div className="font-bold mb-1">Live transfer feed disabled</div>
-              <div className="text-amber-200/80 leading-relaxed">
-                Set <code className="bg-black/40 px-1 py-0.5 rounded font-mono">ETHERSCAN_API_KEY</code> in
-                production env to enable the live transfer feed (free tier at{' '}
-                <a href="https://etherscan.io/myapikey" target="_blank" rel="noopener" className="underline hover:text-amber-100">etherscan.io/myapikey</a>{' '}
-                — same key works for ETH, Arbitrum, Base, BSC, Avalanche).
-                Until then, the directory below is browsable with deep links.
+              <div className="font-bold mb-1">Running keyless · slower refresh</div>
+              <div className="text-blue-200/80 leading-relaxed">
+                Live feed working without an Etherscan API key — Etherscan allows 1 req/5s
+                keyless, so we sample the top 8 tracked wallets per refresh. Set{' '}
+                <code className="bg-black/40 px-1 py-0.5 rounded font-mono">ETHERSCAN_API_KEY</code>{' '}
+                (free at <a href="https://etherscan.io/myapikey" target="_blank" rel="noopener" className="underline hover:text-blue-100">etherscan.io/myapikey</a>)
+                to scan all 16 wallets at 5 req/s.
               </div>
             </div>
           </div>

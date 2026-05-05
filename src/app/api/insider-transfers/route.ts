@@ -80,7 +80,11 @@ async function fetchTokenTransfersForWallet(w: InsiderWallet, apiKey: string): P
   const chainId = CHAIN_ID[w.chain];
   if (!chainId) return [];
   try {
-    const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=account&action=tokentx&address=${w.address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc&apikey=${apiKey}`;
+    // Etherscan V2 allows keyless calls at 1 req/5s; with a key 5 req/s.
+    // We append apikey only when present so the route works out of the box
+    // even before the operator sets ETHERSCAN_API_KEY in env.
+    const apiKeyParam = apiKey ? `&apikey=${apiKey}` : '';
+    const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=account&action=tokentx&address=${w.address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc${apiKeyParam}`;
     const res = await fetchWithTimeout(url, { headers: { Accept: 'application/json' } }, TIMEOUT);
     if (!res.ok) return [];
     const json = await res.json() as { status?: string; result?: EtherscanTx[] | string };
@@ -134,39 +138,29 @@ export async function GET() {
     });
   }
 
-  const apiKey = process.env.ETHERSCAN_API_KEY?.trim();
+  const apiKey = (process.env.ETHERSCAN_API_KEY?.trim()) ?? '';
   const walletsTracked = INSIDER_WALLETS.length;
-
-  if (!apiKey) {
-    // No key → return empty transfers, page falls back to static directory.
-    // Important: do NOT cache this response. If the operator sets the env var
-    // mid-deploy, the next request should pick it up immediately rather than
-    // serving the no-key body for the full TTL window.
-    const body: ApiResponse = {
-      walletsTracked,
-      transfers: [],
-      hasApiKey: false,
-      ts: Date.now(),
-    };
-    return NextResponse.json(body, {
-      headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' },
-    });
-  }
+  const hasApiKey = apiKey.length > 0;
 
   // Only EVM-chain wallets can use the V2 Etherscan API
   const evmWallets = INSIDER_WALLETS.filter(w => CHAIN_ID[w.chain] != null);
 
-  // Polite rate limit: free tier is 5 req/sec. We have ~12 EVM wallets so
-  // batches of 4 with 250ms gaps stay safely under.
+  // Rate limits: 5 req/s with key, 1 req/5s without. We adapt batch size +
+  // delay to the actual budget so the route works keyless too (just slower).
+  // With 16 EVM wallets keyless that's ~80 seconds — too slow for a 60s
+  // route timeout. Cap to top-N wallets when keyless and add a hint.
+  const BATCH = hasApiKey ? 4 : 1;
+  const DELAY_MS = hasApiKey ? 250 : 5500;
+  const walletsToFetch = hasApiKey ? evmWallets : evmWallets.slice(0, 8);
+
   const all: Transfer[] = [];
-  const BATCH = 4;
-  for (let i = 0; i < evmWallets.length; i += BATCH) {
-    const batch = evmWallets.slice(i, i + BATCH);
+  for (let i = 0; i < walletsToFetch.length; i += BATCH) {
+    const batch = walletsToFetch.slice(i, i + BATCH);
     const settled = await Promise.allSettled(batch.map(w => fetchTokenTransfersForWallet(w, apiKey)));
     for (const s of settled) {
       if (s.status === 'fulfilled') all.push(...s.value);
     }
-    if (i + BATCH < evmWallets.length) await new Promise(r => setTimeout(r, 250));
+    if (i + BATCH < walletsToFetch.length) await new Promise(r => setTimeout(r, DELAY_MS));
   }
 
   // Sort newest first, dedupe by txHash (some bridge transfers show up across two wallets).
@@ -182,7 +176,7 @@ export async function GET() {
   const body: ApiResponse = {
     walletsTracked,
     transfers: deduped.slice(0, 100),
-    hasApiKey: true,
+    hasApiKey,
     ts: Date.now(),
   };
   l1 = { body, ts: Date.now() };
