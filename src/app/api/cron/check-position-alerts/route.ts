@@ -77,15 +77,39 @@ async function loadLastTwoFunding(
   return out;
 }
 
-/** True if the funding sign flipped AGAINST the position direction. */
+/** Threshold per-window funding rate above which we consider it "meaningful"
+ *  pressure. 0.005% per 8h = ~5.5% APR — well above neutral noise. */
+const MEANINGFUL_AGAINST_RATE = 0.00005;
+
+/**
+ * True if funding is unfavourable to the position. Two cases trigger:
+ *
+ *   1. CLASSIC FLIP — sign flipped vs the previous reading and is now against
+ *      our side. Catches the moment of transition.
+ *
+ *   2. SUSTAINED PRESSURE — both readings are against our side, current rate
+ *      magnitude exceeds MEANINGFUL_AGAINST_RATE, and the situation is active.
+ *      Catches the case where funding has been against us for many hours but
+ *      no new flip happened in the last cron window.
+ *
+ * The dedupe / cooldown logic in the caller ensures sustained-pressure cases
+ * only ping once per cooldown period (default 60 min).
+ */
 function flippedAgainst(side: 'long' | 'short', f: FundingSign): boolean {
-  // Sign change: prev * current < 0
-  if (f.previous * f.current >= 0) return false;
-  // Flipped — but is it AGAINST our side?
-  // long  → bad when current > 0 (longs now pay)
-  // short → bad when current < 0 (shorts now pay)
-  if (side === 'long') return f.current > 0;
-  return f.current < 0;
+  // Helper: is rate against our position?
+  const againstSide = (rate: number): boolean =>
+    side === 'long' ? rate > 0 : rate < 0;
+
+  // Case 1: classic flip — sign changed and it's now against us.
+  if (f.previous * f.current < 0 && againstSide(f.current)) return true;
+
+  // Case 2: sustained pressure — both readings against us, current is meaningful.
+  if (againstSide(f.current) && Math.abs(f.current) >= MEANINGFUL_AGAINST_RATE
+      && (f.previous === 0 || againstSide(f.previous))) {
+    return true;
+  }
+
+  return false;
 }
 
 function fmtPct(n: number): string {
@@ -216,13 +240,22 @@ export async function GET(req: NextRequest) {
     }
 
     // Build the message body. One unified message rather than N per-position pings.
+    // Differentiate "flip" (sign changed) vs "sustained" (still against you).
     const lines = triggered.map(p => {
       const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
       const arrow = p.side === 'long' ? '🔻' : '🔺';
-      return `${arrow} <b>${p.symbol}</b> ${p.side.toUpperCase()} on ${p.exchange}\n   funding: ${fmtPct(f.previous)} → <b>${fmtPct(f.current)}</b> (now against you)`;
+      const isFlip = f.previous * f.current < 0;
+      const tag = isFlip ? '(now against you)' : '(still against you)';
+      return `${arrow} <b>${p.symbol}</b> ${p.side.toUpperCase()} on ${p.exchange}\n   funding: ${fmtPct(f.previous)} → <b>${fmtPct(f.current)}</b> ${tag}`;
     }).join('\n\n');
+    const headline = triggered.some(p => {
+      const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
+      return f.previous * f.current < 0;
+    })
+      ? `⚠️ <b>Funding flipped against your position${triggered.length > 1 ? 's' : ''}</b>`
+      : `⚠️ <b>Funding pressure against your position${triggered.length > 1 ? 's' : ''}</b>`;
     const body =
-      `⚠️ <b>Funding flipped against your position${triggered.length > 1 ? 's' : ''}</b>\n\n` +
+      headline + '\n\n' +
       lines +
       `\n\n<a href="https://info-hub.io/positions">View positions →</a>`;
 

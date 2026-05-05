@@ -12,10 +12,10 @@
  * Pure client-side aggregation over endpoints we already have.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Crosshair, RefreshCw, ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
+import { Crosshair, RefreshCw, ExternalLink, TrendingUp, TrendingDown, ChevronDown, Search } from 'lucide-react';
 
 interface FundingRow { exchange: string; symbol: string; fundingRate: number; nextFundingMs: number; intervalHours: number }
 interface FundingApi { rows: FundingRow[]; symbols: string[]; ts: number }
@@ -55,7 +55,72 @@ interface OptimizerRow {
   tradeUrl?: string;
 }
 
-const ASSETS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'HYPE', 'AVAX', 'LINK', 'SUI'];
+const ASSETS = [
+  'BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'HYPE', 'AVAX', 'LINK', 'SUI',
+  'TRX', 'TON', 'ADA', 'DOT', 'NEAR', 'APT', 'LTC', 'BCH', 'ARB', 'OP',
+  'PEPE', 'WIF', 'BONK', 'SHIB', 'FLOKI',
+  'RENDER', 'TAO', 'FET', 'WLD', 'ENA',
+  'AAVE', 'UNI', 'MKR', 'PENDLE', 'JUP',
+];
+
+/** Searchable asset picker — same UX as /execution-costs AssetSelector. */
+function AssetPicker({ value, onChange }: { value: string; onChange: (a: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  const filtered = ASSETS.filter(a => a.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between gap-2 w-full px-3 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-hub-yellow/40 transition-colors text-white font-mono text-sm"
+      >
+        <span className="font-semibold">{value}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-56 max-h-72 overflow-auto rounded-lg bg-[#1a1a1a] border border-white/[0.08] shadow-xl">
+          <div className="p-2 border-b border-white/[0.06] sticky top-0 bg-[#1a1a1a]">
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.04]">
+              <Search className="w-3.5 h-3.5 text-neutral-500" />
+              <input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && filtered.length > 0) { onChange(filtered[0]); setOpen(false); setQ(''); }
+                  if (e.key === 'Escape') { setOpen(false); setQ(''); }
+                }}
+                placeholder="Search assets…"
+                aria-label="Search assets"
+                className="bg-transparent text-sm text-white outline-none w-full"
+                autoFocus
+              />
+            </div>
+          </div>
+          {filtered.length === 0 && (
+            <div className="px-3 py-3 text-xs text-neutral-500 italic">No matches.</div>
+          )}
+          {filtered.map(a => (
+            <button
+              key={a}
+              onClick={() => { onChange(a); setOpen(false); setQ(''); }}
+              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-white/[0.06] transition-colors ${a === value ? 'text-hub-yellow font-semibold bg-white/[0.04]' : 'text-neutral-300'}`}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const SIZE_PRESETS = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000];
 const HOLD_PRESETS = [
@@ -97,19 +162,39 @@ export default function TradeOptimizerPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [fundingRes, execRes] = await Promise.all([
-        fetch('/api/funding-countdown', { signal: AbortSignal.timeout(15_000) }),
-        fetch(`/api/execution-costs?asset=${asset}&size=${size}&direction=${side}`, { signal: AbortSignal.timeout(15_000) }),
-      ]);
-      if (fundingRes.ok) setFunding(await fundingRes.json());
-      if (execRes.ok) setExecution(await execRes.json());
-      else if (!fundingRes.ok) throw new Error(`HTTP ${fundingRes.status}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
+    // Use allSettled so one slow upstream doesn't blank the whole UI —
+    // /api/execution-costs walks DEX orderbooks and can take 5-15s for thin
+    // pairs at $1M+ sizes. Funding countdown is fast and almost always works.
+    const [fundingRes, execRes] = await Promise.allSettled([
+      fetch('/api/funding-countdown', { signal: AbortSignal.timeout(15_000) }),
+      fetch(`/api/execution-costs?asset=${asset}&size=${size}&direction=${side}`, { signal: AbortSignal.timeout(20_000) }),
+    ]);
+
+    let fundingOk = false;
+    let execOk = false;
+
+    if (fundingRes.status === 'fulfilled' && fundingRes.value.ok) {
+      try { setFunding(await fundingRes.value.json()); fundingOk = true; } catch { /* ignore */ }
     }
+    if (execRes.status === 'fulfilled' && execRes.value.ok) {
+      try { setExecution(await execRes.value.json()); execOk = true; } catch { /* ignore */ }
+    }
+
+    // Only escalate to a full error if BOTH failed — otherwise a partial
+    // result is still useful (e.g. CEX-only rows from funding when execution
+    // timed out, or DEX-only rows when funding-countdown is slow).
+    if (!fundingOk && !execOk) {
+      const reason = fundingRes.status === 'rejected'
+        ? (fundingRes.reason instanceof Error ? fundingRes.reason.message : String(fundingRes.reason))
+        : execRes.status === 'rejected'
+        ? (execRes.reason instanceof Error ? execRes.reason.message : String(execRes.reason))
+        : 'both upstreams returned non-OK';
+      setError(reason);
+    } else if (!execOk) {
+      setError(`Execution data unavailable for ${asset} at $${size.toLocaleString()} — showing CEX rows only. Try a smaller size or different asset.`);
+    }
+
+    setLoading(false);
   }, [asset, size, side]);
 
   useEffect(() => { load(); }, [load]);
@@ -217,13 +302,7 @@ export default function TradeOptimizerPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Asset</label>
-              <select
-                value={asset}
-                onChange={(e) => setAsset(e.target.value)}
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 text-sm text-white font-mono focus:outline-none focus:border-hub-yellow/40"
-              >
-                {ASSETS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
+              <AssetPicker value={asset} onChange={setAsset} />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Side</label>
