@@ -34,16 +34,33 @@ export default function TerminalShell({ children, online = 33, dexCount = 15, cl
         const v = await r.json();
         const raw = Array.isArray(v) ? v : v?.data ?? [];
         if (!mounted) return;
-        const bySym = new Map<string, TickerLite>();
+        // Per-symbol bucket: collect ALL exchange quotes and pick the median.
+        // We were previously picking max(price), which let one outlier exchange
+        // (sometimes 10× off — wrong-decimal or stale) blow up the displayed
+        // price for the rest of the page (e.g. "ETH $23,226" instead of $2,372).
+        const bucket = new Map<string, { prices: number[]; chgs: number[] }>();
         for (const t of raw) {
           const price = t.lastPrice ?? t.price ?? 0;
           const chg = t.priceChangePercent24h ?? t.change24h ?? t.changePercent24h ?? 0;
           if (price > 0 && WANT_TAPE.includes(t.symbol)) {
-            const cur = bySym.get(t.symbol);
-            if (!cur || price > cur.price) bySym.set(t.symbol, { sym: t.symbol, price, chg });
+            const slot = bucket.get(t.symbol) ?? { prices: [], chgs: [] };
+            slot.prices.push(price);
+            slot.chgs.push(chg);
+            bucket.set(t.symbol, slot);
           }
         }
-        setTape(WANT_TAPE.map(s => bySym.get(s)).filter((x): x is TickerLite => !!x));
+        const median = (xs: number[]) => {
+          const s = [...xs].sort((a, b) => a - b);
+          return s.length === 0 ? 0 : s[Math.floor(s.length / 2)];
+        };
+        setTape(
+          WANT_TAPE
+            .map(s => {
+              const slot = bucket.get(s);
+              return slot ? { sym: s, price: median(slot.prices), chg: median(slot.chgs) } : null;
+            })
+            .filter((x): x is TickerLite => !!x),
+        );
       } catch {}
     };
     load();
