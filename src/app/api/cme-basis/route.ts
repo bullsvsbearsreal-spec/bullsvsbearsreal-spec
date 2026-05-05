@@ -73,21 +73,47 @@ async function fetchYahooQuote(ticker: string): Promise<YahooQuote | null> {
 
 interface CGSimple { [key: string]: { usd: number } }
 
+async function fetchBinanceSpot(symbol: string): Promise<number | null> {
+  try {
+    const res = await fetchWithTimeout(
+      `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}USDT`,
+      {}, TIMEOUT,
+    );
+    if (!res.ok) return null;
+    const j = await res.json() as { price: string };
+    const n = Number(j.price);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch { return null; }
+}
+
 async function fetchSpot(coingeckoIds: string[]): Promise<Record<string, number>> {
+  // Primary: CoinGecko simple/price. Free tier rate-limits from DO IP, so
+  // fall back to Binance USDT spot when missing.
+  const out: Record<string, number> = {};
   try {
     const res = await fetchWithTimeout(
       `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds.join(',')}&vs_currencies=usd`,
       { headers: { Accept: 'application/json' } },
       TIMEOUT,
     );
-    if (!res.ok) return {};
-    const json = await res.json() as CGSimple;
-    const out: Record<string, number> = {};
-    for (const id of coingeckoIds) {
-      if (json[id]?.usd) out[id] = json[id].usd;
+    if (res.ok) {
+      const json = await res.json() as CGSimple;
+      for (const id of coingeckoIds) {
+        if (json[id]?.usd) out[id] = json[id].usd;
+      }
     }
-    return out;
-  } catch { return {}; }
+  } catch { /* fall through to Binance fallback */ }
+
+  // Fill in any missing ids via Binance.
+  const idToBinance: Record<string, string> = { bitcoin: 'BTC', ethereum: 'ETH' };
+  await Promise.all(coingeckoIds.map(async id => {
+    if (out[id]) return;
+    const sym = idToBinance[id];
+    if (!sym) return;
+    const price = await fetchBinanceSpot(sym);
+    if (price != null) out[id] = price;
+  }));
+  return out;
 }
 
 /** Approximate days-to-expiry of CME BTC monthly future. Front-month rolls
@@ -141,7 +167,7 @@ export async function GET() {
       basisPct,
       annualizedPct: basisPct * (365 / days),
       cmeSource: 'Yahoo BTC=F',
-      spotSource: 'CoinGecko',
+      spotSource: 'CoinGecko + Binance fallback',
     });
   }
   if (ethCme && spotPrices.ethereum && ethCme.price > 0) {
@@ -154,7 +180,7 @@ export async function GET() {
       basisPct,
       annualizedPct: basisPct * (365 / days),
       cmeSource: 'Yahoo ETH=F',
-      spotSource: 'CoinGecko',
+      spotSource: 'CoinGecko + Binance fallback',
     });
   }
 

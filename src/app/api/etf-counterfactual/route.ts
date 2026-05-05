@@ -48,7 +48,8 @@ interface ApiResponse {
   ts: number;
 }
 
-const TIMEOUT = 12_000;
+// Tightened timeout — gateway is 30s and we run two upstream fetches in parallel.
+const TIMEOUT = 8_000;
 const l1Cache = new Map<string, { body: ApiResponse; ts: number }>();
 const L1_TTL = 30 * 60 * 1000;
 
@@ -56,19 +57,42 @@ interface CGMarketChart { prices: Array<[number, number]> }
 
 async function fetchPriceHistory(asset: 'btc' | 'eth'): Promise<Array<{ date: string; close: number }>> {
   const id = asset === 'btc' ? 'bitcoin' : 'ethereum';
-  const res = await fetchWithTimeout(
-    `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=180&interval=daily`,
-    { headers: { 'Accept': 'application/json' } },
-    TIMEOUT,
-  );
-  if (!res.ok) return [];
-  const json = await res.json() as CGMarketChart;
-  if (!Array.isArray(json.prices)) return [];
-  // CoinGecko returns ms timestamps + close prices. Normalise to YYYY-MM-DD.
-  return json.prices.map(([ms, close]) => ({
-    date: new Date(ms).toISOString().slice(0, 10),
-    close,
-  }));
+
+  // Primary: CoinGecko 180d daily candles
+  try {
+    const res = await fetchWithTimeout(
+      `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=180&interval=daily`,
+      { headers: { 'Accept': 'application/json' } },
+      TIMEOUT,
+    );
+    if (res.ok) {
+      const json = await res.json() as CGMarketChart;
+      if (Array.isArray(json.prices) && json.prices.length >= 30) {
+        return json.prices.map(([ms, close]) => ({
+          date: new Date(ms).toISOString().slice(0, 10),
+          close,
+        }));
+      }
+    }
+  } catch { /* fall through */ }
+
+  // Fallback: Binance daily klines (180 candles, no auth, much faster from DO)
+  try {
+    const sym = asset === 'btc' ? 'BTCUSDT' : 'ETHUSDT';
+    const res = await fetchWithTimeout(
+      `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=180`,
+      {}, TIMEOUT,
+    );
+    if (!res.ok) return [];
+    const arr = await res.json() as Array<[number, string, string, string, string, ...unknown[]]>;
+    if (!Array.isArray(arr)) return [];
+    return arr.map(k => ({
+      date: new Date(k[0]).toISOString().slice(0, 10),
+      close: Number(k[4]) || 0,
+    })).filter(p => p.close > 0);
+  } catch {
+    return [];
+  }
 }
 
 async function fetchEtfFlows(asset: 'btc' | 'eth'): Promise<FarsideFlowDay[]> {
