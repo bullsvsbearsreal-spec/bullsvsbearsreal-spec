@@ -135,7 +135,10 @@ export default function ValidatorsPage() {
 
         {/* Per-asset sections */}
         {orderedAssets.map(asset => {
-          const rows = data!.byAsset[asset] ?? [];
+          // `orderedAssets` is derived from `data?.byAsset` so reaching this
+          // map iteration implies `data` is non-null, but use optional chaining
+          // anyway so a future refactor can't reintroduce a crash.
+          const rows = data?.byAsset[asset] ?? [];
           if (rows.length === 0) return null;
           const totalTvl = rows.reduce((s, r) => s + r.tvlUsd, 0);
           const avgApy = rows.reduce((s, r) => s + r.apy, 0) / rows.length;

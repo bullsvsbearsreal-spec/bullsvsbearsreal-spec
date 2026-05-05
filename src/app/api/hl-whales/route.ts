@@ -163,7 +163,10 @@ async function fetchWhaleState(
           leverage: p.leverage?.value || 1,
           liquidationPrice: p.liquidationPx ? parseFloat(p.liquidationPx) : null,
           marginUsed: parseFloat(p.marginUsed) || 0,
-          cumulativeFunding: parseFloat(p.cumFunding?.allTime) || 0,
+          // HL: positive = paid by position. Our convention (everywhere else):
+          // positive = received by user. Negate to align — matches the same
+          // fix applied in src/lib/wallet-clients/hyperliquid.ts.
+          cumulativeFunding: -(parseFloat(p.cumFunding?.allTime) || 0),
         };
       })
       .filter((p) => p.positionValue > 100)   // Filter dust
