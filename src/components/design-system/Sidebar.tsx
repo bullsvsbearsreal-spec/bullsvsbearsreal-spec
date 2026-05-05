@@ -136,6 +136,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/market-cycle',      label: 'Market Cycle',   color: MUTE, icon: I.signal },
     { href: '/cycle-phase',       label: 'Cycle Phase',    color: ACC,  icon: I.signal },
     { href: '/crowdedness',       label: 'Crowdedness',    color: ACC,  icon: I.signal },
+    { href: '/health',            label: 'Endpoint Health', color: MUTE, icon: I.signal },
   ]},
   { id: 'onchain', label: 'On-Chain & Flows', items: [
     { href: '/onchain',           label: 'On-Chain',       color: PUR,  icon: I.cube },
@@ -165,6 +166,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   ]},
   { id: 'macro', label: 'Macro & Events', items: [
     { href: '/economic-calendar', label: 'Event Calendar', color: ACC,  icon: I.calendar },
+    { href: '/fomc-playbook',     label: 'FOMC Playbook',  color: ACC,  icon: I.calendar },
     { href: '/token-unlocks',     label: 'Token Unlocks',  color: ACC,  icon: I.calendar },
     { href: '/cliff-watch',       label: 'Cliff Watch',    color: ACC,  icon: I.calendar },
     { href: '/airdrops',          label: 'Airdrops',       color: ACC,  icon: I.gift },
