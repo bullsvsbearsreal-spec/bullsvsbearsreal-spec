@@ -63,11 +63,16 @@ const ASSETS = [
   'AAVE', 'UNI', 'MKR', 'PENDLE', 'JUP',
 ];
 
-/** Searchable asset picker — same UX as /execution-costs AssetSelector. */
+/** Searchable asset picker with arrow-key navigation + checkmark on selected.
+ *  Wider dropdown (288px) and taller scroll area (~12 visible rows). */
 function AssetPicker({ value, onChange }: { value: string; onChange: (a: string) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
+  const [highlight, setHighlight] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -75,47 +80,118 @@ function AssetPicker({ value, onChange }: { value: string; onChange: (a: string)
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-  const filtered = ASSETS.filter(a => a.toLowerCase().includes(q.toLowerCase()));
+
+  // When opening, seed highlight on the currently selected asset so arrow
+  // keys feel natural and the user can see where they are.
+  useEffect(() => {
+    if (open) {
+      const idx = ASSETS.indexOf(value);
+      setHighlight(idx >= 0 ? idx : 0);
+      setQ('');
+      // Scroll selected item into view inside the dropdown so it's visible.
+      // Without this, a long list can hide the selected item below the fold.
+      requestAnimationFrame(() => {
+        const el = listRef.current?.querySelector<HTMLButtonElement>(`[data-asset="${value}"]`);
+        el?.scrollIntoView({ block: 'nearest' });
+      });
+    }
+  }, [open, value]);
+
+  const filtered = q.trim()
+    ? ASSETS.filter(a => a.toLowerCase().includes(q.toLowerCase()))
+    : ASSETS;
+
+  // Reset highlight when filter narrows
+  useEffect(() => { setHighlight(0); }, [q]);
+
+  const commit = (a: string) => { onChange(a); setOpen(false); setQ(''); };
+
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center justify-between gap-2 w-full px-3 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-hub-yellow/40 transition-colors text-white font-mono text-sm"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex items-center justify-between gap-2 w-full px-3 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-hub-yellow/40 transition-colors text-white font-mono text-sm focus:outline-none focus:border-hub-yellow/60"
       >
         <span className="font-semibold">{value}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-56 max-h-72 overflow-auto rounded-lg bg-[#1a1a1a] border border-white/[0.08] shadow-xl">
-          <div className="p-2 border-b border-white/[0.06] sticky top-0 bg-[#1a1a1a]">
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.04]">
-              <Search className="w-3.5 h-3.5 text-neutral-500" />
+        <div className="absolute z-50 mt-1 w-72 rounded-lg bg-[#1a1a1a] border border-white/[0.1] shadow-2xl overflow-hidden">
+          <div className="p-2 border-b border-white/[0.06] bg-[#1a1a1a]">
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.04] border border-white/[0.06] focus-within:border-hub-yellow/40">
+              <Search className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
               <input
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && filtered.length > 0) { onChange(filtered[0]); setOpen(false); setQ(''); }
-                  if (e.key === 'Escape') { setOpen(false); setQ(''); }
+                  if (e.key === 'Enter') {
+                    if (filtered[highlight]) commit(filtered[highlight]);
+                    else if (filtered.length > 0) commit(filtered[0]);
+                    e.preventDefault();
+                  } else if (e.key === 'Escape') {
+                    setOpen(false); setQ('');
+                  } else if (e.key === 'ArrowDown') {
+                    setHighlight(h => Math.min(h + 1, filtered.length - 1));
+                    e.preventDefault();
+                  } else if (e.key === 'ArrowUp') {
+                    setHighlight(h => Math.max(h - 1, 0));
+                    e.preventDefault();
+                  }
                 }}
                 placeholder="Search assets…"
                 aria-label="Search assets"
-                className="bg-transparent text-sm text-white outline-none w-full"
+                className="bg-transparent text-sm text-white outline-none w-full placeholder:text-neutral-600"
                 autoFocus
               />
+              {q && (
+                <button
+                  onClick={() => setQ('')}
+                  aria-label="Clear search"
+                  className="text-neutral-500 hover:text-white text-xs flex-shrink-0"
+                >
+                  ×
+                </button>
+              )}
             </div>
           </div>
-          {filtered.length === 0 && (
-            <div className="px-3 py-3 text-xs text-neutral-500 italic">No matches.</div>
-          )}
-          {filtered.map(a => (
-            <button
-              key={a}
-              onClick={() => { onChange(a); setOpen(false); setQ(''); }}
-              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-white/[0.06] transition-colors ${a === value ? 'text-hub-yellow font-semibold bg-white/[0.04]' : 'text-neutral-300'}`}
-            >
-              {a}
-            </button>
-          ))}
+
+          <div ref={listRef} className="max-h-[360px] overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <div className="px-3 py-4 text-xs text-neutral-500 italic text-center">
+                No matches for &quot;{q}&quot;
+              </div>
+            )}
+            {filtered.map((a, i) => {
+              const selected = a === value;
+              const highlighted = i === highlight;
+              return (
+                <button
+                  key={a}
+                  data-asset={a}
+                  onClick={() => commit(a)}
+                  onMouseEnter={() => setHighlight(i)}
+                  className={`w-full text-left px-3 py-1.5 text-sm font-mono flex items-center justify-between transition-colors ${
+                    highlighted ? 'bg-white/[0.07]' : 'bg-transparent'
+                  } ${selected ? 'text-hub-yellow font-bold' : 'text-neutral-300'}`}
+                >
+                  <span>{a}</span>
+                  {selected && <span className="text-hub-yellow text-xs">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="px-3 py-1.5 border-t border-white/[0.06] text-[10px] text-neutral-600 font-mono flex items-center gap-2 bg-black/20">
+            <kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-[9px]">↑↓</kbd>
+            <span>nav</span>
+            <kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-[9px]">↵</kbd>
+            <span>select</span>
+            <kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-[9px]">esc</kbd>
+            <span>close</span>
+            <span className="ml-auto text-neutral-700">{filtered.length} / {ASSETS.length}</span>
+          </div>
         </div>
       )}
     </div>
@@ -262,9 +338,27 @@ export default function TradeOptimizerPage() {
       }
     }
 
-    combined.sort((a, b) => (a.totalBps ?? Infinity) - (b.totalBps ?? Infinity));
-    return combined;
+    // Hide rows with no usable data — DEX venues that returned `available:
+    // false` AND have no funding context provide zero signal and just
+    // pollute the table with "—" placeholders. Keep a row only if it has
+    // EITHER a fee/spread/impact estimate OR a funding rate.
+    const useful = combined.filter(r =>
+      r.totalBps != null ||
+      r.feeBps != null ||
+      r.spreadBps != null ||
+      r.impactBps != null ||
+      r.fundingRate != null,
+    );
+    useful.sort((a, b) => (a.totalBps ?? Infinity) - (b.totalBps ?? Infinity));
+    return useful;
   }, [funding, execution, asset, side, holdHours]);
+
+  /** Count of venues hidden because they had no usable data — surface in
+   *  footer so user understands why the table looks shorter than expected. */
+  const hiddenVenueCount = useMemo(() => {
+    const all = (execution?.venues?.length ?? 0) + (funding?.rows.filter(r => r.symbol === asset).length ?? 0);
+    return Math.max(0, all - rows.length);
+  }, [execution, funding, asset, rows.length]);
 
   const cheapest = rows.find(r => r.available && r.totalBps != null);
 
@@ -409,6 +503,27 @@ export default function TradeOptimizerPage() {
         {loading && rows.length === 0 && (
           <div className="card-premium p-12 text-center text-neutral-500 text-sm">
             Pricing trade across venues…
+          </div>
+        )}
+
+        {/* Hidden venues hint — explains why fewer rows than expected */}
+        {hiddenVenueCount > 0 && rows.length > 0 && (
+          <div className="mb-3 px-3 py-2 rounded-lg border border-white/[0.06] bg-white/[0.02] text-[11px] text-neutral-500 flex items-center gap-2">
+            <span className="text-neutral-400 font-mono">{hiddenVenueCount} venue{hiddenVenueCount === 1 ? '' : 's'} hidden</span>
+            <span className="text-neutral-700">·</span>
+            <span>they don&apos;t list <span className="text-white font-mono">{asset}</span> perps. Try BTC, ETH, SOL, AVAX or ARB to see all venues.</span>
+          </div>
+        )}
+
+        {/* Empty state — no usable venues for this asset */}
+        {!loading && rows.length === 0 && !error && (funding || execution) && (
+          <div className="card-premium p-8 text-center">
+            <div className="text-sm text-neutral-300 font-bold mb-1">No venues quote {asset} {side}</div>
+            <p className="text-xs text-neutral-500 max-w-md mx-auto">
+              The exchanges + DEXes we track don&apos;t list {asset} perps right now.
+              Try a more liquid asset like <span className="text-white font-mono">BTC</span>,{' '}
+              <span className="text-white font-mono">ETH</span>, or <span className="text-white font-mono">SOL</span>.
+            </p>
           </div>
         )}
 

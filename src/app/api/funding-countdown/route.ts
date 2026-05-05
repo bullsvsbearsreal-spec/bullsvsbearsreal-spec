@@ -32,7 +32,17 @@ interface CountdownResponse {
 }
 
 const TIMEOUT = 6000;
-const SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'HYPE', 'AVAX', 'LINK', 'SUI'];
+// Expanded to match trade-optimizer + funding-paid asset lists. Adding new
+// symbols is cheap on Binance/Bybit (single batch call) but multiplies the
+// per-coin OKX call count — keep the list curated to top-traded perps so
+// the route stays under the 30s gateway timeout.
+const SYMBOLS = [
+  'BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'HYPE', 'AVAX', 'LINK', 'SUI',
+  'TRX', 'TON', 'ADA', 'DOT', 'NEAR', 'APT', 'LTC', 'BCH', 'ARB', 'OP',
+  'PEPE', 'WIF', 'BONK', 'SHIB', 'FLOKI',
+  'RENDER', 'TAO', 'FET', 'WLD', 'ENA',
+  'AAVE', 'UNI', 'MKR', 'PENDLE', 'JUP',
+];
 
 // L1 cache — 30s is fine; the *time* doesn't change but the rate does
 let l1: { body: CountdownResponse; ts: number } | null = null;
