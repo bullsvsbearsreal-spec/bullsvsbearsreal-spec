@@ -86,10 +86,15 @@ export const hyperliquidWalletClient: WalletClient = {
       const lev = p.leverage?.value;
       // mark price = positionValue / size (since HL gives both)
       const mark = size > 0 && value > 0 ? value / size : null;
-      // Cumulative funding: sinceOpen is most useful — funding paid/received
-      // since this position was opened. HL convention: positive = received.
+      // Cumulative funding: sinceOpen is most useful.
+      // HL convention: positive value = funding PAID BY this position.
+      // Our convention (per NormalizedPosition.cumulativeFunding):
+      //   positive = funding RECEIVED by user (good, green)
+      //   negative = funding PAID by user (bad, red)
+      // → Negate HL's value to align with our convention.
       const cumFundingStr = p.cumFunding?.sinceOpen;
-      const cumFunding = cumFundingStr ? parseFloat(cumFundingStr) : NaN;
+      const cumFundingHl = cumFundingStr ? parseFloat(cumFundingStr) : NaN;
+      const cumFunding = Number.isFinite(cumFundingHl) ? -cumFundingHl : NaN;
 
       out.push({
         symbol: p.coin,

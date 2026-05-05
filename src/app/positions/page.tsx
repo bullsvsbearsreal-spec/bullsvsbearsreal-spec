@@ -97,8 +97,16 @@ function fmtSize(n: number): string {
 function fmtPct(n: number | null | undefined, opts: { sign?: boolean; digits?: number } = {}): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return '—';
   const d = opts.digits ?? 3;
-  const sign = opts.sign && n > 0 ? '+' : '';
-  return `${sign}${n.toFixed(d)}%`;
+  // Round FIRST so values that round to zero at the requested precision
+  // display as "0.0000%" without a misleading "-0.0000%" sign.
+  const factor = Math.pow(10, d);
+  const rounded = Math.round(n * factor) / factor;
+  const isZero = rounded === 0;
+  const sign = opts.sign && rounded > 0 && !isZero ? '+' : '';
+  // Use absolute value when rendering an unsigned/zero result so JS doesn't
+  // emit "-0.0000" from negative-zero arithmetic.
+  const display = isZero ? Math.abs(rounded).toFixed(d) : rounded.toFixed(d);
+  return `${sign}${display}%`;
 }
 
 function fmtLeverage(n: number): string {
