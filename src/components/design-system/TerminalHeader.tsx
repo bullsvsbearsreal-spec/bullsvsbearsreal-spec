@@ -66,6 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'sectors',         label: 'Sector Rotation', href: '/sectors',           hint: 'Heatmap by category' },
       { id: 'market-cycle',    label: 'Market Cycle',    href: '/market-cycle',      hint: 'Macro phase' },
       { id: 'cycle-phase',     label: 'Cycle Phase',     href: '/cycle-phase',       hint: 'Composite of 5 cycle signals' },
+      { id: 'crowdedness',     label: 'Crowdedness',     href: '/crowdedness',       hint: 'Per-coin positioning extremes' },
       { id: 'market-heatmap',  label: 'Market Heatmap',  href: '/market-heatmap',    hint: 'Treemap by mcap' },
       { id: 'rsi-heatmap',     label: 'RSI Heatmap',     href: '/rsi-heatmap',       hint: 'Overbought / oversold' },
       { id: 'fear-greed',      label: 'Fear & Greed',    href: '/fear-greed',        hint: 'Sentiment index' },
