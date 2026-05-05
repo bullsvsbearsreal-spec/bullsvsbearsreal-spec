@@ -1,13 +1,10 @@
+'use client';
+
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { CHANGELOG, type ChangelogEntry, type ChangelogTag } from '@/lib/changelog';
-import { Sparkles, ArrowRight } from 'lucide-react';
-
-export const metadata = {
-  title: 'Changelog · InfoHub',
-  description: 'What we shipped recently — new tools, fixes, and improvements to the InfoHub data terminal.',
-};
+import { Sparkles, ArrowRight, Printer, Download } from 'lucide-react';
 
 const TAG_TONES: Record<ChangelogTag, string> = {
   new:        'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
@@ -71,23 +68,38 @@ function EntryCard({ entry }: { entry: ChangelogEntry }) {
 }
 
 export default function ChangelogPage() {
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') window.print();
+  };
+
   return (
     <>
       <Header />
-      <main id="main-content" className="max-w-[900px] mx-auto w-full px-4 py-8">
-        <header className="mb-6">
+      <main id="main-content" className="max-w-[900px] mx-auto w-full px-4 py-8 print:py-0 print:max-w-full">
+        <header className="mb-6 print:mb-4">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-hub-yellow" />
+            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center print:bg-transparent print:border print:border-black">
+              <Sparkles className="w-4 h-4 text-hub-yellow print:text-black" />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Changelog</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono ml-2">
+            <h1 className="text-2xl font-bold text-white tracking-tight print:text-black">Changelog</h1>
+            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono ml-2 print:text-neutral-700">
               {CHANGELOG.length} releases
             </span>
+            <button
+              onClick={handlePrint}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-neutral-300 hover:text-white hover:border-hub-yellow/30 transition-all text-xs font-medium print:hidden"
+              title="Print or save as PDF"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Print / Save PDF
+            </button>
           </div>
-          <p className="text-sm text-neutral-500 max-w-xl leading-relaxed">
+          <p className="text-sm text-neutral-500 max-w-xl leading-relaxed print:text-neutral-700">
             What we&apos;ve shipped recently. New features, fixes, and improvements to the InfoHub
             data terminal. No marketing fluff — what changed and why it matters.
+          </p>
+          <p className="hidden print:block text-[10px] text-neutral-500 mt-2">
+            Generated from <span className="font-mono">info-hub.io/changelog</span> · {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </header>
 
@@ -97,7 +109,7 @@ export default function ChangelogPage() {
           ))}
         </section>
 
-        <footer className="mt-8 p-4 bg-white/[0.02] rounded-xl border border-white/[0.06] text-center">
+        <footer className="mt-8 p-4 bg-white/[0.02] rounded-xl border border-white/[0.06] text-center print:hidden">
           <p className="text-sm text-neutral-400 mb-2">Want to influence what gets built next?</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <a
@@ -123,8 +135,61 @@ export default function ChangelogPage() {
             </Link>
           </div>
         </footer>
+
+        {/* Print-only footer */}
+        <div className="hidden print:block mt-6 pt-4 border-t border-neutral-300 text-center text-[10px] text-neutral-600">
+          info-hub.io · the trader&apos;s data terminal · contact@info-hub.io · @info_hub69
+        </div>
       </main>
       <Footer />
+
+      {/* Print-only stylesheet — converts dark UI to clean black-on-white PDF */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4;
+            margin: 18mm 14mm;
+          }
+          body, html {
+            background: white !important;
+            color: black !important;
+          }
+          /* Hide nav + footer in print */
+          header[class*="sticky"], footer, nav,
+          [class*="Header"], [aria-label="Sidebar"],
+          .skip-to-content {
+            display: none !important;
+          }
+          /* Force print-friendly colors on all chrome */
+          * {
+            color: black !important;
+            border-color: #ddd !important;
+            background-image: none !important;
+          }
+          /* Card backgrounds → white with light border */
+          .card-premium, [class*="card-premium"] {
+            background: white !important;
+            border: 1px solid #e5e5e5 !important;
+            box-shadow: none !important;
+            page-break-inside: avoid;
+          }
+          /* Tag chips: keep their color hint via border, drop the background tint */
+          [class*="bg-emerald-500/15"] { color: #059669 !important; border-color: #059669 !important; }
+          [class*="bg-rose-500/15"]    { color: #dc2626 !important; border-color: #dc2626 !important; }
+          [class*="bg-cyan-500/15"]    { color: #0891b2 !important; border-color: #0891b2 !important; }
+          [class*="bg-amber-500/15"]   { color: #d97706 !important; border-color: #d97706 !important; }
+          [class*="bg-violet-500/15"]  { color: #7c3aed !important; border-color: #7c3aed !important; }
+          /* Yellow accent → readable orange in print */
+          [class*="text-hub-yellow"] { color: #c2410c !important; }
+          /* Links: show URL after text for printed reference */
+          a[href^="/"]::after,
+          a[href^="https"]::after {
+            content: " (" attr(href) ")";
+            font-size: 0.85em;
+            color: #888 !important;
+          }
+        }
+      `}</style>
     </>
   );
 }

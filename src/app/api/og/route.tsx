@@ -17,7 +17,8 @@ type Variant =
   | 'donate'
   | 'ratios'
   | 'etf'
-  | 'options';
+  | 'options'
+  | 'changelog';
 
 const ACCENT = '#FF9500';
 const ACCENT_DARK = '#E06600';
@@ -413,6 +414,54 @@ function OptionsPreview() {
   );
 }
 
+function ChangelogPreview() {
+  // Showcase the latest shipped tools as a 3×3 tile grid.
+  const tiles: { label: string; sub: string; tone: string }[] = [
+    { label: 'Cycle Phase',       sub: 'composite signal', tone: PUMP },
+    { label: 'Crowdedness',       sub: 'positioning extremes', tone: ACCENT },
+    { label: 'Funding Predictor', sub: 'next-window rate', tone: ACCENT },
+    { label: 'CME Basis',         sub: 'futures vs spot', tone: PUMP },
+    { label: 'ETF Flows',         sub: 'daily inflows', tone: ACCENT },
+    { label: 'Skew',              sub: 'put-call IV per expiry', tone: '#a78bfa' },
+    { label: 'Hash Ribbons',      sub: 'miner capitulation', tone: PUMP },
+    { label: 'Memecoin Radar',    sub: 'Solana 1h velocity', tone: '#fb923c' },
+    { label: 'Trade Optimizer',   sub: 'cheapest venue', tone: PUMP },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT, textTransform: 'uppercase', letterSpacing: 1.4 }}>
+          ✨ Now shipping
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        {tiles.map((t) => (
+          <div
+            key={t.label}
+            style={{
+              display: 'flex', flexDirection: 'column',
+              padding: '14px 12px',
+              background: 'rgba(255,255,255,0.03)',
+              border: `1px solid ${t.tone}40`,
+              borderRadius: 10,
+              gap: 4,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#fafafa', display: 'flex' }}>{t.label}</div>
+            <div style={{ fontSize: 10, color: t.tone, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, display: 'flex' }}>{t.sub}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+        <span style={{ fontSize: 10, color: '#737373', fontFamily: 'ui-monospace, monospace', display: 'flex' }}>
+          + 21 more new tools · /changelog
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function PreviewByVariant({ variant }: { variant: Variant }) {
   switch (variant) {
     case 'liquidations': return <LiquidationsPreview />;
@@ -425,6 +474,7 @@ function PreviewByVariant({ variant }: { variant: Variant }) {
     case 'ratios':       return <RatiosPreview />;
     case 'etf':          return <ETFPreview />;
     case 'options':      return <OptionsPreview />;
+    case 'changelog':    return <ChangelogPreview />;
     case 'funding':
     case 'default':
     default:             return <FundingPreview />;
@@ -445,6 +495,8 @@ function badgesForVariant(variant: Variant): { label: string; color: string }[] 
       return [{ label: 'BTC + ETH', color: ACCENT }, { label: 'Live', color: PUMP }];
     case 'heatmap':
       return [{ label: 'Top 100', color: ACCENT }, { label: 'Live', color: PUMP }];
+    case 'changelog':
+      return [{ label: '30 New Tools', color: ACCENT }, { label: 'All Free', color: PUMP }];
     default:
       return [{ label: `${ALL_EXCHANGES.length}+ Exchanges`, color: ACCENT }, { label: 'LIVE', color: PUMP }];
   }
