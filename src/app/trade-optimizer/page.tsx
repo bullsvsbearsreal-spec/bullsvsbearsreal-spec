@@ -233,11 +233,32 @@ function fmtUsd(n: number): string {
   return `${sign}$${abs.toFixed(3)}`;
 }
 
+/** Read the initial state out of `?asset=&side=&size=&hold=` so users can
+ *  bookmark or share a specific configuration. Falls back to defaults
+ *  when the params are missing or invalid. */
+function readInitialState() {
+  if (typeof window === 'undefined') {
+    return { asset: 'BTC', side: 'long' as Side, size: 25_000, holdHours: 168 };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const rawAsset = (params.get('asset') || '').toUpperCase();
+  const asset = ASSETS.includes(rawAsset) ? rawAsset : 'BTC';
+  const side = (params.get('side') === 'short' ? 'short' : 'long') as Side;
+  const sizeNum = Number(params.get('size'));
+  const size = Number.isFinite(sizeNum) && sizeNum >= 1_000 && sizeNum <= 1_000_000 ? sizeNum : 25_000;
+  const holdNum = Number(params.get('hold'));
+  const holdHours = Number.isFinite(holdNum) && holdNum > 0 ? holdNum : 168;
+  return { asset, side, size, holdHours };
+}
+
 export default function TradeOptimizerPage() {
-  const [asset, setAsset] = useState('BTC');
-  const [side, setSide] = useState<Side>('long');
-  const [size, setSize] = useState(25_000);
-  const [holdHours, setHoldHours] = useState(168);
+  const init = typeof window === 'undefined'
+    ? { asset: 'BTC', side: 'long' as Side, size: 25_000, holdHours: 168 }
+    : readInitialState();
+  const [asset, setAsset] = useState(init.asset);
+  const [side, setSide] = useState<Side>(init.side);
+  const [size, setSize] = useState(init.size);
+  const [holdHours, setHoldHours] = useState(init.holdHours);
   const [leverage, setLeverage] = useState(5);
 
   const [funding, setFunding] = useState<FundingApi | null>(null);
