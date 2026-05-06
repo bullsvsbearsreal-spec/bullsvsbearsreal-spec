@@ -42,7 +42,13 @@ let initPromise: Promise<void> | null = null;
 
 export async function initDB(): Promise<void> {
   if (initPromise) return initPromise;
-  initPromise = _doInitDB();
+  initPromise = _doInitDB().catch((err) => {
+    // Reset on failure so the next caller retries instead of inheriting
+    // the rejected promise forever. Without this a transient cold-start
+    // DB hiccup leaves the process serving 503 until it's restarted.
+    initPromise = null;
+    throw err;
+  });
   return initPromise;
 }
 
@@ -3433,9 +3439,54 @@ export async function listEnabledAlertsWithPositions(): Promise<Array<{
     FROM user_position_alerts
     WHERE enabled = true
   `;
-  const out: Array<{ rule: PositionAlertRule; positions: UserPositionRow[] }> = [];
-  for (const r of rules as any[]) {
-    const rule: PositionAlertRule = {
+  if (rules.length === 0) return [];
+
+  // Bulk-fetch every position for every rule-owning user in ONE query
+  // and group in app code, instead of issuing one SELECT per rule.
+  // With N enabled alert rules, the previous loop did N+1 round-trips
+  // — at 100+ rules and a 3-connection pool that starves the cron's
+  // 60-second budget under any real load.
+  const userIds = Array.from(new Set((rules as any[]).map(r => r.user_id)));
+  const allPositions = (await sql`
+    SELECT id, user_id, source_type, source_id, exchange, symbol, side, size,
+           entry_price, mark_price, position_value, unrealized_pnl,
+           leverage, margin_used, liquidation_price, tp_price, sl_price,
+           cumulative_funding, updated_at
+    FROM user_positions
+    WHERE user_id = ANY(${userIds}::text[])
+    ORDER BY position_value DESC NULLS LAST, updated_at DESC
+  `) as any[];
+
+  const positionsByUser = new Map<string, UserPositionRow[]>();
+  for (const r of allPositions) {
+    const row: UserPositionRow = {
+      id: r.id,
+      userId: r.user_id,
+      sourceType: r.source_type,
+      sourceId: r.source_id,
+      exchange: r.exchange,
+      symbol: r.symbol,
+      side: r.side,
+      size: Number(r.size),
+      entryPrice: Number(r.entry_price),
+      markPrice: r.mark_price === null ? null : Number(r.mark_price),
+      positionValue: r.position_value === null ? null : Number(r.position_value),
+      unrealizedPnl: r.unrealized_pnl === null ? null : Number(r.unrealized_pnl),
+      leverage: r.leverage === null ? null : Number(r.leverage),
+      marginUsed: r.margin_used === null ? null : Number(r.margin_used),
+      liquidationPrice: r.liquidation_price === null ? null : Number(r.liquidation_price),
+      tpPrice: r.tp_price === null ? null : Number(r.tp_price),
+      slPrice: r.sl_price === null ? null : Number(r.sl_price),
+      cumulativeFunding: r.cumulative_funding === null ? null : Number(r.cumulative_funding),
+      updatedAt: r.updated_at,
+    };
+    const list = positionsByUser.get(r.user_id) ?? [];
+    list.push(row);
+    positionsByUser.set(r.user_id, list);
+  }
+
+  return (rules as any[]).map(r => ({
+    rule: {
       id: r.id,
       userId: r.user_id,
       kind: r.kind,
@@ -3444,11 +3495,9 @@ export async function listEnabledAlertsWithPositions(): Promise<Array<{
       cooldownMin: r.cooldown_min,
       lastFiredAt: r.last_fired_at,
       createdAt: r.created_at,
-    };
-    const positions = await listUserPositions(rule.userId);
-    out.push({ rule, positions });
-  }
-  return out;
+    } as PositionAlertRule,
+    positions: positionsByUser.get(r.user_id) ?? [],
+  }));
 }
 
 // ─── Check if DB is available ───────────────────────────────────────────────

@@ -277,35 +277,44 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  await initDB();
+  try {
+    await initDB();
 
-  // Fetch from all exchanges in parallel
-  const [binance, okx, htx, gtrade, bybit, deribit] = await Promise.all([
-    fetchBinanceLiqs(),
-    fetchOKXLiqs(),
-    fetchHTXLiqs(),
-    fetchGTradeLiqs(),
-    fetchBybitLiqs(),
-    fetchDeribitLiqs(),
-  ]);
+    // Fetch from all exchanges in parallel
+    const [binance, okx, htx, gtrade, bybit, deribit] = await Promise.all([
+      fetchBinanceLiqs(),
+      fetchOKXLiqs(),
+      fetchHTXLiqs(),
+      fetchGTradeLiqs(),
+      fetchBybitLiqs(),
+      fetchDeribitLiqs(),
+    ]);
 
-  const allRows = [...binance, ...okx, ...htx, ...gtrade, ...bybit, ...deribit];
+    const allRows = [...binance, ...okx, ...htx, ...gtrade, ...bybit, ...deribit];
 
-  const fetched = {
-    binance: binance.length,
-    okx: okx.length,
-    htx: htx.length,
-    gtrade: gtrade.length,
-    bybit: bybit.length,
-    deribit: deribit.length,
-  };
+    const fetched = {
+      binance: binance.length,
+      okx: okx.length,
+      htx: htx.length,
+      gtrade: gtrade.length,
+      bybit: bybit.length,
+      deribit: deribit.length,
+    };
 
-  if (allRows.length === 0) {
-    return NextResponse.json({ ok: true, fetched, inserted: 0 });
+    if (allRows.length === 0) {
+      return NextResponse.json({ ok: true, fetched, inserted: 0 });
+    }
+
+    // Insert via existing DB helper (handles dedup with ON CONFLICT DO NOTHING)
+    const inserted = await saveLiquidationSnapshot(allRows);
+
+    return NextResponse.json({ ok: true, fetched, inserted });
+  } catch (err) {
+    // Always 200 with structured failure JSON — DigitalOcean App Platform
+    // rewrites non-2xx into a generic HTML page that hides the diagnostic.
+    return NextResponse.json({
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    }, { status: 200 });
   }
-
-  // Insert via existing DB helper (handles dedup with ON CONFLICT DO NOTHING)
-  const inserted = await saveLiquidationSnapshot(allRows);
-
-  return NextResponse.json({ ok: true, fetched, inserted });
 }

@@ -166,6 +166,11 @@ export const lighterWalletClient: WalletClient = {
         leverage: null,
         marginUsed: null,
         liquidationPrice: null,
+        // Lighter exposes per-account orders only on the authenticated
+        // `account_active_orders` endpoint which requires a signed
+        // auth_token derived from the user's L1 private key — out of
+        // reach for an L1-only public lookup. Leave null until we add
+        // a per-user secret-key flow.
         tpPrice: null,
         slPrice: null,
         cumulativeFunding: Number.isFinite(cumulativeFunding) ? cumulativeFunding : null,

@@ -103,6 +103,24 @@ interface BitgetPositionsResponse {
   }>;
 }
 
+interface BitgetPlanOrder {
+  symbol: string;
+  /** profit_plan / pos_profit (TP) | loss_plan / pos_loss (SL) | normal_plan / moving_plan / track_plan */
+  planType: string;
+  triggerPrice: string;
+  /** "long" | "short" — direction of the position the trigger covers */
+  posSide?: string;
+  /** "buy" | "sell" — order direction (used when posSide is missing) */
+  side?: string;
+  triggerType?: string;
+  orderType?: string;
+}
+
+interface BitgetPlanOrdersResponse {
+  code: string;
+  data: { entrustedList?: BitgetPlanOrder[] };
+}
+
 function symbolToBase(symbol: string): string {
   // BTCUSDT -> BTC, 1000PEPEUSDT -> PEPE
   let s = symbol.replace(/USDT$|USDC$/, '');
@@ -136,13 +154,49 @@ export const bitgetClient: ExchangeClient = {
   },
 
   async fetchPositions(creds): Promise<NormalizedPosition[]> {
+    // Pull positions + pending plan orders in parallel. The plan orders
+    // endpoint surfaces both position-attached TP/SL (planType=profit_plan
+    // / loss_plan / pos_profit / pos_loss) and standalone trigger orders;
+    // we keep only the position-closing kinds. Plan-orders failure is
+    // non-fatal — a transient HTTP error there shouldn't blank positions.
+    const [posResp, planResp] = await Promise.all([
+      signedGet<BitgetPositionsResponse>(
+        '/api/v2/mix/position/all-position',
+        'productType=USDT-FUTURES&marginCoin=USDT',
+        creds,
+      ),
+      signedGet<BitgetPlanOrdersResponse>(
+        '/api/v2/mix/order/orders-plan-pending',
+        'productType=USDT-FUTURES',
+        creds,
+      ).catch(() => ({ code: '00000', data: { entrustedList: [] } } as BitgetPlanOrdersResponse)),
+    ]);
+
+    const triggersByKey = new Map<string, { tp: number | null; sl: number | null }>();
+    const trigKey = (rawSym: string, side: 'long' | 'short') => `${rawSym}|${side}`;
+    for (const o of planResp.data?.entrustedList ?? []) {
+      const px = parseFloat(o.triggerPrice);
+      if (!Number.isFinite(px) || px <= 0) continue;
+      const t = (o.planType ?? '').toLowerCase();
+      const isTp = t === 'profit_plan' || t === 'pos_profit';
+      const isSl = t === 'loss_plan' || t === 'pos_loss';
+      if (!isTp && !isSl) continue;
+
+      let posSide: 'long' | 'short';
+      const ps = (o.posSide ?? '').toLowerCase();
+      if (ps === 'long') posSide = 'long';
+      else if (ps === 'short') posSide = 'short';
+      else posSide = (o.side ?? '').toLowerCase() === 'sell' ? 'long' : 'short';
+
+      const key = trigKey(o.symbol, posSide);
+      const slot = triggersByKey.get(key) ?? { tp: null, sl: null };
+      if (isTp && slot.tp === null) slot.tp = px;
+      else if (isSl && slot.sl === null) slot.sl = px;
+      triggersByKey.set(key, slot);
+    }
+
     const out: NormalizedPosition[] = [];
-    const json = await signedGet<BitgetPositionsResponse>(
-      '/api/v2/mix/position/all-position',
-      'productType=USDT-FUTURES&marginCoin=USDT',
-      creds,
-    );
-    for (const p of json.data ?? []) {
+    for (const p of posResp.data ?? []) {
       const size = parseFloat(p.total);
       if (!Number.isFinite(size) || size === 0) continue;
 
@@ -152,6 +206,8 @@ export const bitgetClient: ExchangeClient = {
       const liq = parseFloat(p.liquidationPrice);
       const lev = parseFloat(p.leverage);
       const margin = parseFloat(p.marginSize);
+
+      const triggers = triggersByKey.get(trigKey(p.symbol, p.holdSide)) ?? { tp: null, sl: null };
 
       out.push({
         symbol: symbolToBase(p.symbol),
@@ -164,8 +220,8 @@ export const bitgetClient: ExchangeClient = {
         leverage: Number.isFinite(lev) && lev > 0 ? lev : null,
         marginUsed: Number.isFinite(margin) && margin > 0 ? margin : null,
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
-        tpPrice: null,   // Bitget exposes TP/SL via /position/tpsl-position-details (Phase B+)
-        slPrice: null,
+        tpPrice: triggers.tp,
+        slPrice: triggers.sl,
         cumulativeFunding: null, // populated by sync cron via fetchCumulativeFunding
       });
     }

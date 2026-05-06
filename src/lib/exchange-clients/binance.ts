@@ -94,6 +94,23 @@ interface BinanceIncomeRow {
   info?: string;
 }
 
+interface BinanceOpenOrder {
+  symbol: string;
+  type: string;            // LIMIT, MARKET, STOP, STOP_MARKET, TAKE_PROFIT, TAKE_PROFIT_MARKET, TRAILING_STOP_MARKET
+  origType?: string;       // original type (preserved across modifications)
+  side: 'BUY' | 'SELL';
+  positionSide: 'LONG' | 'SHORT' | 'BOTH';
+  stopPrice: string;       // trigger price for conditional orders
+  reduceOnly: boolean;
+  closePosition: boolean;  // true for "close-position" stops
+  workingType: string;
+}
+
+/** Order types that act as Take-Profit triggers (vs market mark/last). */
+const TP_TYPES = new Set(['TAKE_PROFIT', 'TAKE_PROFIT_MARKET']);
+/** Order types that act as Stop-Loss / liquidation-prevention triggers. */
+const SL_TYPES = new Set(['STOP', 'STOP_MARKET', 'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TRAILING_STOP_MARKET']);
+
 function symbolToBase(s: string): string {
   let sym = s.replace(/USDT$|USDC$|BUSD$/, '');
   if (sym.startsWith('1000')) sym = sym.slice(4);
@@ -126,7 +143,46 @@ export const binanceClient: ExchangeClient = {
   },
 
   async fetchPositions(creds): Promise<NormalizedPosition[]> {
-    const rows = await signedGet<BinancePositionRisk[]>('/fapi/v2/positionRisk', {}, creds);
+    // Pull positions + open conditional orders in parallel — TP/SL are
+    // separate orders on Binance Futures (not stored on the position
+    // itself), so we have to merge them by (symbol, positionSide).
+    // openOrders failure is non-fatal: we still want positions to render
+    // even if the trigger fetch hits a transient HTTP error.
+    const [rows, openOrders] = await Promise.all([
+      signedGet<BinancePositionRisk[]>('/fapi/v2/positionRisk', {}, creds),
+      signedGet<BinanceOpenOrder[]>('/fapi/v1/openOrders', {}, creds).catch(() => [] as BinanceOpenOrder[]),
+    ]);
+
+    // Index TP/SL triggers by (rawSymbol, sideKey). For one-way mode the
+    // server reports positionSide="BOTH" on every order — in that case we
+    // map the order's `side` (BUY/SELL) to the position direction it
+    // closes: SELL = closes a long, BUY = closes a short.
+    const triggersByKey = new Map<string, { tp: number | null; sl: number | null }>();
+    const triggerKey = (rawSym: string, side: 'long' | 'short') => `${rawSym}|${side}`;
+    for (const o of openOrders) {
+      const stop = parseFloat(o.stopPrice);
+      if (!Number.isFinite(stop) || stop <= 0) continue;
+      const t = (o.origType ?? o.type ?? '').toUpperCase();
+      const isTp = TP_TYPES.has(t);
+      const isSl = SL_TYPES.has(t);
+      if (!isTp && !isSl) continue;
+      // Only count orders that actually close the position. A naked
+      // stop-limit-buy unrelated to the open position would otherwise
+      // pollute the column.
+      if (!o.closePosition && !o.reduceOnly) continue;
+
+      let posSide: 'long' | 'short';
+      if (o.positionSide === 'LONG') posSide = 'long';
+      else if (o.positionSide === 'SHORT') posSide = 'short';
+      else posSide = o.side === 'SELL' ? 'long' : 'short';
+
+      const key = triggerKey(o.symbol, posSide);
+      const slot = triggersByKey.get(key) ?? { tp: null, sl: null };
+      if (isTp && slot.tp === null) slot.tp = stop;
+      else if (isSl && slot.sl === null) slot.sl = stop;
+      triggersByKey.set(key, slot);
+    }
+
     const out: NormalizedPosition[] = [];
     for (const r of rows) {
       const amt = parseFloat(r.positionAmt);
@@ -142,6 +198,7 @@ export const binanceClient: ExchangeClient = {
       const margin = parseFloat(r.isolatedMargin);
 
       const symbol = symbolToBase(r.symbol);
+      const triggers = triggersByKey.get(triggerKey(r.symbol, side)) ?? { tp: null, sl: null };
 
       out.push({
         symbol,
@@ -154,8 +211,8 @@ export const binanceClient: ExchangeClient = {
         leverage: Number.isFinite(lev) && lev > 0 ? lev : null,
         marginUsed: Number.isFinite(margin) && margin > 0 ? margin : null,
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
-        tpPrice: null,
-        slPrice: null,
+        tpPrice: triggers.tp,
+        slPrice: triggers.sl,
         cumulativeFunding: null, // populated post-hoc by sync cron via fetchCumulativeFunding
       });
     }
