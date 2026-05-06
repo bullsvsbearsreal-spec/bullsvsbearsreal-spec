@@ -497,8 +497,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // --- DB path for 24h / 7d when database is configured ---
-  const useDB = isDBConfigured() && (timeframe === '24h' || timeframe === '7d');
+  // --- DB path for ALL timeframes when database is configured ---
+  // (4h was previously hitting an in-memory store that only fills on first
+  // request and proxies live OKX/Binance fetches every page load — that
+  // serial path was producing CF 522 timeouts on cold isolates. The DB
+  // has minute-resolution snapshots from cron/ingest-liquidations and
+  // is plenty fresh for a 4h heatmap.)
+  const useDB = isDBConfigured();
 
   if (useDB) {
     try {
