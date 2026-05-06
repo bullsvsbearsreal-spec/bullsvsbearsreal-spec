@@ -123,12 +123,37 @@ function buildAlertEmailHTML(alerts: TriggeredAlertInfo[]): string {
   `;
 }
 
+/**
+ * Conservative email-shape check. Defence in depth: callers ARE expected
+ * to pass the verified email from the DB, but a future caller passing a
+ * user-supplied string straight through would otherwise let an attacker
+ * relay alert emails via Resend to any address. Reject anything that
+ * doesn't match a baseline pattern + is under 254 chars (RFC 5321).
+ */
+function isPlausibleEmailAddress(s: unknown): s is string {
+  if (typeof s !== 'string') return false;
+  if (s.length === 0 || s.length > 254) return false;
+  // Single @ separator, non-empty local + domain, at least one "." in domain.
+  const parts = s.split('@');
+  if (parts.length !== 2) return false;
+  const [local, domain] = parts;
+  if (!local || !domain) return false;
+  if (!domain.includes('.')) return false;
+  // No whitespace or control chars.
+  if (/\s/.test(s)) return false;
+  return true;
+}
+
 export async function sendAlertEmail(
   to: string,
   alerts: TriggeredAlertInfo[],
 ): Promise<boolean> {
   const resend = getResend();
   if (!resend || alerts.length === 0) return false;
+  if (!isPlausibleEmailAddress(to)) {
+    console.warn(`[notifications] rejected sendAlertEmail to=${JSON.stringify(to).slice(0, 80)}`);
+    return false;
+  }
   try {
     await resend.emails.send({
       from: 'InfoHub <noreply@info-hub.io>',

@@ -29,6 +29,8 @@ import {
   Filter,
   Loader2,
 } from 'lucide-react';
+// Funding interval lookup + cost-of-carry math; shared with API route.
+import { intervalHoursFor, dailyFundingCarryUsd } from '@/lib/funding-intervals';
 
 interface Position {
   id: number;
@@ -61,6 +63,8 @@ interface Position {
   };
   /** 1-3 short reasons the score is dragged down (empty when score >= 80). */
   healthReasons: string[];
+  /** Projected daily funding cost in USD (positive = receiving, negative = paying). */
+  dailyFundingCarryUsd: number | null;
   updatedAt: string;
 }
 
@@ -72,6 +76,8 @@ interface Summary {
   leverageLong: number;
   leverageShort: number;
   totalUnrealizedPnl: number;
+  /** Aggregate net daily funding carry across the whole book in USD. null = no live rates. */
+  dailyFundingCarryUsd: number | null;
 }
 
 interface ApiResponse {
@@ -149,39 +155,7 @@ function fundingTone(side: 'long' | 'short', rate: number | null | undefined): '
  * looks identical across the two even though the 1h venue is paying 8×
  * more per day. Falls back to 8h for unknown exchanges (the common case).
  */
-const FUNDING_INTERVAL_HOURS: Record<string, number> = {
-  Hyperliquid: 1,
-  dYdX: 1,
-  Aevo: 1,
-  GMX: 1,
-  Lighter: 1,
-  edgeX: 1,
-  Coinbase: 1,
-  // Most CEXes settle every 8h.
-  Binance: 8,
-  Bybit: 8,
-  OKX: 8,
-  Bitget: 8,
-  MEXC: 8,
-  KuCoin: 8,
-  BingX: 8,
-  Aster: 8,
-  gTrade: 8,
-  Phemex: 8,
-  HTX: 8,
-  Bitfinex: 8,
-  WhiteBIT: 8,
-  CoinEx: 8,
-  Deribit: 8,
-  Kraken: 4,
-};
-
-function intervalHoursFor(exchange: string): number {
-  // Strip any disambiguator suffix like "(Avax)" or "(WBTC.b)" from
-  // GMX position rows before lookup.
-  const canon = exchange.replace(/\s*\([^()]*\)\s*$/, '').trim();
-  return FUNDING_INTERVAL_HOURS[canon] ?? 8;
-}
+// (intervalHoursFor / FUNDING_INTERVAL_HOURS now in src/lib/funding-intervals.ts.)
 
 /**
  * Convert a per-period rate (in PERCENT units) to annualised APR (in
@@ -365,14 +339,20 @@ export default function PositionsPage() {
 
         {/* ─── Summary row (matches mockup top) ─── */}
         {data && data.positions.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
-            <SummaryCell label="Equity" value={fmtUsd(data.summary.equity)} sub="margin + uPnL" />
-            <SummaryCell label="Nominal" value={fmtUsd(data.summary.nominal)} sub="total exposure" />
-            <SummaryCell label="Total long" value={fmtUsd(data.summary.totalLong)} valueColor="text-emerald-400" />
-            <SummaryCell label="Total short" value={fmtUsd(data.summary.totalShort)} valueColor="text-red-400" />
-            <SummaryCell label="Leverage long" value={fmtLeverage(data.summary.leverageLong)} valueColor="text-emerald-400" />
-            <SummaryCell label="Leverage short" value={fmtLeverage(data.summary.leverageShort)} valueColor="text-red-400" />
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-2">
+              <SummaryCell label="Equity" value={fmtUsd(data.summary.equity)} sub="margin + uPnL" />
+              <SummaryCell label="Nominal" value={fmtUsd(data.summary.nominal)} sub="total exposure" />
+              <SummaryCell label="Total long" value={fmtUsd(data.summary.totalLong)} valueColor="text-emerald-400" />
+              <SummaryCell label="Total short" value={fmtUsd(data.summary.totalShort)} valueColor="text-red-400" />
+              <SummaryCell label="Leverage long" value={fmtLeverage(data.summary.leverageLong)} valueColor="text-emerald-400" />
+              <SummaryCell label="Leverage short" value={fmtLeverage(data.summary.leverageShort)} valueColor="text-red-400" />
+            </div>
+            {/* Funding carry projection: assumes the live rate holds. */}
+            {data.summary.dailyFundingCarryUsd != null && (
+              <FundingCarryStrip dailyCarry={data.summary.dailyFundingCarryUsd} />
+            )}
+          </>
         )}
 
         {/* ─── Exchange filter chips ─── */}
@@ -427,6 +407,10 @@ export default function PositionsPage() {
                   <th className="text-right px-2 py-2 font-medium">TP</th>
                   <th className="text-right px-2 py-2 font-medium">SL</th>
                   <th className="text-right px-2 py-2 font-medium" title="Cumulative funding paid/received over the life of the position">Σ funding</th>
+                  <th
+                    className="text-right px-2 py-2 font-medium"
+                    title="Projected daily funding cost in USD if the current rate holds. Negative = paying, positive = receiving."
+                  >$/day</th>
                   <th className="text-right px-2 py-2 font-medium" title="Current funding rate (most recent snapshot)">Now</th>
                   <th className="text-right px-2 py-2 font-medium" title="24-hour average funding rate">24h avg</th>
                   <th className="text-right px-2 py-2 font-medium" title="48-hour average funding rate">48h avg</th>
@@ -546,6 +530,18 @@ function PositionRow({ p }: { p: Position }) {
         {p.cumulativeFunding === null ? '—' : fmtUsd(p.cumulativeFunding, { sign: true })}
       </td>
       <td
+        className={`px-2 py-2 text-right tabular-nums ${
+          p.dailyFundingCarryUsd == null ? 'text-neutral-600' :
+          p.dailyFundingCarryUsd >= 0 ? 'text-emerald-400' : 'text-red-400'
+        }`}
+        title={p.dailyFundingCarryUsd == null
+          ? 'No live funding rate available — projection unavailable.'
+          : `Projected daily ${p.dailyFundingCarryUsd >= 0 ? 'received' : 'paid'} at the current rate. ` +
+            `Monthly ≈ ${fmtUsd(p.dailyFundingCarryUsd * 30, { sign: true })}.`}
+      >
+        {p.dailyFundingCarryUsd == null ? '—' : fmtUsd(p.dailyFundingCarryUsd, { sign: true })}
+      </td>
+      <td
         className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[cur]}`}
         title={`${fmtPct(p.currentFunding, { sign: true, digits: 4 })} per ${intervalH}h · ${fmtApr(aprNow)} APR (${p.side === 'long' ? 'cost to long' : 'cost to short'})`}
       >
@@ -650,6 +646,13 @@ function PositionCardMobile({ p }: { p: Position }) {
             />
           </div>
         )}
+        {p.dailyFundingCarryUsd != null && (
+          <SecondaryRow
+            label="$/day"
+            value={fmtUsd(p.dailyFundingCarryUsd, { sign: true })}
+            valueClass={p.dailyFundingCarryUsd >= 0 ? 'text-emerald-400' : 'text-red-400'}
+          />
+        )}
       </div>
     </div>
   );
@@ -679,6 +682,54 @@ function SecondaryRow({ label, value, valueClass }: { label: string; value: stri
     <div className="flex items-center justify-between border-b border-white/[0.03] py-1 last:border-0">
       <span className="text-neutral-500 text-[10px] uppercase tracking-wider">{label}</span>
       <span className={`tabular-nums font-mono ${valueClass ?? 'text-neutral-200'}`}>{value}</span>
+    </div>
+  );
+}
+
+// ─── Funding carry strip ───────────────────────────────────────────────
+// Aggregate net funding cost across the user's whole book. Shown
+// underneath the summary cells so users see at a glance whether their
+// open positions are net-paying or net-receiving funding RIGHT NOW.
+//
+// Three projections derived from the same number — daily, monthly,
+// annualised. None of these compound (funding doesn't reinvest); they
+// just multiply the daily rate. We show all three so traders can pick
+// the time-horizon that maps to their thinking.
+
+function FundingCarryStrip({ dailyCarry }: { dailyCarry: number }) {
+  const tone = dailyCarry >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const bg = dailyCarry >= 0
+    ? 'border-emerald-500/20 bg-emerald-500/[0.04]'
+    : 'border-red-500/20 bg-red-500/[0.04]';
+  const verb = dailyCarry >= 0 ? 'receiving' : 'paying';
+  const monthly = dailyCarry * 30;
+  const annualised = dailyCarry * 365;
+  return (
+    <div className={`card-premium ${bg} mb-4 px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1`}>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">
+        Funding carry
+      </div>
+      <div className="text-[11px] text-neutral-400">
+        At current rates you are{' '}
+        <span className={`font-bold ${tone}`}>{verb}</span>{' '}
+        approximately
+      </div>
+      <div className="flex items-center gap-3 text-[11px] tabular-nums font-mono">
+        <span className={`font-bold ${tone}`}>
+          {fmtUsd(dailyCarry, { sign: true })}/day
+        </span>
+        <span className="text-neutral-500">·</span>
+        <span className={`${tone} opacity-80`}>
+          {fmtUsd(monthly, { sign: true })}/mo
+        </span>
+        <span className="text-neutral-500">·</span>
+        <span className={`${tone} opacity-60`}>
+          {fmtUsd(annualised, { sign: true })}/yr
+        </span>
+      </div>
+      <div className="ml-auto text-[9px] text-neutral-600">
+        Projection only — assumes the live rate holds.
+      </div>
     </div>
   );
 }

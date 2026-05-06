@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, isAdmin } from '@/lib/auth';
 import { isDBConfigured, listUserPositions, getSQL } from '@/lib/db';
 import { scorePositionHealth } from '@/lib/position-health';
+import { dailyFundingCarryUsd } from '@/lib/funding-intervals';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -182,6 +183,8 @@ export async function GET(request: NextRequest) {
   const leverageShort = equity > 0 ? totalShort / equity : 0;
 
   // ─── Decorate each position with funding context + health score ─────
+  let aggregateDailyCarry = 0;
+  let dailyCarryHasData = false;
   const decorated = positions.map(p => {
     const f = fundingMap.get(`${p.exchange}|${p.symbol}`) ?? {
       current: null, avg24h: null, avg48h: null,
@@ -201,6 +204,20 @@ export async function GET(request: NextRequest) {
       marginUsed: p.marginUsed,
       currentFunding: f.current,
     });
+
+    // Daily funding cost-of-carry in USD using the live rate. The 30d
+    // projection just multiplies by 30 — assumes funding stays flat,
+    // which it never does, but it's the rate-card the user wants.
+    const dailyCarry = dailyFundingCarryUsd({
+      side: p.side,
+      positionValue: p.positionValue,
+      currentFundingPct: f.current,
+      exchange: p.exchange,
+    });
+    if (dailyCarry != null && Number.isFinite(dailyCarry)) {
+      aggregateDailyCarry += dailyCarry;
+      dailyCarryHasData = true;
+    }
     return {
       id: p.id,
       sourceType: p.sourceType,
@@ -229,6 +246,9 @@ export async function GET(request: NextRequest) {
       healthLabel: health.label,
       healthFactors: health.factors,
       healthReasons: health.reasons,
+      // Per-position daily funding cost projection in USD (positive = user
+      // receives, negative = user pays). Assumes the current rate holds.
+      dailyFundingCarryUsd: dailyCarry,
       updatedAt: p.updatedAt,
     };
   });
@@ -272,6 +292,10 @@ export async function GET(request: NextRequest) {
         leverageLong,
         leverageShort,
         totalUnrealizedPnl: totalUnrealized,
+        // Aggregate daily funding carry across the user's full book.
+        // null if NO position had a known current rate (rare — would
+        // mean every venue's funding column is dark right now).
+        dailyFundingCarryUsd: dailyCarryHasData ? aggregateDailyCarry : null,
       },
       positions: decorated,
       ts: Date.now(),

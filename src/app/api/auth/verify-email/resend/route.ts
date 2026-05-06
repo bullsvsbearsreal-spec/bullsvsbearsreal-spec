@@ -14,8 +14,40 @@ function getResend(): Resend | null {
   return _resend;
 }
 
+// In-memory per-IP throttle. The existing per-userId DB rate limit only
+// fires AFTER the email lookup, so an unauthenticated attacker could
+// hammer addresses they don't own — discovering registration status by
+// timing and triggering one verification email/min to any registered
+// address indefinitely. Cap at 5 attempts/15min/IP before any DB work.
+const ipAttempts = new Map<string, { count: number; firstAt: number }>();
+const IP_WINDOW_MS = 15 * 60 * 1000;
+const IP_MAX_ATTEMPTS = 5;
+
+function checkIpLimit(ip: string): boolean {
+  const now = Date.now();
+  const slot = ipAttempts.get(ip);
+  if (!slot || now - slot.firstAt > IP_WINDOW_MS) {
+    ipAttempts.set(ip, { count: 1, firstAt: now });
+    return true;
+  }
+  slot.count += 1;
+  return slot.count <= IP_MAX_ATTEMPTS;
+}
+
 export async function POST(req: Request) {
   try {
+    // Per-IP throttle BEFORE we touch the DB or reveal anything about
+    // the address.
+    const ip = req.headers.get('x-real-ip')?.trim()
+      || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || '';
+    if (!ip || !checkIpLimit(ip)) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Try again later.' },
+        { status: 429 },
+      );
+    }
+
     const { email } = await req.json();
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });

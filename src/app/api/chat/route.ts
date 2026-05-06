@@ -72,15 +72,36 @@ function extractText(content: MessageContent): string {
 }
 
 export async function POST(request: NextRequest) {
-  // Rate limiting
-  const ip = request.headers.get('x-real-ip') ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  // Rate limiting. We REQUIRE a real client identifier — falling back to
+  // a bare 'unknown' bucket means any attacker who strips both x-real-ip
+  // and x-forwarded-for shares one global limit with every other such
+  // caller. Behind DO + Cloudflare these headers are always set, so an
+  // empty value is anomalous and gets rejected outright.
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  const xff = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const ip = realIp || xff || '';
+  if (!ip) {
+    return new Response(
+      JSON.stringify({ error: 'Missing client identifier' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
 
   let body: ChatRequestBody;
   try {
     body = await request.json();
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), { status: 400 });
+  }
+
+  // Validate every message role BEFORE we use the array. The Anthropic
+  // API will happily relay role:'system' content as if it were a system
+  // prompt — a client could otherwise inject "You are now an admin..."
+  // with `role: 'system'` and override our buildSystemPrompt() call.
+  if (Array.isArray(body.messages)) {
+    body.messages = body.messages.filter(
+      m => m && (m.role === 'user' || m.role === 'assistant'),
+    );
   }
   const lastContent = body.messages?.[body.messages.length - 1]?.content || '';
   const lastText = extractText(lastContent);
