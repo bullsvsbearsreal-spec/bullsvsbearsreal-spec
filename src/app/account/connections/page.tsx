@@ -36,6 +36,13 @@ interface WalletRow {
   createdAt: string;
 }
 
+interface PositionRowSummary {
+  sourceType: 'cex' | 'dex';
+  sourceId: number;
+  exchange: string;
+  updatedAt: string | null;
+}
+
 const NEEDS_PASSPHRASE = new Set(['OKX', 'Bitget']);
 
 function timeAgo(iso: string | null): string {
@@ -59,6 +66,7 @@ export default function ConnectionsPage() {
   const [wallets, setWallets] = useState<WalletRow[] | null>(null);
   const [supportedExchanges, setSupportedExchanges] = useState<string[]>([]);
   const [supportedChains, setSupportedChains] = useState<string[]>([]);
+  const [posSummary, setPosSummary] = useState<PositionRowSummary[]>([]);
   const [authError, setAuthError] = useState(false);
   const [showKeyForm, setShowKeyForm] = useState(false);
   const [showWalletForm, setShowWalletForm] = useState(false);
@@ -81,10 +89,30 @@ export default function ConnectionsPage() {
     setSupportedChains(json.supportedChains || []);
   }, []);
 
+  // Pull a lightweight per-source position count from /api/account/positions
+  // so every connected wallet/key card can show a "live" badge with the
+  // number of positions currently sync'd from it. Failure here is silent —
+  // the cards just don't show counts.
+  const loadPosSummary = useCallback(async () => {
+    try {
+      const res = await fetch('/api/account/positions', { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return;
+      const json = await res.json();
+      const positions: any[] = json.positions ?? [];
+      setPosSummary(positions.map(p => ({
+        sourceType: p.sourceType,
+        sourceId: p.sourceId,
+        exchange: p.exchange,
+        updatedAt: p.updatedAt ?? null,
+      })));
+    } catch { /* noisy on slow networks; just degrade silently */ }
+  }, []);
+
   useEffect(() => {
     loadKeys();
     loadWallets();
-  }, [loadKeys, loadWallets]);
+    loadPosSummary();
+  }, [loadKeys, loadWallets, loadPosSummary]);
 
   const deleteKey = async (id: number) => {
     if (!confirm('Remove this connected key? Positions from it will stop updating.')) return;
@@ -183,16 +211,29 @@ export default function ConnectionsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {keys.map(k => (
+              {keys.map(k => {
+                const positionCount = posSummary.filter(p => p.sourceType === 'cex' && p.sourceId === k.id).length;
+                const isLive = k.lastSyncedAt && !k.lastError;
+                return (
                 <div key={k.id} className="card-premium p-3 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-md bg-sky-500/10 flex items-center justify-center flex-shrink-0">
                     <Key className="w-4 h-4 text-sky-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-white">{k.exchange}</span>
                       <span className="text-[11px] text-neutral-600 font-mono">•••{k.keyPrefix}</span>
                       {k.label && <span className="text-[11px] text-neutral-500">· {k.label}</span>}
+                      {isLive && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" /> live
+                        </span>
+                      )}
+                      {positionCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono bg-white/[0.04] text-neutral-300 ring-1 ring-white/[0.08] px-1.5 py-0.5 rounded-full">
+                          {positionCount} position{positionCount === 1 ? '' : 's'}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-neutral-600 mt-0.5">
                       Last sync: {timeAgo(k.lastSyncedAt)}
@@ -212,7 +253,8 @@ export default function ConnectionsPage() {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -256,31 +298,97 @@ export default function ConnectionsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {wallets.map(w => (
-                <div key={w.id} className="card-premium p-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-md bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                    <Wallet className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white capitalize">{w.chain}</span>
-                      <span className="text-[11px] text-neutral-500 font-mono">{shortAddr(w.address)}</span>
-                      {w.label && <span className="text-[11px] text-neutral-500">· {w.label}</span>}
+              {wallets.map(w => {
+                // Group positions for this wallet by exchange (a single chain
+                // can have positions on multiple DEXes — e.g. Arbitrum=GMX+gTrade).
+                const ours = posSummary.filter(p => p.sourceType === 'dex' && p.sourceId === w.id);
+                const byExchange = new Map<string, { count: number; latest: string | null }>();
+                for (const p of ours) {
+                  const e = byExchange.get(p.exchange) ?? { count: 0, latest: null };
+                  e.count += 1;
+                  if (p.updatedAt && (!e.latest || p.updatedAt > e.latest)) e.latest = p.updatedAt;
+                  byExchange.set(p.exchange, e);
+                }
+                const coverage = CHAIN_COVERAGE[w.chain] ?? { protocols: [], addressHint: '' };
+                const lastSync = Array.from(byExchange.values())
+                  .map(v => v.latest).filter(Boolean)
+                  .sort().reverse()[0] ?? null;
+
+                return (
+                <div key={w.id} className="card-premium p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-md bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                      <Wallet className="w-4 h-4 text-emerald-400" />
                     </div>
-                    <div className="text-[10px] text-neutral-600 mt-0.5">
-                      Added {timeAgo(w.createdAt)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-white capitalize">{w.chain}</span>
+                        <span className="text-[11px] text-neutral-500 font-mono">{shortAddr(w.address)}</span>
+                        {w.label && <span className="text-[11px] text-neutral-500">· {w.label}</span>}
+                        {/* Live status pill — green dot when sync'd recently */}
+                        {lastSync && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" /> live
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-neutral-600 mt-0.5">
+                        Added {timeAgo(w.createdAt)}
+                        {lastSync && <span> · last sync {timeAgo(lastSync)}</span>}
+                      </div>
                     </div>
+                    <button
+                      onClick={() => deleteWallet(w.id)}
+                      className="p-1.5 rounded-md text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      aria-label="Remove wallet"
+                      title="Remove"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => deleteWallet(w.id)}
-                    className="p-1.5 rounded-md text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    aria-label="Remove wallet"
-                    title="Remove"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+
+                  {/* Per-DEX coverage strip — shows exactly which protocols
+                       this wallet is being polled for and how many positions
+                       came back from each. Pill colour: emerald = positions
+                       found / live · grey = no positions yet · amber = stub
+                       (gTrade) · neutral = soon (Base / Solana). */}
+                  {coverage.protocols.length > 0 && (
+                    <div className="mt-2 pl-11 flex flex-wrap gap-1.5">
+                      {coverage.protocols.map(proto => {
+                        // Match by displayName fragment — protocol "GMX V2 (Arb + Avax)"
+                        // matches positions tagged "GMX". gTrade matches "gTrade", etc.
+                        const namePrefix = proto.name.split(/\s/)[0];
+                        const found = Array.from(byExchange.entries())
+                          .find(([ex]) => ex.toLowerCase().startsWith(namePrefix.toLowerCase()));
+                        const count = found?.[1].count ?? 0;
+                        const isLive = proto.status === 'live' && count > 0;
+                        const isWaiting = proto.status === 'live' && count === 0;
+                        const cls = isLive
+                          ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30'
+                          : isWaiting
+                          ? 'bg-white/[0.04] text-neutral-400 ring-white/[0.08]'
+                          : proto.status === 'stub'
+                          ? 'bg-amber-500/10 text-amber-300 ring-amber-500/30'
+                          : 'bg-neutral-500/10 text-neutral-400 ring-neutral-500/30';
+                        const dot = isLive ? 'bg-emerald-400' : isWaiting ? 'bg-neutral-500' : proto.status === 'stub' ? 'bg-amber-400' : 'bg-neutral-500';
+                        return (
+                          <span
+                            key={proto.name}
+                            className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ring-1 ${cls}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                            {proto.name}
+                            {isLive && <span className="font-mono">{count}</span>}
+                            {isWaiting && <span className="opacity-60">no positions</span>}
+                            {(proto.status === 'stub' || proto.status === 'soon') && <span className="text-[9px] uppercase">soon</span>}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

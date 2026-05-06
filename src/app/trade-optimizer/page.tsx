@@ -269,23 +269,86 @@ export default function TradeOptimizerPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    // Use allSettled so one slow upstream doesn't blank the whole UI —
-    // /api/execution-costs walks DEX orderbooks and can take 5-15s for thin
-    // pairs at $1M+ sizes. Funding countdown is fast and almost always works.
-    const [fundingRes, execRes] = await Promise.allSettled([
+    // Three parallel calls:
+    //   - /api/funding-countdown   (5 CEX-style venues, has accurate
+    //                               nextFundingTime — used for the
+    //                               countdown badge in the cheapest banner)
+    //   - /api/funding             (31 exchanges, used as the PRIMARY
+    //                               funding-rate source so DEXes like
+    //                               dYdX/Aster/Aevo/gTrade/Lighter/edgeX/
+    //                               GMX/Variational stop showing "—"
+    //                               in the funding column)
+    //   - /api/execution-costs     (live orderbook walk, slow for thin pairs)
+    const [countdownRes, fundingAllRes, execRes] = await Promise.allSettled([
       fetch('/api/funding-countdown', { signal: AbortSignal.timeout(15_000) }),
+      fetch('/api/funding?assetClass=crypto', { signal: AbortSignal.timeout(15_000) }),
       fetch(`/api/execution-costs?asset=${asset}&size=${size}&direction=${side}`, { signal: AbortSignal.timeout(20_000) }),
     ]);
 
     let fundingOk = false;
     let execOk = false;
 
-    if (fundingRes.status === 'fulfilled' && fundingRes.value.ok) {
-      try { setFunding(await fundingRes.value.json()); fundingOk = true; } catch { /* ignore */ }
+    // Build a unified funding map: countdown rows take priority (they have
+    // the accurate next-funding timestamp) and we fold in /api/funding rows
+    // for every venue not present in countdown.
+    let countdown: FundingApi | null = null;
+    if (countdownRes.status === 'fulfilled' && countdownRes.value.ok) {
+      try { countdown = await countdownRes.value.json(); fundingOk = true; } catch { /* ignore */ }
     }
+    let merged: FundingApi | null = countdown;
+    if (fundingAllRes.status === 'fulfilled' && fundingAllRes.value.ok) {
+      try {
+        const j = await fundingAllRes.value.json();
+        const wide: Array<{
+          symbol: string; exchange: string;
+          fundingRate: number; fundingInterval?: string;
+          nextFundingTime?: number;
+        }> = (j.result?.data ?? j.data ?? []) as any[];
+
+        const intervalToHours = (s: string | undefined): number => {
+          if (!s) return 8;
+          const n = parseFloat(s);
+          return Number.isFinite(n) && n > 0 ? n : 8;
+        };
+
+        const seen = new Set<string>();
+        const baseRows = countdown?.rows ?? [];
+        for (const r of baseRows) seen.add(`${r.exchange.toLowerCase()}|${r.symbol.toUpperCase()}`);
+
+        const extra: FundingRow[] = [];
+        for (const r of wide) {
+          if (!r || !r.symbol || !r.exchange) continue;
+          const key = `${r.exchange.toLowerCase()}|${r.symbol.toUpperCase()}`;
+          if (seen.has(key)) continue;
+          // /api/funding's fundingRate is in PERCENT (e.g. 0.00125 = 0.00125%)
+          // but funding-countdown uses DECIMAL (1.25e-05 = same value).
+          // Normalise to the decimal form the merge logic already expects.
+          const decimalRate = (r.fundingRate ?? 0) / 100;
+          if (!Number.isFinite(decimalRate)) continue;
+          extra.push({
+            exchange: r.exchange,
+            symbol: r.symbol,
+            fundingRate: decimalRate,
+            nextFundingMs: r.nextFundingTime ?? 0,
+            intervalHours: intervalToHours(r.fundingInterval),
+          });
+          seen.add(key);
+        }
+
+        merged = {
+          rows: [...baseRows, ...extra],
+          symbols: Array.from(new Set([...baseRows, ...extra].map(r => r.symbol))),
+          ts: countdown?.ts ?? Date.now(),
+        };
+        fundingOk = true;
+      } catch { /* ignore */ }
+    }
+    if (merged) setFunding(merged);
     if (execRes.status === 'fulfilled' && execRes.value.ok) {
       try { setExecution(await execRes.value.json()); execOk = true; } catch { /* ignore */ }
     }
+    // Local var aliases retained for the error-message decision below.
+    const fundingRes = countdownRes;
 
     // Only escalate to a full error if BOTH failed — otherwise a partial
     // result is still useful (e.g. CEX-only rows from funding when execution
