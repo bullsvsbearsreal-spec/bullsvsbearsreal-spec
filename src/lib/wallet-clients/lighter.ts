@@ -75,24 +75,26 @@ async function loadMarkets(): Promise<Map<number, LighterMarketMeta>> {
   }
 }
 
-async function fetchAccountIndex(l1Address: string): Promise<number | null> {
+async function fetchAccountIndices(l1Address: string): Promise<number[]> {
   try {
     // Lighter's /account endpoint takes `by` (filter type) + `value` (filter
-    // value). For wallet lookups we use by=l1_address. A 404-shaped response
-    // means "account not registered" — totally fine, return null.
+    // value). For wallet lookups we use by=l1_address. Users can have
+    // MULTIPLE sub-accounts under one L1 (perp + isolated sub-accounts),
+    // so we return ALL indices and the caller iterates each. Code 21100 =
+    // account not registered → empty list, totally fine.
     const url = `${BASE_URL}/account?by=l1_address&value=${encodeURIComponent(l1Address)}`;
     const res = await fetch(url, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: { 'Accept': 'application/json' },
     });
-    if (!res.ok) return null;
+    if (!res.ok) return [];
     const json = (await res.json()) as LighterAccountResp & { code?: number };
-    // Lighter wraps errors in 200 OK with `code` !== 200. Code 21100 = account not found.
-    if (json.code != null && json.code !== 200) return null;
-    const first = (json.accounts ?? [])[0];
-    return first?.index ?? null;
+    if (json.code != null && json.code !== 200) return [];
+    return (json.accounts ?? [])
+      .map(a => a.index)
+      .filter((i): i is number => typeof i === 'number');
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -102,23 +104,39 @@ export const lighterWalletClient: WalletClient = {
   async fetchPositions(address: string): Promise<NormalizedPosition[]> {
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return [];
 
-    const accountIndex = await fetchAccountIndex(address);
-    if (accountIndex == null) return [];
+    const accountIndices = await fetchAccountIndices(address);
+    if (accountIndices.length === 0) return [];
 
-    let posResp: LighterPositionsResp;
-    try {
-      const res = await fetch(
-        `${BASE_URL}/account_positions?account_index=${accountIndex}`,
-        { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'Accept': 'application/json' } },
-      );
-      if (!res.ok) return [];
-      posResp = (await res.json()) as LighterPositionsResp;
-    } catch (e) {
-      console.warn(`[lighter] fetch positions failed: ${e instanceof Error ? e.message : e}`);
-      return [];
-    }
+    // Fetch positions for every sub-account in parallel and concatenate.
+    // Users can have multiple Lighter sub-accounts under one L1 — querying
+    // only the first one (the previous behaviour) silently dropped open
+    // positions on isolated sub-accounts. Best-effort: any sub-account
+    // that errors is skipped, the rest still flow through.
+    // Per-account positions kept tagged with account index so we can
+    // disambiguate duplicates downstream (two sub-accounts holding the
+    // same symbol/side would otherwise clash on user_positions' UNIQUE
+    // (… exchange, symbol, side) and abort the entire sync).
+    type TaggedPos = LighterPositionsResp['positions'] extends Array<infer T> | undefined
+      ? T & { _accountIndex: number }
+      : never;
+    const positionsArrays = await Promise.all(
+      accountIndices.map(async idx => {
+        try {
+          const res = await fetch(
+            `${BASE_URL}/account_positions?account_index=${idx}`,
+            { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'Accept': 'application/json' } },
+          );
+          if (!res.ok) return [] as TaggedPos[];
+          const j = (await res.json()) as LighterPositionsResp;
+          return (j.positions ?? []).map(p => ({ ...p, _accountIndex: idx }) as TaggedPos);
+        } catch (e) {
+          console.warn(`[lighter] account ${idx} positions failed: ${e instanceof Error ? e.message : e}`);
+          return [] as TaggedPos[];
+        }
+      }),
+    );
+    const positions = positionsArrays.flat();
 
-    const positions = posResp.positions ?? [];
     if (positions.length === 0) return [];
 
     const markets = await loadMarkets();
@@ -151,7 +169,23 @@ export const lighterWalletClient: WalletClient = {
         tpPrice: null,
         slPrice: null,
         cumulativeFunding: Number.isFinite(cumulativeFunding) ? cumulativeFunding : null,
-      });
+        // Stash account index for duplicate disambiguation below.
+        _lighterAcct: p._accountIndex,
+      } as NormalizedPosition & { _lighterAcct?: number });
+    }
+
+    // Disambiguate same-symbol/side positions across sub-accounts so they
+    // don't clash on user_positions' UNIQUE index.
+    const seen = new Map<string, number>();
+    for (const p of out) {
+      const key = `${p.symbol}|${p.side}`;
+      const n = seen.get(key) ?? 0;
+      seen.set(key, n + 1);
+      const acct = (p as any)._lighterAcct as number | undefined;
+      if (n > 0 && acct != null) {
+        p.symbol = `${p.symbol} (acct ${acct})`;
+      }
+      delete (p as any)._lighterAcct;
     }
     return out;
   },
