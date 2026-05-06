@@ -28,9 +28,11 @@ export async function GET(req: NextRequest) {
   try {
     const body = await fetchValidatorsFresh();
     if (body.totalTvl <= 0) {
+      // 200 — DO rewrites non-2xx to a generic 502 HTML page, masking our
+      // diagnostics. Signal failure in the JSON instead.
       return NextResponse.json(
         { ok: false, reason: 'empty payload from DefiLlama', byAsset: {}, totalTvl: 0 },
-        { status: 502, headers: { 'Cache-Control': 'no-store' } },
+        { headers: { 'Cache-Control': 'no-store' } },
       );
     }
     await setWarmCache(WARM_KEY, body, WARM_TTL);
@@ -46,7 +48,7 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : 'failed' },
-      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+      { headers: { 'Cache-Control': 'no-store' } },
     );
   }
 }

@@ -41,11 +41,12 @@ export async function GET(req: NextRequest) {
   }
 
   const anyOk = Object.values(out).some(v => v.ok);
+  // Always return 200 — DO App Platform rewrites non-2xx route responses
+  // to its own generic "via_upstream (502 -)" HTML page, which would mask
+  // our structured error payload from systemd journal grepping. Signal
+  // failure in the JSON body instead so the cron output stays useful.
   return NextResponse.json(
     { ok: anyOk, results: out, ts: Date.now() },
-    {
-      status: anyOk ? 200 : 502,
-      headers: { 'Cache-Control': 'no-store' },
-    },
+    { headers: { 'Cache-Control': 'no-store' } },
   );
 }
