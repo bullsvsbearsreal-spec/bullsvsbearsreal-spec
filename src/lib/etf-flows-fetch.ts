@@ -29,6 +29,39 @@ export function farsideUrl(asset: 'btc' | 'eth'): string {
     : 'https://farside.co.uk/ethereum-etf-flow-all-data/';
 }
 
+/**
+ * Try a single URL — direct or proxied — and parse the resulting HTML.
+ * Returns null when the response was a CF challenge, missing the table,
+ * or HTTP-failed. Caller chains direct → proxy fallback.
+ */
+async function tryFetchAndParse(
+  url: string,
+): Promise<{ issuers: string[]; days: FlowDay[] } | { error: string }> {
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(TIMEOUT),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-GB,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+    });
+    if (!res.ok) return { error: `HTTP ${res.status}` };
+    const html = await res.text();
+    if (/just a moment|cf-browser-verification|cf-challenge|attention required/i.test(html)) {
+      return { error: 'Bot-protection page returned' };
+    }
+    const parsed = parseFarsideTable(html);
+    if (!parsed || parsed.days.length === 0) {
+      return { error: 'Could not parse Farside table — HTML may have changed' };
+    }
+    return parsed;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'fetch error' };
+  }
+}
+
 export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideResult> {
   const empty: FarsideResult = {
     asset,
@@ -38,29 +71,29 @@ export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideRe
     note: 'Source temporarily unreachable from this datacenter.',
   };
 
-  try {
-    const res = await fetch(farsideUrl(asset), {
-      signal: AbortSignal.timeout(TIMEOUT),
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-GB,en;q=0.9',
-        'Cache-Control': 'no-cache',
-      },
-    });
-    if (!res.ok) return { ...empty, note: `Farside HTTP ${res.status}.` };
-    const html = await res.text();
-    if (/just a moment|cf-browser-verification|cf-challenge|attention required/i.test(html)) {
-      return { ...empty, note: 'Bot-protection page returned.' };
-    }
-    const parsed = parseFarsideTable(html);
-    if (!parsed || parsed.days.length === 0) {
-      return { ...empty, note: 'Could not parse Farside table — HTML may have changed.' };
-    }
-    return { asset, issuers: parsed.issuers, days: parsed.days, dataAvailable: true };
-  } catch (e) {
-    return { ...empty, note: e instanceof Error ? e.message : 'fetch error' };
+  const directUrl = farsideUrl(asset);
+
+  // Try direct first — fastest path when DO IPs aren't being blocked.
+  const direct = await tryFetchAndParse(directUrl);
+  if ('issuers' in direct) {
+    return { asset, issuers: direct.issuers, days: direct.days, dataAvailable: true };
   }
+
+  // Direct failed — most commonly Farside's Cloudflare blocks DO datacenter
+  // IPs with a 403. Same pattern we use for Binance: route through PROXY_URL
+  // (the InfoHub aggregator droplet) which lives on a clean IP. Skipped
+  // when no proxy configured.
+  const proxyUrlRaw = (process.env.PROXY_URL || '').trim();
+  if (proxyUrlRaw && proxyUrlRaw.startsWith('https://')) {
+    const proxyBase = proxyUrlRaw.replace(/\/$/, '');
+    const proxied = await tryFetchAndParse(`${proxyBase}/?url=${encodeURIComponent(directUrl)}`);
+    if ('issuers' in proxied) {
+      return { asset, issuers: proxied.issuers, days: proxied.days, dataAvailable: true };
+    }
+    return { ...empty, note: `Farside ${direct.error}; proxy ${proxied.error}.` };
+  }
+
+  return { ...empty, note: `Farside ${direct.error}.` };
 }
 
 /* ─── HTML parsing ────────────────────────────────────────────────────── */
