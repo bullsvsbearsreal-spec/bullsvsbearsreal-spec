@@ -26,16 +26,23 @@ interface FundingContext {
 }
 
 /**
- * Strip chain-disambiguation suffixes from a position symbol so the
+ * Strip disambiguation suffixes from a position symbol so the
  * funding-snapshots join uses the canonical ticker.
  *
- * GMX positions on Avalanche get a "(Avax)" suffix to disambiguate from
- * the Arbitrum entry of the same symbol — but funding_snapshots stores
- * rates by the bare ticker only, so without stripping we'd never find a
- * funding row for any cross-chain duplicate.
+ * Two cases we strip:
+ *   - Chain-disambiguation: GMX Avalanche positions are tagged `(Avax)`
+ *     to distinguish from the Arbitrum entry of the same symbol.
+ *   - Multi-market disambiguation: GMX returns a "(WBTC.b)" / "(USDC)" /
+ *     "(#2)" suffix when the user has multiple isolated positions on the
+ *     same symbol/side across different collateral pairs.
+ *
+ * Without stripping we'd never find a funding row for any disambiguated
+ * row because funding_snapshots only stores the bare ticker.
  */
 function canonicalSymbol(sym: string): string {
-  return sym.replace(/\s*\((?:Avax|Avalanche|Arb|Arbitrum)\)\s*$/i, '').trim();
+  // Strip any "(...)" suffix at the end of the symbol. Conservative —
+  // catches Avax / Arbitrum / collateral-token / "#N" suffixes alike.
+  return sym.replace(/\s*\([^()]*\)\s*$/i, '').trim();
 }
 
 async function loadFundingContext(

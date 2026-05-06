@@ -228,6 +228,13 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
 
     out.push({
       symbol: market.symbol,
+      // Stash the collateral pair as a discriminator — used below to
+      // disambiguate multiple isolated-market positions on the same symbol
+      // (e.g. BTC/USD [WBTC.b-USDC] vs BTC/USD [WBTC.b-WBTC.b]) so they
+      // don't collide on user_positions' UNIQUE (… exchange, symbol, side)
+      // and abort the entire sync with a unique-violation error.
+      // We append "(USDC)" / "(WBTC.b)" etc. after detecting duplicates.
+      _gmxCollateralPair: market.collateralPair || '',
       side: p.isLong ? 'long' : 'short',
       size: sizeTokens,
       entryPrice,
@@ -245,7 +252,27 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
       // is the closest proxy (open funding + borrowing fees). Negate to
       // align with our convention (positive = received by user).
       cumulativeFunding: Number.isFinite(fees) ? -fees : null,
-    });
+    } as NormalizedPosition & { _gmxCollateralPair?: string });
+  }
+
+  // Disambiguate multiple isolated positions on the same (symbol, side)
+  // by appending the collateral-token short-name to all but the first
+  // occurrence. Without this, two GMX BTC longs on different collateral
+  // pairs would clash on the UNIQUE (user, source, exchange, symbol, side)
+  // index and the WHOLE sync transaction aborts → user sees zero positions.
+  const seen = new Map<string, number>();
+  for (const p of out) {
+    const key = `${p.symbol}|${p.side}`;
+    const n = seen.get(key) ?? 0;
+    seen.set(key, n + 1);
+    if (n > 0) {
+      const collateral = (p as any)._gmxCollateralPair as string | undefined;
+      // Use the LONG token short name (e.g. "WBTC.b" from "WBTC.b-USDC").
+      const longTok = collateral?.split('-')?.[0];
+      const suffix = longTok && longTok.length > 0 ? ` (${longTok})` : ` (#${n + 1})`;
+      p.symbol = `${p.symbol}${suffix}`;
+    }
+    delete (p as any)._gmxCollateralPair;
   }
   return out;
 }
