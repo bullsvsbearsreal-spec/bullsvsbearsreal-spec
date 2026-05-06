@@ -36,8 +36,11 @@ const ARBITRUM_MARKETS_URL = 'https://arbitrum-api.gmxinfra.io/markets/info';
 const AVALANCHE_MARKETS_URL = 'https://avalanche-api.gmxinfra.io/markets/info';
 const ARBITRUM_TICKERS_URL = 'https://arbitrum-api.gmxinfra.io/prices/tickers';
 const AVALANCHE_TICKERS_URL = 'https://avalanche-api.gmxinfra.io/prices/tickers';
+const ARBITRUM_TOKENS_URL = 'https://arbitrum-api.gmxinfra.io/tokens';
+const AVALANCHE_TOKENS_URL = 'https://avalanche-api.gmxinfra.io/tokens';
 const CACHE_TTL = 60 * 60 * 1000; // 1h — market list rarely changes
 const TICKER_TTL = 60_000;         // 1 min — prices move faster
+const TOKENS_TTL = 60 * 60 * 1000; // 1h — token decimals never change
 
 interface MarketCacheEntry {
   map: Map<string, MarketInfo>;
@@ -63,6 +66,59 @@ interface TickerCacheEntry {
 
 const cache: Record<string, MarketCacheEntry> = {};
 const tickerCache: Record<string, TickerCacheEntry> = {};
+
+interface TokenDecimalEntry {
+  symbol: string;
+  address: string;       // lowercase
+  decimals: number;
+}
+interface TokensCacheEntry {
+  byAddress: Map<string, TokenDecimalEntry>;
+  bySymbol: Map<string, TokenDecimalEntry>;
+  ts: number;
+}
+const tokensCache: Record<string, TokensCacheEntry> = {};
+
+/**
+ * Fetch authoritative per-token decimals from GMX. The /prices/tickers
+ * endpoint only exposes raw price strings; decimals must be inferred or
+ * looked up. Inference is unreliable for low-priced tokens (PENGU at
+ * $0.01 looks plausible at decimals 6, 8, AND 9), so we always use this
+ * endpoint when available and fall back to inference only on failure.
+ */
+async function fetchTokensFor(url: string): Promise<TokensCacheEntry> {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(6_000),
+    headers: { Accept: 'application/json', 'User-Agent': 'InfoHub/2.0 (info-hub.io)' },
+  });
+  if (!res.ok) throw new Error(`GMX tokens fetch returned ${res.status}`);
+  const json = await res.json() as { tokens: Array<{ symbol: string; address: string; decimals: number }> };
+  const byAddress = new Map<string, TokenDecimalEntry>();
+  const bySymbol = new Map<string, TokenDecimalEntry>();
+  for (const t of json.tokens || []) {
+    if (!t.address || !Number.isFinite(t.decimals)) continue;
+    const entry: TokenDecimalEntry = { symbol: t.symbol, address: t.address.toLowerCase(), decimals: t.decimals };
+    byAddress.set(entry.address, entry);
+    if (!bySymbol.has(t.symbol)) bySymbol.set(t.symbol, entry);
+  }
+  return { byAddress, bySymbol, ts: Date.now() };
+}
+
+async function getGMXTokenDecimals(chain: 'arbitrum' | 'avalanche'): Promise<TokensCacheEntry> {
+  const now = Date.now();
+  const existing = tokensCache[chain];
+  if (existing && now - existing.ts < TOKENS_TTL) return existing;
+  const url = chain === 'avalanche' ? AVALANCHE_TOKENS_URL : ARBITRUM_TOKENS_URL;
+  try {
+    const fresh = await fetchTokensFor(url);
+    tokensCache[chain] = fresh;
+    return fresh;
+  } catch (err) {
+    console.warn(`[gmx-markets] ${chain} tokens fetch error:`, err instanceof Error ? err.message : err);
+    if (existing) return existing;
+    return { byAddress: new Map(), bySymbol: new Map(), ts: now };
+  }
+}
 
 /** Parse "BTC/USD [WBTC.b-USDC]" into structured parts. */
 function parseMarketName(name: string): Pick<MarketInfo, 'symbol' | 'pair' | 'collateralPair' | 'isDeprecated'> {
@@ -187,24 +243,43 @@ function inferDecimals(rawPrice: string): { decimals: number; priceUsd: number }
   return { decimals: best.decimals, priceUsd: best.priceUsd };
 }
 
-async function fetchTickersFor(url: string): Promise<TickerCacheEntry> {
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(6_000),
-    headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'InfoHub/2.0 (info-hub.io)',
-    },
-  });
-  if (!res.ok) throw new Error(`GMX tickers fetch returned ${res.status}`);
-  const rows: Array<{ tokenSymbol: string; tokenAddress: string; minPrice: string; maxPrice: string }> = await res.json();
+async function fetchTickersFor(url: string, chain: 'arbitrum' | 'avalanche'): Promise<TickerCacheEntry> {
+  const [tickerRes, tokensMeta] = await Promise.all([
+    fetch(url, {
+      signal: AbortSignal.timeout(6_000),
+      headers: { 'Accept': 'application/json', 'User-Agent': 'InfoHub/2.0 (info-hub.io)' },
+    }),
+    // Resolve decimals authoritatively from /tokens — heuristic inference
+    // is unreliable for low-priced tokens (PENGU at $0.0107 has 3 plausible
+    // decimal interpretations). Without this lookup the inference picks
+    // the highest-magnitude plausible price ($10.71 instead of $0.0107).
+    getGMXTokenDecimals(chain),
+  ]);
+  if (!tickerRes.ok) throw new Error(`GMX tickers fetch returned ${tickerRes.status}`);
+  const rows: Array<{ tokenSymbol: string; tokenAddress: string; minPrice: string; maxPrice: string }> = await tickerRes.json();
   const byAddress = new Map<string, TokenTicker>();
   const bySymbol = new Map<string, TokenTicker>();
   for (const r of rows) {
     if (!r.tokenAddress || !r.minPrice) continue;
-    const { decimals, priceUsd } = inferDecimals(r.minPrice);
+    const addr = r.tokenAddress.toLowerCase();
+    // Authoritative decimals from /tokens beat inference every time.
+    const authoritative = tokensMeta.byAddress.get(addr) || tokensMeta.bySymbol.get(r.tokenSymbol);
+    let decimals: number;
+    let priceUsd: number;
+    if (authoritative) {
+      decimals = authoritative.decimals;
+      try {
+        priceUsd = Number(BigInt(r.minPrice)) * Math.pow(10, decimals) / 1e30;
+      } catch {
+        priceUsd = 0;
+      }
+    } else {
+      // Fallback: heuristic. Used only for tokens missing from /tokens.
+      ({ decimals, priceUsd } = inferDecimals(r.minPrice));
+    }
     const entry: TokenTicker = {
       symbol: r.tokenSymbol,
-      address: r.tokenAddress.toLowerCase(),
+      address: addr,
       minPriceRaw: r.minPrice,
       maxPriceRaw: r.maxPrice,
       decimals,
@@ -227,7 +302,7 @@ export async function getGMXTickers(chain: 'arbitrum' | 'avalanche' = 'arbitrum'
 
   const url = chain === 'avalanche' ? AVALANCHE_TICKERS_URL : ARBITRUM_TICKERS_URL;
   try {
-    const fresh = await fetchTickersFor(url);
+    const fresh = await fetchTickersFor(url, chain);
     tickerCache[chain] = fresh;
     return fresh;
   } catch (err) {
