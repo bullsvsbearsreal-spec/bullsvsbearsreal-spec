@@ -19,6 +19,9 @@ interface ApiResponse {
   cumulative30d: number;
   latestDay: FlowDay | null;
   dataAvailable?: boolean;
+  /** True when the response came from the Redis warm cache rather than a
+   *  fresh Farside fetch — happens when Farside is rate-limiting our IP. */
+  cached?: boolean;
   note?: string;
   ts: number;
 }
@@ -173,6 +176,15 @@ export default function EtfFlowsPage() {
 
         {data && data.dataAvailable !== false && (
           <>
+            {/* "Showing cached" notice when warm-cache fallback served the
+                 response (Farside rate-limiting from our datacenter). */}
+            {data.cached && data.note && (
+              <div className="mb-3 px-3 py-2 rounded-md border border-amber-500/30 bg-amber-500/[0.06] text-[11px] text-amber-200/90 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                <span>{data.note}</span>
+              </div>
+            )}
+
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
               <div className="card-premium p-3">

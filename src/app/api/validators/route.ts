@@ -4,145 +4,66 @@
  * Liquid-staking + native staking yields across ETH, SOL, and other major
  * PoS chains. Pulls DefiLlama Yields filtered to known LST/LSD projects.
  *
- * Free DefiLlama yields API. L1 cached 30 min.
+ * Cache hierarchy (fastest → slowest):
+ *   1. In-process L1 (single slot, 30 min TTL) — sub-millisecond.
+ *   2. Upstash Redis warm cache populated by cron/refresh-validators —
+ *      ~10-30 ms per call. Survives Edge cold starts.
+ *   3. Live DefiLlama fetch (12 s+) — only used when both caches are
+ *      empty (very cold start) or stale.
+ *
+ * The cron refresh keeps the warm cache populated so /api/validators
+ * never has to wait for DefiLlama on the request hot path.
  */
 import { NextResponse } from 'next/server';
-import { fetchWithTimeout } from '../_shared/fetch';
+import { fetchValidatorsFresh, type ValidatorsResponse } from '@/lib/validators-data';
+import { getWarmCache } from '@/lib/api/warm-cache';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
-interface LlamaPool {
-  pool: string;             // pool ID
-  project: string;
-  symbol: string;
-  chain: string;
-  tvlUsd: number;
-  apy: number | null;
-  apyBase: number | null;
-  apyReward: number | null;
-  ilRisk?: string;
-  exposure?: string;
-}
-
-interface ValidatorRow {
-  project: string;
-  symbol: string;
-  chain: string;
-  asset: string;            // BTC / ETH / SOL etc derived from symbol
-  apy: number;              // total
-  apyBase: number;          // staking-side APR
-  apyReward: number;        // points / token rewards
-  tvlUsd: number;
-  category: 'liquid-staking' | 'restaking' | 'native-staking';
-}
-
-interface ApiResponse {
-  byAsset: Record<string, ValidatorRow[]>;
-  totalTvl: number;
-  ts: number;
-}
-
-const TIMEOUT = 12_000;
-let l1: { body: ApiResponse; ts: number } | null = null;
+const WARM_KEY = 'validators';
+let l1: { body: ValidatorsResponse; ts: number } | null = null;
 const L1_TTL = 30 * 60 * 1000;
-
-const LST_PROJECTS = new Set([
-  'lido', 'rocket-pool', 'rocketpool', 'frax-ether', 'mantle-lsp',
-  'binance-staked-eth', 'coinbase-wrapped-staked-eth', 'stakewise-v3',
-  'jito-liquid-staking', 'jito', 'marinade-finance', 'marinade',
-  'sanctum', 'blazestake', 'jpool',
-]);
-
-const RESTAKING_PROJECTS = new Set([
-  'eigenlayer', 'symbiotic', 'karak', 'ether-fi', 'etherfi-stake',
-  'renzo', 'kelp-dao', 'puffer-finance', 'swell', 'eigenpie',
-]);
-
-const ALLOW_PROJECTS = new Set<string>();
-LST_PROJECTS.forEach(p => ALLOW_PROJECTS.add(p));
-RESTAKING_PROJECTS.forEach(p => ALLOW_PROJECTS.add(p));
-
-const ASSET_FROM_SYMBOL = (sym: string): string => {
-  const u = sym.toUpperCase();
-  if (u.includes('STETH') || u.includes('RETH') || u.includes('CBETH') || u.includes('WSTETH') || u.endsWith('ETH') || u === 'WETH' || u === 'ETH') return 'ETH';
-  if (u.includes('JITOSOL') || u.includes('MSOL') || u.includes('BSOL') || u.includes('JSOL') || u.endsWith('SOL') || u === 'SOL') return 'SOL';
-  if (u.includes('BTC')) return 'BTC';
-  if (u.includes('MATIC') || u.includes('POL')) return 'POL';
-  if (u.includes('AVAX')) return 'AVAX';
-  if (u.includes('ATOM')) return 'ATOM';
-  if (u.includes('NEAR')) return 'NEAR';
-  return 'OTHER';
-};
+const WARM_FRESHNESS_MS = 60 * 60 * 1000; // accept Redis entries up to 1h old
 
 export async function GET() {
+  // L1
   if (l1 && Date.now() - l1.ts < L1_TTL) {
     return NextResponse.json(l1.body, {
-      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
+      headers: { 'X-Cache': 'L1', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
     });
   }
 
+  // L2 (Redis warm cache, written by cron/refresh-validators)
   try {
-    const res = await fetchWithTimeout(
-      'https://yields.llama.fi/pools',
-      { headers: { Accept: 'application/json' } },
-      TIMEOUT,
-    );
-    if (!res.ok) {
-      if (l1) return NextResponse.json(l1.body, { headers: { 'X-Cache': 'STALE' } });
-      return NextResponse.json({ error: `DefiLlama HTTP ${res.status}`, byAsset: {} }, { status: 502 });
-    }
-    const json = await res.json() as { data?: LlamaPool[] };
-    const pools = json.data ?? [];
-
-    const filtered: ValidatorRow[] = [];
-    for (const p of pools) {
-      if (!ALLOW_PROJECTS.has(p.project)) continue;
-      if (!Number.isFinite(p.apy) || (p.apy ?? 0) <= 0) continue;
-      if ((p.tvlUsd ?? 0) < 5_000_000) continue;
-      filtered.push({
-        project: p.project,
-        symbol: p.symbol,
-        chain: p.chain,
-        asset: ASSET_FROM_SYMBOL(p.symbol),
-        apy: p.apy ?? 0,
-        apyBase: p.apyBase ?? 0,
-        apyReward: p.apyReward ?? 0,
-        tvlUsd: p.tvlUsd,
-        category: RESTAKING_PROJECTS.has(p.project) ? 'restaking' : 'liquid-staking',
+    const warm = await getWarmCache<ValidatorsResponse>(WARM_KEY);
+    if (warm && Date.now() - warm.ts < WARM_FRESHNESS_MS && warm.body?.totalTvl > 0) {
+      l1 = { body: warm.body, ts: Date.now() };
+      return NextResponse.json(warm.body, {
+        headers: { 'X-Cache': 'WARM', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
       });
     }
+  } catch { /* fall through to live fetch */ }
 
-    // Sort within each asset bucket by TVL desc
-    filtered.sort((a, b) => b.tvlUsd - a.tvlUsd);
-
-    const byAsset: Record<string, ValidatorRow[]> = {};
-    for (const r of filtered) {
-      if (!byAsset[r.asset]) byAsset[r.asset] = [];
-      byAsset[r.asset].push(r);
-    }
-
-    const totalTvl = filtered.reduce((s, r) => s + r.tvlUsd, 0);
-
-    const body: ApiResponse = {
-      byAsset,
-      totalTvl,
-      ts: Date.now(),
-    };
-
-    if (filtered.length > 0) l1 = { body, ts: Date.now() };
-
+  // Live fetch
+  try {
+    const body = await fetchValidatorsFresh();
+    if (body.totalTvl > 0) l1 = { body, ts: Date.now() };
     return NextResponse.json(body, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': filtered.length > 0
+        'Cache-Control': body.totalTvl > 0
           ? 'public, s-maxage=900, stale-while-revalidate=3600'
           : 'no-store',
       },
     });
   } catch (e) {
-    if (l1) return NextResponse.json(l1.body, { headers: { 'X-Cache': 'STALE' } });
+    if (l1) {
+      return NextResponse.json(l1.body, {
+        headers: { 'X-Cache': 'STALE', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=1800' },
+      });
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'failed', byAsset: {} },
       { status: 502 },
