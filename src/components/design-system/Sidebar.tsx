@@ -101,7 +101,6 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/liq-calculator',           label: 'Liq Calculator',  color: REKT, icon: I.shield },
     { href: '/leverage',                 label: 'Leverage',        color: REKT, icon: I.zap },
     { href: '/position-size',            label: 'Position Sizer',  color: REKT, icon: I.scale },
-    { href: '/rekt',                     label: 'Rekt Feed',       color: REKT, icon: I.flame },
     { href: '/whale-alert',              label: 'Whale Alert',     color: PUR,  icon: I.whale },
     { href: '/alerts',                   label: 'Alerts',          color: ACC,  icon: I.alerts },
   ]},

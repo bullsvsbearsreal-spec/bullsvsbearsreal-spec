@@ -81,7 +81,6 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'liq-calc',        label: 'Liq Calculator',  href: '/liq-calculator',        hint: 'Price needed to liquidate' },
       { id: 'leverage',        label: 'Leverage',        href: '/leverage',              hint: 'Position leverage' },
       { id: 'position-size',   label: 'Position Sizer',  href: '/position-size',         hint: 'Risk-based sizing' },
-      { id: 'rekt',            label: 'Rekt Feed',       href: '/rekt',                  hint: 'Big losses' },
       { id: 'whale-alert',     label: 'Whale Alert',     href: '/whale-alert',           hint: 'Large on-chain txns' },
       { id: 'alerts',          label: 'Alerts',          href: '/alerts',                hint: 'Triggers + history' },
     ]},

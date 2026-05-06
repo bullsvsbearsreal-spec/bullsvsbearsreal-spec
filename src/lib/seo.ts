@@ -391,10 +391,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Leverage Dashboard',
     description: 'OI-weighted funding rates, spot-vs-perp volume ratio, and aggregate leverage pressure across 32 venues. One lens on real positioning vs retail noise.',
   },
-  '/rekt': {
-    title: 'Rekt Leaderboard · Biggest Hyperliquid Liquidations',
-    description: 'Most-liquidated wallets on Hyperliquid, scored 0-1000 by bounce.tech. Claim BOUNCE rewards for past liquidations — the worse the rekt, the bigger the potential upside.',
-  },
   '/bounce': {
     title: 'bounce.tech on InfoHub · Leveraged Tokens + Rekt Profiles',
     description: 'Check any Hyperliquid wallet\'s bounce.tech rekt profile: liquidation score, per-asset breakdown, monthly history, and claim status. Plus an overview of bounce.tech\'s leveraged-tokens protocol on HyperEVM.',
