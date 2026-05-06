@@ -130,6 +130,66 @@ function fundingTone(side: 'long' | 'short', rate: number | null | undefined): '
   /* short */            return rate > 0 ? 'good' : 'bad';
 }
 
+/**
+ * Funding-settlement interval per exchange in HOURS. Used to annualize the
+ * displayed per-period rate so users can compare a 1h venue (HL/dYdX/GMX)
+ * vs an 8h venue (Binance/Bybit/OKX) at a glance — without this, "+0.0008%"
+ * looks identical across the two even though the 1h venue is paying 8×
+ * more per day. Falls back to 8h for unknown exchanges (the common case).
+ */
+const FUNDING_INTERVAL_HOURS: Record<string, number> = {
+  Hyperliquid: 1,
+  dYdX: 1,
+  Aevo: 1,
+  GMX: 1,
+  Lighter: 1,
+  edgeX: 1,
+  Coinbase: 1,
+  // Most CEXes settle every 8h.
+  Binance: 8,
+  Bybit: 8,
+  OKX: 8,
+  Bitget: 8,
+  MEXC: 8,
+  KuCoin: 8,
+  BingX: 8,
+  Aster: 8,
+  gTrade: 8,
+  Phemex: 8,
+  HTX: 8,
+  Bitfinex: 8,
+  WhiteBIT: 8,
+  CoinEx: 8,
+  Deribit: 8,
+  Kraken: 4,
+};
+
+function intervalHoursFor(exchange: string): number {
+  // Strip any disambiguator suffix like "(Avax)" or "(WBTC.b)" from
+  // GMX position rows before lookup.
+  const canon = exchange.replace(/\s*\([^()]*\)\s*$/, '').trim();
+  return FUNDING_INTERVAL_HOURS[canon] ?? 8;
+}
+
+/**
+ * Convert a per-period rate (in PERCENT units) to annualised APR (in
+ * percent units). 1h venue with 0.001% rate = 0.001 × 24 × 365 = 8.76%.
+ * 8h venue with same nominal rate annualises to 1.10%.
+ */
+function annualizeRate(ratePct: number, intervalHours: number): number {
+  if (!Number.isFinite(ratePct) || intervalHours <= 0) return 0;
+  return ratePct * (24 * 365 / intervalHours);
+}
+
+/** Compact APR formatter — "+0.0%" if too small, "+8.76%" otherwise. */
+function fmtApr(apr: number | null | undefined): string {
+  if (apr == null || !Number.isFinite(apr)) return '—';
+  const abs = Math.abs(apr);
+  const sign = apr > 0 ? '+' : apr < 0 ? '-' : '';
+  const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
+  return `${sign}${abs.toFixed(digits)}%`;
+}
+
 const TONE_CLASS: Record<'good' | 'bad' | 'neutral', string> = {
   good: 'text-emerald-400',
   bad: 'text-red-400',
@@ -410,6 +470,27 @@ function PositionRow({ p }: { p: Position }) {
   const a24 = fundingTone(p.side, p.avg24hFunding);
   const a48 = fundingTone(p.side, p.avg48hFunding);
 
+  // Annualised projections — give users a 1h-vs-8h-comparable apples view.
+  // Direction-aware so a long paying +0.001%/1h shows as a NEGATIVE APR
+  // (cost), not the raw exchange rate.
+  const intervalH = intervalHoursFor(p.exchange);
+  const sideMul = p.side === 'long' ? -1 : 1;
+  const aprNow = p.currentFunding != null
+    ? annualizeRate(p.currentFunding, intervalH) * sideMul
+    : null;
+  const apr24 = p.avg24hFunding != null
+    ? annualizeRate(p.avg24hFunding, intervalH) * sideMul
+    : null;
+  const apr48 = p.avg48hFunding != null
+    ? annualizeRate(p.avg48hFunding, intervalH) * sideMul
+    : null;
+
+  // Tooltip body for Σ funding — clarifies that historical sign can
+  // diverge from the current rate when funding flipped during the hold.
+  const cumFundingTitle = p.cumulativeFunding == null
+    ? 'No cumulative funding data for this exchange yet.'
+    : `${p.cumulativeFunding >= 0 ? 'Net received' : 'Net paid'} since position opened. Sign reflects net flow over the entire hold — can differ from the current rate if funding flipped direction during the hold.`;
+
   return (
     <tr className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
       <td className="px-3 py-2 font-semibold text-white">{p.symbol}</td>
@@ -433,12 +514,33 @@ function PositionRow({ p }: { p: Position }) {
       </td>
       <td className="px-2 py-2 text-right tabular-nums text-neutral-500">{fmtPrice(p.tpPrice)}</td>
       <td className="px-2 py-2 text-right tabular-nums text-neutral-500">{fmtPrice(p.slPrice)}</td>
-      <td className={`px-2 py-2 text-right tabular-nums ${p.cumulativeFunding === null ? 'text-neutral-600' : (p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400')}`}>
+      <td
+        className={`px-2 py-2 text-right tabular-nums ${p.cumulativeFunding === null ? 'text-neutral-600' : (p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400')}`}
+        title={cumFundingTitle}
+      >
         {p.cumulativeFunding === null ? '—' : fmtUsd(p.cumulativeFunding, { sign: true })}
       </td>
-      <td className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[cur]}`}>{fmtPct(p.currentFunding, { sign: true, digits: 4 })}</td>
-      <td className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[a24]}`}>{fmtPct(p.avg24hFunding, { sign: true, digits: 4 })}</td>
-      <td className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[a48]}`}>{fmtPct(p.avg48hFunding, { sign: true, digits: 4 })}</td>
+      <td
+        className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[cur]}`}
+        title={`${fmtPct(p.currentFunding, { sign: true, digits: 4 })} per ${intervalH}h · ${fmtApr(aprNow)} APR (${p.side === 'long' ? 'cost to long' : 'cost to short'})`}
+      >
+        <div>{fmtPct(p.currentFunding, { sign: true, digits: 4 })}</div>
+        <div className={`text-[9px] opacity-60`}>{fmtApr(aprNow)}/y</div>
+      </td>
+      <td
+        className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[a24]}`}
+        title={`24h avg ${fmtPct(p.avg24hFunding, { sign: true, digits: 4 })} per ${intervalH}h · ${fmtApr(apr24)} APR`}
+      >
+        <div>{fmtPct(p.avg24hFunding, { sign: true, digits: 4 })}</div>
+        <div className={`text-[9px] opacity-60`}>{fmtApr(apr24)}/y</div>
+      </td>
+      <td
+        className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[a48]}`}
+        title={`48h avg ${fmtPct(p.avg48hFunding, { sign: true, digits: 4 })} per ${intervalH}h · ${fmtApr(apr48)} APR`}
+      >
+        <div>{fmtPct(p.avg48hFunding, { sign: true, digits: 4 })}</div>
+        <div className={`text-[9px] opacity-60`}>{fmtApr(apr48)}/y</div>
+      </td>
       <td className="px-3 py-2 text-right tabular-nums text-amber-400/80 text-[10px]">
         {p.liquidationPrice ? fmtPrice(p.liquidationPrice) : '—'}
       </td>
@@ -462,6 +564,15 @@ function PositionCardMobile({ p }: { p: Position }) {
   const a24 = fundingTone(p.side, p.avg24hFunding);
   const a48 = fundingTone(p.side, p.avg48hFunding);
 
+  const intervalH = intervalHoursFor(p.exchange);
+  const sideMul = p.side === 'long' ? -1 : 1;
+  const aprNow = p.currentFunding != null ? annualizeRate(p.currentFunding, intervalH) * sideMul : null;
+  const apr24 = p.avg24hFunding != null ? annualizeRate(p.avg24hFunding, intervalH) * sideMul : null;
+  const apr48 = p.avg48hFunding != null ? annualizeRate(p.avg48hFunding, intervalH) * sideMul : null;
+  const cumFundingTitle = p.cumulativeFunding == null
+    ? 'No cumulative funding data for this exchange yet.'
+    : `${p.cumulativeFunding >= 0 ? 'Net received' : 'Net paid'} since position opened. Sign reflects net flow over the entire hold — can differ from the current rate if funding flipped during the hold.`;
+
   return (
     <div className="card-premium p-3">
       {/* Header row: symbol + side + exchange + p&l */}
@@ -484,11 +595,13 @@ function PositionCardMobile({ p }: { p: Position }) {
         </div>
       </div>
 
-      {/* Funding row — the killer feature, gets prominent placement */}
+      {/* Funding row — the killer feature, gets prominent placement.
+          Each cell shows native rate AND annualised APR underneath so 1h
+          (HL/dYdX) and 8h (Binance/Bybit) venues are apples-to-apples. */}
       <div className="grid grid-cols-3 gap-1 mb-2 text-[10px]">
-        <FundingMini label="Now" value={fmtPct(p.currentFunding, { sign: true, digits: 4 })} tone={cur} />
-        <FundingMini label="24h" value={fmtPct(p.avg24hFunding, { sign: true, digits: 4 })} tone={a24} />
-        <FundingMini label="48h" value={fmtPct(p.avg48hFunding, { sign: true, digits: 4 })} tone={a48} />
+        <FundingMini label="Now" value={fmtPct(p.currentFunding, { sign: true, digits: 4 })} apr={fmtApr(aprNow)} tone={cur} />
+        <FundingMini label="24h" value={fmtPct(p.avg24hFunding, { sign: true, digits: 4 })} apr={fmtApr(apr24)} tone={a24} />
+        <FundingMini label="48h" value={fmtPct(p.avg48hFunding, { sign: true, digits: 4 })} apr={fmtApr(apr48)} tone={a48} />
       </div>
 
       {/* Secondary grid */}
@@ -501,22 +614,34 @@ function PositionCardMobile({ p }: { p: Position }) {
         {p.slPrice && <SecondaryRow label="SL" value={fmtPrice(p.slPrice)} valueClass="text-red-400" />}
         {p.liquidationPrice && <SecondaryRow label="Liq." value={fmtPrice(p.liquidationPrice)} valueClass="text-amber-400" />}
         {p.cumulativeFunding !== null && (
-          <SecondaryRow
-            label="Σ funding"
-            value={fmtUsd(p.cumulativeFunding, { sign: true })}
-            valueClass={p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400'}
-          />
+          <div title={cumFundingTitle} className="contents">
+            <SecondaryRow
+              label="Σ funding"
+              value={fmtUsd(p.cumulativeFunding, { sign: true })}
+              valueClass={p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400'}
+            />
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function FundingMini({ label, value, tone }: { label: string; value: string; tone: 'good' | 'bad' | 'neutral' }) {
+function FundingMini({
+  label, value, apr, tone,
+}: {
+  label: string;
+  value: string;
+  apr?: string;
+  tone: 'good' | 'bad' | 'neutral';
+}) {
   return (
     <div className="bg-white/[0.02] rounded px-2 py-1.5 text-center">
       <div className="text-[9px] uppercase tracking-wider text-neutral-600 font-medium">{label}</div>
       <div className={`tabular-nums font-mono text-[11px] mt-0.5 ${TONE_CLASS[tone]}`}>{value}</div>
+      {apr && apr !== '—' && (
+        <div className={`tabular-nums font-mono text-[9px] opacity-60 ${TONE_CLASS[tone]}`}>{apr}/y</div>
+      )}
     </div>
   );
 }
