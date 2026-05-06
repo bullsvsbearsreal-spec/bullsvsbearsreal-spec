@@ -179,18 +179,22 @@ export async function GET(request: NextRequest) {
         }
 
         // Store per-exchange prices as mark_price in funding_snapshots every cron run
-        // This enables 1D/7D/30D chart lines for ALL exchanges (not just those with kline APIs)
+        // This enables 1D/7D/30D chart lines for ALL exchanges (not just those with kline APIs).
+        // CRITICAL: rate is null on these rows — they're price-only, not funding ticks.
+        // Storing rate=0 used to pollute the "latest funding rate" lookup on /positions
+        // because the once-a-minute price writes outnumbered real once-per-10-min funding
+        // writes by 10:1, dragging displayed rates / averages toward zero.
         {
-          const priceEntries: Array<{ symbol: string; exchange: string; rate: number; markPrice: number }> = [];
+          const priceEntries: Array<{ symbol: string; exchange: string; rate: number | null; markPrice: number }> = [];
           for (const sym of topSyms) {
             const symEntries = bySymbol[sym];
             if (!symEntries) continue;
             for (const e of symEntries) {
-              priceEntries.push({ symbol: sym, exchange: e.exchange, rate: 0, markPrice: e.price });
+              priceEntries.push({ symbol: sym, exchange: e.exchange, rate: null, markPrice: e.price });
             }
           }
           if (priceEntries.length > 0) {
-            await saveFundingSnapshot(priceEntries);
+            await saveFundingSnapshot(priceEntries as any);
           }
         }
       }

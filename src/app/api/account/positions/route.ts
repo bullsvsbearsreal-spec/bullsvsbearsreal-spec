@@ -66,11 +66,18 @@ async function loadFundingContext(
       ) AS t(exchange, symbol)
     ),
     latest AS (
+      -- Filter f.rate IS NOT NULL AND f.rate <> 0: snapshot cron writes
+      -- price-only rows every minute with rate=null going forward (was
+      -- rate=0 historically). Without this filter the once-per-minute
+      -- placeholder rows out-vote the once-per-10-min real funding ticks
+      -- and the displayed rate is always 0.
       SELECT DISTINCT ON (f.exchange, f.symbol)
         f.exchange, f.symbol, f.rate
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '6 hours'
+        AND f.rate IS NOT NULL
+        AND f.rate <> 0
       ORDER BY f.exchange, f.symbol, f.ts DESC
     ),
     avg24 AS (
@@ -78,6 +85,8 @@ async function loadFundingContext(
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '24 hours'
+        AND f.rate IS NOT NULL
+        AND f.rate <> 0
       GROUP BY f.exchange, f.symbol
     ),
     avg48 AS (
@@ -85,6 +94,8 @@ async function loadFundingContext(
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '48 hours'
+        AND f.rate IS NOT NULL
+        AND f.rate <> 0
       GROUP BY f.exchange, f.symbol
     )
     SELECT w.exchange, w.symbol,

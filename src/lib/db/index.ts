@@ -72,6 +72,11 @@ async function _doInitDB(): Promise<void> {
 
   // Add mark_price column (added Mar 2026 for price gap tracking)
   await sql`ALTER TABLE funding_snapshots ADD COLUMN IF NOT EXISTS mark_price REAL`;
+  // Allow rate to be NULL — the snapshot cron writes mark-price-only rows
+  // every minute and was previously forced to store rate=0 as a placeholder.
+  // Those rows then polluted the "latest funding rate" lookup on /positions
+  // because they out-numbered the real funding ticks (every 10 min) 10:1.
+  await sql`ALTER TABLE funding_snapshots ALTER COLUMN rate DROP NOT NULL`;
   // Partial index for price-multi queries (only rows with mark_price)
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_mark_price ON funding_snapshots(symbol, exchange, ts DESC) WHERE mark_price IS NOT NULL AND mark_price > 0`;
 
@@ -556,7 +561,11 @@ export async function setCache(key: string, data: any, ttlSeconds: number): Prom
 interface FundingSnapshotEntry {
   symbol: string;
   exchange: string;
-  rate: number;
+  /** Funding rate in PERCENT (e.g. 0.00125 = 0.00125% per native interval).
+   *  Pass null on price-only writes (mark-price tracking) — see the
+   *  snapshot cron's mark_price block. Rate=0 used to pollute the
+   *  "latest funding rate" lookup on /positions. */
+  rate: number | null;
   predicted?: number;
   markPrice?: number;
 }
@@ -570,7 +579,9 @@ export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Prom
     const chunk = entries.slice(i, i + 500);
     const symbols = chunk.map(e => e.symbol);
     const exchanges = chunk.map(e => e.exchange);
-    const rates = chunk.map(e => e.rate);
+    // Allow null rate on price-only writes (mark_price tracking); was
+    // previously stored as 0 which polluted "latest funding rate" lookups.
+    const rates = chunk.map(e => (e.rate == null ? null : e.rate));
     const predicteds = chunk.map(e => e.predicted ?? null);
     const markPrices = chunk.map(e => e.markPrice ?? null);
     await sql`
@@ -1201,6 +1212,8 @@ export async function getTopFundingHistoryAggregated(
       FROM funding_snapshots f
       INNER JOIN top_symbols t ON f.symbol = t.symbol
       WHERE f.ts > NOW() - ${intervalStr}::interval
+        AND f.rate IS NOT NULL
+        AND f.rate <> 0
       GROUP BY f.symbol, date_trunc('hour', f.ts)
       ORDER BY f.symbol, hour ASC
     `;
