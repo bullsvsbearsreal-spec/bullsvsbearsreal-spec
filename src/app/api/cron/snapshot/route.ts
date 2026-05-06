@@ -83,13 +83,37 @@ export async function GET(request: NextRequest) {
 
       const fundingEntries = fundingData
         .filter((r: any) => topSymbols.has(r.symbol) && r.fundingRate != null)
-        .map((r: any) => ({
-          symbol: r.symbol,
-          exchange: r.exchange,
-          rate: r.fundingRate,
-          predicted: r.predictedRate != null ? Number(r.predictedRate) : undefined,
-          markPrice: r.markPrice != null && r.markPrice > 0 ? Number(r.markPrice) : undefined,
-        }));
+        .map((r: any) => {
+          // Skew-based DEXes (GMX V2, gTrade) report asymmetric per-side
+          // rates. Our shared "longs pay" convention stores the long rate
+          // in `rate`; we derive the short-pay rate from fundingRateShort
+          // (which is in EARNING convention, positive=that side earns) by
+          // negating: shorts-pay = -fundingRateShort.
+          // Only set when materially different from rate to avoid bloat.
+          let rateShort: number | undefined;
+          const longEarn = typeof r.fundingRateLong === 'number' ? r.fundingRateLong : null;
+          const shortEarn = typeof r.fundingRateShort === 'number' ? r.fundingRateShort : null;
+          if (longEarn != null && shortEarn != null) {
+            const shortPay = -shortEarn;
+            // For symmetric venues shortPay ≈ rate (longs pay = shorts receive
+            // and vice versa). Persist only when the magnitudes differ
+            // meaningfully (>10% relative or >0.0005% absolute) — that's the
+            // signal of a skew-DEX with OI-weighted asymmetry.
+            const baseAbs = Math.abs(r.fundingRate);
+            const diff = Math.abs(shortPay - r.fundingRate);
+            if (diff > 0.0005 || (baseAbs > 0 && diff / baseAbs > 0.10)) {
+              rateShort = shortPay;
+            }
+          }
+          return {
+            symbol: r.symbol,
+            exchange: r.exchange,
+            rate: r.fundingRate,
+            rateShort,
+            predicted: r.predictedRate != null ? Number(r.predictedRate) : undefined,
+            markPrice: r.markPrice != null && r.markPrice > 0 ? Number(r.markPrice) : undefined,
+          };
+        });
 
       fundingInserted = await saveFundingSnapshot(fundingEntries);
     }

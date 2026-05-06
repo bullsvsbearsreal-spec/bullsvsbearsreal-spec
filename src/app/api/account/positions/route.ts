@@ -22,9 +22,16 @@ export const dynamic = 'force-dynamic';
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
 interface FundingContext {
+  /** Long-side rate ("longs pay" sign convention). */
   current: number | null;
   avg24h: number | null;
   avg48h: number | null;
+  /** Short-side rate ("shorts pay" sign convention) — populated only on
+   *  skew-based DEXes where long and short rates have different magnitudes
+   *  (GMX V2, gTrade). Null on symmetric venues; caller falls back to `current`. */
+  currentShort: number | null;
+  avg24hShort: number | null;
+  avg48hShort: number | null;
 }
 
 /**
@@ -66,7 +73,12 @@ async function loadFundingContext(
 
   // Single query: latest rate + 24h avg + 48h avg per (exchange, symbol).
   // Filter list keeps the working set small even when funding_snapshots
-  // has tens of millions of rows.
+  // has tens of millions of rows. Now also pulls rate_short — the
+  // side-specific rate stored by skew-DEXes (GMX V2 / gTrade) where longs
+  // and shorts have asymmetric magnitudes due to OI weighting. We derive
+  // 24h/48h shorts averages by inverting the long-side avg when no
+  // explicit shorts data is available (an approximation that's exact on
+  // symmetric venues).
   const rows = await sql`
     WITH wanted AS (
       SELECT * FROM UNNEST(
@@ -81,7 +93,7 @@ async function loadFundingContext(
       -- placeholder rows out-vote the once-per-10-min real funding ticks
       -- and the displayed rate is always 0.
       SELECT DISTINCT ON (f.exchange, f.symbol)
-        f.exchange, f.symbol, f.rate
+        f.exchange, f.symbol, f.rate, f.rate_short
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '6 hours'
@@ -90,7 +102,9 @@ async function loadFundingContext(
       ORDER BY f.exchange, f.symbol, f.ts DESC
     ),
     avg24 AS (
-      SELECT f.exchange, f.symbol, AVG(f.rate) AS rate
+      SELECT f.exchange, f.symbol,
+             AVG(f.rate) AS rate,
+             AVG(f.rate_short) FILTER (WHERE f.rate_short IS NOT NULL) AS rate_short
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '24 hours'
@@ -99,7 +113,9 @@ async function loadFundingContext(
       GROUP BY f.exchange, f.symbol
     ),
     avg48 AS (
-      SELECT f.exchange, f.symbol, AVG(f.rate) AS rate
+      SELECT f.exchange, f.symbol,
+             AVG(f.rate) AS rate,
+             AVG(f.rate_short) FILTER (WHERE f.rate_short IS NOT NULL) AS rate_short
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '48 hours'
@@ -108,9 +124,12 @@ async function loadFundingContext(
       GROUP BY f.exchange, f.symbol
     )
     SELECT w.exchange, w.symbol,
-           latest.rate AS current,
-           avg24.rate  AS avg24h,
-           avg48.rate  AS avg48h
+           latest.rate         AS current,
+           latest.rate_short   AS current_short,
+           avg24.rate          AS avg24h,
+           avg24.rate_short    AS avg24h_short,
+           avg48.rate          AS avg48h,
+           avg48.rate_short    AS avg48h_short
     FROM wanted w
     LEFT JOIN latest ON latest.exchange = w.exchange AND latest.symbol = w.symbol
     LEFT JOIN avg24  ON avg24.exchange  = w.exchange AND avg24.symbol  = w.symbol
@@ -124,6 +143,9 @@ async function loadFundingContext(
       current: r.current === null ? null : Number(r.current),
       avg24h: r.avg24h === null ? null : Number(r.avg24h),
       avg48h: r.avg48h === null ? null : Number(r.avg48h),
+      currentShort: r.current_short == null ? null : Number(r.current_short),
+      avg24hShort: r.avg24h_short == null ? null : Number(r.avg24h_short),
+      avg48hShort: r.avg48h_short == null ? null : Number(r.avg48h_short),
     });
   }
   // …then re-index back to the ORIGINAL display symbol so callers that look
@@ -186,9 +208,30 @@ export async function GET(request: NextRequest) {
   let aggregateDailyCarry = 0;
   let dailyCarryHasData = false;
   const decorated = positions.map(p => {
-    const f = fundingMap.get(`${p.exchange}|${p.symbol}`) ?? {
+    const fRaw = fundingMap.get(`${p.exchange}|${p.symbol}`) ?? {
       current: null, avg24h: null, avg48h: null,
+      currentShort: null, avg24hShort: null, avg48hShort: null,
     };
+    // Pick the side-specific rate when the venue stored one. We keep the
+    // unified "longs pay" sign convention everywhere (rate > 0 = longs pay,
+    // rate < 0 = shorts pay) so the existing fundingTone() coloring logic
+    // doesn't change. For a SHORT on a skew DEX where shortsPay magnitude
+    // differs from -longsPay, we display -rateShort (= longs-pay equivalent
+    // of what shorts actually pay) so the magnitude shown is correct.
+    //
+    // CEX (rateShort null): rate is already symmetric — show as-is for
+    // both sides; fundingTone handles the color.
+    const f = p.side === 'short'
+      ? {
+          current: fRaw.currentShort != null ? -fRaw.currentShort : fRaw.current,
+          avg24h:  fRaw.avg24hShort  != null ? -fRaw.avg24hShort  : fRaw.avg24h,
+          avg48h:  fRaw.avg48hShort  != null ? -fRaw.avg48hShort  : fRaw.avg48h,
+        }
+      : {
+          current: fRaw.current,
+          avg24h: fRaw.avg24h,
+          avg48h: fRaw.avg48h,
+        };
     // Compute the health score using the per-position funding context the
     // user is paying right now — not the 24h average. The component is
     // sensitive to changes in real time so users notice when funding flips.

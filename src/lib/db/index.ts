@@ -83,6 +83,13 @@ async function _doInitDB(): Promise<void> {
   // Those rows then polluted the "latest funding rate" lookup on /positions
   // because they out-numbered the real funding ticks (every 10 min) 10:1.
   await sql`ALTER TABLE funding_snapshots ALTER COLUMN rate DROP NOT NULL`;
+  // Skew-based DEXes (GMX V2, gTrade) charge ASYMMETRIC funding to longs and
+  // shorts because the receiving side's rate is scaled by the OI ratio.
+  // CEXes are symmetric (longs pay = shorts receive). `rate` stores the
+  // canonical "longs pay" rate; `rate_short` stores the side-specific "shorts
+  // pay" rate when the venue exposes it. Position-API picks the right one
+  // based on side. Null on CEX / venues without per-side data.
+  await sql`ALTER TABLE funding_snapshots ADD COLUMN IF NOT EXISTS rate_short REAL`;
   // Partial index for price-multi queries (only rows with mark_price)
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_mark_price ON funding_snapshots(symbol, exchange, ts DESC) WHERE mark_price IS NOT NULL AND mark_price > 0`;
 
@@ -574,6 +581,10 @@ interface FundingSnapshotEntry {
   rate: number | null;
   predicted?: number;
   markPrice?: number;
+  /** Side-specific rate for skew-based DEXes (GMX V2, gTrade) where longs
+   *  and shorts can have different magnitudes due to OI weighting. Null
+   *  on symmetric venues (every CEX) — caller should fall back to `rate`. */
+  rateShort?: number;
 }
 
 export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Promise<number> {
@@ -590,14 +601,16 @@ export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Prom
     const rates = chunk.map(e => (e.rate == null ? null : e.rate));
     const predicteds = chunk.map(e => e.predicted ?? null);
     const markPrices = chunk.map(e => e.markPrice ?? null);
+    const rateShorts = chunk.map(e => e.rateShort ?? null);
     await sql`
-      INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price)
+      INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price, rate_short)
       SELECT * FROM UNNEST(
         ${sql.array(symbols)}::text[],
         ${sql.array(exchanges)}::text[],
         ${sql.array(rates)}::real[],
         ${sql.array(predicteds)}::real[],
-        ${sql.array(markPrices)}::real[]
+        ${sql.array(markPrices)}::real[],
+        ${sql.array(rateShorts)}::real[]
       )`;
     inserted += chunk.length;
   }
