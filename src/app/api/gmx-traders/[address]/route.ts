@@ -57,16 +57,21 @@ export async function GET(
   { params }: { params: { address: string } },
 ) {
   const raw = params.address || '';
-  // Basic address sanitization — only allow 0x-prefixed hex. Keep the
-  // original case because GMX's subsquid stores checksum-cased addresses
-  // and `account_eq` is string-exact. We query by `account_in: [raw, lc]`
-  // so lowercase-only callers still resolve.
+  // Basic address sanitization — only allow 0x-prefixed hex. GMX's subsquid
+  // stores checksum-cased addresses and `account_eq` is string-exact. We
+  // query both forms (lowercase + EIP-55 checksum) regardless of which
+  // case the caller passed, since /trader/[address] lowercases on entry
+  // and the subsquid would miss the lowercase form alone.
   if (!/^0x[a-fA-F0-9]{40}$/.test(raw)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
   const lower = raw.toLowerCase();
-  // Dedupe if the input was already lowercase
-  const addressCandidates = raw === lower ? [lower] : [raw, lower];
+  let checksum = raw;
+  try {
+    const { getAddress } = await import('@ethersproject/address');
+    checksum = getAddress(raw);
+  } catch { /* fall back to whatever raw was */ }
+  const addressCandidates = Array.from(new Set([lower, checksum, raw]));
 
   const chainRaw = (request.nextUrl.searchParams.get('chain') || 'arbitrum').toLowerCase();
   const chain = (['arbitrum', 'avalanche'].includes(chainRaw) ? chainRaw : 'arbitrum') as 'arbitrum' | 'avalanche';
