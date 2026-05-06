@@ -111,6 +111,12 @@ function fmtPct(n: number | null | undefined, opts: { sign?: boolean; digits?: n
 
 function fmtLeverage(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return '—';
+  // Below 0.1× the rounding-to-1-digit produced "0.0x" which made tiny
+  // shorts look like zero exposure (e.g. $607K / $12.7M equity = 0.048×).
+  // Bump to 2 digits when under 1× so "0.05x" surfaces real-but-small
+  // leverage; keep 1 digit for the more common ≥1× range.
+  if (n < 0.1) return `${n.toFixed(2)}x`;
+  if (n < 1)   return `${n.toFixed(2)}x`;
   return `${n.toFixed(1)}x`;
 }
 
