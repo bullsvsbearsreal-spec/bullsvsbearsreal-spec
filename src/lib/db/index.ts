@@ -3029,6 +3029,16 @@ export async function deleteUserExchangeKey(userId: string, id: number): Promise
     WHERE user_id = ${userId} AND id = ${id}
     RETURNING id
   `;
+  // Cascade-delete positions tied to this CEX source so they don't haunt
+  // /positions forever (sync-positions never iterates this key again).
+  if (rows.length > 0) {
+    await sql`
+      DELETE FROM user_positions
+      WHERE user_id = ${userId}
+        AND source_type = 'cex'
+        AND source_id = ${id}
+    `;
+  }
   return rows.length > 0;
 }
 
@@ -3100,6 +3110,18 @@ export async function deleteUserWallet(userId: string, id: number): Promise<bool
     WHERE user_id = ${userId} AND id = ${id}
     RETURNING id
   `;
+  // Also wipe any positions still tied to this wallet — sync-positions
+  // would never iterate this source again, so leftover rows would haunt
+  // /positions forever (the user removes the wallet but the positions
+  // keep showing up). Tied to the user_id too as a defence-in-depth check.
+  if (rows.length > 0) {
+    await sql`
+      DELETE FROM user_positions
+      WHERE user_id = ${userId}
+        AND source_type = 'dex'
+        AND source_id = ${id}
+    `;
+  }
   return rows.length > 0;
 }
 

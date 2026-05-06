@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   initDB,
   isDBConfigured,
+  getSQL,
   listAllSyncTargets,
   replaceUserPositionsForSource,
   setExchangeKeyLastSync,
@@ -71,6 +72,32 @@ export async function GET(req: NextRequest) {
   }
 
   await initDB();
+
+  // Garbage-collect orphan positions: rows whose source_id no longer
+  // exists in user_wallets / user_exchange_keys. These accumulate when a
+  // wallet/key is deleted (we now cascade-delete on remove, but historical
+  // orphans from before that fix still need clearing — and any future
+  // deletion bug surfaces here as a self-healing safety net).
+  let orphansDeleted = 0;
+  try {
+    const sql = getSQL();
+    const r1 = await sql`
+      DELETE FROM user_positions
+      WHERE source_type = 'dex'
+        AND source_id NOT IN (SELECT id FROM user_wallets)
+      RETURNING id
+    `;
+    const r2 = await sql`
+      DELETE FROM user_positions
+      WHERE source_type = 'cex'
+        AND source_id NOT IN (SELECT id FROM user_exchange_keys)
+      RETURNING id
+    `;
+    orphansDeleted = (r1?.length ?? 0) + (r2?.length ?? 0);
+  } catch (e) {
+    console.warn('[sync-positions] orphan cleanup failed:', e instanceof Error ? e.message : e);
+  }
+
   const targets = await listAllSyncTargets();
 
   const userStats: UserSyncStat[] = [];
@@ -205,6 +232,7 @@ export async function GET(req: NextRequest) {
       totalKeys,
       totalPositions,
       totalErrors,
+      orphansDeleted,
       stats: userStats,
       ts: Date.now(),
     },
