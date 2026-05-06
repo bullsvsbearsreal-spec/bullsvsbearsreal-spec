@@ -62,6 +62,26 @@ interface SubsquidQueryResponse {
   errors?: Array<{ message: string }>;
 }
 
+interface SubsquidOrder {
+  id: string;
+  marketAddress: string;
+  orderType: number;     // 5 = LimitDecrease (Take Profit), 6 = StopLossDecrease
+  triggerPrice: string;  // 1e30 USD-precision BigInt string (per index-token unit)
+  isLong: boolean;
+  status: string;
+}
+
+interface SubsquidOrdersResponse {
+  data?: { orders?: SubsquidOrder[] };
+  errors?: Array<{ message: string }>;
+}
+
+// GMX V2 OrderType numeric codes — only the two we care about for TP/SL.
+const ORDER_TYPE_TP = 5; // LimitDecrease — limit-close at favourable price
+const ORDER_TYPE_SL = 6; // StopLossDecrease — close when price moves against us
+
+const GMX_PRICE_PRECISION = 1e30;
+
 /** Parse a GMX BigInt string (in the given precision) to a JS number. */
 function bigToNumber(s: string, prec: number): number {
   if (!s) return 0;
@@ -71,6 +91,45 @@ function bigToNumber(s: string, prec: number): number {
   } catch {
     return 0;
   }
+}
+
+/**
+ * Fetch ACTIVE (status: Created) trigger orders for the address.
+ * GMX V2 Take-Profit / Stop-Loss are stored as Order rows separate from
+ * the Position struct, indexed by marketAddress + isLong + orderType.
+ * Returns ALL such orders — caller merges them into the right Position
+ * by (marketAddress, isLong).
+ */
+async function querySubsquidOrders(chain: GmxChain, address: string): Promise<SubsquidOrder[]> {
+  const query = `
+    query AccountOpenOrders($account: String!) {
+      orders(
+        where: {
+          account_eq: $account,
+          status_eq: Created,
+          orderType_in: [${ORDER_TYPE_TP}, ${ORDER_TYPE_SL}]
+        }
+        limit: 200
+      ) {
+        id
+        marketAddress
+        orderType
+        triggerPrice
+        isLong
+        status
+      }
+    }
+  `.trim();
+  const res = await fetch(SUBSQUID_ENDPOINTS[chain], {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'InfoHub/2.0 (info-hub.io)' },
+    body: JSON.stringify({ query, variables: { account: address } }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`GMX ${chain} orders subsquid HTTP ${res.status}`);
+  const json = (await res.json()) as SubsquidOrdersResponse;
+  if (json.errors?.length) throw new Error(json.errors.map(e => e.message).join('; '));
+  return json.data?.orders ?? [];
 }
 
 async function querySubsquid(chain: GmxChain, address: string): Promise<SubsquidPosition[]> {
@@ -130,6 +189,7 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
   // checksum form and query BOTH so the join hits no matter what casing
   // the upstream stores.
   let positions: SubsquidPosition[];
+  let orders: SubsquidOrder[] = [];
   try {
     let checksum: string;
     try {
@@ -138,13 +198,19 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
       checksum = address;
     }
     const lower = address.toLowerCase();
-    const queries = checksum === lower
-      ? [querySubsquid(chain, lower)]
-      : [querySubsquid(chain, lower), querySubsquid(chain, checksum)];
-    const results = await Promise.all(queries);
+    const addrCandidates = checksum === lower ? [lower] : [lower, checksum];
+    const posQueries = addrCandidates.map(a => querySubsquid(chain, a));
+    const ordersQueries = addrCandidates.map(a => querySubsquidOrders(chain, a).catch(() => [] as SubsquidOrder[]));
+    const [posResults, ordersResults] = await Promise.all([
+      Promise.all(posQueries),
+      Promise.all(ordersQueries),
+    ]);
     const byId = new Map<string, SubsquidPosition>();
-    for (const arr of results) for (const p of arr) byId.set(p.id, p);
+    for (const arr of posResults) for (const p of arr) byId.set(p.id, p);
     positions = Array.from(byId.values());
+    const byOrderId = new Map<string, SubsquidOrder>();
+    for (const arr of ordersResults) for (const o of arr) byOrderId.set(o.id, o);
+    orders = Array.from(byOrderId.values());
   } catch (e) {
     console.warn(`[gmx ${chain}] subsquid query failed:`, e instanceof Error ? e.message : e);
     return [];
@@ -160,6 +226,37 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
     ]);
   } catch {
     return [];
+  }
+
+  // Index trigger orders by (marketAddress, isLong) so each position can
+  // pick up its own TP/SL. There can be multiple TPs or SLs on the same
+  // position — keep the first of each kind we see (matches GMX UI which
+  // typically shows the closest-to-mark trigger).
+  const triggersByPos = new Map<string, { tp: number | null; sl: number | null }>();
+  const triggerKey = (marketAddr: string, isLong: boolean) =>
+    `${marketAddr.toLowerCase()}|${isLong ? 'long' : 'short'}`;
+  for (const o of orders) {
+    if (!o.triggerPrice || o.triggerPrice === '0') continue;
+    const market = markets.get(o.marketAddress.toLowerCase());
+    if (!market) continue;
+    // Decode trigger price using the same per-index-token decimals as
+    // entryPrice. With 8-decimal tokens (BTC) the raw 1e30 trigger is
+    // pre-scaled by 10^(30 - tokenDecimals); multiply by 10^decimals to
+    // get USD.
+    const ticker = market.indexToken
+      ? tickers.byAddress.get(market.indexToken)
+      : tickers.bySymbol.get(market.symbol);
+    const decimals = ticker?.decimals ?? 18;
+    let triggerUsd = 0;
+    try {
+      triggerUsd = Number(BigInt(o.triggerPrice)) * Math.pow(10, decimals) / GMX_PRICE_PRECISION;
+    } catch { /* unparseable */ }
+    if (!Number.isFinite(triggerUsd) || triggerUsd <= 0) continue;
+    const key = triggerKey(o.marketAddress, o.isLong);
+    const slot = triggersByPos.get(key) ?? { tp: null, sl: null };
+    if (o.orderType === ORDER_TYPE_TP && slot.tp === null) slot.tp = triggerUsd;
+    else if (o.orderType === ORDER_TYPE_SL && slot.sl === null) slot.sl = triggerUsd;
+    triggersByPos.set(key, slot);
   }
 
   const out: NormalizedPosition[] = [];
@@ -199,6 +296,11 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
     const leverage = bigToNumber(p.leverage, PREC_LEVERAGE);
     const pnl = bigToNumber(p.unrealizedPnl, PREC_USD);
     const fees = bigToNumber(p.unrealizedFees, PREC_USD);
+
+    // Look up resolved TP/SL trigger prices from the orders index. GMX V2
+    // stores TP/SL as separate Order rows keyed by (marketAddress, isLong)
+    // — a single position has at most one closest TP and one closest SL.
+    const triggers = triggersByPos.get(triggerKey(p.market, p.isLong)) ?? { tp: null, sl: null };
 
     // Liquidation price approximation. The exact GMX V2 formula reads
     // per-market maintenance-margin factor + pending borrow / funding fees
@@ -246,8 +348,8 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
       liquidationPrice: liqPrice,  // Approximation (mmf=0.5%); within a
                                    // few % of the on-chain value for major
                                    // markets, looser for synthetics.
-      tpPrice: null,               // GMX TP/SL are separate orders, not on Position
-      slPrice: null,
+      tpPrice: triggers.tp,        // GMX TP/SL are separate Order rows; we
+      slPrice: triggers.sl,        // resolved them via querySubsquidOrders above.
       // Cumulative funding paid over position life — subsquid `unrealizedFees`
       // is the closest proxy (open funding + borrowing fees). Negate to
       // align with our convention (positive = received by user).
