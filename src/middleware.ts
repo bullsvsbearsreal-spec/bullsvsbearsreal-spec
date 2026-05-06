@@ -98,6 +98,10 @@ function handleV1Route(request: NextRequest): NextResponse {
   // /api/v1/status is free — no auth required
   if (path === '/api/v1/status') return NextResponse.next();
 
+  // /api/v1/openapi serves the public OpenAPI 3.1 spec — public by design
+  // so Swagger UI / Postman / codegen tools can fetch it anonymously
+  if (path === '/api/v1/openapi') return NextResponse.next();
+
   // Key management endpoints use session auth, not API key
   if (path.startsWith('/api/v1/keys')) return NextResponse.next();
 
