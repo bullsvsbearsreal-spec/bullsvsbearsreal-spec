@@ -19,6 +19,7 @@
  * only when there's an actual collision so the UI stays clean for
  * single-chain traders.
  */
+import { getAddress } from '@ethersproject/address';
 import type { NormalizedPosition, WalletClient } from './types';
 import { getGMXMarkets, getGMXTickers } from '@/lib/gmx/markets';
 
@@ -121,20 +122,28 @@ async function querySubsquid(chain: GmxChain, address: string): Promise<Subsquid
 async function fetchForChain(address: string, chain: GmxChain): Promise<NormalizedPosition[]> {
   if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return [];
 
-  // Subsquid is case-sensitive on `account_eq` — query both the lowercased
-  // form and the user-supplied form so we don't depend on whether the
-  // caller normalized to checksum or not.
+  // Subsquid is case-sensitive on `account_eq` AND stores accounts in
+  // EIP-55 checksum form (e.g. "0xff9B…AC79", not "0xff9b…ac79"). Our
+  // user_wallets table normalises to lowercase on insert, so by the
+  // time sync-positions calls in here the address is always lowercase
+  // and a lowercase-only query returns zero matches. Compute the
+  // checksum form and query BOTH so the join hits no matter what casing
+  // the upstream stores.
   let positions: SubsquidPosition[];
   try {
-    const [a, b] = await Promise.all([
-      querySubsquid(chain, address),
-      address === address.toLowerCase()
-        ? Promise.resolve([] as SubsquidPosition[])
-        : querySubsquid(chain, address.toLowerCase()),
-    ]);
-    // Dedupe by position id when both queries returned data.
+    let checksum: string;
+    try {
+      checksum = getAddress(address); // ethers EIP-55 checksum
+    } catch {
+      checksum = address;
+    }
+    const lower = address.toLowerCase();
+    const queries = checksum === lower
+      ? [querySubsquid(chain, lower)]
+      : [querySubsquid(chain, lower), querySubsquid(chain, checksum)];
+    const results = await Promise.all(queries);
     const byId = new Map<string, SubsquidPosition>();
-    for (const p of [...a, ...b]) byId.set(p.id, p);
+    for (const arr of results) for (const p of arr) byId.set(p.id, p);
     positions = Array.from(byId.values());
   } catch (e) {
     console.warn(`[gmx ${chain}] subsquid query failed:`, e instanceof Error ? e.message : e);
