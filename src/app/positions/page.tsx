@@ -251,6 +251,30 @@ export default function PositionsPage() {
                 ? 'Connect a CEX API key or wallet to start tracking your positions.'
                 : 'You have no open positions across connected accounts right now.'}
             </p>
+
+            {/* Coverage hint — show users WHICH protocols they can track and
+                 how (CEX key vs wallet, which chain to pick). Surfaces the
+                 fact that one Arbitrum 0x… address covers GMX V2 + gTrade,
+                 and one Ethereum L1 address covers Lighter — info that's
+                 otherwise buried in /account/connections. */}
+            <div className="max-w-2xl mx-auto mb-5 grid sm:grid-cols-2 gap-3 text-left">
+              <div className="rounded-md bg-white/[0.02] border border-white/[0.06] p-3">
+                <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1.5">CEX (API key)</div>
+                <div className="text-[11px] text-neutral-400 leading-relaxed">
+                  Binance · Bybit · OKX · Bitget
+                  <span className="block mt-1 text-[10px] text-neutral-600">Use READ-ONLY keys.</span>
+                </div>
+              </div>
+              <div className="rounded-md bg-white/[0.02] border border-white/[0.06] p-3">
+                <div className="text-[10px] uppercase tracking-wider text-sky-400 font-semibold mb-1.5">DEX (wallet)</div>
+                <div className="text-[11px] text-neutral-400 leading-relaxed space-y-0.5">
+                  <div><span className="text-neutral-500">Hyperliquid</span> · paste your HL 0x… address</div>
+                  <div><span className="text-neutral-500">Arbitrum</span> · GMX V2 (Arb + Avax) <span className="text-amber-400/70 text-[10px]">+ gTrade soon</span></div>
+                  <div><span className="text-neutral-500">Ethereum</span> · Lighter (L1 register addr)</div>
+                </div>
+              </div>
+            </div>
+
             <Link
               href="/account/connections"
               className="inline-block bg-sky-500 text-black text-sm font-semibold px-3 py-1.5 rounded-md hover:bg-sky-400"

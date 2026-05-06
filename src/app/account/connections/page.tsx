@@ -652,12 +652,42 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
 
 // ─── Add-wallet form ───────────────────────────────────────────────────────
 
+/**
+ * Per-chain coverage map shown in the AddWalletForm so users understand
+ * which DEXes will populate /positions for each chain choice. Keep this in
+ * sync with the routing table in `src/lib/wallet-clients/index.ts` —
+ * `live` rows correspond to wallet clients that actually return positions
+ * today; `stub` rows are wired but still return empty (gTrade) and
+ * `soon` rows have no fetcher yet (Solana, Base).
+ */
+const CHAIN_COVERAGE: Record<string, { protocols: { name: string; status: 'live' | 'stub' | 'soon' }[]; addressHint: string }> = {
+  hyperliquid: {
+    protocols: [{ name: 'Hyperliquid', status: 'live' }],
+    addressHint: 'Use the same 0x… EVM address you trade with on HL',
+  },
+  arbitrum: {
+    protocols: [
+      { name: 'GMX V2 (Arb + Avax)', status: 'live' },
+      { name: 'gTrade', status: 'stub' },
+    ],
+    addressHint: 'EVM 0x… address. Same wallet covers Avalanche GMX too.',
+  },
+  ethereum: {
+    protocols: [{ name: 'Lighter', status: 'live' }],
+    addressHint: 'L1 ETH address you registered with Lighter (zk-rollup).',
+  },
+  base: { protocols: [{ name: 'Base DEXes', status: 'soon' }], addressHint: '0x… address' },
+  solana: { protocols: [{ name: 'Solana DEXes', status: 'soon' }], addressHint: 'Base58 wallet address' },
+};
+
 function AddWalletForm({ chains, onSaved }: { chains: string[]; onSaved: () => void }) {
   const [chain, setChain] = useState(chains[0] || 'hyperliquid');
   const [address, setAddress] = useState('');
   const [label, setLabel] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const coverage = CHAIN_COVERAGE[chain] ?? { protocols: [], addressHint: '' };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -720,7 +750,42 @@ function AddWalletForm({ chains, onSaved }: { chains: string[]; onSaved: () => v
           placeholder={chain === 'solana' ? 'base58 32-44 chars' : '0x… 40 hex chars'}
           className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-emerald-500 outline-none font-mono"
         />
+        {coverage.addressHint && (
+          <span className="block mt-1 text-[10px] text-neutral-500">{coverage.addressHint}</span>
+        )}
       </label>
+
+      {/* Per-chain coverage hint — tells the user which DEXes /positions will
+          actually populate when they save this wallet. */}
+      {coverage.protocols.length > 0 && (
+        <div className="rounded-md bg-white/[0.02] border border-white/[0.06] px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5">Will fetch positions from</div>
+          <div className="flex flex-wrap gap-1.5">
+            {coverage.protocols.map(p => (
+              <span
+                key={p.name}
+                className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ring-1 ${
+                  p.status === 'live'
+                    ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30'
+                    : p.status === 'stub'
+                    ? 'bg-amber-500/10 text-amber-300 ring-amber-500/30'
+                    : 'bg-neutral-500/10 text-neutral-400 ring-neutral-500/30'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  p.status === 'live' ? 'bg-emerald-400'
+                  : p.status === 'stub' ? 'bg-amber-400'
+                  : 'bg-neutral-500'
+                }`} />
+                {p.name}
+                {p.status === 'stub' && <span className="text-[9px] uppercase">soon</span>}
+                {p.status === 'soon' && <span className="text-[9px] uppercase">soon</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="text-xs text-red-400 bg-red-500/10 px-2.5 py-1.5 rounded-md ring-1 ring-red-500/20">
           {error}
