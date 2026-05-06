@@ -776,9 +776,9 @@ const CHAIN_COVERAGE: Record<string, { protocols: { name: string; status: 'live'
   arbitrum: {
     protocols: [
       { name: 'GMX V2 (Arb + Avax)', status: 'live' },
-      { name: 'gTrade', status: 'stub' },
+      { name: 'gTrade', status: 'live' },
     ],
-    addressHint: 'EVM 0x… address. Same wallet covers Avalanche GMX too.',
+    addressHint: 'EVM 0x… address. Same wallet covers Avalanche GMX + gTrade Polygon too.',
   },
   ethereum: {
     protocols: [{ name: 'Lighter', status: 'live' }],
