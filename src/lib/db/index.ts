@@ -2697,6 +2697,48 @@ export async function getRecentTradesForWallet(
   }
 }
 
+/**
+ * Recent whale trades across ALL tracked wallets (for the public v1
+ * feed). Filters by min USD value + optional chain. Pure recent-feed
+ * read, paged by `limit` newest-first.
+ */
+export async function getRecentWhaleTradesGlobal(opts: {
+  limit?: number;
+  minValueUsd?: number;
+  chain?: string;
+} = {}): Promise<WhaleTradeEvent[]> {
+  try {
+    const sql = getSQL();
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+    const minValue = opts.minValueUsd ?? 0;
+    const rows = opts.chain
+      ? await sql`
+          SELECT * FROM whale_trade_events
+          WHERE chain = ${opts.chain}
+            AND value_usd >= ${minValue}
+          ORDER BY block_time DESC
+          LIMIT ${limit}
+        `
+      : await sql`
+          SELECT * FROM whale_trade_events
+          WHERE value_usd >= ${minValue}
+          ORDER BY block_time DESC
+          LIMIT ${limit}
+        `;
+    return rows.map((r: any) => ({
+      id: r.id, address: r.address, chain: r.chain, txHash: r.tx_hash,
+      logIndex: r.log_index, dex: r.dex, action: r.action,
+      tokenIn: r.token_in, tokenInSymbol: r.token_in_symbol, amountIn: r.amount_in,
+      tokenOut: r.token_out, tokenOutSymbol: r.token_out_symbol, amountOut: r.amount_out,
+      valueUsd: r.value_usd, blockNumber: r.block_number,
+      blockTime: r.block_time, discoveredAt: r.discovered_at,
+    }));
+  } catch (e) {
+    console.error('getRecentWhaleTradesGlobal error:', e);
+    return [];
+  }
+}
+
 export async function getTradeSubscribers(address: string, chain: string): Promise<WhaleTrackedWallet[]> {
   try {
     const sql = getSQL();
