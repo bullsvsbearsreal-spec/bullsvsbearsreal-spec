@@ -11,8 +11,9 @@
  * average over the matching window.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth, isAdmin } from '@/lib/auth';
 import { isDBConfigured, listUserPositions, getSQL } from '@/lib/db';
+import { scorePositionHealth } from '@/lib/position-health';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -153,7 +154,10 @@ export async function GET(request: NextRequest) {
   // Diagnostics: ?debug=1 returns which (exchange, symbol) pairs missed
   // the funding-snapshots join. Helps figure out whether the issue is
   // a stale label vs a missing cron ingestion vs a symbol case mismatch.
-  const debug = request.nextUrl.searchParams.get('debug') === '1';
+  // Admin-only — the debug payload includes raw funding_snapshots row
+  // counts and timestamps that shouldn't be exposed to arbitrary users.
+  const debug = request.nextUrl.searchParams.get('debug') === '1'
+    && (await isAdmin(session.user.id));
 
   // ─── Summary roll-up (matches christian's mockup top row) ───────────
   let totalLong = 0;
@@ -164,8 +168,11 @@ export async function GET(request: NextRequest) {
     const value = p.positionValue ?? (p.markPrice ? p.size * p.markPrice : p.size * p.entryPrice);
     if (p.side === 'long') totalLong += value;
     else totalShort += value;
-    if (p.marginUsed) totalMargin += p.marginUsed;
-    if (p.unrealizedPnl) totalUnrealized += p.unrealizedPnl;
+    // Use null-checks (not truthiness) — a position at exactly breakeven
+    // (unrealizedPnl=0) or in cross-margin mode (marginUsed=0) is valid
+    // data we want included in the summary.
+    if (p.marginUsed != null) totalMargin += p.marginUsed;
+    if (p.unrealizedPnl != null) totalUnrealized += p.unrealizedPnl;
   }
   const nominal = totalLong + totalShort;
   // Equity = sum of margin + open PnL. With CEX you'd also add free balance,
@@ -174,11 +181,26 @@ export async function GET(request: NextRequest) {
   const leverageLong = equity > 0 ? totalLong / equity : 0;
   const leverageShort = equity > 0 ? totalShort / equity : 0;
 
-  // ─── Decorate each position with funding context ───────────────────
+  // ─── Decorate each position with funding context + health score ─────
   const decorated = positions.map(p => {
     const f = fundingMap.get(`${p.exchange}|${p.symbol}`) ?? {
       current: null, avg24h: null, avg48h: null,
     };
+    // Compute the health score using the per-position funding context the
+    // user is paying right now — not the 24h average. The component is
+    // sensitive to changes in real time so users notice when funding flips.
+    const health = scorePositionHealth({
+      side: p.side,
+      markPrice: p.markPrice,
+      entryPrice: p.entryPrice,
+      leverage: p.leverage,
+      liquidationPrice: p.liquidationPrice,
+      tpPrice: p.tpPrice,
+      slPrice: p.slPrice,
+      unrealizedPnl: p.unrealizedPnl,
+      marginUsed: p.marginUsed,
+      currentFunding: f.current,
+    });
     return {
       id: p.id,
       sourceType: p.sourceType,
@@ -202,6 +224,11 @@ export async function GET(request: NextRequest) {
       currentFunding: f.current,
       avg24hFunding: f.avg24h,
       avg48hFunding: f.avg48h,
+      // Position health score (0-100) + label + factor breakdown for tooltip
+      healthScore: health.score,
+      healthLabel: health.label,
+      healthFactors: health.factors,
+      healthReasons: health.reasons,
       updatedAt: p.updatedAt,
     };
   });

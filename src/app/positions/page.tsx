@@ -49,6 +49,18 @@ interface Position {
   currentFunding: number | null;
   avg24hFunding: number | null;
   avg48hFunding: number | null;
+  /** 0-100 position health score (computed server-side; 0 = critical, 100 = healthy). */
+  healthScore: number;
+  healthLabel: 'critical' | 'risky' | 'caution' | 'ok' | 'healthy';
+  healthFactors: {
+    liqBuffer: number;
+    leverage: number;
+    stopLoss: number;
+    funding: number;
+    profitability: number;
+  };
+  /** 1-3 short reasons the score is dragged down (empty when score >= 80). */
+  healthReasons: string[];
   updatedAt: string;
 }
 
@@ -401,6 +413,12 @@ export default function PositionsPage() {
                 <tr className="text-[10px] uppercase tracking-wider text-neutral-500">
                   <th className="text-left px-3 py-2 font-medium">Ticker</th>
                   <th className="text-left px-2 py-2 font-medium">Side</th>
+                  <th
+                    className="text-center px-2 py-2 font-medium"
+                    title="Position Health Score 0–100. Combines liquidation buffer, leverage, stop-loss hygiene, funding cost, and PnL trajectory. Hover the badge to see what's dragging it down."
+                  >
+                    Health
+                  </th>
                   <th className="text-right px-2 py-2 font-medium">Size</th>
                   <th className="text-right px-2 py-2 font-medium">Entry</th>
                   <th className="text-right px-2 py-2 font-medium">Mark</th>
@@ -505,6 +523,13 @@ function PositionRow({ p }: { p: Position }) {
           </span>
         )}
       </td>
+      <td className="px-2 py-2 text-center">
+        <HealthBadge
+          score={p.healthScore}
+          label={p.healthLabel}
+          reasons={p.healthReasons}
+        />
+      </td>
       <td className="px-2 py-2 text-right tabular-nums text-neutral-300">{fmtSize(p.size)}</td>
       <td className="px-2 py-2 text-right tabular-nums text-neutral-300">{fmtPrice(p.entryPrice)}</td>
       <td className="px-2 py-2 text-right tabular-nums text-neutral-300">{fmtPrice(p.markPrice)}</td>
@@ -590,8 +615,11 @@ function PositionCardMobile({ p }: { p: Position }) {
           )}
           <span className="text-[10px] text-neutral-500 truncate">{p.exchange}</span>
         </div>
-        <div className={`text-right tabular-nums font-bold text-sm ${pnlClass}`}>
-          {fmtUsd(pnl, { sign: true })}
+        <div className="flex items-center gap-2">
+          <HealthBadge score={p.healthScore} label={p.healthLabel} reasons={p.healthReasons} compact />
+          <div className={`text-right tabular-nums font-bold text-sm ${pnlClass}`}>
+            {fmtUsd(pnl, { sign: true })}
+          </div>
         </div>
       </div>
 
@@ -652,5 +680,46 @@ function SecondaryRow({ label, value, valueClass }: { label: string; value: stri
       <span className="text-neutral-500 text-[10px] uppercase tracking-wider">{label}</span>
       <span className={`tabular-nums font-mono ${valueClass ?? 'text-neutral-200'}`}>{value}</span>
     </div>
+  );
+}
+
+// ─── Health badge ──────────────────────────────────────────────────────
+// Single-glance risk indicator on each position row. Hover shows the
+// 1-3 reasons the score is dragged down (or "Position is healthy" when
+// nothing's flagged). Color-coded so users can scan a 30-position table
+// and immediately see which ones need attention.
+
+function HealthBadge({
+  score,
+  label,
+  reasons,
+  compact = false,
+}: {
+  score: number;
+  label: 'critical' | 'risky' | 'caution' | 'ok' | 'healthy';
+  reasons: string[];
+  compact?: boolean;
+}) {
+  const tone =
+    label === 'critical' ? 'bg-red-500/15 text-red-300 border-red-400/30' :
+    label === 'risky'    ? 'bg-orange-500/15 text-orange-300 border-orange-400/30' :
+    label === 'caution'  ? 'bg-amber-500/15 text-amber-300 border-amber-400/30' :
+    label === 'ok'       ? 'bg-sky-500/15 text-sky-300 border-sky-400/30' :
+                           'bg-emerald-500/15 text-emerald-300 border-emerald-400/30';
+
+  const title = reasons.length > 0
+    ? `Health: ${score}/100 (${label})\n• ${reasons.join('\n• ')}`
+    : `Health: ${score}/100 (${label}) — no concerns`;
+
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border tabular-nums font-mono font-bold ${
+        compact ? 'text-[10px]' : 'text-[11px]'
+      } ${tone}`}
+    >
+      {score}
+      {!compact && <span className="opacity-60 font-normal text-[9px] uppercase tracking-wider">{label}</span>}
+    </span>
   );
 }

@@ -184,9 +184,15 @@ export const bitgetClient: ExchangeClient = {
 
       let posSide: 'long' | 'short';
       const ps = (o.posSide ?? '').toLowerCase();
+      const sd = (o.side ?? '').toLowerCase();
       if (ps === 'long') posSide = 'long';
       else if (ps === 'short') posSide = 'short';
-      else posSide = (o.side ?? '').toLowerCase() === 'sell' ? 'long' : 'short';
+      else if (sd === 'sell') posSide = 'long';
+      else if (sd === 'buy') posSide = 'short';
+      // Both posSide AND side missing → can't tell which position the
+      // trigger covers. Skip rather than default to a guess that would
+      // attach the trigger to the wrong position.
+      else continue;
 
       const key = trigKey(o.symbol, posSide);
       const slot = triggersByKey.get(key) ?? { tp: null, sl: null };

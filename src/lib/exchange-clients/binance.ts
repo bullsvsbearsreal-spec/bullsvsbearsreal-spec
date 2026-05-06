@@ -157,7 +157,18 @@ export const binanceClient: ExchangeClient = {
     // server reports positionSide="BOTH" on every order — in that case we
     // map the order's `side` (BUY/SELL) to the position direction it
     // closes: SELL = closes a long, BUY = closes a short.
-    const triggersByKey = new Map<string, { tp: number | null; sl: number | null }>();
+    //
+    // When the user has multiple TP or SL orders on one position (e.g. a
+    // partial-TP at 50% + a full-TP at 100%), keep the trigger CLOSEST to
+    // mark — that's the one the user will hit first, matching how the
+    // Binance UI displays it. Falling back to "first seen in the array"
+    // (the previous behaviour) was non-deterministic since openOrders'
+    // ordering isn't documented.
+    const tpsByKey = new Map<string, number[]>();
+    const slsByKey = new Map<string, number[]>();
+    const markByRawSym = new Map<string, number>();
+    for (const r of rows) markByRawSym.set(r.symbol, parseFloat(r.markPrice) || 0);
+
     const triggerKey = (rawSym: string, side: 'long' | 'short') => `${rawSym}|${side}`;
     for (const o of openOrders) {
       const stop = parseFloat(o.stopPrice);
@@ -177,11 +188,29 @@ export const binanceClient: ExchangeClient = {
       else posSide = o.side === 'SELL' ? 'long' : 'short';
 
       const key = triggerKey(o.symbol, posSide);
-      const slot = triggersByKey.get(key) ?? { tp: null, sl: null };
-      if (isTp && slot.tp === null) slot.tp = stop;
-      else if (isSl && slot.sl === null) slot.sl = stop;
-      triggersByKey.set(key, slot);
+      if (isTp) {
+        const arr = tpsByKey.get(key) ?? [];
+        arr.push(stop);
+        tpsByKey.set(key, arr);
+      } else {
+        const arr = slsByKey.get(key) ?? [];
+        arr.push(stop);
+        slsByKey.set(key, arr);
+      }
     }
+
+    /** Pick the trigger closest to mark — that's the one the user hits first. */
+    const pickClosest = (arr: number[] | undefined, mark: number): number | null => {
+      if (!arr || arr.length === 0) return null;
+      if (!mark || mark <= 0) return arr[0]; // fall back to first when mark unknown
+      let best = arr[0];
+      let bestDist = Math.abs(arr[0] - mark);
+      for (let i = 1; i < arr.length; i++) {
+        const d = Math.abs(arr[i] - mark);
+        if (d < bestDist) { best = arr[i]; bestDist = d; }
+      }
+      return best;
+    };
 
     const out: NormalizedPosition[] = [];
     for (const r of rows) {
@@ -198,7 +227,9 @@ export const binanceClient: ExchangeClient = {
       const margin = parseFloat(r.isolatedMargin);
 
       const symbol = symbolToBase(r.symbol);
-      const triggers = triggersByKey.get(triggerKey(r.symbol, side)) ?? { tp: null, sl: null };
+      const tk = triggerKey(r.symbol, side);
+      const tp = pickClosest(tpsByKey.get(tk), mark);
+      const sl = pickClosest(slsByKey.get(tk), mark);
 
       out.push({
         symbol,
@@ -211,8 +242,8 @@ export const binanceClient: ExchangeClient = {
         leverage: Number.isFinite(lev) && lev > 0 ? lev : null,
         marginUsed: Number.isFinite(margin) && margin > 0 ? margin : null,
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
-        tpPrice: triggers.tp,
-        slPrice: triggers.sl,
+        tpPrice: tp,
+        slPrice: sl,
         cumulativeFunding: null, // populated post-hoc by sync cron via fetchCumulativeFunding
       });
     }
