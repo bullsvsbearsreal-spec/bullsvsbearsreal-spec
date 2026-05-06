@@ -524,10 +524,24 @@ function PositionRow({ p }: { p: Position }) {
       <td className="px-2 py-2 text-right tabular-nums text-neutral-500">{fmtPrice(p.tpPrice)}</td>
       <td className="px-2 py-2 text-right tabular-nums text-neutral-500">{fmtPrice(p.slPrice)}</td>
       <td
-        className={`px-2 py-2 text-right tabular-nums ${p.cumulativeFunding === null ? 'text-neutral-600' : (p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400')}`}
-        title={cumFundingTitle}
+        className={`px-2 py-2 text-right tabular-nums ${
+          p.cumulativeFunding === null
+            ? (p.dailyFundingCarryUsd == null ? 'text-neutral-600' : (p.dailyFundingCarryUsd >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'))
+            : (p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400')
+        }`}
+        title={
+          p.cumulativeFunding === null
+            ? (p.dailyFundingCarryUsd == null
+                ? `${p.exchange} doesn't expose cumulative funding via API yet — only the live rate is available.`
+                : `${p.exchange} doesn't expose cumulative funding directly. Showing the projected daily ${p.dailyFundingCarryUsd >= 0 ? 'received' : 'paid'} (≈ ${fmtUsd(p.dailyFundingCarryUsd * 30, { sign: true })}/mo) at the current rate.`)
+            : cumFundingTitle
+        }
       >
-        {p.cumulativeFunding === null ? '—' : fmtUsd(p.cumulativeFunding, { sign: true })}
+        {p.cumulativeFunding !== null
+          ? fmtUsd(p.cumulativeFunding, { sign: true })
+          : (p.dailyFundingCarryUsd == null
+              ? '—'
+              : <span className="opacity-80">≈ {fmtUsd(p.dailyFundingCarryUsd, { sign: true })}/d</span>)}
       </td>
       <td
         className={`px-2 py-2 text-right tabular-nums ${
@@ -637,7 +651,7 @@ function PositionCardMobile({ p }: { p: Position }) {
         {p.tpPrice && <SecondaryRow label="TP" value={fmtPrice(p.tpPrice)} valueClass="text-emerald-400" />}
         {p.slPrice && <SecondaryRow label="SL" value={fmtPrice(p.slPrice)} valueClass="text-red-400" />}
         {p.liquidationPrice && <SecondaryRow label="Liq." value={fmtPrice(p.liquidationPrice)} valueClass="text-amber-400" />}
-        {p.cumulativeFunding !== null && (
+        {p.cumulativeFunding !== null ? (
           <div title={cumFundingTitle} className="contents">
             <SecondaryRow
               label="Σ funding"
@@ -645,8 +659,21 @@ function PositionCardMobile({ p }: { p: Position }) {
               valueClass={p.cumulativeFunding >= 0 ? 'text-emerald-400' : 'text-red-400'}
             />
           </div>
+        ) : p.dailyFundingCarryUsd != null && (
+          // Σ funding unavailable from this venue — show daily projection so
+          // users still see whether they're net-paying or net-receiving.
+          <div
+            title={`${p.exchange} doesn't expose cumulative funding directly. Showing projected daily at the current rate.`}
+            className="contents"
+          >
+            <SecondaryRow
+              label="≈ Σ/day"
+              value={fmtUsd(p.dailyFundingCarryUsd, { sign: true })}
+              valueClass={p.dailyFundingCarryUsd >= 0 ? 'text-emerald-400/80' : 'text-red-400/80'}
+            />
+          </div>
         )}
-        {p.dailyFundingCarryUsd != null && (
+        {p.dailyFundingCarryUsd != null && p.cumulativeFunding !== null && (
           <SecondaryRow
             label="$/day"
             value={fmtUsd(p.dailyFundingCarryUsd, { sign: true })}
