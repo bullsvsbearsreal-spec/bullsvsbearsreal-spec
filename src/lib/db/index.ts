@@ -1127,6 +1127,8 @@ export async function getFundingHistory(
         WHERE symbol = ${symbol}
           AND exchange = ${exchange}
           AND ts > NOW() - ${intervalStr}::interval
+          AND rate IS NOT NULL
+          AND rate <> 0
         ORDER BY ts ASC
       `;
     } else {
@@ -1135,6 +1137,8 @@ export async function getFundingHistory(
         FROM funding_snapshots
         WHERE symbol = ${symbol}
           AND ts > NOW() - ${intervalStr}::interval
+          AND rate IS NOT NULL
+          AND rate <> 0
         GROUP BY ts
         ORDER BY ts ASC
       `;
