@@ -29,6 +29,9 @@ export function normalizeSymbol(symbol: string): string {
   else if (symbol.startsWith('10000')) symbol = symbol.slice(5);
   else if (symbol.startsWith('1000')) symbol = symbol.slice(4);
   else if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+  // Bybit historical quirk: SHIB has the multiplier as a SUFFIX, not prefix
+  // ("SHIB1000"). Catch any pure-letters-followed-by-1000 pattern.
+  else if (/^[A-Z]+1000$/.test(symbol)) symbol = symbol.slice(0, -4);
   if (!symbol) return original; // guard against prefix-only inputs
   return SYMBOL_ALIASES[symbol] || symbol;
 }

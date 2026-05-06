@@ -155,6 +155,12 @@ export const bybitClient: ExchangeClient = {
       let symbol = p.symbol.replace(/USDT$|USDC$/, '');
       if (symbol.startsWith('1000')) symbol = symbol.slice(4);
       if (symbol.startsWith('1M')) symbol = symbol.slice(2);
+      // Bybit historical quirk: SHIB has the 1000-multiplier as a SUFFIX
+      // ("SHIB1000USDT") instead of the usual prefix. Without stripping
+      // here, a Bybit SHIB position lands as symbol="SHIB1000" and never
+      // joins funding_snapshots (which stores it as plain "SHIB" because
+      // /api/funding's Bybit fetcher already normalises).
+      if (/^[A-Z]+1000$/.test(symbol)) symbol = symbol.slice(0, -4);
 
       out.push({
         symbol,
@@ -202,6 +208,7 @@ export const bybitClient: ExchangeClient = {
         let sym = r.symbol.replace(/USDT$|USDC$/, '');
         if (sym.startsWith('1000')) sym = sym.slice(4);
         if (sym.startsWith('1M')) sym = sym.slice(2);
+        if (/^[A-Z]+1000$/.test(sym)) sym = sym.slice(0, -4); // SHIB1000 → SHIB
         map.set(sym, (map.get(sym) ?? 0) + v);
       }
       cursor = json.result?.nextPageCursor;
