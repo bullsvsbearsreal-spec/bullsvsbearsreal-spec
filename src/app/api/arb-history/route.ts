@@ -64,6 +64,8 @@ export async function GET(request: NextRequest) {
         FROM funding_snapshots
         WHERE symbol = ANY(${symbols})
           AND ts > NOW() - INTERVAL '7 days'
+          AND rate IS NOT NULL
+          AND rate <> 0
         GROUP BY symbol, DATE(ts)
         HAVING COUNT(DISTINCT exchange) >= 2
       )

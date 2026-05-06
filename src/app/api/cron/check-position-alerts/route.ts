@@ -51,11 +51,16 @@ async function loadLastTwoFunding(
       ) AS t(exchange, symbol)
     ),
     ranked AS (
+      -- Skip rate=0 / null placeholders written by the per-minute mark-price
+      -- block of cron/snapshot — those would otherwise be picked as the
+      -- "current" rate and trigger spurious sign-flip alerts.
       SELECT f.exchange, f.symbol, f.rate, f.ts,
              ROW_NUMBER() OVER (PARTITION BY f.exchange, f.symbol ORDER BY f.ts DESC) AS rn
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '24 hours'
+        AND f.rate IS NOT NULL
+        AND f.rate <> 0
     )
     SELECT exchange, symbol, rate, rn FROM ranked WHERE rn <= 2
   `;
