@@ -1,8 +1,70 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Flame, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Flame, ArrowLeft, ExternalLink, AlertTriangle } from 'lucide-react';
+
+// Bounce.Tech announced May 6, 2026 as the cutoff for claiming liquidation
+// scores. Treat the deadline as the END of May 6 (00:00 UTC May 7).
+const CLAIM_DEADLINE_MS = Date.UTC(2026, 4, 7, 0, 0, 0);
+
+function fmtCountdown(ms: number): string {
+  if (ms <= 0) return 'CLAIMING ENDED';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  return `${m}m ${s}s`;
+}
+
+function ClaimCountdownBanner() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const remaining = CLAIM_DEADLINE_MS - now;
+  const isExpired = remaining <= 0;
+  const isUrgent = remaining > 0 && remaining < 24 * 3600 * 1000;
+  if (isExpired) {
+    return (
+      <div className="px-3 py-2 rounded-md border border-neutral-700 bg-neutral-900/40 text-[12px] text-neutral-400 flex items-center gap-2 mb-3">
+        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>Claim window closed on May 6, 2026 (UTC).</span>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`px-3 py-2 rounded-md border text-[12px] flex items-center gap-2 mb-3 ${
+        isUrgent
+          ? 'border-rose-400/40 bg-rose-500/[0.08] text-rose-200 animate-pulse'
+          : 'border-amber-400/40 bg-amber-500/[0.06] text-amber-200'
+      }`}
+    >
+      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+      <span>
+        Claiming closes in{' '}
+        <span className="font-mono font-bold tabular-nums">{fmtCountdown(remaining)}</span>
+        <span className="text-neutral-400 ml-2">· May 6, 2026 23:59 UTC</span>
+      </span>
+      <a
+        href="https://bounce.tech"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`ml-auto inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${
+          isUrgent ? 'bg-rose-400 text-black hover:bg-rose-300' : 'bg-amber-400 text-black hover:bg-amber-300'
+        }`}
+      >
+        Claim now <ExternalLink className="w-3 h-3" />
+      </a>
+    </div>
+  );
+}
 
 /**
  * Branded header shown on every /bounce/* page.
@@ -61,7 +123,7 @@ export default function BounceHeader() {
         </div>
 
         {/* Sub-nav */}
-        <nav aria-label="bounce.tech sub-navigation" className="flex gap-1 overflow-x-auto -mx-1 px-1">
+        <nav aria-label="bounce.tech sub-navigation" className="flex gap-1 overflow-x-auto -mx-1 px-1 mb-3">
           {subNav.map(item => (
             <Link
               key={item.href}
@@ -77,6 +139,9 @@ export default function BounceHeader() {
             </Link>
           ))}
         </nav>
+
+        {/* Deadline countdown — TODAY is the last day to claim */}
+        <ClaimCountdownBanner />
       </div>
     </div>
   );
