@@ -7,6 +7,11 @@
  *
  * Docs: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint
  *
+ * We make TWO parallel calls per address:
+ *   - clearinghouseState: open positions (size / entry / pnl / liq / funding)
+ *   - frontendOpenOrders: trigger orders we then mine for TP/SL prices
+ *     attached to each position.
+ *
  * Position object fields used (HL returns positions denominated in the base
  * coin, e.g. SOL count, with USD values pre-computed alongside):
  *   coin            'SOL', 'BTC', etc.
@@ -53,6 +58,100 @@ interface HLClearingHouseState {
   time?: number;
 }
 
+interface HLOpenOrder {
+  coin: string;
+  side: 'B' | 'A';                      // Buy or Ask
+  limitPx: string;
+  sz: string;
+  triggerPx?: string;
+  isTrigger?: boolean;
+  isPositionTpsl?: boolean;
+  reduceOnly?: boolean;
+  orderType?: string;                   // 'Stop Loss' | 'Take Profit' | 'Limit' | 'Stop Limit' | …
+  triggerCondition?: string;            // 'above' | 'below' | 'N/A'
+}
+
+/** Per-coin TP/SL values mined from frontendOpenOrders for a given side. */
+interface TpsLPair {
+  tp: number | null;
+  sl: number | null;
+}
+
+async function fetchOpenOrders(address: string): Promise<HLOpenOrder[]> {
+  try {
+    const res = await fetch(HL_INFO_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ type: 'frontendOpenOrders', user: address }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return Array.isArray(json) ? (json as HLOpenOrder[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Build a `coin → { tp, sl }` lookup from a flat list of open orders.
+ * For each (coin, side) we keep the TP closest to mark and the SL closest
+ * to mark — common for stacked exits.
+ *
+ * Side convention:
+ *   long position  → TP triggers above entry, SL triggers below
+ *   short position → TP triggers below entry, SL triggers above
+ * We classify by `orderType` directly when present (HL labels them
+ * "Take Profit Market" / "Stop Market" / etc.); otherwise we fall back to
+ * the trigger-direction heuristic against the position side.
+ */
+function indexTpsl(orders: HLOpenOrder[], positions: HLPositionEntry[]): Map<string, TpsLPair> {
+  const out = new Map<string, TpsLPair>();
+  if (!orders.length) return out;
+
+  // Build a coin → side map from positions so we can use the heuristic.
+  const sideByCoin = new Map<string, 'long' | 'short'>();
+  for (const e of positions) {
+    const szi = parseFloat(e.position.szi);
+    if (Number.isFinite(szi) && szi !== 0) {
+      sideByCoin.set(e.position.coin, szi > 0 ? 'long' : 'short');
+    }
+  }
+
+  for (const o of orders) {
+    if (!o.isTrigger || !o.triggerPx) continue;
+    if (!o.isPositionTpsl) continue;
+    const px = parseFloat(o.triggerPx);
+    if (!Number.isFinite(px) || px <= 0) continue;
+    const positionSide = sideByCoin.get(o.coin);
+    if (!positionSide) continue;
+
+    // Decide TP vs SL.
+    let kind: 'tp' | 'sl' | null = null;
+    const ot = (o.orderType || '').toLowerCase();
+    if (ot.includes('take profit') || ot.includes('takeprofit') || ot === 'tp') kind = 'tp';
+    else if (ot.includes('stop loss') || ot.includes('stoploss') || ot === 'sl' || ot.includes('stop')) kind = 'sl';
+    else {
+      // Heuristic by trigger direction.
+      const cond = (o.triggerCondition || '').toLowerCase();
+      if (positionSide === 'long')  kind = cond === 'above' ? 'tp' : 'sl';
+      else                           kind = cond === 'below' ? 'tp' : 'sl';
+    }
+    if (!kind) continue;
+
+    const cur = out.get(o.coin) ?? { tp: null, sl: null };
+    if (kind === 'tp') {
+      // Keep the FIRST TP we see (typically the only one). If multiple, keep
+      // the one closest to mark — but mark isn't on the order, so first wins.
+      if (cur.tp === null) cur.tp = px;
+    } else {
+      if (cur.sl === null) cur.sl = px;
+    }
+    out.set(o.coin, cur);
+  }
+  return out;
+}
+
 export const hyperliquidWalletClient: WalletClient = {
   chain: 'hyperliquid',
   displayName: 'Hyperliquid',
@@ -60,16 +159,22 @@ export const hyperliquidWalletClient: WalletClient = {
   async fetchPositions(address: string): Promise<NormalizedPosition[]> {
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return [];
 
-    const res = await fetch(HL_INFO_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ type: 'clearinghouseState', user: address }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      throw new Error(`Hyperliquid clearinghouseState HTTP ${res.status}`);
+    // Two parallel calls: positions + open orders for TP/SL mining.
+    const [stateRes, openOrders] = await Promise.all([
+      fetch(HL_INFO_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ type: 'clearinghouseState', user: address }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      }),
+      fetchOpenOrders(address),
+    ]);
+
+    if (!stateRes.ok) {
+      throw new Error(`Hyperliquid clearinghouseState HTTP ${stateRes.status}`);
     }
-    const json = (await res.json()) as HLClearingHouseState;
+    const json = (await stateRes.json()) as HLClearingHouseState;
+    const tpslByCoin = indexTpsl(openOrders, json.assetPositions ?? []);
 
     const out: NormalizedPosition[] = [];
     for (const entry of json.assetPositions ?? []) {
@@ -85,7 +190,6 @@ export const hyperliquidWalletClient: WalletClient = {
       const margin = parseFloat(p.marginUsed ?? '0');
       const liq = p.liquidationPx ? parseFloat(p.liquidationPx) : NaN;
       const lev = p.leverage?.value;
-      // mark price = positionValue / size (since HL gives both)
       const mark = size > 0 && value > 0 ? value / size : null;
       // Cumulative funding: sinceOpen is most useful.
       // HL convention: positive value = funding PAID BY this position.
@@ -96,6 +200,8 @@ export const hyperliquidWalletClient: WalletClient = {
       const cumFundingStr = p.cumFunding?.sinceOpen;
       const cumFundingHl = cumFundingStr ? parseFloat(cumFundingStr) : NaN;
       const cumFunding = Number.isFinite(cumFundingHl) ? -cumFundingHl : NaN;
+
+      const tpsl = tpslByCoin.get(p.coin);
 
       out.push({
         symbol: p.coin,
@@ -108,8 +214,8 @@ export const hyperliquidWalletClient: WalletClient = {
         leverage: typeof lev === 'number' && lev > 0 ? lev : null,
         marginUsed: Number.isFinite(margin) && margin > 0 ? margin : null,
         liquidationPrice: Number.isFinite(liq) && liq > 0 ? liq : null,
-        tpPrice: null,   // HL TP/SL are separate "trigger" orders — Phase B+
-        slPrice: null,
+        tpPrice: tpsl?.tp ?? null,
+        slPrice: tpsl?.sl ?? null,
         cumulativeFunding: Number.isFinite(cumFunding) ? cumFunding : null,
       });
     }

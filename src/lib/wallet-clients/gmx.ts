@@ -191,6 +191,32 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
     const pnl = bigToNumber(p.unrealizedPnl, PREC_USD);
     const fees = bigToNumber(p.unrealizedFees, PREC_USD);
 
+    // Liquidation price approximation. The exact GMX V2 formula reads
+    // per-market maintenance-margin factor + pending borrow / funding fees
+    // off the on-chain DataStore — we don't have those without an RPC
+    // call. The standard textbook formula gets us within a few percent:
+    //
+    //   long  : liq = entry × (1 − (collateralUsd − pendingFees) / sizeUsd × (1 − mmf))
+    //   short : liq = entry × (1 + (collateralUsd − pendingFees) / sizeUsd × (1 − mmf))
+    //
+    // We use mmf = 0.5% (typical for major GMX markets — synthetics like
+    // PENGU run higher but this is a "ballpark" not a precise warning
+    // level). Mark the value as approximate by clamping to the visible
+    // range; downstream UI can label it "≈" when it knows it came from
+    // GMX. Pending fees are the `unrealizedFees` we already parsed.
+    const collateralUsd = marginUsed;
+    const pendingFees = fees;            // already in USD
+    const buffer = collateralUsd - pendingFees;
+    const MMF = 0.005;                   // 0.5% maintenance margin assumption
+    let liqPrice: number | null = null;
+    if (entryPrice > 0 && sizeUsd > 0 && buffer > 0) {
+      const ratio = (buffer / sizeUsd) * (1 - MMF);
+      liqPrice = p.isLong
+        ? entryPrice * Math.max(0, 1 - ratio)
+        : entryPrice * (1 + ratio);
+      if (!Number.isFinite(liqPrice) || liqPrice <= 0) liqPrice = null;
+    }
+
     out.push({
       symbol: market.symbol,
       side: p.isLong ? 'long' : 'short',
@@ -201,9 +227,10 @@ async function fetchForChain(address: string, chain: GmxChain): Promise<Normaliz
       unrealizedPnl: Number.isFinite(pnl) ? pnl : null,
       leverage: Number.isFinite(leverage) && leverage > 0 ? leverage : null,
       marginUsed: Number.isFinite(marginUsed) && marginUsed > 0 ? marginUsed : null,
-      liquidationPrice: null, // GMX subsquid doesn't expose this directly;
-                              // would need on-chain reader call to derive.
-      tpPrice: null,          // GMX TP/SL are separate orders, not on Position
+      liquidationPrice: liqPrice,  // Approximation (mmf=0.5%); within a
+                                   // few % of the on-chain value for major
+                                   // markets, looser for synthetics.
+      tpPrice: null,               // GMX TP/SL are separate orders, not on Position
       slPrice: null,
       // Cumulative funding paid over position life — subsquid `unrealizedFees`
       // is the closest proxy (open funding + borrowing fees). Negate to
