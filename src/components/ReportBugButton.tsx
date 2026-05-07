@@ -96,11 +96,14 @@ export default function ReportBugButton() {
 
   return (
     <>
-      {/* Floating button — bottom right, above content */}
+      {/* Floating button — positioned high enough to clear the persistent
+          status bar (Streaming/venue indicators on the left, "api/ws/INFOHUB
+          V2.0" badge on the right). bottom-14 keeps it visible without
+          stomping the existing chrome. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] text-[11px] text-neutral-400 hover:text-white shadow-lg backdrop-blur transition-all"
+        className="fixed bottom-14 right-3 z-40 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] text-[11px] text-neutral-400 hover:text-white shadow-lg backdrop-blur transition-all"
         aria-label="Report a bug or issue"
         title="Report a bug or issue"
       >
