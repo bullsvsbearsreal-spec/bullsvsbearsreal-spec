@@ -411,9 +411,9 @@ export default function PositionsPage() {
                     className="text-right px-2 py-2 font-medium"
                     title="Projected daily funding cost in USD if the current rate holds. Negative = paying, positive = receiving."
                   >$/day</th>
-                  <th className="text-right px-2 py-2 font-medium" title="Current funding rate (most recent snapshot)">Now</th>
-                  <th className="text-right px-2 py-2 font-medium" title="24-hour average funding rate">24h avg</th>
-                  <th className="text-right px-2 py-2 font-medium" title="48-hour average funding rate">48h avg</th>
+                  <th className="text-right px-2 py-2 font-medium" title="Current annualised funding APR (most recent snapshot). Sub-line shows the native per-interval rate.">Now</th>
+                  <th className="text-right px-2 py-2 font-medium" title="24-hour average funding APR (annualised). Sub-line shows the average native per-interval rate.">24h avg</th>
+                  <th className="text-right px-2 py-2 font-medium" title="48-hour average funding APR (annualised). Sub-line shows the average native per-interval rate.">48h avg</th>
                   <th className="text-right px-3 py-2 font-medium">Liq.</th>
                   <th className="text-left px-2 py-2 font-medium">Exchange</th>
                 </tr>
@@ -555,26 +555,30 @@ function PositionRow({ p }: { p: Position }) {
       >
         {p.dailyFundingCarryUsd == null ? '—' : fmtUsd(p.dailyFundingCarryUsd, { sign: true })}
       </td>
+      {/* Funding rate columns: annualised APR is the primary number (matches
+          how traders + christian's spreadsheet mockup think about cost-of-carry).
+          Native per-interval rate dropped to a smaller sub-line so power users
+          who want to verify against the venue UI can still see it. */}
       <td
         className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[cur]}`}
-        title={`${fmtPct(p.currentFunding, { sign: true, digits: 4 })} per ${intervalH}h · ${fmtApr(aprNow)} APR (${p.side === 'long' ? 'cost to long' : 'cost to short'})`}
+        title={`${fmtApr(aprNow)}% APR · ${fmtPct(p.currentFunding, { sign: true, digits: 4 })} per ${intervalH}h native (${p.side === 'long' ? 'long perspective' : 'short perspective'})`}
       >
-        <div>{fmtPct(p.currentFunding, { sign: true, digits: 4 })}</div>
-        <div className={`text-[9px] opacity-60`}>{fmtApr(aprNow)}/y</div>
+        <div className="font-semibold">{fmtApr(aprNow)}%</div>
+        <div className={`text-[9px] opacity-60`}>{fmtPct(p.currentFunding, { sign: true, digits: 4 })}/{intervalH}h</div>
       </td>
       <td
         className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[a24]}`}
-        title={`24h avg ${fmtPct(p.avg24hFunding, { sign: true, digits: 4 })} per ${intervalH}h · ${fmtApr(apr24)} APR`}
+        title={`24h avg ${fmtApr(apr24)}% APR · ${fmtPct(p.avg24hFunding, { sign: true, digits: 4 })} per ${intervalH}h native`}
       >
-        <div>{fmtPct(p.avg24hFunding, { sign: true, digits: 4 })}</div>
-        <div className={`text-[9px] opacity-60`}>{fmtApr(apr24)}/y</div>
+        <div className="font-semibold">{fmtApr(apr24)}%</div>
+        <div className={`text-[9px] opacity-60`}>{fmtPct(p.avg24hFunding, { sign: true, digits: 4 })}/{intervalH}h</div>
       </td>
       <td
         className={`px-2 py-2 text-right tabular-nums ${TONE_CLASS[a48]}`}
-        title={`48h avg ${fmtPct(p.avg48hFunding, { sign: true, digits: 4 })} per ${intervalH}h · ${fmtApr(apr48)} APR`}
+        title={`48h avg ${fmtApr(apr48)}% APR · ${fmtPct(p.avg48hFunding, { sign: true, digits: 4 })} per ${intervalH}h native`}
       >
-        <div>{fmtPct(p.avg48hFunding, { sign: true, digits: 4 })}</div>
-        <div className={`text-[9px] opacity-60`}>{fmtApr(apr48)}/y</div>
+        <div className="font-semibold">{fmtApr(apr48)}%</div>
+        <div className={`text-[9px] opacity-60`}>{fmtPct(p.avg48hFunding, { sign: true, digits: 4 })}/{intervalH}h</div>
       </td>
       <td className="px-3 py-2 text-right tabular-nums text-amber-400/80 text-[10px]">
         {p.liquidationPrice ? fmtPrice(p.liquidationPrice) : '—'}
@@ -637,9 +641,12 @@ function PositionCardMobile({ p }: { p: Position }) {
           Each cell shows native rate AND annualised APR underneath so 1h
           (HL/dYdX) and 8h (Binance/Bybit) venues are apples-to-apples. */}
       <div className="grid grid-cols-3 gap-1 mb-2 text-[10px]">
-        <FundingMini label="Now" value={fmtPct(p.currentFunding, { sign: true, digits: 4 })} apr={fmtApr(aprNow)} tone={cur} />
-        <FundingMini label="24h" value={fmtPct(p.avg24hFunding, { sign: true, digits: 4 })} apr={fmtApr(apr24)} tone={a24} />
-        <FundingMini label="48h" value={fmtPct(p.avg48hFunding, { sign: true, digits: 4 })} apr={fmtApr(apr48)} tone={a48} />
+        {/* Annualised APR primary, native per-interval rate as the small
+            sub-line — matches christian's mockup where -11% / -8% / -9%
+            funding magnitudes only make sense as APR, not per-interval. */}
+        <FundingMini label="Now" primary={`${fmtApr(aprNow)}%`} secondary={`${fmtPct(p.currentFunding, { sign: true, digits: 4 })}/${intervalH}h`} tone={cur} />
+        <FundingMini label="24h" primary={`${fmtApr(apr24)}%`} secondary={`${fmtPct(p.avg24hFunding, { sign: true, digits: 4 })}/${intervalH}h`} tone={a24} />
+        <FundingMini label="48h" primary={`${fmtApr(apr48)}%`} secondary={`${fmtPct(p.avg48hFunding, { sign: true, digits: 4 })}/${intervalH}h`} tone={a48} />
       </div>
 
       {/* Secondary grid */}
@@ -686,19 +693,21 @@ function PositionCardMobile({ p }: { p: Position }) {
 }
 
 function FundingMini({
-  label, value, apr, tone,
+  label, primary, secondary, tone,
 }: {
   label: string;
-  value: string;
-  apr?: string;
+  /** Bold top number — annualised APR including the % sign. */
+  primary: string;
+  /** Smaller sub-line — native per-interval rate, e.g. "+0.0019%/8h". */
+  secondary?: string;
   tone: 'good' | 'bad' | 'neutral';
 }) {
   return (
     <div className="bg-white/[0.02] rounded px-2 py-1.5 text-center">
       <div className="text-[9px] uppercase tracking-wider text-neutral-600 font-medium">{label}</div>
-      <div className={`tabular-nums font-mono text-[11px] mt-0.5 ${TONE_CLASS[tone]}`}>{value}</div>
-      {apr && apr !== '—' && (
-        <div className={`tabular-nums font-mono text-[9px] opacity-60 ${TONE_CLASS[tone]}`}>{apr}/y</div>
+      <div className={`tabular-nums font-mono text-[11px] mt-0.5 font-semibold ${TONE_CLASS[tone]}`}>{primary}</div>
+      {secondary && !secondary.startsWith('—') && (
+        <div className={`tabular-nums font-mono text-[9px] opacity-60 ${TONE_CLASS[tone]}`}>{secondary}</div>
       )}
     </div>
   );
