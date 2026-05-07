@@ -116,6 +116,15 @@ export async function runDcaBacktest(config: DcaConfig): Promise<BacktestResult>
 
   for (let i = 0; i < daily.length; i++) {
     const day = daily[i];
+    // Time-weighted return: capture the price-only change (pre-deposit) so
+    // Sharpe / volatility reflect the investment's behaviour, not the
+    // deposit cadence. Previously dailyReturns used post-buy values, which
+    // counted each $100 deposit as a "+huge%" daily return — producing
+    // nonsense Sharpes (e.g. 4.08 on a +1.80% real return).
+    const valueBeforeBuy = units * day.price;
+    if (i > 0 && prevValue > 0) {
+      dailyReturns.push((valueBeforeBuy - prevValue) / prevValue);
+    }
     if (i - lastBuyAtIndex >= interval) {
       // Buy at this day's close.
       const newUnits = amount / day.price;
@@ -125,9 +134,6 @@ export async function runDcaBacktest(config: DcaConfig): Promise<BacktestResult>
       lastBuyAtIndex = i;
     }
     const value = units * day.price;
-    if (i > 0 && prevValue > 0) {
-      dailyReturns.push((value - prevValue) / prevValue);
-    }
     series.push({
       date: day.date,
       valueUsd: value,
