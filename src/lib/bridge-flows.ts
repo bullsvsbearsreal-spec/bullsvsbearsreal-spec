@@ -166,6 +166,21 @@ interface RawCorridor {
   txs: number;
 }
 
+/** x-chain-activity returns per-source-chain destinations matrix —
+ *  way richer than top-chain-pairs (capped at 7 by the API). */
+interface RawChainActivity {
+  txs: Array<{
+    chain: number;
+    volume: string;
+    percentage: number;
+    destinations: Array<{
+      chain: number;
+      volume: string;
+      percentage: number;
+    }>;
+  }>;
+}
+
 /**
  * Build the bridge-flow feed by fanning out to several Wormholescan
  * endpoints in parallel. Each is independent — a single endpoint failing
@@ -175,9 +190,13 @@ export async function buildBridgeFlowFeed(opts: { timeSpan?: '1d' | '7d' | '30d'
   const ts = Date.now();
   const span = opts.timeSpan ?? '7d';
 
-  const [scoreRaw, pairsRaw, assetsRaw, corridorsRaw] = await Promise.all([
+  const [scoreRaw, pairsRaw, activityRaw, assetsRaw, corridorsRaw] = await Promise.all([
     safeJson<RawScorecard>(`${WORMHOLE_BASE}/scorecards`),
+    // top-chain-pairs is capped at 7 results by the API. Keep it as a
+    // primary source for the most-active corridors, but supplement with
+    // x-chain-activity which returns the full source→destination matrix.
     safeJson<{ chainPairs?: RawChainPair[] }>(`${WORMHOLE_BASE}/top-chain-pairs-by-num-transfers?timeSpan=${span}`),
+    safeJson<RawChainActivity>(`${WORMHOLE_BASE}/x-chain-activity?timeSpan=${span}&by=tx`),
     safeJson<{ assets?: RawAsset[] }>(`${WORMHOLE_BASE}/top-assets-by-volume?timeSpan=${span}`),
     safeJson<{ corridors?: RawCorridor[] }>(`${WORMHOLE_BASE}/top-100-corridors?timeSpan=${span}`),
   ]);
@@ -196,13 +215,42 @@ export async function buildBridgeFlowFeed(opts: { timeSpan?: '1d' | '7d' | '30d'
     };
   }
 
-  const chainPairs: ChainPairFlow[] = (pairsRaw?.chainPairs ?? []).map(p => ({
-    source: p.emitterChain,
-    sourceName: chainName(p.emitterChain),
-    destination: p.destinationChain,
-    destinationName: chainName(p.destinationChain),
-    transfers: parseInt(p.numberOfTransfers, 10) || 0,
-  }));
+  // Build chain-pair list from x-chain-activity (rich) + top-chain-pairs
+  // (sparse but ranked). x-chain-activity returns one row per source chain
+  // with destination breakdowns — flatten and dedup.
+  const pairsByKey = new Map<string, ChainPairFlow>();
+  for (const p of pairsRaw?.chainPairs ?? []) {
+    const key = `${p.emitterChain}-${p.destinationChain}`;
+    pairsByKey.set(key, {
+      source: p.emitterChain,
+      sourceName: chainName(p.emitterChain),
+      destination: p.destinationChain,
+      destinationName: chainName(p.destinationChain),
+      transfers: parseInt(p.numberOfTransfers, 10) || 0,
+    });
+  }
+  for (const row of activityRaw?.txs ?? []) {
+    for (const dest of row.destinations ?? []) {
+      const key = `${row.chain}-${dest.chain}`;
+      const existing = pairsByKey.get(key);
+      const txs = parseInt(dest.volume, 10) || 0;
+      if (txs <= 0) continue;
+      // Prefer existing (top-chain-pairs is the canonical ranked source);
+      // only insert when missing.
+      if (!existing) {
+        pairsByKey.set(key, {
+          source: row.chain,
+          sourceName: chainName(row.chain),
+          destination: dest.chain,
+          destinationName: chainName(dest.chain),
+          transfers: txs,
+        });
+      }
+    }
+  }
+  const chainPairs: ChainPairFlow[] = Array.from(pairsByKey.values())
+    .filter(p => p.transfers > 0)
+    .sort((a, b) => b.transfers - a.transfers);
 
   const topAssets: TopAsset[] = (assetsRaw?.assets ?? []).map(a => ({
     symbol: a.symbol,

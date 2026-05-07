@@ -15,7 +15,10 @@
 import { hyperliquidWalletClient } from './wallet-clients/hyperliquid';
 import type { NormalizedTrade } from './wallet-clients/types';
 
-const HL_LEADERBOARD_URL = 'https://api.hyperliquid.xyz/leaderboard';
+// Hyperliquid leaderboard lives on the stats-data subdomain, NOT api.
+// The api.hyperliquid.xyz path returns 200 with an EMPTY body — silent
+// failure. The working endpoint is the same one /api/hl-whales uses.
+const HL_LEADERBOARD_URL = 'https://stats-data.hyperliquid.xyz/Mainnet/leaderboard';
 const HL_INFO_URL = 'https://api.hyperliquid.xyz/info';
 const TIMEOUT_MS = 8_000;
 
@@ -62,12 +65,14 @@ interface LeaderboardRow {
   windowPerformances: Array<[string, { pnl: string; roi: string; vlm: string }]>;
 }
 
-async function fetchLeaderboard(timeWindow: 'allTime' | 'month' | 'week' | 'day' = 'allTime'): Promise<LeaderboardRow[]> {
+// timeWindow is consumed downstream by extractPerformance() reading
+// `windowPerformances` per row. The endpoint itself takes no params —
+// it returns ALL window performances embedded in each leaderboard row.
+async function fetchLeaderboard(_timeWindow: 'allTime' | 'month' | 'week' | 'day' = 'allTime'): Promise<LeaderboardRow[]> {
   try {
     const res = await fetch(HL_LEADERBOARD_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ timeWindow }),
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) return [];

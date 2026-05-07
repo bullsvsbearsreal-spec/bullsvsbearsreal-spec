@@ -33,6 +33,19 @@ export interface RestakingPool {
   outlier: boolean;
 }
 
+/**
+ * Allowlist of restaking-issuer protocols (the protocols that ISSUE the
+ * restaking token). Plus a small set of restaking-aggregator protocols
+ * whose pools are pure restaking products (Pendle PT-/YT- of LRTs).
+ *
+ * Previously we used a heuristic where any pool with an "LRT-like" symbol
+ * prefix (EZ/RS/WE/...) counted as restaking. That swept up every
+ * Uniswap V2/V3/V4, Balancer, Aerodrome, Sushi, Morpho LP pool whose
+ * paired token happened to be an LRT — 2870 pools, 90% irrelevant.
+ *
+ * Restricting to issuer protocols only gives ~80 pools, every one
+ * actually a restaking yield product.
+ */
 const PROTOCOL_DISPLAY: Record<string, string> = {
   eigenlayer: 'EigenLayer',
   'eigenlayer-lst': 'EigenLayer',
@@ -41,27 +54,32 @@ const PROTOCOL_DISPLAY: Record<string, string> = {
   babylon: 'Babylon',
   renzo: 'Renzo',
   etherfi: 'EtherFi',
+  'ether.fi stake': 'EtherFi',
+  'ether.fi liquid': 'EtherFi',
+  'ether.fi liquid restaking': 'EtherFi',
   kelp: 'Kelp',
-  pendle: 'Pendle',
   'puffer-finance': 'Puffer',
+  puffer: 'Puffer',
   swell: 'Swell',
   ssvnetwork: 'SSV',
   'rio-network': 'Rio',
+  mellow: 'Mellow',
+  'mellow-protocol': 'Mellow',
+  bedrock: 'Bedrock',
+  'bedrock-unibtc': 'Bedrock',
+  fluid: 'Fluid',
 };
 
-/** Heuristic: pool counts as "restaking" if its protocol matches our list
- *  OR if DeFi Llama's category contains "restaking" or "LRT". */
+/** A pool counts as "restaking" if its DeFi Llama project matches an
+ *  issuer allowlist. We deliberately exclude general AMMs/lenders even
+ *  when they hold LRT collateral — those are LP yield, not restaking. */
 function isRestakingPool(p: any): boolean {
   const proto = (p.project ?? '').toLowerCase();
   if (PROTOCOL_DISPLAY[proto]) return true;
+  // DeFi Llama's category field — "Liquid Restaking" specifically
+  // (not "Liquid Staking" which is vanilla ETH staking, not re-staked).
   const cat = (p.category ?? '').toLowerCase();
-  if (cat.includes('restaking')) return true;
-  if (cat.includes('lrt')) return true;
-  // DeFi Llama tags some EigenLayer-aligned pools just as "Liquid Staking"
-  // — we want LRTs (re-staked) but not vanilla LSTs. The symbol gives it
-  // away: ezETH/rsETH/weETH/ankrETH/pufETH are LRTs.
-  const sym = (p.symbol ?? '').toUpperCase();
-  if (/^(EZ|RS|WE|PUF|RIO|EIGEN|MELLOW|CMETH|UNIBT|SOLVBT)/.test(sym)) return true;
+  if (cat === 'liquid restaking') return true;
   return false;
 }
 
