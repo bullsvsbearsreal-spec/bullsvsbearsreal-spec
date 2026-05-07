@@ -260,6 +260,31 @@ export const openApiSpec = {
         responses: { 200: { description: 'OK' } },
       },
     },
+    '/backtest': {
+      post: {
+        summary: 'Run a strategy backtest (DCA or funding-rate carry)',
+        description: 'Pure historical-data simulation. Returns daily portfolio-value series, max drawdown, Sharpe-ish ratio. No fees / slippage modelled.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  strategy: { type: 'string', enum: ['dca', 'funding-carry'] },
+                  config: {
+                    type: 'object',
+                    description: 'Strategy-specific parameters. DCA: { asset, amountUsd, intervalDays, lookbackDays }. Funding-carry: { notionalUsd, lookbackDays, symbol? }.',
+                  },
+                },
+                required: ['strategy', 'config'],
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'OK' } },
+      },
+    },
     '/bridge-flows': {
       get: {
         summary: 'Cross-chain bridge flow tracker (Wormhole)',
