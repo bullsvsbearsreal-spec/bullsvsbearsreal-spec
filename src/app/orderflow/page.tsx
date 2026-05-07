@@ -263,7 +263,7 @@ export default function OrderflowPage() {
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
-            {lastUpdate && <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />}
+            {lastUpdate && <DataFreshness exchangeCount={multiSummary?.exchangeCount ?? 0} lastUpdated={lastUpdate} />}
           </div>
         </div>
 

@@ -305,7 +305,14 @@ export default function BitcoinTreasuriesPage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            {/* This isn't an exchange feed — it's a curated list of public
+                companies holding BTC. Use the `sources` prop so the widget
+                renders "BitcoinTreasuries.NET" rather than "1 exchanges". */}
+            <DataFreshness
+              exchangeCount={0}
+              sources={['BitcoinTreasuries.NET']}
+              lastUpdated={lastUpdate}
+            />
           </div>
         </div>
 
