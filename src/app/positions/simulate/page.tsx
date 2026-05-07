@@ -117,7 +117,7 @@ export default function SimulatePage() {
         body: JSON.stringify(body),
       });
       if (res.status === 401) {
-        router.push('/auth/signin?callbackUrl=/positions/simulate');
+        router.push('/login?callbackUrl=/positions/simulate');
         return;
       }
       const json = await res.json();

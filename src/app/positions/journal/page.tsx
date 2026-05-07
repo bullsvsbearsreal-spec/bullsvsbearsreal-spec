@@ -102,7 +102,7 @@ export default function JournalPage() {
         signal: AbortSignal.timeout(20_000),
       });
       if (res.status === 401) {
-        router.push('/auth/signin?callbackUrl=/positions/journal');
+        router.push('/login?callbackUrl=/positions/journal');
         return;
       }
       if (!res.ok) {

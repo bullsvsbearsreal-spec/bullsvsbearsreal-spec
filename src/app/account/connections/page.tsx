@@ -622,7 +622,7 @@ function FundingFlipAlert() {
             {error && <div className="text-xs text-red-400 mt-2">{error}</div>}
             <div className="text-[10px] text-neutral-600 mt-2 leading-relaxed">
               Telegram requires a linked chat (<a href="/settings#telegram" className="text-hub-yellow hover:underline">connect</a>).
-              Email goes to your account address — verify it on <a href="/account" className="text-hub-yellow hover:underline">/account</a> if you haven&apos;t.
+              Email goes to your account address — verify it on <a href="/profile" className="text-hub-yellow hover:underline">/profile</a> if you haven&apos;t.
             </div>
           </div>
         </div>

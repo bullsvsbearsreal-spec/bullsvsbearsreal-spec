@@ -93,7 +93,7 @@ export default function TaxPage() {
     try {
       const res = await fetch('/api/account/tax', { signal: AbortSignal.timeout(20_000) });
       if (res.status === 401) {
-        router.push('/auth/signin?callbackUrl=/positions/tax');
+        router.push('/login?callbackUrl=/positions/tax');
         return;
       }
       if (!res.ok) {

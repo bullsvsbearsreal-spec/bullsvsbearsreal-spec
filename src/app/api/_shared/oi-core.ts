@@ -151,9 +151,13 @@ export async function getOIData(): Promise<{ result: OIResult; cacheStatus: stri
       },
     };
 
-    // Update cache + store snapshot for change tracking
-    l1Cache = { body: result, timestamp: Date.now() };
-    storeOISnapshot(filtered);
+    // Only pin the L1 cache when we got at least some live data — pinning
+    // an empty body during a transient "all upstreams down" event would
+    // hide live data for the full TTL on the very next request.
+    if (filtered.length > 0 && result.meta.activeExchanges > 0) {
+      l1Cache = { body: result, timestamp: Date.now() };
+      storeOISnapshot(filtered);
+    }
 
     return { result, cacheStatus: 'MISS' };
   } catch (error) {

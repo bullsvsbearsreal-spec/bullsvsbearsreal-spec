@@ -41,7 +41,9 @@ export async function GET(request: NextRequest) {
       );
       data.forEach((e: any) => { e.symbol = normalizeSymbol(e.symbol); });
       rawData = data;
-      l1Cache = { data: rawData, ts: Date.now() };
+      // Don't pin an empty array — a momentary "all upstreams blipped" event
+      // would otherwise return [] for the next 5 s instead of retrying.
+      if (rawData.length > 0) l1Cache = { data: rawData, ts: Date.now() };
     }
 
     let filtered = rawData;

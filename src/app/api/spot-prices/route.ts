@@ -53,7 +53,13 @@ export async function GET() {
       },
     };
 
-    l1Cache = { body: responseBody, timestamp: Date.now() };
+    // Only pin the L1 cache when we got at least some live data — otherwise
+    // a momentary "every upstream blipped at once" event (CF 1015, transient
+    // 5xx) would cache an empty body for the full TTL and the spot-price
+    // widgets across the dashboard would render blank for 30 s straight.
+    if (data.length > 0 && activeExchanges > 0) {
+      l1Cache = { body: responseBody, timestamp: Date.now() };
+    }
     return NextResponse.json(responseBody, {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
     });

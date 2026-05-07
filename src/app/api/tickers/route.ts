@@ -85,8 +85,12 @@ export async function GET(request: Request) {
       },
     };
 
-    // Update L1 cache
-    l1Cache = { body: responseBody, timestamp: Date.now() };
+    // Only pin the L1 cache when we got at least some live data — pinning
+    // an empty body during a transient "all upstreams down" event would
+    // hide live data for the full TTL on the very next request.
+    if (data.length > 0 && activeExchanges > 0) {
+      l1Cache = { body: responseBody, timestamp: Date.now() };
+    }
 
     const finalBody = symbolFilter ? filterBySymbols(responseBody, symbolFilter) : responseBody;
     return NextResponse.json(finalBody, {
