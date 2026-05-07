@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       ? `${proxyUrlRaw.replace(/\/$/, '')}/?url=${encodeURIComponent(target)}`
       : null;
 
-    async function probe(url: string, label: string) {
+    const probe = async (url: string, label: string) => {
       try {
         const res = await fetch(url, {
           signal: AbortSignal.timeout(8_000),
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       } catch (e) {
         return { label, url: url.slice(0, 100), error: e instanceof Error ? e.message : 'fetch failed' };
       }
-    }
+    };
 
     const direct = await probe(target, 'direct');
     const proxied = proxiedUrl ? await probe(proxiedUrl, 'proxied') : { label: 'proxied', skipped: 'PROXY_URL not configured' };
