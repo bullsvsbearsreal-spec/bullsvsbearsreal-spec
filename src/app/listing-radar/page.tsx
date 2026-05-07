@@ -149,6 +149,8 @@ export default function ListingRadarPage() {
           ))}
           <button
             onClick={() => setHotOnly(!hotOnly)}
+            aria-pressed={hotOnly}
+            aria-label={hotOnly ? 'Disable hot-only filter' : 'Enable hot-only filter (last 6h)'}
             className={`text-[11px] px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${
               hotOnly ? 'bg-orange-400 text-black' : 'bg-white/[0.04] text-neutral-400 hover:text-white'
             }`}

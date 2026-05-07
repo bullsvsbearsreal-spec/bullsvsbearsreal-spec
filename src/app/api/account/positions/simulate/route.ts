@@ -178,22 +178,15 @@ export async function POST(request: NextRequest) {
   aggAfter.leverageLong = aggAfter.equity > 0 ? aggAfter.totalLong / aggAfter.equity : 0;
   aggAfter.leverageShort = aggAfter.equity > 0 ? aggAfter.totalShort / aggAfter.equity : 0;
 
-  // Daily carry across the whole book — before vs after.
-  let dailyCarryBefore: number | null = null;
-  let dailyCarryAfter: number | null = null;
-  let any = false;
-  for (const p of existing) {
-    // Each existing position needs its current funding context, but we
-    // don't fetch it again here for speed — the /positions API is the
-    // source of truth and it already has funding joined. For simplicity
-    // we reuse the cumulativeFunding daily proxy when available.
-    // Future: pull live funding map.
-  }
-  if (newPositionDailyCarry != null) {
-    dailyCarryBefore = 0;
-    dailyCarryAfter = newPositionDailyCarry;
-    any = true;
-  }
+  // Daily carry across the whole book — before vs after. We can't easily
+  // recompute existing-position carry without re-fetching live funding for
+  // each (exchange, symbol) pair (the /positions API does this server-side
+  // but we don't import its lib here — that'd require bigger refactor).
+  // For now, scope the comparison to the NEW position only: caller still
+  // gets a clear "this trade adds $X/day in carry" delta against zero,
+  // which is the most useful read for the pre-trade check anyway.
+  const dailyCarryBefore: number | null = newPositionDailyCarry != null ? 0 : null;
+  const dailyCarryAfter: number | null = newPositionDailyCarry;
 
   return NextResponse.json({
     success: true,

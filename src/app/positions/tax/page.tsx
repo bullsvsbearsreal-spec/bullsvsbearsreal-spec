@@ -60,14 +60,21 @@ interface ApiResponse {
   note: string | null;
 }
 
-const fmtUsd = (n: number) => {
+// Null-guard formatters: API can return null/NaN when the trade-history
+// table is empty (zero closes → zero realised). Without the guard the KPI
+// cards render literal "$NaN" strings.
+const fmtUsd = (n: number | null | undefined): string => {
+  if (n == null || !Number.isFinite(n)) return '—';
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
   if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}M`;
   if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}K`;
   return `${sign}$${abs.toFixed(2)}`;
 };
-const fmtUsdSign = (n: number) => (n >= 0 ? '+' : '') + fmtUsd(n);
+const fmtUsdSign = (n: number | null | undefined): string => {
+  if (n == null || !Number.isFinite(n)) return '—';
+  return (n >= 0 ? '+' : '') + fmtUsd(n);
+};
 const fmtPrice = (n: number) => {
   if (n < 0.01) return `$${n.toFixed(6)}`;
   if (n < 1) return `$${n.toFixed(4)}`;

@@ -103,7 +103,9 @@ export default function WhaleLiqRoulettePage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {
-      setLoading(false);
+      // Symmetric with the conditional setLoading(true) at the top — silent
+      // auto-refreshes (every 60s) shouldn't toggle the spinner re-render.
+      if (!silent) setLoading(false);
     }
   }, [within]);
 

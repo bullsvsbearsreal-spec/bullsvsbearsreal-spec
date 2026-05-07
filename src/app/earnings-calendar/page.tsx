@@ -215,14 +215,11 @@ export default function EarningsCalendarPage() {
               <div className="space-y-1.5">
                 {events.map(e => {
                   const Icon = TYPE_ICON[e.type] ?? Calendar;
-                  return (
-                    <a
-                      key={e.id}
-                      href={e.url ?? '#'}
-                      target={e.url ? '_blank' : undefined}
-                      rel="noopener noreferrer"
-                      className="card-premium px-3 py-2 flex items-center gap-3 hover:bg-white/[0.03] transition-colors"
-                    >
+                  // Render as <a> only when we have a real URL — using
+                  // href="#" caused a jump-to-top page reload on click for
+                  // eventless rows (halvings, BTC protocol events, etc.).
+                  const innerContent = (
+                    <>
                       <span className={`inline-flex items-center justify-center w-7 h-7 rounded border ${TYPE_TONE[e.type]}`}>
                         <Icon className="w-3.5 h-3.5" />
                       </span>
@@ -242,7 +239,25 @@ export default function EarningsCalendarPage() {
                         )}
                       </div>
                       {e.url && <ExternalLink className="w-3 h-3 text-neutral-600 flex-shrink-0" />}
+                    </>
+                  );
+                  return e.url ? (
+                    <a
+                      key={e.id}
+                      href={e.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="card-premium px-3 py-2 flex items-center gap-3 hover:bg-white/[0.03] transition-colors"
+                    >
+                      {innerContent}
                     </a>
+                  ) : (
+                    <div
+                      key={e.id}
+                      className="card-premium px-3 py-2 flex items-center gap-3"
+                    >
+                      {innerContent}
+                    </div>
                   );
                 })}
               </div>

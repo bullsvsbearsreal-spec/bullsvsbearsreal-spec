@@ -241,7 +241,7 @@ export default function BacktestPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <Stat
                     label={strategy === 'dca' ? 'Final value' : 'Cumulative PnL'}
-                    value={fmtUsd(result.finalValueUsd - (strategy === 'dca' ? 0 : 0))}
+                    value={fmtUsd(result.finalValueUsd)}
                     valueColor="text-white"
                   />
                   <Stat

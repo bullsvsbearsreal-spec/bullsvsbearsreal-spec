@@ -353,12 +353,12 @@ export default function SimulatePage() {
                       Impact on your book ({result?.existingPositionCount ?? 0} existing position{(result?.existingPositionCount ?? 0) !== 1 ? 's' : ''})
                     </h3>
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                      <Comparison label="Equity" before={agg.before.equity} after={agg.before.equity + agg.delta.equity} fmt={fmtUsd} />
-                      <Comparison label="Nominal" before={agg.before.nominal} after={agg.before.nominal + agg.delta.nominal} fmt={fmtUsd} />
-                      <Comparison label="Total long" before={agg.before.totalLong} after={agg.before.totalLong + agg.delta.totalLong} fmt={fmtUsd} colorOnIncrease="emerald" />
-                      <Comparison label="Total short" before={agg.before.totalShort} after={agg.before.totalShort + agg.delta.totalShort} fmt={fmtUsd} colorOnIncrease="red" />
-                      <Comparison label="Leverage long" before={agg.before.leverageLong} after={agg.before.leverageLong + agg.delta.leverageLong} fmt={fmtLev} />
-                      <Comparison label="Leverage short" before={agg.before.leverageShort} after={agg.before.leverageShort + agg.delta.leverageShort} fmt={fmtLev} />
+                      <Comparison label="Equity" before={agg.before.equity} after={agg.after.equity} fmt={fmtUsd} />
+                      <Comparison label="Nominal" before={agg.before.nominal} after={agg.after.nominal} fmt={fmtUsd} />
+                      <Comparison label="Total long" before={agg.before.totalLong} after={agg.after.totalLong} fmt={fmtUsd} colorOnIncrease="emerald" />
+                      <Comparison label="Total short" before={agg.before.totalShort} after={agg.after.totalShort} fmt={fmtUsd} colorOnIncrease="red" />
+                      <Comparison label="Leverage long" before={agg.before.leverageLong} after={agg.after.leverageLong} fmt={fmtLev} />
+                      <Comparison label="Leverage short" before={agg.before.leverageShort} after={agg.after.leverageShort} fmt={fmtLev} />
                     </div>
                   </div>
                 )}
