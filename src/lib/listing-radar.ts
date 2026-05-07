@@ -70,7 +70,10 @@ interface BinanceArticleListResponse {
  * Binance Futures funding when binance.com geo-blocks DO IPs.
  */
 async function fetchBinanceCatalog(catalogId: number): Promise<Array<{ id: number; code: string; title: string; releaseDate: number }>> {
-  const directUrl = `https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=${catalogId}&pageNo=1&pageSize=30`;
+  // Binance silently returns an empty body for pageSize > 20 on this
+  // endpoint (verified May 2026: pageSize=20 returns ~4KB, pageSize=25
+  // returns 0 bytes, no error code). Cap at 20 to avoid the silent fail.
+  const directUrl = `https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=${catalogId}&pageNo=1&pageSize=20`;
   const proxyUrlRaw = (process.env.PROXY_URL || '').trim();
   const proxiedUrl = proxyUrlRaw && proxyUrlRaw.startsWith('https://')
     ? `${proxyUrlRaw.replace(/\/$/, '')}/?url=${encodeURIComponent(directUrl)}`
@@ -86,7 +89,15 @@ async function fetchBinanceCatalog(catalogId: number): Promise<Array<{ id: numbe
         },
       });
       if (!res.ok) continue;
-      const json = (await res.json()) as BinanceArticleListResponse;
+      // Empty-body guard: Binance silently returns 200 with zero bytes for
+      // certain query combos (pageSize > 20 was the trigger we caught).
+      // `await res.json()` on empty body throws a SyntaxError — catch it
+      // and try the next URL rather than swallowing into a generic error.
+      const text = await res.text();
+      if (!text || text.length === 0) continue;
+      let json: BinanceArticleListResponse;
+      try { json = JSON.parse(text) as BinanceArticleListResponse; }
+      catch { continue; }
       const articles = json.data?.catalogs?.[0]?.articles ?? [];
       if (articles.length === 0) continue;
       return articles.map(a => ({ id: a.id, code: a.code, title: a.title, releaseDate: a.releaseDate }));
