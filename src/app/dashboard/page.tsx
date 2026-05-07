@@ -111,7 +111,10 @@ export default function DashboardPage() {
         localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(newLayout));
       } catch {}
 
-      // Debounce DB save (1.5s) to avoid hammering on rapid reorders
+      // Debounce DB save (1.5s) to avoid hammering on rapid reorders.
+      // localStorage above already persisted locally so a failed sync just
+      // means the layout won't follow the user to other devices — log to
+      // console (and Sentry if wired) so the failure isn't fully silent.
       if (session?.user) {
         if (dbSaveTimerRef.current) clearTimeout(dbSaveTimerRef.current);
         dbSaveTimerRef.current = setTimeout(() => {
@@ -119,7 +122,9 @@ export default function DashboardPage() {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dashboardLayout: newLayout }),
-          }).catch(() => {});
+          })
+            .then(res => { if (!res.ok) console.error('[dashboard] layout sync failed:', res.status); })
+            .catch(e => console.error('[dashboard] layout sync error:', e));
         }, 1500);
       }
     },

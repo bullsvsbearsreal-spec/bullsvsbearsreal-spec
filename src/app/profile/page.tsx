@@ -49,6 +49,7 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('');
   const [bioSaving, setBioSaving] = useState(false);
   const [bioSaved, setBioSaved] = useState(false);
+  const [bioError, setBioError] = useState<string | null>(null);
 
   // Display prefs
   const [displayPrefs, setDisplayPrefs] = useState<DisplayPrefs>({
@@ -58,6 +59,7 @@ export default function ProfilePage() {
   });
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
 
   // Account stats
   const [accountStats, setAccountStats] = useState<AccountStats | null>(null);
@@ -103,15 +105,21 @@ export default function ProfilePage() {
   const handleSaveBio = async () => {
     setBioSaving(true);
     setBioSaved(false);
+    setBioError(null);
     try {
-      await fetch('/api/user/data', {
+      const res = await fetch('/api/user/data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bio }),
       });
+      // Don't claim "Saved" on a non-2xx — the bio was rejected and the
+      // user would never know without surfacing the failure.
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setBioSaved(true);
       setTimeout(() => setBioSaved(false), 2000);
-    } catch {}
+    } catch (e) {
+      setBioError(e instanceof Error ? e.message : 'Failed to save bio');
+    }
     setBioSaving(false);
   };
 
@@ -119,15 +127,19 @@ export default function ProfilePage() {
   const handleSavePrefs = async () => {
     setPrefsSaving(true);
     setPrefsSaved(false);
+    setPrefsError(null);
     try {
-      await fetch('/api/user/data', {
+      const res = await fetch('/api/user/data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayPrefs }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setPrefsSaved(true);
       setTimeout(() => setPrefsSaved(false), 2000);
-    } catch {}
+    } catch (e) {
+      setPrefsError(e instanceof Error ? e.message : 'Failed to save prefs');
+    }
     setPrefsSaving(false);
   };
 
@@ -281,6 +293,9 @@ export default function ProfilePage() {
                 {bioSaved ? 'Saved' : 'Save'}
               </button>
             </div>
+            {bioError && (
+              <div className="mt-2 text-xs text-red-400">Save failed: {bioError}</div>
+            )}
           </div>
 
           {/* ─── Display Preferences ───────────────────────────── */}
@@ -352,6 +367,9 @@ export default function ProfilePage() {
                 {prefsSaved ? 'Saved' : 'Save Preferences'}
               </button>
             </div>
+            {prefsError && (
+              <div className="mt-2 text-xs text-red-400">Save failed: {prefsError}</div>
+            )}
           </div>
 
           {/* ─── Activity Summary ──────────────────────────────── */}

@@ -39,7 +39,7 @@ ssh root@46.101.247.54
 systemctl status infohub-aggregator
 journalctl -u infohub-aggregator -n 200 -f
 
-# Crons (6 timers, all hit info-hub.io/api/cron/*)
+# Crons (11 timers, all hit info-hub.io/api/cron/*)
 systemctl list-timers --all 'infohub-cron-*'
 journalctl -u 'infohub-cron@*' --since '10 minutes ago' --output=cat | grep 'HTTP'
 
@@ -47,7 +47,7 @@ journalctl -u 'infohub-cron@*' --since '10 minutes ago' --output=cat | grep 'HTT
 cat /etc/infohub-cron.env   # mode 600, contains only CRON_SECRET=...
 ```
 
-The 9 cron timers and their schedules:
+The 11 cron timers and their schedules:
 
 | Endpoint | Schedule |
 | --- | --- |
@@ -58,6 +58,8 @@ The 9 cron timers and their schedules:
 | `/api/cron/alerts` | every 5 min |
 | `/api/cron/check-position-alerts` | every 5 min |
 | `/api/cron/social-fetch` | every 15 min |
+| `/api/cron/refresh-etf-flows` | every 30 min |
+| `/api/cron/refresh-validators` | every 30 min |
 | `/api/cron/portfolio-snapshot` | daily at 12:00 UTC |
 | `/api/cron/telegram-daily` | daily at 08:00 UTC |
 

@@ -19,6 +19,7 @@ export default function NotificationsSection({ email }: Props) {
   const [cooldownMinutes, setCooldownMinutes] = useState(60);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
@@ -43,17 +44,24 @@ export default function NotificationsSection({ email }: Props) {
   const savePrefs = async (emailVal: boolean, cooldown: number) => {
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
-      await fetch('/api/user/data', {
+      const res = await fetch('/api/user/data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           notificationPrefs: { email: emailVal, cooldownMinutes: cooldown },
         }),
       });
+      // Don't claim "Saved" on a 401/500 — the prefs were lost and the
+      // user would never know without this check (saw "Saved" + checkmark
+      // even though the server rejected the change).
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setSaved(true);
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
-    } catch {}
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to save');
+    }
     setSaving(false);
   };
 
@@ -126,13 +134,15 @@ export default function NotificationsSection({ email }: Props) {
       </div>
 
       {/* Save indicator */}
-      {(saving || saved) && (
+      {(saving || saved || saveError) && (
         <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2">
           {saving ? (
             <>
               <Loader2 className="w-3 h-3 text-neutral-500 animate-spin" />
               <span className="text-xs text-neutral-500">Saving...</span>
             </>
+          ) : saveError ? (
+            <span className="text-xs text-red-400">Save failed: {saveError}</span>
           ) : (
             <>
               <Check className="w-3 h-3 text-green-500" />

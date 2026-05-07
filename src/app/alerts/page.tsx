@@ -288,7 +288,7 @@ export default function AlertsPage() {
   const saveNotificationPrefs = async (overrides?: Record<string, any>) => {
     setPrefsSaving(true);
     try {
-      await fetch('/api/user/data', {
+      const res = await fetch('/api/user/data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -304,8 +304,13 @@ export default function AlertsPage() {
         }),
         signal: AbortSignal.timeout(10000),
       });
-    } catch {
-      // Silently handle
+      // Surface non-2xx so the user knows their notification toggle didn't
+      // actually take effect (e.g. session expired). Browser console is
+      // better than nothing — fully silent meant alerts kept firing for
+      // people who thought they'd disabled them.
+      if (!res.ok) console.error('[alerts] saveNotificationPrefs failed:', res.status);
+    } catch (e) {
+      console.error('[alerts] saveNotificationPrefs error:', e);
     }
     setPrefsSaving(false);
   };
