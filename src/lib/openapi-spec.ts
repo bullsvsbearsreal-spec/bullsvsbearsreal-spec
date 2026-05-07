@@ -260,6 +260,20 @@ export const openApiSpec = {
         responses: { 200: { description: 'OK' } },
       },
     },
+    '/restaking': {
+      get: {
+        summary: 'Restaking yield aggregator (EigenLayer + Symbiotic + Karak + LRTs)',
+        description: 'Cross-protocol restaking pools with APY, TVL, reward composition. Source: DeFi Llama yields.',
+        parameters: [
+          { name: 'protocol', in: 'query', schema: { type: 'string' }, description: 'Filter to one protocol (eigenlayer, symbiotic, karak, babylon, renzo, etc.)' },
+          { name: 'chain', in: 'query', schema: { type: 'string' }, description: 'Filter to one chain' },
+          { name: 'minTvl', in: 'query', schema: { type: 'number', default: 1000000 } },
+          { name: 'sort', in: 'query', schema: { type: 'string', enum: ['tvl', 'apy'], default: 'tvl' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+        ],
+        responses: { 200: { description: 'OK' } },
+      },
+    },
     '/earnings-calendar': {
       get: {
         summary: 'Aggregated upcoming protocol events (unlocks, TGEs, halvings, governance)',
