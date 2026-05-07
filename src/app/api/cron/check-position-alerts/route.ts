@@ -206,9 +206,14 @@ export async function GET(req: NextRequest) {
   let positionsTriggered = 0;
   const debug: Array<{ userId: string; kind: string; triggered: number; fired: boolean; reason?: string }> = [];
 
+  // Threshold above which a long is considered "near liquidation". Tied to
+  // the position-health liqBuffer sub-score: anything below this distance
+  // would be a yellow/red alarm anyway.
+  const NEAR_LIQ_PCT = 0.05; // 5% buffer triggers the alert
+
   for (const { rule, positions } of all) {
     usersChecked++;
-    if (rule.kind !== 'funding_flip') {
+    if (rule.kind !== 'funding_flip' && rule.kind !== 'near_liq') {
       debug.push({ userId: rule.userId, kind: rule.kind, triggered: 0, fired: false, reason: 'unknown kind' });
       continue;
     }
@@ -227,38 +232,117 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    // Pull last-2 funding for every open pair
-    const fundingMap = await loadLastTwoFunding(
-      positions.map(p => ({ exchange: p.exchange, symbol: p.symbol })),
-    );
+    // ─── Per-kind trigger evaluation ──────────────────────────────────
+    // Each kind computes:
+    //   - triggered: which positions matched
+    //   - lines:     per-position HTML body
+    //   - headline:  HTML headline
+    //   - emailSubj: email subject
+    //   - pushTitle: short push notification title
+    //   - pushTag:   dedup tag for browser push
+    //   - reasonNo:  debug reason when triggered.length === 0
+    let triggered: typeof positions = [];
+    let lines = '';
+    let headline = '';
+    let emailSubj = '';
+    let pushTitle = '';
+    let pushTag = '';
+    let reasonNo = '';
+    let pushBody = '';
+    let emailRows: Array<{ symbol: string; side: 'long'|'short'; exchange: string; previous: number; current: number }> = [];
 
-    const triggered = positions.filter(p => {
-      const f = fundingMap.get(`${p.exchange}|${p.symbol}`);
-      if (!f) return false;
-      return flippedAgainst(p.side, f);
-    });
+    if (rule.kind === 'funding_flip') {
+      const fundingMap = await loadLastTwoFunding(
+        positions.map(p => ({ exchange: p.exchange, symbol: p.symbol })),
+      );
+      triggered = positions.filter(p => {
+        const f = fundingMap.get(`${p.exchange}|${p.symbol}`);
+        return f ? flippedAgainst(p.side, f) : false;
+      });
+      reasonNo = 'no flips';
+      if (triggered.length > 0) {
+        lines = triggered.map(p => {
+          const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
+          const arrow = p.side === 'long' ? '🔻' : '🔺';
+          const isFlip = f.previous * f.current < 0;
+          const tag = isFlip ? '(now against you)' : '(still against you)';
+          return `${arrow} <b>${p.symbol}</b> ${p.side.toUpperCase()} on ${p.exchange}\n   funding: ${fmtPct(f.previous)} → <b>${fmtPct(f.current)}</b> ${tag}`;
+        }).join('\n\n');
+        const flipped = triggered.some(p => {
+          const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
+          return f.previous * f.current < 0;
+        });
+        headline = flipped
+          ? `⚠️ <b>Funding flipped against your position${triggered.length > 1 ? 's' : ''}</b>`
+          : `⚠️ <b>Funding pressure against your position${triggered.length > 1 ? 's' : ''}</b>`;
+        emailSubj = `Funding flipped on ${triggered.length} position${triggered.length > 1 ? 's' : ''}`;
+        pushTitle = `⚠️ Funding flipped on ${triggered.length} position${triggered.length > 1 ? 's' : ''}`;
+        pushTag = `funding-flip-${rule.id}`;
+        pushBody = triggered
+          .map(p => `${p.symbol} ${p.side.toUpperCase()} on ${p.exchange} — funding now against you`)
+          .join('\n')
+          .slice(0, 240);
+        emailRows = triggered.map(p => {
+          const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
+          return { symbol: p.symbol, side: p.side, exchange: p.exchange, previous: f.previous, current: f.current };
+        });
+      }
+    } else if (rule.kind === 'near_liq') {
+      // Filter positions where mark is within NEAR_LIQ_PCT of liquidation
+      // price. Long: liq is below mark (warn when mark - liq is small).
+      // Short: liq is above mark (warn when liq - mark is small).
+      triggered = positions.filter(p => {
+        if (p.liquidationPrice == null || p.liquidationPrice <= 0) return false;
+        const ref = (p.markPrice && p.markPrice > 0) ? p.markPrice : p.entryPrice;
+        if (!ref || ref <= 0) return false;
+        const distance = p.side === 'long'
+          ? (ref - p.liquidationPrice) / ref
+          : (p.liquidationPrice - ref) / ref;
+        return distance > 0 && distance < NEAR_LIQ_PCT;
+      });
+      reasonNo = 'no near-liq positions';
+      if (triggered.length > 0) {
+        lines = triggered.map(p => {
+          const ref = (p.markPrice && p.markPrice > 0) ? p.markPrice : p.entryPrice;
+          const distance = p.side === 'long'
+            ? (ref - p.liquidationPrice!) / ref
+            : (p.liquidationPrice! - ref) / ref;
+          return `🔥 <b>${p.symbol}</b> ${p.side.toUpperCase()} on ${p.exchange}\n   liq <b>${(distance * 100).toFixed(2)}%</b> away (mark $${ref.toLocaleString()} → liq $${p.liquidationPrice!.toLocaleString()})`;
+        }).join('\n\n');
+        headline = `🚨 <b>Position${triggered.length > 1 ? 's' : ''} approaching liquidation</b>`;
+        emailSubj = `🚨 ${triggered.length} position${triggered.length > 1 ? 's' : ''} near liquidation`;
+        pushTitle = `🚨 ${triggered.length} position${triggered.length > 1 ? 's' : ''} near liquidation`;
+        pushTag = `near-liq-${rule.id}`;
+        pushBody = triggered
+          .map(p => {
+            const ref = (p.markPrice && p.markPrice > 0) ? p.markPrice : p.entryPrice;
+            const distance = p.side === 'long'
+              ? (ref - p.liquidationPrice!) / ref
+              : (p.liquidationPrice! - ref) / ref;
+            return `${p.symbol} ${p.side.toUpperCase()}: liq ${(distance * 100).toFixed(1)}% away`;
+          })
+          .join('\n')
+          .slice(0, 240);
+        // Email row shape reuses the funding-flip table; we put liq distance
+        // into the "current" slot and 0 into "previous" so the renderer
+        // still shows numbers. Future: render-email-html dedicated layout.
+        emailRows = triggered.map(p => {
+          const ref = (p.markPrice && p.markPrice > 0) ? p.markPrice : p.entryPrice;
+          const distance = p.side === 'long'
+            ? (ref - p.liquidationPrice!) / ref
+            : (p.liquidationPrice! - ref) / ref;
+          return { symbol: p.symbol, side: p.side, exchange: p.exchange, previous: 0, current: distance * 100 };
+        });
+      }
+    }
+
     positionsTriggered += triggered.length;
 
     if (triggered.length === 0) {
-      debug.push({ userId: rule.userId, kind: rule.kind, triggered: 0, fired: false, reason: 'no flips' });
+      debug.push({ userId: rule.userId, kind: rule.kind, triggered: 0, fired: false, reason: reasonNo });
       continue;
     }
 
-    // Build the message body. One unified message rather than N per-position pings.
-    // Differentiate "flip" (sign changed) vs "sustained" (still against you).
-    const lines = triggered.map(p => {
-      const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
-      const arrow = p.side === 'long' ? '🔻' : '🔺';
-      const isFlip = f.previous * f.current < 0;
-      const tag = isFlip ? '(now against you)' : '(still against you)';
-      return `${arrow} <b>${p.symbol}</b> ${p.side.toUpperCase()} on ${p.exchange}\n   funding: ${fmtPct(f.previous)} → <b>${fmtPct(f.current)}</b> ${tag}`;
-    }).join('\n\n');
-    const headline = triggered.some(p => {
-      const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
-      return f.previous * f.current < 0;
-    })
-      ? `⚠️ <b>Funding flipped against your position${triggered.length > 1 ? 's' : ''}</b>`
-      : `⚠️ <b>Funding pressure against your position${triggered.length > 1 ? 's' : ''}</b>`;
     const body =
       headline + '\n\n' +
       lines +
@@ -290,14 +374,11 @@ export async function GET(req: NextRequest) {
         channelResults.push('email=RESEND_API_KEY unset');
       } else {
         try {
-          const html = renderEmailHtml(triggered.map(p => {
-            const f = fundingMap.get(`${p.exchange}|${p.symbol}`)!;
-            return { symbol: p.symbol, side: p.side, exchange: p.exchange, previous: f.previous, current: f.current };
-          }));
+          const html = renderEmailHtml(emailRows);
           await resend.emails.send({
             from: 'InfoHub Alerts <noreply@info-hub.io>',
             to: email,
-            subject: `Funding flipped on ${triggered.length} position${triggered.length > 1 ? 's' : ''}`,
+            subject: emailSubj,
             html,
           });
           channelResults.push('email=sent');
@@ -316,12 +397,9 @@ export async function GET(req: NextRequest) {
         channelResults.push('browser_push=VAPID keys unset');
       } else {
         const payload = JSON.stringify({
-          title: `⚠️ Funding flipped on ${triggered.length} position${triggered.length > 1 ? 's' : ''}`,
-          body: triggered
-            .map(p => `${p.symbol} ${p.side.toUpperCase()} on ${p.exchange} — funding now against you`)
-            .join('\n')
-            .slice(0, 240),
-          tag: `funding-flip-${rule.id}`,
+          title: pushTitle,
+          body: pushBody,
+          tag: pushTag,
           url: '/positions',
         });
         let pushSent = 0;

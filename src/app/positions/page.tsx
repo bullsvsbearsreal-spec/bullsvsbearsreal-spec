@@ -262,6 +262,13 @@ export default function PositionsPage() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Link
+              href="/positions/simulate"
+              className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
+              title="What if I open this position? Pre-trade decision engine."
+            >
+              🧮 Simulate trade
+            </Link>
+            <Link
               href="/account/connections"
               className="inline-flex items-center gap-1 text-xs text-neutral-400 hover:text-hub-yellow"
             >
@@ -776,6 +783,16 @@ function FundingCarryStrip({ dailyCarry }: { dailyCarry: number }) {
 // nothing's flagged). Color-coded so users can scan a 30-position table
 // and immediately see which ones need attention.
 
+// "Vibes" emoji per health label — leans into the screenshot/share-friendly
+// format. Used on the badge alongside the numeric score.
+const VIBE_EMOJI: Record<'critical' | 'risky' | 'caution' | 'ok' | 'healthy', string> = {
+  critical: '🔥',
+  risky: '😰',
+  caution: '😐',
+  ok: '🙂',
+  healthy: '😎',
+};
+
 function HealthBadge({
   score,
   label,
@@ -794,9 +811,11 @@ function HealthBadge({
     label === 'ok'       ? 'bg-sky-500/15 text-sky-300 border-sky-400/30' :
                            'bg-emerald-500/15 text-emerald-300 border-emerald-400/30';
 
+  const vibe = VIBE_EMOJI[label];
+
   const title = reasons.length > 0
-    ? `Health: ${score}/100 (${label})\n• ${reasons.join('\n• ')}`
-    : `Health: ${score}/100 (${label}) — no concerns`;
+    ? `${vibe} Health: ${score}/100 (${label})\n• ${reasons.join('\n• ')}`
+    : `${vibe} Health: ${score}/100 (${label}) — no concerns`;
 
   return (
     <span
@@ -805,6 +824,7 @@ function HealthBadge({
         compact ? 'text-[10px]' : 'text-[11px]'
       } ${tone}`}
     >
+      <span className="text-[12px]" aria-hidden>{vibe}</span>
       {score}
       {!compact && <span className="opacity-60 font-normal text-[9px] uppercase tracking-wider">{label}</span>}
     </span>
