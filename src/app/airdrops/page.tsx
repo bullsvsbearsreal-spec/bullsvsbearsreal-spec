@@ -10,7 +10,6 @@ import {
   ExternalLink, Star, Clock, CheckCircle2, AlertCircle,
   Sparkles, Shield, Zap, Globe2, Users, Gamepad2, Wrench,
 } from 'lucide-react';
-import DataFreshness from '@/components/DataFreshness';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -564,7 +563,16 @@ export default function AirdropsPage() {
               <span className="text-neutral-400">{counts.upcoming} Upcoming</span>
             </div>
             <span className="text-neutral-600">{counts.total} Total</span>
-            <DataFreshness exchangeCount={1} lastUpdated={data?.dataAsOf ? new Date(data.dataAsOf).getTime() : null} />
+            {/* Hand-curated list, NOT auto-refreshed — displaying "Updated Xh
+                ago" via DataFreshness made the page look broken (1430h+ ago,
+                red dot) when it was working as designed. Show the curator-
+                review date as a plain label instead. */}
+            {data?.dataAsOf && (
+              <span className="text-[10px] text-neutral-500">
+                <span className="w-1 h-1 rounded-full bg-emerald-500/60 inline-block mr-1.5 align-middle" />
+                Hand-curated · last reviewed {data.dataAsOf}
+              </span>
+            )}
           </div>
         </div>
 
