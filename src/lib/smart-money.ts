@@ -111,18 +111,30 @@ function summariseFills(fills: NormalizedTrade[], lookbackMs: number): {
   return { realised, closing, wins, biggestWin, biggestLoss, topSymbols, lastTs };
 }
 
-/** Concurrency-limited parallel map (no external dep). */
-async function pmap<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
+/**
+ * Concurrency-limited parallel map (no external dep). Each worker pulls
+ * the next item from a shared cursor, calls fn, and writes the result
+ * into the pre-sized output array. Errors thrown by fn are caught and
+ * the slot is set to undefined so a single bad fetch can't kill the
+ * whole batch (caller .filter()s undefined entries).
+ */
+async function pmap<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<Array<R | undefined>> {
+  if (items.length === 0) return [];
+  const out: Array<R | undefined> = new Array(items.length);
   let cursor = 0;
   async function worker() {
     while (true) {
       const i = cursor++;
       if (i >= items.length) return;
-      out[i] = await fn(items[i], i);
+      try {
+        out[i] = await fn(items[i], i);
+      } catch (e) {
+        out[i] = undefined; // sentinel for caller to filter
+      }
     }
   }
-  await Promise.all(Array(Math.min(limit, items.length)).fill(0).map(() => worker()));
+  const workerCount = Math.min(limit, items.length);
+  await Promise.all(Array(workerCount).fill(0).map(() => worker()));
   return out;
 }
 
@@ -184,8 +196,10 @@ export async function buildSmartMoneyFeed(opts: { topN?: number; lookbackDays?: 
     return entry;
   });
 
-  // Filter dead wallets (no recent activity), sort by 90d realised PnL.
-  const live = enriched.filter(e => e.lastTradeTs != null);
+  // Filter dead wallets (no recent activity) AND drop any undefined slots
+  // from pmap (set to undefined when a worker threw — bad fetches don't
+  // kill the whole batch). Sort by 90d realised PnL.
+  const live = enriched.filter((e): e is SmartMoneyEntry => e != null && e.lastTradeTs != null);
   live.sort((a, b) => b.realised90dUsd - a.realised90dUsd);
   for (let i = 0; i < live.length; i++) live[i].rank = i + 1;
 

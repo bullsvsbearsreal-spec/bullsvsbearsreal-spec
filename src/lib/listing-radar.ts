@@ -64,24 +64,37 @@ interface BinanceArticleListResponse {
   };
 }
 
-/** Pull a Binance announcement catalog. */
+/**
+ * Pull a Binance announcement catalog. Tries direct first; on 4xx/5xx
+ * (or any failure) falls back to PROXY_URL — same pattern we use for
+ * Binance Futures funding when binance.com geo-blocks DO IPs.
+ */
 async function fetchBinanceCatalog(catalogId: number): Promise<Array<{ id: number; code: string; title: string; releaseDate: number }>> {
-  try {
-    const url = `https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=${catalogId}&pageNo=1&pageSize=30`;
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-      },
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as BinanceArticleListResponse;
-    const articles = json.data?.catalogs?.[0]?.articles ?? [];
-    return articles.map(a => ({ id: a.id, code: a.code, title: a.title, releaseDate: a.releaseDate }));
-  } catch {
-    return [];
+  const directUrl = `https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=${catalogId}&pageNo=1&pageSize=30`;
+  const proxyUrlRaw = (process.env.PROXY_URL || '').trim();
+  const proxiedUrl = proxyUrlRaw && proxyUrlRaw.startsWith('https://')
+    ? `${proxyUrlRaw.replace(/\/$/, '')}/?url=${encodeURIComponent(directUrl)}`
+    : null;
+
+  for (const url of [directUrl, proxiedUrl].filter(Boolean) as string[]) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+        },
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as BinanceArticleListResponse;
+      const articles = json.data?.catalogs?.[0]?.articles ?? [];
+      if (articles.length === 0) continue;
+      return articles.map(a => ({ id: a.id, code: a.code, title: a.title, releaseDate: a.releaseDate }));
+    } catch {
+      continue;
+    }
   }
+  return [];
 }
 
 /**

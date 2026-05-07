@@ -121,6 +121,14 @@ export function computeCostBasis(trades: UserTradeRow[]): CostBasisSummary {
       // realised PnL contribution of this fill.
       let remainingToClose = t.size;
       const closingPriceUsd = t.price;
+      // Track fee allocation: divide the trade's fee proportionally by
+      // size consumed, but only ONCE total — previous version added
+      // (fee * consumed/t.size) per lot pop, which sums to fee × N when
+      // a fill spans N lots, double/triple-counting fees. Allocate the
+      // full fee proportionally as we go and stop accruing when the trade
+      // is fully consumed.
+      const totalFeeForTrade = fee;
+      let feeAllocated = 0;
 
       while (remainingToClose > 0 && a.lots.length > 0) {
         const lot = a.lots[0];
@@ -135,12 +143,26 @@ export function computeCostBasis(trades: UserTradeRow[]): CostBasisSummary {
         const yearBucket = a.byYear.get(t.ts.getUTCFullYear()) ?? { realized: 0, fees: 0, trades: 0 };
         yearBucket.realized += pnl;
         yearBucket.trades++;
-        yearBucket.fees += (fee * consumed / t.size); // pro-rata fee
+        // Pro-rate the SAME total fee across consumed slices. Sum across
+        // all loop iterations of one fill stays bounded by totalFeeForTrade.
+        const feeShare = t.size > 0 ? totalFeeForTrade * (consumed / t.size) : 0;
+        yearBucket.fees += feeShare;
+        feeAllocated += feeShare;
         a.byYear.set(t.ts.getUTCFullYear(), yearBucket);
 
         lot.remainingSize -= consumed;
         remainingToClose -= consumed;
         if (lot.remainingSize <= 1e-9) a.lots.shift();
+      }
+      // Defensive: if the close didn't consume the full size (i.e. there
+      // were no opposing lots and we don't open a flip below), still count
+      // any remaining fee share against the current year so the user's
+      // total fees-paid matches the venue receipt.
+      const feeRemainder = totalFeeForTrade - feeAllocated;
+      if (feeRemainder > 1e-9) {
+        const yb = a.byYear.get(t.ts.getUTCFullYear()) ?? { realized: 0, fees: 0, trades: 0 };
+        yb.fees += feeRemainder;
+        a.byYear.set(t.ts.getUTCFullYear(), yb);
       }
 
       // If we tried to close more than we had open lots for, treat the

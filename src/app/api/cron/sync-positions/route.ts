@@ -115,9 +115,11 @@ export async function GET(req: NextRequest) {
 
     // ─── CEX keys ───────────────────────────────────────
     const keys = target.exchangeKeys.slice(0, MAX_KEYS_PER_USER);
-    // Pre-load high-water marks for incremental trade sync, same pattern as
-    // the wallet branch below. Single query per user, then in-memory lookup.
-    const cexLastTradeTs = await getLastTradeTsBySource(target.userId).catch(() => new Map<string, Date>());
+    // Pre-load high-water marks for incremental trade sync ONCE per user.
+    // Used by both the CEX and DEX branches below — previously each branch
+    // made its own redundant query.
+    const lastTradeTs = await getLastTradeTsBySource(target.userId).catch(() => new Map<string, Date>());
+    const cexLastTradeTs = lastTradeTs;
 
     await Promise.all(keys.map(async (k) => {
       const ks: KeySyncStat = { keyId: k.id, exchange: k.exchange, positions: 0 };
@@ -215,11 +217,10 @@ export async function GET(req: NextRequest) {
     // / base / solana) currently fall through to "no client" — those need
     // per-DEX subgraph queries (GMX, Aevo, etc.) and land in follow-ups.
     const wallets = target.wallets.slice(0, MAX_WALLETS_PER_USER);
-    // Pre-load high-water marks for incremental trade-history sync. Each
-    // (exchange, source_id) pair gets the timestamp of its newest stored
-    // fill, so the upstream call asks "give me fills since X" and returns
-    // a small delta instead of the full 90-day window every minute.
-    const lastTradeTs = await getLastTradeTsBySource(target.userId).catch(() => new Map<string, Date>());
+    // Reuses `lastTradeTs` already loaded above before the CEX branch.
+    // High-water marks per (exchange, source_id) → "give me fills since X"
+    // so the upstream call returns a small delta instead of the full
+    // 90-day window every minute.
 
     await Promise.all(wallets.map(async (w) => {
       const ws: WalletSyncStat = { walletId: w.id, chain: w.chain, positions: 0 };

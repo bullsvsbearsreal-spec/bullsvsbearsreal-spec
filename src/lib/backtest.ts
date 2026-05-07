@@ -192,11 +192,14 @@ interface FundingDailyRow {
 }
 
 /**
- * Pull from funding_snapshots, normalise to daily rate (rate × 24/intervalH),
- * group by (date, symbol, exchange). For carry, we want the LONG-side
- * payment, so we take the storage convention "rate > 0 = longs pay" as is.
+ * Pull from funding_snapshots, normalise to daily rate using the venue's
+ * actual native interval (1h for HL/dYdX/GMX/Lighter, 4h for Kraken,
+ * 8h for most CEXes). Group by (date, symbol, exchange).
+ *
+ * For carry, we use the storage convention "rate > 0 = longs pay" as is.
  */
 async function loadFundingDailies(opts: FundingCarryConfig): Promise<FundingDailyRow[]> {
+  const { intervalHoursFor } = await import('./funding-intervals');
   const sql = getSQL();
   const days = Math.min(Math.max(opts.lookbackDays, 3), 50);
   const rows = await sql`
@@ -213,19 +216,21 @@ async function loadFundingDailies(opts: FundingCarryConfig): Promise<FundingDail
     GROUP BY 1, 2, 3
     ORDER BY 1 ASC
   `;
-  // Convert per-interval rate (%) to daily fraction. We don't store the
-  // venue's interval here; assume 8h (most CEX) — acceptable approximation
-  // for backtest purposes since the relative ordering between venues is
-  // what matters.
-  // For exchanges with 1h funding (HL/dYdX/GMX) we'd be UNDER-counting, but
-  // since the strategy goes long the most-negative and short the most-
-  // positive, the SPREAD it harvests scales linearly. Conservative bias.
-  return (rows as any[]).map(r => ({
-    date: typeof r.day === 'string' ? r.day : r.day.toISOString().slice(0, 10),
-    symbol: r.symbol,
-    exchange: r.exchange,
-    dailyRate: (Number(r.avg_rate) / 100) * (24 / 8),
-  }));
+  // Convert per-interval rate (%) to daily fraction using each venue's
+  // actual native interval. HL/dYdX/GMX/Lighter at 1h compound 24× per
+  // day; Binance/Bybit/OKX at 8h compound 3×. Previously this was hard-
+  // coded to 8h which UNDER-counted HL by 8× — significant since HL
+  // dominates the leaderboard data.
+  return (rows as any[]).map(r => {
+    const intervalH = intervalHoursFor(r.exchange);
+    const ratePerInterval = Number(r.avg_rate) / 100;
+    return {
+      date: typeof r.day === 'string' ? r.day : r.day.toISOString().slice(0, 10),
+      symbol: r.symbol,
+      exchange: r.exchange,
+      dailyRate: ratePerInterval * (24 / intervalH),
+    };
+  });
 }
 
 /**
@@ -257,7 +262,13 @@ export async function runFundingCarryBacktest(config: FundingCarryConfig): Promi
   const dates = Array.from(byDate.keys()).sort();
 
   let cumulative = 0;
-  let peak = 0, maxDd = 0;
+  // Track peak as the highest cumulative value seen so far; allow it to be
+  // negative at the start of the run so a strategy that loses money on day 1
+  // still records the drawdown from that peak (vs the previous version which
+  // initialised peak=0 and skipped negative-cumulative days entirely, hiding
+  // early losses from maxDrawdownPct).
+  let peak = -Infinity;
+  let maxDd = 0;
   const dailyReturns: number[] = [];
   const series: BacktestPoint[] = [];
   let trades = 0;
@@ -279,7 +290,11 @@ export async function runFundingCarryBacktest(config: FundingCarryConfig): Promi
     trades += 2; // open + close per leg per day, simplified
 
     peak = Math.max(peak, cumulative);
-    const dd = peak > 0 ? (peak - cumulative) / peak : 0;
+    // Use notional as the denominator so DD is a % of capital at risk.
+    // (peak − cumulative) is the absolute USD drop from the high-water
+    // mark; dividing by notional gives a comparable %.
+    const ddUsd = peak - cumulative;
+    const dd = config.notionalUsd > 0 ? ddUsd / config.notionalUsd : 0;
     if (dd > maxDd) maxDd = dd;
 
     if (series.length > 0) {

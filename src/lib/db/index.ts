@@ -3453,7 +3453,12 @@ export async function saveUserTrades(userId: string, trades: UserTradeInsert[]):
       )
       ON CONFLICT (user_id, exchange, venue_trade_id) DO NOTHING
     `;
-    totalInserted += (result as any).count ?? chunk.length;
+    // postgres-js exposes .count as a string of actually-affected rows;
+    // ON CONFLICT skips don't count, so this gives a true "new rows" tally.
+    // Don't fall back to chunk.length on zero — that overcounts every dedup
+    // batch as a full insert and inflates the cron metrics.
+    const inserted = parseInt(String((result as any).count ?? '0'), 10);
+    totalInserted += Number.isFinite(inserted) ? inserted : 0;
   }
   return totalInserted;
 }
