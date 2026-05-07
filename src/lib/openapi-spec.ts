@@ -260,6 +260,29 @@ export const openApiSpec = {
         responses: { 200: { description: 'OK' } },
       },
     },
+    '/earnings-calendar': {
+      get: {
+        summary: 'Aggregated upcoming protocol events (unlocks, TGEs, halvings, governance)',
+        description: 'One unified timeline of every upcoming crypto event that historically moves price. Source-attributed.',
+        parameters: [
+          { name: 'type', in: 'query', schema: { type: 'string', enum: ['unlock', 'tge', 'halving', 'governance', 'mainnet'] }, description: 'Filter to a single event type' },
+          { name: 'days', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 730, default: 90 }, description: 'Only return events within N days' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 1000, default: 200 } },
+        ],
+        responses: { 200: { description: 'OK' } },
+      },
+    },
+    '/whale-liq': {
+      get: {
+        summary: 'Whale Liquidation Roulette — positions sorted by proximity to liq',
+        description: 'Hyperliquid whale positions across the leaderboard sorted by closest-to-liquidation. Useful for cascade prediction and alpha generation.',
+        parameters: [
+          { name: 'within', in: 'query', schema: { type: 'number', minimum: 0.001, maximum: 1, default: 0.20 }, description: 'Distance-to-liq threshold (0..1). 0.05 = within 5%.' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+        ],
+        responses: { 200: { description: 'OK' } },
+      },
+    },
     '/whales': {
       get: {
         summary: 'Recent on-chain DEX whale trades',

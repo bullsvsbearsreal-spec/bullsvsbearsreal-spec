@@ -31,6 +31,8 @@ export async function GET() {
       { path: '/api/v1/options', method: 'GET', description: 'Options market data: max pain, put/call ratio, IV (Deribit, Binance, OKX, Bybit)' },
       { path: '/api/v1/basis', method: 'GET', description: 'CME Bitcoin + Ether futures basis vs spot, annualised' },
       { path: '/api/v1/whales', method: 'GET', description: 'On-chain DEX whale trades — global feed or per-wallet' },
+      { path: '/api/v1/whale-liq', method: 'GET', description: 'Whale Liquidation Roulette — Hyperliquid positions sorted by proximity to liq' },
+      { path: '/api/v1/earnings-calendar', method: 'GET', description: 'Aggregated upcoming protocol events (unlocks, TGEs, halvings, governance)' },
       { path: '/api/v1/exchanges', method: 'GET', description: 'Supported exchanges with fees and intervals' },
       { path: '/api/v1/status', method: 'GET', description: 'API health status (no auth required)' },
       { path: '/api/v1/openapi', method: 'GET', description: 'OpenAPI 3.1 spec for codegen + Swagger / Postman import (no auth)' },
