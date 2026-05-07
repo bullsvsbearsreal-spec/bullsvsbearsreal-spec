@@ -296,13 +296,25 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .filter((t: any) => t.symbol.endsWith('-USDT'))
         .map((ticker: any) => {
           const lastPrice = parseFloat(ticker.lastPrice) || 0;
+          const openPrice = parseFloat(ticker.openPrice) || 0;
+          // BingX returns openPrice=0 for newly-listed pairs (and some other
+          // edge cases) but still computes priceChangePercent as if dividing
+          // by a tiny baseline — yielding garbage like 280799%, which then
+          // dominated the Momentum / Breakout screeners. When the open is
+          // zero we recompute the percent ourselves from (last-open)/open
+          // which is also undefined → fall back to 0 so the symbol shows
+          // as flat rather than as a moonshot.
+          let pct = parseFloat(ticker.priceChangePercent) || 0;
+          if (openPrice <= 0 || Math.abs(pct) > 1000) {
+            pct = 0;
+          }
           return {
             symbol: ticker.symbol.replace('-USDT', ''),
             exchange: 'BingX',
             lastPrice,
             price: lastPrice,
-            priceChangePercent24h: parseFloat(ticker.priceChangePercent) || 0,
-            changePercent24h: parseFloat(ticker.priceChangePercent) || 0,
+            priceChangePercent24h: pct,
+            changePercent24h: pct,
             high24h: parseFloat(ticker.highPrice) || 0,
             low24h: parseFloat(ticker.lowPrice) || 0,
             volume24h: parseFloat(ticker.volume) || 0,
