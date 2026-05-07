@@ -260,6 +260,18 @@ export const openApiSpec = {
         responses: { 200: { description: 'OK' } },
       },
     },
+    '/listing-radar': {
+      get: {
+        summary: 'CEX listing announcement tracker (pre-listing leak detector)',
+        description: 'Real-time feed of Binance listing announcements (new + delistings), classified by type, with tickers extracted. Listings historically pump 30-200% in the first 24h.',
+        parameters: [
+          { name: 'type', in: 'query', schema: { type: 'string', enum: ['spot', 'perp', 'futures', 'option', 'delisting', 'other'] } },
+          { name: 'hot', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = only return announcements <6h old' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } },
+        ],
+        responses: { 200: { description: 'OK' } },
+      },
+    },
     '/backtest': {
       post: {
         summary: 'Run a strategy backtest (DCA or funding-rate carry)',

@@ -37,6 +37,7 @@ export async function GET() {
       { path: '/api/v1/smart-money-leaderboard', method: 'GET', description: 'Top Hyperliquid wallets ranked by 90-day realized PnL with closing-trade analytics' },
       { path: '/api/v1/bridge-flows', method: 'GET', description: 'Cross-chain bridge flow tracker (Wormhole): volume, top chain pairs, top assets, top corridors' },
       { path: '/api/v1/backtest', method: 'POST', description: 'Run a strategy backtest (DCA or funding-rate carry) on historical data' },
+      { path: '/api/v1/listing-radar', method: 'GET', description: 'CEX listing announcement tracker (pre-listing leak detector) — Binance listings + delistings' },
       { path: '/api/v1/exchanges', method: 'GET', description: 'Supported exchanges with fees and intervals' },
       { path: '/api/v1/status', method: 'GET', description: 'API health status (no auth required)' },
       { path: '/api/v1/openapi', method: 'GET', description: 'OpenAPI 3.1 spec for codegen + Swagger / Postman import (no auth)' },
