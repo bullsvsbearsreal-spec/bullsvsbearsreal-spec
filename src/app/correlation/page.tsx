@@ -149,10 +149,20 @@ export default function CorrelationPage() {
     useApi<CorrelationData>({
       key: 'correlation',
       fetcher: useCallback(async () => {
-        const res = await fetch('/api/correlation?count=25');
+        // Pass an AbortSignal so a slow upstream actually cancels the
+        // fetch (the useApi wrapper's 25s timeout would otherwise just
+        // reject the promise without aborting the in-flight request).
+        const res = await fetch('/api/correlation?count=25', {
+          signal: AbortSignal.timeout(25_000),
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       }, []),
+      // Bump timeout from the 15 s default — first-load page-wave with
+      // 30+ parallel API requests + DO function cold-start can push this
+      // request past 15 s, surfacing a misleading "operation aborted"
+      // error to the user even though the request would have succeeded.
+      timeout: 25_000,
       refreshInterval: 60000,
     });
 
