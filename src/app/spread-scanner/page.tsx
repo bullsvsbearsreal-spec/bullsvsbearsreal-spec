@@ -91,7 +91,15 @@ export default function SpreadScannerPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={rows.length} lastUpdated={lastUpdate} />
+            {/* DataFreshness's `exchangeCount` prop renders as "X exchanges".
+                Passing rows.length here was rendering "773 exchanges" — that's
+                773 SYMBOLS with cross-exchange spreads, not the exchange count.
+                Use the `sources` prop to render an accurate label. */}
+            <DataFreshness
+              exchangeCount={0}
+              sources={[`${rows.length} symbols across exchanges`]}
+              lastUpdated={lastUpdate}
+            />
             <button onClick={fetchData} className="p-1.5 rounded-lg hover:bg-white/[0.05] transition" title="Refresh">
               <RefreshCw className={`w-4 h-4 text-neutral-500 ${loading ? 'animate-spin' : ''}`} />
             </button>
