@@ -28,8 +28,16 @@ export async function PUT(
 
   const session = await auth();
   const { id } = await params;
-  const body = await request.json();
-  const role = body.role;
+  // Guard against malformed body — without this, an empty/non-JSON body
+  // throws SyntaxError outside the try/catch below and surfaces as an
+  // opaque 500 instead of the obvious 400.
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+  const role = body?.role;
 
   if (!VALID_ROLES.includes(role)) {
     return NextResponse.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
