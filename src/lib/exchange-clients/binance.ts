@@ -11,7 +11,7 @@
  * Docs: https://binance-docs.github.io/apidocs/futures/en/#account-information-v2-user_data
  */
 import { createHmac } from 'crypto';
-import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition } from './types';
+import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade } from './types';
 
 const BASE = 'https://fapi.binance.com';
 const TIMEOUT_MS = 12_000;
@@ -268,5 +268,80 @@ export const binanceClient: ExchangeClient = {
       map.set(sym, (map.get(sym) ?? 0) + v);
     }
     return map;
+  },
+
+  /**
+   * Binance USDM Futures user trades. /fapi/v1/userTrades returns up to 1000
+   * fills, paginated by `fromId` or `startTime`/`endTime`. We use startTime
+   * for incremental sync (caller passes the high-water-mark timestamp).
+   *
+   * Realised PnL is reported per-fill on closing trades via the
+   * `realizedPnl` field. Fee in `commission`, fee asset in `commissionAsset`.
+   * For USDT-margined contracts the fee asset is usually USDT (≈ USD).
+   */
+  async fetchTradeHistory(creds, sinceMs?: number): Promise<NormalizedExchangeTrade[]> {
+    const since = sinceMs ?? Date.now() - 30 * 86400_000;
+    interface BinanceUserTrade {
+      symbol: string;
+      id: number;
+      orderId: number;
+      side: 'BUY' | 'SELL';
+      price: string;
+      qty: string;
+      quoteQty: string;
+      realizedPnl: string;
+      commission: string;
+      commissionAsset: string;
+      time: number;
+      positionSide: 'LONG' | 'SHORT' | 'BOTH';
+      maker: boolean;
+      buyer: boolean;
+    }
+    // Binance returns at most 1000 trades per page. Loop with `fromId` until
+    // exhausted or we exceed a 5-page hard cap to keep the cron tick bounded.
+    const all: BinanceUserTrade[] = [];
+    let fromId: number | undefined;
+    for (let page = 0; page < 5; page++) {
+      const params: Record<string, string | number> = { startTime: since, limit: 1000 };
+      if (fromId) params.fromId = fromId + 1;
+      const rows = await signedGet<BinanceUserTrade[]>('/fapi/v1/userTrades', params, creds);
+      if (rows.length === 0) break;
+      all.push(...rows);
+      if (rows.length < 1000) break;
+      fromId = rows[rows.length - 1].id;
+    }
+
+    const out: NormalizedExchangeTrade[] = [];
+    for (const r of all) {
+      const price = parseFloat(r.price);
+      const qty = parseFloat(r.qty);
+      if (!Number.isFinite(price) || !Number.isFinite(qty) || qty === 0) continue;
+
+      const realized = parseFloat(r.realizedPnl);
+      const fee = parseFloat(r.commission);
+      const symbol = symbolToBase(r.symbol);
+      // Direction inference:
+      //   - hedge mode (positionSide=LONG/SHORT): SELL on LONG = close, BUY on LONG = open. Same logic mirrored.
+      //   - one-way mode (positionSide=BOTH): use realizedPnl != 0 as the close indicator.
+      let direction: NormalizedExchangeTrade['direction'] | undefined;
+      if (r.positionSide === 'LONG') direction = r.side === 'BUY' ? 'open' : 'close';
+      else if (r.positionSide === 'SHORT') direction = r.side === 'SELL' ? 'open' : 'close';
+      else direction = Number.isFinite(realized) && realized !== 0 ? 'close' : undefined;
+
+      out.push({
+        symbol,
+        side: r.side === 'BUY' ? 'buy' : 'sell',
+        direction,
+        size: Math.abs(qty),
+        price,
+        valueUsd: parseFloat(r.quoteQty) || (price * Math.abs(qty)),
+        // commissionAsset is usually USDT (~$1); we treat it as USD.
+        feeUsd: Number.isFinite(fee) ? Math.abs(fee) : null,
+        realizedPnlUsd: Number.isFinite(realized) && realized !== 0 ? realized : null,
+        venueTradeId: String(r.id),
+        ts: new Date(r.time),
+      });
+    }
+    return out;
   },
 };

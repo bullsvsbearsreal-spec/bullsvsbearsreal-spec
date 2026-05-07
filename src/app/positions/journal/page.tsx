@@ -184,8 +184,8 @@ export default function JournalPage() {
               </div>
               <p className="text-sm text-neutral-500 mt-1">
                 Every closed trade across your connected wallets and keys, with realised PnL,
-                win rate, and a 90-day cumulative chart. Currently live for Hyperliquid;
-                Binance / Bybit / OKX coming soon.
+                win rate, and a 90-day cumulative chart. Live for Hyperliquid, Binance, Bybit,
+                and OKX. More venues coming as their clients gain trade-history support.
               </p>
             </div>
             <button

@@ -16,7 +16,7 @@
  * Docs: https://www.okx.com/docs-v5/en/
  */
 import { createHmac } from 'crypto';
-import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition } from './types';
+import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade } from './types';
 
 const BASE = 'https://www.okx.com';
 const TIMEOUT_MS = 12_000;
@@ -200,5 +200,71 @@ export const okxClient: ExchangeClient = {
       if (rows.length < 100) break;
     }
     return map;
+  },
+
+  /**
+   * OKX V5 fills history.
+   *   GET /api/v5/trade/fills-history?instType=SWAP&begin=<ms>&limit=100
+   *
+   * `subType` indicates open/close: 1=open long, 2=open short, 3=close long,
+   * 4=close short. `pnl` carries realized PnL on closing fills. `fee` is
+   * negative when paid (we flip sign for our convention).
+   */
+  async fetchTradeHistory(creds, sinceMs?: number): Promise<NormalizedExchangeTrade[]> {
+    const since = sinceMs ?? Date.now() - 30 * 86400_000;
+    interface OkxFill {
+      instId: string;
+      tradeId: string;
+      side: 'buy' | 'sell';
+      fillSz: string;
+      fillPx: string;
+      fillPnl?: string;
+      fee?: string;
+      feeCcy?: string;
+      ts: string;
+      subType: string;
+      execType?: string;
+    }
+    const out: NormalizedExchangeTrade[] = [];
+    let afterId: string | undefined;
+    for (let page = 0; page < 5; page++) {
+      const qs = ['instType=SWAP', `begin=${since}`, 'limit=100'];
+      if (afterId) qs.push(`after=${afterId}`);
+      const json: { code: string; data: OkxFill[] } =
+        await signedGet('/api/v5/trade/fills-history', qs.join('&'), creds);
+      const rows = json.data ?? [];
+      if (rows.length === 0) break;
+      for (const r of rows) {
+        const price = parseFloat(r.fillPx);
+        const qty = parseFloat(r.fillSz);
+        if (!Number.isFinite(price) || !Number.isFinite(qty) || qty === 0) continue;
+        const pnl = r.fillPnl != null ? parseFloat(r.fillPnl) : NaN;
+        const fee = r.fee != null ? parseFloat(r.fee) : NaN;
+        let direction: NormalizedExchangeTrade['direction'] | undefined;
+        if (r.subType === '1' || r.subType === '2') direction = 'open';
+        else if (r.subType === '3' || r.subType === '4') direction = 'close';
+        else direction = Number.isFinite(pnl) && pnl !== 0 ? 'close' : undefined;
+
+        out.push({
+          symbol: instIdToSymbol(r.instId),
+          side: r.side === 'buy' ? 'buy' : 'sell',
+          direction,
+          size: Math.abs(qty),
+          price,
+          valueUsd: price * Math.abs(qty),
+          // OKX fee is negative when paid → flip sign so feeUsd is positive cost.
+          feeUsd: Number.isFinite(fee) ? Math.abs(fee) : null,
+          realizedPnlUsd: Number.isFinite(pnl) && pnl !== 0 ? pnl : null,
+          venueTradeId: r.tradeId,
+          ts: new Date(parseInt(r.ts, 10)),
+        });
+      }
+      // OKX paginates with `after` = last billId (move backwards in time).
+      // Last item id = oldest in this page.
+      const last = rows[rows.length - 1] as any;
+      afterId = last.billId ?? last.tradeId;
+      if (rows.length < 100) break;
+    }
+    return out;
   },
 };

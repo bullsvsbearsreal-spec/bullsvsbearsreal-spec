@@ -55,6 +55,32 @@ export interface KeyValidation {
   warning?: string;
 }
 
+/**
+ * One filled trade as returned by an exchange's userTrades / fills /
+ * execution-list endpoint. Mirrors NormalizedTrade in wallet-clients
+ * so the sync cron can persist DEX + CEX trades through the same path.
+ */
+export interface NormalizedExchangeTrade {
+  symbol: string;
+  /** 'buy' | 'sell' (CEX standard). */
+  side: 'buy' | 'sell';
+  /** Optional finer qualifier for derivatives (open / close / reduce / add). */
+  direction?: 'open' | 'close' | 'reduce' | 'add';
+  /** Size in base-asset units. */
+  size: number;
+  price: number;
+  /** Filled USD notional. */
+  valueUsd: number;
+  /** Fees paid in USD (sign-positive). */
+  feeUsd?: number | null;
+  /** Realised PnL on closing fills. Null for opens. Most CEXes report this. */
+  realizedPnlUsd?: number | null;
+  /** Original venue trade id (e.g. Binance tradeId). Used for dedup. */
+  venueTradeId: string;
+  /** Fill timestamp. */
+  ts: Date;
+}
+
 export interface ExchangeClient {
   readonly exchange: SupportedExchange;
 
@@ -83,4 +109,14 @@ export interface ExchangeClient {
    * which the UI shows as "—" — same as today.
    */
   fetchCumulativeFunding?(creds: ExchangeCredentials, sinceMs?: number): Promise<Map<string, number>>;
+
+  /**
+   * Fetch trade fills since `sinceMs` (default 30 days lookback). Caller
+   * dedupes via venueTradeId at the DB layer, so a small overlap window
+   * is safe — return whatever the venue gives back.
+   *
+   * Optional — clients that don't implement just don't contribute to the
+   * Trade Journal / Tax aggregator. Failure is non-fatal in the cron.
+   */
+  fetchTradeHistory?(creds: ExchangeCredentials, sinceMs?: number): Promise<NormalizedExchangeTrade[]>;
 }

@@ -13,7 +13,21 @@
  * Docs: https://bybit-exchange.github.io/docs/v5/intro
  */
 import { createHmac } from 'crypto';
-import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition } from './types';
+import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade } from './types';
+
+/**
+ * Strip USDT/USDC quote + 1000/1M multipliers + SHIB1000 suffix to get the
+ * canonical base symbol Bybit uses elsewhere (and that funding_snapshots
+ * stores). Same logic as fetchPositions inline-strip but factored out so
+ * fetchTradeHistory can reuse it.
+ */
+function bybitToBase(s: string): string {
+  let sym = s.replace(/USDT$|USDC$/, '');
+  if (sym.startsWith('1000')) sym = sym.slice(4);
+  if (sym.startsWith('1M')) sym = sym.slice(2);
+  if (/^[A-Z]+1000$/.test(sym)) sym = sym.slice(0, -4);
+  return sym;
+}
 
 const BASE = 'https://api.bybit.com';
 const TIMEOUT_MS = 12_000;
@@ -215,5 +229,73 @@ export const bybitClient: ExchangeClient = {
       if (!cursor) break;
     }
     return map;
+  },
+
+  /**
+   * Bybit V5 execution list — every fill the account has settled.
+   *   GET /v5/execution/list?category=linear&startTime=...&limit=100
+   *
+   * Realised PnL is in `closedPnl` (only on closing fills). Fee in
+   * `execFee` (signed: negative = received). `side` = 'Buy' | 'Sell'.
+   * `closedSize` > 0 indicates a closing fill (Bybit reports the qty
+   * being closed by this fill).
+   */
+  async fetchTradeHistory(creds, sinceMs?: number): Promise<NormalizedExchangeTrade[]> {
+    const since = sinceMs ?? Date.now() - 30 * 86400_000;
+    interface BybitExec {
+      execId: string;
+      symbol: string;
+      side: 'Buy' | 'Sell';
+      execPrice: string;
+      execQty: string;
+      execValue: string;
+      execFee: string;
+      feeCurrency: string;
+      closedSize: string;
+      closedPnl?: string;
+      execTime: string;       // ms timestamp as string
+      execType: string;        // Trade | Funding | BustTrade | Settle | ...
+    }
+    const out: NormalizedExchangeTrade[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 5; page++) {
+      const params: Record<string, string> = {
+        category: 'linear',
+        startTime: String(since),
+        limit: '100',
+      };
+      if (cursor) params.cursor = cursor;
+      const json: { result: { list: BybitExec[]; nextPageCursor: string } } =
+        await signedGet('/v5/execution/list', params, creds);
+      const list = json.result?.list ?? [];
+      if (list.length === 0) break;
+      for (const r of list) {
+        if (r.execType !== 'Trade') continue; // ignore funding / settle / bust rows
+        const price = parseFloat(r.execPrice);
+        const qty = parseFloat(r.execQty);
+        if (!Number.isFinite(price) || !Number.isFinite(qty) || qty === 0) continue;
+        const closed = parseFloat(r.closedSize);
+        const pnl = r.closedPnl ? parseFloat(r.closedPnl) : NaN;
+        const fee = parseFloat(r.execFee);
+        const direction: NormalizedExchangeTrade['direction'] | undefined =
+          Number.isFinite(closed) && closed > 0 ? 'close' : 'open';
+        out.push({
+          symbol: bybitToBase(r.symbol),
+          side: r.side === 'Buy' ? 'buy' : 'sell',
+          direction,
+          size: Math.abs(qty),
+          price,
+          valueUsd: parseFloat(r.execValue) || price * Math.abs(qty),
+          // Bybit fees are usually USDT (~$1) on linear contracts.
+          feeUsd: Number.isFinite(fee) ? Math.abs(fee) : null,
+          realizedPnlUsd: Number.isFinite(pnl) && pnl !== 0 ? pnl : null,
+          venueTradeId: r.execId,
+          ts: new Date(parseInt(r.execTime, 10)),
+        });
+      }
+      cursor = json.result?.nextPageCursor;
+      if (!cursor) break;
+    }
+    return out;
   },
 };

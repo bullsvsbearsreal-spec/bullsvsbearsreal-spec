@@ -150,7 +150,7 @@ export default function TaxPage() {
             </div>
             <p className="text-sm text-neutral-500 mt-1 max-w-3xl">
               Aggregate cost-basis + realised PnL across every connected wallet & key. FIFO accounting
-              over your entire trade history. Currently powered by Hyperliquid fills (CEX coming soon).
+              over your entire trade history. Live for Hyperliquid, Binance, Bybit, and OKX.
               Numbers are estimates — confirm with your accountant before filing.
             </p>
           </div>

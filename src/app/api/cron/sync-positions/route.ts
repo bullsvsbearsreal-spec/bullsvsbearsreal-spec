@@ -115,6 +115,10 @@ export async function GET(req: NextRequest) {
 
     // ─── CEX keys ───────────────────────────────────────
     const keys = target.exchangeKeys.slice(0, MAX_KEYS_PER_USER);
+    // Pre-load high-water marks for incremental trade sync, same pattern as
+    // the wallet branch below. Single query per user, then in-memory lookup.
+    const cexLastTradeTs = await getLastTradeTsBySource(target.userId).catch(() => new Map<string, Date>());
+
     await Promise.all(keys.map(async (k) => {
       const ks: KeySyncStat = { keyId: k.id, exchange: k.exchange, positions: 0 };
       try {
@@ -163,6 +167,40 @@ export async function GET(req: NextRequest) {
         ks.positions = positions.length;
         await setExchangeKeyLastSync(k.id, null, null);
         totalPositions += positions.length;
+
+        // ─── CEX trade history (best-effort) ────────────────────────
+        // Same pattern as the wallet branch: high-water mark per
+        // (exchange, key) with a 15min overlap window for late-settling
+        // trades. Failure isolated from position sync.
+        if (client.fetchTradeHistory) {
+          try {
+            const key = `${k.exchange}|${k.id}`;
+            const since = cexLastTradeTs.get(key);
+            const sinceMs = since ? since.getTime() - 15 * 60_000 : undefined;
+            const fills = await client.fetchTradeHistory(creds, sinceMs);
+            if (fills.length > 0) {
+              const inserted = await saveUserTrades(target.userId, fills.map(f => ({
+                sourceType: 'cex' as const,
+                sourceId: k.id,
+                exchange: k.exchange,
+                symbol: f.symbol,
+                side: f.side,
+                direction: f.direction ?? null,
+                venueTradeId: f.venueTradeId,
+                size: f.size,
+                price: f.price,
+                valueUsd: f.valueUsd,
+                feeUsd: f.feeUsd ?? null,
+                realizedPnlUsd: f.realizedPnlUsd ?? null,
+                ts: f.ts,
+              })));
+              ks.tradesInserted = (ks.tradesInserted ?? 0) + inserted;
+              totalTradesInserted += inserted;
+            }
+          } catch (e) {
+            console.warn(`[sync-positions] trade history failed for ${k.exchange} key ${k.id}:`, e instanceof Error ? e.message : e);
+          }
+        }
       } catch (err) {
         ks.error = err instanceof Error ? err.message : String(err);
         await setExchangeKeyLastSync(k.id, ks.error.slice(0, 500), null).catch(() => undefined);
