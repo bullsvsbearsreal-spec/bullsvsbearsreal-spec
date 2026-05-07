@@ -530,6 +530,41 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_user_positions_user ON user_positions(user_id, updated_at DESC)`;
 
+  // User trade history (Sprint 3 — May 2026).
+  // Append-only fill log per connected wallet/key. Powers the Trade Journal,
+  // Tax aggregator, and Strategy Backtest tools. Dedup by venue_trade_id —
+  // each fill from upstream gets one row, idempotently re-inserted on every
+  // sync. Realized PnL is captured ON THE TRADE that closed the position
+  // (some venues report it directly, others we compute from fills).
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_trades (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      source_type TEXT NOT NULL,        -- 'cex' | 'dex'
+      source_id INT NOT NULL,           -- FK to user_wallets.id or user_exchange_keys.id
+      exchange TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      /** 'buy' | 'sell' (CEX) or specific direction tag (DEX) — see venue client. */
+      side TEXT NOT NULL,
+      /** Direction qualifier for derivatives: 'open' | 'close' | 'reduce' | 'add'. */
+      direction TEXT,
+      /** Original venue-side fill / trade id; used for dedup. */
+      venue_trade_id TEXT NOT NULL,
+      size DOUBLE PRECISION NOT NULL,
+      price DOUBLE PRECISION NOT NULL,
+      value_usd DOUBLE PRECISION NOT NULL,
+      fee_usd DOUBLE PRECISION,
+      /** Realised PnL in USD if this fill CLOSED part of a position; null on opens. */
+      realized_pnl_usd DOUBLE PRECISION,
+      ts TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (user_id, exchange, venue_trade_id)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_trades_user_ts ON user_trades(user_id, ts DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_trades_user_symbol ON user_trades(user_id, symbol, ts DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_trades_user_exchange ON user_trades(user_id, exchange, ts DESC)`;
+
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -3342,6 +3377,277 @@ export async function listUserPositions(userId: string): Promise<UserPositionRow
     slPrice: r.sl_price === null ? null : Number(r.sl_price),
     cumulativeFunding: r.cumulative_funding === null ? null : Number(r.cumulative_funding),
     updatedAt: r.updated_at,
+  }));
+}
+
+// ─── User trade history (Sprint 3) ──────────────────────────────────────────
+
+export interface UserTradeRow {
+  id: string;            // BIGSERIAL → string to avoid JS Number overflow
+  userId: string;
+  sourceType: 'cex' | 'dex';
+  sourceId: number;
+  exchange: string;
+  symbol: string;
+  side: 'buy' | 'sell' | string;
+  direction: 'open' | 'close' | 'reduce' | 'add' | null;
+  venueTradeId: string;
+  size: number;
+  price: number;
+  valueUsd: number;
+  feeUsd: number | null;
+  realizedPnlUsd: number | null;
+  ts: Date;
+}
+
+export interface UserTradeInsert {
+  sourceType: 'cex' | 'dex';
+  sourceId: number;
+  exchange: string;
+  symbol: string;
+  side: string;
+  direction?: 'open' | 'close' | 'reduce' | 'add' | null;
+  venueTradeId: string;
+  size: number;
+  price: number;
+  valueUsd: number;
+  feeUsd?: number | null;
+  realizedPnlUsd?: number | null;
+  ts: Date;
+}
+
+/**
+ * Bulk-insert trade fills with idempotent dedup. UNIQUE (user_id, exchange,
+ * venue_trade_id) means upserting the same fill twice is a no-op — safe to
+ * call from a cron that re-fetches the same window.
+ *
+ * Returns the count of NEW rows inserted (excluding conflict-skipped).
+ */
+export async function saveUserTrades(userId: string, trades: UserTradeInsert[]): Promise<number> {
+  if (trades.length === 0 || !DATABASE_URL) return 0;
+  const sql = getSQL();
+
+  let totalInserted = 0;
+  for (let i = 0; i < trades.length; i += 500) {
+    const chunk = trades.slice(i, i + 500);
+    const result = await sql`
+      INSERT INTO user_trades (
+        user_id, source_type, source_id, exchange, symbol, side, direction,
+        venue_trade_id, size, price, value_usd, fee_usd, realized_pnl_usd, ts
+      )
+      SELECT * FROM UNNEST(
+        ${sql.array(chunk.map(() => userId))}::text[],
+        ${sql.array(chunk.map(t => t.sourceType))}::text[],
+        ${sql.array(chunk.map(t => t.sourceId))}::int[],
+        ${sql.array(chunk.map(t => t.exchange))}::text[],
+        ${sql.array(chunk.map(t => t.symbol))}::text[],
+        ${sql.array(chunk.map(t => t.side))}::text[],
+        ${sql.array(chunk.map(t => t.direction ?? null))}::text[],
+        ${sql.array(chunk.map(t => t.venueTradeId))}::text[],
+        ${sql.array(chunk.map(t => t.size))}::float8[],
+        ${sql.array(chunk.map(t => t.price))}::float8[],
+        ${sql.array(chunk.map(t => t.valueUsd))}::float8[],
+        ${sql.array(chunk.map(t => t.feeUsd ?? null))}::float8[],
+        ${sql.array(chunk.map(t => t.realizedPnlUsd ?? null))}::float8[],
+        ${sql.array(chunk.map(t => t.ts.toISOString()))}::timestamptz[]
+      )
+      ON CONFLICT (user_id, exchange, venue_trade_id) DO NOTHING
+    `;
+    totalInserted += (result as any).count ?? chunk.length;
+  }
+  return totalInserted;
+}
+
+/**
+ * Read user's trade history newest-first. Optional filters narrow the
+ * working set on the way out so the API route doesn't have to over-fetch.
+ */
+export async function listUserTrades(
+  userId: string,
+  opts: { symbol?: string; exchange?: string; limit?: number; offset?: number; sinceMs?: number } = {},
+): Promise<UserTradeRow[]> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const limit = Math.min(Math.max(opts.limit ?? 100, 1), 1000);
+  const offset = Math.max(opts.offset ?? 0, 0);
+  const since = opts.sinceMs ? new Date(opts.sinceMs).toISOString() : null;
+
+  // Single query with optional filters via COALESCE-style guards. Each
+  // filter is a no-op when its parameter is null.
+  const rows = await sql`
+    SELECT id, user_id, source_type, source_id, exchange, symbol, side, direction,
+           venue_trade_id, size, price, value_usd, fee_usd, realized_pnl_usd, ts
+    FROM user_trades
+    WHERE user_id = ${userId}
+      AND (${opts.symbol ?? null}::text IS NULL OR symbol = ${opts.symbol ?? null})
+      AND (${opts.exchange ?? null}::text IS NULL OR exchange = ${opts.exchange ?? null})
+      AND (${since}::timestamptz IS NULL OR ts >= ${since})
+    ORDER BY ts DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+
+  return (rows as any[]).map((r): UserTradeRow => ({
+    id: String(r.id),
+    userId: r.user_id,
+    sourceType: r.source_type,
+    sourceId: r.source_id,
+    exchange: r.exchange,
+    symbol: r.symbol,
+    side: r.side,
+    direction: r.direction,
+    venueTradeId: r.venue_trade_id,
+    size: Number(r.size),
+    price: Number(r.price),
+    valueUsd: Number(r.value_usd),
+    feeUsd: r.fee_usd === null ? null : Number(r.fee_usd),
+    realizedPnlUsd: r.realized_pnl_usd === null ? null : Number(r.realized_pnl_usd),
+    ts: r.ts,
+  }));
+}
+
+/**
+ * Most-recent trade timestamp per (exchange, source_id) — used by the
+ * sync cron to ask each upstream "give me fills since X" instead of
+ * always re-fetching the whole 90-day window.
+ */
+export async function getLastTradeTsBySource(userId: string): Promise<Map<string, Date>> {
+  if (!DATABASE_URL) return new Map();
+  const sql = getSQL();
+  const rows = await sql`
+    SELECT exchange, source_id, MAX(ts) AS last_ts
+    FROM user_trades
+    WHERE user_id = ${userId}
+    GROUP BY exchange, source_id
+  `;
+  const map = new Map<string, Date>();
+  for (const r of rows as any[]) {
+    map.set(`${r.exchange}|${r.source_id}`, r.last_ts);
+  }
+  return map;
+}
+
+/**
+ * Aggregate stats for the journal header. Computes:
+ *   - all-time realised PnL
+ *   - total fees paid
+ *   - count of closing trades, win rate
+ *   - largest win, largest loss
+ *   - cumulative PnL series for chart (daily)
+ */
+export interface UserTradeStats {
+  totalTrades: number;
+  closingTrades: number;
+  realisedPnlAllTime: number;
+  realisedPnlLast30d: number;
+  realisedPnlLast7d: number;
+  realisedPnlLast24h: number;
+  feesPaidAllTime: number;
+  winRatePct: number | null;     // null when no closing trades
+  largestWin: number;
+  largestLoss: number;
+  bySymbol: Array<{ symbol: string; realised: number; trades: number }>;
+  byExchange: Array<{ exchange: string; realised: number; trades: number }>;
+}
+
+export async function getUserTradeStats(userId: string): Promise<UserTradeStats> {
+  if (!DATABASE_URL) {
+    return {
+      totalTrades: 0, closingTrades: 0, realisedPnlAllTime: 0,
+      realisedPnlLast30d: 0, realisedPnlLast7d: 0, realisedPnlLast24h: 0,
+      feesPaidAllTime: 0, winRatePct: null, largestWin: 0, largestLoss: 0,
+      bySymbol: [], byExchange: [],
+    };
+  }
+  const sql = getSQL();
+
+  const [global, perSymbol, perExchange] = await Promise.all([
+    sql`
+      SELECT
+        COUNT(*)::int AS total_trades,
+        COUNT(*) FILTER (WHERE realized_pnl_usd IS NOT NULL)::int AS closing_trades,
+        COALESCE(SUM(realized_pnl_usd), 0) AS realised_all,
+        COALESCE(SUM(realized_pnl_usd) FILTER (WHERE ts > NOW() - INTERVAL '30 days'), 0) AS realised_30d,
+        COALESCE(SUM(realized_pnl_usd) FILTER (WHERE ts > NOW() - INTERVAL '7 days'), 0) AS realised_7d,
+        COALESCE(SUM(realized_pnl_usd) FILTER (WHERE ts > NOW() - INTERVAL '24 hours'), 0) AS realised_24h,
+        COALESCE(SUM(fee_usd), 0) AS fees,
+        COUNT(*) FILTER (WHERE realized_pnl_usd > 0)::int AS wins,
+        MAX(realized_pnl_usd) AS biggest_win,
+        MIN(realized_pnl_usd) AS biggest_loss
+      FROM user_trades
+      WHERE user_id = ${userId}
+    `,
+    sql`
+      SELECT symbol, COALESCE(SUM(realized_pnl_usd), 0) AS realised, COUNT(*)::int AS trades
+      FROM user_trades
+      WHERE user_id = ${userId}
+      GROUP BY symbol
+      ORDER BY realised DESC NULLS LAST
+      LIMIT 20
+    `,
+    sql`
+      SELECT exchange, COALESCE(SUM(realized_pnl_usd), 0) AS realised, COUNT(*)::int AS trades
+      FROM user_trades
+      WHERE user_id = ${userId}
+      GROUP BY exchange
+      ORDER BY realised DESC NULLS LAST
+    `,
+  ]);
+
+  const row: any = (global as any[])[0] ?? {};
+  const closingTrades = Number(row.closing_trades ?? 0);
+  const wins = Number(row.wins ?? 0);
+  const winRatePct = closingTrades > 0 ? (wins / closingTrades) * 100 : null;
+
+  return {
+    totalTrades: Number(row.total_trades ?? 0),
+    closingTrades,
+    realisedPnlAllTime: Number(row.realised_all ?? 0),
+    realisedPnlLast30d: Number(row.realised_30d ?? 0),
+    realisedPnlLast7d: Number(row.realised_7d ?? 0),
+    realisedPnlLast24h: Number(row.realised_24h ?? 0),
+    feesPaidAllTime: Number(row.fees ?? 0),
+    winRatePct,
+    largestWin: Number(row.biggest_win ?? 0) || 0,
+    largestLoss: Number(row.biggest_loss ?? 0) || 0,
+    bySymbol: (perSymbol as any[]).map(r => ({
+      symbol: r.symbol,
+      realised: Number(r.realised ?? 0),
+      trades: Number(r.trades ?? 0),
+    })),
+    byExchange: (perExchange as any[]).map(r => ({
+      exchange: r.exchange,
+      realised: Number(r.realised ?? 0),
+      trades: Number(r.trades ?? 0),
+    })),
+  };
+}
+
+/**
+ * Daily cumulative realised PnL series for the journal chart. Returns
+ * one row per day with the cumulative sum at end-of-day.
+ */
+export async function getUserDailyPnlSeries(userId: string, days = 90): Promise<Array<{ date: string; realised: number; cumulative: number }>> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const rows = await sql`
+    WITH daily AS (
+      SELECT DATE_TRUNC('day', ts)::date AS day,
+             COALESCE(SUM(realized_pnl_usd), 0) AS realised
+      FROM user_trades
+      WHERE user_id = ${userId}
+        AND ts > NOW() - (${days} || ' days')::interval
+        AND realized_pnl_usd IS NOT NULL
+      GROUP BY 1
+    )
+    SELECT day, realised,
+           SUM(realised) OVER (ORDER BY day) AS cumulative
+    FROM daily
+    ORDER BY day ASC
+  `;
+  return (rows as any[]).map(r => ({
+    date: typeof r.day === 'string' ? r.day : r.day.toISOString().slice(0, 10),
+    realised: Number(r.realised ?? 0),
+    cumulative: Number(r.cumulative ?? 0),
   }));
 }
 

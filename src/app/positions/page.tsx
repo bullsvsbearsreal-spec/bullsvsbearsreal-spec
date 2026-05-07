@@ -262,6 +262,13 @@ export default function PositionsPage() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Link
+              href="/positions/journal"
+              className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
+              title="Trade Journal — every closed trade with realised PnL chart."
+            >
+              📔 Journal
+            </Link>
+            <Link
               href="/positions/simulate"
               className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
               title="What if I open this position? Pre-trade decision engine."

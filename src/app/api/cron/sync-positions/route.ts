@@ -21,6 +21,8 @@ import {
   listAllSyncTargets,
   replaceUserPositionsForSource,
   setExchangeKeyLastSync,
+  saveUserTrades,
+  getLastTradeTsBySource,
 } from '@/lib/db';
 import { decryptSecret, isEncryptionConfigured } from '@/lib/crypto/exchange-keys';
 import { getExchangeClient } from '@/lib/exchange-clients';
@@ -41,6 +43,7 @@ interface KeySyncStat {
   keyId: number;
   exchange: string;
   positions: number;
+  tradesInserted?: number;
   error?: string;
 }
 
@@ -48,6 +51,7 @@ interface WalletSyncStat {
   walletId: number;
   chain: string;
   positions: number;
+  tradesInserted?: number;
   error?: string;
 }
 
@@ -104,6 +108,7 @@ export async function GET(req: NextRequest) {
   let totalKeys = 0;
   let totalPositions = 0;
   let totalErrors = 0;
+  let totalTradesInserted = 0;
 
   for (const target of targets) {
     const stat: UserSyncStat = { userId: target.userId, keys: [], wallets: [] };
@@ -172,6 +177,12 @@ export async function GET(req: NextRequest) {
     // / base / solana) currently fall through to "no client" — those need
     // per-DEX subgraph queries (GMX, Aevo, etc.) and land in follow-ups.
     const wallets = target.wallets.slice(0, MAX_WALLETS_PER_USER);
+    // Pre-load high-water marks for incremental trade-history sync. Each
+    // (exchange, source_id) pair gets the timestamp of its newest stored
+    // fill, so the upstream call asks "give me fills since X" and returns
+    // a small delta instead of the full 90-day window every minute.
+    const lastTradeTs = await getLastTradeTsBySource(target.userId).catch(() => new Map<string, Date>());
+
     await Promise.all(wallets.map(async (w) => {
       const ws: WalletSyncStat = { walletId: w.id, chain: w.chain, positions: 0 };
       try {
@@ -216,6 +227,44 @@ export async function GET(req: NextRequest) {
         );
         ws.positions = positions.length;
         totalPositions += positions.length;
+
+        // ─── Trade history (best-effort; isolated from position sync) ───
+        // Each client implements fetchTradeHistory? optionally. We call
+        // every client that has it, giving each its own per-source high
+        // water mark.
+        for (const client of clients) {
+          if (!client.fetchTradeHistory) continue;
+          try {
+            const key = `${client.displayName}|${w.id}`;
+            const since = lastTradeTs.get(key);
+            // Re-fetch a small overlap window (15 min) to handle late-
+            // settling trades. Dedup happens at the DB layer.
+            const sinceMs = since ? since.getTime() - 15 * 60_000 : undefined;
+            const fills = await client.fetchTradeHistory(w.address, sinceMs);
+            if (fills.length === 0) continue;
+            const inserted = await saveUserTrades(target.userId, fills.map(f => ({
+              sourceType: 'dex' as const,
+              sourceId: w.id,
+              exchange: client.displayName,
+              symbol: f.symbol,
+              side: f.side,
+              direction: f.direction ?? null,
+              venueTradeId: f.venueTradeId,
+              size: f.size,
+              price: f.price,
+              valueUsd: f.valueUsd,
+              feeUsd: f.feeUsd ?? null,
+              realizedPnlUsd: f.realizedPnlUsd ?? null,
+              ts: f.ts,
+            })));
+            ws.tradesInserted = (ws.tradesInserted ?? 0) + inserted;
+            totalTradesInserted += inserted;
+          } catch (e) {
+            // Don't pollute the position-sync error counter — log only.
+            console.warn(`[sync-positions] trade history failed for ${client.displayName} wallet ${w.id}:`,
+              e instanceof Error ? e.message : e);
+          }
+        }
       } catch (err) {
         ws.error = err instanceof Error ? err.message : String(err);
         totalErrors++;
@@ -231,6 +280,7 @@ export async function GET(req: NextRequest) {
       users: targets.length,
       totalKeys,
       totalPositions,
+      totalTradesInserted,
       totalErrors,
       orphansDeleted,
       stats: userStats,

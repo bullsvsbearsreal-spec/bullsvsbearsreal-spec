@@ -24,7 +24,7 @@
  *   marginUsed      USD margin allocated
  *   cumFunding.allTime / sinceOpen / sinceChange — funding paid/received in USD
  */
-import type { NormalizedPosition, WalletClient } from './types';
+import type { NormalizedPosition, NormalizedTrade, WalletClient } from './types';
 
 const HL_INFO_URL = 'https://api.hyperliquid.xyz/info';
 const TIMEOUT_MS = 10_000;
@@ -217,6 +217,75 @@ export const hyperliquidWalletClient: WalletClient = {
         tpPrice: tpsl?.tp ?? null,
         slPrice: tpsl?.sl ?? null,
         cumulativeFunding: Number.isFinite(cumFunding) ? cumFunding : null,
+      });
+    }
+    return out;
+  },
+
+  /**
+   * Hyperliquid public API: POST /info { type: 'userFillsByTime', user, startTime }.
+   * Returns every fill since startTime (exclusive). Realized PnL is reported
+   * directly per-fill on closing trades, fees too. We keep the entire fill
+   * payload for tax/journal purposes — startPosition + dir give us the full
+   * trade context.
+   *
+   * Fill `side`: 'B' (buy) or 'A' (ask/sell).
+   * Fill `dir`: 'Open Long' | 'Close Short' | 'Open Short' | 'Close Long' |
+   *             'Long > Short' (flip) | 'Short > Long' (flip) — captures
+   *             the position-level intent of each fill.
+   */
+  async fetchTradeHistory(address: string, sinceMs?: number): Promise<NormalizedTrade[]> {
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return [];
+    // Default lookback: 90 days. HL caps response size; if more than that
+    // exists we lose the oldest tail, but that's fine for a journal.
+    const startTime = sinceMs ?? Date.now() - 90 * 86_400_000;
+
+    const res = await fetch(HL_INFO_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ type: 'userFillsByTime', user: address, startTime }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new Error(`Hyperliquid userFillsByTime HTTP ${res.status}`);
+    }
+    const fills: any[] = await res.json();
+    if (!Array.isArray(fills)) return [];
+
+    const out: NormalizedTrade[] = [];
+    for (const f of fills) {
+      const px = parseFloat(f.px ?? '0');
+      const sz = parseFloat(f.sz ?? '0');
+      if (!Number.isFinite(px) || !Number.isFinite(sz) || sz === 0) continue;
+
+      // Position-level intent from `dir`. Closing trades carry realized PnL.
+      const dir: string = f.dir ?? '';
+      let direction: NormalizedTrade['direction'];
+      if (/^Open /i.test(dir)) direction = 'open';
+      else if (/^Close /i.test(dir)) direction = 'close';
+      else if (/>/i.test(dir)) direction = 'close'; // position flip → treat as close
+      else direction = undefined;
+
+      const closedPnl = f.closedPnl != null ? parseFloat(f.closedPnl) : NaN;
+      const fee = f.fee != null ? Math.abs(parseFloat(f.fee)) : NaN;
+      const sideRaw = (f.side ?? '').toUpperCase();
+      const side: NormalizedTrade['side'] = sideRaw === 'B' ? 'buy' : sideRaw === 'A' ? 'sell' : sideRaw;
+
+      // Stable id: HL exposes hash + tid; use `${hash}-${tid}` for uniqueness
+      // across multi-fill orders that share a tx hash.
+      const venueTradeId = `${f.hash ?? ''}-${f.tid ?? ''}` || JSON.stringify({ t: f.time, c: f.coin, p: f.px, s: f.sz });
+
+      out.push({
+        symbol: f.coin,
+        side,
+        direction,
+        size: Math.abs(sz),
+        price: px,
+        valueUsd: px * Math.abs(sz),
+        feeUsd: Number.isFinite(fee) ? fee : null,
+        realizedPnlUsd: direction === 'close' && Number.isFinite(closedPnl) ? closedPnl : null,
+        venueTradeId,
+        ts: new Date(Number(f.time)),
       });
     }
     return out;
