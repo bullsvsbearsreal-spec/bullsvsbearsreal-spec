@@ -41,11 +41,15 @@ function getResend(): Resend | null {
 let _vapidConfigured = false;
 function ensureVapid(): boolean {
   if (_vapidConfigured) return true;
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return false;
+  // Match lib/notifications.ts — read the NEXT_PUBLIC_ name first so a
+  // single env var configures both browser and server, fall back to the
+  // legacy non-prefixed name for backwards compatibility.
+  const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY;
+  if (!vapidPublic || !process.env.VAPID_PRIVATE_KEY) return false;
   try {
     webpush.setVapidDetails(
       process.env.VAPID_SUBJECT || 'mailto:noreply@info-hub.io',
-      process.env.VAPID_PUBLIC_KEY,
+      vapidPublic,
       process.env.VAPID_PRIVATE_KEY,
     );
     _vapidConfigured = true;

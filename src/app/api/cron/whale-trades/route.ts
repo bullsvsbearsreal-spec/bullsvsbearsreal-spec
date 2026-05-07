@@ -216,7 +216,10 @@ async function notifySubscribers(
 async function sendPush(userId: string, trade: DetectedTrade, label?: string | null): Promise<void> {
   try {
     const webpush = await import('web-push');
-    const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+    // Read NEXT_PUBLIC_ first to match the browser hook + lib/notifications;
+    // fall back to the legacy non-prefixed name so an ops env that still
+    // uses it keeps working.
+    const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || '';
     const vapidPrivate = process.env.VAPID_PRIVATE_KEY || '';
     if (!vapidPublic || !vapidPrivate) return;
     webpush.setVapidDetails('mailto:noreply@info-hub.io', vapidPublic, vapidPrivate);

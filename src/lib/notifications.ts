@@ -205,11 +205,19 @@ export async function sendAlertTelegram(
 let vapidConfigured = false;
 function ensureVapid(): boolean {
   if (vapidConfigured) return true;
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return false;
+  // The browser hook reads NEXT_PUBLIC_VAPID_PUBLIC_KEY (must be the
+  // NEXT_PUBLIC_ name to be inlined at build), so we standardize ALL
+  // public-key reads on the same env var name. Earlier this and a few
+  // other server files read `VAPID_PUBLIC_KEY` (no prefix) which forced
+  // ops to set the value under TWO names; if only one was set, half the
+  // push pipeline silently failed. Fall back to the legacy name so an
+  // ops env that still uses it keeps working during the cutover.
+  const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY;
+  if (!vapidPublic || !process.env.VAPID_PRIVATE_KEY) return false;
   try {
     webpush.setVapidDetails(
       process.env.VAPID_SUBJECT || 'mailto:noreply@info-hub.io',
-      process.env.VAPID_PUBLIC_KEY,
+      vapidPublic,
       process.env.VAPID_PRIVATE_KEY,
     );
     vapidConfigured = true;
