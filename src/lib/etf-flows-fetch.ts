@@ -47,7 +47,22 @@ async function tryFetchAndParse(
         'Cache-Control': 'no-cache',
       },
     });
-    if (!res.ok) return { error: `HTTP ${res.status}` };
+    if (!res.ok) {
+      // Surface the upstream's own error body when it's a small JSON payload —
+      // this is how we caught the silent "proxy returns 'Domain not allowed'
+      // for farside.co.uk because it's not on the allowlist" config bug
+      // that left ETF flows empty in production indefinitely.
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('json') && res.headers.get('content-length') !== null
+          && parseInt(res.headers.get('content-length')!, 10) < 500) {
+        try {
+          const j = await res.json();
+          const detail = typeof j?.error === 'string' ? j.error : JSON.stringify(j).slice(0, 100);
+          return { error: `HTTP ${res.status}: ${detail}` };
+        } catch { /* fall through */ }
+      }
+      return { error: `HTTP ${res.status}` };
+    }
     const html = await res.text();
     if (/just a moment|cf-browser-verification|cf-challenge|attention required/i.test(html)) {
       return { error: 'Bot-protection page returned' };
