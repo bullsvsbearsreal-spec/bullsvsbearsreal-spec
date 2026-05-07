@@ -358,7 +358,7 @@ export default function OIHeatmapPage() {
             </div>
             {isLoading ? (
               <span className="inline-block w-28 h-6 bg-white/[0.02] animate-pulse rounded" />
-            ) : stats.biggestLoser ? (
+            ) : stats.biggestLoser && (stats.biggestLoser.change24h ?? 0) < 0 ? (
               <div className="flex items-baseline gap-2">
                 <span className="text-lg font-bold text-white">{stats.biggestLoser.symbol}</span>
                 <span className="text-sm font-mono text-red-400">
@@ -366,7 +366,11 @@ export default function OIHeatmapPage() {
                 </span>
               </div>
             ) : (
-              <span className="text-sm text-neutral-600">No data</span>
+              // Hide when no symbol actually lost OI in 24h — earlier the
+              // smallest-positive change was labelled "loser" with a red %,
+              // misleading users to think a coin was leaking OI when in fact
+              // every tracked symbol gained.
+              <span className="text-sm text-neutral-600">No losses today</span>
             )}
           </div>
         </div>
