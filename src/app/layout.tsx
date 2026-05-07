@@ -5,6 +5,7 @@ import Providers from '@/components/Providers'
 // ChatWidget hidden for now per user request — re-enable by importing + rendering
 // const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
+import ReportBugButton from '@/components/ReportBugButton'
 import { ALL_EXCHANGES } from '@/lib/constants'
 import { ConditionalTerminalShell } from '@/components/design-system'
 
@@ -191,6 +192,9 @@ export default function RootLayout({
           {/* ChatWidget hidden for now per user request — re-enable by uncommenting */}
           {/* <ChatWidget /> */}
           <AlertEngine />
+          {/* Per-page bug report widget — small floating pill in bottom-right.
+              Users can dismiss permanently per-device via localStorage. */}
+          <ReportBugButton />
         </Providers>
       </body>
     </html>

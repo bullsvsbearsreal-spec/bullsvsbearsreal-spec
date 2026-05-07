@@ -8,7 +8,7 @@ import Footer from '@/components/Footer';
 import {
   Users, Database, Bell, Activity, RefreshCw, Trash2, Radio, Send,
   Server, AlertTriangle, CheckCircle, XCircle, Clock, TrendingUp,
-  MessageSquare, Smartphone, Mail, BarChart3, Zap, Shield,
+  MessageSquare, Smartphone, Mail, BarChart3, Zap, Shield, Bug,
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -531,13 +531,22 @@ export default function AdminDashboard() {
               {' · '}Auto-refreshes every 60s
             </p>
           </div>
-          <button
-            onClick={fetchAll}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-300"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/admin/feedback"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 ring-1 ring-amber-500/30 rounded-lg text-amber-300"
+              title="User-submitted bug reports"
+            >
+              <Bug className="w-3 h-3" /> Bug Reports
+            </a>
+            <button
+              onClick={fetchAll}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-300"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Stats Grid */}

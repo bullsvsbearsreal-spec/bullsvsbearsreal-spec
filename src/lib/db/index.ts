@@ -565,6 +565,30 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_user_trades_user_symbol ON user_trades(user_id, symbol, ts DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_user_trades_user_exchange ON user_trades(user_id, exchange, ts DESC)`;
 
+  // ─── Bug reports (per-page report button writes here) ──────────────────
+  // user_id is nullable so anonymous reports work; everything else is
+  // captured automatically by the report widget so users only have to
+  // type a description.
+  await sql`
+    CREATE TABLE IF NOT EXISTS bug_reports (
+      id           SERIAL PRIMARY KEY,
+      user_id      TEXT,
+      user_email   TEXT,
+      page_url     TEXT NOT NULL,
+      page_title   TEXT,
+      user_agent   TEXT,
+      viewport     TEXT,
+      message      TEXT NOT NULL,
+      severity     TEXT NOT NULL DEFAULT 'normal',
+      status       TEXT NOT NULL DEFAULT 'open',
+      ip_hash      TEXT,
+      admin_notes  TEXT,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      resolved_at  TIMESTAMPTZ
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_bug_reports_status_created ON bug_reports(status, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_bug_reports_user ON bug_reports(user_id, created_at DESC)`;
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────
@@ -3864,6 +3888,140 @@ export async function listEnabledAlertsWithPositions(): Promise<Array<{
     } as PositionAlertRule,
     positions: positionsByUser.get(r.user_id) ?? [],
   }));
+}
+
+// ─── Bug Reports (per-page report widget) ───────────────────────────────
+
+export interface BugReportInput {
+  userId?: string | null;
+  userEmail?: string | null;
+  pageUrl: string;
+  pageTitle?: string | null;
+  userAgent?: string | null;
+  viewport?: string | null;
+  message: string;
+  severity?: 'low' | 'normal' | 'high';
+  ipHash?: string | null;
+}
+
+export interface BugReportRow {
+  id: number;
+  userId: string | null;
+  userEmail: string | null;
+  pageUrl: string;
+  pageTitle: string | null;
+  userAgent: string | null;
+  viewport: string | null;
+  message: string;
+  severity: 'low' | 'normal' | 'high';
+  status: 'open' | 'resolved' | 'wontfix';
+  adminNotes: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+export async function insertBugReport(input: BugReportInput): Promise<number | null> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      INSERT INTO bug_reports (
+        user_id, user_email, page_url, page_title, user_agent,
+        viewport, message, severity, ip_hash
+      ) VALUES (
+        ${input.userId ?? null},
+        ${input.userEmail ?? null},
+        ${input.pageUrl},
+        ${input.pageTitle ?? null},
+        ${input.userAgent ?? null},
+        ${input.viewport ?? null},
+        ${input.message},
+        ${input.severity ?? 'normal'},
+        ${input.ipHash ?? null}
+      )
+      RETURNING id
+    `;
+    return (rows[0] as any)?.id ?? null;
+  } catch (e) {
+    console.error('DB insertBugReport error:', e);
+    return null;
+  }
+}
+
+export async function listBugReports(opts: {
+  status?: 'open' | 'resolved' | 'wontfix' | 'all';
+  limit?: number;
+} = {}): Promise<BugReportRow[]> {
+  try {
+    const sql = getSQL();
+    const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500);
+    const status = opts.status ?? 'open';
+    const rows = status === 'all'
+      ? await sql`
+          SELECT * FROM bug_reports ORDER BY created_at DESC LIMIT ${limit}
+        `
+      : await sql`
+          SELECT * FROM bug_reports WHERE status = ${status}
+          ORDER BY created_at DESC LIMIT ${limit}
+        `;
+    return rows.map((r: any) => ({
+      id: r.id,
+      userId: r.user_id,
+      userEmail: r.user_email,
+      pageUrl: r.page_url,
+      pageTitle: r.page_title,
+      userAgent: r.user_agent,
+      viewport: r.viewport,
+      message: r.message,
+      severity: r.severity,
+      status: r.status,
+      adminNotes: r.admin_notes,
+      createdAt: r.created_at?.toISOString?.() ?? String(r.created_at),
+      resolvedAt: r.resolved_at?.toISOString?.() ?? null,
+    }));
+  } catch (e) {
+    console.error('DB listBugReports error:', e);
+    return [];
+  }
+}
+
+export async function updateBugReportStatus(
+  id: number,
+  status: 'open' | 'resolved' | 'wontfix',
+  adminNotes?: string,
+): Promise<boolean> {
+  try {
+    const sql = getSQL();
+    const resolvedAt = status === 'open' ? null : new Date();
+    const rows = await sql`
+      UPDATE bug_reports
+      SET status = ${status},
+          resolved_at = ${resolvedAt as any},
+          admin_notes = COALESCE(${adminNotes ?? null}, admin_notes)
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  } catch (e) {
+    console.error('DB updateBugReportStatus error:', e);
+    return false;
+  }
+}
+
+export async function getBugReportCounts(): Promise<{ open: number; resolved: number; wontfix: number }> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT status, COUNT(*) AS c FROM bug_reports GROUP BY status
+    `;
+    const out = { open: 0, resolved: 0, wontfix: 0 };
+    for (const r of rows as any[]) {
+      if (r.status in out) (out as any)[r.status] = Number(r.c);
+    }
+    return out;
+  } catch (e) {
+    console.error('DB getBugReportCounts error:', e);
+    return { open: 0, resolved: 0, wontfix: 0 };
+  }
 }
 
 // ─── Check if DB is available ───────────────────────────────────────────────
