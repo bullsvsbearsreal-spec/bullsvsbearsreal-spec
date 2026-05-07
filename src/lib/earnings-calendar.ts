@@ -92,27 +92,48 @@ async function fetchUnlocks(origin: string): Promise<EarningsEvent[]> {
   return json.unlocks
     .filter((u: any) => u.unlockDate)
     .map((u: any): EarningsEvent => {
-      const usd = (u.tokensUnlocked && u.priceUsd) ? u.tokensUnlocked * u.priceUsd : null;
+      // /api/token-unlocks returns:
+      //   coinSymbol / coinName (not symbol / name)
+      //   unlockAmount (not tokensUnlocked)
+      //   unlockValue (already pre-computed in USD; not tokensUnlocked * priceUsd)
+      //   source (URL string; not a label)
+      // Earlier this used the wrong field names → every unlock surfaced as
+      // "unknown" with usdImpact=null, breaking the calendar's headline
+      // "Unlocks Impact 7d" stat ($0) and "Biggest Upcoming" widget (—).
+      const symbol: string | null = u.coinSymbol ?? u.symbol ?? null;
+      const name: string = u.coinName ?? u.name ?? symbol ?? 'unknown';
+      const amount: number | undefined = u.unlockAmount ?? u.tokensUnlocked;
+      const usd: number | null = typeof u.unlockValue === 'number'
+        ? u.unlockValue
+        : (typeof u.tokensUnlocked === 'number' && typeof u.priceUsd === 'number'
+            ? u.tokensUnlocked * u.priceUsd
+            : null);
       return {
-        id: `unlock-${u.coinId ?? u.symbol}-${u.unlockDate}`,
+        id: `unlock-${u.coinId ?? symbol}-${u.unlockDate}`,
         type: 'unlock',
         date: String(u.unlockDate).slice(0, 10),
         daysFromNow: daysFromNow(u.unlockDate),
-        symbol: u.symbol ?? null,
-        name: u.name ?? u.symbol ?? 'unknown',
-        description: u.description ?? `${u.tokensUnlocked?.toLocaleString() ?? '?'} ${u.symbol ?? ''} unlocking`,
+        symbol,
+        name,
+        description: u.description ?? `${amount?.toLocaleString() ?? '?'} ${symbol ?? ''} unlocking`,
         usdImpact: usd,
         source: 'TokenUnlocks',
-        url: u.url,
+        url: typeof u.source === 'string' && u.source.startsWith('http') ? u.source : u.url,
       };
     });
 }
 
 /** Pull TGE events. */
 async function fetchTges(origin: string): Promise<EarningsEvent[]> {
-  const json = await safeFetchJson<{ tges?: Array<any> }>(`${origin}/api/tge-calendar`);
-  if (!json?.tges) return [];
-  return json.tges
+  // /api/tge-calendar returns { upcoming, recent, ts } — NOT { tges: [...] }.
+  // Each entry has fdvUsd (not fdv) and website (not url). The earlier code
+  // read `json.tges` which was always undefined, returning 0 TGE events
+  // (calendar UI showed "TGE (0)" while real upcoming TGEs existed).
+  const json = await safeFetchJson<{ upcoming?: Array<any>; recent?: Array<any>; tges?: Array<any> }>(
+    `${origin}/api/tge-calendar`,
+  );
+  const all = [...(json?.upcoming ?? []), ...(json?.recent ?? []), ...(json?.tges ?? [])];
+  return all
     .filter((t: any) => t.date)
     .map((t: any): EarningsEvent => ({
       id: `tge-${t.symbol ?? t.name}-${t.date}`,
@@ -122,9 +143,9 @@ async function fetchTges(origin: string): Promise<EarningsEvent[]> {
       symbol: t.symbol ?? null,
       name: t.name ?? t.symbol ?? 'TGE',
       description: t.description ?? `${t.name ?? 'token'} generation event`,
-      usdImpact: typeof t.fdv === 'number' ? t.fdv : null,
+      usdImpact: typeof t.fdvUsd === 'number' ? t.fdvUsd : (typeof t.fdv === 'number' ? t.fdv : null),
       source: 'TGE Calendar',
-      url: t.url,
+      url: t.website ?? t.url,
     }));
 }
 
