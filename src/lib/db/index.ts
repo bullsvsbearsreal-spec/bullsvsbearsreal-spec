@@ -1351,29 +1351,51 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
   try {
     const sql = getSQL();
 
-    // Single-pass conditional aggregation. The WHERE clause limits the scan
-    // to the last ~24h of data. statement_timeout prevents runaway queries
-    // from exhausting Neon's connection pool.
+    // For each (exchange, symbol) pair, pick the LATEST snapshot in each
+    // window, then SUM those across exchanges. This is what "total OI" means.
     //
-    // CRITICAL: each "reference" window is the SAME width (12 min) as the
-    // "current" window. The previous version used 20-min reference windows
-    // which caught ≈2 cron ticks, while the 12-min current window caught
-    // only 1 — so SUM(reference) was ~2× SUM(current), producing a fake
-    // -50% to -65% decline across every symbol on /oi-heatmap. Matching
-    // window widths means each side sums the same number of (exchange,
-    // symbol) datapoints and the percentage delta becomes meaningful.
+    // Earlier this used SUM(oi_usd) over the entire 12-min window, which
+    // counted every cron tick (≈12 per window per exchange). That's only
+    // stable if exchange coverage is identical across all four windows —
+    // when it isn't (e.g. snapshot frequency increased, or some venues
+    // went down 24h ago) the SUMs become incomparable, producing fake
+    // "+83% BTC OI 24h" / "+93% ETH OI 24h" / "+856% NIL OI 24h" deltas
+    // that mislead the screener page.
+    //
+    // DISTINCT ON gives us the latest tick per (exchange, symbol) in each
+    // window, which is the canonical OI reading at that point in time.
+    // The OUTER SUM aggregates across exchanges to get total venue OI.
     const rows = await sql`
-      SELECT
-        symbol,
-        SUM(CASE WHEN ts >= NOW() - INTERVAL '12 minutes' THEN oi_usd ELSE 0 END) AS current_oi,
-        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '66 minutes' AND NOW() - INTERVAL '54 minutes' THEN oi_usd ELSE 0 END) AS oi_1h,
-        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '246 minutes' AND NOW() - INTERVAL '234 minutes' THEN oi_usd ELSE 0 END) AS oi_4h,
-        SUM(CASE WHEN ts BETWEEN NOW() - INTERVAL '1446 minutes' AND NOW() - INTERVAL '1434 minutes' THEN oi_usd ELSE 0 END) AS oi_24h
-      FROM oi_snapshots
-      WHERE ts >= NOW() - INTERVAL '1450 minutes'
-      GROUP BY symbol
-      HAVING SUM(CASE WHEN ts >= NOW() - INTERVAL '12 minutes' THEN oi_usd ELSE 0 END) > 0
-      ORDER BY SUM(CASE WHEN ts >= NOW() - INTERVAL '12 minutes' THEN oi_usd ELSE 0 END) DESC
+      WITH latest_per_window AS (
+        SELECT
+          symbol,
+          SUM(CASE WHEN window = 'current' THEN oi_usd ELSE 0 END) AS current_oi,
+          SUM(CASE WHEN window = '1h'      THEN oi_usd ELSE 0 END) AS oi_1h,
+          SUM(CASE WHEN window = '4h'      THEN oi_usd ELSE 0 END) AS oi_4h,
+          SUM(CASE WHEN window = '24h'     THEN oi_usd ELSE 0 END) AS oi_24h
+        FROM (
+          SELECT DISTINCT ON (window, exchange, symbol)
+            window, exchange, symbol, oi_usd
+          FROM (
+            SELECT 'current' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts >= NOW() - INTERVAL '12 minutes'
+            UNION ALL
+            SELECT '1h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts BETWEEN NOW() - INTERVAL '66 minutes' AND NOW() - INTERVAL '54 minutes'
+            UNION ALL
+            SELECT '4h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts BETWEEN NOW() - INTERVAL '246 minutes' AND NOW() - INTERVAL '234 minutes'
+            UNION ALL
+            SELECT '24h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts BETWEEN NOW() - INTERVAL '1446 minutes' AND NOW() - INTERVAL '1434 minutes'
+          ) all_windows
+          ORDER BY window, exchange, symbol, ts DESC
+        ) latest
+        GROUP BY symbol
+      )
+      SELECT * FROM latest_per_window
+      WHERE current_oi > 0
+      ORDER BY current_oi DESC
     `;
 
     return rows.map((r: any) => {
