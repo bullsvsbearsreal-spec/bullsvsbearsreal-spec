@@ -260,6 +260,16 @@ export const openApiSpec = {
         responses: { 200: { description: 'OK' } },
       },
     },
+    '/bridge-flows': {
+      get: {
+        summary: 'Cross-chain bridge flow tracker (Wormhole)',
+        description: 'Volume, transfers, top assets, and top corridors across every Wormhole-supported chain. Strong leading indicator for chain rotation.',
+        parameters: [
+          { name: 'timeSpan', in: 'query', schema: { type: 'string', enum: ['1d', '7d', '30d'], default: '7d' } },
+        ],
+        responses: { 200: { description: 'OK' } },
+      },
+    },
     '/smart-money-leaderboard': {
       get: {
         summary: 'Top Hyperliquid wallets ranked by realized PnL (90d)',
