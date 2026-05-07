@@ -187,6 +187,7 @@ const ENDPOINT_GROUPS = [
       { path: '/api/v1/basis', desc: 'CME Bitcoin + Ether futures basis vs spot, annualised', icon: TrendingUp },
       { path: '/api/v1/whales', desc: 'On-chain DEX whale trades — global feed or per-wallet', icon: Activity },
       { path: '/api/v1/whale-liq', desc: 'Whale Liquidation Roulette — HL whale positions sorted by proximity to liq', icon: Flame },
+      { path: '/api/v1/smart-money-leaderboard', desc: 'Top traders ranked by realized PnL — closing-trade analytics on every HL whale', icon: TrendingUp },
     ],
   },
   {
@@ -232,7 +233,7 @@ const EXCHANGES = [
 const STEPS = [
   { num: '1', title: 'Create an account', desc: 'Sign up free at info-hub.io. No credit card needed.', icon: Key },
   { num: '2', title: 'Generate an API key', desc: 'Head to the developer dashboard and create your first key.', icon: Code2 },
-  { num: '3', title: 'Start pulling data', desc: 'Make your first request. All 21 endpoints are ready.', icon: Play },
+  { num: '3', title: 'Start pulling data', desc: 'Make your first request. All 22 endpoints are ready.', icon: Play },
 ];
 
 /* ═══════════════════════════════════════════════════
@@ -319,7 +320,7 @@ export default function ApiDocsPage() {
             </h1>
 
             <p className="text-neutral-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-2">
-              Real-time derivatives data from 32 exchanges, delivered through 21 REST endpoints.
+              Real-time derivatives data from 32 exchanges, delivered through 22 REST endpoints.
             </p>
             <p className="text-neutral-600 text-sm mb-10">
               Built for trading bots, dashboards, and quantitative research.
@@ -351,7 +352,7 @@ export default function ApiDocsPage() {
               </div>
               <div className="w-px h-10 bg-white/[0.06]" />
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-white font-mono"><AnimatedNumber target={21} /></div>
+                <div className="text-2xl sm:text-3xl font-bold text-white font-mono"><AnimatedNumber target={22} /></div>
                 <div className="text-[10px] text-neutral-500 uppercase tracking-wider mt-1">Endpoints</div>
               </div>
               <div className="w-px h-10 bg-white/[0.06]" />
@@ -480,10 +481,10 @@ export default function ApiDocsPage() {
           </div>
         </FadeIn>
 
-        {/* ═══ All 21 Endpoints ═══ */}
+        {/* ═══ All 22 Endpoints ═══ */}
         <FadeIn className="mb-16">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-bold text-white">21 Endpoints</h2>
+            <h2 className="text-xl font-bold text-white">22 Endpoints</h2>
             <Link href="/developers/docs" className="hidden sm:inline-flex items-center gap-1 text-xs text-amber-400/80 hover:text-amber-400 transition-colors font-medium">
               Full reference <ExternalLink className="w-3 h-3" />
             </Link>
@@ -587,7 +588,7 @@ export default function ApiDocsPage() {
                 {[
                   '100 requests per minute',
                   '5,000 requests per day',
-                  'All 21 endpoints',
+                  'All 22 endpoints',
                   'Community support',
                 ].map((text) => (
                   <div key={text} className="flex items-center gap-2.5 text-neutral-400">

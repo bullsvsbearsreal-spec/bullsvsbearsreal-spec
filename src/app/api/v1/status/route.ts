@@ -34,6 +34,7 @@ export async function GET() {
       { path: '/api/v1/whale-liq', method: 'GET', description: 'Whale Liquidation Roulette — Hyperliquid positions sorted by proximity to liq' },
       { path: '/api/v1/earnings-calendar', method: 'GET', description: 'Aggregated upcoming protocol events (unlocks, TGEs, halvings, governance)' },
       { path: '/api/v1/restaking', method: 'GET', description: 'Restaking yield aggregator (EigenLayer + Symbiotic + Karak + LRTs)' },
+      { path: '/api/v1/smart-money-leaderboard', method: 'GET', description: 'Top Hyperliquid wallets ranked by 90-day realized PnL with closing-trade analytics' },
       { path: '/api/v1/exchanges', method: 'GET', description: 'Supported exchanges with fees and intervals' },
       { path: '/api/v1/status', method: 'GET', description: 'API health status (no auth required)' },
       { path: '/api/v1/openapi', method: 'GET', description: 'OpenAPI 3.1 spec for codegen + Swagger / Postman import (no auth)' },

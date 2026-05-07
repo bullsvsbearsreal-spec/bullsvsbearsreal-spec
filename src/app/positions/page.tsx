@@ -269,6 +269,13 @@ export default function PositionsPage() {
               📔 Journal
             </Link>
             <Link
+              href="/positions/tax"
+              className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
+              title="Tax / Cost-Basis — FIFO realised PnL across all your wallets/keys."
+            >
+              🧾 Tax
+            </Link>
+            <Link
               href="/positions/simulate"
               className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
               title="What if I open this position? Pre-trade decision engine."

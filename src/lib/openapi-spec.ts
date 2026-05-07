@@ -260,6 +260,17 @@ export const openApiSpec = {
         responses: { 200: { description: 'OK' } },
       },
     },
+    '/smart-money-leaderboard': {
+      get: {
+        summary: 'Top Hyperliquid wallets ranked by realized PnL (90d)',
+        description: 'For each top wallet pulls userFillsByTime via the public HL API, sums closing-trade PnL, computes win rate, biggest win/loss, top symbols, days since last trade. Heavy first call (~5–15s) cached 30 min.',
+        parameters: [
+          { name: 'topN', in: 'query', schema: { type: 'integer', minimum: 5, maximum: 200, default: 50 } },
+          { name: 'lookbackDays', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 180, default: 90 } },
+        ],
+        responses: { 200: { description: 'OK' } },
+      },
+    },
     '/restaking': {
       get: {
         summary: 'Restaking yield aggregator (EigenLayer + Symbiotic + Karak + LRTs)',
