@@ -415,6 +415,34 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Altcoin Outperformance · vs BTC + ETH',
     description: 'Which altcoins are beating BTC and ETH over the rolling window. Sort by relative performance, top-100 screened, stablecoins + BTC/ETH wrappers excluded.',
   },
+  '/whale-liq': {
+    title: 'Whale Liquidation Roulette · Near-Liq HL Positions',
+    description: 'Live tracker of Hyperliquid whale positions sitting near their liquidation price. Sorted by distance to liq with notional, leverage, and PnL — see who is about to get rekt.',
+  },
+  '/restaking': {
+    title: 'Restaking Yields · EigenLayer + Symbiotic + Karak + LRTs',
+    description: 'Aggregated APY + TVL for liquid restaking pools across EigenLayer, Symbiotic, Karak, EtherFi, Renzo, Kelp, Puffer, and more. Sorted by TVL with reward token + risk metadata.',
+  },
+  '/bridge-flows': {
+    title: 'Cross-Chain Bridge Flow Map · Wormhole',
+    description: 'Live cross-chain volume + transfer counts via Wormhole. Source→destination chain matrix, top assets being bridged, and ranked corridors over 24h / 7d / 30d windows.',
+  },
+  '/earnings-calendar': {
+    title: 'Crypto Earnings Calendar · Unlocks + TGEs + Mainnets',
+    description: 'Upcoming crypto schedule events grouped by ISO week — token unlocks, TGEs, halvings, governance votes, and mainnet launches with USD impact estimates.',
+  },
+  '/backtest': {
+    title: 'Strategy Backtest Lab · DCA + Funding Carry',
+    description: 'Run historical simulations of dollar-cost-averaging and funding-carry strategies on real on-chain price + funding data. Sharpe, max drawdown, daily series with one click.',
+  },
+  '/listing-radar': {
+    title: 'Pre-Listing Leak Tracker · Listing Radar',
+    description: 'Real-time CEX listing announcements from Binance/Coinbase/OKX. Listings historically pump 30-200% in the first 24h — track which announcements are still inside the front-run window.',
+  },
+  '/smart-money/leaderboard': {
+    title: 'Top Hyperliquid Traders · Realized PnL Leaderboard',
+    description: 'Top wallets ranked by closing-trade PnL over the last 90 days on Hyperliquid. Per-trader win rate, biggest single trade, top symbols, and click into full position detail.',
+  },
   '/exchange-fees': {
     title: 'Exchange Fee Comparison · 20 CEX + DEX',
     description: 'Maker and taker fees side-by-side across Binance, Bybit, OKX, Bitget, MEXC, Kraken, Coinbase, BingX, KuCoin, Hyperliquid, GMX, dYdX, Aster, Lighter, and more. Affiliate commission rates included.',
