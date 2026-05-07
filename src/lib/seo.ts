@@ -415,6 +415,114 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Altcoin Outperformance · vs BTC + ETH',
     description: 'Which altcoins are beating BTC and ETH over the rolling window. Sort by relative performance, top-100 screened, stablecoins + BTC/ETH wrappers excluded.',
   },
+  '/skew': {
+    title: 'Options Skew · Put-Call IV per Expiry',
+    description: 'Live put-call IV skew per Deribit expiry for BTC + ETH. Negative skew (calls richer than puts) is rare and historically a top warning signal — track it across the term structure.',
+  },
+  '/cme-basis': {
+    title: 'CME Basis · BTC + ETH Cash-and-Carry',
+    description: 'CME front-month BTC and ETH futures premium vs spot, annualized to expiry. Real cash-and-carry rate institutions can earn — hot basis (>15% APR) marks risk-on regimes.',
+  },
+  '/sectors': {
+    title: 'Sector Rotation · Crypto Money Flow Map',
+    description: 'Which crypto sectors money is flowing into right now. 24h market-cap change heatmap across 27 sectors — AI, DeFi, L2s, RWA, memes — to spot rotations as they form.',
+  },
+  '/cycle-phase': {
+    title: 'BTC Cycle Phase · Composite of 5 Signals',
+    description: 'Where in the cycle are we? Hash Ribbons + Puell Multiple + MVRV Z-score + funding regime + price-vs-200d-SMA synthesised into a single phase tag with confidence.',
+  },
+  '/etf-flows': {
+    title: 'ETF Flows · Daily Net BTC + ETH Spot Flows',
+    description: 'Daily net inflows / outflows for every US spot Bitcoin and Ethereum ETF, sourced from Farside. Cumulative 7d / 30d totals + per-issuer breakdown.',
+  },
+  '/etf-counterfactual': {
+    title: 'BTC without ETF Flows · Counterfactual Model',
+    description: 'Where would BTC be trading if spot ETFs hadn’t been bidding? Linear regression of daily ETF net flows against price returns, then strip the flow contribution out.',
+  },
+  '/cliff-watch': {
+    title: 'Cliff Watch · Major Token Vesting Cliffs',
+    description: 'Upcoming cliff vesting events that drop large supply tranches all at once. Tracks the biggest single-day unlocks alongside investor / team / treasury attribution.',
+  },
+  '/crowdedness': {
+    title: 'Crowdedness Score · Position-Side Imbalance',
+    description: 'Composite crowdedness across funding, OI growth, long/short ratio. Extreme readings precede squeezes / flushes — see which symbols are most one-sided.',
+  },
+  '/crypto-stocks': {
+    title: 'Crypto Stocks · MSTR + COIN + Miners',
+    description: 'Live prices and momentum for crypto-exposed equities — MSTR, COIN, MARA, RIOT, CLSK, HUT and more. Premium / discount to NAV for the BTC-treasuries.',
+  },
+  '/fomc-playbook': {
+    title: 'FOMC Playbook · Crypto Reaction Patterns',
+    description: 'Crypto’s historical reaction to every FOMC decision — hike, hold, cut, dot-plot revisions — broken down by 1h / 4h / 24h price moves with median + IQR.',
+  },
+  '/funding-countdown': {
+    title: 'Funding Countdown · Next Settlement Per Venue',
+    description: 'Real-time countdown to the next funding settlement on every perp exchange, with predicted rates based on the live mark-vs-index gap.',
+  },
+  '/funding-flips': {
+    title: 'Funding Flips · Sign Changes Across Venues',
+    description: 'Symbols where funding just flipped from positive to negative (longs paying → shorts paying) or vice versa across exchanges — leading sentiment indicator.',
+  },
+  '/funding-leaderboard': {
+    title: 'Funding Leaderboard · Highest + Most Negative Rates',
+    description: 'Top symbols by absolute funding rate across every venue. The most-stressed positions today — either crowded longs paying through the nose or aggressive shorts.',
+  },
+  '/funding-paid': {
+    title: 'Funding Paid 30d · Cumulative Cost Per Symbol',
+    description: '30-day cumulative funding paid (or earned) per perpetual futures pair — useful for sizing the carry cost / yield of a delta-neutral or directional position.',
+  },
+  '/funding-predictor': {
+    title: 'Funding Predictor · Next Settlement Forecast',
+    description: 'Forecast the next funding rate at every venue using live mark / index basis and recent rate momentum. Spot upcoming rate spikes before they print.',
+  },
+  '/hash-ribbons': {
+    title: 'Hash Ribbons · Bitcoin Miner Capitulation Signal',
+    description: 'Live Hash Ribbons (30d / 60d hash rate moving averages). When the 30d crosses below the 60d, miners are capitulating — historically a multi-month BTC bottom signal.',
+  },
+  '/memecoin-radar': {
+    title: 'Memecoin Radar · Trending On-Chain Tokens',
+    description: 'Live trending memecoins from Solana, Base, and Hyperliquid — sorted by volume momentum, holder growth, and freshness. Catch the rotation before it tops.',
+  },
+  '/orderbook-imbalance': {
+    title: 'Order Book Imbalance · Bid/Ask Pressure',
+    description: 'Live bid vs ask depth imbalance for top symbols. Heavy bid-side pressure = absorption / squeeze setup; heavy ask-side = distribution / breakdown setup.',
+  },
+  '/restaking-delta': {
+    title: 'Restaking Delta · TVL + APY Movements',
+    description: '30-day change in TVL and APY across every liquid restaking pool. Spot which protocols are gaining share and which are bleeding outflows.',
+  },
+  '/rv-iv': {
+    title: 'Realised vs Implied Vol · Premium Tracker',
+    description: 'Live realised volatility vs Deribit implied vol for BTC + ETH at multiple horizons. RV>IV = options under-priced; IV>RV = vol-sellers harvesting premium.',
+  },
+  '/smart-money-composite': {
+    title: 'Smart Money Composite · Aggregate Positioning',
+    description: 'Aggregate sentiment gauge built from top traders’ positioning across Hyperliquid + GMX V2. Net long/short bias, leaderboard alignment, conviction score.',
+  },
+  '/social': {
+    title: 'KOL Feed · Crypto Twitter Signal',
+    description: 'Live feed of high-signal crypto Twitter posts from a curated list of traders, analysts, and protocol leads. $TICKERS auto-linked, no algorithmic ranking noise.',
+  },
+  '/stablecoin-supply': {
+    title: 'Stablecoin Supply · Total Issued + 7d / 30d Change',
+    description: 'Live supply across USDT, USDC, DAI, FDUSD, PYUSD, USDe and more. 7d / 30d issuance changes — net stablecoin inflow into crypto is a leading risk-on indicator.',
+  },
+  '/tge-calendar': {
+    title: 'TGE Calendar · Upcoming Token Generation Events',
+    description: 'Upcoming token generation events with FDV, initial circulating supply, vesting cliff, funding raised, and chain. Listings historically pump 30-200% in the first 24h.',
+  },
+  '/trade-optimizer': {
+    title: 'Trade Optimizer · Best Venue + Size + Slippage',
+    description: 'Given size, side and asset, find the venue with the best execution: lowest fee, smallest slippage, deepest book, and least adverse funding.',
+  },
+  '/validators': {
+    title: 'Validator Economics · LST + Restaking Yields',
+    description: 'Live yields from validator staking + liquid-staking pools across ETH, SOL, NEAR, ATOM, MATIC and more. Cross-protocol APY ranking with TVL + risk metadata.',
+  },
+  '/volume-share': {
+    title: 'CEX vs DEX Volume Share · Daily Trend',
+    description: 'On-chain perp DEXs vs centralized exchange perp volume — the rolling DEX market share trend. Daily and weekly tracking with leader concentration.',
+  },
   '/whale-liq': {
     title: 'Whale Liquidation Roulette · Near-Liq HL Positions',
     description: 'Live tracker of Hyperliquid whale positions sitting near their liquidation price. Sorted by distance to liq with notional, leverage, and PnL — see who is about to get rekt.',
