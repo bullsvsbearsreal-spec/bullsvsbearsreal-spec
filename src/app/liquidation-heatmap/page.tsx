@@ -527,7 +527,7 @@ export default function LiquidationHeatmapPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={0} sources={['10 venues']} lastUpdated={lastUpdate} />
             <span className="text-[10px] font-mono text-green-400 bg-green-400/10 px-2 py-0.5 rounded">
               Auto-refresh {timeframe === '7d' ? '5m' : '30s'}
             </span>

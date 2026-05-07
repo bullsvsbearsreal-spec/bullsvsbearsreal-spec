@@ -126,7 +126,7 @@ function ExecutionCostsInner() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={0} sources={['cross-exchange']} lastUpdated={lastUpdate} />
             <button
               onClick={handleShare}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors text-xs font-medium"

@@ -232,7 +232,7 @@ export default function ETFPage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            <DataFreshness exchangeCount={0} sources={['Polygon.io']} lastUpdated={lastUpdate} />
           </div>
         </div>
 

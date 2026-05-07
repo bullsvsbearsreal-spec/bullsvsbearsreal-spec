@@ -221,7 +221,8 @@ export default function PortfolioPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />
+            {/* Manual portfolio — prices come from CoinGecko, not exchanges. */}
+            <DataFreshness exchangeCount={0} sources={['CoinGecko']} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={isRefreshing}

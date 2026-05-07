@@ -696,7 +696,9 @@ function WalletTrackerPageInner() {
                 Refresh
               </button>
             )}
-            {activeAddress && <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} />}
+            {activeAddress && (
+              <DataFreshness exchangeCount={0} sources={['public RPCs']} lastUpdated={lastUpdate} />
+            )}
           </div>
         </div>
 
