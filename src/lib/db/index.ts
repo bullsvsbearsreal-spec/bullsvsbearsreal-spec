@@ -1355,59 +1355,82 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
     // window, then SUM those across exchanges. This is what "total OI" means.
     //
     // Earlier this used SUM(oi_usd) over the entire 12-min window, which
-    // counted every cron tick (≈12 per window per exchange). That's only
-    // stable if exchange coverage is identical across all four windows —
-    // when it isn't (e.g. snapshot frequency increased, or some venues
-    // went down 24h ago) the SUMs become incomparable, producing fake
-    // "+83% BTC OI 24h" / "+93% ETH OI 24h" / "+856% NIL OI 24h" deltas
-    // that mislead the screener page.
+    // counted every cron tick. That's only stable if exchange coverage is
+    // identical across all four windows — when it isn't, the SUMs become
+    // incomparable, producing fake "+83%" / "+856%" deltas.
     //
-    // DISTINCT ON gives us the latest tick per (exchange, symbol) in each
-    // window, which is the canonical OI reading at that point in time.
-    // The OUTER SUM aggregates across exchanges to get total venue OI.
+    // Earlier-still attempt used a single big UNION ALL CTE with a
+    // DISTINCT ON over (window, exchange, symbol) that returned 0 rows in
+    // production despite the table having data in every window — the
+    // ORDER BY combined with DISTINCT ON inside the nested derived table
+    // turned out to be brittle on Neon's Postgres (probably parallel-query
+    // related, hard to repro locally). Replaced with explicit per-window
+    // subqueries + LEFT JOIN on symbol — slower by a hair but unambiguous.
     const rows = await sql`
-      WITH latest_per_window AS (
-        SELECT
-          symbol,
-          SUM(CASE WHEN window = 'current' THEN oi_usd ELSE 0 END) AS current_oi,
-          SUM(CASE WHEN window = '1h'      THEN oi_usd ELSE 0 END) AS oi_1h,
-          SUM(CASE WHEN window = '4h'      THEN oi_usd ELSE 0 END) AS oi_4h,
-          SUM(CASE WHEN window = '24h'     THEN oi_usd ELSE 0 END) AS oi_24h
+      WITH cur AS (
+        SELECT symbol, SUM(oi_usd)::float8 AS oi
         FROM (
-          SELECT DISTINCT ON (window, exchange, symbol)
-            window, exchange, symbol, oi_usd
-          FROM (
-            SELECT 'current' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
-            WHERE ts >= NOW() - INTERVAL '12 minutes'
-            UNION ALL
-            SELECT '1h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
-            WHERE ts BETWEEN NOW() - INTERVAL '66 minutes' AND NOW() - INTERVAL '54 minutes'
-            UNION ALL
-            SELECT '4h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
-            WHERE ts BETWEEN NOW() - INTERVAL '246 minutes' AND NOW() - INTERVAL '234 minutes'
-            UNION ALL
-            SELECT '24h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
-            WHERE ts BETWEEN NOW() - INTERVAL '1446 minutes' AND NOW() - INTERVAL '1434 minutes'
-          ) all_windows
-          ORDER BY window, exchange, symbol, ts DESC
+          SELECT DISTINCT ON (exchange, symbol) exchange, symbol, oi_usd
+          FROM oi_snapshots
+          WHERE ts >= NOW() - INTERVAL '12 minutes'
+          ORDER BY exchange, symbol, ts DESC
+        ) latest
+        GROUP BY symbol
+      ),
+      h1 AS (
+        SELECT symbol, SUM(oi_usd)::float8 AS oi
+        FROM (
+          SELECT DISTINCT ON (exchange, symbol) exchange, symbol, oi_usd
+          FROM oi_snapshots
+          WHERE ts BETWEEN NOW() - INTERVAL '66 minutes' AND NOW() - INTERVAL '54 minutes'
+          ORDER BY exchange, symbol, ts DESC
+        ) latest
+        GROUP BY symbol
+      ),
+      h4 AS (
+        SELECT symbol, SUM(oi_usd)::float8 AS oi
+        FROM (
+          SELECT DISTINCT ON (exchange, symbol) exchange, symbol, oi_usd
+          FROM oi_snapshots
+          WHERE ts BETWEEN NOW() - INTERVAL '246 minutes' AND NOW() - INTERVAL '234 minutes'
+          ORDER BY exchange, symbol, ts DESC
+        ) latest
+        GROUP BY symbol
+      ),
+      h24 AS (
+        SELECT symbol, SUM(oi_usd)::float8 AS oi
+        FROM (
+          SELECT DISTINCT ON (exchange, symbol) exchange, symbol, oi_usd
+          FROM oi_snapshots
+          WHERE ts BETWEEN NOW() - INTERVAL '1446 minutes' AND NOW() - INTERVAL '1434 minutes'
+          ORDER BY exchange, symbol, ts DESC
         ) latest
         GROUP BY symbol
       )
-      SELECT * FROM latest_per_window
-      WHERE current_oi > 0
-      ORDER BY current_oi DESC
+      SELECT
+        cur.symbol,
+        cur.oi AS current_oi,
+        COALESCE(h1.oi, 0)  AS oi_1h,
+        COALESCE(h4.oi, 0)  AS oi_4h,
+        COALESCE(h24.oi, 0) AS oi_24h
+      FROM cur
+      LEFT JOIN h1  ON cur.symbol = h1.symbol
+      LEFT JOIN h4  ON cur.symbol = h4.symbol
+      LEFT JOIN h24 ON cur.symbol = h24.symbol
+      WHERE cur.oi > 0
+      ORDER BY cur.oi DESC
     `;
 
     return rows.map((r: any) => {
       const current = Number(r.current_oi);
       const h1 = Number(r.oi_1h);
-      const h4 = Number(r.oi_4h);
+      const h4v = Number(r.oi_4h);
       const h24 = Number(r.oi_24h);
       return {
         symbol: r.symbol,
         currentOI: current,
         change1h: h1 > 0 ? ((current - h1) / h1 * 100) : null,
-        change4h: h4 > 0 ? ((current - h4) / h4 * 100) : null,
+        change4h: h4v > 0 ? ((current - h4v) / h4v * 100) : null,
         change24h: h24 > 0 ? ((current - h24) / h24 * 100) : null,
       };
     });
