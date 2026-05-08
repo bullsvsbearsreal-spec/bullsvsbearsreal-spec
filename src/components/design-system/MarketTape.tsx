@@ -5,6 +5,19 @@ import ThroughputCounter from './ThroughputCounter';
 interface TapeItem { sym: string; price: number; chg: number; }
 interface MarketTapeProps { items: TapeItem[]; baseline?: number; stickyTop?: number; className?: string; }
 
+/** Tier-aware price formatter — handles every magnitude from sub-cent
+ *  memes (PEPE @ $0.0000084) to four-figure majors (BTC @ $80,000).
+ *  Previously the tape used `maximumFractionDigits: 4` which rounded
+ *  PEPE's $0.0000084 → 0 → "$0", visible as "PEPE $0" in production. */
+function fmtTickerPrice(p: number): string {
+  if (!isFinite(p) || p <= 0) return '$0';
+  if (p >= 1000) return `$${p.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (p >= 1) return `$${p.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  if (p >= 0.01) return `$${p.toFixed(4)}`;
+  if (p >= 0.0001) return `$${p.toFixed(6)}`;
+  return `$${p.toFixed(8)}`;
+}
+
 export default function MarketTape({ items, baseline = 1247, stickyTop = 0, className }: MarketTapeProps) {
   if (!items?.length) return null;
   return (
@@ -19,7 +32,7 @@ export default function MarketTape({ items, baseline = 1247, stickyTop = 0, clas
           {[...items, ...items].map((m, i) => (
             <span key={`${m.sym}-${i}`} style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
               <span style={{ color: 'var(--fg-muted)', fontWeight: 600 }}>{m.sym}</span>{' '}
-              <span style={{ color: 'var(--fg-default)' }}>${m.price.toLocaleString(undefined, { maximumFractionDigits: m.price < 1 ? 4 : 2 })}</span>{' '}
+              <span style={{ color: 'var(--fg-default)' }}>{fmtTickerPrice(m.price)}</span>{' '}
               <span style={{ color: m.chg >= 0 ? 'var(--pump-mild)' : 'var(--rekt-mild)', fontWeight: 600 }}>{m.chg >= 0 ? '+' : ''}{m.chg.toFixed(2)}%</span>
             </span>
           ))}
