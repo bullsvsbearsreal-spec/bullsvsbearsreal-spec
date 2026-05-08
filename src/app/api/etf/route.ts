@@ -149,6 +149,125 @@ async function fetchLeadHistory(
   }
 }
 
+/* ─── Yahoo Finance AUM (crumb-auth flow) ──────────────────────────────
+ *
+ * Yahoo's quoteSummary v10 endpoint requires a "crumb" auth token with a
+ * matching session cookie since their 2024 anti-scrape lockdown. Flow:
+ *   1. GET https://fc.yahoo.com/ to set the session cookie.
+ *   2. GET /v1/test/getcrumb with that cookie → returns the crumb token.
+ *   3. GET /v10/finance/quoteSummary/<TICKER>?modules=...&crumb=<crumb>
+ *      with the same cookie → returns full ETF data including totalAssets.
+ *
+ * The crumb is per-cookie, so we cache the (cookie, crumb) pair for an
+ * hour to amortise the 2 round-trips.
+ *
+ * Replaces the dead SoSoValue source. SoSoValue's .com returns 000 (DNS)
+ * and .xyz returns 401 since their May 2026 API rework. Yahoo gives us
+ * `totalAssets` directly which IS the AUM figure we surface.
+ */
+
+const YAHOO_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+
+interface YahooSession {
+  cookie: string;
+  crumb: string;
+  ts: number;
+}
+let yahooSession: YahooSession | null = null;
+const YAHOO_SESSION_TTL = 60 * 60 * 1000; // 1h — crumbs are fairly long-lived
+
+async function getYahooSession(): Promise<YahooSession | null> {
+  if (yahooSession && Date.now() - yahooSession.ts < YAHOO_SESSION_TTL) {
+    return yahooSession;
+  }
+  try {
+    // Step 1: hit fc.yahoo.com to get the session cookie.
+    const cookieRes = await fetchWithTimeout(
+      'https://fc.yahoo.com/',
+      { headers: { 'User-Agent': YAHOO_UA }, redirect: 'manual' },
+      5000,
+    );
+    const setCookie = cookieRes.headers.get('set-cookie') || '';
+    // Extract just the name=value pair(s) we need (Yahoo sets multiple).
+    const cookie = setCookie
+      .split(/,\s*(?=[A-Z])/)
+      .map(c => c.split(';')[0].trim())
+      .filter(Boolean)
+      .join('; ');
+    if (!cookie) return null;
+
+    // Step 2: get the crumb with that cookie.
+    const crumbRes = await fetchWithTimeout(
+      'https://query2.finance.yahoo.com/v1/test/getcrumb',
+      { headers: { 'User-Agent': YAHOO_UA, Cookie: cookie } },
+      5000,
+    );
+    if (!crumbRes.ok) return null;
+    const crumb = (await crumbRes.text()).trim();
+    if (!crumb || crumb.length < 5) return null;
+
+    yahooSession = { cookie, crumb, ts: Date.now() };
+    return yahooSession;
+  } catch {
+    return null;
+  }
+}
+
+interface YahooFundDetail {
+  totalAssets: number | null;   // AUM in USD
+  netAssets: number | null;     // Sometimes the only field set
+  expenseRatio: number | null;  // Annual fee, decimal (0.0025 = 0.25%)
+}
+
+async function fetchYahooFundDetail(ticker: string, sess: YahooSession): Promise<YahooFundDetail | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}` +
+      `?modules=defaultKeyStatistics,summaryDetail,fundProfile&crumb=${encodeURIComponent(sess.crumb)}`;
+    const res = await fetchWithTimeout(
+      url,
+      { headers: { 'User-Agent': YAHOO_UA, Cookie: sess.cookie } },
+      6000,
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const r = json?.quoteSummary?.result?.[0];
+    if (!r) return null;
+
+    // totalAssets sits on defaultKeyStatistics.totalAssets.raw for ETFs.
+    const totalAssets = r.defaultKeyStatistics?.totalAssets?.raw ?? null;
+    // Some funds report as netAssets via summaryDetail.netAssets.raw.
+    const netAssets = r.summaryDetail?.netAssets?.raw
+      ?? r.summaryDetail?.totalAssets?.raw
+      ?? null;
+    const expenseRatio = r.fundProfile?.feesExpensesInvestment?.annualReportExpenseRatio?.raw ?? null;
+
+    return {
+      totalAssets: typeof totalAssets === 'number' && totalAssets > 0 ? totalAssets : null,
+      netAssets: typeof netAssets === 'number' && netAssets > 0 ? netAssets : null,
+      expenseRatio: typeof expenseRatio === 'number' && expenseRatio >= 0 ? expenseRatio : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch AUM for every fund in parallel. Single map: ticker → AUM in USD. */
+async function fetchAllYahooAum(tickers: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const sess = await getYahooSession();
+  if (!sess) return out;
+
+  const results = await Promise.allSettled(
+    tickers.map(async (t) => ({ ticker: t, detail: await fetchYahooFundDetail(t, sess) })),
+  );
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue;
+    const aum = r.value.detail?.totalAssets ?? r.value.detail?.netAssets ?? null;
+    if (aum && aum > 0) out.set(r.value.ticker, aum);
+  }
+  return out;
+}
+
 /* ─── SoSoValue fetching ────────────────────────────────────────────── */
 
 async function fetchSoSoValueData(type: 'btc' | 'eth'): Promise<any | null> {
@@ -204,11 +323,15 @@ export async function GET(request: NextRequest) {
 
   const funds = type === 'btc' ? BTC_ETFS : ETH_ETFS;
   const leadTicker = funds[0].ticker;
+  const tickers = funds.map((f) => f.ticker);
 
-  // Fetch all sources in parallel
-  const [sosoData, yahooQuotes, history] = await Promise.all([
+  // Fetch all sources in parallel. Yahoo's crumb-flow is the new primary
+  // AUM source (SoSoValue's API died May 2026: .com → 000, .xyz → 401).
+  // SoSoValue is kept as a tertiary fallback in case it ever comes back.
+  const [sosoData, yahooQuotes, yahooAum, history] = await Promise.all([
     fetchSoSoValueData(type),
     Promise.all(funds.map((f) => fetchYahooQuote(f.ticker))),
+    fetchAllYahooAum(tickers),
     fetchLeadHistory(leadTicker),
   ]);
 
@@ -223,7 +346,14 @@ export async function GET(request: NextRequest) {
     const price = yahoo?.price ?? soso?.price ?? null;
     const change24h = yahoo?.changePct ?? soso?.changePct ?? null;
     const volume = yahoo?.volume ?? soso?.volume ?? null;
-    const marketCap = soso?.marketCap ?? soso?.aum ?? soso?.totalNetAssets ?? null;
+    // Prefer Yahoo's totalAssets (working source as of May 2026), fall
+    // through to SoSoValue if it ever returns. Drops to null only when
+    // both sources fail.
+    const marketCap = yahooAum.get(f.ticker)
+      ?? soso?.marketCap
+      ?? soso?.aum
+      ?? soso?.totalNetAssets
+      ?? null;
 
     if (volume) totalVolume += volume;
     if (marketCap) totalMarketCap += marketCap;
