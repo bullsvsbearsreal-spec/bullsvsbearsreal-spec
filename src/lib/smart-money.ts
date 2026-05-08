@@ -83,12 +83,25 @@ async function fetchLeaderboard(_timeWindow: 'allTime' | 'month' | 'week' | 'day
   }
 }
 
-/** Mine fill stats: realized PnL, win rate, biggest win/loss, top symbols. */
-function summariseFills(fills: NormalizedTrade[], lookbackMs: number): {
+/** Mine fill stats: realized PnL, win rate, biggest win/loss, top symbols.
+ *
+ * Behaviour notes (locked in by tests):
+ * - Fills older than (now - lookbackMs) are skipped.
+ * - `closing` and `realised` only count fills with a non-null
+ *   realizedPnlUsd (opens have null PnL).
+ * - `wins` requires realizedPnlUsd > 0 strictly (zero is breakeven).
+ * - `biggestWin` / `biggestLoss` start at 0 and remain 0 if no
+ *   winning / losing fills exist.
+ * - `topSymbols` ranks by aggregate valueUsd across ALL fills in the
+ *   window (incl. opens), not by realised PnL — that's intentional:
+ *   "what does this wallet trade".
+ * - `lastTs` is the max ts of any fill in the window (open or close).
+ */
+export function summariseFills(fills: NormalizedTrade[], lookbackMs: number, nowMs: number = Date.now()): {
   realised: number; closing: number; wins: number;
   biggestWin: number; biggestLoss: number; topSymbols: string[]; lastTs: number | null;
 } {
-  const cutoff = Date.now() - lookbackMs;
+  const cutoff = nowMs - lookbackMs;
   let realised = 0, closing = 0, wins = 0;
   let biggestWin = 0, biggestLoss = 0;
   let lastTs: number | null = null;

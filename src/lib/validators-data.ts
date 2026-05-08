@@ -53,7 +53,18 @@ export interface ValidatorsResponse {
   ts: number;
 }
 
-const ASSET_FROM_SYMBOL = (sym: string): string => {
+/**
+ * Bucket a pool's symbol into a canonical underlying asset for the
+ * /validators page's by-asset grouping. The page renders one column per
+ * underlying (ETH / SOL / BTC / ...) with all LSTs/LRTs underneath, so
+ * this mapping IS the column layout. A regression here would scatter
+ * LSTs of the same asset into different columns or merge unrelated assets.
+ *
+ * Ordering matters: ETH and SOL checks run first because their LST/LRT
+ * symbols frequently embed the underlying ticker (WSTETH includes STETH;
+ * JITOSOL includes SOL), and we want the more specific match to win.
+ */
+export const ASSET_FROM_SYMBOL = (sym: string): string => {
   const u = sym.toUpperCase();
   if (u.includes('STETH') || u.includes('RETH') || u.includes('CBETH') || u.includes('WSTETH') || u.endsWith('ETH') || u === 'WETH' || u === 'ETH') return 'ETH';
   if (u.includes('JITOSOL') || u.includes('MSOL') || u.includes('BSOL') || u.includes('JSOL') || u.endsWith('SOL') || u === 'SOL') return 'SOL';
