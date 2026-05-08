@@ -37,19 +37,40 @@ describe('isRestakingPool — issuer-allowlist matches', () => {
     expect(isRestakingPool({ project: 'swell' })).toBe(true);
   });
 
-  it('accepts EtherFi name variants (DefiLlama uses several)', () => {
-    expect(isRestakingPool({ project: 'ether.fi stake' })).toBe(true);
-    expect(isRestakingPool({ project: 'ether.fi liquid' })).toBe(true);
+  it('accepts EtherFi DefiLlama slug variants (hyphen-separated)', () => {
+    // DefiLlama uses hyphens, not spaces. Verified against the live
+    // /pools snapshot May 2026.
+    expect(isRestakingPool({ project: 'ether.fi-stake' })).toBe(true);
+    expect(isRestakingPool({ project: 'ether.fi-liquid' })).toBe(true);
     expect(isRestakingPool({ project: 'ether.fi liquid restaking' })).toBe(true);
   });
 
-  it('accepts other allowlisted protocols (SSV, Rio, Mellow, Bedrock, Fluid)', () => {
+  it('accepts Swell DefiLlama slug variants', () => {
+    expect(isRestakingPool({ project: 'swell-earn' })).toBe(true);
+    expect(isRestakingPool({ project: 'swell-liquid-restaking' })).toBe(true);
+    expect(isRestakingPool({ project: 'swell-liquid-staking' })).toBe(true);
+  });
+
+  it('accepts Puffer slug variants', () => {
+    expect(isRestakingPool({ project: 'puffer-stake' })).toBe(true);
+  });
+
+  it('accepts other allowlisted protocols (SSV, Rio, Mellow, Bedrock)', () => {
     expect(isRestakingPool({ project: 'ssvnetwork' })).toBe(true);
     expect(isRestakingPool({ project: 'rio-network' })).toBe(true);
     expect(isRestakingPool({ project: 'mellow' })).toBe(true);
     expect(isRestakingPool({ project: 'mellow-protocol' })).toBe(true);
     expect(isRestakingPool({ project: 'bedrock' })).toBe(true);
-    expect(isRestakingPool({ project: 'fluid' })).toBe(true);
+    expect(isRestakingPool({ project: 'bedrock-unieth' })).toBe(true);
+    expect(isRestakingPool({ project: 'eigenpie' })).toBe(true);
+  });
+
+  it('does NOT accept fluid-* slugs (Fluid is a DEX + lending, not restaking)', () => {
+    // Fluid was incorrectly in the allowlist; fluid-dex / fluid-lending
+    // / fluid-lite would have leaked lending pools onto /restaking.
+    expect(isRestakingPool({ project: 'fluid-dex' })).toBe(false);
+    expect(isRestakingPool({ project: 'fluid-lending' })).toBe(false);
+    expect(isRestakingPool({ project: 'fluid-lite' })).toBe(false);
   });
 });
 

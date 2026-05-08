@@ -46,28 +46,45 @@ export interface RestakingPool {
  * Restricting to issuer protocols only gives ~80 pools, every one
  * actually a restaking yield product.
  */
+// Slugs verified against the live yields.llama.fi/pools snapshot
+// (May 2026). DefiLlama uses HYPHEN-separated slugs like
+// "ether.fi-stake" / "puffer-stake" / "swell-liquid-restaking" — not
+// the casual brand names. The previous allowlist used display names
+// which never matched, leaving the page with only 2 pools (kelp +
+// renzo, the only ones that happened to slug-match). Below: real
+// DefiLlama project slugs, grouped by display name.
 const PROTOCOL_DISPLAY: Record<string, string> = {
+  // Restaking issuers
   eigenlayer: 'EigenLayer',
   'eigenlayer-lst': 'EigenLayer',
   symbiotic: 'Symbiotic',
   karak: 'Karak',
   babylon: 'Babylon',
-  renzo: 'Renzo',
+  // EtherFi (LST + LRT)
   etherfi: 'EtherFi',
-  'ether.fi stake': 'EtherFi',
-  'ether.fi liquid': 'EtherFi',
+  'ether.fi-stake': 'EtherFi',
+  'ether.fi-liquid': 'EtherFi',
   'ether.fi liquid restaking': 'EtherFi',
+  // LRT issuers
+  renzo: 'Renzo',
   kelp: 'Kelp',
-  'puffer-finance': 'Puffer',
+  'kelp-dao': 'Kelp',
   puffer: 'Puffer',
+  'puffer-stake': 'Puffer',
+  'puffer-finance': 'Puffer',
   swell: 'Swell',
+  'swell-earn': 'Swell',
+  'swell-liquid-restaking': 'Swell',
+  'swell-liquid-staking': 'Swell',
+  // Other restaking ecosystem
   ssvnetwork: 'SSV',
   'rio-network': 'Rio',
   mellow: 'Mellow',
   'mellow-protocol': 'Mellow',
   bedrock: 'Bedrock',
+  'bedrock-unieth': 'Bedrock',
   'bedrock-unibtc': 'Bedrock',
-  fluid: 'Fluid',
+  eigenpie: 'Eigenpie',
 };
 
 /** A pool counts as "restaking" if its DeFi Llama project matches an
