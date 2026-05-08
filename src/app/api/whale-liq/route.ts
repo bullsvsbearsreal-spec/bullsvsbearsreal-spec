@@ -40,13 +40,26 @@ export async function GET(request: NextRequest) {
   }
 
   const filtered = l1.feed.rows.filter(r => r.distancePct < within).slice(0, limit);
+
+  // UX guard: if the filter returns nothing (low-volatility periods where
+  // no whale is near liq), fall back to the top-N closest-to-liq overall
+  // so the page never renders empty. The `belowFilter` flag tells the page
+  // to surface these as "closest currently open" rather than as "near liq".
+  let rows = filtered;
+  let belowFilter = false;
+  if (filtered.length === 0 && l1.feed.rows.length > 0) {
+    rows = l1.feed.rows.slice(0, Math.min(limit, 50));
+    belowFilter = true;
+  }
+
   return NextResponse.json({
     ts: l1.feed.ts,
-    rows: filtered,
+    rows,
     scanned: l1.feed.scanned,
     positionsTotal: l1.feed.positionsTotal,
     withinFive: l1.feed.withinFive,
     withinTen: l1.feed.withinTen,
+    belowFilter,
     meta: { within, limit },
   }, {
     headers: {

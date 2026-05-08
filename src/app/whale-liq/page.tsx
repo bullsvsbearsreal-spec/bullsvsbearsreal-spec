@@ -41,6 +41,10 @@ interface ApiResponse {
   positionsTotal: number;
   withinFive: number;
   withinTen: number;
+  /** True when no whale matched the filter and the API fell back to
+   *  showing the top-N closest-to-liq overall. Page should label these
+   *  as "closest currently open" not "near liq". */
+  belowFilter?: boolean;
   meta: { within: number; limit: number };
 }
 
@@ -188,6 +192,17 @@ export default function WhaleLiqRoulettePage() {
         {data && data.rows.length === 0 && (
           <div className="card-premium p-8 text-center text-neutral-500 text-sm">
             No whales within {fmtPct(within)} of liquidation right now. Wide it up to see more.
+          </div>
+        )}
+
+        {data && data.belowFilter && data.rows.length > 0 && (
+          <div className="mb-3 px-3 py-2 rounded-md border border-amber-500/30 bg-amber-500/[0.06] text-[11px] text-amber-200/90 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+            <span>
+              No whales within {fmtPct(within, 0)} of liquidation right now —
+              showing the {data.rows.length} closest open positions instead.
+              Healthy market.
+            </span>
           </div>
         )}
 
