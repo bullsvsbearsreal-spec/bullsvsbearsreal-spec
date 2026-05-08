@@ -146,16 +146,23 @@ function parseRssXml(xml: string, handle: string): SocialPost[] {
   return posts;
 }
 
-function extractTag(block: string, tag: string): string | undefined {
+export function extractTag(block: string, tag: string): string | undefined {
   const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
   return m ? m[1] : undefined;
 }
 
-function cleanText(s: string): string {
+export function cleanText(s: string): string {
   return s.replace(/<!\[CDATA\[/g, '').replace(/\]\]>/g, '').trim();
 }
 
-function decodeEntities(s: string): string {
+/**
+ * Decode common HTML entities. Critical ordering: `&amp;` MUST decode
+ * LAST. Otherwise text like `&amp;lt;` would decode to `&lt;` and then
+ * to `<`, producing `<` from what should have stayed `&lt;` (a literal
+ * "&lt;" in the source). The current order ensures we only un-escape
+ * one layer of entity encoding.
+ */
+export function decodeEntities(s: string): string {
   return cleanText(s)
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -166,7 +173,7 @@ function decodeEntities(s: string): string {
     .replace(/&amp;/g, '&'); // last — must come after all others
 }
 
-function stripHtml(s: string): string {
+export function stripHtml(s: string): string {
   return s
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
