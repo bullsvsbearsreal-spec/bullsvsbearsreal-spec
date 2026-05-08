@@ -13,7 +13,7 @@
  * so a typo (em-dash for minus, comma in wrong place) would silently break.
  */
 import { describe, it, expect } from 'vitest';
-import { parseFlowCell, parseFarsideDate } from '../etf-flows-fetch';
+import { parseFlowCell, parseFarsideDate, parseFarsideTable } from '../etf-flows-fetch';
 
 describe('parseFlowCell — positive flows (inflows)', () => {
   it('parses a plain decimal as positive', () => {
@@ -118,5 +118,62 @@ describe('parseFarsideDate', () => {
     expect(parseFarsideDate('05/05/2026')).toBe(null);
     expect(parseFarsideDate('May 5')).toBe(null); // missing year
     expect(parseFarsideDate('05 Foo 2026')).toBe(null); // bad month
+  });
+});
+
+describe('parseFarsideTable — table selection', () => {
+  // Minimum ETF table fixture mimicking Farside's structure: header row
+  // with issuer columns + a single data row.
+  const ETF_TABLE = `
+    <table class="etf">
+      <tr><th>Date</th><th>IBIT</th><th>FBTC</th><th>Total</th></tr>
+      <tr><td>05 May 2026</td><td>123.4</td><td>(33.4)</td><td>90.0</td></tr>
+    </table>
+  `;
+
+  it('parses a minimal ETF table', () => {
+    const r = parseFarsideTable(ETF_TABLE);
+    expect(r).not.toBeNull();
+    expect(r!.issuers).toEqual(['IBIT', 'FBTC']);
+    expect(r!.days).toHaveLength(1);
+    expect(r!.days[0].date).toBe('2026-05-05');
+    expect(r!.days[0].perIssuer).toEqual([123.4, -33.4]);
+    expect(r!.days[0].total).toBe(90); // sum of perIssuer rounded
+  });
+
+  it('prefers <table class="etf"> over wrapper tables (Wayback Machine fix)', () => {
+    // Reproduces what Wayback Machine returns: an outer "thead" wrapper
+    // table BEFORE the actual data, plus a "tfooter" wrapper after. The
+    // previous "first <table>" matcher picked up the thead wrapper and
+    // failed to parse, leaving /etf-flows empty.
+    const html = `
+      <html><body>
+        <table class="thead"><tr><td>Decoration banner</td></tr></table>
+        ${ETF_TABLE}
+        <table class="tfooter"><tr><td>Footer junk</td></tr></table>
+      </body></html>
+    `;
+    const r = parseFarsideTable(html);
+    expect(r).not.toBeNull();
+    expect(r!.issuers).toEqual(['IBIT', 'FBTC']);
+    expect(r!.days).toHaveLength(1);
+    expect(r!.days[0].perIssuer).toEqual([123.4, -33.4]);
+  });
+
+  it('falls back to first <table> when no class="etf" is present', () => {
+    const html = `<table><tr><th>D</th><th>X</th></tr><tr><td>05 May 2026</td><td>10.0</td></tr></table>`;
+    const r = parseFarsideTable(html);
+    expect(r).not.toBeNull();
+    expect(r!.issuers).toEqual(['X']);
+  });
+
+  it('returns null when there is no table at all', () => {
+    expect(parseFarsideTable('<html><body><p>no data</p></body></html>')).toBeNull();
+  });
+
+  it('strips a trailing "Total" header column from the issuer list', () => {
+    // Farside's last column is always "Total" — issuers should drop it.
+    const r = parseFarsideTable(ETF_TABLE);
+    expect(r!.issuers).not.toContain('Total');
   });
 });

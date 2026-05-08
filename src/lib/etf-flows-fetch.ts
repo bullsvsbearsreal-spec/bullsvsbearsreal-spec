@@ -146,7 +146,18 @@ export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideRe
 
 /* ─── HTML parsing ────────────────────────────────────────────────────── */
 
-function parseFarsideTable(html: string): { issuers: string[]; days: FlowDay[] } | null {
+/**
+ * Parse a Farside ETF flow table out of an HTML page.
+ *
+ * Selects `<table class="etf">` specifically — falling back to the first
+ * `<table>` only if that's missing — because Wayback Machine snapshots
+ * wrap the page in `<table class="thead">` / `<table class="tfooter">`
+ * decoration tables and the previous "first table" selector picked the
+ * wrong one and returned no rows.
+ *
+ * Returns null when the table can't be located or has no parseable rows.
+ */
+export function parseFarsideTable(html: string): { issuers: string[]; days: FlowDay[] } | null {
   // Prefer the actual ETF data table (`<table class="etf">`) over any
   // decorative wrapper tables. On the live Farside page the etf table
   // happens to be first, but on the Wayback Machine the page is
