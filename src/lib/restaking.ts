@@ -73,7 +73,7 @@ const PROTOCOL_DISPLAY: Record<string, string> = {
 /** A pool counts as "restaking" if its DeFi Llama project matches an
  *  issuer allowlist. We deliberately exclude general AMMs/lenders even
  *  when they hold LRT collateral — those are LP yield, not restaking. */
-function isRestakingPool(p: any): boolean {
+export function isRestakingPool(p: any): boolean {
   const proto = (p.project ?? '').toLowerCase();
   if (PROTOCOL_DISPLAY[proto]) return true;
   // DeFi Llama's category field — "Liquid Restaking" specifically
