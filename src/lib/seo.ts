@@ -65,7 +65,19 @@ const VARIANT_BY_PATH_PREFIX: { match: string; variant: OGVariant }[] = [
   { match: 'options', variant: 'options' },
 ];
 
-function pickVariant(path: string, explicit?: OGVariant): OGVariant {
+/**
+ * Resolve which OG-image variant to use for a given page path.
+ *
+ * If the page metadata has `ogVariant` set explicitly, use it.
+ * Otherwise scan VARIANT_BY_PATH_PREFIX in declared order and use
+ * the first substring match. Falls back to 'default' if nothing
+ * matches.
+ *
+ * Order matters in VARIANT_BY_PATH_PREFIX: longer / more-specific
+ * matches come first ('funding-heatmap' → 'heatmap' must beat
+ * 'funding' → 'funding').
+ */
+export function pickVariant(path: string, explicit?: OGVariant): OGVariant {
   if (explicit) return explicit;
   const p = path.replace(/^\//, '').toLowerCase();
   for (const entry of VARIANT_BY_PATH_PREFIX) {
