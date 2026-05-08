@@ -1586,6 +1586,18 @@ option { background: #171717; color: #fff; }
 main { padding-bottom: 56px; }
 @media (max-width: 640px) { main { padding-bottom: 48px; } }
 
+/* Hide the 232 px primary sidebar on mobile / small tablet — it was eating
+   ≈43% of the viewport at 540 px, leaving the main content cramped. The
+   header dropdowns (Scan & Trade / Monitor / Risk / Research / My Tools)
+   already provide nav on small screens. Below md (768 px) we collapse the
+   sidebar to 0 so the data takes the full width. !important is needed to
+   override the inline `display: 'flex'` set by Sidebar.tsx. */
+@media (max-width: 767px) {
+  aside[aria-label="Primary navigation"] {
+    display: none !important;
+  }
+}
+
 .scrollbar-accent::-webkit-scrollbar { width: 8px; height: 8px; }
 .scrollbar-accent::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 4px; }
 .scrollbar-accent::-webkit-scrollbar-thumb {
