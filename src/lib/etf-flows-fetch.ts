@@ -154,7 +154,16 @@ function parseFarsideTable(html: string): { issuers: string[]; days: FlowDay[] }
   return { issuers, days };
 }
 
-function parseFlowCell(s: string): number | null {
+/**
+ * Parse a single Farside flow cell into a millions-USD number.
+ *
+ * Farside uses parens to denote negatives (`(33.4)` → -33.4M outflow).
+ * A regression that drops the paren-detection would silently invert
+ * outflows into inflows and corrupt the entire /etf-flows page.
+ *
+ * Returns null for empty cells / em-dashes / unparseable values.
+ */
+export function parseFlowCell(s: string): number | null {
   const trimmed = s.trim();
   if (!trimmed || trimmed === '-' || trimmed === '–') return null;
   const isNegative = /^\(/.test(trimmed);
@@ -164,7 +173,12 @@ function parseFlowCell(s: string): number | null {
   return isNegative ? -n : n;
 }
 
-function parseFarsideDate(s: string): string | null {
+/**
+ * Parse a Farside date label like "05 May 2026" into ISO YYYY-MM-DD.
+ * Returns null if the format doesn't match (silently skip the row;
+ * Farside uses non-date rows for "Average", "Minimum", "Maximum").
+ */
+export function parseFarsideDate(s: string): string | null {
   const m = s.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
   if (!m) return null;
   const day = parseInt(m[1], 10);
