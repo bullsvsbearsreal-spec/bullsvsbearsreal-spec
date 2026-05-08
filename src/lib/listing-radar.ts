@@ -121,7 +121,7 @@ async function fetchBinanceCatalog(catalogId: number): Promise<Array<{ id: numbe
  */
 const TICKER_RE = /\b([A-Z][A-Z0-9]{1,9})USDT?\b|\b([A-Z][A-Z0-9]{1,9})USDC?\b|\b([A-Z][A-Z0-9]{1,9})BUSD?\b/g;
 
-function extractTickers(title: string): string[] {
+export function extractTickers(title: string): string[] {
   const found = new Set<string>();
   // Prefer the structured forms first (XXXUSDT) which appear in titles.
   let m: RegExpExecArray | null;
@@ -148,9 +148,14 @@ function extractTickers(title: string): string[] {
   return Array.from(found).slice(0, 5);
 }
 
-function classifyTitle(title: string): ListingEvent['type'] {
+export function classifyTitle(title: string): ListingEvent['type'] {
   const t = title.toLowerCase();
-  if (/delist|removing|will remove/.test(t)) return 'delisting';
+  // Critical: this regex must catch Binance's literal phrasing
+  // "Notice of Removal of Spot Trading Pairs" — earlier this only
+  // matched delist|removing|will remove and missed "removal", flipping
+  // delistings (sell signal) into spot listings (buy signal) on the
+  // /listing-radar feed.
+  if (/delist|remov(al|ing|e)|will remove/.test(t)) return 'delisting';
   if (/perpetual|perp /.test(t)) return 'perp';
   if (/futures/.test(t)) return 'futures';
   if (/option/.test(t)) return 'option';
