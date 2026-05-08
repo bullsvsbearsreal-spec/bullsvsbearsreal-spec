@@ -317,12 +317,19 @@ export default function AdminDashboard() {
       safeFetch('/api/admin/monitoring/workers'),
     ]);
 
-    // 403 on stats OR pipeline → caller is not actually admin (server check).
-    // Surface clearly and abort the rest.
-    const isForbidden = (r: typeof statsRes) =>
-      r.status === 'fulfilled' && r.value.status === 403;
-    if (isForbidden(statsRes) || isForbidden(pipelineRes)) {
-      setError('Access denied. Admin role required.');
+    // 401 (not logged in) or 403 (logged in but not admin) on stats OR
+    // pipeline → caller can't see this page. Surface clearly and abort
+    // the rest. Distinguishing 401 vs 403 helps the user know whether
+    // they need to sign in or whether they need elevated access.
+    const isAuthFail = (r: typeof statsRes) =>
+      r.status === 'fulfilled' && (r.value.status === 401 || r.value.status === 403);
+    const got401 = (r: typeof statsRes) =>
+      r.status === 'fulfilled' && r.value.status === 401;
+    if (isAuthFail(statsRes) || isAuthFail(pipelineRes)) {
+      const needsSignIn = got401(statsRes) || got401(pipelineRes);
+      setError(needsSignIn
+        ? 'Not signed in (or session expired). Sign in with an admin account to view this page.'
+        : 'Access denied. Admin role required.');
       setLoading(false);
       return;
     }
