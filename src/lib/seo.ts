@@ -299,6 +299,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Dashboard',
     description: 'InfoHub crypto derivatives dashboard — funding rates, open interest, liquidations, spreads, and market data from 32 exchanges at a glance.',
   },
+  '/dashboard/v2': {
+    title: 'Market Pulse · Dashboard v2',
+    description: 'Editorial-style live market dashboard. BTC + ETH price, derivatives OI, fear & greed, top movers, recent liquidations, top headlines, and Bounce.tech rekt stats — all on one curated page.',
+  },
   '/referrals': {
     title: 'Referrals',
     description: 'Earn rewards by referring traders to InfoHub. Share your link and get credit when friends sign up and use the platform.',

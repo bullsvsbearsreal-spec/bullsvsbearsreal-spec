@@ -13,7 +13,8 @@ import { getPresetLayout } from '@/components/dashboard/LayoutPresets';
 import PersonaSelector from '@/components/dashboard/PersonaSelector';
 import FeatureHint from '@/components/FeatureHint';
 import AuthPromptBanner from '@/components/AuthPromptBanner';
-import { UserCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { UserCircle2, Sparkles } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'infohub-dashboard-layout';
 const PERSONA_SET_KEY = 'infohub-persona-set';
@@ -190,14 +191,24 @@ export default function DashboardPage() {
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
             <div className="flex items-start justify-between gap-4">
               <DashboardHeader userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />
-              <button
-                onClick={() => setShowPersona(true)}
-                className="flex items-center gap-1.5 mt-1 px-2.5 py-1.5 text-[11px] text-neutral-500 hover:text-white rounded-lg border border-white/[0.06] hover:border-white/[0.12] bg-white/[0.02] hover:bg-white/[0.04] transition-all shrink-0"
-                title="Change dashboard persona"
-              >
-                <UserCircle2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Persona</span>
-              </button>
+              <div className="flex items-center gap-2 mt-1 shrink-0">
+                <Link
+                  href="/dashboard/v2"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-rose-400 hover:text-rose-300 rounded-lg border border-rose-400/30 hover:border-rose-400/50 bg-rose-400/[0.06] hover:bg-rose-400/[0.12] transition-all"
+                  title="Try the new editorial-style dashboard with Bounce stats"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Try v2</span>
+                </Link>
+                <button
+                  onClick={() => setShowPersona(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-neutral-500 hover:text-white rounded-lg border border-white/[0.06] hover:border-white/[0.12] bg-white/[0.02] hover:bg-white/[0.04] transition-all"
+                  title="Change dashboard persona"
+                >
+                  <UserCircle2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Persona</span>
+                </button>
+              </div>
             </div>
 
             <FeatureHint page="/dashboard" />
