@@ -151,12 +151,24 @@ export default function BtcChartWidget({ widgetId }: { wide?: boolean; widgetId?
   const change7d = prices.length > 1 && prices[0] !== 0 ? ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100 : 0;
   const up = change7d >= 0;
 
+  // Same tier-aware formatter as BtcPriceWidget — fixes the $0 render
+  // for sub-$1 sync targets (THETA, SHIB, PEPE, etc.).
+  const fmtPx = (v: number | null | undefined): string => {
+    if (v == null) return '—';
+    if (v >= 1000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    if (v >= 1) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    if (v >= 0.01) return `$${v.toFixed(4)}`;
+    if (v >= 0.0001) return `$${v.toFixed(6)}`;
+    if (v > 0) return `$${v.toFixed(8)}`;
+    return '$0';
+  };
+
   return (
     <div ref={containerRef}>
       <div className="flex items-baseline justify-between mb-2">
         <div>
           <span className="text-lg font-bold text-white tabular-nums">
-            ${(hover?.price ?? current)?.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {fmtPx(hover?.price ?? current)}
           </span>
           {!hover && (
             <span className={`ml-2 text-xs font-medium ${up ? 'text-green-400' : 'text-red-400'}`}>
