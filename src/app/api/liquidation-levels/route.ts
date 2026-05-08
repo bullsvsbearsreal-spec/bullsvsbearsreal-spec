@@ -26,6 +26,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getOIData } from '../_shared/oi-core';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -212,18 +213,23 @@ function bucketEmpirical(
 }
 
 async function computeForecast(symbol: string): Promise<{ clusters: ForecastCluster[]; spotPrice: number; totalOI: number }> {
-  // Fetch OI via absolute URL — server-side can't use relative paths. This
-  // hits the same cached /api/openinterest route the homepage uses.
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
+  // Pull OI directly from the in-process function — NOT via self-referential
+  // HTTP, which CLAUDE.md explicitly warns against (600KB transfer + middleware
+  // rate-limit risk + extra cold-start latency). Production smoke caught this:
+  // the prior fetch was returning rows=[] in some environments, leaving
+  // spotPrice=0 and totalOI=0 in the response despite the data existing.
   let rows: Array<{ symbol: string; exchange: string; openInterest: number; openInterestValue: number }> = [];
   try {
-    const res = await fetch(`${baseUrl}/api/openinterest?symbol=${symbol}`, {
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (res.ok) {
-      const json = await res.json();
-      const data = Array.isArray(json) ? json : json.data || [];
-      rows = data.filter((r: any) => r.symbol === symbol);
+    const oi = await getOIData();
+    if (oi?.result?.data) {
+      rows = oi.result.data
+        .filter((r: any) => r.symbol === symbol)
+        .map((r: any) => ({
+          symbol: r.symbol,
+          exchange: r.exchange,
+          openInterest: r.openInterest ?? 0,
+          openInterestValue: r.openInterestValue ?? 0,
+        }));
     }
   } catch { /* fallback to empty */ }
 
