@@ -25,13 +25,23 @@ export async function GET(req: NextRequest) {
   const authErr = verifyCronAuth(req);
   if (authErr) return authErr;
 
-  const out: Record<string, { ok: boolean; days?: number; note?: string }> = {};
+  const out: Record<string, { ok: boolean; days?: number; note?: string; stale?: boolean }> = {};
   for (const asset of ['btc', 'eth'] as const) {
     try {
       const r = await fetchFarsideFlows(asset);
-      if (r.dataAvailable && r.days.length > 0) {
+      // Only write to the warm cache when we got LIVE data (direct or
+      // proxy). Wayback Machine fallbacks are intentionally NOT cached
+      // here — the warm cache is a "hours-fresh" tier; archive data is
+      // weeks stale and should re-fetch on every page load to give the
+      // live source a chance whenever it's reachable.
+      if (r.dataAvailable && r.days.length > 0 && !r.stale) {
         await setWarmCache(`etf_flows_${asset}`, { days: r.days, issuers: r.issuers }, WARM_TTL);
         out[asset] = { ok: true, days: r.days.length };
+      } else if (r.dataAvailable && r.stale) {
+        // Wayback succeeded — the page will still render archive data
+        // via the /api/etf-flows fetch path, we just intentionally don't
+        // pin the stale data in the warm cache for the next 48h.
+        out[asset] = { ok: false, days: r.days.length, stale: true, note: 'archive only — not cached' };
       } else {
         out[asset] = { ok: false, note: r.note ?? 'no data' };
       }
