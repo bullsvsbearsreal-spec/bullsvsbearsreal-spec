@@ -58,12 +58,26 @@ export default function BtcPriceWidget({ widgetId }: { wide?: boolean; widgetId?
 
   const up = (change ?? 0) >= 0;
 
+  // Price formatter — must preserve decimals for sub-$1 coins (THETA,
+  // SHIB, PEPE, etc.). The previous fixed `maximumFractionDigits: 0`
+  // formatter rounded THETA's $0.2164 to "$0", which is what the
+  // dashboard "BTC Price" widget rendered when the user synced it to
+  // a low-priced symbol.
+  const formatPrice = (v: number): string => {
+    if (v >= 1000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    if (v >= 1) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    if (v >= 0.01) return `$${v.toFixed(4)}`;
+    if (v >= 0.0001) return `$${v.toFixed(6)}`;
+    if (v > 0) return `$${v.toFixed(8)}`;
+    return '$0';
+  };
+
   return (
     <div>
       <div className="flex items-baseline gap-2">
         <AnimatedValue
           value={price}
-          format={(v) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          format={formatPrice}
           className="text-2xl font-bold text-white"
         />
         {change !== null && (
