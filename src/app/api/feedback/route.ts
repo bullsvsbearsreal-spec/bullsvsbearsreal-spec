@@ -21,14 +21,12 @@ import {
   initDB, isDBConfigured,
   insertBugReport, listBugReports, updateBugReportStatus,
 } from '@/lib/db';
+import { validateBugReport } from '@/lib/utils/validateBugReport';
 import { createHash } from 'crypto';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
-
-const MAX_MESSAGE = 2000;
-const MIN_MESSAGE = 4;
 
 function hashIp(ip: string | null): string | null {
   if (!ip) return null;
@@ -41,38 +39,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 503 });
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  // Validate fields
-  const message = typeof body.message === 'string' ? body.message.trim() : '';
-  if (message.length < MIN_MESSAGE) {
+  // Pure validation logic lives in lib/utils/validateBugReport so it's
+  // unit-testable without spinning up a request mock + Postgres.
+  const validated = validateBugReport(body);
+  if (!validated.ok) {
     return NextResponse.json(
-      { success: false, error: `Message must be at least ${MIN_MESSAGE} characters` },
-      { status: 400 },
+      { success: false, error: validated.error },
+      { status: validated.status },
     );
   }
-  if (message.length > MAX_MESSAGE) {
-    return NextResponse.json(
-      { success: false, error: `Message must be at most ${MAX_MESSAGE} characters` },
-      { status: 400 },
-    );
-  }
-  const pageUrl = typeof body.pageUrl === 'string' ? body.pageUrl.slice(0, 500) : '';
-  if (!pageUrl) {
-    return NextResponse.json({ success: false, error: 'pageUrl required' }, { status: 400 });
-  }
-
-  const severity = ['low', 'normal', 'high'].includes(body.severity) ? body.severity : 'normal';
-  const pageTitle = typeof body.pageTitle === 'string' ? body.pageTitle.slice(0, 200) : null;
-  // User agent captured client-side OR fall back to header. Cap at 500 chars.
-  const userAgentRaw = typeof body.userAgent === 'string' ? body.userAgent : (request.headers.get('user-agent') || '');
-  const userAgent = userAgentRaw ? userAgentRaw.slice(0, 500) : null;
-  const viewport = typeof body.viewport === 'string' ? body.viewport.slice(0, 32) : null;
+  const { message, pageUrl, severity, pageTitle, viewport } = validated.data;
+  // User agent: validateBugReport already capped if provided in body.
+  // Fall back to request header if body didn't include one.
+  const userAgent = validated.data.userAgent
+    ?? ((request.headers.get('user-agent') || '').slice(0, 500) || null);
 
   // Best-effort session attribution
   let userId: string | null = null;
