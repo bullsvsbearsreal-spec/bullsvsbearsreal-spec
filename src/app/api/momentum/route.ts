@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizePercent } from '@/lib/utils/sanitizePercent';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -129,13 +130,12 @@ export async function GET(request: NextRequest) {
   for (const t of tickers) {
     if (!t.symbol) continue;
     const price = Number(t.lastPrice) || 0;
-    let change = Number(t.priceChangePercent24h ?? t.changePercent24h) || 0;
     // Defence-in-depth: BingX (and occasionally other venues) emit garbage
     // priceChangePercent in the 280,000%+ range when their openPrice is 0
     // for newly-listed pairs. The max-abs-change selection below would let
     // one bad venue dominate the display for the entire symbol. Cap any
     // single-venue percent at +/-1000% before considering it.
-    if (Math.abs(change) > 1000) change = 0;
+    const change = sanitizePercent(t.priceChangePercent24h ?? t.changePercent24h);
     const vol = Number(t.quoteVolume24h ?? t.volume24h) || 0;
     let agg = bySym.get(t.symbol);
     if (!agg) {

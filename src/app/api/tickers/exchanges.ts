@@ -1,5 +1,6 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { isCryptoSymbol } from '../_shared/fetch';
+import { sanitizePercent } from '@/lib/utils/sanitizePercent';
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
 
@@ -297,17 +298,11 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => {
           const lastPrice = parseFloat(ticker.lastPrice) || 0;
           const openPrice = parseFloat(ticker.openPrice) || 0;
-          // BingX returns openPrice=0 for newly-listed pairs (and some other
-          // edge cases) but still computes priceChangePercent as if dividing
-          // by a tiny baseline — yielding garbage like 280799%, which then
-          // dominated the Momentum / Breakout screeners. When the open is
-          // zero we recompute the percent ourselves from (last-open)/open
-          // which is also undefined → fall back to 0 so the symbol shows
-          // as flat rather than as a moonshot.
-          let pct = parseFloat(ticker.priceChangePercent) || 0;
-          if (openPrice <= 0 || Math.abs(pct) > 1000) {
-            pct = 0;
-          }
+          // BingX returns openPrice=0 for newly-listed pairs but still
+          // computes priceChangePercent as if dividing by a tiny baseline
+          // — yielding garbage like 280,899% that dominated the Momentum /
+          // Breakout screeners. sanitizePercent caps absurd values to 0.
+          const pct = sanitizePercent(ticker.priceChangePercent, { openPrice });
           return {
             symbol: ticker.symbol.replace('-USDT', ''),
             exchange: 'BingX',
