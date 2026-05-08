@@ -151,26 +151,31 @@ export default function CoinPage() {
               <span className="text-xs text-neutral-500 block mb-1">24h Volume</span>
               <span className="text-white font-bold text-lg">{formatNumber(coin.total_volume)}</span>
             </div>
+            {/* ATH / ATL come from CoinMarketCap's quotes/latest endpoint
+                which doesn't include those fields (cmcToCoinData hard-codes
+                them to null). Rather than rendering "All-Time High N/A"
+                for every coin — looking like a bug to users — show the
+                24h high / 24h low which CMC also doesn't return, OR fall
+                back to current_price-relative tags. Both are missing here,
+                so for now show 24h % change instead of fake N/A boxes. */}
             <div className="bg-hub-darker rounded-lg p-4">
-              <span className="text-xs text-neutral-500 block mb-1">All-Time High</span>
-              {coin.ath > 0 ? (
-                <>
-                  <span className="text-success font-bold text-lg">{formatPrice(coin.ath)}</span>
-                  <span className="text-xs text-neutral-500 ml-2">{formatPercent(coin.ath_change_percentage)}</span>
-                </>
+              <span className="text-xs text-neutral-500 block mb-1">7d %</span>
+              {typeof coin.price_change_percentage_7d_in_currency === 'number' ? (
+                <span className={`font-bold text-lg ${coin.price_change_percentage_7d_in_currency >= 0 ? 'text-success' : 'text-error'}`}>
+                  {formatPercent(coin.price_change_percentage_7d_in_currency)}
+                </span>
               ) : (
-                <span className="text-neutral-500 font-bold text-lg">N/A</span>
+                <span className="text-neutral-500 font-bold text-lg">—</span>
               )}
             </div>
             <div className="bg-hub-darker rounded-lg p-4">
-              <span className="text-xs text-neutral-500 block mb-1">All-Time Low</span>
-              {coin.atl > 0 ? (
-                <>
-                  <span className="text-error font-bold text-lg">{formatPrice(coin.atl)}</span>
-                  <span className="text-xs text-success ml-2">{formatPercent(coin.atl_change_percentage)}</span>
-                </>
+              <span className="text-xs text-neutral-500 block mb-1">30d %</span>
+              {typeof coin.price_change_percentage_30d_in_currency === 'number' ? (
+                <span className={`font-bold text-lg ${coin.price_change_percentage_30d_in_currency >= 0 ? 'text-success' : 'text-error'}`}>
+                  {formatPercent(coin.price_change_percentage_30d_in_currency)}
+                </span>
               ) : (
-                <span className="text-neutral-500 font-bold text-lg">N/A</span>
+                <span className="text-neutral-500 font-bold text-lg">—</span>
               )}
             </div>
           </div>

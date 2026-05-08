@@ -77,9 +77,26 @@ const MAX_VOL = 10_000_000_000;
 
 /* ─── Component ──────────────────────────────────────────────────── */
 
+// Normalize a URL param like "BTCUSDT" / "BTC-USDT" / "BTC_USD" / "BTCUSDC"
+// into the bare asset symbol "BTC" that the /api/tickers feed uses. Without
+// this, /symbol/BTCUSDT (a natural URL for users) rendered all zeros because
+// the filter `t.symbol === 'BTCUSDT'` never matched any row (tickers are
+// normalized to base assets upstream).
+function normaliseSymbolParam(raw: string): string {
+  const upper = raw.toUpperCase().replace(/[-_]/g, '');
+  // Strip common quote suffixes
+  for (const quote of ['USDT', 'USDC', 'BUSD', 'TUSD', 'USDE', 'USDP', 'USDD', 'USD', 'EUR', 'BTC', 'ETH']) {
+    if (upper.endsWith(quote) && upper.length > quote.length) {
+      return upper.slice(0, -quote.length);
+    }
+  }
+  return upper;
+}
+
 export default function SymbolPage() {
   const params = useParams();
-  const symbol = (params.symbol as string)?.toUpperCase() || 'BTC';
+  const rawSymbol = (params.symbol as string) || 'BTC';
+  const symbol = normaliseSymbolParam(rawSymbol);
   const theme = useTheme();
   useTrackPageView(`${symbol} Overview`, symbol);
 
