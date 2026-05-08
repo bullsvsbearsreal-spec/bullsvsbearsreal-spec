@@ -1,6 +1,6 @@
 import { Direction } from '../types';
 
-interface GMXMarketInfo {
+export interface GMXMarketInfo {
   marketToken: string;
   midPrice: number;
   longOiUsd: number;

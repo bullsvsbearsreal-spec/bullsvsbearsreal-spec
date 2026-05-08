@@ -1,6 +1,6 @@
 import { Direction } from '../types';
 
-interface GTradeParams {
+export interface GTradeParams {
   pairIndex: number;
   midPrice: number;
   depthAbove: number;
