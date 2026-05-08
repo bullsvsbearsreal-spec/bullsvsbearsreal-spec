@@ -124,13 +124,18 @@ export async function getGlobalData(): Promise<any> {
 }
 
 // Format large numbers
+// Mirrors lib/utils/format.ts: extract sign, abs-format the magnitude,
+// prefix '-' before the '$' so negatives render as '-$5.00B' (not the
+// previous '$-5000000000.00' raw fallthrough).
 export function formatNumber(num: number): string {
   if (!isFinite(num)) return '$0';
-  if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
-  return `$${num.toFixed(2)}`;
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(2)}K`;
+  return `${sign}$${abs.toFixed(2)}`;
 }
 
 // Format price with appropriate decimals

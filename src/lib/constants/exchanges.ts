@@ -175,7 +175,10 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Aster':      return `https://app.aster.finance/?ref=48aFb9#/perpetual/${s}USDT`;
     case 'Lighter':    return `https://app.lighter.xyz/trade/${s}-USDT?referral=7162321B`;
     case 'Aevo':       return `https://app.aevo.xyz/perpetual/${s.toLowerCase()}`;
-    case 'GMX':        return `https://app.gmx.io/#/trade/?ref=${Math.random() < 0.5 ? 'Q9ENQ' : 'snakether'}`;
+    // GMX V2: ?to=<symbol> pre-selects the index token, ?mode=long defaults
+    // to the long side. Falls back to the homepage trade UI if the param
+    // is unrecognised — strictly better than landing on the bare homepage.
+    case 'GMX':        return `https://app.gmx.io/#/trade?to=${s}&mode=long&ref=${Math.random() < 0.5 ? 'Q9ENQ' : 'snakether'}`;
     case 'KuCoin':     return `https://www.kucoin.com/futures/trade/${s}USDTM?rcode=${Math.random() < 0.5 ? 'CXEJE3SG' : 'QBS4DW6N'}`;
     case 'Deribit':    return `https://www.deribit.com/futures/${s}`;
     case 'HTX':        return `https://www.htx.com/futures/linear_swap/exchange#contract_code=${s}-USDT`;

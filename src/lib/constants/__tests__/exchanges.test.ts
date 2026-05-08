@@ -105,11 +105,11 @@ describe('getExchangeTradeUrl — known venues', () => {
   });
 
   it('all returned URLs include the symbol somewhere (case-insensitive)', () => {
-    // GMX is exempt: their V1 trade page doesn't support market-specific
-    // deep-links; clicking just lands on /#/trade and the user has to
-    // pick the market manually. Tracked but not blocking — leaving an
-    // explicit exemption documents it so a future fix removes the entry.
-    const exemptions = new Set(['GMX']);
+    // No exemptions — every venue's URL must embed the requested symbol so
+    // clicking "Trade BTC on <venue>" lands on the BTC market, not the
+    // venue homepage. GMX previously exempted; now uses ?to=<symbol> to
+    // pre-select the index token in V2.
+    const exemptions = new Set<string>();
     for (const ex of Object.keys(EXCHANGE_FEES)) {
       if (exemptions.has(ex)) continue;
       const url = getExchangeTradeUrl(ex, 'XYZ');

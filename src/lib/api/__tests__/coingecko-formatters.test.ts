@@ -35,11 +35,14 @@ describe('formatNumber — coingecko (large positive amounts only)', () => {
     expect(formatNumber(1_000_000_000_000)).toBe('$1.00T');
   });
 
-  it('known limitation: negative numbers fall through to raw $-N.XX', () => {
-    // Locked-in: market cap / volume is never negative in practice. If
-    // a refactor adds proper negative handling (sign-aware suffix), this
-    // test should be updated rather than silently regressed.
-    expect(formatNumber(-5_000_000_000)).toBe('$-5000000000.00');
+  it('handles negatives with proper sign-before-$ placement', () => {
+    // Mirrors lib/utils/format.ts behaviour. Sign comes BEFORE the dollar
+    // sign and the magnitude gets the standard B/M/K suffix.
+    expect(formatNumber(-5_000_000_000)).toBe('-$5.00B');
+    expect(formatNumber(-1_500_000_000_000)).toBe('-$1.50T');
+    expect(formatNumber(-2_500_000)).toBe('-$2.50M');
+    expect(formatNumber(-50_000)).toBe('-$50.00K');
+    expect(formatNumber(-500)).toBe('-$500.00');
   });
 });
 
