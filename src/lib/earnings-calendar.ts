@@ -85,42 +85,50 @@ function nextBtcHalving(): EarningsEvent {
   };
 }
 
+/**
+ * Pure: map a single raw unlock row from /api/token-unlocks into the
+ * EarningsEvent shape used by the calendar UI. Exported for testability.
+ *
+ * /api/token-unlocks returns:
+ *   coinSymbol / coinName (not symbol / name)
+ *   unlockAmount (not tokensUnlocked)
+ *   unlockValue (already pre-computed in USD; not tokensUnlocked * priceUsd)
+ *   source (URL string; not a label)
+ *
+ * Earlier this used the wrong field names → every unlock surfaced as
+ * "unknown" with usdImpact=null, breaking the calendar's headline
+ * "Unlocks Impact 7d" stat ($0) and "Biggest Upcoming" widget (—).
+ */
+export function mapUnlockToEvent(u: any): EarningsEvent {
+  const symbol: string | null = u.coinSymbol ?? u.symbol ?? null;
+  const name: string = u.coinName ?? u.name ?? symbol ?? 'unknown';
+  const amount: number | undefined = u.unlockAmount ?? u.tokensUnlocked;
+  const usd: number | null = typeof u.unlockValue === 'number'
+    ? u.unlockValue
+    : (typeof u.tokensUnlocked === 'number' && typeof u.priceUsd === 'number'
+        ? u.tokensUnlocked * u.priceUsd
+        : null);
+  return {
+    id: `unlock-${u.coinId ?? symbol}-${u.unlockDate}`,
+    type: 'unlock',
+    date: String(u.unlockDate).slice(0, 10),
+    daysFromNow: daysFromNow(u.unlockDate),
+    symbol,
+    name,
+    description: u.description ?? `${amount?.toLocaleString() ?? '?'} ${symbol ?? ''} unlocking`,
+    usdImpact: usd,
+    source: 'TokenUnlocks',
+    url: typeof u.source === 'string' && u.source.startsWith('http') ? u.source : u.url,
+  };
+}
+
 /** Pull token unlocks via the existing internal endpoint. */
 async function fetchUnlocks(origin: string): Promise<EarningsEvent[]> {
   const json = await safeFetchJson<{ unlocks?: Array<any> }>(`${origin}/api/token-unlocks`);
   if (!json?.unlocks) return [];
   return json.unlocks
     .filter((u: any) => u.unlockDate)
-    .map((u: any): EarningsEvent => {
-      // /api/token-unlocks returns:
-      //   coinSymbol / coinName (not symbol / name)
-      //   unlockAmount (not tokensUnlocked)
-      //   unlockValue (already pre-computed in USD; not tokensUnlocked * priceUsd)
-      //   source (URL string; not a label)
-      // Earlier this used the wrong field names → every unlock surfaced as
-      // "unknown" with usdImpact=null, breaking the calendar's headline
-      // "Unlocks Impact 7d" stat ($0) and "Biggest Upcoming" widget (—).
-      const symbol: string | null = u.coinSymbol ?? u.symbol ?? null;
-      const name: string = u.coinName ?? u.name ?? symbol ?? 'unknown';
-      const amount: number | undefined = u.unlockAmount ?? u.tokensUnlocked;
-      const usd: number | null = typeof u.unlockValue === 'number'
-        ? u.unlockValue
-        : (typeof u.tokensUnlocked === 'number' && typeof u.priceUsd === 'number'
-            ? u.tokensUnlocked * u.priceUsd
-            : null);
-      return {
-        id: `unlock-${u.coinId ?? symbol}-${u.unlockDate}`,
-        type: 'unlock',
-        date: String(u.unlockDate).slice(0, 10),
-        daysFromNow: daysFromNow(u.unlockDate),
-        symbol,
-        name,
-        description: u.description ?? `${amount?.toLocaleString() ?? '?'} ${symbol ?? ''} unlocking`,
-        usdImpact: usd,
-        source: 'TokenUnlocks',
-        url: typeof u.source === 'string' && u.source.startsWith('http') ? u.source : u.url,
-      };
-    });
+    .map(mapUnlockToEvent);
 }
 
 /** Pull TGE events. */
