@@ -147,7 +147,15 @@ export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideRe
 /* ─── HTML parsing ────────────────────────────────────────────────────── */
 
 function parseFarsideTable(html: string): { issuers: string[]; days: FlowDay[] } | null {
-  const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+  // Prefer the actual ETF data table (`<table class="etf">`) over any
+  // decorative wrapper tables. On the live Farside page the etf table
+  // happens to be first, but on the Wayback Machine the page is
+  // augmented with `<table class="thead">` and `<table class="tfooter">`
+  // wrappers, which the previous "first <table>" matcher would pick up
+  // as a false positive and fail to parse.
+  const etfTableMatch = html.match(/<table[^>]*class=["'][^"']*\betf\b[^"']*["'][^>]*>([\s\S]*?)<\/table>/i);
+  const fallbackMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+  const tableMatch = etfTableMatch ?? fallbackMatch;
   if (!tableMatch) return null;
   const tableHtml = tableMatch[1];
 
