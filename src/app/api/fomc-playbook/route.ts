@@ -104,18 +104,25 @@ async function fetchFromCoinGecko(unixSecondsFrom: number, unixSecondsTo: number
   }
 }
 
-/** Fall back to Binance klines when CG free tier is blocked. Daily candles
- *  are good enough — we only need before/after-meeting closes within ±12h. */
+/** Fall back to Binance Futures klines when CG free tier is blocked. Use
+ *  fapi.binance.com (futures) — the spot endpoint api.binance.com is blocked
+ *  from DigitalOcean datacenter IPs, but fapi works fine (this is the same
+ *  pattern /api/klines uses). Daily candles are good enough — we only need
+ *  before/after-meeting closes within ±26h.
+ *
+ *  Note: BTCUSDT futures only has data back to ~2019 (well before our list
+ *  starts in 2024) so the perp-vs-spot price mismatch is irrelevant for
+ *  this use case (24h reactions, not absolute price). */
 async function fetchFromBinance(unixSecondsFrom: number, unixSecondsTo: number): Promise<Array<[number, number]>> {
   try {
     const startMs = unixSecondsFrom * 1000;
     const endMs = unixSecondsTo * 1000;
-    // Binance returns up to 1000 klines per call; with daily interval that's
-    // way more than the ~365 days we ever request, so a single call is fine.
-    const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=${startMs}&endTime=${endMs}&limit=1000`;
+    // Binance returns up to 1500 klines per call on futures; with daily
+    // interval that's >4 years, way more than we ever need.
+    const url = `https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1d&startTime=${startMs}&endTime=${endMs}&limit=1500`;
     const res = await fetchWithTimeout(url, { headers: { Accept: 'application/json' } }, TIMEOUT);
     if (!res.ok) {
-      console.warn(`[fomc-playbook] Binance klines ${res.status}`);
+      console.warn(`[fomc-playbook] Binance futures klines ${res.status}`);
       return [];
     }
     // Kline shape: [openTime, open, high, low, close, volume, closeTime, ...]
@@ -125,7 +132,7 @@ async function fetchFromBinance(unixSecondsFrom: number, unixSecondsTo: number):
     const json = await res.json() as Array<Array<string | number>>;
     return json.map(k => [Number(k[6]), Number(k[4])]);
   } catch (err) {
-    console.warn('[fomc-playbook] Binance klines error:', err);
+    console.warn('[fomc-playbook] Binance futures klines error:', err);
     return [];
   }
 }
