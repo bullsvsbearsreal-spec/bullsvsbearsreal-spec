@@ -32,7 +32,9 @@ export type WidgetType =
   | 'economic-calendar'
   | 'cvd'
   | 'slippage'
-  | 'latency';
+  | 'latency'
+  | 'bounce-stats'
+  | 'market-pulse';
 
 export type WidgetCategory = 'market' | 'trading' | 'portfolio' | 'sentiment' | 'events';
 
@@ -86,12 +88,17 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
   { type: 'cvd',               name: 'CVD',               description: 'Cumulative volume delta & divergences',     defaultW: 2, icon: 'Activity',       category: 'trading' },
   { type: 'slippage',          name: 'Execution Costs',   description: 'Top venues ranked by slippage + fees',      defaultW: 1, icon: 'Zap',            category: 'trading' },
   { type: 'latency',           name: 'Exchange Latency',  description: 'Real-time API response times',              defaultW: 2, icon: 'Timer',          category: 'market' },
+  // Featured
+  { type: 'market-pulse',      name: 'Market Pulse',      description: 'BTC + ETH + market cap + 24h volume at a glance', defaultW: 2, icon: 'Activity', category: 'market' },
+  { type: 'bounce-stats',      name: 'Bounce Stats',      description: 'Top rekt wallets on Hyperliquid (bounce.tech)',   defaultW: 1, icon: 'Skull',    category: 'trading' },
 ];
 
 export const DEFAULT_LAYOUT: WidgetLayout[] = [
+  { id: 'w0', type: 'market-pulse', w: 2, h: 1 },
   { id: 'w1', type: 'btc-price', w: 1, h: 1 },
   { id: 'w2', type: 'fear-greed', w: 1, h: 1 },
   { id: 'w3', type: 'top-movers', w: 1, h: 1 },
+  { id: 'w9', type: 'bounce-stats', w: 1, h: 1 },
   { id: 'w4', type: 'watchlist', w: 1, h: 1 },
   { id: 'w5', type: 'portfolio', w: 1, h: 1 },
   { id: 'w6', type: 'alerts', w: 1, h: 1 },

@@ -45,6 +45,8 @@ const WIDGET_COMPONENTS: Record<WidgetType, React.LazyExoticComponent<React.Comp
   cvd: lazy(() => import('./widgets/CVDWidget')),
   slippage: lazy(() => import('./widgets/SlippageWidget')),
   latency: lazy(() => import('./widgets/LatencyWidget')),
+  'market-pulse': lazy(() => import('./widgets/MarketPulseWidget')),
+  'bounce-stats': lazy(() => import('./widgets/BounceStatsWidget')),
 };
 
 function WidgetSkeleton() {

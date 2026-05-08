@@ -16,6 +16,8 @@ const TIMEFRAMES = [
 interface HeaderStats {
   btcPrice: number | null;
   btcChange: number | null;
+  ethPrice: number | null;
+  ethChange: number | null;
   fearGreed: number | null;
   marketCapChange: number | null;
   totalMarketCap: number | null;
@@ -29,17 +31,58 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
+function fgRegime(v: number): { label: string; color: string } {
+  if (v <= 20) return { label: 'Extreme Fear',  color: 'text-rose-500' };
+  if (v <= 40) return { label: 'Fear',          color: 'text-orange-400' };
+  if (v <= 60) return { label: 'Neutral',       color: 'text-amber-400' };
+  if (v <= 80) return { label: 'Greed',         color: 'text-lime-400' };
+  return         { label: 'Extreme Greed', color: 'text-emerald-400' };
+}
+
+/** Compact stat pill — used in the dashboard header strip */
+function StatPill({
+  label, value, delta, valueClass, sublabel, sublabelClass,
+}: {
+  label: string;
+  value: string;
+  delta?: number;
+  valueClass?: string;
+  sublabel?: string;
+  sublabelClass?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+      <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">{label}</span>
+      <span className={`text-xs font-mono tabular-nums font-semibold ${valueClass ?? 'text-white'}`}>
+        {value}
+      </span>
+      {sublabel && (
+        <span className={`text-[10px] font-medium ${sublabelClass ?? 'text-neutral-500'}`}>
+          {sublabel}
+        </span>
+      )}
+      {delta != null && Number.isFinite(delta) && (
+        <span className={`flex items-center gap-0.5 text-[10px] font-mono tabular-nums ${delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          {delta >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+          {delta >= 0 ? '+' : ''}{delta.toFixed(2)}%
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardHeader({ userName }: { userName: string }) {
   const [stats, setStats] = useState<HeaderStats>({
-    btcPrice: null, btcChange: null, fearGreed: null, marketCapChange: null,
-    totalMarketCap: null, btcDominance: null,
+    btcPrice: null, btcChange: null, ethPrice: null, ethChange: null,
+    fearGreed: null, marketCapChange: null, totalMarketCap: null, btcDominance: null,
   });
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       const [tickerRes, fgRes, globalRes] = await Promise.allSettled([
-        fetch('/api/tickers', { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
+        fetch('/api/tickers?symbols=BTC,ETH', { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
         fetch('/api/fear-greed', { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
         fetch('/api/global-stats', { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null),
       ]);
@@ -48,19 +91,25 @@ export default function DashboardHeader({ userName }: { userName: string }) {
 
       const tickerData = tickerRes.status === 'fulfilled' ? tickerRes.value : null;
       const tickers = Array.isArray(tickerData) ? tickerData : tickerData?.data || [];
-      const btc = Array.isArray(tickers) ? tickers.find((t: any) => t.symbol === 'BTC' || t.symbol === 'BTCUSDT') : null;
+      const findT = (sym: string) =>
+        Array.isArray(tickers) ? tickers.find((t: any) => t.symbol === sym || t.symbol === `${sym}USDT`) : null;
+      const btc = findT('BTC');
+      const eth = findT('ETH');
 
       const fgData = fgRes.status === 'fulfilled' ? fgRes.value : null;
       const globalData = globalRes.status === 'fulfilled' ? globalRes.value : null;
 
       setStats({
         btcPrice: btc?.price || btc?.lastPrice || null,
-        btcChange: btc?.priceChangePercent ?? btc?.change24h ?? null,
+        btcChange: btc?.priceChangePercent ?? btc?.priceChangePercent24h ?? btc?.change24h ?? null,
+        ethPrice: eth?.price || eth?.lastPrice || null,
+        ethChange: eth?.priceChangePercent ?? eth?.priceChangePercent24h ?? eth?.change24h ?? null,
         fearGreed: fgData?.value ?? null,
         marketCapChange: globalData?.market_cap_change_percentage_24h_usd ?? null,
         totalMarketCap: globalData?.total_market_cap?.usd ?? null,
         btcDominance: globalData?.market_cap_percentage?.btc ?? null,
       });
+      setUpdatedAt(Date.now());
     };
     load();
     const iv = setInterval(load, 60_000);
@@ -69,51 +118,47 @@ export default function DashboardHeader({ userName }: { userName: string }) {
 
   const fmtPrice = (p: number) => '$' + p.toLocaleString(undefined, { maximumFractionDigits: 0 });
   const fmtCap = (n: number) => n >= 1e12 ? `$${(n / 1e12).toFixed(2)}T` : `$${(n / 1e9).toFixed(0)}B`;
+  const fgInfo = stats.fearGreed != null ? fgRegime(stats.fearGreed) : null;
 
   return (
-    <div className="mb-5">
-      <h1 className="text-xl sm:text-2xl font-bold text-white">
-        {getGreeting()}, <span className="text-gradient">{userName}</span>
-      </h1>
-
-      {/* Quick stats bar */}
-      <div className="flex items-center gap-4 mt-2 flex-wrap">
-        {stats.btcPrice !== null && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-neutral-500">BTC</span>
-            <span className="text-white font-medium tabular-nums">{fmtPrice(stats.btcPrice)}</span>
-            {stats.btcChange !== null && (
-              <span className={`flex items-center gap-0.5 ${stats.btcChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {stats.btcChange >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                {stats.btcChange >= 0 ? '+' : ''}{stats.btcChange.toFixed(1)}%
-              </span>
-            )}
-          </div>
-        )}
-        {stats.fearGreed !== null && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-neutral-500">Fear & Greed</span>
-            <span className={`font-medium tabular-nums ${stats.fearGreed <= 25 ? 'text-red-400' : stats.fearGreed <= 45 ? 'text-orange-400' : stats.fearGreed <= 55 ? 'text-yellow-400' : stats.fearGreed <= 75 ? 'text-green-400' : 'text-emerald-400'}`}>
-              {stats.fearGreed}
+    <div className="mb-5 flex-1 min-w-0">
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">
+          {getGreeting()}, <span className="text-gradient">{userName}</span>
+        </h1>
+        <div className="flex items-center gap-1.5 text-[10px] text-neutral-600 font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Live</span>
+          {updatedAt && (
+            <span className="text-neutral-700">
+              · synced {Math.max(0, Math.floor((Date.now() - updatedAt) / 1000))}s ago
             </span>
-          </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick stats — pill row */}
+      <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+        {stats.btcPrice !== null && (
+          <StatPill label="BTC" value={fmtPrice(stats.btcPrice)} delta={stats.btcChange ?? undefined} />
+        )}
+        {stats.ethPrice !== null && (
+          <StatPill label="ETH" value={fmtPrice(stats.ethPrice)} delta={stats.ethChange ?? undefined} />
         )}
         {stats.totalMarketCap !== null && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-neutral-500">MCap</span>
-            <span className="text-white font-medium tabular-nums">{fmtCap(stats.totalMarketCap)}</span>
-            {stats.marketCapChange !== null && (
-              <span className={`${stats.marketCapChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {stats.marketCapChange >= 0 ? '+' : ''}{stats.marketCapChange.toFixed(1)}%
-              </span>
-            )}
-          </div>
+          <StatPill label="MCap" value={fmtCap(stats.totalMarketCap)} delta={stats.marketCapChange ?? undefined} />
         )}
         {stats.btcDominance !== null && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-neutral-500">BTC.D</span>
-            <span className="text-white font-medium tabular-nums">{stats.btcDominance.toFixed(1)}%</span>
-          </div>
+          <StatPill label="BTC.D" value={`${stats.btcDominance.toFixed(1)}%`} />
+        )}
+        {stats.fearGreed !== null && fgInfo && (
+          <StatPill
+            label="F&G"
+            value={String(stats.fearGreed)}
+            valueClass={fgInfo.color}
+            sublabel={fgInfo.label}
+            sublabelClass={fgInfo.color}
+          />
         )}
       </div>
 
