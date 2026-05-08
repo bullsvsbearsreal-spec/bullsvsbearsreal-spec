@@ -36,7 +36,8 @@ const upcomingGuides = [
     icon: Zap,
     tag: 'Trading',
     difficulty: 'Advanced',
-    eta: 'Coming soon',
+    eta: 'Published',
+    href: '/guides/surviving-liquidation-cascades',
   },
   {
     title: 'Order Flow for Humans',

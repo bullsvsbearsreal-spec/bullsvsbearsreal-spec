@@ -1,6 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Database, Heart, Send, Camera,
+  RefreshCw, TrendingUp, Wallet, Activity, Bell,
+  Trash2, Eraser, Wand2, AlertTriangle, CheckCircle2, XCircle,
+  Clock, Shield, Settings,
+} from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { useToast } from './Toast';
 
@@ -8,196 +14,380 @@ interface ActionState {
   loading: boolean;
   lastRun?: string;
   lastStatus?: 'success' | 'error';
+  lastResult?: string; // short human summary, e.g. "12 ETF days fetched"
 }
 
-const ICONS = {
-  cache: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
-    </svg>
-  ),
-  health: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-    </svg>
-  ),
-  broadcast: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
-    </svg>
-  ),
-  snapshot: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-    </svg>
-  ),
-};
-
-interface ActionsTabProps {
-  userRole?: string;
+interface AuditEvent {
+  id: number;
+  type: string;
+  details: Record<string, unknown> | null;
+  timestamp: string;
 }
+
+type Risk = 'safe' | 'destructive' | 'broadcast';
+
+interface ActionDef {
+  key: string;
+  group: 'health' | 'data' | 'maintenance' | 'communications';
+  icon: React.ReactNode;
+  label: string;
+  desc: string;
+  risk: Risk;
+  adminOnly: boolean;
+  cron?: string; // if set, runs the trigger-cron generic endpoint
+  customHandler?: string; // direct admin action endpoint
+}
+
+const ACTIONS: ActionDef[] = [
+  // ─── Health ─────────────────────────────────────────────────────
+  { key: 'health-check', group: 'health', icon: <Heart className="w-4 h-4" />, label: 'Health Check', desc: 'Run full system health check across all venues', risk: 'safe', adminOnly: false, customHandler: '/api/admin/actions/health-check' },
+  { key: 'snapshot', group: 'health', icon: <Camera className="w-4 h-4" />, label: 'Trigger Snapshot', desc: 'Funding + OI + spread snapshot (cron: every 1m)', risk: 'safe', adminOnly: false, cron: 'snapshot' },
+
+  // ─── Data refresh ───────────────────────────────────────────────
+  { key: 'refresh-etf-flows', group: 'data', icon: <TrendingUp className="w-4 h-4" />, label: 'Refresh ETF Flows', desc: 'BTC + ETH ETF flows from Farside (cron: every 30m)', risk: 'safe', adminOnly: false, cron: 'refresh-etf-flows' },
+  { key: 'refresh-validators', group: 'data', icon: <Activity className="w-4 h-4" />, label: 'Refresh Validators', desc: 'LST + restaking yields from DefiLlama (cron: every 30m)', risk: 'safe', adminOnly: false, cron: 'refresh-validators' },
+  { key: 'warm-smart-money', group: 'data', icon: <Wallet className="w-4 h-4" />, label: 'Warm Smart Money', desc: 'Refresh top wallets PnL leaderboard (cron: every 25m)', risk: 'safe', adminOnly: false, cron: 'warm-smart-money' },
+  { key: 'whale-trades', group: 'data', icon: <Activity className="w-4 h-4" />, label: 'Refresh Whale Trades', desc: 'Detect new whale DEX swaps (cron: every 2m)', risk: 'safe', adminOnly: false, cron: 'whale-trades' },
+  { key: 'ingest-liquidations', group: 'data', icon: <Activity className="w-4 h-4" />, label: 'Ingest Liquidations', desc: 'Pull recent liq events into DB (cron: every 1m)', risk: 'safe', adminOnly: false, cron: 'ingest-liquidations' },
+  { key: 'social-fetch', group: 'data', icon: <RefreshCw className="w-4 h-4" />, label: 'Refresh KOL Feed', desc: 'Twitter/X cache for /social KOL list (cron: every 15m)', risk: 'safe', adminOnly: false, cron: 'social-fetch' },
+
+  // ─── Maintenance ────────────────────────────────────────────────
+  { key: 'flush-cache', group: 'maintenance', icon: <Trash2 className="w-4 h-4" />, label: 'Flush API Cache', desc: 'Clear all cached API responses. Next requests will be slower.', risk: 'destructive', adminOnly: true, customHandler: '/api/admin/actions/flush-cache' },
+  { key: 'backfill-spreads', group: 'maintenance', icon: <Wand2 className="w-4 h-4" />, label: 'Backfill Spreads', desc: 'Compute spread snapshots from existing ticker history', risk: 'safe', adminOnly: true, customHandler: '/api/admin/backfill-spreads' },
+  { key: 'dedup-liquidations', group: 'maintenance', icon: <Eraser className="w-4 h-4" />, label: 'Dedup Liquidations', desc: 'Remove duplicate liq snapshot rows from DB', risk: 'destructive', adminOnly: true, customHandler: '/api/admin/dedup-liquidations' },
+
+  // ─── Communications ─────────────────────────────────────────────
+  { key: 'broadcast', group: 'communications', icon: <Send className="w-4 h-4" />, label: 'Broadcast Message', desc: 'Push + Telegram notification to all subscribers', risk: 'broadcast', adminOnly: true /* opens dedicated modal */ },
+];
+
+const GROUPS: Array<{ id: ActionDef['group']; label: string; description: string; icon: React.ReactNode }> = [
+  { id: 'health',         label: 'System Health',  description: 'Surface health + force a fresh snapshot',                 icon: <Heart className="w-3.5 h-3.5" /> },
+  { id: 'data',           label: 'Data Refresh',   description: 'Manually re-run a cron job that normally runs on a timer', icon: <RefreshCw className="w-3.5 h-3.5" /> },
+  { id: 'maintenance',    label: 'Maintenance',    description: 'Cleanup + cache operations. Some are destructive.',        icon: <Settings className="w-3.5 h-3.5" /> },
+  { id: 'communications', label: 'Communications', description: 'Reach connected users via push or Telegram',               icon: <Bell className="w-3.5 h-3.5" /> },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+function relTime(iso?: string): string {
+  if (!iso) return 'Never';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0) return 'just now';
+  if (ms < 5_000) return 'just now';
+  if (ms < 60_000) return `${Math.floor(ms / 1000)}s ago`;
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+  return new Date(iso).toLocaleString();
+}
+
+function summariseResult(actionKey: string, data: any): string {
+  if (!data) return '';
+  // health-check
+  if (actionKey === 'health-check') {
+    const s = data.healthResult?.status;
+    const errs = data.healthResult?.errors?.length ?? 0;
+    return s ? `${s}${errs ? ` · ${errs} errors` : ''}` : '';
+  }
+  // flush-cache
+  if (actionKey === 'flush-cache') return data.clearedEntries ? `${data.clearedEntries} entries cleared` : '';
+  // broadcast
+  if (actionKey === 'broadcast') {
+    const parts: string[] = [];
+    if (data.push) parts.push(`Push ${data.push.sent}`);
+    if (data.telegram) parts.push(`TG ${data.telegram.sent}`);
+    return parts.join(' · ');
+  }
+  // snapshot
+  if (actionKey === 'snapshot') {
+    const r = data.result || {};
+    const parts: string[] = [];
+    if (r.fundingInserted != null) parts.push(`fund ${r.fundingInserted}`);
+    if (r.oiInserted != null) parts.push(`oi ${r.oiInserted}`);
+    if (r.liqInserted != null) parts.push(`liq ${r.liqInserted}`);
+    if (r.spreadInserted != null) parts.push(`spread ${r.spreadInserted}`);
+    return parts.join(' · ') || (r.runType ?? '');
+  }
+  // generic cron triggered via /trigger-cron
+  if (data.cronName && data.result) {
+    const r = data.result;
+    if (typeof r === 'object' && r.results) {
+      // refresh-etf-flows shape
+      const okCount = Object.values(r.results).filter((x: any) => x?.ok).length;
+      const total = Object.keys(r.results).length;
+      return `${okCount}/${total} ok · ${data.durationMs}ms`;
+    }
+    return `done · ${data.durationMs}ms`;
+  }
+  return '';
+}
+
+function StatusPill({ status }: { status?: 'success' | 'error' | 'loading' }) {
+  if (status === 'loading') return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+      <svg className="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-30" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+      RUNNING
+    </span>
+  );
+  if (status === 'success') return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+      <CheckCircle2 className="w-2.5 h-2.5" /> OK
+    </span>
+  );
+  if (status === 'error') return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+      <XCircle className="w-2.5 h-2.5" /> FAIL
+    </span>
+  );
+  return <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-neutral-500 border border-white/[0.06]">IDLE</span>;
+}
+
+function RiskBadge({ risk }: { risk: Risk }) {
+  if (risk === 'destructive') return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/25">
+      <AlertTriangle className="w-2.5 h-2.5" /> destructive
+    </span>
+  );
+  if (risk === 'broadcast') return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/25">
+      <Send className="w-2.5 h-2.5" /> mass-send
+    </span>
+  );
+  return null;
+}
+
+interface ActionsTabProps { userRole?: string }
 
 export default function ActionsTab({ userRole }: ActionsTabProps) {
   const isFullAdmin = userRole === 'admin';
   const toast = useToast();
-  const [states, setStates] = useState<Record<string, ActionState>>({
-    cache: { loading: false },
-    health: { loading: false },
-    broadcast: { loading: false },
-    snapshot: { loading: false },
-  });
-  const [confirm, setConfirm] = useState<{ key: string; title: string; desc: string; danger: boolean } | null>(null);
+  const [states, setStates] = useState<Record<string, ActionState>>(() =>
+    Object.fromEntries(ACTIONS.map(a => [a.key, { loading: false }])),
+  );
+  const [confirm, setConfirm] = useState<ActionDef | null>(null);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastChannels, setBroadcastChannels] = useState<string[]>(['push', 'telegram']);
+  const [audit, setAudit] = useState<AuditEvent[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   const setActionState = (key: string, patch: Partial<ActionState>) => {
-    setStates((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+    setStates(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }));
   };
 
-  const runAction = async (key: string, url: string, body?: object) => {
-    setActionState(key, { loading: true });
+  const fetchAudit = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const res = await fetch('/api/admin/audit-log?limit=15', { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const data = await res.json();
+        setAudit(data.events ?? data ?? []);
+      }
+    } catch { /* non-critical */ }
+    setAuditLoading(false);
+  }, []);
+
+  useEffect(() => { fetchAudit(); }, [fetchAudit]);
+
+  const runAction = async (action: ActionDef, body?: object) => {
+    setActionState(action.key, { loading: true });
+    const url = action.cron ? '/api/admin/actions/trigger-cron' : action.customHandler!;
+    const payload = action.cron ? { name: action.cron, ...(body ?? {}) } : body;
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(15000),
+        body: payload ? JSON.stringify(payload) : undefined,
+        signal: AbortSignal.timeout(60_000),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Action failed');
-      setActionState(key, { loading: false, lastRun: new Date().toISOString(), lastStatus: 'success' });
+      if (!res.ok) throw new Error(data.error || `${action.label} failed`);
+      const ok = data.success ?? data.ok ?? true;
+      setActionState(action.key, {
+        loading: false,
+        lastRun: new Date().toISOString(),
+        lastStatus: ok ? 'success' : 'error',
+        lastResult: summariseResult(action.key, data),
+      });
+      if (ok) toast.success(`${action.label} done${summariseResult(action.key, data) ? ` — ${summariseResult(action.key, data)}` : ''}`);
+      else toast.error(`${action.label} reported failure`);
+      await fetchAudit();
       return data;
     } catch (err: any) {
-      setActionState(key, { loading: false, lastRun: new Date().toISOString(), lastStatus: 'error' });
-      toast.error(err.message || 'Action failed');
+      setActionState(action.key, {
+        loading: false,
+        lastRun: new Date().toISOString(),
+        lastStatus: 'error',
+        lastResult: err.message ?? '',
+      });
+      toast.error(err.message || `${action.label} failed`);
       return null;
     }
   };
 
-  const handleFlushCache = () => {
-    setConfirm({
-      key: 'cache',
-      title: 'Flush API Cache',
-      desc: 'This will delete all cached API responses. The next requests will be slower until the cache repopulates.',
-      danger: true,
-    });
-  };
-
-  const handleHealthCheck = async () => {
-    const data = await runAction('health', '/api/admin/actions/health-check');
-    if (data?.success) {
-      const status = data.healthResult?.status;
-      if (status === 'healthy') toast.success('System healthy');
-      else if (status === 'degraded') toast.info(`Health: degraded — ${data.healthResult?.errors?.length ?? 0} exchange errors`);
-      else toast.info(`Health: ${status} — ${data.healthResult?.errors?.length ?? 0} errors`);
-    }
-  };
-
-  const handleBroadcast = () => {
-    setBroadcastOpen(true);
-  };
-
-  const handleTriggerSnapshot = async () => {
-    const data = await runAction('snapshot', '/api/admin/actions/trigger-snapshot');
-    if (data?.success) {
-      const r = data.result || {};
-      toast.success(`Snapshot done — ${r.fundingInserted ?? 0} funding, ${r.oiInserted ?? 0} OI, ${r.liqInserted ?? 0} liq`);
-    }
+  const handleClick = (action: ActionDef) => {
+    if (action.adminOnly && !isFullAdmin) return;
+    if (action.key === 'broadcast') { setBroadcastOpen(true); return; }
+    if (action.risk === 'destructive') { setConfirm(action); return; }
+    runAction(action);
   };
 
   const confirmAction = async () => {
     if (!confirm) return;
-    const { key } = confirm;
+    const action = confirm;
     setConfirm(null);
-    if (key === 'cache') {
-      const data = await runAction('cache', '/api/admin/actions/flush-cache');
-      if (data?.success) toast.success(`Cache flushed: ${data.clearedEntries} entries cleared`);
-    }
+    await runAction(action);
   };
 
+  // Broadcast uses its dedicated endpoint, not the generic trigger-cron path.
   const submitBroadcast = async () => {
-    if (!broadcastMsg.trim()) return;
+    if (!broadcastMsg.trim() || broadcastChannels.length === 0) return;
     setBroadcastOpen(false);
-    const data = await runAction('broadcast', '/api/admin/actions/broadcast', {
+    const broadcastAction: ActionDef = {
+      ...ACTIONS.find(a => a.key === 'broadcast')!,
+      customHandler: '/api/admin/actions/broadcast',
+      cron: undefined,
+    };
+    const data = await runAction(broadcastAction, {
       message: broadcastMsg.trim(),
       channels: broadcastChannels,
     });
-    if (data?.success) {
-      const parts: string[] = [];
-      if (data.push) parts.push(`Push: ${data.push.sent} sent`);
-      if (data.telegram) parts.push(`Telegram: ${data.telegram.sent} sent`);
-      toast.success(parts.join(', ') || 'Broadcast sent');
-      setBroadcastMsg('');
-    }
+    if (data?.success) setBroadcastMsg('');
   };
-
-  const fmtTime = (iso?: string) => {
-    if (!iso) return 'Never';
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const actions = [
-    { key: 'cache', icon: ICONS.cache, label: 'Flush Cache', desc: 'Clear all cached API responses', handler: handleFlushCache, color: 'text-red-400', adminOnly: true },
-    { key: 'health', icon: ICONS.health, label: 'Health Check', desc: 'Run full system health check', handler: handleHealthCheck, color: 'text-emerald-400', adminOnly: false },
-    { key: 'broadcast', icon: ICONS.broadcast, label: 'Broadcast', desc: 'Send notification to all users', handler: handleBroadcast, color: 'text-blue-400', adminOnly: true },
-    { key: 'snapshot', icon: ICONS.snapshot, label: 'Trigger Snapshot', desc: 'Trigger a data collection cycle', handler: handleTriggerSnapshot, color: 'text-hub-yellow', adminOnly: false },
-  ];
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {actions.map((a) => {
-          const st = states[a.key];
-          const locked = a.adminOnly && !isFullAdmin;
-          return (
-            <button
-              key={a.key}
-              onClick={locked ? undefined : a.handler}
-              disabled={st.loading || locked}
-              className={`text-left rounded-lg border p-4 transition-colors disabled:opacity-60 ${
-                locked
-                  ? 'border-white/[0.04] bg-white/[0.01] cursor-not-allowed'
-                  : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className={locked ? 'text-neutral-600' : a.color}>{a.icon}</span>
-                <span className={`text-sm font-medium ${locked ? 'text-neutral-500' : 'text-white'}`}>{a.label}</span>
-                {locked && (
-                  <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-neutral-600 font-medium">ADMIN ONLY</span>
-                )}
-                {st.loading && (
-                  <svg className="w-3.5 h-3.5 animate-spin text-neutral-400 ml-auto" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-75" />
-                  </svg>
-                )}
-              </div>
-              <p className="text-xs text-neutral-500">{a.desc}</p>
-              <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-600">
-                <span>Last: {fmtTime(st.lastRun)}</span>
-                {st.lastStatus && (
-                  <span className={st.lastStatus === 'success' ? 'text-emerald-600' : 'text-red-600'}>
-                    {st.lastStatus === 'success' ? 'OK' : 'FAIL'}
-                  </span>
-                )}
-              </div>
-            </button>
-          );
-        })}
+    <div className="space-y-6">
+      {/* Header bar */}
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div className="text-sm text-neutral-400">
+          {isFullAdmin
+            ? 'Trigger cron jobs, refresh data, send broadcasts, or run maintenance.'
+            : 'Read-only view. Some actions require full admin role.'}
+        </div>
+        <button
+          onClick={fetchAudit}
+          disabled={auditLoading}
+          className="text-xs text-neutral-500 hover:text-hub-yellow flex items-center gap-1 disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3 h-3 ${auditLoading ? 'animate-spin' : ''}`} />
+          Refresh activity
+        </button>
       </div>
 
-      {/* Confirm modal for dangerous actions */}
+      {/* Action groups */}
+      {GROUPS.map((group) => {
+        const groupActions = ACTIONS.filter(a => a.group === group.id);
+        if (groupActions.length === 0) return null;
+        return (
+          <section key={group.id}>
+            <header className="flex items-baseline gap-2 mb-2 px-1">
+              <span className="text-neutral-500">{group.icon}</span>
+              <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-neutral-300">{group.label}</h3>
+              <span className="text-[10px] text-neutral-600">— {group.description}</span>
+            </header>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {groupActions.map((a) => {
+                const st = states[a.key];
+                const locked = a.adminOnly && !isFullAdmin;
+                const status: 'success' | 'error' | 'loading' | undefined =
+                  st.loading ? 'loading' : st.lastStatus;
+                return (
+                  <button
+                    key={a.key}
+                    onClick={locked ? undefined : () => handleClick(a)}
+                    disabled={st.loading || locked}
+                    className={`text-left rounded-xl border p-3.5 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                      locked
+                        ? 'border-white/[0.04] bg-white/[0.01]'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.12]'
+                    }`}
+                    title={locked ? 'Requires full admin role' : a.desc}
+                  >
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className={locked ? 'text-neutral-600' : 'text-hub-yellow'}>{a.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-sm font-semibold ${locked ? 'text-neutral-500' : 'text-white'}`}>
+                            {a.label}
+                          </span>
+                          <RiskBadge risk={a.risk} />
+                          {locked && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-neutral-600 font-medium uppercase tracking-wider">
+                              <Shield className="w-2.5 h-2.5 inline -mt-0.5 mr-0.5" />
+                              admin
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-neutral-500 leading-snug mt-0.5">{a.desc}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/[0.04]">
+                      <div className="flex items-center gap-1.5 text-[10px] text-neutral-500">
+                        <Clock className="w-2.5 h-2.5" />
+                        <span>{relTime(st.lastRun)}</span>
+                        {st.lastResult && (
+                          <span className="text-neutral-600">· {st.lastResult}</span>
+                        )}
+                      </div>
+                      <StatusPill status={status} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+
+      {/* Recent activity feed */}
+      <section>
+        <header className="flex items-baseline gap-2 mb-2 px-1">
+          <Activity className="w-3.5 h-3.5 text-neutral-500" />
+          <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-neutral-300">Recent Activity</h3>
+          <span className="text-[10px] text-neutral-600">— last 15 admin actions across all admins</span>
+        </header>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          {audit.length === 0 ? (
+            <div className="px-4 py-6 text-center text-xs text-neutral-500">
+              {auditLoading ? 'Loading…' : 'No activity yet. Trigger an action above to populate.'}
+            </div>
+          ) : (
+            <ul className="divide-y divide-white/[0.04]">
+              {audit.slice(0, 15).map((ev) => {
+                const ok = ev.details?.ok === true || ev.details?.ok === 'true';
+                const failed = ev.details?.ok === false;
+                const admin = (ev.details?.admin as string) ?? 'unknown';
+                const summary = (() => {
+                  const d = ev.details ?? {};
+                  if (d.error) return String(d.error);
+                  if (d.durationMs) return `${d.durationMs}ms`;
+                  if (d.fundingInserted != null) return `fund ${d.fundingInserted} · oi ${d.oiInserted ?? 0} · liq ${d.liqInserted ?? 0}`;
+                  if (d.clearedEntries != null) return `${d.clearedEntries} entries cleared`;
+                  return '';
+                })();
+                return (
+                  <li key={ev.id} className="px-3 py-2 flex items-center gap-3 hover:bg-white/[0.02]">
+                    {ok ? <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0" /> :
+                     failed ? <XCircle className="w-3 h-3 text-rose-500 flex-shrink-0" /> :
+                     <Activity className="w-3 h-3 text-neutral-500 flex-shrink-0" />}
+                    <span className="font-mono text-[11px] text-white truncate flex-shrink-0">{ev.type}</span>
+                    {summary && <span className="font-mono text-[10px] text-neutral-500 truncate">{summary}</span>}
+                    <span className="ml-auto text-[10px] text-neutral-600 flex-shrink-0">{admin}</span>
+                    <span className="text-[10px] text-neutral-600 flex-shrink-0 w-16 text-right">{relTime(ev.timestamp)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      {/* Confirm modal for destructive actions */}
       <ConfirmModal
         open={!!confirm}
-        title={confirm?.title ?? ''}
+        title={confirm ? `Confirm: ${confirm.label}` : ''}
         description={confirm?.desc}
-        danger={confirm?.danger ?? false}
-        confirmLabel="Yes, proceed"
-        loading={states[confirm?.key ?? '']?.loading ?? false}
+        danger={confirm?.risk === 'destructive'}
+        confirmLabel="Yes, run it"
+        loading={!!confirm && states[confirm.key]?.loading}
         onConfirm={confirmAction}
         onCancel={() => setConfirm(null)}
       />
@@ -207,7 +397,15 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setBroadcastOpen(false)} />
           <div className="relative w-full max-w-md mx-4 rounded-xl border border-white/[0.1] bg-[#111] p-5 shadow-2xl">
-            <h3 className="text-sm font-semibold text-white mb-3">Broadcast Notification</h3>
+            <div className="flex items-center gap-2 mb-2">
+              <Send className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-semibold text-white">Broadcast Notification</h3>
+              <RiskBadge risk="broadcast" />
+            </div>
+            <p className="text-[11px] text-neutral-500 mb-3">
+              Sends to <strong className="text-neutral-300">every</strong> opted-in subscriber on the
+              selected channels. There is no recall — be sure the message is correct.
+            </p>
             <textarea
               value={broadcastMsg}
               onChange={(e) => setBroadcastMsg(e.target.value)}
@@ -221,11 +419,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
                 <input
                   type="checkbox"
                   checked={broadcastChannels.includes('push')}
-                  onChange={(e) =>
-                    setBroadcastChannels((ch) =>
-                      e.target.checked ? [...ch, 'push'] : ch.filter((c) => c !== 'push'),
-                    )
-                  }
+                  onChange={(e) => setBroadcastChannels((ch) => e.target.checked ? [...ch, 'push'] : ch.filter((c) => c !== 'push'))}
                   className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30"
                 />
                 Push
@@ -234,11 +428,7 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
                 <input
                   type="checkbox"
                   checked={broadcastChannels.includes('telegram')}
-                  onChange={(e) =>
-                    setBroadcastChannels((ch) =>
-                      e.target.checked ? [...ch, 'telegram'] : ch.filter((c) => c !== 'telegram'),
-                    )
-                  }
+                  onChange={(e) => setBroadcastChannels((ch) => e.target.checked ? [...ch, 'telegram'] : ch.filter((c) => c !== 'telegram'))}
                   className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30"
                 />
                 Telegram
@@ -254,10 +444,10 @@ export default function ActionsTab({ userRole }: ActionsTabProps) {
               </button>
               <button
                 onClick={submitBroadcast}
-                disabled={!broadcastMsg.trim() || broadcastChannels.length === 0 || states.broadcast.loading}
+                disabled={!broadcastMsg.trim() || broadcastChannels.length === 0 || states.broadcast?.loading}
                 className="px-3 py-1.5 text-xs rounded-lg font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
               >
-                {states.broadcast.loading ? 'Sending...' : 'Send Broadcast'}
+                {states.broadcast?.loading ? 'Sending…' : 'Send Broadcast'}
               </button>
             </div>
           </div>

@@ -343,6 +343,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'How to Read Open Interest',
     description: 'Learn how to interpret open interest data for crypto perpetual futures. Understand what rising and falling OI means for price action and market positioning.',
   },
+  '/guides/surviving-liquidation-cascades': {
+    title: 'Surviving Liquidation Cascades',
+    description: 'When leveraged positions unwind, prices move fast. Anatomy of a cascade, the 5 precursors that signal one coming, defensive + offensive playbooks, and a pre-cascade checklist drawing on the live signals InfoHub already tracks.',
+  },
   '/gmx-traders': {
     title: 'GMX Traders Leaderboard',
     description: 'Top on-chain perpetual traders on GMX V2 (Arbitrum + Avalanche). Ranked by realized PnL, volume, and win rate. See their open positions, recent trades, and 30-day PnL sparklines.',
