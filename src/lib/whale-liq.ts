@@ -81,6 +81,33 @@ interface WhaleData {
 }
 
 /**
+ * Distance from current mark to liquidation price, as a fraction of mark.
+ * Returns null when:
+ *   - mark or liq is non-positive / non-finite
+ *   - position is already past liquidation (distance < 0)
+ *
+ * For long positions, distance is positive when mark > liq (still safe).
+ * For short positions, distance is positive when mark < liq (still safe).
+ *
+ * Exported for unit testability — the inline math used to live in
+ * buildWhaleLiqFeed which can't be tested without spinning up a fake
+ * /api/hl-whales server.
+ */
+export function liqDistancePct(
+  side: 'long' | 'short',
+  markPrice: number,
+  liquidationPrice: number,
+): number | null {
+  if (!Number.isFinite(markPrice) || markPrice <= 0) return null;
+  if (!Number.isFinite(liquidationPrice) || liquidationPrice <= 0) return null;
+  const distance = side === 'long'
+    ? (markPrice - liquidationPrice) / markPrice
+    : (liquidationPrice - markPrice) / markPrice;
+  if (!Number.isFinite(distance) || distance < 0) return null;
+  return distance;
+}
+
+/**
  * Build the roulette feed by reading the warm /api/hl-whales cache. Caller
  * passes the origin so this lib stays pure (testable + reusable from
  * cron/api-route alike).
@@ -109,12 +136,8 @@ export async function buildWhaleLiqFeed(origin: string): Promise<WhaleLiqFeed> {
       const markPrice = sizeAbs > 0 ? p.positionValue / sizeAbs : 0;
       if (!Number.isFinite(markPrice) || markPrice <= 0) continue;
 
-      // Distance: long is in trouble when mark falls below liq;
-      // short is in trouble when mark rises above liq.
-      const distance = p.side === 'long'
-        ? (markPrice - p.liquidationPrice) / markPrice
-        : (p.liquidationPrice - markPrice) / markPrice;
-      if (!Number.isFinite(distance) || distance < 0) continue; // already past liq — skip
+      const distance = liqDistancePct(p.side, markPrice, p.liquidationPrice);
+      if (distance == null) continue; // already past liq, malformed inputs — skip
 
       rows.push({
         address: w.address,
