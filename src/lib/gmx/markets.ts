@@ -121,7 +121,7 @@ async function getGMXTokenDecimals(chain: 'arbitrum' | 'avalanche'): Promise<Tok
 }
 
 /** Parse "BTC/USD [WBTC.b-USDC]" into structured parts. */
-function parseMarketName(name: string): Pick<MarketInfo, 'symbol' | 'pair' | 'collateralPair' | 'isDeprecated'> {
+export function parseMarketName(name: string): Pick<MarketInfo, 'symbol' | 'pair' | 'collateralPair' | 'isDeprecated'> {
   const isDeprecated = /deprecated/i.test(name);
   // Collateral in brackets
   const bracketMatch = name.match(/\[([^\]]+)\]/);
@@ -221,7 +221,7 @@ export async function resolveMarket(
  * magnitude sensible price (BTC at $74k beats BTC at $0.74 even though
  * both are "plausible").
  */
-function inferDecimals(rawPrice: string): { decimals: number; priceUsd: number } {
+export function inferDecimals(rawPrice: string): { decimals: number; priceUsd: number } {
   let bn: bigint;
   try { bn = BigInt(rawPrice); } catch { return { decimals: 18, priceUsd: 0 }; }
   if (bn <= BigInt(0)) return { decimals: 18, priceUsd: 0 };
