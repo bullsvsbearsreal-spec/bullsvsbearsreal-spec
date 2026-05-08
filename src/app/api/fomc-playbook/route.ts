@@ -119,16 +119,26 @@ export async function GET() {
   }
 
   const now = Date.now();
-  // Fetch a wide BTC price window covering all known meetings + buffer.
-  // CoinGecko free tier returns hourly resolution for 1–90d ranges,
-  // daily resolution beyond that. We need daily-level which is fine.
-  const earliest = Math.min(...FOMC_MEETINGS.map(m => dateAtUtcNoon(m.date)));
-  const latestPast = Math.max(...FOMC_MEETINGS
-    .filter(m => dateAtUtcNoon(m.date) < now)
-    .map(m => dateAtUtcNoon(m.date)));
-  const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
-  const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
-  const prices = await fetchPriceWindow(fromUnix, toUnix);
+  // CoinGecko's FREE-tier market_chart/range historical limit is 365 days
+  // — earlier this route requested 2024-01-31 → today (~830 days) and
+  // got back an empty array, so EVERY past meeting rendered as "—" on
+  // the FOMC Playbook page even though decisions are hand-curated and
+  // available. Cap the fetch window to the last 360 days so we always
+  // get a valid response, and accept that meetings older than that
+  // won't have price-reaction numbers (they still display the decision).
+  const FREE_HISTORY_MS = 360 * 86_400_000;
+  const cutoff = now - FREE_HISTORY_MS;
+  const fetchableMeetings = FOMC_MEETINGS
+    .map(m => dateAtUtcNoon(m.date))
+    .filter(ms => ms >= cutoff && ms < now);
+  let prices: Array<[number, number]> = [];
+  if (fetchableMeetings.length > 0) {
+    const earliest = Math.min(...fetchableMeetings);
+    const latestPast = Math.max(...fetchableMeetings);
+    const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
+    const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
+    prices = await fetchPriceWindow(fromUnix, toUnix);
+  }
 
   const meetings: MeetingResult[] = FOMC_MEETINGS.map(m => {
     const ms = dateAtUtcNoon(m.date);
