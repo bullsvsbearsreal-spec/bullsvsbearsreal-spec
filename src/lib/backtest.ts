@@ -96,16 +96,30 @@ function bucketDaily(points: Array<[number, number]>): Array<{ date: string; pri
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** Run a DCA simulation. Returns full result with daily portfolio value. */
-export async function runDcaBacktest(config: DcaConfig): Promise<BacktestResult> {
-  const days = Math.min(Math.max(config.lookbackDays, 7), 365);
-  const interval = Math.min(Math.max(config.intervalDays, 1), 30);
-  const amount = Math.max(config.amountUsd, 1);
-
-  const raw = await fetchCoinGeckoPrices(config.asset.toLowerCase(), days);
-  const daily = bucketDaily(raw);
-  if (daily.length < 2) throw new Error(`No price history for ${config.asset}`);
-
+/**
+ * Pure DCA simulation: given a daily price series + buy schedule, return
+ * the daily portfolio value series, time-weighted daily returns, and
+ * end-state stats. Exported so the time-weighted-return logic is unit-
+ * testable without hitting CoinGecko (the live function below).
+ *
+ * Critical: dailyReturns use the PRE-buy value (units held overnight ×
+ * today's price) so Sharpe / volatility reflect the investment's
+ * behaviour, not the deposit cadence. Earlier this used post-buy values,
+ * which counted each $100 deposit as a "+huge%" daily return —
+ * producing nonsense Sharpes (e.g. 4.08 on a +1.80% real return).
+ * See commit 8e911980 for the original fix.
+ */
+export function simulateDcaCore(
+  daily: Array<{ date: string; price: number }>,
+  amount: number,
+  interval: number,
+): {
+  series: BacktestPoint[];
+  dailyReturns: number[];
+  units: number;
+  deposited: number;
+  trades: number;
+} {
   let units = 0;
   let deposited = 0;
   let trades = 0;
@@ -116,17 +130,11 @@ export async function runDcaBacktest(config: DcaConfig): Promise<BacktestResult>
 
   for (let i = 0; i < daily.length; i++) {
     const day = daily[i];
-    // Time-weighted return: capture the price-only change (pre-deposit) so
-    // Sharpe / volatility reflect the investment's behaviour, not the
-    // deposit cadence. Previously dailyReturns used post-buy values, which
-    // counted each $100 deposit as a "+huge%" daily return — producing
-    // nonsense Sharpes (e.g. 4.08 on a +1.80% real return).
     const valueBeforeBuy = units * day.price;
     if (i > 0 && prevValue > 0) {
       dailyReturns.push((valueBeforeBuy - prevValue) / prevValue);
     }
     if (i - lastBuyAtIndex >= interval) {
-      // Buy at this day's close.
       const newUnits = amount / day.price;
       units += newUnits;
       deposited += amount;
@@ -142,6 +150,21 @@ export async function runDcaBacktest(config: DcaConfig): Promise<BacktestResult>
     });
     prevValue = value;
   }
+
+  return { series, dailyReturns, units, deposited, trades };
+}
+
+/** Run a DCA simulation. Returns full result with daily portfolio value. */
+export async function runDcaBacktest(config: DcaConfig): Promise<BacktestResult> {
+  const days = Math.min(Math.max(config.lookbackDays, 7), 365);
+  const interval = Math.min(Math.max(config.intervalDays, 1), 30);
+  const amount = Math.max(config.amountUsd, 1);
+
+  const raw = await fetchCoinGeckoPrices(config.asset.toLowerCase(), days);
+  const daily = bucketDaily(raw);
+  if (daily.length < 2) throw new Error(`No price history for ${config.asset}`);
+
+  const { series, dailyReturns, deposited, trades } = simulateDcaCore(daily, amount, interval);
 
   const finalValue = series[series.length - 1].valueUsd;
   // Max drawdown: largest peak-to-trough drop.
