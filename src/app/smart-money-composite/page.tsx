@@ -76,9 +76,39 @@ export default function SmartMoneyCompositePage() {
   }, []);
 
   useEffect(() => {
-    load(false);
+    let mounted = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    // Cold-cache cost on /api/smart-money is ~20 s (computes positions across
+    // top wallets). The 45 s fetch timeout covers it, but if the browser hits
+    // a transient platform timeout (DO Edge / function cold start contention)
+    // the user is shown "Failed to load" with no automatic recovery — the
+    // 2-minute interval below is the next attempt. Auto-retry once after 8 s
+    // on the initial load so cold-start failures recover without user action.
+    let didRetry = false;
+    const initial = async () => {
+      await load(false);
+      // Need to read latest error state — capture via setError callback trick
+      // by reading from a ref isn't worth the complexity; just check after a
+      // microtask via a fresh state read.
+      setTimeout(() => {
+        if (!mounted || didRetry) return;
+        // If we still have no data after the first attempt, schedule a retry.
+        setData(prev => {
+          if (prev == null && !didRetry) {
+            didRetry = true;
+            retryTimer = setTimeout(() => { if (mounted) load(true); }, 5_000);
+          }
+          return prev;
+        });
+      }, 100);
+    };
+    initial();
     const id = setInterval(() => load(true), 2 * 60_000);
-    return () => clearInterval(id);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [load]);
 
   return (
