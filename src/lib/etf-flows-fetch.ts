@@ -17,6 +17,12 @@ export interface FarsideResult {
   days: FlowDay[];
   /** True when upstream returned usable data this fetch. */
   dataAvailable: boolean;
+  /** True when the data is from the Wayback Machine archive (real but
+   *  stale). UI should surface a "Last updated <date>" notice so users
+   *  know not to treat the latest day as fresh. */
+  stale?: boolean;
+  /** Source label for telemetry / UI. */
+  source?: 'direct' | 'proxy' | 'wayback';
   /** Human-readable note if data unavailable / stale. */
   note?: string;
 }
@@ -91,24 +97,51 @@ export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideRe
   // Try direct first — fastest path when DO IPs aren't being blocked.
   const direct = await tryFetchAndParse(directUrl);
   if ('issuers' in direct) {
-    return { asset, issuers: direct.issuers, days: direct.days, dataAvailable: true };
+    return { asset, issuers: direct.issuers, days: direct.days, dataAvailable: true, source: 'direct' };
   }
 
   // Direct failed — most commonly Farside's Cloudflare blocks DO datacenter
   // IPs with a 403. Same pattern we use for Binance: route through PROXY_URL
   // (the InfoHub aggregator droplet) which lives on a clean IP. Skipped
   // when no proxy configured.
+  let proxyError: string | undefined;
   const proxyUrlRaw = (process.env.PROXY_URL || '').trim();
   if (proxyUrlRaw && proxyUrlRaw.startsWith('https://')) {
     const proxyBase = proxyUrlRaw.replace(/\/$/, '');
     const proxied = await tryFetchAndParse(`${proxyBase}/?url=${encodeURIComponent(directUrl)}`);
     if ('issuers' in proxied) {
-      return { asset, issuers: proxied.issuers, days: proxied.days, dataAvailable: true };
+      return { asset, issuers: proxied.issuers, days: proxied.days, dataAvailable: true, source: 'proxy' };
     }
-    return { ...empty, note: `Farside ${direct.error}; proxy ${proxied.error}.` };
+    proxyError = proxied.error;
   }
 
-  return { ...empty, note: `Farside ${direct.error}.` };
+  // Tertiary fallback: Wayback Machine. Returns the latest archived
+  // snapshot — typically a few weeks stale but still has real flow data.
+  // Better than rendering the page completely empty. Only used when
+  // direct + proxy both failed, so we accept the staleness penalty.
+  // The /web/3/ path tells Wayback to redirect to the latest snapshot.
+  const waybackUrl = `https://web.archive.org/web/3/${directUrl}`;
+  const wayback = await tryFetchAndParse(waybackUrl);
+  if ('issuers' in wayback && wayback.days.length > 0) {
+    const latest = wayback.days[wayback.days.length - 1]?.date ?? 'unknown';
+    return {
+      asset,
+      issuers: wayback.issuers,
+      days: wayback.days,
+      dataAvailable: true,
+      stale: true,
+      source: 'wayback',
+      note: `Showing archived data through ${latest}. Live source unreachable from this datacenter.`,
+    };
+  }
+
+  // Everything failed — return graceful empty state.
+  const errors = [
+    `Farside ${direct.error}`,
+    proxyError ? `proxy ${proxyError}` : null,
+    `archive ${'error' in wayback ? wayback.error : 'no data'}`,
+  ].filter(Boolean).join('; ');
+  return { ...empty, note: errors + '.' };
 }
 
 /* ─── HTML parsing ────────────────────────────────────────────────────── */

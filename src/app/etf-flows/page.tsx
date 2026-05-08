@@ -22,6 +22,10 @@ interface ApiResponse {
   /** True when the response came from the Redis warm cache rather than a
    *  fresh Farside fetch — happens when Farside is rate-limiting our IP. */
   cached?: boolean;
+  /** True when data came from the Wayback Machine archive (~weeks stale).
+   *  Stronger staleness signal than `cached`. */
+  stale?: boolean;
+  source?: 'direct' | 'proxy' | 'wayback' | 'warm-cache';
   note?: string;
   ts: number;
 }
@@ -182,6 +186,18 @@ export default function EtfFlowsPage() {
               <div className="mb-3 px-3 py-2 rounded-md border border-amber-500/30 bg-amber-500/[0.06] text-[11px] text-amber-200/90 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
                 <span>{data.note}</span>
+              </div>
+            )}
+
+            {/* Wayback Machine archive notice — data is real but ~weeks old.
+                Stronger badge than warm-cache because Wayback latency is
+                meaningfully higher (typically 2-6 weeks behind live). */}
+            {data.stale && (
+              <div className="mb-3 px-3 py-2 rounded-md border border-orange-500/40 bg-orange-500/[0.08] text-[11px] text-orange-200/95 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+                <span>
+                  <strong>Archived data:</strong> {data.note ?? 'Live source unreachable from this datacenter.'}
+                </span>
               </div>
             )}
 

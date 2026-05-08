@@ -36,6 +36,11 @@ interface ApiResponse {
   /** True when this response came from the Redis warm cache rather than a
    *  fresh Farside fetch. UI uses this to show a "cached" hint. */
   cached?: boolean;
+  /** True when this response is from the Wayback Machine archive (~weeks
+   *  stale but real data). Distinct from `cached` (which is hours stale,
+   *  warm-cron-populated). UI shows a stronger "archive" badge. */
+  stale?: boolean;
+  source?: 'direct' | 'proxy' | 'wayback' | 'warm-cache';
   note?: string;
   ts: number;
 }
@@ -78,9 +83,22 @@ export async function GET(request: NextRequest) {
   const result = await fetchFarsideFlows(asset);
   if (result.dataAvailable) {
     const body = buildBody(asset, result.days, result.issuers);
+    // Propagate stale flag (set by Wayback fallback) so the page can
+    // show the archive notice. L1-cache for shorter when stale to
+    // re-attempt the live source sooner.
+    if (result.stale) {
+      body.stale = true;
+      body.source = result.source;
+      body.note = result.note;
+    } else {
+      body.source = result.source;
+    }
     l1Cache.set(cacheKey, { body, ts: Date.now() });
+    const cacheHeader = result.stale
+      ? 'public, s-maxage=300, stale-while-revalidate=1800'
+      : 'public, s-maxage=900, stale-while-revalidate=3600';
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
+      headers: { 'X-Cache': result.stale ? 'WAYBACK' : 'MISS', 'Cache-Control': cacheHeader },
     });
   }
 
