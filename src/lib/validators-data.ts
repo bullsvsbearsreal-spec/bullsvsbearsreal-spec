@@ -8,16 +8,32 @@ import { fetchWithTimeout } from '@/app/api/_shared/fetch';
 
 const TIMEOUT = 15_000;
 
+// Slugs verified against the live yields.llama.fi/pools snapshot
+// (May 2026). DefiLlama uses HYPHEN-separated slugs and does NOT use
+// casual brand names. The previous list had several drops:
+//  - 'ether-fi' / 'etherfi-stake' (real: 'ether.fi-stake', 'ether.fi-liquid')
+//  - 'puffer-finance'             (real: 'puffer-stake')
+//  - 'swell'                       (real: 'swell-earn', 'swell-liquid-restaking',
+//                                  'swell-liquid-staking')
+//  - 'kelp-dao'                    (real: 'kelp')
+//  - 'jito' / 'marinade-finance'   (real: 'jito-liquid-staking',
+//                                  'marinade-liquid-staking')
+//  - 'sanctum'                     (real: 'sanctum-infinity')
 const LST_PROJECTS = new Set([
   'lido', 'rocket-pool', 'rocketpool', 'frax-ether', 'mantle-lsp',
   'binance-staked-eth', 'coinbase-wrapped-staked-eth', 'stakewise-v3',
-  'jito-liquid-staking', 'jito', 'marinade-finance', 'marinade',
-  'sanctum', 'blazestake', 'jpool',
+  'jito-liquid-staking', 'marinade-liquid-staking',
+  'sanctum-infinity', 'blazestake', 'jpool',
 ]);
 
 const RESTAKING_PROJECTS = new Set([
-  'eigenlayer', 'symbiotic', 'karak', 'ether-fi', 'etherfi-stake',
-  'renzo', 'kelp-dao', 'puffer-finance', 'swell', 'eigenpie',
+  'eigenlayer', 'symbiotic', 'karak',
+  'ether.fi-stake', 'ether.fi-liquid',
+  'renzo', 'kelp',
+  'puffer-stake',
+  'swell-earn', 'swell-liquid-restaking', 'swell-liquid-staking',
+  'eigenpie',
+  'bedrock-unieth',
 ]);
 
 const ALLOW_PROJECTS = new Set<string>();
