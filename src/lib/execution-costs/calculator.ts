@@ -12,7 +12,21 @@ import {
 
 type FetchFn = typeof fetch;
 
-function clobToVenueCost(
+/**
+ * Convert a raw orderbook into a VenueCost row for /trade-optimizer.
+ *
+ * Critical invariants (locked in by tests):
+ * - Empty book on the relevant side → available:false (so the venue
+ *   doesn't get sorted to "cheapest" with 0bps cost — that's a Lighter
+ *   indexer bug we already hit once).
+ * - fillRatio < 0.5 → available:false with "Insufficient depth"
+ *   (extrapolated cost from a non-fillable order is meaningless and
+ *   would otherwise rank a tiny venue at the top).
+ * - Long uses asks; short uses bids. Sign-flip would invert the table.
+ * - Non-finite costs (Infinity, NaN) get clamped to 0 — defensive
+ *   against degenerate upstream data.
+ */
+export function clobToVenueCost(
   book: RawBookData | null,
   orderSizeUsd: number,
   direction: Direction,
