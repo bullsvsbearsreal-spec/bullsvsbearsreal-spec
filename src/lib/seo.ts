@@ -299,6 +299,30 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Dashboard',
     description: 'InfoHub crypto derivatives dashboard — funding rates, open interest, liquidations, spreads, and market data from 32 exchanges at a glance.',
   },
+  '/health': {
+    title: 'Endpoint Health',
+    description: 'Live status of every InfoHub data endpoint, measured from your browser. Green = healthy, amber = degraded, red = error or timeout. Re-checks every 60s.',
+  },
+  '/changelog': {
+    title: 'Changelog',
+    description: 'What we have shipped recently. New features, fixes, and improvements to the InfoHub data terminal — admin-only release notes.',
+  },
+  '/positions': {
+    title: 'Positions · Cross-Venue',
+    description: 'Unified view of your open positions across connected accounts. Direction-aware funding, per-position health score, funding cost-of-carry, TP/SL, and liquidation distance.',
+  },
+  '/positions/tax': {
+    title: 'Tax / Cost-Basis · FIFO',
+    description: 'Aggregate cost-basis and realised PnL across every connected wallet and key. FIFO accounting over your entire trade history. Live for Hyperliquid, Binance, Bybit, and OKX.',
+  },
+  '/positions/journal': {
+    title: 'Trade Journal',
+    description: 'Every closed trade across your connected wallets and keys, with realised PnL, win rate, and a 90-day cumulative chart. Live for Hyperliquid, Binance, Bybit, and OKX.',
+  },
+  '/positions/simulate': {
+    title: 'Pre-Trade Decision Engine',
+    description: 'Plug in a hypothetical trade and see its impact on your book before you execute. Health score, liquidation distance, funding carry, and risk concerns surfaced.',
+  },
   '/referrals': {
     title: 'Referrals',
     description: 'Earn rewards by referring traders to InfoHub. Share your link and get credit when friends sign up and use the platform.',

@@ -146,7 +146,12 @@ export default function FomcPlaybookPage() {
                 className="grid grid-cols-[110px,1fr,110px,110px,110px,1fr] gap-3 px-3 py-2 items-center rounded hover:bg-white/[0.02]"
               >
                 <div className="text-sm text-white font-mono font-bold">{m.date}</div>
-                <div className="text-xs text-neutral-300">{m.decision ?? '—'}</div>
+                <div className="text-xs text-neutral-300">
+                  {m.decision
+                    ?? (m.isPast
+                      ? <span className="italic text-neutral-600">Decision pending…</span>
+                      : '—')}
+                </div>
                 <div className="text-right font-mono text-xs tabular-nums text-neutral-400">{fmtUsd(m.priceBefore)}</div>
                 <div className="text-right font-mono text-xs tabular-nums text-neutral-400">{fmtUsd(m.priceAfter)}</div>
                 <div className={`text-right font-mono text-sm font-bold tabular-nums ${reactionTone(m.reactionPct)}`}>

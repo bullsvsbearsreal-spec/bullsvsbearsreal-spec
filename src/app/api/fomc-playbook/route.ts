@@ -5,9 +5,13 @@
  * countdown to the next meeting. Curated meeting dates (Fed publishes
  * the calendar a year out, so this list is hand-maintained).
  *
- * Uses CoinGecko's /coins/{id}/market_chart/range for historical close
- * lookups. Free, no auth. L1 cached 6 hours — historical reactions
- * don't change.
+ * Price source: tries CoinGecko's /coins/{id}/market_chart/range first
+ * (free, no auth, hourly granularity inside 90d / daily up to 365d),
+ * then falls back to Binance klines if CG returns empty. CG free tier
+ * is rate-limited / blocked from datacenter IPs in practice, so on
+ * DigitalOcean we usually hit the Binance path.
+ *
+ * L1 cached 6 hours — historical reactions don't change.
  */
 import { NextResponse } from 'next/server';
 import { fetchWithTimeout } from '../_shared/fetch';
@@ -84,15 +88,48 @@ const L1_TTL = 6 * 60 * 60 * 1000;
 
 interface CGRange { prices: Array<[number, number]> }
 
-async function fetchPriceWindow(unixSecondsFrom: number, unixSecondsTo: number): Promise<Array<[number, number]>> {
+async function fetchFromCoinGecko(unixSecondsFrom: number, unixSecondsTo: number): Promise<Array<[number, number]>> {
   try {
     const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=usd&from=${unixSecondsFrom}&to=${unixSecondsTo}`;
     const res = await fetchWithTimeout(url, { headers: { Accept: 'application/json' } }, TIMEOUT);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.warn(`[fomc-playbook] CG range fetch ${res.status} — falling back to Binance`);
+      return [];
+    }
     const json = await res.json() as CGRange;
     return json.prices ?? [];
-  } catch { return []; }
+  } catch (err) {
+    console.warn('[fomc-playbook] CG range fetch error — falling back to Binance:', err);
+    return [];
+  }
 }
+
+/** Fall back to Binance klines when CG free tier is blocked. Daily candles
+ *  are good enough — we only need before/after-meeting closes within ±12h. */
+async function fetchFromBinance(unixSecondsFrom: number, unixSecondsTo: number): Promise<Array<[number, number]>> {
+  try {
+    const startMs = unixSecondsFrom * 1000;
+    const endMs = unixSecondsTo * 1000;
+    // Binance returns up to 1000 klines per call; with daily interval that's
+    // way more than the ~365 days we ever request, so a single call is fine.
+    const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=${startMs}&endTime=${endMs}&limit=1000`;
+    const res = await fetchWithTimeout(url, { headers: { Accept: 'application/json' } }, TIMEOUT);
+    if (!res.ok) {
+      console.warn(`[fomc-playbook] Binance klines ${res.status}`);
+      return [];
+    }
+    // Kline shape: [openTime, open, high, low, close, volume, closeTime, ...]
+    // Return [closeTime, close] pairs to match the [ts, price] shape the rest
+    // of the route expects. closeTime is the UTC end-of-day boundary, which
+    // pairs naturally with our noon-UTC meeting timestamps + 24h offset.
+    const json = await res.json() as Array<Array<string | number>>;
+    return json.map(k => [Number(k[6]), Number(k[4])]);
+  } catch (err) {
+    console.warn('[fomc-playbook] Binance klines error:', err);
+    return [];
+  }
+}
+
 
 function dateAtUtcNoon(iso: string): number {
   return new Date(`${iso}T12:00:00Z`).getTime();
@@ -106,8 +143,11 @@ function nearestPriceAt(prices: Array<[number, number]>, targetMs: number): numb
     const delta = Math.abs(p[0] - targetMs);
     if (delta < bestDelta) { bestDelta = delta; best = p; }
   }
-  // Reject if best match is more than 12h away
-  if (best && bestDelta < 12 * 3_600_000) return best[1];
+  // Reject if best match is more than 26h away. CG hourly data is always
+  // within an hour; Binance daily candles can be up to ~24h off (we look
+  // for the close stamp closest to the target), so we widen the window
+  // here to accommodate the fallback source.
+  if (best && bestDelta < 26 * 3_600_000) return best[1];
   return null;
 }
 
@@ -119,25 +159,39 @@ export async function GET() {
   }
 
   const now = Date.now();
-  // CoinGecko's FREE-tier market_chart/range historical limit is 365 days
-  // — earlier this route requested 2024-01-31 → today (~830 days) and
-  // got back an empty array, so EVERY past meeting rendered as "—" on
-  // the FOMC Playbook page even though decisions are hand-curated and
-  // available. Cap the fetch window to the last 360 days so we always
-  // get a valid response, and accept that meetings older than that
-  // won't have price-reaction numbers (they still display the decision).
+  // CoinGecko's FREE-tier market_chart/range limit is 365 days. We try CG
+  // first with that capped window; if CG returns empty (rate-limited from
+  // datacenter IPs), we fall back to Binance daily klines with the FULL
+  // history (Binance's free klines support multi-year ranges in one call).
+  // That way meetings older than 365d still get price reactions when we
+  // hit the Binance path, while CG keeps doing its work for routine cases.
   const FREE_HISTORY_MS = 360 * 86_400_000;
-  const cutoff = now - FREE_HISTORY_MS;
-  const fetchableMeetings = FOMC_MEETINGS
+  const cgCutoff = now - FREE_HISTORY_MS;
+
+  const allPastMeetingTs = FOMC_MEETINGS
     .map(m => dateAtUtcNoon(m.date))
-    .filter(ms => ms >= cutoff && ms < now);
+    .filter(ms => ms < now);
+
   let prices: Array<[number, number]> = [];
-  if (fetchableMeetings.length > 0) {
-    const earliest = Math.min(...fetchableMeetings);
-    const latestPast = Math.max(...fetchableMeetings);
-    const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
-    const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
-    prices = await fetchPriceWindow(fromUnix, toUnix);
+  if (allPastMeetingTs.length > 0) {
+    // First try CG with the capped window
+    const cgFetchable = allPastMeetingTs.filter(ms => ms >= cgCutoff);
+    if (cgFetchable.length > 0) {
+      const earliest = Math.min(...cgFetchable);
+      const latestPast = Math.max(...cgFetchable);
+      const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
+      const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
+      prices = await fetchFromCoinGecko(fromUnix, toUnix);
+    }
+    // If CG was empty (rate-limited or empty response), fall back to Binance
+    // with the full history range so even pre-2025 meetings get reactions.
+    if (prices.length === 0) {
+      const earliest = Math.min(...allPastMeetingTs);
+      const latestPast = Math.max(...allPastMeetingTs);
+      const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
+      const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
+      prices = await fetchFromBinance(fromUnix, toUnix);
+    }
   }
 
   const meetings: MeetingResult[] = FOMC_MEETINGS.map(m => {
