@@ -176,13 +176,31 @@ interface YahooSession {
 let yahooSession: YahooSession | null = null;
 const YAHOO_SESSION_TTL = 60 * 60 * 1000; // 1h — crumbs are fairly long-lived
 
+/** Raw fetch with timeout — bypasses fetchWithTimeout's automatic proxy
+ *  routing. Critical for Yahoo's crumb flow because the proxy strips
+ *  cookies (the whole reason crumb auth exists) and the cookie returned
+ *  by the proxy wouldn't match the crumb returned by the proxy on a
+ *  separate call. */
+async function rawFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function getYahooSession(): Promise<YahooSession | null> {
   if (yahooSession && Date.now() - yahooSession.ts < YAHOO_SESSION_TTL) {
     return yahooSession;
   }
   try {
     // Step 1: hit fc.yahoo.com to get the session cookie.
-    const cookieRes = await fetchWithTimeout(
+    // IMPORTANT: use rawFetch (not fetchWithTimeout) — Yahoo is in
+    // PROXIED_DOMAINS so fetchWithTimeout would route through PROXY_URL,
+    // which strips cookies and breaks the crumb-auth chain.
+    const cookieRes = await rawFetch(
       'https://fc.yahoo.com/',
       { headers: { 'User-Agent': YAHOO_UA }, redirect: 'manual' },
       5000,
@@ -196,8 +214,8 @@ async function getYahooSession(): Promise<YahooSession | null> {
       .join('; ');
     if (!cookie) return null;
 
-    // Step 2: get the crumb with that cookie.
-    const crumbRes = await fetchWithTimeout(
+    // Step 2: get the crumb with that cookie. Same proxy-bypass.
+    const crumbRes = await rawFetch(
       'https://query2.finance.yahoo.com/v1/test/getcrumb',
       { headers: { 'User-Agent': YAHOO_UA, Cookie: cookie } },
       5000,
@@ -223,7 +241,9 @@ async function fetchYahooFundDetail(ticker: string, sess: YahooSession): Promise
   try {
     const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}` +
       `?modules=defaultKeyStatistics,summaryDetail,fundProfile&crumb=${encodeURIComponent(sess.crumb)}`;
-    const res = await fetchWithTimeout(
+    // rawFetch — same reason as in getYahooSession. The crumb is bound
+    // to the cookie we obtained, so the proxy can't substitute its own.
+    const res = await rawFetch(
       url,
       { headers: { 'User-Agent': YAHOO_UA, Cookie: sess.cookie } },
       6000,
