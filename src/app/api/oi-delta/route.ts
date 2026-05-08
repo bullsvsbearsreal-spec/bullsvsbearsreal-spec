@@ -47,6 +47,39 @@ export async function GET(request: NextRequest) {
       const past4h = await sql`SELECT COUNT(*) AS n FROM oi_snapshots WHERE ts BETWEEN NOW() - INTERVAL '246 minutes' AND NOW() - INTERVAL '234 minutes'`;
       const past24h = await sql`SELECT COUNT(*) AS n FROM oi_snapshots WHERE ts BETWEEN NOW() - INTERVAL '1446 minutes' AND NOW() - INTERVAL '1434 minutes'`;
       const total = await sql`SELECT COUNT(*) AS n, MIN(ts) AS oldest, MAX(ts) AS newest FROM oi_snapshots`;
+
+      // Run the inner part of getOIDeltas's query to see what's returned
+      // before the OUTER WHERE current_oi > 0 filter.
+      const innerRows = await sql`
+        SELECT
+          symbol,
+          SUM(CASE WHEN window = 'current' THEN oi_usd ELSE 0 END) AS current_oi,
+          SUM(CASE WHEN window = '1h'      THEN oi_usd ELSE 0 END) AS oi_1h,
+          SUM(CASE WHEN window = '4h'      THEN oi_usd ELSE 0 END) AS oi_4h,
+          SUM(CASE WHEN window = '24h'     THEN oi_usd ELSE 0 END) AS oi_24h
+        FROM (
+          SELECT DISTINCT ON (window, exchange, symbol)
+            window, exchange, symbol, oi_usd
+          FROM (
+            SELECT 'current' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts >= NOW() - INTERVAL '12 minutes'
+            UNION ALL
+            SELECT '1h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts BETWEEN NOW() - INTERVAL '66 minutes' AND NOW() - INTERVAL '54 minutes'
+            UNION ALL
+            SELECT '4h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts BETWEEN NOW() - INTERVAL '246 minutes' AND NOW() - INTERVAL '234 minutes'
+            UNION ALL
+            SELECT '24h' AS window, exchange, symbol, oi_usd, ts FROM oi_snapshots
+            WHERE ts BETWEEN NOW() - INTERVAL '1446 minutes' AND NOW() - INTERVAL '1434 minutes'
+          ) all_windows
+          ORDER BY window, exchange, symbol, ts DESC
+        ) latest
+        GROUP BY symbol
+        ORDER BY current_oi DESC NULLS LAST
+        LIMIT 5
+      `;
+
       const deltas = await getOIDeltas();
       return NextResponse.json({
         debug: true,
@@ -57,6 +90,7 @@ export async function GET(request: NextRequest) {
           past_24h: past24h[0],
         },
         total: total[0],
+        inner_rows_top5: innerRows,
         deltas_returned: deltas.length,
         sample_deltas: deltas.slice(0, 3),
       }, { headers: { 'Cache-Control': 'no-store' } });
