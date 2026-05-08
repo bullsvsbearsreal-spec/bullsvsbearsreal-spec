@@ -123,7 +123,12 @@ export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideRe
   const waybackUrl = `https://web.archive.org/web/3/${directUrl}`;
   const wayback = await tryFetchAndParse(waybackUrl);
   if ('issuers' in wayback && wayback.days.length > 0) {
-    const latest = wayback.days[wayback.days.length - 1]?.date ?? 'unknown';
+    // parseFarsideTable returns newest-first (after its internal reverse()).
+    // days[0] is the most recent archived day; days[length-1] is the
+    // oldest (going back to ETF launch Jan 2024). The banner wants the
+    // NEWEST archived date — saying "through 2024-01-11" when the data
+    // actually has rows through 2026-04-06 was wrong.
+    const newest = wayback.days[0]?.date ?? 'unknown';
     return {
       asset,
       issuers: wayback.issuers,
@@ -131,7 +136,7 @@ export async function fetchFarsideFlows(asset: 'btc' | 'eth'): Promise<FarsideRe
       dataAvailable: true,
       stale: true,
       source: 'wayback',
-      note: `Showing archived data through ${latest}. Live source unreachable from this datacenter.`,
+      note: `Showing archived data through ${newest}. Live source unreachable from this datacenter.`,
     };
   }
 
