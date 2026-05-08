@@ -152,7 +152,21 @@ function toStringField(v: unknown): string {
 }
 
 // Check if a news article is actually relevant to the searched coin symbol
-function isArticleRelevant(article: NewsArticle, symbol: string): boolean {
+/**
+ * Decides whether a news article should appear on a per-coin page.
+ *
+ * Sources of truth (any one is enough):
+ *   1. Symbol or "$SYMBOL" appears in the title
+ *   2. Symbol appears as an exact tag (pipe-separated)
+ *   3. Symbol appears as an exact category (pipe-separated)
+ *   4. Symbol appears in the first 500 chars of the body, with word
+ *      boundaries (\b) so "ENA" does NOT match inside "ARENA".
+ *
+ * The word-boundary check is load-bearing — without it, /coin/ENA
+ * would surface unrelated arena/marina articles as if they were
+ * Ethena news.
+ */
+export function isArticleRelevant(article: NewsArticle, symbol: string): boolean {
   const sym = symbol.toUpperCase();
 
   // Check title (most important signal)
