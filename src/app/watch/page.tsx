@@ -145,6 +145,7 @@ function WatchPageInner() {
   const [pingMsg, setPingMsg] = useState<string | null>(null);
   const [suggested, setSuggested] = useState<SuggestedWhale[] | null>(null);
   const [addingAddr, setAddingAddr] = useState<string | null>(null);
+  const [filterAddr, setFilterAddr] = useState<string | null>(null);
 
   const handleTestPing = useCallback(async () => {
     setPingState('sending');
@@ -290,6 +291,28 @@ function WatchPageInner() {
     }
   }
 
+  // Per-wallet event stats: count events fired in the last 24h. Drives
+  // the activity badge on each watchlist row + the page-wide "events 24h"
+  // counter in the stats strip.
+  const now = Date.now();
+  const eventsByAddr = new Map<string, number>();
+  let events24h = 0;
+  let lastEventTs: string | null = null;
+  for (const e of events) {
+    const t = new Date(e.ts).getTime();
+    if (now - t < 86_400_000) {
+      eventsByAddr.set(e.address, (eventsByAddr.get(e.address) ?? 0) + 1);
+      events24h++;
+    }
+    if (!lastEventTs || t > new Date(lastEventTs).getTime()) lastEventTs = e.ts;
+  }
+
+  // Apply the click-to-filter — when the user clicks a wallet row, the
+  // event log narrows to that address only.
+  const filteredEvents = filterAddr
+    ? events.filter(e => e.address === filterAddr)
+    : events;
+
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
@@ -338,6 +361,23 @@ function WatchPageInner() {
             </p>
           )}
         </header>
+
+        {/* Stats strip — only shown when there are wallets to summarise */}
+        {wallets.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            <StatCell label="Watching" value={`${wallets.length}/25`} />
+            <StatCell
+              label="Events · 24h"
+              value={String(events24h)}
+              valueClass={events24h > 0 ? 'text-emerald-400' : 'text-neutral-500'}
+            />
+            <StatCell
+              label="Last event"
+              value={lastEventTs ? relTime(lastEventTs) : '—'}
+              valueClass={lastEventTs ? 'text-white' : 'text-neutral-500'}
+            />
+          </div>
+        )}
 
         {/* Add form */}
         <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-6">
@@ -478,15 +518,37 @@ function WatchPageInner() {
                 const snapInfo = snapByAddr.get(w.address);
                 const venues = snapInfo?.venues ?? [];
                 const totalPositions = snapInfo?.totalPositions ?? 0;
+                const recent24h = eventsByAddr.get(w.address) ?? 0;
+                const isFiltered = filterAddr === w.address;
                 return (
-                  <li key={w.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 hover:bg-white/[0.03] transition-colors">
+                  <li
+                    key={w.id}
+                    className={`rounded-xl border p-3.5 transition-colors cursor-pointer ${
+                      isFiltered
+                        ? 'border-hub-yellow/40 bg-hub-yellow/[0.06]'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.03]'
+                    }`}
+                    onClick={() => setFilterAddr(isFiltered ? null : w.address)}
+                    title={isFiltered ? 'Click to clear filter' : 'Click to filter event log to this wallet'}
+                  >
                     <div className="flex items-start gap-3 flex-wrap">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Link href={`/trader/${w.address}`} className="font-mono text-sm text-white hover:text-hub-yellow truncate">
+                          <Link
+                            href={`/trader/${w.address}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-mono text-sm text-white hover:text-hub-yellow truncate"
+                          >
                             {w.label || shortAddr(w.address)}
                           </Link>
                           {w.label && <span className="font-mono text-[11px] text-neutral-500">{shortAddr(w.address)}</span>}
+                          {/* Activity pill — count of events fired in last 24h */}
+                          {recent24h > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-400/30">
+                              <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                              {recent24h} · 24h
+                            </span>
+                          )}
                           {snapInfo && (
                             <span className="text-[10px] font-mono text-neutral-600">
                               {totalPositions} pos · synced {snapInfo.latestTs ? relTime(snapInfo.latestTs) : '—'}
@@ -512,14 +574,14 @@ function WatchPageInner() {
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => setEditing(w)}
+                          onClick={(e) => { e.stopPropagation(); setEditing(w); }}
                           title="Edit triggers + thresholds"
                           className="p-1.5 rounded-lg border border-white/[0.06] text-neutral-500 hover:text-hub-yellow hover:border-hub-yellow/30 transition-colors"
                         >
                           <Settings className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleRemove(w.id)}
+                          onClick={(e) => { e.stopPropagation(); handleRemove(w.id); }}
                           title="Remove"
                           className="p-1.5 rounded-lg border border-white/[0.06] text-neutral-500 hover:text-rose-400 hover:border-rose-400/30 transition-colors"
                         >
@@ -536,21 +598,38 @@ function WatchPageInner() {
 
         {/* Event log */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 px-1 flex items-center gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 px-1 flex items-center gap-2 flex-wrap">
             <Activity className="w-3.5 h-3.5 text-neutral-500" />
             Recent events
-            <span className="text-[10px] font-mono text-neutral-600">across your watched wallets</span>
+            {filterAddr ? (
+              <>
+                <span className="text-[10px] font-mono text-hub-yellow">
+                  · filtered to {wallets.find(w => w.address === filterAddr)?.label || shortAddr(filterAddr)}
+                </span>
+                <button
+                  onClick={() => setFilterAddr(null)}
+                  className="text-[10px] text-neutral-500 hover:text-white inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-white/[0.08] hover:border-white/[0.15] ml-auto"
+                >
+                  <X className="w-2.5 h-2.5" />
+                  Clear
+                </button>
+              </>
+            ) : (
+              <span className="text-[10px] font-mono text-neutral-600">across your watched wallets · click a wallet above to filter</span>
+            )}
           </h2>
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-            {events.length === 0 ? (
+            {filteredEvents.length === 0 ? (
               <div className="px-3 py-10 text-center text-xs text-neutral-600">
                 {wallets.length === 0
                   ? 'Add a wallet above to start collecting events.'
-                  : "No events yet — when one of your wallets opens, closes, or resizes a position, it'll show here."}
+                  : filterAddr
+                    ? 'No events for this wallet yet — clear the filter to see all.'
+                    : "No events yet — when one of your wallets opens, closes, or resizes a position, it'll show here."}
               </div>
             ) : (
               <ul className="divide-y divide-white/[0.04]">
-                {events.map(e => {
+                {filteredEvents.map(e => {
                   const wallet = wallets.find(w => w.address === e.address);
                   return (
                     <li key={e.id} className="px-3.5 py-2.5 flex items-center gap-3 hover:bg-white/[0.02] text-xs">
@@ -590,6 +669,17 @@ function WatchPageInner() {
       )}
 
       <Footer />
+    </div>
+  );
+}
+
+/** Compact stat tile for the page-wide summary strip — three are
+ *  rendered in a row above the watchlist. */
+function StatCell({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+      <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-medium">{label}</div>
+      <div className={`text-base font-bold font-mono tabular-nums mt-0.5 ${valueClass ?? 'text-white'}`}>{value}</div>
     </div>
   );
 }
