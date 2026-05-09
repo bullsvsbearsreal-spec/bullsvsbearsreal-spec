@@ -23,9 +23,82 @@ export interface ChangelogEntry {
 }
 
 /**
- * Last reviewed: 2026-05-05
+ * Last reviewed: 2026-05-09
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: '2026-05-09',
+    title: 'Wallet Watch · Hyperliquid + gTrade position alerter',
+    summary: 'Watch any HL or gTrade wallet and get Telegram pings the moment they open, close, resize, near liq, take realized PnL, or pay funding — all on one page. Free.',
+    tags: ['new'],
+    bullets: [
+      '/watch — paste any 0x address (or one-click pick from the suggested-whales section) to start watching',
+      '6 trigger types per wallet: Position opened / closed / size changed / near liq / realized PnL / funding paid — each individually toggleable',
+      'Tunable thresholds: size % delta, distance to liq, realized PnL $, funding $ — gear icon on each watched wallet opens the editor',
+      'Test-ping button verifies your Telegram link works without waiting for a real event',
+      'Polled every 60s via the existing snapshot cron; events deliver in < 90s of the on-chain change',
+      'Per-event venue tag (Hyperliquid / gTrade) so you know which book the move came from',
+      'Multi-tenant — each user owns their own wallets + thresholds, capped at 25 per account',
+      'Dedupe + mutex protection against concurrent runs so you never get duplicate pings',
+      '32 unit tests covering every event kind + edge case (longs/shorts, funding deltas, liq distance, Markdown escaping)',
+    ],
+    links: [
+      { label: 'Open Wallet Watch', href: '/watch' },
+      { label: 'Link Telegram', href: '/profile?tab=notifications' },
+    ],
+  },
+  {
+    date: '2026-05-08',
+    title: 'New /account command center + /profile rebuild',
+    summary: 'Two opinionated account surfaces alongside the customizable /dashboard widget grid: a glanceable hub at /account and a 9-tab settings dashboard at /profile.',
+    tags: ['new', 'improved'],
+    bullets: [
+      '/account — at-a-glance hub: connected venues, watched wallets, alerts, watchlist counts; Telegram-not-linked banner; recent activity feed (alerts + watch events merged); quick-action grid linking into the deep-dives',
+      '/profile rebuilt as 9-tab dashboard: Overview / Connections / API Keys / Notifications / Activity / Preferences / Referrals / Billing / Danger Zone',
+      'Danger zone wired to DELETE /api/user/account with two-step confirm; Sign out everywhere via NextAuth signOut',
+      'Sidebar gains "Command Center" link; admin panel duplicate ("Admin" + "Admin Panel") consolidated into one entry',
+    ],
+    links: [
+      { label: 'Account command center', href: '/account' },
+      { label: 'Profile + settings', href: '/profile' },
+    ],
+  },
+  {
+    date: '2026-05-08',
+    title: 'Dashboard rework + Liquidation Cascades guide',
+    summary: 'Two new featured dashboard widgets, a refined header, updated personas, and the next long-form guide.',
+    tags: ['new', 'improved'],
+    bullets: [
+      'New Market Pulse widget (2-col): gradient mini-cards for BTC + ETH + total market cap + 24h volume',
+      'New Bounce Stats widget: top rekt wallets on Hyperliquid via bounce.tech, with click-throughs to per-wallet rekt profile',
+      'Dashboard header refined — ETH alongside BTC, Fear & Greed regime label inline, live "synced Ns ago" pulse indicator',
+      'Sidebar venue panel + bottom status strip redesigned with proper hierarchy + animated stream bars; INFOHUB V2.0 badge now links to changelog',
+      '/login + /signup polish — gradient borders, fade-up animations, trust-strip tagline',
+      'Health badges across /positions stop being emoji and become Lucide icons matching the terminal aesthetic',
+      'New guide: Surviving Liquidation Cascades — anatomy, 5 precursors, defensive + offensive playbooks',
+    ],
+    links: [
+      { label: 'Dashboard', href: '/dashboard' },
+      { label: 'Liquidation Cascades guide', href: '/guides/surviving-liquidation-cascades' },
+    ],
+  },
+  {
+    date: '2026-05-08',
+    title: 'Backtest Lab polish + admin tooling',
+    summary: 'Backtest gets a hero, presets, and 4 new derived stats. Admin gets a unified Actions tab and 6 new SEO-friendly pages.',
+    tags: ['improved'],
+    bullets: [
+      '/backtest — gradient hero, preset chips ($100/wk · 6mo, ETH $200/wk, BTC-only carry, 50d window etc.), 4 new stats (best/worst day, Calmar, longest underwater)',
+      'Fixed best-day calc: was reporting +109% on DCA day-1 because deposits were counted as price moves; now strips deposit injection before percent math',
+      'FOMC Playbook: every past meeting now has 24h price reactions (Binance Futures fallback for CG datacenter rate-limits)',
+      'Admin Actions tab fully rewritten with 12 grouped actions, risk badges, recent activity feed; new generic /api/admin/actions/trigger-cron endpoint',
+      'Per-page SEO titles for /health, /changelog, /positions, /positions/tax, /positions/journal, /positions/simulate (May-5 SEO pass missed them)',
+    ],
+    links: [
+      { label: 'Backtest Lab', href: '/backtest' },
+      { label: 'FOMC Playbook', href: '/fomc-playbook' },
+    ],
+  },
   {
     date: '2026-05-05',
     title: 'Audit pass · 9 bugs caught + fixed',
