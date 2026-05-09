@@ -40,15 +40,25 @@ export async function GET() {
   ` as Array<{ id: number; address: string; label: string | null; created_at: string }>;
 
   // Pull the latest 50 events across all the user's watched addresses
-  // (across both venues — gTrade + Hyperliquid)
+  // (across both venues — gTrade + Hyperliquid). Defensively parse the
+  // payload JSONB — postgres.js sometimes returns it as a string. Without
+  // this, the UI sees payload as a string and `e.payload.side` /
+  // `e.payload.sizeUsd` are all undefined → events render as
+  // "LONG CHIP · $0.00" regardless of what actually happened.
   const addrs = wallets.map(w => w.address);
-  const events = addrs.length === 0 ? [] : await sql`
+  const rawEvents = addrs.length === 0 ? [] : await sql`
     SELECT id, address, venue, symbol, kind, payload, ts
     FROM hl_position_events
     WHERE address = ANY(${sql.array(addrs)}::text[])
     ORDER BY ts DESC
     LIMIT 50
-  `;
+  ` as Array<{ id: number; address: string; venue: string; symbol: string; kind: string; payload: unknown; ts: string }>;
+  const events = rawEvents.map(e => ({
+    ...e,
+    payload: typeof e.payload === 'string'
+      ? (() => { try { return JSON.parse(e.payload as string); } catch { return {}; } })()
+      : (e.payload ?? {}),
+  }));
 
   // Latest snapshot per (address, venue). Defensively parse the
   // positions JSONB — postgres.js sometimes returns it as a string.
