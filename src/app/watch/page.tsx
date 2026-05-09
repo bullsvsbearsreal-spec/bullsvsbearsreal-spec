@@ -19,6 +19,7 @@ import {
   Eye, Plus, Trash2, Loader2, Activity, ArrowRight, ExternalLink, Shield,
   Settings, X, Save, Send, CheckCircle2, Sparkles,
 } from 'lucide-react';
+import type { Venue, WatchEventKind, WatchEventPayload } from '@/lib/hl-watch';
 
 interface Wallet {
   id: number;
@@ -40,24 +41,16 @@ interface Wallet {
 interface EventRow {
   id: number;
   address: string;
-  venue: 'hyperliquid' | 'gtrade';
+  venue: Venue;
   symbol: string;
-  kind: 'opened' | 'closed' | 'size_changed' | 'liq_danger' | 'realized_pnl' | 'funding_paid';
-  payload: {
-    side?: 'long' | 'short';
-    sizeUsd?: number;
-    prevSizeUsd?: number;
-    deltaPct?: number;
-    distPct?: number;
-    realizedPnl?: number;
-    fundingDelta?: number;
-  };
+  kind: WatchEventKind;
+  payload: WatchEventPayload;
   ts: string;
 }
 
 interface SnapshotRow {
   address: string;
-  venue: 'hyperliquid' | 'gtrade';
+  venue: Venue;
   positions: Array<{ coin: string; szi: number; positionValue: number }>;
   account_value: number | null;
   ts: string;
@@ -604,7 +597,7 @@ function TrigBadge({ label }: { label: string }) {
 /** Small per-venue tag — shown on each event row + in the per-wallet
  *  venue strip so users can see at a glance which venue an event came
  *  from and whether the watcher has data for both venues yet. */
-function VenueChip({ venue, positions, compact = false }: { venue: 'hyperliquid' | 'gtrade'; positions?: number; compact?: boolean }) {
+function VenueChip({ venue, positions, compact = false }: { venue: Venue; positions?: number; compact?: boolean }) {
   const tone = venue === 'gtrade'
     ? 'bg-cyan-500/10 text-cyan-300 border-cyan-400/30'
     : 'bg-emerald-500/10 text-emerald-400 border-emerald-400/30';

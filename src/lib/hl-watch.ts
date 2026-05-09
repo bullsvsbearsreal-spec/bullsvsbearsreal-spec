@@ -56,18 +56,23 @@ export interface AccountSnapshot {
   ts: number;
 }
 
+/** Side-effecting payload of a single watch event. Exported so the
+ *  /watch UI can type its EventRow against the same shape the differ
+ *  emits and never drift out of sync. */
+export interface WatchEventPayload {
+  side?: 'long' | 'short';
+  sizeUsd?: number;       // current notional
+  prevSizeUsd?: number;
+  deltaPct?: number;      // signed delta vs previous notional
+  distPct?: number;       // distance to liq, fraction
+  realizedPnl?: number;
+  fundingDelta?: number;  // signed, negative = paid
+}
+
 export interface WatchEvent {
   kind: WatchEventKind;
   symbol: string;
-  payload: {
-    side?: 'long' | 'short';
-    sizeUsd?: number;       // current notional
-    prevSizeUsd?: number;
-    deltaPct?: number;      // signed delta vs previous notional
-    distPct?: number;       // distance to liq, fraction
-    realizedPnl?: number;
-    fundingDelta?: number;  // signed, negative = paid
-  };
+  payload: WatchEventPayload;
 }
 
 export interface Thresholds {
