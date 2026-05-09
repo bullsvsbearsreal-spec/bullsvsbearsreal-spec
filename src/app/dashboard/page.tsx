@@ -30,12 +30,19 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SuspendedNotice from '@/components/SuspendedNotice';
 import {
   Activity, Bell, Eye, Wallet, Briefcase, ArrowRight, Loader2, Shield,
   Sparkles, ShieldCheck, Send, Plus, Filter, Flame,
   Calendar, TrendingUp, TrendingDown, Layers,
   CheckCircle2, AlertCircle, ExternalLink, Clock,
 } from 'lucide-react';
+
+// ── Suspension flag ──────────────────────────────────────────────────
+// Flip to false to re-enable the real command center. The original
+// code below stays in place so we can light it back up instantly
+// without re-implementing or copying back from git history.
+const SUSPENDED = true;
 
 /* ────────────────────────────────────────────────────────────────── */
 /*  Types — the shapes we read from the existing APIs                 */
@@ -174,6 +181,27 @@ function shortAddr(a: string): string {
 /* ────────────────────────────────────────────────────────────────── */
 
 export default function DashboardPage() {
+  // Suspended? Show the maintenance notice. The real implementation is
+  // factored into RealDashboardPage below so flipping SUSPENDED back to
+  // false instantly re-enables the full command center.
+  if (SUSPENDED) {
+    return (
+      <div className="min-h-screen bg-hub-black text-white">
+        <Header />
+        <SuspendedNotice
+          title="Dashboard paused"
+          description="We're polishing the command center experience. It'll be back online shortly with real equity history, live positions, and connected exchanges. Existing data is safe."
+          primaryCta={{ href: '/', label: 'Back to home' }}
+          secondaryCta={{ href: '/positions', label: 'View positions' }}
+        />
+        <Footer />
+      </div>
+    );
+  }
+  return <RealDashboardPage />;
+}
+
+function RealDashboardPage() {
   const { data: session, status } = useSession();
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [positions, setPositions] = useState<PositionsPayload | null>(null);

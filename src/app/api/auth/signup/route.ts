@@ -9,6 +9,12 @@ import { validatePassword } from '@/lib/auth/password';
 import { isDBConfigured, getSQL } from '@/lib/db';
 import { signupLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
 
+// Suspension flag — must match `SUSPENDED` in /signup/page.tsx. With
+// the page hidden behind a maintenance notice, callers shouldn't be
+// hitting this endpoint at all, but lock it down server-side as a
+// belt-and-braces guard against direct curl / form-replay attacks.
+const SIGNUPS_SUSPENDED = true;
+
 let _resend: Resend | null = null;
 function getResend(): Resend | null {
   if (!_resend && process.env.RESEND_API_KEY) {
@@ -22,6 +28,13 @@ function generateCode(): string {
 }
 
 export async function POST(req: Request) {
+  // Hard gate: signups paused — return 503 before doing any work.
+  if (SIGNUPS_SUSPENDED) {
+    return NextResponse.json(
+      { error: 'Signups are temporarily paused. Existing accounts can still sign in.' },
+      { status: 503 },
+    );
+  }
   try {
     // Rate limit by IP
     const ip = getClientIP(req);

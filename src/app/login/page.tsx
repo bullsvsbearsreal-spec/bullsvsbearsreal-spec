@@ -496,8 +496,8 @@ function LoginPageInner() {
         </div>
 
         <p className="text-center text-sm text-neutral-500 mt-6">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-yellow-500 hover:text-yellow-400 font-medium transition-colors">Create one</Link>
+          {/* Signups paused — show a passive note instead of the "Create one" CTA */}
+          New signups are temporarily paused.
         </p>
       </div>
 

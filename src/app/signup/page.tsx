@@ -5,9 +5,25 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import SuspendedNotice from '@/components/SuspendedNotice';
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle } from 'lucide-react';
 
+// ── Suspension flag ──────────────────────────────────────────────────
+// Flip to false to re-enable signups. The original signup form below
+// stays in place so we can light it back up instantly.
+const SUSPENDED = true;
+
 export default function SignupPage() {
+  if (SUSPENDED) {
+    return (
+      <SuspendedNotice
+        title="Signups paused"
+        description="New account signups are temporarily paused while we tune the onboarding flow. Existing accounts continue to work — sign in as usual."
+        primaryCta={{ href: '/login', label: 'Sign in' }}
+        secondaryCta={{ href: '/', label: 'Back to home' }}
+      />
+    );
+  }
   return (
     <Suspense>
       <SignupContent />
