@@ -367,4 +367,126 @@ describe('formatEvent', () => {
     expect(msg).not.toContain('NaN');
     expect(msg).not.toContain('undefined');
   });
+
+  // ─── Number formatting at scale ─────────────────────────────────
+
+  it('formats notional at B-scale (≥$1B)', () => {
+    const msg = formatEvent(
+      { kind: 'opened', symbol: 'BTC', payload: { side: 'long', sizeUsd: 1_500_000_000 } },
+      addr,
+    );
+    expect(msg).toContain('$1.50B');
+  });
+
+  it('formats sub-$1k notional with 2-decimal precision', () => {
+    const msg = formatEvent(
+      { kind: 'opened', symbol: 'BTC', payload: { side: 'long', sizeUsd: 42.50 } },
+      addr,
+    );
+    expect(msg).toContain('$42.50');
+  });
+
+  it('truncated address always shows the leading 0x and trailing 4 chars', () => {
+    const msg = formatEvent(
+      { kind: 'opened', symbol: 'BTC', payload: { side: 'long', sizeUsd: 1_000 } },
+      addr,
+    );
+    // Real-world: 0xabF68ea28e2522726F53b6413b87Ef7067FDf21A
+    // shortAddr slices [0..6] + [-4]: '0xabF6…f21A' (preserves case)
+    expect(msg).toContain('0xabF6');
+    expect(msg).toContain('f21A');
+  });
+
+  it('handles size_changed crossing zero gracefully', () => {
+    const msg = formatEvent(
+      { kind: 'size_changed', symbol: 'BTC', payload: { side: 'long', prevSizeUsd: 50_000, sizeUsd: 0, deltaPct: -1.0 } },
+      addr,
+    );
+    // -100% delta should still render (-100.0%, not crashing)
+    expect(msg).toContain('-100.0%');
+    expect(msg).not.toContain('NaN');
+  });
+});
+
+// ─── diffSnapshots — additional edge cases ───────────────────────────
+
+describe('diffSnapshots edge cases', () => {
+  it('multiple symbols changing in one tick all emit independently', () => {
+    const prev = snap([
+      pos({ coin: 'BTC', positionValue: 50_000 }),
+      pos({ coin: 'ETH', szi: 5,  positionValue: 10_000 }),
+      pos({ coin: 'SOL', szi: 100, positionValue: 8_000 }),
+    ]);
+    const curr = snap([
+      pos({ coin: 'BTC', positionValue: 75_000 }),                      // size_changed
+      pos({ coin: 'ETH', szi: 5,  positionValue: 10_000, markPx: 95 }), // no event
+      pos({ coin: 'SOL', szi: 80, positionValue: 6_400 }),              // size_changed (-20%)
+      pos({ coin: 'PEPE', szi: 100_000, positionValue: 500 }),          // opened
+    ]);
+    const events = diffSnapshots(prev, curr);
+    expect(events.find(e => e.kind === 'size_changed' && e.symbol === 'BTC')).toBeDefined();
+    expect(events.find(e => e.kind === 'size_changed' && e.symbol === 'SOL')).toBeDefined();
+    expect(events.find(e => e.kind === 'opened' && e.symbol === 'PEPE')).toBeDefined();
+    // ETH unchanged → no event for it
+    expect(events.find(e => e.symbol === 'ETH')).toBeUndefined();
+  });
+
+  it('liq_danger does not divide by zero when markPx is 0', () => {
+    const prev = snap([pos({ markPx: 100, liquidationPx: 90 })]);
+    // Pathological: markPx becomes 0 (shouldn't happen in real data)
+    const curr = snap([pos({ markPx: 0, liquidationPx: 90 })]);
+    const events = diffSnapshots(prev, curr);
+    // Guard `currPos.markPx > 0` skips this branch — no NaN/Infinity events
+    expect(events.find(e => e.kind === 'liq_danger')).toBeUndefined();
+  });
+
+  it('size_changed handles zero-prev gracefully (no division-by-zero)', () => {
+    const prev = snap([pos({ positionValue: 0 })]); // edge: ghost row
+    const curr = snap([pos({ positionValue: 50_000 })]);
+    const events = diffSnapshots(prev, curr);
+    // The differ should not crash; behaviour: emits nothing because
+    // prevPos.positionValue > 0 gate fails.
+    expect(events.find(e => e.kind === 'size_changed')).toBeUndefined();
+  });
+
+  it('exactly equal snapshots produce zero events even with non-zero PnL', () => {
+    const p = pos({ coin: 'BTC', positionValue: 50_000, unrealizedPnl: 1_234, cumFundingAllTime: -50 });
+    const events = diffSnapshots(snap([p]), snap([p]));
+    expect(events).toEqual([]);
+  });
+});
+
+// ─── applyThresholds — boundary cases ─────────────────────────────────
+
+describe('applyThresholds boundary cases', () => {
+  const t: Thresholds = {
+    triggerOpened: true, triggerClosed: true, triggerSizeChanged: true,
+    triggerLiqDanger: true, triggerRealizedPnl: true, triggerFundingPaid: true,
+    sizeChangePct: 0.10, liqDangerPct: 0.05, realizedPnlUsd: 1000, fundingPaidUsd: 1000,
+  };
+
+  it('size_changed at exactly the threshold passes (>= comparison)', () => {
+    const e: WatchEvent = { kind: 'size_changed', symbol: 'BTC', payload: { deltaPct: 0.10 } };
+    expect(applyThresholds([e], t)).toEqual([e]);
+  });
+
+  it('liq_danger at exactly the threshold passes (<= comparison)', () => {
+    const e: WatchEvent = { kind: 'liq_danger', symbol: 'BTC', payload: { distPct: 0.05 } };
+    expect(applyThresholds([e], t)).toEqual([e]);
+  });
+
+  it('funding_paid at exactly the threshold passes', () => {
+    const e: WatchEvent = { kind: 'funding_paid', symbol: 'BTC', payload: { fundingDelta: -1000 } };
+    expect(applyThresholds([e], t)).toEqual([e]);
+  });
+
+  it('empty events array returns empty array (not undefined)', () => {
+    expect(applyThresholds([], t)).toEqual([]);
+  });
+
+  it('events with unknown kind are filtered out', () => {
+    // @ts-expect-error - testing defensive default branch
+    const e: WatchEvent = { kind: 'totally-not-a-kind', symbol: 'BTC', payload: {} };
+    expect(applyThresholds([e], t)).toEqual([]);
+  });
 });
