@@ -8,7 +8,7 @@
  * Per CLAUDE.md: don't fetch your own routes from another route handler
  * — import the underlying logic from `lib/`. This file is the lib.
  */
-import { getSQL, isDBConfigured, getTelegramLinkByUser } from '@/lib/db';
+import { getSQL, isDBConfigured, getTelegramLinkByUser, recordAuditEvent, upsertWorkerHeartbeat } from '@/lib/db';
 import { sendMessage } from '@/lib/telegram';
 import {
   fetchVenueState, diffSnapshots, applyThresholds, formatEvent,
@@ -195,9 +195,24 @@ async function runTickInner(): Promise<WatchTickStats> {
   // with 2 of 100 addresses failing returns ok=false so the admin
   // panel's "Run Wallet Watch" button shows red instead of misleading
   // green when there are real failures.
+  const ok = stats.errors.length === 0;
+
+  // Heartbeat — records that the runner ran. Without this, if the
+  // snapshot cron piggyback ever stops calling us (deploy regression,
+  // logic bug), we'd silently stop pinging users with no signal that
+  // something's wrong. The /admin-panel "Pipeline" tab can render the
+  // last_beat from worker_heartbeats so a stale watcher is obvious.
+  await upsertWorkerHeartbeat('cron:watch-hl-wallets', ok ? 'ok' : 'degraded', {
+    addresses: stats.addresses,
+    snapshots_fetched: stats.snapshots_fetched,
+    events_emitted: stats.events_emitted,
+    notifications_sent: stats.notifications_sent,
+    error_count: stats.errors.length,
+  }).catch(e => console.error('[watch] heartbeat error:', e));
+
   return {
     ...stats,
-    ok: stats.errors.length === 0,
+    ok,
     durationMs: Date.now() - t0,
   };
 }
@@ -242,7 +257,19 @@ async function processAddressVenue(
       insertedIds.push({ id: row.id, eventIdx: i });
       stats.events_emitted++;
     } catch (err) {
-      stats.errors.push(`insert event ${addr.slice(0, 8)}/${venue}/${e.kind}: ${err instanceof Error ? err.message : 'unknown'}`);
+      const msg = err instanceof Error ? err.message : 'unknown';
+      stats.errors.push(`insert event ${addr.slice(0, 8)}/${venue}/${e.kind}: ${msg}`);
+      // Persist the failure to the audit log so admins can spot a
+      // pattern (DB blip, schema drift, payload corruption). Without
+      // this, the event is silently dropped — no alert, no signal,
+      // no record. This was review issue #3.
+      await recordAuditEvent('watch_event_insert_failed', {
+        address: addr,
+        venue,
+        kind: e.kind,
+        symbol: e.symbol,
+        error: msg,
+      }).catch(() => { /* logging-of-logging fallback: just give up */ });
     }
   }
 

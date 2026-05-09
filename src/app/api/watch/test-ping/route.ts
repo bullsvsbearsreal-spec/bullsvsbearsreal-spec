@@ -24,6 +24,35 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
+/** Sliding-window in-memory rate limiter — 5 test pings per user per
+ *  minute. Telegram itself rate-limits at ~30 msg/sec per chat, but
+ *  before we hit that the user's own chat would get spammed. Cap each
+ *  user at 5/min so a stuck retry loop or a curious finger can't fire
+ *  100 messages by accident. */
+const TEST_PING_LIMIT = 5;
+const TEST_PING_WINDOW_MS = 60_000;
+const recentPings = new Map<string, number[]>();
+
+function checkRateLimit(userId: string): { allowed: boolean; resetInSec?: number } {
+  const now = Date.now();
+  const cutoff = now - TEST_PING_WINDOW_MS;
+  const prev = recentPings.get(userId) ?? [];
+  const recent = prev.filter(ts => ts > cutoff);
+  if (recent.length >= TEST_PING_LIMIT) {
+    const oldest = recent[0];
+    return { allowed: false, resetInSec: Math.ceil((oldest + TEST_PING_WINDOW_MS - now) / 1000) };
+  }
+  recent.push(now);
+  recentPings.set(userId, recent);
+  // Opportunistic GC — keep the map from growing unboundedly across many users
+  if (recentPings.size > 1000) {
+    Array.from(recentPings.entries()).forEach(([k, v]) => {
+      if (v.every(ts => ts <= cutoff)) recentPings.delete(k);
+    });
+  }
+  return { allowed: true };
+}
+
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -31,6 +60,14 @@ export async function POST() {
   }
   if (!isDBConfigured()) {
     return NextResponse.json({ ok: false, error: 'database not configured' }, { status: 503 });
+  }
+
+  const limit = checkRateLimit(session.user.id);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { ok: false, error: `Too many test pings — try again in ${limit.resetInSec ?? 60}s.` },
+      { status: 429, headers: { 'Retry-After': String(limit.resetInSec ?? 60) } },
+    );
   }
 
   const link = await getTelegramLinkByUser(session.user.id);

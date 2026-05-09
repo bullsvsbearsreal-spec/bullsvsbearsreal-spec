@@ -2463,6 +2463,40 @@ export async function recordAdminMetric(metric: string, value: number): Promise<
   }
 }
 
+/**
+ * Prune old wallet-watch data so the events table doesn't grow
+ * unboundedly. With 1 wallet × 60s ticks × 6 trigger types the worst-
+ * case is ~1500 rows/day per active user; a 90-day retention window
+ * is plenty for "show me what fired this quarter" while keeping the
+ * table bounded.
+ *
+ * Returns counts of deleted rows so the caller can log + alert if the
+ * deletion is unusually large.
+ */
+export async function pruneOldWatchData(retentionDays = 90): Promise<{
+  events: number; notifications: number;
+}> {
+  if (!isDBConfigured()) return { events: 0, notifications: 0 };
+  const sql = getSQL();
+  try {
+    const evRes = await sql`
+      DELETE FROM hl_position_events
+      WHERE ts < NOW() - (${retentionDays}::int || ' days')::interval
+    ` as { count?: number };
+    const notRes = await sql`
+      DELETE FROM hl_event_notifications
+      WHERE sent_at < NOW() - (${retentionDays}::int || ' days')::interval
+    ` as { count?: number };
+    return {
+      events: Number(evRes.count ?? 0),
+      notifications: Number(notRes.count ?? 0),
+    };
+  } catch (e) {
+    console.error('[db] pruneOldWatchData error:', e);
+    return { events: 0, notifications: 0 };
+  }
+}
+
 // ─── Audit Log ──────────────────────────────────────────────────────────────
 
 export async function recordAuditEvent(

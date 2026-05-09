@@ -275,6 +275,23 @@ export async function GET(request: NextRequest) {
       console.warn('[cron:snapshot→watch] runner threw:', e instanceof Error ? e.message : e);
     }
 
+    // Daily prune of stale watch events (~1 in 1440 ticks → roughly once
+    // every 24h). Snapshot fires every 60s, so this gates to a single
+    // prune per day in expectation. Random gate avoids every cron in
+    // the fleet pruning at the same moment.
+    if (Math.random() < 1 / 1440) {
+      try {
+        const { pruneOldWatchData } = await import('@/lib/db');
+        const pruned = await pruneOldWatchData(90);
+        if (pruned.events + pruned.notifications > 0) {
+          await recordAdminMetric('watch_pruned_events', pruned.events).catch(() => {});
+          await recordAdminMetric('watch_pruned_notifications', pruned.notifications).catch(() => {});
+        }
+      } catch (e) {
+        console.warn('[cron:snapshot→prune] error:', e instanceof Error ? e.message : e);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       runType: isFullRun ? 'full' : 'price-only',
