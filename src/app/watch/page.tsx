@@ -17,7 +17,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
   Eye, Plus, Trash2, Loader2, Activity, ArrowRight, ExternalLink, Shield,
-  Settings, X, Save, Send, CheckCircle2,
+  Settings, X, Save, Send, CheckCircle2, Sparkles,
 } from 'lucide-react';
 
 interface Wallet {
@@ -65,11 +65,25 @@ interface SnapshotRow {
 
 interface ApiResponse { wallets: Wallet[]; events: EventRow[]; snapshots: SnapshotRow[] }
 
+interface SuggestedWhale {
+  address: string;
+  displayName: string | null;
+  realizedPnl: number;
+  winRate: number;
+  liveNotional: number;
+  venues: string[];
+}
+
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 
 function shortAddr(a: string): string {
   if (!a) return '0x…';
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+function fmtPnl(n: number): string {
+  const sign = n >= 0 ? '+' : '';
+  return `${sign}${fmtUsd(n)}`;
 }
 
 function fmtUsd(n: number): string {
@@ -136,6 +150,8 @@ function WatchPageInner() {
   const [editing, setEditing] = useState<Wallet | null>(null);
   const [pingState, setPingState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [pingMsg, setPingMsg] = useState<string | null>(null);
+  const [suggested, setSuggested] = useState<SuggestedWhale[] | null>(null);
+  const [addingAddr, setAddingAddr] = useState<string | null>(null);
 
   const handleTestPing = useCallback(async () => {
     setPingState('sending');
@@ -177,6 +193,38 @@ function WatchPageInner() {
     const iv = setInterval(load, 30_000);
     return () => clearInterval(iv);
   }, [status, load]);
+
+  // Fetch top wallets from /smart-money to populate the "Suggested whales"
+  // section. Cached on the API side already; we re-fetch lazily on auth.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    fetch('/api/smart-money?limit=8&sort=realizedPnl').then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (!j?.data) return;
+        setSuggested(j.data.slice(0, 8).map((w: SuggestedWhale) => ({
+          address: w.address,
+          displayName: w.displayName ?? null,
+          realizedPnl: w.realizedPnl,
+          winRate: w.winRate,
+          liveNotional: w.liveNotional,
+          venues: w.venues ?? [],
+        })));
+      })
+      .catch(() => { /* non-critical, just don't show the section */ });
+  }, [status]);
+
+  const handleSubscribe = useCallback(async (addr: string, label: string | null) => {
+    setAddingAddr(addr);
+    try {
+      const res = await fetch('/api/watch/wallets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addr, label }),
+      });
+      if (res.ok) await load();
+    } catch (e) { console.error('[watch] subscribe error:', e); }
+    finally { setAddingAddr(null); }
+  }, [load]);
 
   const handleAdd = async () => {
     setError(null);
@@ -341,6 +389,71 @@ function WatchPageInner() {
             </Link>
           </div>
         </section>
+
+        {/* Suggested whales — shown when user has < 5 wallets so it
+            doesn't clutter the page once they've curated their own list */}
+        {wallets.length < 5 && suggested && suggested.length > 0 && (
+          <section className="mb-6">
+            <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-2 px-1 flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-hub-yellow" />
+              Suggested whales
+              <span className="text-[10px] font-mono text-neutral-600">top traders by realized PnL · click to watch</span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              {suggested.slice(0, 8).map(w => {
+                const alreadyWatching = wallets.some(x => x.address.toLowerCase() === w.address.toLowerCase());
+                const submitting = addingAddr === w.address;
+                return (
+                  <div key={w.address} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 hover:bg-white/[0.04] transition-colors">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <Link href={`/trader/${w.address}`} className="font-mono text-xs text-white hover:text-hub-yellow truncate">
+                        {w.displayName || shortAddr(w.address)}
+                      </Link>
+                      <button
+                        onClick={() => handleSubscribe(w.address, w.displayName || null)}
+                        disabled={alreadyWatching || submitting}
+                        className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border transition-colors ${
+                          alreadyWatching
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-400/30 cursor-default'
+                            : submitting
+                              ? 'bg-white/[0.04] text-neutral-500 border-white/[0.08] cursor-wait'
+                              : 'bg-hub-yellow/10 text-hub-yellow border-hub-yellow/30 hover:bg-hub-yellow/20'
+                        }`}
+                      >
+                        {alreadyWatching
+                          ? <><CheckCircle2 className="w-2.5 h-2.5" /> Watching</>
+                          : submitting
+                            ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            : <><Plus className="w-2.5 h-2.5" /> Watch</>}
+                      </button>
+                    </div>
+                    <div className="flex items-baseline gap-2 text-[10px] font-mono">
+                      <span className={w.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                        {fmtPnl(w.realizedPnl)}
+                      </span>
+                      <span className="text-neutral-600">·</span>
+                      <span className="text-neutral-400">{w.winRate.toFixed(0)}% WR</span>
+                      {w.liveNotional > 0 && (
+                        <>
+                          <span className="text-neutral-600">·</span>
+                          <span className="text-neutral-400">{fmtUsd(w.liveNotional)} live</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {w.venues.includes('hyperliquid') && (
+                        <span className="text-[8px] font-mono uppercase tracking-wider text-emerald-400 border border-emerald-400/30 bg-emerald-500/10 px-1 py-px rounded">HL</span>
+                      )}
+                      {(w.venues.includes('gmx-arbitrum') || w.venues.includes('gmx-avalanche')) && (
+                        <span className="text-[8px] font-mono uppercase tracking-wider text-violet-300 border border-violet-400/30 bg-violet-500/10 px-1 py-px rounded">GMX</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Watchlist */}
         <section className="mb-6">
