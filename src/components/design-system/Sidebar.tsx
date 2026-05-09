@@ -210,8 +210,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/terms',             label: 'Terms',          color: MUTE, icon: I.book },
   ]},
   { id: 'admin', label: 'Admin', items: [
-    { href: '/admin',             label: 'Admin',          color: REKT, icon: I.shield },
-    { href: '/admin-panel',       label: 'Admin Panel',    color: REKT, icon: I.settings },
+    { href: '/admin-panel',       label: 'Admin Panel',    color: REKT, icon: I.shield },
   ]},
 ];
 
