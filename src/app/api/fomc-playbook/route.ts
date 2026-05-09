@@ -166,38 +166,33 @@ export async function GET() {
   }
 
   const now = Date.now();
-  // CoinGecko's FREE-tier market_chart/range limit is 365 days. We try CG
-  // first with that capped window; if CG returns empty (rate-limited from
-  // datacenter IPs), we fall back to Binance daily klines with the FULL
-  // history (Binance's free klines support multi-year ranges in one call).
-  // That way meetings older than 365d still get price reactions when we
-  // hit the Binance path, while CG keeps doing its work for routine cases.
-  const FREE_HISTORY_MS = 360 * 86_400_000;
-  const cgCutoff = now - FREE_HISTORY_MS;
-
+  // Strategy: Binance Futures klines first (always works from datacenter,
+  // covers full history in one 1500-kline call, daily resolution is fine for
+  // 24h-reaction maths). CoinGecko hourly is only used as a fallback for the
+  // recent 360d window, since CG free tier has tighter range limits + is
+  // frequently rate-limited from DigitalOcean IPs.
   const allPastMeetingTs = FOMC_MEETINGS
     .map(m => dateAtUtcNoon(m.date))
     .filter(ms => ms < now);
 
   let prices: Array<[number, number]> = [];
   if (allPastMeetingTs.length > 0) {
-    // First try CG with the capped window
-    const cgFetchable = allPastMeetingTs.filter(ms => ms >= cgCutoff);
-    if (cgFetchable.length > 0) {
-      const earliest = Math.min(...cgFetchable);
-      const latestPast = Math.max(...cgFetchable);
-      const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
-      const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
-      prices = await fetchFromCoinGecko(fromUnix, toUnix);
-    }
-    // If CG was empty (rate-limited or empty response), fall back to Binance
-    // with the full history range so even pre-2025 meetings get reactions.
+    const earliest = Math.min(...allPastMeetingTs);
+    const latestPast = Math.max(...allPastMeetingTs);
+    const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
+    const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
+    prices = await fetchFromBinance(fromUnix, toUnix);
+
+    // If Binance also failed (rare), fall through to CG with its 360d cap
     if (prices.length === 0) {
-      const earliest = Math.min(...allPastMeetingTs);
-      const latestPast = Math.max(...allPastMeetingTs);
-      const fromUnix = Math.floor((earliest - 2 * 86_400_000) / 1000);
-      const toUnix = Math.floor((latestPast + 2 * 86_400_000) / 1000);
-      prices = await fetchFromBinance(fromUnix, toUnix);
+      const FREE_HISTORY_MS = 360 * 86_400_000;
+      const cgCutoff = now - FREE_HISTORY_MS;
+      const cgFetchable = allPastMeetingTs.filter(ms => ms >= cgCutoff);
+      if (cgFetchable.length > 0) {
+        const cgEarliest = Math.min(...cgFetchable);
+        const cgFrom = Math.floor((cgEarliest - 2 * 86_400_000) / 1000);
+        prices = await fetchFromCoinGecko(cgFrom, toUnix);
+      }
     }
   }
 
