@@ -266,7 +266,9 @@ export async function GET(request: NextRequest) {
     try {
       const { runWatchTick } = await import('@/lib/hl-watch-runner');
       const watchStats = await runWatchTick();
-      if (watchStats.errors.length > 0) {
+      // Skipped runs (cooldown / in-flight) are NOT errors — only log
+      // when the tick actually ran and something failed inside it.
+      if (!watchStats.skipped && watchStats.errors.length > 0) {
         console.warn('[cron:snapshot→watch] errors:', watchStats.errors.slice(0, 3).join(' | '));
       }
     } catch (e) {

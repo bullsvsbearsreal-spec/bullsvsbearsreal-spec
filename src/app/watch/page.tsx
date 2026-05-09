@@ -633,7 +633,7 @@ function ToggleRow({ label, desc, on, onChange }: { label: string; desc: string;
       onClick={() => onChange(!on)}
       className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-white/[0.03] text-left transition-colors"
     >
-      <div className={`flex-shrink-0 w-8 h-4.5 rounded-full transition-colors relative ${on ? 'bg-hub-yellow' : 'bg-white/[0.08]'}`} style={{ height: 18 }}>
+      <div className={`flex-shrink-0 w-8 rounded-full transition-colors relative ${on ? 'bg-hub-yellow' : 'bg-white/[0.08]'}`} style={{ height: 18 }}>
         <span
           className="absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform"
           style={{ left: on ? 'calc(100% - 16px)' : '2px' }}

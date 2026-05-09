@@ -16,11 +16,21 @@ import {
 } from '@/lib/hl-watch';
 
 export interface WatchTickStats {
+  /** True iff the tick completed without errors. Skipped runs (cooldown
+   *  or already-in-flight) are still considered ok=true. */
   ok: boolean;
+  /** True if the tick was skipped because another was in-flight or the
+   *  cooldown window hasn't elapsed. Lets callers distinguish "ran
+   *  cleanly with nothing to do" from "didn't run at all". */
+  skipped?: boolean;
+  /** Reason for skip, when skipped is true. */
+  skipReason?: string;
   addresses: number;
   snapshots_fetched: number;
   events_emitted: number;
   notifications_sent: number;
+  /** Real errors only — skipped-tick messages do NOT go here so admin
+   *  log warnings only fire on actual failures. */
   errors: string[];
   durationMs: number;
 }
@@ -85,15 +95,18 @@ export async function runWatchTick(): Promise<WatchTickStats> {
 
   // Soft cooldown: skip if the last tick completed less than 30s ago.
   // Returns a "skipped" stats object so callers know nothing new happened.
+  // Note: errors array stays empty — skip is not an error.
   const sinceLast = Date.now() - lastTickAt;
   if (sinceLast < MIN_TICK_INTERVAL_MS) {
     return {
       ok: true,
+      skipped: true,
+      skipReason: `cooldown: last tick ${Math.round(sinceLast / 1000)}s ago (min ${MIN_TICK_INTERVAL_MS / 1000}s)`,
       addresses: 0,
       snapshots_fetched: 0,
       events_emitted: 0,
       notifications_sent: 0,
-      errors: [`skipped: last tick ${Math.round(sinceLast / 1000)}s ago (min ${MIN_TICK_INTERVAL_MS / 1000}s)`],
+      errors: [],
       durationMs: 0,
     };
   }
@@ -110,8 +123,7 @@ export async function runWatchTick(): Promise<WatchTickStats> {
 
 async function runTickInner(): Promise<WatchTickStats> {
   const t0 = Date.now();
-  const stats: Omit<WatchTickStats, 'durationMs'> = {
-    ok: true,
+  const stats: Omit<WatchTickStats, 'ok' | 'durationMs'> = {
     addresses: 0,
     snapshots_fetched: 0,
     events_emitted: 0,
@@ -129,7 +141,7 @@ async function runTickInner(): Promise<WatchTickStats> {
     SELECT DISTINCT address FROM hl_watched_wallets
   ` as Array<{ address: string }>;
   stats.addresses = addrRows.length;
-  if (addrRows.length === 0) return { ...stats, durationMs: Date.now() - t0 };
+  if (addrRows.length === 0) return { ...stats, ok: true, durationMs: Date.now() - t0 };
 
   const subRows = await sql`
     SELECT id, user_id, address, label,
@@ -179,7 +191,15 @@ async function runTickInner(): Promise<WatchTickStats> {
   });
   await Promise.all(workers);
 
-  return { ...stats, durationMs: Date.now() - t0 };
+  // ok flag reflects whether the tick had any errors. A successful run
+  // with 2 of 100 addresses failing returns ok=false so the admin
+  // panel's "Run Wallet Watch" button shows red instead of misleading
+  // green when there are real failures.
+  return {
+    ...stats,
+    ok: stats.errors.length === 0,
+    durationMs: Date.now() - t0,
+  };
 }
 
 async function processAddressVenue(
