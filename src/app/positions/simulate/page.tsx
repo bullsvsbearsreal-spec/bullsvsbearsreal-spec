@@ -15,7 +15,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { ArrowLeft, Calculator, TrendingUp, TrendingDown, ChevronDown, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft, Calculator, TrendingUp, TrendingDown, ChevronDown,
+  AlertTriangle, AlertOctagon, AlertCircle, Activity, ShieldCheck,
+} from 'lucide-react';
 
 interface SimulateResponse {
   success: boolean;
@@ -51,8 +54,16 @@ interface SimulateResponse {
   error?: string;
 }
 
-const VIBE: Record<'critical'|'risky'|'caution'|'ok'|'healthy', string> = {
-  critical: '🔥', risky: '😰', caution: '😐', ok: '🙂', healthy: '😎',
+// Lucide icon per health tier — replaces the older emoji set so the
+// badge fits the rest of the data-terminal UI. Each icon still telegraphs
+// severity (octagon = stop, triangle = warn, circle = info, activity =
+// pulse, shield = protected).
+const VIBE_ICON: Record<'critical'|'risky'|'caution'|'ok'|'healthy', React.ComponentType<{ className?: string }>> = {
+  critical: AlertOctagon,
+  risky:    AlertTriangle,
+  caution:  AlertCircle,
+  ok:       Activity,
+  healthy:  ShieldCheck,
 };
 const TONE: Record<'critical'|'risky'|'caution'|'ok'|'healthy', string> = {
   critical: 'border-red-400/40 text-red-300 bg-red-500/10',
@@ -293,8 +304,8 @@ export default function SimulatePage() {
                         {h.symbol} {h.side === 'long' ? 'long' : 'short'} {fmtUsd(h.positionValueUsd)} @ {h.leverage.toFixed(1)}× on {h.exchange}
                       </div>
                     </div>
-                    <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-md border tabular-nums font-mono font-bold text-base ${TONE[h.health.label]}`}>
-                      <span className="text-lg">{VIBE[h.health.label]}</span>
+                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md border tabular-nums font-mono font-bold text-base ${TONE[h.health.label]}`}>
+                      {(() => { const Icon = VIBE_ICON[h.health.label]; return <Icon className="w-4 h-4" />; })()}
                       {h.health.score}
                       <span className="text-[10px] uppercase tracking-wider opacity-60 font-normal">{h.health.label}</span>
                     </div>

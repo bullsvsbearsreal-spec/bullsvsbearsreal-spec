@@ -25,6 +25,10 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   AlertTriangle,
+  AlertOctagon,
+  AlertCircle,
+  Activity,
+  ShieldCheck,
   ExternalLink,
   Filter,
   Loader2,
@@ -797,14 +801,17 @@ function FundingCarryStrip({ dailyCarry }: { dailyCarry: number }) {
 // nothing's flagged). Color-coded so users can scan a 30-position table
 // and immediately see which ones need attention.
 
-// "Vibes" emoji per health label — leans into the screenshot/share-friendly
-// format. Used on the badge alongside the numeric score.
-const VIBE_EMOJI: Record<'critical' | 'risky' | 'caution' | 'ok' | 'healthy', string> = {
-  critical: '🔥',
-  risky: '😰',
-  caution: '😐',
-  ok: '🙂',
-  healthy: '😎',
+// Lucide icon per health label — matches the terminal aesthetic. The
+// previous emoji-based version (🔥 😰 😐 🙂 😎) clashed with the data-
+// terminal vibe of the rest of the app, so we map each tier to a neutral
+// icon that still telegraphs severity (octagon-stop / triangle-warn /
+// circle-info / activity-pulse / shield-check).
+const VIBE_ICON: Record<'critical' | 'risky' | 'caution' | 'ok' | 'healthy', React.ComponentType<{ className?: string }>> = {
+  critical: AlertOctagon,
+  risky:    AlertTriangle,
+  caution:  AlertCircle,
+  ok:       Activity,
+  healthy:  ShieldCheck,
 };
 
 function HealthBadge({
@@ -825,11 +832,10 @@ function HealthBadge({
     label === 'ok'       ? 'bg-sky-500/15 text-sky-300 border-sky-400/30' :
                            'bg-emerald-500/15 text-emerald-300 border-emerald-400/30';
 
-  const vibe = VIBE_EMOJI[label];
-
+  const Icon = VIBE_ICON[label];
   const title = reasons.length > 0
-    ? `${vibe} Health: ${score}/100 (${label})\n• ${reasons.join('\n• ')}`
-    : `${vibe} Health: ${score}/100 (${label}) — no concerns`;
+    ? `Health: ${score}/100 (${label})\n• ${reasons.join('\n• ')}`
+    : `Health: ${score}/100 (${label}) — no concerns`;
 
   return (
     <span
@@ -838,7 +844,7 @@ function HealthBadge({
         compact ? 'text-[10px]' : 'text-[11px]'
       } ${tone}`}
     >
-      <span className="text-[12px]" aria-hidden>{vibe}</span>
+      <Icon className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
       {score}
       {!compact && <span className="opacity-60 font-normal text-[9px] uppercase tracking-wider">{label}</span>}
     </span>
