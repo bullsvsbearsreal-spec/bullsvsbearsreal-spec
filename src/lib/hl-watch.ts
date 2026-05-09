@@ -135,24 +135,32 @@ async function fetchGTradeState(address: string): Promise<AccountSnapshot | null
     return {
       address: address.toLowerCase(),
       venue: 'gtrade',
-      positions: positions.map(p => ({
-        coin: p.symbol,
-        // sign szi so size_changed % math + side detection both work.
-        szi: (p.side === 'short' ? -1 : 1) * (p.size ?? 0),
-        positionValue: Math.abs(p.positionValue ?? 0),
-        entryPx: p.entryPrice ?? 0,
+      positions: positions.map(p => {
+        const szi = (p.side === 'short' ? -1 : 1) * (p.size ?? 0);
+        const entryPx = p.entryPrice ?? 0;
         // gTrade reader fetches mark via Binance fapi already — use it
-        // so liq-danger has real per-tick distance instead of constant
-        // entry-vs-liq distance. Falls back to entry when Binance doesn't
-        // list the symbol.
-        markPx: p.markPrice ?? p.entryPrice ?? 0,
-        liquidationPx: p.liquidationPrice ?? null,
-        unrealizedPnl: p.unrealizedPnl ?? 0,
-        // gTrade doesn't surface a running cumulative funding figure;
-        // borrow fees are computed on close. Set to 0 so the funding
-        // delta is always 0 → funding_paid never fires for gTrade.
-        cumFundingAllTime: 0,
-      })),
+        // so liq-danger has real per-tick distance. Falls back to entry
+        // when Binance doesn't list the symbol.
+        const markPx = p.markPrice ?? entryPx;
+        const reportedValue = Math.abs(p.positionValue ?? 0);
+        const fallbackValue = Math.abs(szi * markPx);
+        return {
+          coin: p.symbol,
+          // sign szi so size_changed % math + side detection both work.
+          szi,
+          // Same $0-fallback as HL — if positionValue is 0/null, recompute
+          // from |szi × mark| so the 'opened' Telegram doesn't read "$0.00".
+          positionValue: reportedValue > 0 ? reportedValue : fallbackValue,
+          entryPx,
+          markPx,
+          liquidationPx: p.liquidationPrice ?? null,
+          unrealizedPnl: p.unrealizedPnl ?? 0,
+          // gTrade doesn't surface a running cumulative funding figure;
+          // borrow fees are computed on close. Set to 0 so the funding
+          // delta is always 0 → funding_paid never fires for gTrade.
+          cumFundingAllTime: 0,
+        };
+      }),
       accountValue: 0, // gTrade trades are isolated-margin; no account-wide equity
       ts: Date.now(),
     };
@@ -182,15 +190,27 @@ function parsePosition(p: HLPosition): PositionLite | null {
   // HL doesn't return mark directly on clearinghouseState. Back it out
   // from unrealizedPnl: pnl = szi * (mark - entry) → mark = entry + pnl/szi.
   // (szi is signed: positive long, negative short.)
-  const markPx = szi !== 0 && entryPx > 0
+  const markPxFromPnl = szi !== 0 && entryPx > 0
     ? entryPx + (unrealizedPnl / szi)
     : entryPx;
+  const markPx = Number.isFinite(markPxFromPnl) && markPxFromPnl > 0 ? markPxFromPnl : entryPx;
+
+  // positionValue (notional in USD): HL sometimes returns "0" or empty
+  // string on the very first tick after open before the field populates,
+  // which makes our 'opened' event payload show "$0.00". Fall back to
+  // |szi × markPx| (or × entryPx) so the user still sees a real notional
+  // for those edge ticks. The wallet-size validation upstream guarantees
+  // szi × markPx is non-zero for any szi !== 0.
+  const reportedValue = Math.abs(parseFloat(p.positionValue) || 0);
+  const fallbackValue = Math.abs(szi * markPx);
+  const positionValue = reportedValue > 0 ? reportedValue : fallbackValue;
+
   return {
     coin: p.coin,
     szi,
-    positionValue: Math.abs(parseFloat(p.positionValue) || 0),
+    positionValue,
     entryPx,
-    markPx: Number.isFinite(markPx) && markPx > 0 ? markPx : entryPx,
+    markPx,
     liquidationPx: p.liquidationPx ? (parseFloat(p.liquidationPx) || null) : null,
     unrealizedPnl,
     cumFundingAllTime: parseFloat(p.cumFunding?.allTime ?? '0') || 0,

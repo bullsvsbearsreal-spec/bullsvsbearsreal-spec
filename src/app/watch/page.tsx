@@ -424,8 +424,16 @@ function WatchPageInner() {
                       <span className={w.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                         {fmtPnl(w.realizedPnl)}
                       </span>
-                      <span className="text-neutral-600">·</span>
-                      <span className="text-neutral-400">{w.winRate.toFixed(0)}% WR</span>
+                      {/* WR is only shown when non-zero — Hyperliquid's leaderboard
+                          doesn't expose wins/losses so HL-only traders come back as
+                          winRate=0 from /smart-money. Showing "0% WR" looks broken
+                          rather than honest "we don't know". */}
+                      {w.winRate > 0 && (
+                        <>
+                          <span className="text-neutral-600">·</span>
+                          <span className="text-neutral-400">{w.winRate.toFixed(0)}% WR</span>
+                        </>
+                      )}
                       {w.liveNotional > 0 && (
                         <>
                           <span className="text-neutral-600">·</span>
