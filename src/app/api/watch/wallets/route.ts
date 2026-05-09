@@ -50,12 +50,22 @@ export async function GET() {
     LIMIT 50
   `;
 
-  // Latest snapshot per (address, venue)
-  const snapshots = addrs.length === 0 ? [] : await sql`
+  // Latest snapshot per (address, venue). Defensively parse the
+  // positions JSONB — postgres.js sometimes returns it as a string.
+  // Without the parse, the UI sees positions=string and `.length` gives
+  // a character count instead of position count (showed "16821 pos"
+  // for a 2-position wallet).
+  const rawSnapshots = addrs.length === 0 ? [] : await sql`
     SELECT address, venue, positions, account_value, ts
     FROM hl_position_snapshots
     WHERE address = ANY(${sql.array(addrs)}::text[])
-  `;
+  ` as Array<{ address: string; venue: string; positions: unknown; account_value: number | null; ts: string }>;
+  const snapshots = rawSnapshots.map(s => ({
+    ...s,
+    positions: typeof s.positions === 'string'
+      ? (() => { try { return JSON.parse(s.positions as string); } catch { return []; } })()
+      : (Array.isArray(s.positions) ? s.positions : []),
+  }));
 
   return NextResponse.json({ wallets, events, snapshots });
 }

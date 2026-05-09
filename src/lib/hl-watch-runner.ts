@@ -54,6 +54,23 @@ interface SubscriberRow {
 
 interface SnapshotRow { address: string; venue: string; positions: unknown; account_value: number | null; ts: string }
 
+/** Defensively parse the JSONB positions field. postgres.js returns
+ *  JSONB columns as either parsed arrays/objects OR raw JSON strings
+ *  depending on connection config — same pattern as user_prefs. We
+ *  handle both shapes here so the differ always gets a real array. */
+function parsePositionsField(raw: unknown): AccountSnapshot['positions'] {
+  if (Array.isArray(raw)) return raw as AccountSnapshot['positions'];
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed as AccountSnapshot['positions'] : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function rowToThresholds(r: SubscriberRow): Thresholds {
   return {
     triggerOpened: r.trigger_opened,
@@ -164,10 +181,15 @@ async function runTickInner(): Promise<WatchTickStats> {
   const snapByKey = new Map<string, AccountSnapshot>();
   for (const r of snapRows) {
     const venue = (r.venue || 'hyperliquid') as Venue;
+    // postgres.js sometimes returns JSONB columns as strings instead of
+    // parsed objects (depends on connection setup). If we naively
+    // Array.isArray check, a string JSONB falls back to empty[], which
+    // makes the differ think prev had zero positions → fires "OPENED"
+    // for every current position on every tick = Telegram spam.
     snapByKey.set(`${r.address}|${venue}`, {
       address: r.address,
       venue,
-      positions: Array.isArray(r.positions) ? r.positions as AccountSnapshot['positions'] : [],
+      positions: parsePositionsField(r.positions),
       accountValue: r.account_value ?? 0,
       ts: new Date(r.ts).getTime(),
     });
