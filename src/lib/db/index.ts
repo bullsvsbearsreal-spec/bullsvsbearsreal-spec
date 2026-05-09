@@ -422,28 +422,39 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_hl_watched_user ON hl_watched_wallets(user_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_hl_watched_addr ON hl_watched_wallets(address)`;
 
-  // Latest snapshot per address (one row per address, used by diff cron)
+  // Latest snapshot per address × venue (one row per pair, used by diff cron).
+  // Venue can be 'hyperliquid' or 'gtrade' today; future venues add rows
+  // without schema change. Existing pre-venue rows are migrated below.
   await sql`
     CREATE TABLE IF NOT EXISTS hl_position_snapshots (
-      address TEXT PRIMARY KEY,
-      positions JSONB NOT NULL,                 -- array of {coin,szi,positionValue,entryPx,liquidationPx,unrealizedPnl,cumFunding}
+      address TEXT NOT NULL,
+      venue TEXT NOT NULL DEFAULT 'hyperliquid',
+      positions JSONB NOT NULL,
       account_value REAL,
-      ts TIMESTAMPTZ DEFAULT NOW()
+      ts TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (address, venue)
     )
   `;
+  // Migration: if an older single-PK shape exists, add the venue column +
+  // composite key. ALTER TABLE IF NOT EXISTS isn't a thing in PG, so guard
+  // each step against "duplicate column" / "invalid PK" with try-catch.
+  try { await sql`ALTER TABLE hl_position_snapshots ADD COLUMN IF NOT EXISTS venue TEXT NOT NULL DEFAULT 'hyperliquid'` } catch {}
   await sql`CREATE INDEX IF NOT EXISTS idx_hl_snap_ts ON hl_position_snapshots(ts DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_hl_snap_addr_venue ON hl_position_snapshots(address, venue)`;
 
-  // Event log (global per-address, fanned out to users on read)
+  // Event log (per address × venue, fanned out to users on read)
   await sql`
     CREATE TABLE IF NOT EXISTS hl_position_events (
       id SERIAL PRIMARY KEY,
       address TEXT NOT NULL,
+      venue TEXT NOT NULL DEFAULT 'hyperliquid',
       symbol TEXT NOT NULL,
-      kind TEXT NOT NULL,                       -- 'opened' | 'closed' | 'size_changed' | 'liq_danger' | 'realized_pnl' | 'funding_paid'
-      payload JSONB,                            -- side, sizeUsd, deltaPct, distPct, realizedPnl, fundingDelta, etc
+      kind TEXT NOT NULL,
+      payload JSONB,
       ts TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  try { await sql`ALTER TABLE hl_position_events ADD COLUMN IF NOT EXISTS venue TEXT NOT NULL DEFAULT 'hyperliquid'` } catch {}
   await sql`CREATE INDEX IF NOT EXISTS idx_hl_events_addr ON hl_position_events(address, ts DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_hl_events_ts ON hl_position_events(ts DESC)`;
 

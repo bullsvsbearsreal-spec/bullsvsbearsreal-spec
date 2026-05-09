@@ -40,18 +40,19 @@ export async function GET() {
   ` as Array<{ id: number; address: string; label: string | null; created_at: string }>;
 
   // Pull the latest 50 events across all the user's watched addresses
+  // (across both venues — gTrade + Hyperliquid)
   const addrs = wallets.map(w => w.address);
   const events = addrs.length === 0 ? [] : await sql`
-    SELECT id, address, symbol, kind, payload, ts
+    SELECT id, address, venue, symbol, kind, payload, ts
     FROM hl_position_events
     WHERE address = ANY(${sql.array(addrs)}::text[])
     ORDER BY ts DESC
     LIMIT 50
   `;
 
-  // Latest snapshot per address (for quick "X open positions" hints)
+  // Latest snapshot per (address, venue)
   const snapshots = addrs.length === 0 ? [] : await sql`
-    SELECT address, positions, account_value, ts
+    SELECT address, venue, positions, account_value, ts
     FROM hl_position_snapshots
     WHERE address = ANY(${sql.array(addrs)}::text[])
   `;

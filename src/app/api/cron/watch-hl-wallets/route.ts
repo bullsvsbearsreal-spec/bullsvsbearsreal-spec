@@ -25,8 +25,8 @@ import { getSQL, isDBConfigured, getTelegramLinkByUser } from '@/lib/db';
 import { sendMessage } from '@/lib/telegram';
 import { verifyCronAuth } from '../_auth';
 import {
-  fetchHLState, diffSnapshots, applyThresholds, formatEvent,
-  type AccountSnapshot, type Thresholds, type WatchEventKind,
+  fetchVenueState, diffSnapshots, applyThresholds, formatEvent,
+  VENUES, type AccountSnapshot, type Thresholds, type Venue, type WatchEventKind,
 } from '@/lib/hl-watch';
 
 export const runtime = 'nodejs';
@@ -51,7 +51,7 @@ interface SubscriberRow {
   funding_paid_usd: number;
 }
 
-interface SnapshotRow { address: string; positions: unknown; account_value: number | null; ts: string }
+interface SnapshotRow { address: string; venue: string; positions: unknown; account_value: number | null; ts: string }
 
 function rowToThresholds(r: SubscriberRow): Thresholds {
   return {
@@ -110,32 +110,39 @@ export async function GET(req: NextRequest) {
     subsByAddr.set(r.address, list);
   }
 
-  // 3. Load last snapshots in one query
+  // 3. Load last snapshots in one query (across all venues for these addrs)
   const snapRows = await sql`
-    SELECT address, positions, account_value, ts FROM hl_position_snapshots
+    SELECT address, venue, positions, account_value, ts FROM hl_position_snapshots
     WHERE address = ANY(${sql.array(addrRows.map(r => r.address))}::text[])
   ` as SnapshotRow[];
-  const snapByAddr = new Map<string, AccountSnapshot>();
+  const snapByKey = new Map<string, AccountSnapshot>();   // key = address|venue
   for (const r of snapRows) {
-    snapByAddr.set(r.address, {
+    const venue = (r.venue || 'hyperliquid') as Venue;
+    snapByKey.set(`${r.address}|${venue}`, {
       address: r.address,
+      venue,
       positions: Array.isArray(r.positions) ? r.positions as AccountSnapshot['positions'] : [],
       accountValue: r.account_value ?? 0,
       ts: new Date(r.ts).getTime(),
     });
   }
 
-  // 4. Process each address — fetch in parallel for speed, but cap concurrency to 8
+  // 4. Build the (address × venue) work queue. Each (address, venue) pair
+  //    is one fetch + diff job. So with 2 venues + N addresses we'll do
+  //    2N HL/gTrade calls per tick, capped at concurrency 8.
   const CONCURRENCY = 8;
-  const queue = addrRows.map(r => r.address);
+  type Job = { address: string; venue: Venue };
+  const queue: Job[] = [];
+  for (const r of addrRows) for (const v of VENUES) queue.push({ address: r.address, venue: v });
   const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
     while (true) {
-      const addr = queue.shift();
-      if (!addr) return;
+      const job = queue.shift();
+      if (!job) return;
+      const key = `${job.address}|${job.venue}`;
       try {
-        await processAddress(addr, subsByAddr.get(addr) ?? [], snapByAddr.get(addr) ?? null, sql, stats);
+        await processAddressVenue(job.address, job.venue, subsByAddr.get(job.address) ?? [], snapByKey.get(key) ?? null, sql, stats);
       } catch (e) {
-        stats.errors.push(`${addr.slice(0, 8)}: ${e instanceof Error ? e.message : 'unknown'}`);
+        stats.errors.push(`${job.address.slice(0, 8)}/${job.venue}: ${e instanceof Error ? e.message : 'unknown'}`);
       }
     }
   });
@@ -144,16 +151,17 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, ...stats, durationMs: Date.now() - t0 });
 }
 
-async function processAddress(
+async function processAddressVenue(
   addr: string,
+  venue: Venue,
   subs: SubscriberRow[],
   prevSnap: AccountSnapshot | null,
   sql: ReturnType<typeof getSQL>,
   stats: { snapshots_fetched: number; events_emitted: number; notifications_sent: number; errors: string[] },
 ) {
-  const curr = await fetchHLState(addr);
+  const curr = await fetchVenueState(addr, venue);
   if (!curr) {
-    stats.errors.push(`fetch failed: ${addr.slice(0, 8)}`);
+    stats.errors.push(`fetch failed: ${addr.slice(0, 8)}/${venue}`);
     return;
   }
   stats.snapshots_fetched++;
@@ -163,9 +171,9 @@ async function processAddress(
   // Always upsert the new snapshot — even if no events, we want the
   // baseline written so the next cron tick has something to diff against.
   await sql`
-    INSERT INTO hl_position_snapshots (address, positions, account_value, ts)
-    VALUES (${addr}, ${JSON.stringify(curr.positions)}::jsonb, ${curr.accountValue}, NOW())
-    ON CONFLICT (address) DO UPDATE SET
+    INSERT INTO hl_position_snapshots (address, venue, positions, account_value, ts)
+    VALUES (${addr}, ${venue}, ${JSON.stringify(curr.positions)}::jsonb, ${curr.accountValue}, NOW())
+    ON CONFLICT (address, venue) DO UPDATE SET
       positions = EXCLUDED.positions,
       account_value = EXCLUDED.account_value,
       ts = EXCLUDED.ts
@@ -180,14 +188,14 @@ async function processAddress(
     const e = events[i];
     try {
       const [row] = await sql`
-        INSERT INTO hl_position_events (address, symbol, kind, payload, ts)
-        VALUES (${addr}, ${e.symbol}, ${e.kind}, ${JSON.stringify(e.payload)}::jsonb, NOW())
+        INSERT INTO hl_position_events (address, venue, symbol, kind, payload, ts)
+        VALUES (${addr}, ${venue}, ${e.symbol}, ${e.kind}, ${JSON.stringify(e.payload)}::jsonb, NOW())
         RETURNING id
       ` as Array<{ id: number }>;
       insertedIds.push({ id: row.id, eventIdx: i });
       stats.events_emitted++;
     } catch (err) {
-      stats.errors.push(`insert event ${addr.slice(0, 8)}/${e.kind}: ${err instanceof Error ? err.message : 'unknown'}`);
+      stats.errors.push(`insert event ${addr.slice(0, 8)}/${venue}/${e.kind}: ${err instanceof Error ? err.message : 'unknown'}`);
     }
   }
 
@@ -200,8 +208,6 @@ async function processAddress(
     const link = await getTelegramLinkByUser(sub.user_id);
     if (!link?.chat_id) continue; // No telegram linked — skip silently
 
-    // Send one message per event so the user can act on each one
-    // individually. Cap at 5 per cron tick per user to avoid spamming.
     let sentInTick = 0;
     for (const e of filtered) {
       if (sentInTick >= 5) break;
@@ -209,7 +215,6 @@ async function processAddress(
       const inserted = insertedIds.find(x => x.eventIdx === matchedIdx);
       if (!inserted) continue;
 
-      // Dedup — skip if we already pinged this user for this event
       const dupRows = await sql`
         SELECT 1 FROM hl_event_notifications
         WHERE user_id = ${sub.user_id} AND event_id = ${inserted.id} AND channel = 'telegram'
@@ -217,7 +222,7 @@ async function processAddress(
       ` as Array<{ '?column?': number }>;
       if (dupRows.length > 0) continue;
 
-      const text = formatEvent(e, addr, sub.label ?? undefined);
+      const text = formatEvent(e, addr, sub.label ?? undefined, venue);
       try {
         const ok = await sendMessage(link.chat_id, text, 'Markdown');
         if (ok) {

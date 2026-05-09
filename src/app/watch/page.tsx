@@ -39,6 +39,7 @@ interface Wallet {
 interface EventRow {
   id: number;
   address: string;
+  venue: 'hyperliquid' | 'gtrade';
   symbol: string;
   kind: 'opened' | 'closed' | 'size_changed' | 'liq_danger' | 'realized_pnl' | 'funding_paid';
   payload: {
@@ -55,6 +56,7 @@ interface EventRow {
 
 interface SnapshotRow {
   address: string;
+  venue: 'hyperliquid' | 'gtrade';
   positions: Array<{ coin: string; szi: number; positionValue: number }>;
   account_value: number | null;
   ts: string;
@@ -208,7 +210,20 @@ function WatchPageInner() {
   const wallets = data?.wallets ?? [];
   const events = data?.events ?? [];
   const snapshots = data?.snapshots ?? [];
-  const snapByAddr = new Map(snapshots.map(s => [s.address, s]));
+  // Group snapshots per address — a single address can have rows for both
+  // Hyperliquid AND gTrade venues, so collapse them into a per-address
+  // summary (total open positions across venues, list of venues active).
+  const snapByAddr = new Map<string, { venues: SnapshotRow[]; totalPositions: number; latestTs: string | null }>();
+  for (const s of snapshots) {
+    const existing = snapByAddr.get(s.address);
+    if (existing) {
+      existing.venues.push(s);
+      existing.totalPositions += (s.positions?.length ?? 0);
+      if (!existing.latestTs || new Date(s.ts) > new Date(existing.latestTs)) existing.latestTs = s.ts;
+    } else {
+      snapByAddr.set(s.address, { venues: [s], totalPositions: s.positions?.length ?? 0, latestTs: s.ts });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -224,9 +239,12 @@ function WatchPageInner() {
             <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 border border-emerald-400/30 bg-emerald-500/10 px-1.5 py-0.5 rounded">
               Hyperliquid
             </span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 border border-cyan-400/30 bg-cyan-500/10 px-1.5 py-0.5 rounded">
+              gTrade
+            </span>
           </div>
           <p className="text-sm text-neutral-500 max-w-2xl">
-            Get Telegram pings when any Hyperliquid wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding. Polled every 60s; pings deliver in &lt;90s.
+            Get Telegram pings when any wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding — across Hyperliquid <em>and</em> gTrade (Arbitrum). Polled every 60s; pings deliver in &lt;90s.
           </p>
         </header>
 
@@ -293,8 +311,9 @@ function WatchPageInner() {
           ) : (
             <ul className="space-y-2">
               {wallets.map(w => {
-                const snap = snapByAddr.get(w.address);
-                const positions = snap?.positions ?? [];
+                const snapInfo = snapByAddr.get(w.address);
+                const venues = snapInfo?.venues ?? [];
+                const totalPositions = snapInfo?.totalPositions ?? 0;
                 return (
                   <li key={w.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 hover:bg-white/[0.03] transition-colors">
                     <div className="flex items-start gap-3 flex-wrap">
@@ -304,13 +323,19 @@ function WatchPageInner() {
                             {w.label || shortAddr(w.address)}
                           </Link>
                           {w.label && <span className="font-mono text-[11px] text-neutral-500">{shortAddr(w.address)}</span>}
-                          {snap && (
+                          {snapInfo && (
                             <span className="text-[10px] font-mono text-neutral-600">
-                              {positions.length} pos · {snap.account_value ? fmtUsd(snap.account_value) : '—'} equity · synced {relTime(snap.ts)}
+                              {totalPositions} pos · synced {snapInfo.latestTs ? relTime(snapInfo.latestTs) : '—'}
                             </span>
                           )}
-                          {!snap && <span className="text-[10px] font-mono text-neutral-600 italic">awaiting first poll…</span>}
+                          {!snapInfo && <span className="text-[10px] font-mono text-neutral-600 italic">awaiting first poll…</span>}
                         </div>
+                        {/* Per-venue mini-strip */}
+                        {venues.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {venues.map(v => <VenueChip key={v.venue} venue={v.venue} positions={v.positions?.length ?? 0} />)}
+                          </div>
+                        )}
                         {/* Trigger badges */}
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {w.trigger_opened &&        <TrigBadge label="Opens" />}
@@ -361,6 +386,7 @@ function WatchPageInner() {
                       <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${KIND_TONE[e.kind]}`}>
                         {KIND_LABEL[e.kind]}
                       </span>
+                      <VenueChip venue={e.venue} compact />
                       <span className="font-mono text-neutral-300 truncate">
                         {wallet?.label || shortAddr(e.address)}
                       </span>
@@ -391,6 +417,24 @@ function TrigBadge({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.03] text-neutral-400 border border-white/[0.06]">
       {label}
+    </span>
+  );
+}
+
+/** Small per-venue tag — shown on each event row + in the per-wallet
+ *  venue strip so users can see at a glance which venue an event came
+ *  from and whether the watcher has data for both venues yet. */
+function VenueChip({ venue, positions, compact = false }: { venue: 'hyperliquid' | 'gtrade'; positions?: number; compact?: boolean }) {
+  const tone = venue === 'gtrade'
+    ? 'bg-cyan-500/10 text-cyan-300 border-cyan-400/30'
+    : 'bg-emerald-500/10 text-emerald-400 border-emerald-400/30';
+  const label = venue === 'gtrade' ? 'gTrade' : 'Hyperliquid';
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${tone}`}>
+      {label}
+      {!compact && positions != null && (
+        <span className="font-mono opacity-80">· {positions}</span>
+      )}
     </span>
   );
 }

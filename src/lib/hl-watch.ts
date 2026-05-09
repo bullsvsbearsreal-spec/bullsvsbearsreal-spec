@@ -1,17 +1,30 @@
 /**
- * Hyperliquid wallet position watcher — shared types + state fetcher +
+ * Multi-venue wallet position watcher — shared types + state fetchers +
  * diff function used by both /api/cron/watch-hl-wallets (server) and
  * /watch (UI for previewing what would fire).
  *
- * The cron polls each watched address every 60s, calls `fetchHLState`
- * to grab the current clearinghouseState, then `diffSnapshots` against
- * the row stored in hl_position_snapshots. Each event the differ
- * returns is appended to hl_position_events and fanned out to every
- * subscribed user (with per-trigger filtering applied) for Telegram
- * delivery.
+ * Venues currently supported:
+ *   - 'hyperliquid' — clearinghouseState via api.hyperliquid.xyz
+ *   - 'gtrade'      — getTrades(address) on Arbitrum diamond, via the
+ *                     existing src/lib/wallet-clients/gtrade.ts client.
+ *
+ * The cron polls each watched address every 60s for each venue, calls
+ * `fetchVenueState(address, venue)` to grab current positions, then
+ * `diffSnapshots(prev, curr)` against the row stored per (address, venue)
+ * in hl_position_snapshots. Each event the differ returns is appended
+ * to hl_position_events and fanned out to every subscribed user (with
+ * per-trigger filtering applied) for Telegram delivery.
+ *
+ * Funding tracking is HL-only — gTrade borrow fees accrue on close and
+ * the on-chain reader doesn't surface a running cumulative figure, so
+ * funding_paid events never fire for gTrade addresses.
  */
 
 import type { HLClearingHouseState, HLPosition } from '@/app/api/_shared/hyperliquid-types';
+import { gtradeWalletClient } from '@/lib/wallet-clients/gtrade';
+
+export type Venue = 'hyperliquid' | 'gtrade';
+export const VENUES: Venue[] = ['hyperliquid', 'gtrade'];
 
 export type WatchEventKind =
   | 'opened'        // new symbol on the book
@@ -33,6 +46,7 @@ export interface PositionLite {
 
 export interface AccountSnapshot {
   address: string;
+  venue: Venue;
   positions: PositionLite[];
   accountValue: number;
   ts: number;
@@ -80,8 +94,16 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
 
 const HL_INFO_URL = 'https://api.hyperliquid.xyz/info';
 
-/** Pull the current clearinghouseState for an address and reduce it to
- *  the trim "lite" shape the differ expects. Returns null on error. */
+/** Dispatch — pull the current state for an (address, venue) pair and
+ *  reduce it to the trim "lite" shape the differ expects. Returns null
+ *  on error. */
+export async function fetchVenueState(address: string, venue: Venue): Promise<AccountSnapshot | null> {
+  if (venue === 'hyperliquid') return fetchHLState(address);
+  if (venue === 'gtrade')      return fetchGTradeState(address);
+  return null;
+}
+
+/** Back-compat alias — the cron used to call fetchHLState directly. */
 export async function fetchHLState(address: string): Promise<AccountSnapshot | null> {
   try {
     const res = await fetch(HL_INFO_URL, {
@@ -92,18 +114,46 @@ export async function fetchHLState(address: string): Promise<AccountSnapshot | n
     });
     if (!res.ok) return null;
     const json = (await res.json()) as HLClearingHouseState;
-    return reduceState(address, json);
+    return reduceHLState(address, json);
   } catch {
     return null;
   }
 }
 
-function reduceState(address: string, json: HLClearingHouseState): AccountSnapshot {
+async function fetchGTradeState(address: string): Promise<AccountSnapshot | null> {
+  try {
+    const positions = await gtradeWalletClient.fetchPositions(address);
+    return {
+      address: address.toLowerCase(),
+      venue: 'gtrade',
+      positions: positions.map(p => ({
+        coin: p.symbol,
+        // sign szi so size_changed % math + side detection both work.
+        szi: (p.side === 'short' ? -1 : 1) * (p.size ?? 0),
+        positionValue: Math.abs(p.positionValue ?? 0),
+        entryPx: p.entryPrice ?? 0,
+        liquidationPx: p.liquidationPrice ?? null,
+        unrealizedPnl: p.unrealizedPnl ?? 0,
+        // gTrade doesn't surface a running cumulative funding figure;
+        // borrow fees are computed on close. Set to 0 so the funding
+        // delta is always 0 → funding_paid never fires for gTrade.
+        cumFundingAllTime: 0,
+      })),
+      accountValue: 0, // gTrade trades are isolated-margin; no account-wide equity
+      ts: Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function reduceHLState(address: string, json: HLClearingHouseState): AccountSnapshot {
   const positions: PositionLite[] = (json.assetPositions ?? [])
     .map(ap => parsePosition(ap.position))
     .filter((p): p is PositionLite => p !== null);
   return {
     address: address.toLowerCase(),
+    venue: 'hyperliquid',
     positions,
     accountValue: parseFloat(json.marginSummary?.accountValue ?? '0') || 0,
     ts: json.time ?? Date.now(),
@@ -259,37 +309,37 @@ export function applyThresholds(events: WatchEvent[], t: Thresholds): WatchEvent
 }
 
 /** Format an event into a Telegram-ready message. */
-export function formatEvent(e: WatchEvent, address: string, label?: string): string {
+export function formatEvent(e: WatchEvent, address: string, label?: string, venue: Venue = 'hyperliquid'): string {
   const who = label ? `*${escapeMd(label)}* (\`${shortAddr(address)}\`)` : `\`${shortAddr(address)}\``;
   const sym = `*${escapeMd(e.symbol)}*`;
+  const venueTag = venue === 'gtrade' ? ' · _gTrade_' : ' · _Hyperliquid_';
   switch (e.kind) {
     case 'opened': {
       const dir = e.payload.side === 'short' ? '🔻 SHORT' : '🟢 LONG';
-      return `${dir} opened\n${who}\n${sym} · ${fmtUsd(e.payload.sizeUsd ?? 0)}`;
+      return `${dir} opened${venueTag}\n${who}\n${sym} · ${fmtUsd(e.payload.sizeUsd ?? 0)}`;
     }
     case 'closed': {
       const dir = e.payload.side === 'short' ? '🔻 SHORT' : '🟢 LONG';
       const pnl = e.payload.realizedPnl ?? 0;
       const pnlLine = pnl >= 0 ? `realized *+${fmtUsd(pnl)}* ✅` : `realized *${fmtUsd(pnl)}* ❌`;
-      return `${dir} CLOSED\n${who}\n${sym} · was ${fmtUsd(e.payload.prevSizeUsd ?? 0)} · ${pnlLine}`;
+      return `${dir} CLOSED${venueTag}\n${who}\n${sym} · was ${fmtUsd(e.payload.prevSizeUsd ?? 0)} · ${pnlLine}`;
     }
     case 'size_changed': {
       const delta = e.payload.deltaPct ?? 0;
       const arrow = delta > 0 ? '📈 INCREASED' : '📉 DECREASED';
-      return `${arrow}\n${who}\n${sym} · ${fmtUsd(e.payload.prevSizeUsd ?? 0)} → ${fmtUsd(e.payload.sizeUsd ?? 0)} (${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}%)`;
+      return `${arrow}${venueTag}\n${who}\n${sym} · ${fmtUsd(e.payload.prevSizeUsd ?? 0)} → ${fmtUsd(e.payload.sizeUsd ?? 0)} (${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}%)`;
     }
     case 'liq_danger': {
       const d = (e.payload.distPct ?? 0) * 100;
-      return `⚠️ NEAR LIQ\n${who}\n${sym} now *${d.toFixed(2)}%* from liquidation`;
+      return `⚠️ NEAR LIQ${venueTag}\n${who}\n${sym} now *${d.toFixed(2)}%* from liquidation`;
     }
     case 'realized_pnl': {
-      // (treated alongside closed; rarely emitted standalone)
-      return formatEvent({ ...e, kind: 'closed' }, address, label);
+      return formatEvent({ ...e, kind: 'closed' }, address, label, venue);
     }
     case 'funding_paid': {
       const fd = e.payload.fundingDelta ?? 0;
       const verb = fd < 0 ? '💸 PAID' : '💰 RECEIVED';
-      return `${verb} funding\n${who}\n${sym} · ${fmtUsd(Math.abs(fd))}`;
+      return `${verb} funding${venueTag}\n${who}\n${sym} · ${fmtUsd(Math.abs(fd))}`;
     }
   }
 }
