@@ -239,18 +239,37 @@ function LoginPageInner() {
         />
       </div>
 
-      <div className="w-full max-w-[420px] relative z-10">
-        {/* Logo */}
-        <div className="flex justify-center mb-10">
+      <div className="w-full max-w-[420px] relative z-10 animate-[fadeUp_0.5s_ease-out]">
+        {/* Logo + tagline */}
+        <div className="flex flex-col items-center mb-8">
           <Logo variant="full" size="lg" />
+          <p className="mt-3 text-[11px] text-neutral-500 font-mono tracking-wider uppercase">
+            The trader&apos;s data terminal
+          </p>
+          <div className="mt-4 flex items-center gap-2 text-[10px] text-neutral-600 font-mono">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+              32 venues
+            </span>
+            <span className="text-neutral-700">·</span>
+            <span>live data</span>
+            <span className="text-neutral-700">·</span>
+            <span>private by default</span>
+          </div>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-8 shadow-2xl shadow-black/40">
+        {/* Card with subtle gradient border */}
+        <div
+          className="rounded-2xl p-px shadow-2xl shadow-black/40"
+          style={{ background: 'linear-gradient(145deg, rgba(234,179,8,0.18), rgba(255,255,255,0.04) 35%, rgba(255,255,255,0.02))' }}
+        >
+        <div className="rounded-2xl border border-white/[0.04] bg-[#0a0a0a]/85 backdrop-blur-xl p-8">
           {step === 'credentials' && (
             <>
               <div className="mb-7">
-                <h1 className="text-2xl font-bold text-white tracking-tight">Welcome back</h1>
+                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
+                  Welcome back
+                </h1>
                 <p className="text-neutral-500 text-sm mt-1.5">Sign in to your account</p>
               </div>
 
@@ -329,7 +348,7 @@ function LoginPageInner() {
                 <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4">
                   <Shield size={24} className="text-yellow-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Two-factor auth</h1>
+                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">Two-factor auth</h1>
                 <p className="text-neutral-500 text-sm mt-1.5">
                   {selectedMethod === 'totp'
                     ? 'Enter the code from your authenticator app'
@@ -439,7 +458,7 @@ function LoginPageInner() {
                 <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4">
                   <Mail size={24} className="text-yellow-500" />
                 </div>
-                <h1 className="text-xl font-bold text-white tracking-tight">Email not verified</h1>
+                <h1 className="text-xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">Email not verified</h1>
                 <p className="text-neutral-500 text-sm mt-1.5">
                   Please verify your email before signing in.
                 </p>
@@ -474,12 +493,20 @@ function LoginPageInner() {
             </>
           )}
         </div>
+        </div>
 
         <p className="text-center text-sm text-neutral-500 mt-6">
           Don&apos;t have an account?{' '}
           <Link href="/signup" className="text-yellow-500 hover:text-yellow-400 font-medium transition-colors">Create one</Link>
         </p>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
