@@ -21,7 +21,7 @@
  * or recentNotifications.sentAt) — falls back to 0 when no signal.
  */
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useId, useMemo, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -172,33 +172,54 @@ export default function AccountPage() {
   const [keys, setKeys] = useState<ExchangeKey[]>([]);
   const [watch, setWatch] = useState<{ wallets: WatchedWallet[]; events: WatchEvent[] } | null>(null);
   const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null);
+  const [equityHistory, setEquityHistory] = useState<Array<{ t: number; value: number; pnl: number }>>([]);
 
   const userId = session?.user?.id;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     if (!userId) return;
-    const [s, p, w, k, watchRes, tg] = await Promise.allSettled([
-      fetch('/api/user/stats').then(r => (r.ok ? r.json() : null)),
-      fetch('/api/account/positions').then(r => (r.ok ? r.json() : null)),
-      fetch('/api/account/wallets').then(r => (r.ok ? r.json() : null)),
-      fetch('/api/account/exchange-keys').then(r => (r.ok ? r.json() : null)),
-      fetch('/api/watch/wallets').then(r => (r.ok ? r.json() : null)),
-      fetch('/api/telegram/link-code').then(r => (r.ok ? r.json() : null)),
+    const opts = signal ? { signal } : undefined;
+    const fetchJson = (url: string) =>
+      fetch(url, opts).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    const [s, p, w, k, watchRes, tg, history] = await Promise.allSettled([
+      fetchJson('/api/user/stats'),
+      fetchJson('/api/account/positions'),
+      fetchJson('/api/account/wallets'),
+      fetchJson('/api/account/exchange-keys'),
+      fetchJson('/api/watch/wallets'),
+      fetchJson('/api/telegram/link-code'),
+      fetchJson('/api/account/history?days=30'),
     ]);
+    // Bail if aborted mid-flight — don't setState on an unmounted component.
+    if (signal?.aborted) return;
     if (s.status === 'fulfilled' && s.value) setStats(s.value);
     if (p.status === 'fulfilled' && p.value) setPositions(p.value);
     if (w.status === 'fulfilled' && w.value) setWallets(w.value.wallets ?? []);
     if (k.status === 'fulfilled' && k.value) setKeys(k.value.keys ?? []);
     if (watchRes.status === 'fulfilled' && watchRes.value) setWatch(watchRes.value);
     if (tg.status === 'fulfilled' && tg.value) setTelegramLinked(!!tg.value.linked);
+    if (history.status === 'fulfilled' && history.value?.points) {
+      setEquityHistory(history.value.points);
+    }
   }, [userId]);
 
   useEffect(() => {
     if (status !== 'authenticated') return;
-    load();
-    // Light auto-refresh every 60s — same cadence as backend cron
-    const t = setInterval(load, 60_000);
-    return () => clearInterval(t);
+    // Track the current in-flight controller across ticks so we can
+    // cancel it on unmount or before the next tick fires. Without
+    // this, a slow request from tick N can resolve after tick N+1
+    // and clobber fresher state.
+    let current = new AbortController();
+    load(current.signal);
+    const t = setInterval(() => {
+      current.abort();
+      current = new AbortController();
+      load(current.signal);
+    }, 60_000);
+    return () => {
+      clearInterval(t);
+      current.abort();
+    };
   }, [status, load]);
 
   /* ── Auth gates ─────────────────────────────────────────────── */
@@ -438,7 +459,8 @@ export default function AccountPage() {
               equity={equity}
               openUnrealized={openUnrealized}
               positions={positions?.positions ?? []}
-              hasData={(positions?.positions.length ?? 0) > 0}
+              history={equityHistory}
+              hasData={(positions?.positions.length ?? 0) > 0 || equityHistory.length > 0}
             />
             <PlanUsagePanel
               planName={planName}
@@ -612,19 +634,35 @@ function EquityChartPanel({
   equity,
   openUnrealized,
   positions,
+  history,
   hasData,
 }: {
   equity: number;
   openUnrealized: number;
   positions: PositionRow[];
+  history: Array<{ t: number; value: number; pnl: number }>;
   hasData: boolean;
 }) {
-  // Build a synthetic 30-point sparkline from current equity walking
-  // backward by the inverse of the unrealised PnL — gives a credible curve
-  // shape without inventing fake history. Real history will land when the
-  // portfolio-snapshot cron has more than a single user populated.
-  const series = useMemo(() => buildSparkline(equity, openUnrealized, 30), [equity, openUnrealized]);
-  // Top 3 positions by absolute PnL — surface them as "alert markers"
+  // Real equity series from the portfolio-snapshot cron (last 30 days).
+  // Append the current equity as the most recent point so the line
+  // connects history → "now" without a stale gap. When history is empty
+  // (new user, no snapshots yet) the series is just one or two points
+  // and the sparkline degrades into a near-flat line — which is honest.
+  const series = useMemo(() => {
+    const pts = history.map(h => h.value);
+    if (equity > 0 && (pts.length === 0 || pts[pts.length - 1] !== equity)) {
+      pts.push(equity);
+    }
+    return pts;
+  }, [history, equity]);
+  const hasHistory = series.length >= 3;
+
+  // Subhead changes based on what data we have
+  const subhead = hasHistory
+    ? `${history.length}-point history · live mark`
+    : 'Awaiting snapshot history · derived from open positions';
+
+  // Top 3 positions by absolute PnL
   const topMovers = useMemo(
     () =>
       [...positions]
@@ -634,6 +672,13 @@ function EquityChartPanel({
     [positions],
   );
 
+  // Compute series-relative delta so the chart label tracks history,
+  // not just current open PnL.
+  const seriesDelta = series.length >= 2 ? series[series.length - 1] - series[0] : openUnrealized;
+  const seriesPctDelta = series.length >= 2 && series[0] > 0
+    ? (seriesDelta / series[0]) * 100
+    : null;
+
   return (
     <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
       <header className="flex items-baseline justify-between gap-3 mb-3">
@@ -642,18 +687,20 @@ function EquityChartPanel({
             <Activity className="w-4 h-4 text-hub-yellow" />
             Account equity
           </h2>
-          <p className="text-[11px] text-neutral-500 mt-0.5">Derived from open positions · live mark</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">{subhead}</p>
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold font-mono tabular-nums text-white">{fmtUsd(equity, { compact: true })}</div>
-          <div className={`text-[11px] font-mono tabular-nums ${openUnrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {fmtUsd(openUnrealized, { compact: true, signed: true })} open
+          <div className={`text-[11px] font-mono tabular-nums ${seriesDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {fmtUsd(seriesDelta, { compact: true, signed: true })}
+            {seriesPctDelta != null && ` (${fmtPct(seriesPctDelta)})`}
+            <span className="text-neutral-600 ml-1">{hasHistory ? '30d' : 'open'}</span>
           </div>
         </div>
       </header>
 
       {hasData ? (
-        <Sparkline data={series} positive={openUnrealized >= 0} />
+        <Sparkline data={series.length >= 2 ? series : [equity, equity]} positive={seriesDelta >= 0} />
       ) : (
         <div className="h-32 flex items-center justify-center rounded-lg border border-dashed border-white/[0.08] text-xs text-neutral-500">
           Connect a wallet or exchange in{' '}
@@ -689,6 +736,13 @@ function EquityChartPanel({
 }
 
 function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
+  // Use React's useId so two Sparklines on the same page don't collide
+  // on `<linearGradient id=...>` (the SVG `url(#id)` resolution would
+  // otherwise pick whichever instance is first in document order).
+  const reactId = useId();
+  const upId = `${reactId}-up`.replace(/:/g, '');
+  const dnId = `${reactId}-dn`.replace(/:/g, '');
+
   // Render a smooth path with area-fill underneath. Full SVG, no
   // chart library — keeps the bundle clean.
   const w = 600;
@@ -707,15 +761,15 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
   const path = points.map(([x, y], i) => (i === 0 ? `M${x},${y}` : `L${x},${y}`)).join(' ');
   const fill = `${path} L${points[points.length - 1][0]},${h - pad} L${points[0][0]},${h - pad} Z`;
   const stroke = positive ? '#34d399' : '#fb7185';
-  const fillCol = positive ? 'url(#sparkUp)' : 'url(#sparkDn)';
+  const fillCol = positive ? `url(#${upId})` : `url(#${dnId})`;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-32">
       <defs>
-        <linearGradient id="sparkUp" x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={upId} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="#34d399" stopOpacity="0.25" />
           <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
         </linearGradient>
-        <linearGradient id="sparkDn" x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={dnId} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="#fb7185" stopOpacity="0.25" />
           <stop offset="100%" stopColor="#fb7185" stopOpacity="0" />
         </linearGradient>
@@ -981,7 +1035,9 @@ function ConnectedExchangesPanel({
                     Pending
                   </div>
                 )}
-                <div className="text-[10px] font-mono text-neutral-600 mt-0.5">{v.latencyMs}ms</div>
+                {v.syncedAgo && (
+                  <div className="text-[10px] font-mono text-neutral-600 mt-0.5">{v.syncedAgo}</div>
+                )}
               </div>
             </li>
           ))}
@@ -1100,38 +1156,19 @@ function buildMorningBrief(inp: BriefInputs): string[] {
   return lines.slice(0, 4);
 }
 
-function buildSparkline(equity: number, drift: number, points: number): number[] {
-  // Walk backward from `equity` toward `equity - drift` over `points`
-  // samples, with mild deterministic noise so the line isn't a ruler.
-  if (equity <= 0) return Array(points).fill(0);
-  const start = equity - drift;
-  const out: number[] = [];
-  // Seed PRNG off the rounded equity so the same equity gives the same
-  // shape across re-renders (no jittering on the user's screen).
-  let seed = Math.floor(equity * 100) + 1;
-  const rand = () => {
-    seed = (seed * 9301 + 49297) % 233280;
-    return seed / 233280;
-  };
-  for (let i = 0; i < points; i++) {
-    const t = i / (points - 1);
-    const base = start + (equity - start) * t;
-    const noise = (rand() - 0.5) * (Math.abs(drift) * 0.3 + equity * 0.005);
-    out.push(Math.max(0, base + noise));
-  }
-  return out;
-}
-
 interface VenueRow {
   key: string;
   name: string;
   subtitle: string;
   status: 'ok' | 'error' | 'pending';
-  latencyMs: number;
+  /** Real time-since-last-sync string. Null for wallets (read-only,
+   *  no sync state in DB). */
+  syncedAgo: string | null;
 }
 function buildVenuesList(wallets: ConnectedWallet[], keys: ExchangeKey[]): VenueRow[] {
   const out: VenueRow[] = [];
-  // Wallets first — chain becomes the venue
+  // Wallets first — chain becomes the venue. Wallets are read-only
+  // (we hit the chain RPC on demand), so no last-sync field exists.
   for (const w of wallets) {
     const chainName = w.chain.charAt(0).toUpperCase() + w.chain.slice(1);
     out.push({
@@ -1139,11 +1176,10 @@ function buildVenuesList(wallets: ConnectedWallet[], keys: ExchangeKey[]): Venue
       name: w.label || chainName,
       subtitle: shortAddr(w.address) + ' · ' + chainName,
       status: 'ok',
-      // Synthetic latency seeded by id — stable across renders, looks live.
-      latencyMs: 30 + ((w.id * 17) % 80),
+      syncedAgo: null, // wallets don't have a sync state — fetched on demand
     });
   }
-  // Exchange keys
+  // Exchange keys — real status from sync-positions cron
   for (const k of keys) {
     const status: 'ok' | 'error' | 'pending' = k.lastError
       ? 'error'
@@ -1159,7 +1195,7 @@ function buildVenuesList(wallets: ConnectedWallet[], keys: ExchangeKey[]): Venue
           ? k.lastError.slice(0, 40)
           : 'Awaiting first sync',
       status,
-      latencyMs: 40 + ((k.id * 23) % 100),
+      syncedAgo: k.lastSyncedAt ? relTime(k.lastSyncedAt) : null,
     });
   }
   return out;

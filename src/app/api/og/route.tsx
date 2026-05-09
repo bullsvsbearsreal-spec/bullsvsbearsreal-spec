@@ -7,6 +7,7 @@ export const preferredRegion = 'bom1';
 
 type Variant =
   | 'default'
+  | 'tape'
   | 'funding'
   | 'liquidations'
   | 'oi'
@@ -503,6 +504,267 @@ function badgesForVariant(variant: Variant): { label: string; color: string }[] 
 }
 
 // ────────────────────────────────────────────────────────────────────
+// "Read the tape" hero variant — matches the May 2026 design refresh.
+// Different from the other variants because it has its own logo+ticker
+// header, headline split across two lines (with one orange word), and
+// a stats footer — so it skips the standard 2-column chrome.
+// ────────────────────────────────────────────────────────────────────
+
+function TapeFundingCard() {
+  // Card on the right side: FUNDING · 8H header with LIVE pulse,
+  // 4 perp rows (BTC/ETH/SOL/HYPE), and a sparkline footer for BTC 1H.
+  const rows = [
+    { sym: 'BTC',  full: 'BITCOIN',     bg: '#f7931a', fg: '#fff', price: '$112,842', delta: '+0.6',  up: true },
+    { sym: 'ETH',  full: 'ETHEREUM',    bg: '#627eea', fg: '#fff', price: '$4,221',   delta: '-0.6',  up: false },
+    { sym: 'SOL',  full: 'SOLANA',      bg: '#9945ff', fg: '#fff', price: '$214.52',  delta: '+0.1',  up: true },
+    { sym: 'HYPE', full: 'HYPERLIQUID', bg: '#50d2c1', fg: '#000', price: '$38.21',   delta: '+0.2',  up: true, hot: true },
+  ];
+  // BTC 1H funding sparkline shape — deterministic, looks live.
+  const spark = [4, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24, 23, 26, 25, 28];
+  const w = 540;
+  const h = 56;
+  const pad = 6;
+  const max = Math.max(...spark);
+  const min = Math.min(...spark);
+  const stepX = (w - 2 * pad) / (spark.length - 1);
+  const points = spark.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = pad + (h - 2 * pad) * (1 - (v - min) / Math.max(1, max - min));
+    return [x, y] as const;
+  });
+  const path = points.map(([x, y], i) => (i === 0 ? `M${x},${y}` : `L${x},${y}`)).join(' ');
+  const fill = `${path} L${points[points.length - 1][0]},${h - pad} L${points[0][0]},${h - pad} Z`;
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', width: '100%',
+      borderRadius: 16, overflow: 'hidden',
+      border: '1px solid rgba(255,255,255,0.08)',
+      background: 'rgba(12,14,18,0.92)',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        padding: '16px 20px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ width: 3, height: 16, background: ACCENT, borderRadius: 2, marginRight: 10, display: 'flex' }} />
+        <span style={{ fontSize: 12, fontWeight: 800, color: '#fafafa', textTransform: 'uppercase', letterSpacing: 1.6 }}>
+          FUNDING · 8H
+        </span>
+        <div style={{ flex: 1, display: 'flex' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: PUMP, display: 'flex' }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: PUMP, textTransform: 'uppercase', letterSpacing: 1.2 }}>STREAM</span>
+        </div>
+      </div>
+
+      {/* Rows */}
+      {rows.map((r, i) => (
+        <div key={r.sym} style={{
+          display: 'flex', alignItems: 'center',
+          padding: '14px 20px',
+          borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+          background: r.hot ? 'rgba(80,210,193,0.05)' : 'transparent',
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 8,
+            background: r.bg, color: r.fg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginRight: 14, fontSize: 13, fontWeight: 900,
+          }}>
+            {r.sym.slice(0, 1)}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: r.hot ? '#50d2c1' : '#fafafa' }}>{r.sym}-PERP</span>
+              {r.hot && <span style={{ fontSize: 12, color: ACCENT }}>▲</span>}
+            </div>
+            <span style={{ fontSize: 10, color: '#525252', fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 }}>
+              {r.full}
+            </span>
+          </div>
+          <div style={{ flex: 1, display: 'flex' }} />
+          <span style={{ fontSize: 18, fontWeight: 800, color: '#fafafa', fontFamily: 'monospace', marginRight: 14 }}>
+            {r.price}
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700, color: r.up ? PUMP : REKT, fontFamily: 'monospace',
+            minWidth: 38, display: 'flex', justifyContent: 'flex-end',
+          }}>
+            {r.delta}
+          </span>
+        </div>
+      ))}
+
+      {/* Sparkline footer */}
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        padding: '12px 20px 14px',
+        background: 'rgba(255,255,255,0.015)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#525252', textTransform: 'uppercase', letterSpacing: 1.2 }}>
+            BTC · 1H FUNDING
+          </span>
+          <div style={{ flex: 1, display: 'flex' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: PUMP, fontFamily: 'monospace' }}>+2.41% / 1H</span>
+        </div>
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'flex' }}>
+          <defs>
+            <linearGradient id="tapeFundingFill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={ACCENT} stopOpacity="0.35" />
+              <stop offset="100%" stopColor={ACCENT} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={fill} fill="url(#tapeFundingFill)" />
+          <path d={path} fill="none" stroke={ACCENT} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function renderTapeImage() {
+  // Live ticker chips for the LEFT column. Static-but-credible values
+  // — OG images get cached aggressively by Twitter/Slack so live data
+  // would only update on cache bust anyway.
+  const tickers = [
+    { sym: 'BTC',  px: '$112,842', delta: '+2.41%', up: true },
+    { sym: 'ETH',  px: '$4,221',   delta: '-0.64%', up: false },
+    { sym: 'HYPE', px: '$38.21',   delta: '+12.84%', up: true, glow: true },
+  ];
+  const stats = [
+    { label: '24H VOL',     value: '$48.2B',  tone: '#fafafa' },
+    { label: 'OPEN INTEREST', value: '$24.1B', tone: '#fafafa' },
+    { label: 'STREAM RATE', value: '1,247/s', tone: PUMP },
+    { label: 'INFOHUB.IO',  value: '→',       tone: ACCENT, isLink: true },
+  ];
+
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      background: '#070809',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Ambient glows */}
+      <div style={{ position: 'absolute', top: -180, left: -100, width: 700, height: 700, borderRadius: '50%', background: `radial-gradient(circle, ${ACCENT}1c 0%, transparent 65%)`, display: 'flex' }} />
+      <div style={{ position: 'absolute', bottom: -100, right: 50, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(80,210,193,0.10) 0%, transparent 60%)', display: 'flex' }} />
+
+      {/* Top accent strip */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${ACCENT}, ${ACCENT_DARK}, ${ACCENT}, transparent)`, display: 'flex' }} />
+
+      <div style={{ display: 'flex', flex: 1, padding: '40px 48px 32px' }}>
+        {/* ── LEFT column ───────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', width: 580, paddingRight: 32 }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18 }}>
+            <span style={{ fontSize: 38, fontWeight: 900, color: '#fff', letterSpacing: -1.5, lineHeight: 1 }}>Info</span>
+            <span style={{
+              fontSize: 38, fontWeight: 900,
+              color: '#000', letterSpacing: -1.5, lineHeight: 1,
+              background: `linear-gradient(135deg, #FFB800, ${ACCENT}, ${ACCENT_DARK})`,
+              padding: '3px 10px', borderRadius: 8, marginLeft: 2,
+            }}>hub</span>
+          </div>
+
+          {/* Live tickers row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT, display: 'flex' }} />
+              <span style={{ fontSize: 12, fontWeight: 800, color: ACCENT, letterSpacing: 1.4, textTransform: 'uppercase' }}>LIVE</span>
+            </div>
+            <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.12)', display: 'flex' }} />
+            {tickers.slice(0, 2).map(t => (
+              <div key={t.sym} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#fafafa', letterSpacing: 0.4 }}>{t.sym}</span>
+                <span style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: 700, color: '#fafafa' }}>{t.px}</span>
+                <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: t.up ? PUMP : REKT }}>{t.delta}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+            {tickers.slice(2).map(t => (
+              <div key={t.sym} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{
+                  fontSize: 13, fontWeight: 800, color: t.glow ? '#50d2c1' : '#fafafa', letterSpacing: 0.4,
+                }}>{t.sym}</span>
+                <span style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: 700, color: '#fafafa' }}>{t.px}</span>
+                <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: t.up ? PUMP : REKT }}>{t.delta}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Headline (two lines, "tape" in orange) */}
+          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 22 }}>
+            <span style={{ fontSize: 92, fontWeight: 900, color: '#fafafa', letterSpacing: -4, lineHeight: 0.95, display: 'flex' }}>
+              Read
+            </span>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 92, fontWeight: 900, color: '#fafafa', letterSpacing: -4, lineHeight: 0.95 }}>the </span>
+              <span style={{
+                fontSize: 92, fontWeight: 900, letterSpacing: -4, lineHeight: 0.95,
+                background: `linear-gradient(135deg, #FFB800, ${ACCENT})`,
+                backgroundClip: 'text',
+                color: 'transparent',
+              }}>tape</span>
+              <span style={{ fontSize: 92, fontWeight: 900, color: ACCENT, letterSpacing: -4, lineHeight: 0.95 }}>.</span>
+              {/* Blinking cursor */}
+              <span style={{ width: 6, height: 70, background: ACCENT, marginLeft: 4, display: 'flex' }} />
+            </div>
+          </div>
+
+          {/* Subtitle */}
+          <div style={{ fontSize: 18, color: '#9ca3af', lineHeight: 1.5, maxWidth: 480, display: 'flex' }}>
+            Funding, OI &amp; liquidations from {ALL_EXCHANGES.length} venues — wired to one live data bus.
+          </div>
+        </div>
+
+        {/* ── RIGHT column ──────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <TapeFundingCard />
+        </div>
+      </div>
+
+      {/* ── Bottom stats strip ────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        padding: '0 48px 28px', gap: 32,
+      }}>
+        {stats.map((s, i) => (
+          <div key={s.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{
+              fontSize: s.isLink ? 24 : 28, fontWeight: 900, color: s.tone,
+              letterSpacing: -0.5, lineHeight: 1,
+            }}>
+              {s.value}
+            </span>
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: '#525252',
+              letterSpacing: 1.2, textTransform: 'uppercase',
+            }}>
+              {s.label}
+            </span>
+            {i < stats.length - 1 && (
+              <div style={{
+                position: 'absolute',
+                width: 1, height: 28,
+                background: 'rgba(255,255,255,0.06)',
+                marginLeft: 0,
+                display: 'none', // dividers handled by gap
+              }} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
 // Main handler
 // ────────────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
@@ -510,6 +772,13 @@ export async function GET(request: NextRequest) {
   const title = (searchParams.get('title') || 'Real-Time Derivatives Data').slice(0, 100);
   const description = (searchParams.get('desc') || `Funding Rates · Open Interest · Liquidations · ${ALL_EXCHANGES.length}+ Exchanges`).slice(0, 200);
   const variant = ((searchParams.get('v') || 'default').toLowerCase()) as Variant;
+
+  // "tape" is the May 2026 hero design — also serves as the new default
+  // since it's what we use across the site. Short-circuit and render its
+  // own JSX rather than slotting into the standard chrome.
+  if (variant === 'tape' || variant === 'default') {
+    return new ImageResponse(renderTapeImage(), { width: 1200, height: 630 });
+  }
 
   const badges = badgesForVariant(variant);
 
