@@ -192,7 +192,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/compare',            label: 'Compare',       color: MUTE, icon: I.scale },
   ]},
   { id: 'account', label: 'Account', items: [
-    { href: '/account',           label: 'Command Center', color: ACC,  icon: I.dash },
+    // /account redirects to /dashboard for legacy bookmarks
     { href: '/profile',           label: 'Profile',        color: MUTE, icon: I.user },
     { href: '/settings',          label: 'Settings',       color: MUTE, icon: I.settings },
     { href: '/login',             label: 'Sign In',        color: MUTE, icon: I.user },

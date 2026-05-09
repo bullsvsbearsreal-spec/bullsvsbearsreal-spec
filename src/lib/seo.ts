@@ -296,8 +296,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Scan for the largest price spreads across crypto exchanges in real time. Identify arbitrage opportunities across CEX and DEX venues.',
   },
   '/dashboard': {
-    title: 'Dashboard',
-    description: 'InfoHub crypto derivatives dashboard — funding rates, open interest, liquidations, spreads, and market data from 32 exchanges at a glance.',
+    title: 'Dashboard · Command Center',
+    description: 'Your InfoHub command center — equity, open positions, alerts, watched wallets, and connected exchanges in one personal view.',
   },
   '/account': {
     title: 'Account · Command Center',
