@@ -106,6 +106,10 @@ export default function BacktestPage() {
 
   // Derived stats not returned by the API — best/worst day-on-day move,
   // Calmar (annualised return / |MDD|), longest run underwater.
+  //
+  // For DCA the day-over-day delta on `valueUsd` mixes price action with
+  // new deposits. Subtract the day's deposit injection before computing
+  // the percentage so best/worst day reflect actual price moves.
   const derived = useMemo(() => {
     if (!result || result.series.length < 2) return null;
     const s = result.series;
@@ -114,12 +118,21 @@ export default function BacktestPage() {
     let longestUnderwater = 0;
     let runningMax = s[0].valueUsd;
     for (let i = 1; i < s.length; i++) {
-      const prev = s[i - 1].valueUsd, curr = s[i].valueUsd;
-      const pct = prev > 0 ? (curr - prev) / prev : 0;
-      if (pct > bestDay) bestDay = pct;
-      if (pct < worstDay) worstDay = pct;
-      if (curr > runningMax) {
-        runningMax = curr;
+      const prevVal = s[i - 1].valueUsd;
+      const currVal = s[i].valueUsd;
+      // Strip today's deposit injection — what would value be without the
+      // new buy? That's the apples-to-apples comparison vs yesterday.
+      const depDelta = s[i].depositedUsd - s[i - 1].depositedUsd;
+      const adjustedCurr = currVal - depDelta;
+      const pct = prevVal > 0 ? (adjustedCurr - prevVal) / prevVal : 0;
+      if (Number.isFinite(pct)) {
+        if (pct > bestDay) bestDay = pct;
+        if (pct < worstDay) worstDay = pct;
+      }
+      // Drawdown / underwater uses raw valueUsd because that's what the
+      // user actually has on the screen — including any same-day deposits.
+      if (currVal > runningMax) {
+        runningMax = currVal;
         if (underwaterStart != null) {
           longestUnderwater = Math.max(longestUnderwater, i - underwaterStart);
           underwaterStart = null;
@@ -133,7 +146,12 @@ export default function BacktestPage() {
     const days = s.length;
     const annReturn = days > 0 ? (result.totalReturnPct * 365) / days : 0;
     const calmar = result.maxDrawdownPct > 0 ? annReturn / result.maxDrawdownPct : 0;
-    return { bestDayPct: bestDay * 100, worstDayPct: worstDay * 100, longestUnderwater, calmar };
+    return {
+      bestDayPct: Number.isFinite(bestDay) ? bestDay * 100 : 0,
+      worstDayPct: Number.isFinite(worstDay) ? worstDay * 100 : 0,
+      longestUnderwater,
+      calmar,
+    };
   }, [result]);
 
   // Build cumulative-PnL chart from series.
