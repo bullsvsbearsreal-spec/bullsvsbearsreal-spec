@@ -205,16 +205,21 @@ export default function DashboardPage() {
     ]);
     // Bail if aborted mid-flight — don't setState on an unmounted component.
     if (signal?.aborted) return;
-    if (s.status === 'fulfilled' && s.value) setStats(s.value);
-    if (p.status === 'fulfilled' && p.value) setPositions(p.value);
-    if (w.status === 'fulfilled' && w.value) setWallets(w.value.wallets ?? []);
-    if (k.status === 'fulfilled' && k.value) setKeys(k.value.keys ?? []);
-    if (watchRes.status === 'fulfilled' && watchRes.value) setWatch(watchRes.value);
-    if (tg.status === 'fulfilled' && tg.value) setTelegramLinked(!!tg.value.linked);
-    if (history.status === 'fulfilled' && history.value?.points) {
+    // Re-check abort before EACH setState. Unmount can race in between
+    // the initial check and any individual setter, so we tighten the
+    // window by re-checking on every line. Cheap (just a getter), worth
+    // it for the no-warning unmount.
+    const stillAlive = () => !signal?.aborted;
+    if (stillAlive() && s.status === 'fulfilled' && s.value) setStats(s.value);
+    if (stillAlive() && p.status === 'fulfilled' && p.value) setPositions(p.value);
+    if (stillAlive() && w.status === 'fulfilled' && w.value) setWallets(w.value.wallets ?? []);
+    if (stillAlive() && k.status === 'fulfilled' && k.value) setKeys(k.value.keys ?? []);
+    if (stillAlive() && watchRes.status === 'fulfilled' && watchRes.value) setWatch(watchRes.value);
+    if (stillAlive() && tg.status === 'fulfilled' && tg.value) setTelegramLinked(!!tg.value.linked);
+    if (stillAlive() && history.status === 'fulfilled' && history.value?.points) {
       setEquityHistory(history.value.points);
     }
-    setInitialized(true);
+    if (stillAlive()) setInitialized(true);
   }, [userId]);
 
   useEffect(() => {
@@ -488,7 +493,11 @@ export default function DashboardPage() {
 
           {/* ─── Open positions + Connected exchanges ──────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
-            <OpenPositionsTable positions={positions?.positions ?? []} hasData={positions != null} />
+            <OpenPositionsTable
+              positions={positions?.positions ?? []}
+              hasData={positions != null}
+              loading={!initialized}
+            />
             <ConnectedExchangesPanel wallets={wallets} keys={keys} loading={!initialized} />
           </div>
 
@@ -708,11 +717,16 @@ function EquityChartPanel({
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold font-mono tabular-nums text-white">{fmtUsd(equity, { compact: true })}</div>
-          <div className={`text-[11px] font-mono tabular-nums ${seriesDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {fmtUsd(seriesDelta, { compact: true, signed: true })}
-            {seriesPctDelta != null && ` (${fmtPct(seriesPctDelta)})`}
-            <span className="text-neutral-600 ml-1">{hasHistory ? `${history.length}d` : 'open'}</span>
-          </div>
+          {/* Only show the delta sub-line when there's actually data — otherwise
+              we'd render "+$0 (open)" for new users with empty equity, which
+              is misleading (looks like a real "+0" change). */}
+          {hasData && (
+            <div className={`text-[11px] font-mono tabular-nums ${seriesDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {fmtUsd(seriesDelta, { compact: true, signed: true })}
+              {seriesPctDelta != null && ` (${fmtPct(seriesPctDelta)})`}
+              <span className="text-neutral-600 ml-1">{hasHistory ? `${series.length - 1}d` : 'open'}</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -907,7 +921,7 @@ function UsageBar({ label, used, cap }: { label: string; used: number; cap: numb
 // (uses Briefcase icon — Wallet would imply a balance/wallet view, not
 // trading book)
 
-function OpenPositionsTable({ positions, hasData }: { positions: PositionRow[]; hasData: boolean }) {
+function OpenPositionsTable({ positions, hasData, loading }: { positions: PositionRow[]; hasData: boolean; loading?: boolean }) {
   const top = positions.slice(0, 5);
   return (
     <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
@@ -929,9 +943,13 @@ function OpenPositionsTable({ positions, hasData }: { positions: PositionRow[]; 
         </Link>
       </header>
 
-      {!hasData ? (
-        <div className="rounded-lg border border-dashed border-white/[0.08] py-8 text-center text-xs text-neutral-500">
-          Loading positions…
+      {loading && !hasData ? (
+        // Initial fetch in flight — skeleton, not "loading…" text that
+        // gets stuck if the fetch fails (positions stays null).
+        <div className="space-y-1.5">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-12 rounded-lg border border-dashed border-white/[0.04] bg-white/[0.01] animate-pulse" />
+          ))}
         </div>
       ) : top.length === 0 ? (
         <div className="rounded-lg border border-dashed border-white/[0.08] py-8 text-center text-xs text-neutral-500">
@@ -1067,9 +1085,13 @@ function ConnectedExchangesPanel({
               key={v.key}
               className="flex items-center gap-3 px-3 py-2 rounded-lg border border-white/[0.04] hover:border-white/[0.08] hover:bg-white/[0.02] transition-all"
             >
-              <div className={`w-2 h-2 rounded-full shrink-0 ${
-                v.status === 'ok' ? 'bg-emerald-400' : v.status === 'error' ? 'bg-rose-400' : 'bg-amber-400'
-              }`} />
+              <div
+                role="img"
+                aria-label={`status: ${v.status}`}
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  v.status === 'ok' ? 'bg-emerald-400' : v.status === 'error' ? 'bg-rose-400' : 'bg-amber-400'
+                }`}
+              />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{v.name}</div>
                 <div className="text-[10px] text-neutral-500 truncate">{v.subtitle}</div>
@@ -1180,7 +1202,10 @@ function buildMorningBrief(inp: BriefInputs): string[] {
     const pnlPct = (inp.openUnrealized / inp.equity) * 100;
     if (Math.abs(pnlPct) >= 0.1) {
       lines.push(
-        `Book is ${inp.openUnrealized >= 0 ? 'up' : 'down'} ${fmtUsd(Math.abs(inp.openUnrealized), { compact: true })} (${fmtPct(Math.abs(pnlPct))}) on open positions.`,
+        // Sign is communicated via the up/down word — don't ALSO put a "+"
+        // inside the parens (fmtPct would prepend "+" to the abs value,
+        // producing "Book is down $500 (+2.34%)" which contradicts itself).
+        `Book is ${inp.openUnrealized >= 0 ? 'up' : 'down'} ${fmtUsd(Math.abs(inp.openUnrealized), { compact: true })} (${Math.abs(pnlPct).toFixed(2)}%) on open positions.`,
       );
     } else {
       lines.push('Book is roughly flat on open positions.');
