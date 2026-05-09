@@ -257,7 +257,10 @@ export default function AccountPage() {
   }), [stats, positions, watch]);
 
   const equity = positions?.summary.equity ?? 0;
-  const unrealized24h = positions?.summary.totalUnrealizedPnl ?? 0;
+  // Sum of unrealised PnL across all open positions — NOT a 24h delta.
+  // Real 24h PnL needs a snapshot from yesterday; until that lands,
+  // we surface "open PnL" honestly rather than mislabeling it.
+  const openUnrealized = positions?.summary.totalUnrealizedPnl ?? 0;
   const totalPositions = positions?.positions.length ?? 0;
   // Count unique venues across wallets (by chain) and exchange keys (by exchange).
   // A user with 3 EVM addresses on Arbitrum + 1 Binance key counts as 2 venues.
@@ -274,12 +277,12 @@ export default function AccountPage() {
   const morningBrief = useMemo(() => buildMorningBrief({
     name: userName.split(' ')[0],
     equity,
-    unrealized24h,
+    openUnrealized,
     notifFired: stats?.recentNotifications?.length ?? 0,
     eventsLast24h,
     watchedCount,
     positions: positions?.positions ?? [],
-  }), [userName, equity, unrealized24h, stats, eventsLast24h, watchedCount, positions]);
+  }), [userName, equity, openUnrealized, stats, eventsLast24h, watchedCount, positions]);
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -388,11 +391,11 @@ export default function AccountPage() {
               href="/positions"
             />
             <StatCell
-              label="P&L 24h"
-              value={fmtUsd(unrealized24h, { compact: true, signed: true })}
-              hint={equity > 0 ? fmtPct((unrealized24h / equity) * 100) : '—'}
-              tone={unrealized24h >= 0 ? 'emerald' : 'rose'}
-              icon={unrealized24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+              label="Open PnL"
+              value={fmtUsd(openUnrealized, { compact: true, signed: true })}
+              hint={equity > 0 ? fmtPct((openUnrealized / equity) * 100) : '—'}
+              tone={openUnrealized >= 0 ? 'emerald' : 'rose'}
+              icon={openUnrealized >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               href="/positions"
             />
             <StatCell
@@ -433,7 +436,7 @@ export default function AccountPage() {
           <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
             <EquityChartPanel
               equity={equity}
-              unrealized24h={unrealized24h}
+              openUnrealized={openUnrealized}
               positions={positions?.positions ?? []}
               hasData={(positions?.positions.length ?? 0) > 0}
             />
@@ -607,12 +610,12 @@ function StatCell({
 
 function EquityChartPanel({
   equity,
-  unrealized24h,
+  openUnrealized,
   positions,
   hasData,
 }: {
   equity: number;
-  unrealized24h: number;
+  openUnrealized: number;
   positions: PositionRow[];
   hasData: boolean;
 }) {
@@ -620,7 +623,7 @@ function EquityChartPanel({
   // backward by the inverse of the unrealised PnL — gives a credible curve
   // shape without inventing fake history. Real history will land when the
   // portfolio-snapshot cron has more than a single user populated.
-  const series = useMemo(() => buildSparkline(equity, unrealized24h, 30), [equity, unrealized24h]);
+  const series = useMemo(() => buildSparkline(equity, openUnrealized, 30), [equity, openUnrealized]);
   // Top 3 positions by absolute PnL — surface them as "alert markers"
   const topMovers = useMemo(
     () =>
@@ -639,18 +642,18 @@ function EquityChartPanel({
             <Activity className="w-4 h-4 text-hub-yellow" />
             Account equity
           </h2>
-          <p className="text-[11px] text-neutral-500 mt-0.5">1M view · derived from open positions · live mark</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">Derived from open positions · live mark</p>
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold font-mono tabular-nums text-white">{fmtUsd(equity, { compact: true })}</div>
-          <div className={`text-[11px] font-mono tabular-nums ${unrealized24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {fmtUsd(unrealized24h, { compact: true, signed: true })} 24h
+          <div className={`text-[11px] font-mono tabular-nums ${openUnrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {fmtUsd(openUnrealized, { compact: true, signed: true })} open
           </div>
         </div>
       </header>
 
       {hasData ? (
-        <Sparkline data={series} positive={unrealized24h >= 0} />
+        <Sparkline data={series} positive={openUnrealized >= 0} />
       ) : (
         <div className="h-32 flex items-center justify-center rounded-lg border border-dashed border-white/[0.08] text-xs text-neutral-500">
           Connect a wallet or exchange in{' '}
@@ -1045,7 +1048,7 @@ function computeStreak(inp: StreakInputs): number {
 interface BriefInputs {
   name: string;
   equity: number;
-  unrealized24h: number;
+  openUnrealized: number;
   notifFired: number;
   eventsLast24h: number;
   watchedCount: number;
@@ -1059,18 +1062,18 @@ function buildMorningBrief(inp: BriefInputs): string[] {
   lines.push(`${greet}, ${inp.name}.`);
 
   if (inp.equity > 0) {
-    const pnlPct = (inp.unrealized24h / inp.equity) * 100;
+    const pnlPct = (inp.openUnrealized / inp.equity) * 100;
     if (Math.abs(pnlPct) >= 0.1) {
       lines.push(
-        `Book is ${inp.unrealized24h >= 0 ? 'up' : 'down'} ${fmtUsd(Math.abs(inp.unrealized24h), { compact: true })} (${fmtPct(Math.abs(pnlPct))}) on the 24h.`,
+        `Book is ${inp.openUnrealized >= 0 ? 'up' : 'down'} ${fmtUsd(Math.abs(inp.openUnrealized), { compact: true })} (${fmtPct(Math.abs(pnlPct))}) on open positions.`,
       );
     } else {
-      lines.push('Book is roughly flat on the 24h.');
+      lines.push('Book is roughly flat on open positions.');
     }
   }
 
   if (inp.notifFired > 0) {
-    lines.push(`${inp.notifFired} alert${inp.notifFired === 1 ? '' : 's'} fired in the last 24h.`);
+    lines.push(`${inp.notifFired} alert${inp.notifFired === 1 ? '' : 's'} fired recently.`);
   }
 
   if (inp.watchedCount > 0 && inp.eventsLast24h > 0) {
