@@ -259,8 +259,12 @@ export default function AccountPage() {
   const equity = positions?.summary.equity ?? 0;
   const unrealized24h = positions?.summary.totalUnrealizedPnl ?? 0;
   const totalPositions = positions?.positions.length ?? 0;
-  const exchangesConnected = (wallets.length > 0 ? 1 : 0)
-    + new Set(keys.map(k => k.exchange.toLowerCase())).size;
+  // Count unique venues across wallets (by chain) and exchange keys (by exchange).
+  // A user with 3 EVM addresses on Arbitrum + 1 Binance key counts as 2 venues.
+  const venueSet = new Set<string>();
+  for (const w of wallets) venueSet.add(`chain:${w.chain.toLowerCase()}`);
+  for (const k of keys) venueSet.add(`exchange:${k.exchange.toLowerCase()}`);
+  const exchangesConnected = venueSet.size;
   const exchangesPossible = 4; // HL / Binance / OKX / gTrade reachable target
   const watchedCount = watch?.wallets.length ?? 0;
   const eventsLast24h = (watch?.events ?? []).filter(
@@ -315,21 +319,23 @@ export default function AccountPage() {
                         })}
                       </span>
                     )}
-                    <span className="inline-flex items-center gap-1 text-amber-400">
-                      <Flame className="w-3 h-3" />
-                      <span className="font-mono font-bold">{streak}-day</span> streak
-                    </span>
+                    {streak > 0 && (
+                      <span className="inline-flex items-center gap-1 text-amber-400">
+                        <Flame className="w-3 h-3" />
+                        <span className="font-mono font-bold">{streak}-day</span> streak
+                      </span>
+                    )}
                   </div>
                   {/* Action buttons */}
                   <div className="mt-3 flex items-center gap-2 flex-wrap">
                     <Link
-                      href="/alerts/new"
+                      href="/alerts"
                       className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-hub-yellow text-black hover:bg-hub-yellow/90 transition-all"
                     >
                       <Plus className="w-3.5 h-3.5" /> Alert
                     </Link>
                     <Link
-                      href="/screeners"
+                      href="/screener"
                       className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/[0.12] bg-white/[0.04] text-white hover:bg-white/[0.08] transition-all"
                     >
                       <Filter className="w-3.5 h-3.5" /> Run screener
