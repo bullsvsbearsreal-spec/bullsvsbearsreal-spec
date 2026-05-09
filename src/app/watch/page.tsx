@@ -17,6 +17,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
   Eye, Plus, Trash2, Loader2, Activity, ArrowRight, ExternalLink, Shield,
+  Settings, X, Save,
 } from 'lucide-react';
 
 interface Wallet {
@@ -132,6 +133,7 @@ function WatchPageInner() {
   const [labelInput, setLabelInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Wallet | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -348,6 +350,13 @@ function WatchPageInner() {
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
+                          onClick={() => setEditing(w)}
+                          title="Edit triggers + thresholds"
+                          className="p-1.5 rounded-lg border border-white/[0.06] text-neutral-500 hover:text-hub-yellow hover:border-hub-yellow/30 transition-colors"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleRemove(w.id)}
                           title="Remove"
                           className="p-1.5 rounded-lg border border-white/[0.06] text-neutral-500 hover:text-rose-400 hover:border-rose-400/30 transition-colors"
@@ -408,6 +417,16 @@ function WatchPageInner() {
           if you haven&apos;t already, or alerts won&apos;t deliver.
         </p>
       </main>
+
+      {/* Edit modal — per-wallet trigger toggles + threshold tuning */}
+      {editing && (
+        <EditWalletModal
+          wallet={editing}
+          onClose={() => setEditing(null)}
+          onSaved={async () => { setEditing(null); await load(); }}
+        />
+      )}
+
       <Footer />
     </div>
   );
@@ -436,6 +455,207 @@ function VenueChip({ venue, positions, compact = false }: { venue: 'hyperliquid'
         <span className="font-mono opacity-80">· {positions}</span>
       )}
     </span>
+  );
+}
+
+/** Per-wallet edit modal — lets the user toggle individual triggers
+ *  and tune the four numeric thresholds (size %, liq %, PnL $, funding $).
+ *  Persists via PUT /api/watch/wallets/[id]; reload on save. */
+function EditWalletModal({
+  wallet, onClose, onSaved,
+}: { wallet: Wallet; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [label, setLabel] = useState(wallet.label ?? '');
+  const [opens, setOpens] = useState(wallet.trigger_opened);
+  const [closes, setCloses] = useState(wallet.trigger_closed);
+  const [sizeOn, setSizeOn] = useState(wallet.trigger_size_changed);
+  const [liqOn, setLiqOn] = useState(wallet.trigger_liq_danger);
+  const [pnlOn, setPnlOn] = useState(wallet.trigger_realized_pnl);
+  const [fundingOn, setFundingOn] = useState(wallet.trigger_funding_paid);
+  const [sizePct, setSizePct] = useState(wallet.size_change_pct);
+  const [liqPct, setLiqPct] = useState(wallet.liq_danger_pct);
+  const [pnlUsd, setPnlUsd] = useState(wallet.realized_pnl_usd);
+  const [fundingUsd, setFundingUsd] = useState(wallet.funding_paid_usd);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = async () => {
+    setSaving(true);
+    setErr(null);
+    try {
+      const body = {
+        label: label.trim() || null,
+        triggerOpened: opens,
+        triggerClosed: closes,
+        triggerSizeChanged: sizeOn,
+        triggerLiqDanger: liqOn,
+        triggerRealizedPnl: pnlOn,
+        triggerFundingPaid: fundingOn,
+        sizeChangePct: sizePct,
+        liqDangerPct: liqPct,
+        realizedPnlUsd: pnlUsd,
+        fundingPaidUsd: fundingUsd,
+      };
+      const res = await fetch(`/api/watch/wallets/${wallet.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+      await onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Save failed');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md max-h-[88vh] overflow-y-auto rounded-2xl border border-white/[0.1] bg-[#111] shadow-2xl">
+        <header className="sticky top-0 z-10 px-5 py-3.5 border-b border-white/[0.06] bg-[#111]/95 backdrop-blur-md flex items-center gap-2">
+          <Settings className="w-4 h-4 text-hub-yellow" />
+          <h3 className="text-sm font-bold text-white">Edit watch</h3>
+          <span className="text-[10px] font-mono text-neutral-600 truncate flex-1">{shortAddr(wallet.address)}</span>
+          <button onClick={onClose} className="p-1 text-neutral-500 hover:text-white" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
+        </header>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Label */}
+          <label className="block">
+            <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Label</div>
+            <input
+              type="text" value={label}
+              onChange={e => setLabel(e.target.value)}
+              placeholder="Optional nickname for this wallet"
+              maxLength={80}
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+            />
+          </label>
+
+          {/* Trigger toggles */}
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-2">Triggers</div>
+            <div className="space-y-1.5">
+              <ToggleRow label="Position opened"  desc="Any new symbol on the book"            on={opens}     onChange={setOpens} />
+              <ToggleRow label="Position closed"  desc="Symbol gone from book — with realized PnL" on={closes} onChange={setCloses} />
+              <ToggleRow label="Size changed"     desc="Notional moved by ≥ threshold"          on={sizeOn}    onChange={setSizeOn} />
+              <ToggleRow label="Near liquidation" desc="Distance to liq dropped under threshold" on={liqOn}     onChange={setLiqOn} />
+              <ToggleRow label="Realized PnL"     desc="Closed trade with |PnL| ≥ threshold"    on={pnlOn}     onChange={setPnlOn} />
+              <ToggleRow label="Funding paid"     desc="Cumulative funding Δ ≥ threshold (HL only)" on={fundingOn} onChange={setFundingOn} />
+            </div>
+          </div>
+
+          {/* Numeric thresholds */}
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-2">Thresholds</div>
+            <ThresholdRow
+              label="Size change"
+              value={`≥${(sizePct * 100).toFixed(0)}%`}
+              disabled={!sizeOn}
+            >
+              <input
+                type="range" min={0.01} max={0.50} step={0.01}
+                value={sizePct} onChange={e => setSizePct(Number(e.target.value))}
+                disabled={!sizeOn}
+                className="w-full disabled:opacity-40"
+              />
+            </ThresholdRow>
+            <ThresholdRow
+              label="Liq distance"
+              value={`<${(liqPct * 100).toFixed(0)}%`}
+              disabled={!liqOn}
+            >
+              <input
+                type="range" min={0.01} max={0.20} step={0.01}
+                value={liqPct} onChange={e => setLiqPct(Number(e.target.value))}
+                disabled={!liqOn}
+                className="w-full disabled:opacity-40"
+              />
+            </ThresholdRow>
+            <ThresholdRow
+              label="Realized PnL"
+              value={`≥${fmtUsd(pnlUsd)}`}
+              disabled={!pnlOn}
+            >
+              <input
+                type="range" min={100} max={100_000} step={100}
+                value={pnlUsd} onChange={e => setPnlUsd(Number(e.target.value))}
+                disabled={!pnlOn}
+                className="w-full disabled:opacity-40"
+              />
+            </ThresholdRow>
+            <ThresholdRow
+              label="Funding paid"
+              value={`≥${fmtUsd(fundingUsd)}`}
+              disabled={!fundingOn}
+            >
+              <input
+                type="range" min={100} max={100_000} step={100}
+                value={fundingUsd} onChange={e => setFundingUsd(Number(e.target.value))}
+                disabled={!fundingOn}
+                className="w-full disabled:opacity-40"
+              />
+            </ThresholdRow>
+          </div>
+
+          {err && <div className="text-[11px] text-rose-400">{err}</div>}
+        </div>
+
+        <footer className="sticky bottom-0 z-10 px-5 py-3 border-t border-white/[0.06] bg-[#111]/95 backdrop-blur-md flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="px-3 py-1.5 text-xs rounded-lg border border-white/[0.1] text-neutral-300 hover:bg-white/[0.04] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={save} disabled={saving}
+            className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-hub-yellow text-black hover:bg-hub-yellow/90 disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+            Save
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function ToggleRow({ label, desc, on, onChange }: { label: string; desc: string; on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-white/[0.03] text-left transition-colors"
+    >
+      <div className={`flex-shrink-0 w-8 h-4.5 rounded-full transition-colors relative ${on ? 'bg-hub-yellow' : 'bg-white/[0.08]'}`} style={{ height: 18 }}>
+        <span
+          className="absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform"
+          style={{ left: on ? 'calc(100% - 16px)' : '2px' }}
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={`text-xs font-semibold ${on ? 'text-white' : 'text-neutral-400'}`}>{label}</div>
+        <div className="text-[10px] text-neutral-600">{desc}</div>
+      </div>
+    </button>
+  );
+}
+
+function ThresholdRow({ label, value, disabled, children }: { label: string; value: string; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <div className={`px-2.5 py-1.5 ${disabled ? 'opacity-50' : ''}`}>
+      <div className="flex items-baseline justify-between mb-0.5">
+        <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">{label}</span>
+        <span className={`text-xs font-mono tabular-nums ${disabled ? 'text-neutral-600' : 'text-hub-yellow'}`}>{value}</span>
+      </div>
+      {children}
+    </div>
   );
 }
 
