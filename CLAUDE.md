@@ -39,7 +39,10 @@ ssh root@46.101.247.54
 systemctl status infohub-aggregator
 journalctl -u infohub-aggregator -n 200 -f
 
-# Crons (12 timers, all hit info-hub.io/api/cron/*)
+# Crons (12 timers, all hit info-hub.io/api/cron/*).
+# Note: /api/cron/watch-hl-wallets does NOT have its own timer —
+# it piggybacks on the snapshot cron's tail-call (see "Wallet
+# Watch" section below). One cron handles both jobs every 60s.
 systemctl list-timers --all 'infohub-cron-*'
 journalctl -u 'infohub-cron@*' --since '10 minutes ago' --output=cat | grep 'HTTP'
 
@@ -124,6 +127,40 @@ export async function GET() {
 For per-symbol routes, use `Map<symbol, entry>` instead of a single slot —
 otherwise switching symbols trashes the cache (the original liquidation-map
 bug, which produced 8s loads on every BTC↔ETH↔SOL toggle).
+
+### Wallet Watch — multi-venue position alerter (May 2026)
+
+`/watch` lets users subscribe to any HL or gTrade wallet and get
+Telegram pings on opens/closes/size-changes/liq-danger/realized-PnL/
+funding-paid. Architecture:
+
+| Layer | File | Purpose |
+| --- | --- | --- |
+| Schema | `lib/db/index.ts` | 4 tables: `hl_watched_wallets`, `hl_position_snapshots` (PK is `(address, venue)`), `hl_position_events`, `hl_event_notifications` (per-user dedup) |
+| Lib (pure) | `lib/hl-watch.ts` | Types + `fetchVenueState(addr, venue)` dispatcher + `diffSnapshots` + `applyThresholds` + `formatEvent` |
+| Lib (runtime) | `lib/hl-watch-runner.ts` | `runWatchTick()` with process-local mutex + 30s cooldown |
+| Cron entry | `/api/cron/watch-hl-wallets` | Thin wrapper: `verifyCronAuth()` → `runWatchTick()` |
+| **Trigger** | `/api/cron/snapshot` tail | Awaits `runWatchTick()` after the snapshot work — piggybacks on the existing 60s droplet timer so we don't need a new systemd timer |
+| API | `/api/watch/wallets[/[id]]` | NextAuth-gated CRUD |
+| API | `/api/watch/test-ping` | Sends a synthetic Telegram so users can verify delivery |
+| UI | `/watch` page | List + add form + edit modal + suggested whales + event log |
+
+Key gotchas:
+- Snapshot row PK is **`(address, venue)`** — the migration ALTERs an
+  older single-column PK shape if it exists. ON CONFLICT must reference
+  both.
+- HL `clearinghouseState` doesn't return mark price — derive it via
+  `mark = entryPx + unrealizedPnl / szi`. Liq-danger needs mark, NOT
+  entry, or it'll never fire (entry is constant).
+- gTrade reader doesn't surface running cumulative funding → we set
+  `cumFundingAllTime = 0` so `funding_paid` events never emit for
+  gTrade wallets.
+- The mutex in `runWatchTick` is process-local. Single-instance DO
+  App Platform = fine. If we ever scale out, the dedup needs to move
+  to DB advisory locks.
+- 45 unit tests cover diff/threshold/format edge cases. Cron-runner
+  level (mutex/cooldown) is currently uncovered — extract gating into
+  a pure helper if you need to add tests.
 
 ### Don't fetch internal `/api/openinterest` style giant payloads to filter
 one symbol — refactor the underlying logic into `lib/` and import directly.
