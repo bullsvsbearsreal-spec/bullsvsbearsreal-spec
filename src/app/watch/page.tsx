@@ -17,7 +17,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
   Eye, Plus, Trash2, Loader2, Activity, ArrowRight, ExternalLink, Shield,
-  Settings, X, Save,
+  Settings, X, Save, Send, CheckCircle2,
 } from 'lucide-react';
 
 interface Wallet {
@@ -134,6 +134,28 @@ function WatchPageInner() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Wallet | null>(null);
+  const [pingState, setPingState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [pingMsg, setPingMsg] = useState<string | null>(null);
+
+  const handleTestPing = useCallback(async () => {
+    setPingState('sending');
+    setPingMsg(null);
+    try {
+      const res = await fetch('/api/watch/test-ping', { method: 'POST' });
+      const j = await res.json();
+      if (!res.ok || !j.ok) {
+        setPingState('error');
+        setPingMsg(j.error || `HTTP ${res.status}`);
+        return;
+      }
+      setPingState('sent');
+      setPingMsg('Check Telegram — sent.');
+      setTimeout(() => { setPingState('idle'); setPingMsg(null); }, 4000);
+    } catch (e) {
+      setPingState('error');
+      setPingMsg(e instanceof Error ? e.message : 'Request failed');
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -233,7 +255,7 @@ function WatchPageInner() {
       <main id="main-content" className="text-white max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <Eye className="w-5 h-5 text-hub-yellow" />
             <h1 className="text-2xl font-bold bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
               Wallet Watch
@@ -244,10 +266,36 @@ function WatchPageInner() {
             <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 border border-cyan-400/30 bg-cyan-500/10 px-1.5 py-0.5 rounded">
               gTrade
             </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={handleTestPing}
+                disabled={pingState === 'sending'}
+                className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                  pingState === 'sent'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-400/40'
+                    : pingState === 'error'
+                      ? 'bg-rose-500/10 text-rose-300 border-rose-400/40'
+                      : 'bg-white/[0.04] text-neutral-300 border-white/[0.08] hover:bg-white/[0.06] hover:text-white'
+                }`}
+                title="Send a test message to your linked Telegram chat"
+              >
+                {pingState === 'sending'
+                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                  : pingState === 'sent'
+                    ? <CheckCircle2 className="w-3 h-3" />
+                    : <Send className="w-3 h-3" />}
+                {pingState === 'sending' ? 'Sending…' : pingState === 'sent' ? 'Sent' : 'Test ping'}
+              </button>
+            </div>
           </div>
           <p className="text-sm text-neutral-500 max-w-2xl">
             Get Telegram pings when any wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding — across Hyperliquid <em>and</em> gTrade (Arbitrum). Polled every 60s; pings deliver in &lt;90s.
           </p>
+          {pingMsg && (
+            <p className={`text-[11px] mt-2 ${pingState === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {pingMsg}
+            </p>
+          )}
         </header>
 
         {/* Add form */}
