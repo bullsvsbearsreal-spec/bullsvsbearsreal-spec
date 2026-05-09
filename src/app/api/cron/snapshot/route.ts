@@ -252,6 +252,29 @@ export async function GET(request: NextRequest) {
       fundingInserted, oiInserted, spreadInserted,
     }).catch(e => console.error('[cron:snapshot] heartbeat error:', e));
 
+    // ── Tail-call: piggyback the wallet watcher onto the existing 60s
+    // snapshot timer so /watch alerts fire without needing a separate
+    // systemd timer entry on the droplet. Fire-and-forget so a slow
+    // watcher run doesn't push snapshot past its maxDuration. Auth uses
+    // the same CRON_SECRET the snapshot itself was called with, so the
+    // watch-hl-wallets endpoint accepts it as a legitimate cron request.
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
+      const cronSecret = process.env.CRON_SECRET || '';
+      if (cronSecret) {
+        // Don't await — watcher runs in its own request context. We spawn
+        // it, log any error, and return our own response immediately.
+        fetch(`${baseUrl}/api/cron/watch-hl-wallets`, {
+          headers: { Authorization: `Bearer ${cronSecret}` },
+          signal: AbortSignal.timeout(55_000),
+        }).then(r => {
+          if (!r.ok) console.warn(`[cron:snapshot→watch] HTTP ${r.status}`);
+        }).catch(e => console.warn('[cron:snapshot→watch] fetch error:', e instanceof Error ? e.message : e));
+      }
+    } catch (e) {
+      console.warn('[cron:snapshot→watch] failed to schedule:', e);
+    }
+
     return NextResponse.json({
       ok: true,
       runType: isFullRun ? 'full' : 'price-only',
