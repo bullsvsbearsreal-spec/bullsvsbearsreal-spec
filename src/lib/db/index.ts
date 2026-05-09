@@ -435,10 +435,14 @@ async function _doInitDB(): Promise<void> {
       PRIMARY KEY (address, venue)
     )
   `;
-  // Migration: if an older single-PK shape exists, add the venue column +
-  // composite key. ALTER TABLE IF NOT EXISTS isn't a thing in PG, so guard
-  // each step against "duplicate column" / "invalid PK" with try-catch.
+  // Migration: if an older single-column PK shape already exists, add the
+  // venue column then swap the PK to the composite (address, venue) so the
+  // ON CONFLICT (address, venue) upsert in the cron has a matching unique
+  // constraint to target. Each step is guarded so it's idempotent and
+  // safe on fresh installs.
   try { await sql`ALTER TABLE hl_position_snapshots ADD COLUMN IF NOT EXISTS venue TEXT NOT NULL DEFAULT 'hyperliquid'` } catch {}
+  try { await sql`ALTER TABLE hl_position_snapshots DROP CONSTRAINT IF EXISTS hl_position_snapshots_pkey` } catch {}
+  try { await sql`ALTER TABLE hl_position_snapshots ADD PRIMARY KEY (address, venue)` } catch {}
   await sql`CREATE INDEX IF NOT EXISTS idx_hl_snap_ts ON hl_position_snapshots(ts DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_hl_snap_addr_venue ON hl_position_snapshots(address, venue)`;
 

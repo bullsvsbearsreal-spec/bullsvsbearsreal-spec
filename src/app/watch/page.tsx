@@ -258,7 +258,7 @@ function WatchPageInner() {
             <input
               type="text" value={addrInput}
               onChange={e => { setAddrInput(e.target.value); setError(null); }}
-              placeholder="0x… any Hyperliquid address"
+              placeholder="0x… any Hyperliquid or gTrade wallet"
               className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white font-mono placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
               autoComplete="off" spellCheck={false}
             />
