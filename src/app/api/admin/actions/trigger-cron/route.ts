@@ -42,6 +42,7 @@ const ALLOWED_CRONS: Record<string, { description: string; estTimeoutMs: number 
   'social-fetch':        { description: 'KOL Twitter/X cache refresh',    estTimeoutMs: 30_000 },
   'sync-positions':      { description: 'User connected-exchange sync',   estTimeoutMs: 30_000 },
   'alerts':              { description: 'Alert evaluation pass',          estTimeoutMs: 30_000 },
+  'watch-hl-wallets':    { description: 'HL wallet watch — diff + Telegram', estTimeoutMs: 60_000 },
 };
 
 export async function POST(req: NextRequest) {

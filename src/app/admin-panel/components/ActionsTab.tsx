@@ -50,6 +50,7 @@ const ACTIONS: ActionDef[] = [
   { key: 'whale-trades', group: 'data', icon: <Activity className="w-4 h-4" />, label: 'Refresh Whale Trades', desc: 'Detect new whale DEX swaps (cron: every 2m)', risk: 'safe', adminOnly: false, cron: 'whale-trades' },
   { key: 'ingest-liquidations', group: 'data', icon: <Activity className="w-4 h-4" />, label: 'Ingest Liquidations', desc: 'Pull recent liq events into DB (cron: every 1m)', risk: 'safe', adminOnly: false, cron: 'ingest-liquidations' },
   { key: 'social-fetch', group: 'data', icon: <RefreshCw className="w-4 h-4" />, label: 'Refresh KOL Feed', desc: 'Twitter/X cache for /social KOL list (cron: every 15m)', risk: 'safe', adminOnly: false, cron: 'social-fetch' },
+  { key: 'watch-hl-wallets', group: 'data', icon: <Activity className="w-4 h-4" />, label: 'Run Wallet Watch', desc: 'Diff HL positions for every watched wallet + send Telegram pings (cron: every 1m)', risk: 'safe', adminOnly: false, cron: 'watch-hl-wallets' },
 
   // ─── Maintenance ────────────────────────────────────────────────
   { key: 'flush-cache', group: 'maintenance', icon: <Trash2 className="w-4 h-4" />, label: 'Flush API Cache', desc: 'Clear all cached API responses. Next requests will be slower.', risk: 'destructive', adminOnly: true, customHandler: '/api/admin/actions/flush-cache' },

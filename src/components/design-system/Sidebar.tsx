@@ -100,6 +100,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/liquidation-levels',       label: 'Liq Levels',      color: REKT, icon: I.liqLevels },
     { href: '/liq-calculator',           label: 'Liq Calculator',  color: REKT, icon: I.shield },
     { href: '/whale-liq',                label: 'Whale Liq Roulette', color: REKT, icon: I.flame },
+    { href: '/watch',                    label: 'Wallet Watch',    color: ACC,  icon: I.watch },
     { href: '/leverage',                 label: 'Leverage',        color: REKT, icon: I.zap },
     { href: '/position-size',            label: 'Position Sizer',  color: REKT, icon: I.scale },
     { href: '/whale-alert',              label: 'Whale Alert',     color: PUR,  icon: I.whale },

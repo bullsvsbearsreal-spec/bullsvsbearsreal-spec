@@ -393,6 +393,73 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_whale_notif_owner ON whale_alert_notifications(owner_id, sent_at DESC)`;
 
+  // ── Hyperliquid wallet position watcher (May 2026) ──
+  // Each user can watch any HL wallet; the cron diffs each wallet's
+  // clearinghouseState every 60s and fires per-user Telegram pings
+  // for the trigger types they enabled.
+  await sql`
+    CREATE TABLE IF NOT EXISTS hl_watched_wallets (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      address TEXT NOT NULL,
+      label TEXT,
+      -- bitfield of enabled triggers; default: all on
+      trigger_opened BOOLEAN DEFAULT TRUE,
+      trigger_closed BOOLEAN DEFAULT TRUE,
+      trigger_size_changed BOOLEAN DEFAULT TRUE,
+      trigger_liq_danger BOOLEAN DEFAULT TRUE,
+      trigger_realized_pnl BOOLEAN DEFAULT TRUE,
+      trigger_funding_paid BOOLEAN DEFAULT TRUE,
+      -- thresholds (sane defaults; user can override)
+      size_change_pct REAL DEFAULT 0.10,         -- 10% notional delta
+      liq_danger_pct REAL DEFAULT 0.05,          -- <5% from liq
+      realized_pnl_usd REAL DEFAULT 1000,        -- |realized PnL| > $1k
+      funding_paid_usd REAL DEFAULT 1000,        -- |Δ cumFunding| > $1k
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, address)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_hl_watched_user ON hl_watched_wallets(user_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_hl_watched_addr ON hl_watched_wallets(address)`;
+
+  // Latest snapshot per address (one row per address, used by diff cron)
+  await sql`
+    CREATE TABLE IF NOT EXISTS hl_position_snapshots (
+      address TEXT PRIMARY KEY,
+      positions JSONB NOT NULL,                 -- array of {coin,szi,positionValue,entryPx,liquidationPx,unrealizedPnl,cumFunding}
+      account_value REAL,
+      ts TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_hl_snap_ts ON hl_position_snapshots(ts DESC)`;
+
+  // Event log (global per-address, fanned out to users on read)
+  await sql`
+    CREATE TABLE IF NOT EXISTS hl_position_events (
+      id SERIAL PRIMARY KEY,
+      address TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      kind TEXT NOT NULL,                       -- 'opened' | 'closed' | 'size_changed' | 'liq_danger' | 'realized_pnl' | 'funding_paid'
+      payload JSONB,                            -- side, sizeUsd, deltaPct, distPct, realizedPnl, fundingDelta, etc
+      ts TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_hl_events_addr ON hl_position_events(address, ts DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_hl_events_ts ON hl_position_events(ts DESC)`;
+
+  // Per-user dedup so a single global event only pings each subscriber once
+  await sql`
+    CREATE TABLE IF NOT EXISTS hl_event_notifications (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      event_id INT NOT NULL REFERENCES hl_position_events(id) ON DELETE CASCADE,
+      channel TEXT NOT NULL,
+      sent_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, event_id, channel)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_hl_notif_user ON hl_event_notifications(user_id, sent_at DESC)`;
+
   // Worker heartbeats — droplet/cron health monitoring
   await sql`
     CREATE TABLE IF NOT EXISTS worker_heartbeats (

@@ -498,6 +498,10 @@ export default function TraderUnifiedPage() {
                 <Link href={`/wallet-tracker?address=${address}`} className="text-neutral-400 hover:text-white">
                   Track wallet
                 </Link>
+                <span className="text-neutral-700">·</span>
+                <Link href={`/watch?add=${address}`} className="text-hub-yellow hover:text-hub-yellow/80 inline-flex items-center gap-1 font-medium">
+                  Watch HL positions
+                </Link>
               </div>
             </div>
 

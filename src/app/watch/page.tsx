@@ -1,0 +1,412 @@
+'use client';
+
+/**
+ * /watch — Hyperliquid wallet position watcher.
+ *
+ * Each user adds 0x addresses they want pinged on. The /api/cron/watch-hl-wallets
+ * cron polls every 60s, diffs against last snapshot, and sends Telegram alerts
+ * for opens/closes/size changes/liq danger/realized PnL/funding paid based on
+ * the per-wallet trigger config.
+ */
+
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import {
+  Eye, Plus, Trash2, Loader2, Activity, ArrowRight, ExternalLink, Shield,
+} from 'lucide-react';
+
+interface Wallet {
+  id: number;
+  address: string;
+  label: string | null;
+  trigger_opened: boolean;
+  trigger_closed: boolean;
+  trigger_size_changed: boolean;
+  trigger_liq_danger: boolean;
+  trigger_realized_pnl: boolean;
+  trigger_funding_paid: boolean;
+  size_change_pct: number;
+  liq_danger_pct: number;
+  realized_pnl_usd: number;
+  funding_paid_usd: number;
+  created_at: string;
+}
+
+interface EventRow {
+  id: number;
+  address: string;
+  symbol: string;
+  kind: 'opened' | 'closed' | 'size_changed' | 'liq_danger' | 'realized_pnl' | 'funding_paid';
+  payload: {
+    side?: 'long' | 'short';
+    sizeUsd?: number;
+    prevSizeUsd?: number;
+    deltaPct?: number;
+    distPct?: number;
+    realizedPnl?: number;
+    fundingDelta?: number;
+  };
+  ts: string;
+}
+
+interface SnapshotRow {
+  address: string;
+  positions: Array<{ coin: string; szi: number; positionValue: number }>;
+  account_value: number | null;
+  ts: string;
+}
+
+interface ApiResponse { wallets: Wallet[]; events: EventRow[]; snapshots: SnapshotRow[] }
+
+const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
+
+function shortAddr(a: string): string {
+  if (!a) return '0x…';
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+function fmtUsd(n: number): string {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}K`;
+  return `${sign}$${abs.toFixed(2)}`;
+}
+
+function relTime(ts: string): string {
+  const ms = Date.now() - new Date(ts).getTime();
+  if (ms < 60_000) return `${Math.floor(ms / 1000)}s ago`;
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+  return new Date(ts).toLocaleString();
+}
+
+const KIND_TONE: Record<EventRow['kind'], string> = {
+  opened:        'bg-emerald-500/10 text-emerald-400 border-emerald-400/30',
+  closed:        'bg-rose-500/10 text-rose-400 border-rose-400/30',
+  size_changed:  'bg-cyan-500/10 text-cyan-300 border-cyan-400/30',
+  liq_danger:    'bg-amber-500/10 text-amber-300 border-amber-400/30',
+  realized_pnl:  'bg-violet-500/10 text-violet-300 border-violet-400/30',
+  funding_paid:  'bg-orange-500/10 text-orange-300 border-orange-400/30',
+};
+
+const KIND_LABEL: Record<EventRow['kind'], string> = {
+  opened: 'OPENED', closed: 'CLOSED', size_changed: 'SIZE Δ',
+  liq_danger: 'NEAR LIQ', realized_pnl: 'PNL', funding_paid: 'FUNDING',
+};
+
+function formatEvent(e: EventRow): string {
+  const sym = e.symbol;
+  const side = e.payload.side === 'short' ? 'SHORT' : 'LONG';
+  switch (e.kind) {
+    case 'opened':       return `${side} ${sym} · ${fmtUsd(e.payload.sizeUsd ?? 0)}`;
+    case 'closed': {
+      const pnl = e.payload.realizedPnl ?? 0;
+      const sign = pnl >= 0 ? '+' : '';
+      return `${side} ${sym} closed · realized ${sign}${fmtUsd(pnl)}`;
+    }
+    case 'size_changed': {
+      const d = e.payload.deltaPct ?? 0;
+      return `${side} ${sym} · ${fmtUsd(e.payload.prevSizeUsd ?? 0)} → ${fmtUsd(e.payload.sizeUsd ?? 0)} (${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)}%)`;
+    }
+    case 'liq_danger':   return `${side} ${sym} · ${((e.payload.distPct ?? 0) * 100).toFixed(2)}% from liq`;
+    case 'realized_pnl': return `${side} ${sym} · realized ${fmtUsd(e.payload.realizedPnl ?? 0)}`;
+    case 'funding_paid': return `${side} ${sym} · ${(e.payload.fundingDelta ?? 0) < 0 ? 'paid' : 'received'} ${fmtUsd(Math.abs(e.payload.fundingDelta ?? 0))}`;
+  }
+}
+
+function WatchPageInner() {
+  const { status } = useSession();
+  const searchParams = useSearchParams();
+  const prefillAddr = searchParams.get('add') ?? '';
+  const [data, setData] = useState<ApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [addrInput, setAddrInput] = useState(prefillAddr);
+  const [labelInput, setLabelInput] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/watch/wallets', { signal: AbortSignal.timeout(10_000) });
+      if (res.status === 401) { setLoading(false); return; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      setData(j);
+    } catch (e) {
+      console.error('[watch] load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status !== 'authenticated') { setLoading(false); return; }
+    load();
+    const iv = setInterval(load, 30_000);
+    return () => clearInterval(iv);
+  }, [status, load]);
+
+  const handleAdd = async () => {
+    setError(null);
+    const addr = addrInput.trim().toLowerCase();
+    if (!ADDR_RE.test(addr)) { setError('Invalid 0x… address'); return; }
+    setAdding(true);
+    try {
+      const res = await fetch('/api/watch/wallets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addr, label: labelInput.trim() || null }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      setAddrInput(''); setLabelInput('');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleRemove = async (id: number) => {
+    if (!confirm('Stop watching this wallet?')) return;
+    try {
+      await fetch(`/api/watch/wallets/${id}`, { method: 'DELETE' });
+      await load();
+    } catch (e) { console.error(e); }
+  };
+
+  // ── Auth gates ────────────────────────────────────────────────────
+  if (status === 'loading') {
+    return <div className="min-h-screen bg-hub-black"><Header /><div className="flex items-center justify-center py-24"><Loader2 className="w-6 h-6 text-neutral-500 animate-spin" /></div><Footer /></div>;
+  }
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-hub-black">
+        <Header />
+        <main className="max-w-[640px] mx-auto px-4 py-12">
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
+            <Shield className="w-10 h-10 text-hub-yellow mx-auto mb-4" />
+            <h1 className="text-xl font-bold text-white mb-2">Sign in to watch wallets</h1>
+            <p className="text-sm text-neutral-400 mb-5">Telegram delivery requires a linked account.</p>
+            <Link href="/login?callbackUrl=/watch" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-hub-yellow text-black font-semibold text-sm hover:bg-hub-yellow/90">
+              Sign in <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const wallets = data?.wallets ?? [];
+  const events = data?.events ?? [];
+  const snapshots = data?.snapshots ?? [];
+  const snapByAddr = new Map(snapshots.map(s => [s.address, s]));
+
+  return (
+    <div className="min-h-screen bg-hub-black">
+      <Header />
+      <main id="main-content" className="text-white max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
+        {/* Header */}
+        <header className="mb-6">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Eye className="w-5 h-5 text-hub-yellow" />
+            <h1 className="text-2xl font-bold bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
+              Wallet Watch
+            </h1>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 border border-emerald-400/30 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+              Hyperliquid
+            </span>
+          </div>
+          <p className="text-sm text-neutral-500 max-w-2xl">
+            Get Telegram pings when any Hyperliquid wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding. Polled every 60s; pings deliver in &lt;90s.
+          </p>
+        </header>
+
+        {/* Add form */}
+        <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 flex items-center gap-2">
+            <Plus className="w-3.5 h-3.5" />
+            Add a wallet
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px_auto] gap-2">
+            <input
+              type="text" value={addrInput}
+              onChange={e => { setAddrInput(e.target.value); setError(null); }}
+              placeholder="0x… any Hyperliquid address"
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white font-mono placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+              autoComplete="off" spellCheck={false}
+            />
+            <input
+              type="text" value={labelInput}
+              onChange={e => setLabelInput(e.target.value)}
+              placeholder="Label (optional)"
+              maxLength={80}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+            />
+            <button
+              onClick={handleAdd} disabled={adding || !addrInput.trim()}
+              className="px-4 py-2 rounded-lg bg-hub-yellow text-black font-semibold text-sm disabled:opacity-50 hover:bg-hub-yellow/90 inline-flex items-center justify-center gap-1.5"
+            >
+              {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              Watch
+            </button>
+          </div>
+          {error && <div className="text-[11px] text-rose-400 mt-2">{error}</div>}
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+            <span className="text-neutral-600">Or pick from leaderboards:</span>
+            <Link href="/hl-traders" className="text-neutral-400 hover:text-hub-yellow inline-flex items-center gap-0.5">
+              /hl-traders <ExternalLink className="w-2.5 h-2.5" />
+            </Link>
+            <Link href="/smart-money" className="text-neutral-400 hover:text-hub-yellow inline-flex items-center gap-0.5">
+              /smart-money <ExternalLink className="w-2.5 h-2.5" />
+            </Link>
+            <Link href="/whale-liq" className="text-neutral-400 hover:text-hub-yellow inline-flex items-center gap-0.5">
+              /whale-liq <ExternalLink className="w-2.5 h-2.5" />
+            </Link>
+          </div>
+        </section>
+
+        {/* Watchlist */}
+        <section className="mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 px-1 flex items-center gap-2">
+            <Eye className="w-3.5 h-3.5 text-neutral-500" />
+            Your watchlist
+            <span className="text-[10px] font-mono text-neutral-600">({wallets.length}/25)</span>
+          </h2>
+          {loading && wallets.length === 0 ? (
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-8 text-center text-xs text-neutral-500">
+              <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-neutral-600" />
+              Loading…
+            </div>
+          ) : wallets.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/[0.08] py-8 text-center text-xs text-neutral-500">
+              No wallets watched yet. Paste an address above or pick one from a leaderboard.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {wallets.map(w => {
+                const snap = snapByAddr.get(w.address);
+                const positions = snap?.positions ?? [];
+                return (
+                  <li key={w.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 hover:bg-white/[0.03] transition-colors">
+                    <div className="flex items-start gap-3 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link href={`/trader/${w.address}`} className="font-mono text-sm text-white hover:text-hub-yellow truncate">
+                            {w.label || shortAddr(w.address)}
+                          </Link>
+                          {w.label && <span className="font-mono text-[11px] text-neutral-500">{shortAddr(w.address)}</span>}
+                          {snap && (
+                            <span className="text-[10px] font-mono text-neutral-600">
+                              {positions.length} pos · {snap.account_value ? fmtUsd(snap.account_value) : '—'} equity · synced {relTime(snap.ts)}
+                            </span>
+                          )}
+                          {!snap && <span className="text-[10px] font-mono text-neutral-600 italic">awaiting first poll…</span>}
+                        </div>
+                        {/* Trigger badges */}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {w.trigger_opened &&        <TrigBadge label="Opens" />}
+                          {w.trigger_closed &&        <TrigBadge label="Closes" />}
+                          {w.trigger_size_changed &&  <TrigBadge label={`Size ≥${(w.size_change_pct * 100).toFixed(0)}%`} />}
+                          {w.trigger_liq_danger &&    <TrigBadge label={`Liq <${(w.liq_danger_pct * 100).toFixed(0)}%`} />}
+                          {w.trigger_realized_pnl &&  <TrigBadge label={`PnL ≥${fmtUsd(w.realized_pnl_usd)}`} />}
+                          {w.trigger_funding_paid &&  <TrigBadge label={`Funding ≥${fmtUsd(w.funding_paid_usd)}`} />}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleRemove(w.id)}
+                          title="Remove"
+                          className="p-1.5 rounded-lg border border-white/[0.06] text-neutral-500 hover:text-rose-400 hover:border-rose-400/30 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* Event log */}
+        <section>
+          <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 px-1 flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5 text-neutral-500" />
+            Recent events
+            <span className="text-[10px] font-mono text-neutral-600">across your watched wallets</span>
+          </h2>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            {events.length === 0 ? (
+              <div className="px-3 py-10 text-center text-xs text-neutral-600">
+                {wallets.length === 0
+                  ? 'Add a wallet above to start collecting events.'
+                  : "No events yet — when one of your wallets opens, closes, or resizes a position, it'll show here."}
+              </div>
+            ) : (
+              <ul className="divide-y divide-white/[0.04]">
+                {events.map(e => {
+                  const wallet = wallets.find(w => w.address === e.address);
+                  return (
+                    <li key={e.id} className="px-3.5 py-2.5 flex items-center gap-3 hover:bg-white/[0.02] text-xs">
+                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${KIND_TONE[e.kind]}`}>
+                        {KIND_LABEL[e.kind]}
+                      </span>
+                      <span className="font-mono text-neutral-300 truncate">
+                        {wallet?.label || shortAddr(e.address)}
+                      </span>
+                      <span className="text-neutral-500 truncate">·</span>
+                      <span className="text-neutral-300 truncate">{formatEvent(e)}</span>
+                      <span className="ml-auto text-[10px] text-neutral-600 font-mono shrink-0">{relTime(e.ts)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        {/* Footer info */}
+        <p className="mt-8 text-[11px] text-neutral-600 max-w-2xl text-center mx-auto">
+          Hyperliquid only for now. Events are polled every 60s — actual Telegram delivery typically &lt;90s after the on-chain change.{' '}
+          <Link href="/profile?tab=notifications" className="text-hub-yellow hover:underline">Link Telegram</Link>{' '}
+          if you haven&apos;t already, or alerts won&apos;t deliver.
+        </p>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function TrigBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.03] text-neutral-400 border border-white/[0.06]">
+      {label}
+    </span>
+  );
+}
+
+export default function WatchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-hub-black">
+        <Header />
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-6 h-6 text-neutral-500 animate-spin" />
+        </div>
+        <Footer />
+      </div>
+    }>
+      <WatchPageInner />
+    </Suspense>
+  );
+}
