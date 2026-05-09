@@ -260,15 +260,75 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, online = 33, dexC
         </div>
       ))}
       <div style={{ flex: 1 }} />
-      <div style={{ padding: 10, background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 9, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, fontWeight: 700, color: 'var(--pump-mild)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-          <span style={{ width: 5, height: 5, background: 'var(--pump-mild)', borderRadius: 999, boxShadow: '0 0 6px var(--pump-mild)' }} />Online · {online}
+      {/* Live venue + throughput panel — number-first hierarchy:
+          big mono numbers anchor each row, the small uppercase label sits
+          underneath. The throughput row has a tiny animated stream bar
+          to make 'live' feel live. Hover lifts the panel slightly. */}
+      <div
+        style={{
+          padding: '10px 12px',
+          background: 'linear-gradient(180deg, var(--hub-darker) 0%, rgba(0,0,0,0.4) 100%)',
+          border: '1px solid var(--hub-border)',
+          borderRadius: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          transition: 'transform 200ms, border-color 200ms',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--hub-border-strong, rgba(255,255,255,0.12))'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--hub-border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+        title={`${online} venues online · ${dexCount} DEX · ${(msgPerSec / 1000).toFixed(1)}k messages/sec`}
+      >
+        {/* Top row: venue counts side-by-side */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+              <span style={{ width: 5, height: 5, background: 'var(--pump-mild)', borderRadius: 999, boxShadow: '0 0 6px var(--pump-mild)', flexShrink: 0, animation: 'sidebar-pulse 1.6s ease-in-out infinite', alignSelf: 'center' }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-default)', fontFamily: 'var(--font-mono)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{online}</span>
+            </div>
+            <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--pump-mild)', textTransform: 'uppercase', letterSpacing: '0.16em', paddingLeft: 10 }}>Online</span>
+          </div>
+          <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--hub-border)', opacity: 0.5 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+              <span style={{ width: 5, height: 5, background: 'var(--hub-accent-light)', borderRadius: 999, flexShrink: 0, alignSelf: 'center' }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-default)', fontFamily: 'var(--font-mono)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{dexCount}</span>
+            </div>
+            <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--hub-accent-light)', textTransform: 'uppercase', letterSpacing: '0.16em', paddingLeft: 10 }}>DEX</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, fontWeight: 700, color: 'var(--hub-accent-light)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-          <span style={{ width: 5, height: 5, background: 'var(--hub-accent-light)', borderRadius: 999 }} />DEX · {dexCount}
+        {/* Throughput row with mini animated bars */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 6, borderTop: '1px solid var(--hub-border)', opacity: 0.85 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1.5, height: 9 }} aria-hidden>
+            {[3, 6, 4, 7, 5, 8].map((h, i) => (
+              <span
+                key={i}
+                style={{
+                  display: 'inline-block', width: 1.5, height: h,
+                  background: 'var(--pump-mild)', borderRadius: 1,
+                  animation: `sidebar-bar ${1.2 + i * 0.1}s ease-in-out infinite`,
+                  animationDelay: `${i * 0.08}s`,
+                  opacity: 0.7,
+                }}
+              />
+            ))}
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--fg-default)', fontFamily: 'var(--font-mono)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+            {(msgPerSec / 1000).toFixed(1)}k
+          </span>
+          <span style={{ fontSize: 9, color: 'var(--fg-subtle)', fontFamily: 'var(--font-mono)' }}>msg/s</span>
         </div>
-        <div style={{ fontSize: 9, color: 'var(--fg-subtle)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{(msgPerSec / 1000).toFixed(1)}k msg/s</div>
       </div>
+      <style jsx>{`
+        @keyframes sidebar-pulse {
+          0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--pump-mild); }
+          50%      { opacity: 0.55; box-shadow: 0 0 2px var(--pump-mild); }
+        }
+        @keyframes sidebar-bar {
+          0%, 100% { transform: scaleY(0.4); }
+          50%      { transform: scaleY(1.0); }
+        }
+      `}</style>
     </aside>
   );
 }
