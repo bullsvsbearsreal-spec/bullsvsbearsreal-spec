@@ -28,7 +28,6 @@
 import { useEffect, useId, useMemo, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
@@ -125,13 +124,16 @@ interface WatchEvent {
 
 function fmtUsd(v: number | null | undefined, opts: { compact?: boolean; signed?: boolean } = {}): string {
   if (v == null || !Number.isFinite(v)) return '—';
-  const sign = opts.signed && v > 0 ? '+' : '';
+  // Sign goes BEFORE the dollar sign so negatives read "-$100" not "$-100".
+  // `signed` adds an explicit "+" for positive values; negatives always show "-".
+  const negative = v < 0;
+  const sign = negative ? '-' : opts.signed && v > 0 ? '+' : '';
+  const abs = Math.abs(v);
   if (opts.compact) {
-    const abs = Math.abs(v);
-    if (abs >= 1_000_000) return `${sign}$${(v / 1_000_000).toFixed(2)}M`;
-    if (abs >= 1_000) return `${sign}$${(v / 1_000).toFixed(1)}K`;
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
+    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
   }
-  return `${sign}$${v.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  return `${sign}$${abs.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 }
 
 function fmtPct(v: number | null | undefined): string {
@@ -144,6 +146,9 @@ function relTime(ts: string | number | null | undefined): string {
   if (ts == null) return '—';
   const ms = Date.now() - new Date(ts).getTime();
   if (Number.isNaN(ms)) return '—';
+  // Future timestamps (clock skew between server / client) — clamp to "just now"
+  // rather than showing "-30s ago".
+  if (ms < 0) return 'just now';
   if (ms < 60_000) return `${Math.floor(ms / 1000)}s ago`;
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
   if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
@@ -177,6 +182,10 @@ export default function DashboardPage() {
   const [watch, setWatch] = useState<{ wallets: WatchedWallet[]; events: WatchEvent[] } | null>(null);
   const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null);
   const [equityHistory, setEquityHistory] = useState<Array<{ t: number; value: number; pnl: number }>>([]);
+  // True until the first load() resolves — used to suppress "no data" empty
+  // states during the initial fetch so users with data don't see a brief
+  // misleading "Connect a wallet" CTA flash before the API responds.
+  const [initialized, setInitialized] = useState(false);
 
   const userId = session?.user?.id;
 
@@ -205,6 +214,7 @@ export default function DashboardPage() {
     if (history.status === 'fulfilled' && history.value?.points) {
       setEquityHistory(history.value.points);
     }
+    setInitialized(true);
   }, [userId]);
 
   useEffect(() => {
@@ -465,6 +475,7 @@ export default function DashboardPage() {
               positions={positions?.positions ?? []}
               history={equityHistory}
               hasData={(positions?.positions.length ?? 0) > 0 || equityHistory.length > 0}
+              loading={!initialized}
             />
             <PlanUsagePanel
               planName={planName}
@@ -478,7 +489,7 @@ export default function DashboardPage() {
           {/* ─── Open positions + Connected exchanges ──────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
             <OpenPositionsTable positions={positions?.positions ?? []} hasData={positions != null} />
-            <ConnectedExchangesPanel wallets={wallets} keys={keys} />
+            <ConnectedExchangesPanel wallets={wallets} keys={keys} loading={!initialized} />
           </div>
 
           {/* ─── Footer hint ───────────────────────────────────────── */}
@@ -506,10 +517,15 @@ export default function DashboardPage() {
 /* ────────────────────────────────────────────────────────────────── */
 
 function Avatar({ name, src }: { name: string; src: string | null }) {
+  // Plain <img> instead of next/image — user avatars come from Vercel
+  // Blob (`*.public.blob.vercel-storage.com`) which isn't in our
+  // remotePatterns allowlist; next/image would throw and crash the
+  // whole page for any user with a custom avatar uploaded.
   if (src) {
     return (
       <div className="relative shrink-0">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={src}
           alt={name}
           width={64}
@@ -635,12 +651,14 @@ function EquityChartPanel({
   positions,
   history,
   hasData,
+  loading,
 }: {
   equity: number;
   openUnrealized: number;
   positions: PositionRow[];
   history: Array<{ t: number; value: number; pnl: number }>;
   hasData: boolean;
+  loading?: boolean;
 }) {
   // Real equity series from the portfolio-snapshot cron (last 30 days).
   // Append the current equity as the most recent point so the line
@@ -693,7 +711,7 @@ function EquityChartPanel({
           <div className={`text-[11px] font-mono tabular-nums ${seriesDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {fmtUsd(seriesDelta, { compact: true, signed: true })}
             {seriesPctDelta != null && ` (${fmtPct(seriesPctDelta)})`}
-            <span className="text-neutral-600 ml-1">{hasHistory ? '30d' : 'open'}</span>
+            <span className="text-neutral-600 ml-1">{hasHistory ? `${history.length}d` : 'open'}</span>
           </div>
         </div>
       </header>
@@ -709,6 +727,11 @@ function EquityChartPanel({
           <span>Equity history starts after your first daily snapshot.</span>
           <span className="text-[10px] text-neutral-600">Cron runs at 12:00 UTC daily.</span>
         </div>
+      ) : loading ? (
+        // Initial fetch hasn't resolved — neutral skeleton, not the
+        // "Connect a wallet" CTA (which would flash for users who DO
+        // have data and just haven't loaded yet).
+        <div className="h-32 rounded-lg border border-dashed border-white/[0.04] bg-white/[0.01] animate-pulse" />
       ) : (
         <div className="h-32 flex items-center justify-center rounded-lg border border-dashed border-white/[0.08] text-xs text-neutral-500">
           Connect a wallet or exchange in{' '}
@@ -756,12 +779,16 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
   const w = 600;
   const h = 130;
   const pad = 4;
-  if (data.length < 2) return <div className="h-32" />;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  // Defensively drop non-finite values (NaN, Infinity) before extrema —
+  // a single bad row from upstream would otherwise cascade through min/max
+  // and turn the whole SVG path into NaN coordinates (renders as nothing).
+  const clean = data.filter(Number.isFinite);
+  if (clean.length < 2) return <div className="h-32" />;
+  const min = Math.min(...clean);
+  const max = Math.max(...clean);
   const range = Math.max(1, max - min);
-  const stepX = (w - 2 * pad) / (data.length - 1);
-  const points = data.map((v, i) => {
+  const stepX = (w - 2 * pad) / (clean.length - 1);
+  const points = clean.map((v, i) => {
     const x = pad + i * stepX;
     const y = pad + (h - 2 * pad) * (1 - (v - min) / range);
     return [x, y] as const;
@@ -955,7 +982,9 @@ function OpenPositionsTable({ positions, hasData }: { positions: PositionRow[]; 
                   </td>
                   <td
                     className={`py-2.5 text-right font-mono tabular-nums font-bold ${
-                      (p.unrealizedPnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      p.unrealizedPnl == null
+                        ? 'text-neutral-500'
+                        : p.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
                     }`}
                   >
                     {fmtUsd(p.unrealizedPnl, { signed: true })}
@@ -975,9 +1004,11 @@ function OpenPositionsTable({ positions, hasData }: { positions: PositionRow[]; 
 function ConnectedExchangesPanel({
   wallets,
   keys,
+  loading,
 }: {
   wallets: ConnectedWallet[];
   keys: ExchangeKey[];
+  loading?: boolean;
 }) {
   // Roll wallets+keys into a single "venue" list by exchange/chain. Each
   // row shows: name, status (ok/error/pending), last-sync time.
@@ -1008,7 +1039,16 @@ function ConnectedExchangesPanel({
         </Link>
       </header>
 
-      {venues.length === 0 ? (
+      {loading && venues.length === 0 ? (
+        // Initial fetch hasn't resolved — neutral skeleton instead of the
+        // "Connect one" CTA, which would flash for users who DO have
+        // venues but haven't loaded them yet.
+        <div className="space-y-1.5">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-12 rounded-lg border border-dashed border-white/[0.04] bg-white/[0.01] animate-pulse" />
+          ))}
+        </div>
+      ) : venues.length === 0 ? (
         <div className="rounded-lg border border-dashed border-white/[0.08] py-8 text-center text-xs text-neutral-500">
           No exchanges connected.{' '}
           <Link href="/profile?tab=connections" className="text-hub-yellow hover:underline">
