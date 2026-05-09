@@ -59,7 +59,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Sidebar gains "Command Center" link; admin panel duplicate ("Admin" + "Admin Panel") consolidated into one entry',
     ],
     links: [
-      { label: 'Account command center', href: '/account' },
+      { label: 'Account command center', href: '/dashboard' },
       { label: 'Profile + settings', href: '/profile' },
     ],
   },

@@ -32,7 +32,7 @@ import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
-  Activity, Bell, Eye, Wallet, ArrowRight, Loader2, Shield,
+  Activity, Bell, Eye, Wallet, Briefcase, ArrowRight, Loader2, Shield,
   Sparkles, ShieldCheck, Send, Plus, Filter, Flame,
   Calendar, TrendingUp, TrendingDown, Layers,
   CheckCircle2, AlertCircle, ExternalLink, Clock,
@@ -450,7 +450,7 @@ export default function DashboardPage() {
             <StatCell
               label="Exchanges"
               value={`${exchangesConnected}/${exchangesPossible}`}
-              hint={exchangesConnected === 0 ? 'connect to sync' : 'wallets + keys'}
+              hint={exchangesConnected === 0 ? 'connect to track' : 'wallets + keys'}
               tone="violet"
               icon={<Layers className="w-3.5 h-3.5" />}
               href="/profile?tab=connections"
@@ -478,12 +478,7 @@ export default function DashboardPage() {
           {/* ─── Open positions + Connected exchanges ──────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
             <OpenPositionsTable positions={positions?.positions ?? []} hasData={positions != null} />
-            <ConnectedExchangesPanel
-              wallets={wallets}
-              keys={keys}
-              connected={exchangesConnected}
-              possible={exchangesPossible}
-            />
+            <ConnectedExchangesPanel wallets={wallets} keys={keys} />
           </div>
 
           {/* ─── Footer hint ───────────────────────────────────────── */}
@@ -703,8 +698,17 @@ function EquityChartPanel({
         </div>
       </header>
 
-      {hasData ? (
-        <Sparkline data={series.length >= 2 ? series : [equity, equity]} positive={seriesDelta >= 0} />
+      {hasHistory ? (
+        <Sparkline data={series} positive={seriesDelta >= 0} />
+      ) : hasData ? (
+        // Have positions/equity but not enough snapshots for a meaningful
+        // sparkline. Show an honest "history pending" panel instead of a
+        // degenerate flat line.
+        <div className="h-32 flex flex-col items-center justify-center rounded-lg border border-dashed border-white/[0.06] bg-white/[0.01] text-xs text-neutral-500 gap-1">
+          <Activity className="w-4 h-4 text-neutral-600" />
+          <span>Equity history starts after your first daily snapshot.</span>
+          <span className="text-[10px] text-neutral-600">Cron runs at 12:00 UTC daily.</span>
+        </div>
       ) : (
         <div className="h-32 flex items-center justify-center rounded-lg border border-dashed border-white/[0.08] text-xs text-neutral-500">
           Connect a wallet or exchange in{' '}
@@ -816,7 +820,9 @@ function PlanUsagePanel({
             <Sparkles className="w-4 h-4 text-hub-yellow" />
             Plan & usage
           </h2>
-          <p className="text-[11px] text-neutral-500 mt-0.5">{planName} · {planName === 'Free' ? 'no card needed' : 'billed monthly'}</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            {planName} · {planName === 'Admin' ? 'staff · no billing' : planName === 'Free' ? 'no card needed' : 'billed monthly'}
+          </p>
         </div>
         <Link
           href="/profile?tab=billing"
@@ -867,6 +873,8 @@ function UsageBar({ label, used, cap }: { label: string; used: number; cap: numb
 }
 
 /* ── Open positions table ───────────────────────────────────────── */
+// (uses Briefcase icon — Wallet would imply a balance/wallet view, not
+// trading book)
 
 function OpenPositionsTable({ positions, hasData }: { positions: PositionRow[]; hasData: boolean }) {
   const top = positions.slice(0, 5);
@@ -875,7 +883,7 @@ function OpenPositionsTable({ positions, hasData }: { positions: PositionRow[]; 
       <header className="flex items-baseline justify-between gap-3 mb-3">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-white flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-hub-yellow" />
+            <Briefcase className="w-4 h-4 text-hub-yellow" />
             Open positions
           </h2>
           <p className="text-[11px] text-neutral-500 mt-0.5">
@@ -967,18 +975,16 @@ function OpenPositionsTable({ positions, hasData }: { positions: PositionRow[]; 
 function ConnectedExchangesPanel({
   wallets,
   keys,
-  connected,
-  possible,
 }: {
   wallets: ConnectedWallet[];
   keys: ExchangeKey[];
-  connected: number;
-  possible: number;
 }) {
   // Roll wallets+keys into a single "venue" list by exchange/chain. Each
-  // row shows: name, status (synced/error/pending), last-sync time, and a
-  // simulated WS latency for the live-feed feel from the mockup.
+  // row shows: name, status (ok/error/pending), last-sync time.
   const venues = useMemo(() => buildVenuesList(wallets, keys), [wallets, keys]);
+  // Real "X healthy of Y connected" — count actually-ok rows, not total.
+  const healthyCount = venues.filter(v => v.status === 'ok').length;
+  const totalCount = venues.length;
 
   return (
     <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
@@ -989,7 +995,9 @@ function ConnectedExchangesPanel({
             Connected exchanges
           </h2>
           <p className="text-[11px] text-neutral-500 mt-0.5">
-            {connected}/{possible} healthy · live WS feed
+            {totalCount === 0
+              ? 'none connected'
+              : `${healthyCount} healthy · ${totalCount} connected`}
           </p>
         </div>
         <Link
@@ -1072,15 +1080,19 @@ interface StreakInputs {
   events: Array<{ ts: string }>;
 }
 function computeStreak(inp: StreakInputs): number {
-  // Build a Set of UTC date keys ("YYYY-MM-DD") where ANY signal was
-  // recorded, then walk backward from today. Returns the count of
-  // consecutive days from today inclusive.
+  // Build a Set of LOCAL date keys ("YYYY-MM-DD") where ANY signal was
+  // recorded, then walk backward from today. Local dates (not UTC) so
+  // a user in Tokyo at 11am with activity from yesterday 11pm sees a
+  // streak — UTC keying would have placed those in different days.
+  const localKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   const days = new Set<string>();
   const add = (ts: string | undefined) => {
     if (!ts) return;
     const t = new Date(ts);
     if (Number.isNaN(t.getTime())) return;
-    days.add(t.toISOString().slice(0, 10));
+    days.add(localKey(t));
   };
   inp.notifications.forEach(n => add(n.sentAt));
   inp.positions.forEach(p => add(p.updatedAt));
@@ -1090,10 +1102,9 @@ function computeStreak(inp: StreakInputs): number {
   const cursor = new Date();
   // Walk backward up to 365 days; cap at first gap.
   for (let i = 0; i < 365; i++) {
-    const key = cursor.toISOString().slice(0, 10);
-    if (days.has(key)) {
+    if (days.has(localKey(cursor))) {
       streak++;
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
+      cursor.setDate(cursor.getDate() - 1);
     } else if (i === 0) {
       // No signal today — return 0 rather than yesterday's count, mirrors
       // how Duolingo displays "0-day streak" until you've done today.
