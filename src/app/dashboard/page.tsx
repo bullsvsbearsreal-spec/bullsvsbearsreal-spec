@@ -832,7 +832,11 @@ function PlanUsagePanel({
   watchedWalletsCount: number;
   exchangesConnected: number;
 }) {
-  // Quotas for the Free plan; Admin/Pro would have higher caps.
+  // Quotas. Only `watchedWallets` is HARD-enforced server-side
+  // (/api/watch/wallets POST returns 409 at 25). The others are
+  // display-only "soft caps" — backend doesn't reject inserts past
+  // them. We mark them as such in the panel sub-label so users
+  // aren't surprised.
   const quotas: Record<string, { watchlist: number; alerts: number; watchedWallets: number; exchanges: number }> = {
     Free: { watchlist: 50, alerts: 10, watchedWallets: 25, exchanges: 4 },
     Admin: { watchlist: 500, alerts: 100, watchedWallets: 100, exchanges: 10 },
