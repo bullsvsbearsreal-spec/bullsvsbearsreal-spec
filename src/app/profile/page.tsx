@@ -479,6 +479,62 @@ function ExternalLinkTab({ title, description, href, buttonLabel, stats }: {
 }
 
 function NotificationsTab() {
+  // Email notification toggles — persisted via PUT /api/user/data
+  // (notificationPrefs key is already in the ALLOWED_KEYS whitelist on
+  // the server). Optimistic local state for instant feedback; on PUT
+  // failure we surface an inline error and revert.
+  const [digest, setDigest] = useState(false);
+  const [backup, setBackup] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load existing prefs once on mount
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/user/data', { signal: AbortSignal.timeout(8000) })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (!mounted) return;
+        const p = j?.notificationPrefs;
+        if (p) {
+          setDigest(!!p.emailDailyDigest);
+          setBackup(!!p.emailAlertBackup);
+        }
+        setLoaded(true);
+      })
+      .catch(() => { if (mounted) setLoaded(true); });
+    return () => { mounted = false; };
+  }, []);
+
+  // Single helper that PUTs a partial notificationPrefs patch. Optimistic:
+  // we already updated local state; if the request fails we revert + show
+  // the error message.
+  const savePref = async (
+    key: 'emailDailyDigest' | 'emailAlertBackup',
+    nextValue: boolean,
+    revert: () => void,
+  ) => {
+    setSavingKey(key);
+    setError(null);
+    try {
+      const res = await fetch('/api/user/data', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationPrefs: { [key]: nextValue } }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      revert();
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
   return (
     <>
       <SectionCard title="Telegram bot" icon={Send} description="Get alerts pushed straight to Telegram. Link your account once and any alert you create will fire there.">
@@ -498,20 +554,45 @@ function NotificationsTab() {
 
       <SectionCard title="Email" icon={Mail} description="Plaintext email summaries — daily digest, alert backup, and account security notices.">
         <div className="space-y-2 text-xs">
-          <label className="flex items-center gap-2.5 text-neutral-300 cursor-pointer">
-            <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30" />
+          <label className="flex items-center gap-2.5 text-neutral-300 cursor-not-allowed opacity-60">
+            <input type="checkbox" defaultChecked disabled className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30" />
             Security alerts (always on, recommended)
           </label>
           <label className="flex items-center gap-2.5 text-neutral-300 cursor-pointer">
-            <input type="checkbox" className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30" />
+            <input
+              type="checkbox"
+              checked={digest}
+              disabled={!loaded || savingKey === 'emailDailyDigest'}
+              onChange={(e) => {
+                const next = e.target.checked;
+                const prev = digest;
+                setDigest(next);
+                savePref('emailDailyDigest', next, () => setDigest(prev));
+              }}
+              className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30"
+            />
             Daily market digest
+            {savingKey === 'emailDailyDigest' && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
           </label>
           <label className="flex items-center gap-2.5 text-neutral-300 cursor-pointer">
-            <input type="checkbox" className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30" />
+            <input
+              type="checkbox"
+              checked={backup}
+              disabled={!loaded || savingKey === 'emailAlertBackup'}
+              onChange={(e) => {
+                const next = e.target.checked;
+                const prev = backup;
+                setBackup(next);
+                savePref('emailAlertBackup', next, () => setBackup(prev));
+              }}
+              className="rounded border-white/20 bg-white/5 text-hub-yellow focus:ring-hub-yellow/30"
+            />
             Backup alerts via email if Telegram is offline
+            {savingKey === 'emailAlertBackup' && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
           </label>
         </div>
-        <p className="text-[10px] text-neutral-600 mt-3 italic">Preferences save automatically when changed (TODO: wire backend).</p>
+        {error && <div className="text-[11px] text-rose-400 mt-2">{error}</div>}
+        <p className="text-[10px] text-neutral-600 mt-3 italic">Preferences save automatically. Telegram + push delivery are wired; email delivery for digest + backup is queued for the next batch.</p>
       </SectionCard>
     </>
   );

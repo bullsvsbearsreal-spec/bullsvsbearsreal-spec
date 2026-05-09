@@ -1565,6 +1565,12 @@ export interface NotificationPrefs {
   discordEnabled?: boolean;     // Toggle discord notifications
   whatsappPhone?: string;       // WhatsApp phone number (E.164 format)
   whatsappEnabled?: boolean;    // Toggle WhatsApp notifications
+  /** Daily market-digest email (rolling summary of fired alerts +
+   *  any movement of interest). Off by default; opt-in. */
+  emailDailyDigest?: boolean;
+  /** Email backup if Telegram delivery is failing — sends the same
+   *  alert to the user's email so a broken bot link doesn't drop pings. */
+  emailAlertBackup?: boolean;
 }
 
 export interface FundingPrefs {
