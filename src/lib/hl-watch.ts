@@ -39,6 +39,10 @@ export interface PositionLite {
   szi: number;             // signed size (negative = short)
   positionValue: number;   // |notional| in USD
   entryPx: number;
+  /** Current mark price — required for liq-danger distance calculation
+   *  to actually move tick-over-tick. Falls back to entryPx if upstream
+   *  doesn't surface a separate mark (early tick, partial data, etc). */
+  markPx: number;
   liquidationPx: number | null;
   unrealizedPnl: number;
   cumFundingAllTime: number;
@@ -132,6 +136,11 @@ async function fetchGTradeState(address: string): Promise<AccountSnapshot | null
         szi: (p.side === 'short' ? -1 : 1) * (p.size ?? 0),
         positionValue: Math.abs(p.positionValue ?? 0),
         entryPx: p.entryPrice ?? 0,
+        // gTrade reader fetches mark via Binance fapi already — use it
+        // so liq-danger has real per-tick distance instead of constant
+        // entry-vs-liq distance. Falls back to entry when Binance doesn't
+        // list the symbol.
+        markPx: p.markPrice ?? p.entryPrice ?? 0,
         liquidationPx: p.liquidationPrice ?? null,
         unrealizedPnl: p.unrealizedPnl ?? 0,
         // gTrade doesn't surface a running cumulative funding figure;
@@ -163,13 +172,22 @@ function reduceHLState(address: string, json: HLClearingHouseState): AccountSnap
 function parsePosition(p: HLPosition): PositionLite | null {
   const szi = parseFloat(p.szi);
   if (!Number.isFinite(szi) || szi === 0) return null;
+  const entryPx = parseFloat(p.entryPx) || 0;
+  const unrealizedPnl = parseFloat(p.unrealizedPnl) || 0;
+  // HL doesn't return mark directly on clearinghouseState. Back it out
+  // from unrealizedPnl: pnl = szi * (mark - entry) → mark = entry + pnl/szi.
+  // (szi is signed: positive long, negative short.)
+  const markPx = szi !== 0 && entryPx > 0
+    ? entryPx + (unrealizedPnl / szi)
+    : entryPx;
   return {
     coin: p.coin,
     szi,
     positionValue: Math.abs(parseFloat(p.positionValue) || 0),
-    entryPx: parseFloat(p.entryPx) || 0,
+    entryPx,
+    markPx: Number.isFinite(markPx) && markPx > 0 ? markPx : entryPx,
     liquidationPx: p.liquidationPx ? (parseFloat(p.liquidationPx) || null) : null,
-    unrealizedPnl: parseFloat(p.unrealizedPnl) || 0,
+    unrealizedPnl,
     cumFundingAllTime: parseFloat(p.cumFunding?.allTime ?? '0') || 0,
   };
 }
@@ -239,18 +257,19 @@ export function diffSnapshots(prev: AccountSnapshot | null, curr: AccountSnapsho
       }
     }
 
-    // Liq danger — fired when distance just crossed below the band.
-    // Compute current distance vs prev distance; only emit if curr is
-    // newly below the band (so we don't spam every tick).
-    if (currPos.liquidationPx && currPos.entryPx > 0) {
-      // Use mark = entryPx as a fallback when we don't have a separate
-      // mark; for a watch alert, a "near liq" signal off entry is fine.
-      // (cron can pass mark via fetchMarkPrices later for higher fidelity.)
-      const currDist = Math.abs(currPos.entryPx - currPos.liquidationPx) / currPos.entryPx;
-      const prevDist = prevPos.liquidationPx && prevPos.entryPx > 0
-        ? Math.abs(prevPos.entryPx - prevPos.liquidationPx) / prevPos.entryPx
+    // Liq danger — fired when distance just crossed lower vs the prev
+    // tick. Distance is mark-vs-liq (NOT entry-vs-liq); entry is constant
+    // for the life of the position so an entry-based distance never
+    // changes tick-to-tick and the alert would never fire. mark moves
+    // every tick from upstream (HL: derived from unrealizedPnl; gTrade:
+    // Binance fapi spot lookup).
+    if (currPos.liquidationPx && currPos.markPx > 0) {
+      const currDist = Math.abs(currPos.markPx - currPos.liquidationPx) / currPos.markPx;
+      const prevDist = prevPos.liquidationPx && prevPos.markPx > 0
+        ? Math.abs(prevPos.markPx - prevPos.liquidationPx) / prevPos.markPx
         : 1;
-      // emit any time curr is lower than prev — let the threshold filter cut it
+      // Emit when curr is lower than prev — threshold filter cuts the
+      // ones that haven't crossed the danger band yet.
       if (currDist < prevDist) {
         events.push({
           kind: 'liq_danger',

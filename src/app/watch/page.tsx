@@ -403,7 +403,7 @@ function WatchPageInner() {
 
         {/* Footer info */}
         <p className="mt-8 text-[11px] text-neutral-600 max-w-2xl text-center mx-auto">
-          Hyperliquid only for now. Events are polled every 60s — actual Telegram delivery typically &lt;90s after the on-chain change.{' '}
+          Hyperliquid + gTrade Arbitrum. Events are polled every 60s — actual Telegram delivery typically &lt;90s after the on-chain change.{' '}
           <Link href="/profile?tab=notifications" className="text-hub-yellow hover:underline">Link Telegram</Link>{' '}
           if you haven&apos;t already, or alerts won&apos;t deliver.
         </p>

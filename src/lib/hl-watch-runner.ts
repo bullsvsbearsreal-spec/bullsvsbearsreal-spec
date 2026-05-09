@@ -59,11 +59,56 @@ function rowToThresholds(r: SubscriberRow): Thresholds {
   };
 }
 
+/** Process-local mutex — prevents two runWatchTick calls from racing on
+ *  the same address (which would cause both to read the same prevSnap,
+ *  diff the same delta, insert TWO event rows, and fire duplicate
+ *  Telegram pings since dedup is keyed on event_id and the rows have
+ *  different ids). The piggyback from /api/cron/snapshot is the canonical
+ *  trigger; this guard is defensive against:
+ *    - Manual /admin-panel#actions trigger while a snapshot tick is running
+ *    - A future systemd timer ever being added without removing the piggyback
+ *    - Multiple snapshot crons accidentally overlapping (e.g. timer drift)
+ *  Cooldown of 30s also acts as a soft rate-limit against admin spam. */
+let lastTickAt = 0;
+let inFlight: Promise<WatchTickStats> | null = null;
+const MIN_TICK_INTERVAL_MS = 30_000;
+
 /** Run one watcher tick — scan watched addresses, diff, fan out events to
  *  subscribed users, and update the snapshots. Returns stats so the caller
  *  can log / surface them. Safe to call from either an HTTP handler or
  *  another cron route. */
 export async function runWatchTick(): Promise<WatchTickStats> {
+  // Re-entry guard: if a tick is currently running, return its in-flight
+  // promise so the second caller waits for the first one to finish rather
+  // than spawning a duplicate.
+  if (inFlight) return inFlight;
+
+  // Soft cooldown: skip if the last tick completed less than 30s ago.
+  // Returns a "skipped" stats object so callers know nothing new happened.
+  const sinceLast = Date.now() - lastTickAt;
+  if (sinceLast < MIN_TICK_INTERVAL_MS) {
+    return {
+      ok: true,
+      addresses: 0,
+      snapshots_fetched: 0,
+      events_emitted: 0,
+      notifications_sent: 0,
+      errors: [`skipped: last tick ${Math.round(sinceLast / 1000)}s ago (min ${MIN_TICK_INTERVAL_MS / 1000}s)`],
+      durationMs: 0,
+    };
+  }
+
+  inFlight = runTickInner();
+  try {
+    const result = await inFlight;
+    lastTickAt = Date.now();
+    return result;
+  } finally {
+    inFlight = null;
+  }
+}
+
+async function runTickInner(): Promise<WatchTickStats> {
   const t0 = Date.now();
   const stats: Omit<WatchTickStats, 'durationMs'> = {
     ok: true,
