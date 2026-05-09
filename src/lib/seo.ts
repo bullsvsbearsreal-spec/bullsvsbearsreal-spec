@@ -299,6 +299,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Dashboard',
     description: 'InfoHub crypto derivatives dashboard — funding rates, open interest, liquidations, spreads, and market data from 32 exchanges at a glance.',
   },
+  '/account': {
+    title: 'Account · Command Center',
+    description: 'Your InfoHub account at a glance — connected venues, open positions, watched wallets, alerts, recent notifications, and quick actions for everything you trade.',
+  },
   '/watch': {
     title: 'Wallet Watch · Hyperliquid + gTrade Position Alerts',
     description: 'Watch any Hyperliquid or gTrade wallet in real time. Get Telegram pings when they open or close positions, change size, near liq, take realized PnL, or pay funding. Free.',

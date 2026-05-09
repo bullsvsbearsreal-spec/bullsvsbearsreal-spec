@@ -104,6 +104,38 @@ export default function BacktestPage() {
   // Run once on mount with default DCA config.
   useEffect(() => { run(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  // Derived stats not returned by the API — best/worst day-on-day move,
+  // Calmar (annualised return / |MDD|), longest run underwater.
+  const derived = useMemo(() => {
+    if (!result || result.series.length < 2) return null;
+    const s = result.series;
+    let bestDay = -Infinity, worstDay = Infinity;
+    let underwaterStart: number | null = null;
+    let longestUnderwater = 0;
+    let runningMax = s[0].valueUsd;
+    for (let i = 1; i < s.length; i++) {
+      const prev = s[i - 1].valueUsd, curr = s[i].valueUsd;
+      const pct = prev > 0 ? (curr - prev) / prev : 0;
+      if (pct > bestDay) bestDay = pct;
+      if (pct < worstDay) worstDay = pct;
+      if (curr > runningMax) {
+        runningMax = curr;
+        if (underwaterStart != null) {
+          longestUnderwater = Math.max(longestUnderwater, i - underwaterStart);
+          underwaterStart = null;
+        }
+      } else if (underwaterStart == null) {
+        underwaterStart = i;
+      }
+    }
+    if (underwaterStart != null) longestUnderwater = Math.max(longestUnderwater, s.length - underwaterStart);
+    // Calmar: annualised return / abs(MDD). Annualise by scaling 365/days.
+    const days = s.length;
+    const annReturn = days > 0 ? (result.totalReturnPct * 365) / days : 0;
+    const calmar = result.maxDrawdownPct > 0 ? annReturn / result.maxDrawdownPct : 0;
+    return { bestDayPct: bestDay * 100, worstDayPct: worstDay * 100, longestUnderwater, calmar };
+  }, [result]);
+
   // Build cumulative-PnL chart from series.
   const chart = useMemo(() => {
     if (!result || result.series.length < 2) return null;
@@ -128,17 +160,22 @@ export default function BacktestPage() {
     <>
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2">
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-500/[0.08] via-violet-500/[0.04] to-transparent px-5 py-5 mb-5">
+          <div className="absolute inset-0 opacity-[0.08]"
+            style={{ background: 'radial-gradient(circle at 80% 50%, #a78bfa, transparent 60%)' }} />
+          <div className="relative flex items-center gap-2.5 mb-1.5">
             <TestTube className="w-5 h-5 text-purple-400" />
-            <h1 className="text-2xl font-bold text-white">Strategy Backtest Lab</h1>
-            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-400 font-bold">
+            <h1 className="text-2xl font-bold bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
+              Strategy Backtest Lab
+            </h1>
+            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-300 font-bold border border-purple-400/30">
               beta
             </span>
           </div>
-          <p className="text-sm text-neutral-500 mt-1 max-w-3xl">
-            What if you&rsquo;d run this strategy? Pure historical-data simulation — no fees, no slippage,
-            no live execution. Treat the numbers as &ldquo;ballpark&rdquo;, not investment advice.
+          <p className="relative text-sm text-neutral-400 max-w-3xl">
+            What if you&rsquo;d run this strategy? Pure historical-data simulation — no fees, slippage,
+            or live execution. Treat the numbers as ballpark, not investment advice.
           </p>
         </div>
 
@@ -164,6 +201,24 @@ export default function BacktestPage() {
                 <TrendingUp className="w-3 h-3" /> Funding carry
               </button>
             </div>
+
+            {/* Quick presets per strategy — common configs in one click */}
+            {strategy === 'dca' && (
+              <div className="flex flex-wrap gap-1">
+                <PresetChip label="$100/wk · 6mo" onClick={() => { setAsset('bitcoin'); setAmountUsd(100); setIntervalDays(7); setLookbackDays(180); }} />
+                <PresetChip label="$500/wk · 1y"  onClick={() => { setAsset('bitcoin'); setAmountUsd(500); setIntervalDays(7); setLookbackDays(365); }} />
+                <PresetChip label="$50/day · 90d" onClick={() => { setAsset('bitcoin'); setAmountUsd(50);  setIntervalDays(1); setLookbackDays(90); }} />
+                <PresetChip label="ETH $200/wk"   onClick={() => { setAsset('ethereum'); setAmountUsd(200); setIntervalDays(7); setLookbackDays(180); }} />
+              </div>
+            )}
+            {strategy === 'funding-carry' && (
+              <div className="flex flex-wrap gap-1">
+                <PresetChip label="$10k · 30d"  onClick={() => { setNotionalUsd(10_000);  setCarryLookback(30); setCarrySymbol(''); }} />
+                <PresetChip label="$100k · 30d" onClick={() => { setNotionalUsd(100_000); setCarryLookback(30); setCarrySymbol(''); }} />
+                <PresetChip label="BTC-only"    onClick={() => { setCarrySymbol('BTC');   setCarryLookback(30); }} />
+                <PresetChip label="50d window"  onClick={() => { setCarryLookback(50); }} />
+              </div>
+            )}
 
             {strategy === 'dca' && (
               <>
@@ -264,6 +319,35 @@ export default function BacktestPage() {
                   <Stat label="Days" value={result.series.length.toLocaleString()} />
                 </div>
 
+                {/* Derived stats — best/worst day, Calmar, time underwater */}
+                {derived && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <Stat
+                      label="Best day"
+                      value={fmtPct(derived.bestDayPct, 2)}
+                      valueColor={derived.bestDayPct >= 0 ? 'text-emerald-400' : 'text-red-400'}
+                      sub="single-day move"
+                    />
+                    <Stat
+                      label="Worst day"
+                      value={fmtPct(derived.worstDayPct, 2)}
+                      valueColor="text-red-400"
+                      sub="single-day move"
+                    />
+                    <Stat
+                      label="Calmar"
+                      value={derived.calmar.toFixed(2)}
+                      valueColor={derived.calmar >= 1 ? 'text-emerald-400' : derived.calmar >= 0 ? 'text-amber-300' : 'text-red-400'}
+                      sub="ann. return / |MDD|"
+                    />
+                    <Stat
+                      label="Longest underwater"
+                      value={`${derived.longestUnderwater}d`}
+                      sub="below prior peak"
+                    />
+                  </div>
+                )}
+
                 {/* Chart */}
                 {chart && (
                   <div className="card-premium p-4">
@@ -346,10 +430,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Stat({ label, value, sub, valueColor }: { label: string; value: string; sub?: string; valueColor?: string }) {
   return (
-    <div className="card-premium p-3">
+    <div className="card-premium p-3 hover:border-purple-400/30 transition-colors">
       <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">{label}</div>
-      <div className={`text-base font-bold tabular-nums mt-0.5 ${valueColor ?? 'text-white'}`}>{value}</div>
+      <div className={`text-lg font-bold font-mono tabular-nums mt-0.5 ${valueColor ?? 'text-white'}`}>{value}</div>
       {sub && <div className="text-[9px] text-neutral-600 mt-0.5">{sub}</div>}
     </div>
+  );
+}
+
+function PresetChip({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-[10px] font-mono px-2 py-0.5 rounded border border-purple-400/20 bg-purple-500/[0.05] text-purple-300 hover:bg-purple-500/15 hover:border-purple-400/40 transition-colors"
+    >
+      {label}
+    </button>
   );
 }
