@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getSQL, isDBConfigured } from '@/lib/db';
+import { parseJsonbArray, parseJsonbObject } from '@/lib/hl-watch';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -53,12 +54,7 @@ export async function GET() {
     ORDER BY ts DESC
     LIMIT 50
   ` as Array<{ id: number; address: string; venue: string; symbol: string; kind: string; payload: unknown; ts: string }>;
-  const events = rawEvents.map(e => ({
-    ...e,
-    payload: typeof e.payload === 'string'
-      ? (() => { try { return JSON.parse(e.payload as string); } catch { return {}; } })()
-      : (e.payload ?? {}),
-  }));
+  const events = rawEvents.map(e => ({ ...e, payload: parseJsonbObject(e.payload) }));
 
   // Latest snapshot per (address, venue). Defensively parse the
   // positions JSONB — postgres.js sometimes returns it as a string.
@@ -70,12 +66,7 @@ export async function GET() {
     FROM hl_position_snapshots
     WHERE address = ANY(${sql.array(addrs)}::text[])
   ` as Array<{ address: string; venue: string; positions: unknown; account_value: number | null; ts: string }>;
-  const snapshots = rawSnapshots.map(s => ({
-    ...s,
-    positions: typeof s.positions === 'string'
-      ? (() => { try { return JSON.parse(s.positions as string); } catch { return []; } })()
-      : (Array.isArray(s.positions) ? s.positions : []),
-  }));
+  const snapshots = rawSnapshots.map(s => ({ ...s, positions: parseJsonbArray(s.positions) }));
 
   return NextResponse.json({ wallets, events, snapshots });
 }

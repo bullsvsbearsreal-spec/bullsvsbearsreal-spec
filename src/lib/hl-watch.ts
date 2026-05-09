@@ -221,6 +221,41 @@ function sideOf(szi: number): 'long' | 'short' {
   return szi >= 0 ? 'long' : 'short';
 }
 
+// ─── JSONB parse helpers ──────────────────────────────────────────────
+// postgres.js returns JSONB columns either as parsed objects/arrays OR
+// as raw JSON strings, depending on connection setup. Without these
+// guards the runner's snapshot diff sees prev=[] every tick (string is
+// not Array), the UI's formatEvent reads payload.side on a string and
+// gets undefined — silent breakage in both cases.
+
+/** Safely parse a JSONB array column. Returns the array (parsed if string,
+ *  passed through if already array, [] otherwise). Generic so callers can
+ *  type the inner element. */
+export function parseJsonbArray<T = unknown>(raw: unknown): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed as T[] : [];
+    } catch { return []; }
+  }
+  return [];
+}
+
+/** Safely parse a JSONB object column. Returns the object (parsed if
+ *  string, passed through if already object, {} otherwise). Generic
+ *  so callers can type the shape. */
+export function parseJsonbObject<T extends Record<string, unknown> = Record<string, unknown>>(raw: unknown): T {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as T;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed as T : {} as T;
+    } catch { return {} as T; }
+  }
+  return {} as T;
+}
+
 /** Diff two snapshots and emit one event per detected change. Caller
  *  filters by Thresholds before delivery (so we still log everything,
  *  but only ping users for their enabled triggers). */

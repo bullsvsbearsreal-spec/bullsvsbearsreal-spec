@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   diffSnapshots, applyThresholds, formatEvent, DEFAULT_THRESHOLDS,
+  parseJsonbArray, parseJsonbObject,
   type AccountSnapshot, type PositionLite, type Thresholds, type WatchEvent,
 } from '../hl-watch';
 
@@ -488,5 +489,88 @@ describe('applyThresholds boundary cases', () => {
     // @ts-expect-error - testing defensive default branch
     const e: WatchEvent = { kind: 'totally-not-a-kind', symbol: 'BTC', payload: {} };
     expect(applyThresholds([e], t)).toEqual([]);
+  });
+});
+
+// ─── JSONB parse helpers — regression tests for the postgres.js
+//      "string instead of array/object" return quirk ───────────────────
+
+describe('parseJsonbArray', () => {
+  it('passes through arrays unchanged', () => {
+    const arr = [{ coin: 'BTC' }, { coin: 'ETH' }];
+    expect(parseJsonbArray(arr)).toBe(arr);
+  });
+
+  it('parses a JSON string into an array', () => {
+    const raw = '[{"coin":"BTC","szi":1.5}]';
+    expect(parseJsonbArray(raw)).toEqual([{ coin: 'BTC', szi: 1.5 }]);
+  });
+
+  it('returns [] for malformed JSON strings', () => {
+    expect(parseJsonbArray('not valid json {{')).toEqual([]);
+  });
+
+  it('returns [] for null/undefined/non-array shapes', () => {
+    expect(parseJsonbArray(null)).toEqual([]);
+    expect(parseJsonbArray(undefined)).toEqual([]);
+    expect(parseJsonbArray(42)).toEqual([]);
+    expect(parseJsonbArray({ not: 'an array' })).toEqual([]);
+  });
+
+  it('returns [] when JSON parses to a non-array value', () => {
+    expect(parseJsonbArray('"just a string"')).toEqual([]);
+    expect(parseJsonbArray('{"obj":true}')).toEqual([]);
+    expect(parseJsonbArray('null')).toEqual([]);
+  });
+
+  it('handles the production-observed shape (16k char positions string)', () => {
+    // The actual bug case — postgres.js returned the JSONB column as
+    // a real JSON string. parseJsonbArray must recover the array so
+    // the differ has a real prev snapshot to diff against.
+    const big = JSON.stringify(Array.from({ length: 50 }, (_, i) => ({
+      coin: `SYM${i}`, szi: i + 1, positionValue: 1000 * i,
+    })));
+    const result = parseJsonbArray<{ coin: string }>(big);
+    expect(result).toHaveLength(50);
+    expect(result[0].coin).toBe('SYM0');
+    expect(result[49].coin).toBe('SYM49');
+  });
+});
+
+describe('parseJsonbObject', () => {
+  it('passes through plain objects unchanged', () => {
+    const obj = { side: 'long', sizeUsd: 1000 };
+    expect(parseJsonbObject(obj)).toBe(obj);
+  });
+
+  it('parses a JSON object string', () => {
+    expect(parseJsonbObject('{"side":"long","sizeUsd":1000}'))
+      .toEqual({ side: 'long', sizeUsd: 1000 });
+  });
+
+  it('returns {} for malformed JSON', () => {
+    expect(parseJsonbObject('not valid json')).toEqual({});
+  });
+
+  it('returns {} for arrays (we want object, not array)', () => {
+    expect(parseJsonbObject([1, 2, 3])).toEqual({});
+    expect(parseJsonbObject('[1,2,3]')).toEqual({});
+  });
+
+  it('returns {} for null/undefined/scalars', () => {
+    expect(parseJsonbObject(null)).toEqual({});
+    expect(parseJsonbObject(undefined)).toEqual({});
+    expect(parseJsonbObject(42)).toEqual({});
+    expect(parseJsonbObject('"scalar"')).toEqual({});
+  });
+
+  it('handles the production-observed event payload shape', () => {
+    // The bug case for events — payload returned as JSON string,
+    // UI accessed e.payload.side and got undefined → 'LONG CHIP · $0.00'.
+    // parseJsonbObject recovers the real shape.
+    const raw = '{"side":"short","sizeUsd":176810.0376}';
+    const result = parseJsonbObject<{ side?: string; sizeUsd?: number }>(raw);
+    expect(result.side).toBe('short');
+    expect(result.sizeUsd).toBe(176810.0376);
   });
 });

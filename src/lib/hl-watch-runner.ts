@@ -12,7 +12,8 @@ import { getSQL, isDBConfigured, getTelegramLinkByUser, recordAuditEvent, upsert
 import { sendMessage } from '@/lib/telegram';
 import {
   fetchVenueState, diffSnapshots, applyThresholds, formatEvent,
-  VENUES, type AccountSnapshot, type Thresholds, type Venue,
+  parseJsonbArray, VENUES,
+  type AccountSnapshot, type PositionLite, type Thresholds, type Venue,
 } from '@/lib/hl-watch';
 
 export interface WatchTickStats {
@@ -53,23 +54,6 @@ interface SubscriberRow {
 }
 
 interface SnapshotRow { address: string; venue: string; positions: unknown; account_value: number | null; ts: string }
-
-/** Defensively parse the JSONB positions field. postgres.js returns
- *  JSONB columns as either parsed arrays/objects OR raw JSON strings
- *  depending on connection config — same pattern as user_prefs. We
- *  handle both shapes here so the differ always gets a real array. */
-function parsePositionsField(raw: unknown): AccountSnapshot['positions'] {
-  if (Array.isArray(raw)) return raw as AccountSnapshot['positions'];
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed as AccountSnapshot['positions'] : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
 
 function rowToThresholds(r: SubscriberRow): Thresholds {
   return {
@@ -189,7 +173,7 @@ async function runTickInner(): Promise<WatchTickStats> {
     snapByKey.set(`${r.address}|${venue}`, {
       address: r.address,
       venue,
-      positions: parsePositionsField(r.positions),
+      positions: parseJsonbArray<PositionLite>(r.positions),
       accountValue: r.account_value ?? 0,
       ts: new Date(r.ts).getTime(),
     });
