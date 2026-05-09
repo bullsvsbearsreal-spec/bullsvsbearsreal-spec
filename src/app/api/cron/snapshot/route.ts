@@ -28,7 +28,10 @@ import { tickerFetchers } from '../../tickers/exchanges';
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+// Bumped 30→55s after wiring runWatchTick onto the tail of every
+// snapshot run. Snapshot itself stays well under 30s; the watch tick
+// is ~400ms per watched wallet so the 25-cap couldn't push past 55s.
+export const maxDuration = 55;
 
 // Top symbols by # of exchanges that list them. Bumped from 200 → 500 so that
 // long-tail DEX-only / synthetic-only listings (e.g. ORDI / TAO / PENGU on
@@ -254,25 +257,20 @@ export async function GET(request: NextRequest) {
 
     // ── Tail-call: piggyback the wallet watcher onto the existing 60s
     // snapshot timer so /watch alerts fire without needing a separate
-    // systemd timer entry on the droplet. Fire-and-forget so a slow
-    // watcher run doesn't push snapshot past its maxDuration. Auth uses
-    // the same CRON_SECRET the snapshot itself was called with, so the
-    // watch-hl-wallets endpoint accepts it as a legitimate cron request.
+    // systemd timer entry on the droplet. Direct lib call (not an HTTP
+    // self-fetch) so we get reliable execution + clean error handling
+    // and satisfy CLAUDE.md's "don't fetch your own routes" rule.
+    // Awaited so DO Node.js doesn't kill the request before the work
+    // completes; runWatchTick on a single watched address is ~400ms,
+    // well within the maxDuration budget.
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
-      const cronSecret = process.env.CRON_SECRET || '';
-      if (cronSecret) {
-        // Don't await — watcher runs in its own request context. We spawn
-        // it, log any error, and return our own response immediately.
-        fetch(`${baseUrl}/api/cron/watch-hl-wallets`, {
-          headers: { Authorization: `Bearer ${cronSecret}` },
-          signal: AbortSignal.timeout(55_000),
-        }).then(r => {
-          if (!r.ok) console.warn(`[cron:snapshot→watch] HTTP ${r.status}`);
-        }).catch(e => console.warn('[cron:snapshot→watch] fetch error:', e instanceof Error ? e.message : e));
+      const { runWatchTick } = await import('@/lib/hl-watch-runner');
+      const watchStats = await runWatchTick();
+      if (watchStats.errors.length > 0) {
+        console.warn('[cron:snapshot→watch] errors:', watchStats.errors.slice(0, 3).join(' | '));
       }
     } catch (e) {
-      console.warn('[cron:snapshot→watch] failed to schedule:', e);
+      console.warn('[cron:snapshot→watch] runner threw:', e instanceof Error ? e.message : e);
     }
 
     return NextResponse.json({
