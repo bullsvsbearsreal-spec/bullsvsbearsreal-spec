@@ -312,9 +312,15 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     // Always 200 with structured failure JSON — DigitalOcean App Platform
     // rewrites non-2xx into a generic HTML page that hides the diagnostic.
+    // BUT also log to console.error so journalctl/Sentry catches it —
+    // otherwise the cron monitor's `grep "HTTP 200"` silently passes
+    // even when ingestion is totally broken (saveLiquidationSnapshot
+    // throwing, initDB failing, etc.).
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[ingest-liquidations] cron failed:', msg);
     return NextResponse.json({
       ok: false,
-      error: err instanceof Error ? err.message : String(err),
+      error: msg,
     }, { status: 200 });
   }
 }

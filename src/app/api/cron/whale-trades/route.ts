@@ -179,9 +179,14 @@ async function notifySubscribers(
               sent++;
             }
           } else if (channel === 'push' && sub.ownerType === 'user') {
-            await sendPush(sub.ownerId, trade, sub.label);
-            await logWhaleNotification(sub.ownerId, eventId, channel);
-            sent++;
+            // Only log + count as sent if at least one subscription
+            // actually delivered. Was previously logging unconditionally,
+            // which tripped cooldown even when VAPID was misconfigured.
+            const ok = await sendPush(sub.ownerId, trade, sub.label);
+            if (ok) {
+              await logWhaleNotification(sub.ownerId, eventId, channel);
+              sent++;
+            }
           } else if (channel === 'discord' && sub.discordWebhookUrl) {
             const tradeMsg = formatTradeMessage(trade, sub.label);
             const ok = await sendAlertDiscord(sub.discordWebhookUrl, [{
@@ -213,7 +218,14 @@ async function notifySubscribers(
   return sent;
 }
 
-async function sendPush(userId: string, trade: DetectedTrade, label?: string | null): Promise<void> {
+/**
+ * Returns true iff at least ONE push subscription was successfully
+ * delivered. Returns false on misconfigured VAPID, no subscriptions,
+ * or all subscriptions erroring — so the caller can avoid logging a
+ * "delivered" notification + tripping cooldown when nothing actually
+ * went out.
+ */
+async function sendPush(userId: string, trade: DetectedTrade, label?: string | null): Promise<boolean> {
   try {
     const webpush = await import('web-push');
     // Read NEXT_PUBLIC_ first to match the browser hook + lib/notifications;
@@ -221,25 +233,32 @@ async function sendPush(userId: string, trade: DetectedTrade, label?: string | n
     // uses it keeps working.
     const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || '';
     const vapidPrivate = process.env.VAPID_PRIVATE_KEY || '';
-    if (!vapidPublic || !vapidPrivate) return;
+    if (!vapidPublic || !vapidPrivate) return false;
     webpush.setVapidDetails('mailto:noreply@info-hub.io', vapidPublic, vapidPrivate);
 
     const subs = await getPushSubscriptionsForUser(userId);
+    if (subs.length === 0) return false;
     const body = formatTradeMessage(trade, label);
 
+    let delivered = 0;
     for (const sub of subs) {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           JSON.stringify({ title: 'Whale Trade Alert', body, url: '/wallet-tracker' }),
         );
-      } catch (err: any) {
-        if (err?.statusCode === 410 || err?.statusCode === 404) {
+        delivered++;
+      } catch (err: unknown) {
+        const code = (err as { statusCode?: number })?.statusCode;
+        if (code === 410 || code === 404) {
           await deletePushSubscription(sub.endpoint);
         }
       }
     }
-  } catch { /* push not available */ }
+    return delivered > 0;
+  } catch {
+    return false;
+  }
 }
 
 function esc(s: string): string {
