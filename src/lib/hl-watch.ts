@@ -64,7 +64,9 @@ export interface WatchEventPayload {
   sizeUsd?: number;       // current notional
   prevSizeUsd?: number;
   deltaPct?: number;      // signed delta vs previous notional
-  distPct?: number;       // distance to liq, fraction
+  distPct?: number;       // distance to liq, fraction (current tick)
+  prevDistPct?: number;   // distance to liq, fraction (previous tick) — used by
+                          // applyThresholds for edge-triggered liq_danger alerts
   realizedPnl?: number;
   fundingDelta?: number;  // signed, negative = paid
 }
@@ -328,13 +330,17 @@ export function diffSnapshots(prev: AccountSnapshot | null, curr: AccountSnapsho
       const prevDist = prevPos.liquidationPx && prevPos.markPx > 0
         ? Math.abs(prevPos.markPx - prevPos.liquidationPx) / prevPos.markPx
         : 1;
-      // Emit when curr is lower than prev — threshold filter cuts the
-      // ones that haven't crossed the danger band yet.
+      // Always emit when distance moved closer; the EDGE-trigger check
+      // (prev was above threshold, curr is at/below) happens in
+      // applyThresholds where the user's per-wallet threshold lives.
+      // Without that edge check, a position decaying toward liq fires
+      // an alert on EVERY 60s tick instead of once when the danger
+      // band is crossed.
       if (currDist < prevDist) {
         events.push({
           kind: 'liq_danger',
           symbol: coin,
-          payload: { side: sideOf(currPos.szi), distPct: currDist },
+          payload: { side: sideOf(currPos.szi), distPct: currDist, prevDistPct: prevDist },
         });
       }
     }
@@ -375,8 +381,22 @@ export function applyThresholds(events: WatchEvent[], t: Thresholds): WatchEvent
       }
       case 'size_changed':
         return t.triggerSizeChanged && Math.abs(e.payload.deltaPct ?? 0) >= t.sizeChangePct;
-      case 'liq_danger':
-        return t.triggerLiqDanger && (e.payload.distPct ?? 1) <= t.liqDangerPct;
+      case 'liq_danger': {
+        // Edge-triggered: fire ONLY when this tick crossed from above
+        // the danger threshold to at/below it. Was firing every tick
+        // a position kept moving toward liq, which produced a steady
+        // notification storm and tripped Telegram rate limits.
+        if (!t.triggerLiqDanger) return false;
+        const curr = e.payload.distPct ?? 1;
+        const prev = e.payload.prevDistPct ?? 1;
+        // Cross-into-band: prev was above threshold, curr is at/below.
+        // If we don't have a prevDistPct (older event from before this
+        // fix shipped) fall back to level-trigger so existing rows
+        // still surface — they'll deduplicate via hl_event_notifications
+        // anyway.
+        if (prev > t.liqDangerPct) return curr <= t.liqDangerPct;
+        return false;
+      }
       case 'realized_pnl':
         return t.triggerRealizedPnl && Math.abs(e.payload.realizedPnl ?? 0) >= t.realizedPnlUsd;
       case 'funding_paid':

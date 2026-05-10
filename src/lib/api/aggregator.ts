@@ -8,6 +8,17 @@ const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 const DEFAULT_TTL = 10000; // 10 seconds
 const FUNDING_TTL = 120000; // 2 minutes — funding rates change every 1-8h, no need to re-fetch on tab switch
 
+// CLAUDE.md requires AbortSignal timeouts on every external fetch.
+// This helper wraps fetch with a default 15s deadline so a hung server-side
+// handler doesn't leave the UI spinning forever during cold starts. Callers
+// can still pass their own RequestInit; the timeout only applies if no
+// `signal` is already set.
+const FETCH_TIMEOUT_MS = 15_000;
+function timedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (init?.signal) return fetch(input, init);
+  return fetch(input, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+}
+
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
@@ -38,7 +49,7 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
 
   try {
     // Use the server-side API route to avoid CORS issues
-    const response = await fetch('/api/tickers');
+    const response = await timedFetch('/api/tickers');
     if (!response.ok) {
       throw new Error('Failed to fetch tickers');
     }
@@ -117,7 +128,7 @@ export async function fetchAllFundingRates(assetClass: AssetClassFilter = 'crypt
     const url = assetClass === 'crypto'
       ? '/api/funding'
       : `/api/funding?assetClass=${encodeURIComponent(assetClass)}`;
-    const response = await fetch(url);
+    const response = await timedFetch(url);
     if (!response.ok) {
       throw new Error('Failed to fetch funding rates');
     }
@@ -152,7 +163,7 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
 
   try {
     // Use the server-side API route to avoid CORS issues
-    const response = await fetch('/api/openinterest');
+    const response = await timedFetch('/api/openinterest');
     if (!response.ok) {
       throw new Error('Failed to fetch open interest');
     }
@@ -191,7 +202,7 @@ export async function fetchSpotPrices(): Promise<SpotPriceEntry[]> {
   if (cached) return cached;
 
   try {
-    const response = await fetch('/api/spot-prices');
+    const response = await timedFetch('/api/spot-prices');
     if (!response.ok) throw new Error('Failed to fetch spot prices');
     const json = await response.json();
     const data = Array.isArray(json) ? json : (json.data ?? json);
@@ -304,7 +315,7 @@ export async function fetchLongShortRatio(symbol: string = 'BTCUSDT'): Promise<{
   if (cached) return cached;
 
   try {
-    const response = await fetch(`/api/longshort?symbol=${symbol}`);
+    const response = await timedFetch(`/api/longshort?symbol=${symbol}`);
     if (!response.ok) {
       throw new Error(`Long/short API ${response.status}`);
     }
@@ -352,7 +363,7 @@ export async function fetchOIChanges(): Promise<(OpenInterestData & { pct1h?: nu
 
   // Fetch OI with change data in a single call
   try {
-    const res = await fetch('/api/openinterest?changes=1');
+    const res = await timedFetch('/api/openinterest?changes=1');
     if (!res.ok) throw new Error('OI fetch failed');
     const json = await res.json();
     const oiData: OpenInterestData[] = json.data || [];
@@ -585,7 +596,7 @@ export async function fetchArbHistory(symbols: string[]): Promise<Map<string, Ar
       batches.push(ascii.slice(i, i + BATCH));
     }
     const responses = await Promise.all(
-      batches.map(batch => fetch(`/api/arb-history?symbols=${batch.join(',')}`).catch(() => null))
+      batches.map(batch => timedFetch(`/api/arb-history?symbols=${batch.join(',')}`).catch(() => null))
     );
     for (const response of responses) {
       if (!response || !response.ok) continue;
@@ -620,7 +631,7 @@ export async function fetchExchangeHealth(): Promise<{
   if (cached) return cached;
 
   try {
-    const response = await fetch('/api/funding');
+    const response = await timedFetch('/api/funding');
     if (!response.ok) throw new Error('Failed to fetch');
     const json = await response.json();
     if (json.health && json.meta) {
@@ -651,7 +662,7 @@ export async function fetchPredictionMarkets(): Promise<import('./prediction-mar
   if (cached) return cached;
 
   try {
-    const response = await fetch('/api/prediction-markets');
+    const response = await timedFetch('/api/prediction-markets');
     if (!response.ok) throw new Error('Failed to fetch prediction markets');
     const data = await response.json();
     setCache('predictionMarkets', data);
@@ -671,7 +682,7 @@ export async function fetchExecutionCosts(asset: string, size: number, direction
   const cached = getCached<import('@/lib/execution-costs/types').ExecutionCostResponse>(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(`/api/execution-costs?asset=${encodeURIComponent(asset)}&size=${size}&direction=${direction}`);
+  const response = await timedFetch(`/api/execution-costs?asset=${encodeURIComponent(asset)}&size=${size}&direction=${direction}`);
   if (!response.ok) throw new Error('Failed to fetch execution costs');
   const data = await response.json();
   setCache(cacheKey, data, DEFAULT_TTL);

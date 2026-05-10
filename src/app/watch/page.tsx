@@ -112,21 +112,28 @@ const KIND_LABEL: Record<EventRow['kind'], string> = {
 
 function formatEvent(e: EventRow): string {
   const sym = e.symbol;
-  const side = e.payload.side === 'short' ? 'SHORT' : 'LONG';
+  // Defensive: parseJsonbObject in the API may return {} or null when
+  // the upstream payload is missing/malformed. Treat null+undefined the
+  // same as an empty object so accessing .side doesn't crash the row.
+  const p = (e.payload ?? {}) as Partial<EventRow['payload']>;
+  const side = p.side === 'short' ? 'SHORT' : 'LONG';
   switch (e.kind) {
-    case 'opened':       return `${side} ${sym} · ${fmtUsd(e.payload.sizeUsd ?? 0)}`;
+    case 'opened':       return `${side} ${sym} · ${fmtUsd(p.sizeUsd ?? 0)}`;
     case 'closed': {
-      const pnl = e.payload.realizedPnl ?? 0;
+      const pnl = p.realizedPnl ?? 0;
       const sign = pnl >= 0 ? '+' : '';
       return `${side} ${sym} closed · realized ${sign}${fmtUsd(pnl)}`;
     }
     case 'size_changed': {
-      const d = e.payload.deltaPct ?? 0;
-      return `${side} ${sym} · ${fmtUsd(e.payload.prevSizeUsd ?? 0)} → ${fmtUsd(e.payload.sizeUsd ?? 0)} (${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)}%)`;
+      const d = p.deltaPct ?? 0;
+      return `${side} ${sym} · ${fmtUsd(p.prevSizeUsd ?? 0)} → ${fmtUsd(p.sizeUsd ?? 0)} (${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)}%)`;
     }
-    case 'liq_danger':   return `${side} ${sym} · ${((e.payload.distPct ?? 0) * 100).toFixed(2)}% from liq`;
-    case 'realized_pnl': return `${side} ${sym} · realized ${fmtUsd(e.payload.realizedPnl ?? 0)}`;
-    case 'funding_paid': return `${side} ${sym} · ${(e.payload.fundingDelta ?? 0) < 0 ? 'paid' : 'received'} ${fmtUsd(Math.abs(e.payload.fundingDelta ?? 0))}`;
+    case 'liq_danger':   return `${side} ${sym} · ${((p.distPct ?? 0) * 100).toFixed(2)}% from liq`;
+    case 'realized_pnl': return `${side} ${sym} · realized ${fmtUsd(p.realizedPnl ?? 0)}`;
+    case 'funding_paid': return `${side} ${sym} · ${(p.fundingDelta ?? 0) < 0 ? 'paid' : 'received'} ${fmtUsd(Math.abs(p.fundingDelta ?? 0))}`;
+    // Future-proof: a kind added server-side before client redeploy
+    // would otherwise return undefined and render a broken empty row.
+    default: return `${side} ${sym} · ${e.kind}`;
   }
 }
 
@@ -167,25 +174,45 @@ function WatchPageInner() {
     }
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/watch/wallets', { signal: AbortSignal.timeout(10_000) });
+      // Combine the unmount-cancel signal with the 10s timeout so a slow
+      // response after navigation doesn't setState on an unmounted component.
+      const timeoutSignal = AbortSignal.timeout(10_000);
+      const combined = signal
+        ? AbortSignal.any([signal, timeoutSignal])
+        : timeoutSignal;
+      const res = await fetch('/api/watch/wallets', { signal: combined });
+      if (signal?.aborted) return;
       if (res.status === 401) { setLoading(false); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j = await res.json();
+      if (signal?.aborted) return;
       setData(j);
     } catch (e) {
+      // AbortError on unmount is expected — don't log it
+      if ((e as { name?: string })?.name === 'AbortError') return;
       console.error('[watch] load error:', e);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (status !== 'authenticated') { setLoading(false); return; }
-    load();
-    const iv = setInterval(load, 30_000);
-    return () => clearInterval(iv);
+    // Each tick gets its own controller — the previous one is cancelled
+    // before the next fires, and unmount cancels whichever is in flight.
+    let current = new AbortController();
+    load(current.signal);
+    const iv = setInterval(() => {
+      current.abort();
+      current = new AbortController();
+      load(current.signal);
+    }, 30_000);
+    return () => {
+      clearInterval(iv);
+      current.abort();
+    };
   }, [status, load]);
 
   // Fetch top wallets from /smart-money to populate the "Suggested whales"
@@ -245,9 +272,20 @@ function WatchPageInner() {
   const handleRemove = async (id: number) => {
     if (!confirm('Stop watching this wallet?')) return;
     try {
-      await fetch(`/api/watch/wallets/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/watch/wallets/${id}`, { method: 'DELETE' });
+      // Surface the error if the DELETE failed — was previously silent,
+      // so an auth-expired or 500'd delete looked successful (the wallet
+      // briefly disappeared from the list during the load() reload, then
+      // came back).
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
       await load();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error('[watch] delete error:', e);
+      setError(e instanceof Error ? e.message : 'Failed to remove wallet');
+    }
   };
 
   // ── Auth gates ────────────────────────────────────────────────────
@@ -759,6 +797,10 @@ function EditWalletModal({
       await onSaved();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      // Reset saving flag in finally — previously only reset in catch,
+      // so if onSaved() ever rejected (load() error during reload), the
+      // modal stayed open and the Save button was permanently disabled.
       setSaving(false);
     }
   };
