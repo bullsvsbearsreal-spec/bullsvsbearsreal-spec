@@ -268,6 +268,22 @@ async function _doInitDB(): Promise<void> {
     )
   `;
 
+  // TOTP code replay protection. otpauth's `window: 1` accepts the
+  // previous + next 30s code, so a stolen code (phishing, MITM) is
+  // valid for up to 90s. Without tracking which codes have been
+  // consumed, an attacker can replay the same code multiple times
+  // within that window. After a successful validation, we INSERT
+  // (user_id, code, expires_at) and reject any pre-existing match.
+  await sql`
+    CREATE TABLE IF NOT EXISTS totp_used_codes (
+      user_id TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      PRIMARY KEY (user_id, code)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_totp_used_codes_expires ON totp_used_codes (expires_at)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id SERIAL PRIMARY KEY,
@@ -2529,6 +2545,42 @@ export async function pruneOldWatchData(retentionDays = 90): Promise<{
 }
 
 // ─── Audit Log ──────────────────────────────────────────────────────────────
+
+/**
+ * Claim a TOTP code for replay protection. Returns true if the code
+ * was successfully claimed (first use within the 90s window) or false
+ * if it was already used. Caller MUST gate the actual auth on this
+ * return value — calling validate() on an OTPAuth.TOTP isn't enough,
+ * because the same code is valid for the entire 90s window with the
+ * default `window: 1` setting.
+ *
+ * Codes are pruned automatically by the cleanup query at the start of
+ * each call (cheap because of the idx_totp_used_codes_expires index).
+ */
+export async function claimTotpCode(userId: string, code: string, ttlSeconds = 90): Promise<boolean> {
+  try {
+    const sql = getSQL();
+    // Best-effort cleanup — drops expired rows so the table doesn't
+    // grow unboundedly. The expires_at index makes this an O(log n)
+    // sweep, fine to run on every claim.
+    await sql`DELETE FROM totp_used_codes WHERE expires_at < NOW()`;
+    const ttl = Math.min(Math.max(30, Math.floor(ttlSeconds)), 600);
+    const intervalStr = `${ttl} seconds`;
+    const rows = await sql`
+      INSERT INTO totp_used_codes (user_id, code, expires_at)
+      VALUES (${userId}, ${code}, NOW() + ${intervalStr}::interval)
+      ON CONFLICT (user_id, code) DO NOTHING
+      RETURNING user_id
+    `;
+    return rows.length > 0;
+  } catch (e) {
+    // If the DB is down, fail CLOSED — refuse the code rather than
+    // letting a replay slip through. The caller will return 503-ish
+    // and the user can retry.
+    console.error('claimTotpCode error:', e);
+    return false;
+  }
+}
 
 export async function recordAuditEvent(
   type: string,

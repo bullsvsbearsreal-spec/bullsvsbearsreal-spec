@@ -31,15 +31,27 @@ export async function POST(request: NextRequest) {
   try {
     const sql = getSQL();
 
-    const [{ count: beforeCount }] = await sql`SELECT count(*)::int AS count FROM liquidation_snapshots`;
+    // Bound the dedup window. The previous query did `NOT IN (SELECT MIN(id)
+    // FROM liquidation_snapshots GROUP BY ...)` which scans the ENTIRE
+    // table twice (count + delete) with no row limit. With millions of
+    // rows this exhausts working memory in Postgres. Now we restrict to
+    // the last 7 days, which is the realistic window where dupe inserts
+    // happen anyway (older rows would have been deduped on previous runs).
+    const [{ count: beforeCount }] = await sql`
+      SELECT count(*)::int AS count
+      FROM liquidation_snapshots
+      WHERE ts > NOW() - INTERVAL '7 days'
+    `;
 
-    // Find duplicates (rows that are NOT the min-id per dedup key)
+    // Find duplicates within the bounded window
     const [{ count: dupeCount }] = await sql`
       SELECT count(*)::int AS count FROM liquidation_snapshots
-      WHERE id NOT IN (
-        SELECT MIN(id) FROM liquidation_snapshots
-        GROUP BY symbol, exchange, side, ROUND(price::numeric, 2), DATE_TRUNC('second', ts)
-      )
+      WHERE ts > NOW() - INTERVAL '7 days'
+        AND id NOT IN (
+          SELECT MIN(id) FROM liquidation_snapshots
+          WHERE ts > NOW() - INTERVAL '7 days'
+          GROUP BY symbol, exchange, side, ROUND(price::numeric, 2), DATE_TRUNC('second', ts)
+        )
     `;
 
     // Dry run unless explicitly confirmed
@@ -47,21 +59,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         ok: true,
         dryRun: true,
+        scope: 'last 7 days',
         before: beforeCount,
         duplicates: dupeCount,
         afterEstimate: beforeCount - dupeCount,
         pctDuplicates: beforeCount > 0 ? `${((dupeCount / beforeCount) * 100).toFixed(1)}%` : '0.0%',
-        message: 'Send { "confirm": true } to execute the dedup.',
+        message: 'Send { "confirm": true } to execute the dedup. Scope is the last 7 days.',
       });
     }
 
-    // Execute dedup — delete only duplicate rows, keep one per group
+    // Execute dedup — delete only duplicate rows in the bounded window
     const result = await sql`
       DELETE FROM liquidation_snapshots
-      WHERE id NOT IN (
-        SELECT MIN(id) FROM liquidation_snapshots
-        GROUP BY symbol, exchange, side, ROUND(price::numeric, 2), DATE_TRUNC('second', ts)
-      )
+      WHERE ts > NOW() - INTERVAL '7 days'
+        AND id NOT IN (
+          SELECT MIN(id) FROM liquidation_snapshots
+          WHERE ts > NOW() - INTERVAL '7 days'
+          GROUP BY symbol, exchange, side, ROUND(price::numeric, 2), DATE_TRUNC('second', ts)
+        )
     `;
 
     const deleted = result.count ?? dupeCount;

@@ -4,7 +4,7 @@ export const preferredRegion = 'bom1';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import * as OTPAuth from 'otpauth';
-import { isDBConfigured, getSQL } from '@/lib/db';
+import { isDBConfigured, getSQL, claimTotpCode } from '@/lib/db';
 
 // POST: Verify TOTP code and enable 2FA
 export async function POST(req: Request) {
@@ -90,6 +90,13 @@ export async function DELETE(req: Request) {
         secret: OTPAuth.Secret.fromBase32(rows[0].totp_secret),
       });
       if (totp.validate({ token: body.code, window: 1 }) === null) {
+        return NextResponse.json({ error: 'Invalid TOTP code' }, { status: 400 });
+      }
+      // Replay protection — same logic as 2fa/validate. Without this a
+      // stolen TOTP code is valid for ~90s and could be reused to
+      // disable 2FA multiple times if intercepted.
+      const claimed = await claimTotpCode(userId, body.code, 90);
+      if (!claimed) {
         return NextResponse.json({ error: 'Invalid TOTP code' }, { status: 400 });
       }
     } else if (body.password) {

@@ -4,7 +4,7 @@ export const preferredRegion = 'bom1';
 import { NextResponse } from 'next/server';
 import * as OTPAuth from 'otpauth';
 import crypto from 'crypto';
-import { isDBConfigured, getSQL, initDB } from '@/lib/db';
+import { isDBConfigured, getSQL, initDB, claimTotpCode } from '@/lib/db';
 
 /** Issue a single-use nonce proving 2FA was validated server-side (5 min TTL). */
 async function issueNonce(userId: string): Promise<string> {
@@ -95,6 +95,15 @@ export async function POST(req: Request) {
 
       const delta = totp.validate({ token: code, window: 1 });
       if (delta !== null) {
+        // Replay protection — claim the code in totp_used_codes. With
+        // window:1 the code is valid for ~90s; without this, a stolen
+        // code (phishing, MITM) can be replayed multiple times within
+        // that window. claimTotpCode returns false if the code was
+        // already used, in which case we treat it as invalid.
+        const claimed = await claimTotpCode(userId, code, 90);
+        if (!claimed) {
+          return NextResponse.json({ error: 'Invalid code' }, { status: 400 });
+        }
         const nonce = await issueNonce(userId);
         return NextResponse.json({ valid: true, nonce });
       }

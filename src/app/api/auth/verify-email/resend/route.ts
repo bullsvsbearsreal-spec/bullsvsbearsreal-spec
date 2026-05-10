@@ -59,9 +59,20 @@ export async function POST(req: Request) {
 
     const db = getSQL();
 
-    // Find user
+    // Find user. To prevent timing-based username enumeration, we run
+    // the same number of DB queries regardless of whether the user
+    // exists. For non-existent emails we run an equivalent "no-op"
+    // query before returning so the latency profile matches the
+    // existing-user path.
     const users = await db`SELECT id FROM users WHERE email = ${email}`;
     if (users.length === 0) {
+      // Run a same-shape query to match the latency of the existing-user
+      // path's recent-code lookup. Result is discarded.
+      await db`
+        SELECT id FROM email_verification_codes
+        WHERE user_id = ${'__no_match__'} AND created_at > NOW() - INTERVAL '60 seconds'
+        LIMIT 1
+      `;
       // Don't reveal whether email exists
       return NextResponse.json({ sent: true });
     }
