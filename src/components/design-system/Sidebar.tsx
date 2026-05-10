@@ -90,7 +90,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/longshort',                label: 'Long / Short',    color: PUR,  icon: I.ls },
     { href: '/etf',                      label: 'ETF Tracker',     color: ACC,  icon: I.etf },
     { href: '/etf-flows',                label: 'ETF Flows',       color: ACC,  icon: I.etf },
-    { href: '/etf-counterfactual',       label: 'ETF Counterfactual', color: ACC, icon: I.etf },
+    // /etf-counterfactual consolidated into /etf-flows (May 2026)
     { href: '/crypto-stocks',            label: 'Crypto Stocks',   color: ACC,  icon: I.building },
   ]},
   { id: 'risk', label: 'Risk & Liquidations', items: [
@@ -115,7 +115,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/exchange-fees',     label: 'Exchange Fees', color: MUTE, icon: I.coin },
     { href: '/exchange-reserves', label: 'Reserves',     color: MUTE, icon: I.building },
     { href: '/listings',          label: 'New Listings', color: MUTE, icon: I.layers },
-    { href: '/listing-radar',     label: 'Listing Radar', color: ACC, icon: I.signal },
+    // /listing-radar consolidated into /listings (May 2026)
     { href: '/tge-calendar',      label: 'TGE Calendar', color: MUTE, icon: I.layers },
     { href: '/earnings-calendar', label: 'Earnings Calendar', color: ACC, icon: I.calendar },
     { href: '/prediction-markets', label: 'Prediction Markets', color: MUTE, icon: I.trophy },
@@ -154,7 +154,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/staking',           label: 'Staking',        color: PUMP, icon: I.shield },
     { href: '/validators',        label: 'Validator Econ', color: PUMP, icon: I.shield },
     { href: '/restaking',         label: 'Restaking Yields', color: PUMP, icon: I.shield },
-    { href: '/restaking-delta',   label: 'Restaking Delta', color: PUMP, icon: I.shield },
+    // /restaking-delta consolidated into /restaking (May 2026)
   ]},
   { id: 'whales', label: 'Smart Money & Whales', items: [
     { href: '/smart-money',       label: 'Smart Money',    color: PUR,  icon: I.signal },

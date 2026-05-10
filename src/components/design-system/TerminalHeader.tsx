@@ -55,7 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'long-short',      label: 'Long / Short',    href: '/longshort',         hint: 'Crowd positioning' },
       { id: 'etf',             label: 'ETF Tracker',     href: '/etf',               hint: 'Spot ETF live quotes' },
       { id: 'etf-flows',       label: 'ETF Flows',        href: '/etf-flows',          hint: 'Daily net inflows · Farside' },
-      { id: 'etf-counterfactual', label: 'ETF Counterfactual', href: '/etf-counterfactual', hint: 'BTC without ETF bid' },
+      // /etf-counterfactual consolidated into /etf-flows (May 2026)
       { id: 'crypto-stocks',   label: 'Crypto Stocks',    href: '/crypto-stocks',      hint: 'COIN · MSTR · miners · ETFs' },
       { id: 'memecoin-radar',  label: 'Memecoin Radar',  href: '/memecoin-radar',    hint: 'Solana DEX velocity' },
       { id: 'top-movers',      label: 'Top Movers',      href: '/top-movers',        hint: 'Biggest gainers/losers' },
@@ -115,7 +115,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'yields',          label: 'Yields',          href: '/yields',                hint: 'DeFi APYs' },
       { id: 'staking',         label: 'Staking',         href: '/staking',               hint: 'Validator yields' },
       { id: 'validators',      label: 'Validator Econ',  href: '/validators',            hint: 'LST + restaking yields' },
-      { id: 'restaking-delta', label: 'Restaking Delta', href: '/restaking-delta',       hint: 'LST vs restaking yield premium' },
+      // /restaking-delta consolidated into /restaking (May 2026)
       { id: 'reserves',        label: 'Exchange Reserves', href: '/exchange-reserves',   hint: 'CEX balances' },
       { id: 'listings',        label: 'New Listings',    href: '/listings',              hint: 'Recent debuts' },
       { id: 'guides',          label: 'Guides',          href: '/guides',                hint: 'Trading tutorials' },
