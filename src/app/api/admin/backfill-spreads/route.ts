@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import postgres from 'postgres';
 import { requireAdmin } from '@/lib/auth';
+import { getSQL } from '@/lib/db';
 
 export const maxDuration = 30;
 export const runtime = 'nodejs';
 
-let _sql: ReturnType<typeof postgres> | null = null;
+// Use the shared DB pool (getSQL) instead of a separate `postgres()`
+// instance. The previous module-level pool was never `.end()`-ed and
+// — on cold-start or connection loss — would leave dangling connection
+// objects without recovery. The shared pool from lib/db handles
+// reconnection + pooling consistently across the app.
 function getBackfillSQL() {
-  if (!_sql) _sql = postgres(process.env.DATABASE_URL || '', { max: 3 });
-  return _sql;
+  return getSQL();
 }
 
 const SYMBOLS = ['BTC','ETH','SOL','XRP','DOGE','BNB','ADA','AVAX','LINK','DOT','SUI','APT','ARB','OP','PEPE','WIF','BONK'];

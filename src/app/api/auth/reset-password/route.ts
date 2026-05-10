@@ -55,6 +55,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Invalidate ALL existing NextAuth sessions for this user. Without
+    // this, an attacker who triggered the reset (or any other live
+    // session on a different device) keeps full access — the legitimate
+    // user can't even log them out by changing the password. After this
+    // delete, every existing session must re-authenticate.
+    try {
+      await db`DELETE FROM sessions WHERE "userId" = ${updated[0].id}`;
+    } catch (e) {
+      // Non-fatal: log but don't surface to the user. The password change
+      // succeeded; session table missing or schema-different shouldn't
+      // block the recovery flow.
+      console.warn('reset-password: session invalidation failed (non-fatal):', e);
+    }
+
     return NextResponse.json({ message: 'Password reset successfully' });
   } catch (e: any) {
     console.error('Reset password error:', e);

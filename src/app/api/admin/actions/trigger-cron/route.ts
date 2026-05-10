@@ -89,11 +89,24 @@ export async function POST(req: NextRequest) {
       result,
     }).catch(e => console.error('[admin] audit trigger-cron error:', e));
 
+    // Filter the cron's response to a known-safe shape before forwarding
+    // to the admin browser. Some crons include stack-trace fragments or DB
+    // error strings in their JSON body; the full audit log captures it
+    // server-side, but the admin browser shouldn't see internals.
+    const safeResult = result && typeof result === 'object' ? {
+      ok: result.ok,
+      ...(typeof result.fetched === 'number' ? { fetched: result.fetched } : {}),
+      ...(typeof result.inserted === 'number' ? { inserted: result.inserted } : {}),
+      ...(typeof result.processed === 'number' ? { processed: result.processed } : {}),
+      ...(typeof result.errors === 'number' ? { errors: result.errors } : {}),
+      ...(typeof result.error === 'string' ? { error: result.error.slice(0, 200) } : {}),
+    } : { ok: res.ok };
+
     return NextResponse.json({
       success: result?.ok ?? res.ok,
       cronName: name,
       durationMs,
-      result,
+      result: safeResult,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {

@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, auth } from '@/lib/auth';
-import { isDBConfigured, getSQL } from '@/lib/db';
+import { isDBConfigured, getSQL, recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -70,6 +70,23 @@ export async function PUT(
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
       return NextResponse.json({ error: 'Cannot remove the last admin' }, { status: 403 });
+    }
+
+    // Audit trail — role change is as sensitive as admin_delete_user (which is
+    // already logged). Without this, a compromised admin account could promote
+    // helpers and we'd have no record of who did it or when.
+    try {
+      await recordAuditEvent('admin_change_user_role', {
+        actorId: session?.user?.id ?? null,
+        actorEmail: session?.user?.email ?? null,
+        targetUserId: id,
+        targetEmail: rows[0].email,
+        newRole: role,
+      });
+    } catch (auditErr) {
+      // Non-fatal: log but don't surface. The role change succeeded;
+      // failed audit insert shouldn't break the admin's flow.
+      console.warn('admin role change: audit log failed:', auditErr);
     }
 
     return NextResponse.json({ user: rows[0] });

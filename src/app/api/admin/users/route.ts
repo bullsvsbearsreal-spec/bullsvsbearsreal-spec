@@ -22,6 +22,11 @@ export async function GET() {
 
   try {
     const db = getSQL();
+    // LIMIT 5000 — without it, every admin page load runs 4 correlated
+    // sub-selects per row across the entire users table. At scale this
+    // OOMs the response serializer and times the page out before the
+    // admin can do anything. 5000 is plenty for visual triage; if we
+    // ever cross this we'll need cursor pagination + server-side search.
     const users = await db`
       SELECT
         u.id,
@@ -37,6 +42,7 @@ export async function GET() {
         (SELECT COUNT(*) FROM alert_notifications an WHERE an.user_id = u.id) as notifications_sent
       FROM users u
       ORDER BY u.email_verified DESC NULLS LAST, u.email
+      LIMIT 5000
     `;
 
     const result = users.map((u: any) => ({
