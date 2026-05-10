@@ -110,7 +110,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'yields',          label: 'Yields',          href: '/yields',                hint: 'DeFi APYs' },
       { id: 'staking',         label: 'Staking',         href: '/staking',               hint: 'Validator yields' },
       { id: 'validators',      label: 'Validator Econ',  href: '/validators',            hint: 'LST + restaking yields' },
-      // /restaking-delta consolidated into /restaking (May 2026)
+      // /restaking + /restaking-delta consolidated into /staking (May 2026)
       { id: 'reserves',        label: 'Exchange Reserves', href: '/exchange-reserves',   hint: 'CEX balances' },
       { id: 'listings',        label: 'New Listings',    href: '/listings',              hint: 'Recent debuts' },
       { id: 'guides',          label: 'Guides',          href: '/guides',                hint: 'Trading tutorials' },

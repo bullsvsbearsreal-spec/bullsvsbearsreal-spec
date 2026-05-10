@@ -71,8 +71,11 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/funding-paid',             label: 'Funding Paid 30d', color: PUMP, icon: I.coin },
     // /funding-leaderboard, /funding-flips, /funding-predictor consolidated (May 2026)
     { href: '/orderbook-imbalance',      label: 'OB Imbalance',   color: PUMP, icon: I.scale },
-    { href: '/spread-scanner',           label: 'Funding Arb',     color: PUMP, icon: I.fundArb },
-    { href: '/funding-arb',              label: 'Funding Arb (alt)', color: PUMP, icon: I.fundArb },
+    // /spread-scanner = price spreads (different exchanges, same coin).
+    // /funding-arb    = funding-rate divergences (long cheap, short expensive
+    //                   to collect the rate spread). Distinct trades.
+    { href: '/spread-scanner',           label: 'Spread Scanner',  color: PUMP, icon: I.fundArb },
+    { href: '/funding-arb',              label: 'Funding Arb',     color: PUMP, icon: I.fundArb },
     { href: '/basis',                    label: 'Basis',           color: PUMP, icon: I.scale },
     { href: '/cme-basis',                label: 'CME Basis',       color: PUMP, icon: I.scale },
     { href: '/premiums',                 label: 'Premiums',        color: PUMP, icon: I.coin },
@@ -146,10 +149,9 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/gas-tracker',       label: 'Gas Tracker',    color: ACC,  icon: I.zap },
     { href: '/protocol-revenue',  label: 'Protocol Rev',   color: ACL,  icon: I.coin },
     { href: '/yields',            label: 'Yields',         color: PUMP, icon: I.trending },
-    { href: '/staking',           label: 'Staking',        color: PUMP, icon: I.shield },
+    { href: '/staking',           label: 'Staking + Restaking', color: PUMP, icon: I.shield },
     { href: '/validators',        label: 'Validator Econ', color: PUMP, icon: I.shield },
-    { href: '/restaking',         label: 'Restaking Yields', color: PUMP, icon: I.shield },
-    // /restaking-delta consolidated into /restaking (May 2026)
+    // /restaking + /restaking-delta consolidated into /staking (May 2026)
   ]},
   { id: 'whales', label: 'Smart Money & Whales', items: [
     { href: '/smart-money',       label: 'Smart Money',    color: PUR,  icon: I.signal },

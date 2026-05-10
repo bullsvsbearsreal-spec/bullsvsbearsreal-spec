@@ -1,12 +1,11 @@
 /**
  * /restaking-delta — legacy URL.
  *
- * Was a delta/changes view of restaking yields. Folded into /restaking
- * (the main yield aggregator) in May 2026 — delta is a sub-aspect of
- * the same data, not a separate page.
+ * Was a delta/changes view of restaking yields. /restaking itself was
+ * later consolidated into /staking (which covers both LST + LRT).
+ * Skipping the redirect chain and pointing straight at /staking.
  *
- * Original implementation backed up at page.tsx.bak in case the delta
- * view is worth re-adding as a tab on /restaking.
+ * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 
@@ -14,5 +13,5 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default function RestakingDeltaLegacyRedirect() {
-  redirect('/restaking');
+  redirect('/staking');
 }
