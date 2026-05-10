@@ -59,7 +59,16 @@ export async function GET(req: NextRequest) {
 
   // Always return 200 — DO rewrites non-2xx into its own generic
   // "via_upstream (502 -)" HTML which would mask our diagnostics from
-  // systemd journal grepping.
+  // systemd journal grepping. But we ALSO log a warn when either
+  // endpoint failed — without this, the cron monitor only sees 200s
+  // and a permanently-broken upstream goes undetected.
+  if (!smartMoney.ok || !leaderboard.ok) {
+    console.warn(
+      '[warm-smart-money] partial failure: ' +
+      `smartMoney=${smartMoney.ok}/${smartMoney.status}/${smartMoney.ms}ms, ` +
+      `leaderboard=${leaderboard.ok}/${leaderboard.status}/${leaderboard.ms}ms`,
+    );
+  }
   return NextResponse.json(
     {
       ok: smartMoney.ok && leaderboard.ok,

@@ -46,6 +46,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Wrap initDB + the entire batch in try/catch — without this, an
+  // unhandled throw (rotated DSN, schema migration error) returns 500
+  // HTML and the cron monitor's `grep "HTTP 200"` silently misses it.
+  try {
   await initDB();
 
   const fetcher = nitterFetcher;
@@ -122,4 +126,12 @@ export async function GET(request: NextRequest) {
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[social-fetch] cron failed:', msg);
+    return NextResponse.json(
+      { ok: false, error: msg },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 }

@@ -170,6 +170,20 @@ export async function GET(request: NextRequest) {
           .sort((a, b) => b[1].length - a[1].length)
           .slice(0, 50)
           .map(([sym]) => sym);
+        // Compute spreads + arb deltas for all top symbols in memory
+        // first, then ONE batched DB read for open arbs, then sequential
+        // writes. Was previously 50 × (1 SELECT + 0-1 UPDATE/INSERT) =
+        // up to 100 round-trips per minute serialized inside the cron.
+        interface SymCalc {
+          sym: string;
+          high: { exchange: string; price: number };
+          low: { exchange: string; price: number };
+          spread: number;
+          pct: number;
+          exchangeCount: number;
+          arbThreshold: number;
+        }
+        const calcs: SymCalc[] = [];
         for (const sym of topSyms) {
           const entries = bySymbol[sym];
           if (!entries || entries.length < 2) continue;
@@ -178,31 +192,58 @@ export async function GET(request: NextRequest) {
           const low = entries[entries.length - 1];
           const spread = high.price - low.price;
           const pct = low.price > 0 ? (spread / low.price) * 100 : 0;
-          await saveSpreadSnapshot({
-            symbol: sym, spreadUsd: spread, spreadPct: pct,
-            highExchange: high.exchange, lowExchange: low.exchange,
-            highPrice: high.price, lowPrice: low.price,
+          calcs.push({
+            sym, high, low, spread, pct,
             exchangeCount: entries.length,
+            arbThreshold: sym === 'BTC' ? 0.3 : 0.5,
+          });
+        }
+
+        // Spread snapshots — ordered, but the helper itself is one INSERT
+        // each. This was already O(N) and is fine; it's the arb tracking
+        // below that was N+1.
+        for (const c of calcs) {
+          await saveSpreadSnapshot({
+            symbol: c.sym, spreadUsd: c.spread, spreadPct: c.pct,
+            highExchange: c.high.exchange, lowExchange: c.low.exchange,
+            highPrice: c.high.price, lowPrice: c.low.price,
+            exchangeCount: c.exchangeCount,
           });
           spreadInserted++;
+        }
 
-          // Track arb opportunities
-          const arbThreshold = sym === 'BTC' ? 0.3 : 0.5; // % threshold
-          try {
-            const dbSql = getSQL();
-            const openArb = await dbSql`SELECT * FROM arb_opportunities WHERE symbol = ${sym} AND status = 'open' LIMIT 1`;
-            if (openArb.length > 0) {
-              const arb = openArb[0];
-              if (pct > +arb.max_spread_pct) {
-                await dbSql`UPDATE arb_opportunities SET max_spread_usd = ${spread}, max_spread_pct = ${pct} WHERE id = ${arb.id}`;
+        // Arb opportunities: single SELECT for ALL symbols, then in-memory
+        // diff to plan UPDATE/INSERT/CLOSE actions. Bulk apply.
+        try {
+          const dbSql = getSQL();
+          const symList = calcs.map(c => c.sym);
+          const openArbs = symList.length === 0 ? [] : await dbSql`
+            SELECT id, symbol, max_spread_pct
+            FROM arb_opportunities
+            WHERE status = 'open' AND symbol = ANY(${dbSql.array(symList)}::text[])
+          ` as Array<{ id: number; symbol: string; max_spread_pct: number }>;
+          const openBySym = new Map<string, { id: number; max_spread_pct: number }>();
+          for (const a of openArbs) openBySym.set(a.symbol, { id: a.id, max_spread_pct: Number(a.max_spread_pct) });
+
+          // Plan + execute in sequence. The writes themselves can't easily
+          // be one giant statement because the action varies per row.
+          for (const c of calcs) {
+            const open = openBySym.get(c.sym);
+            if (open) {
+              if (c.pct > open.max_spread_pct) {
+                await dbSql`UPDATE arb_opportunities SET max_spread_usd = ${c.spread}, max_spread_pct = ${c.pct} WHERE id = ${open.id}`;
               }
-              if (pct < arbThreshold * 0.5) {
-                await dbSql`UPDATE arb_opportunities SET status = 'closed', closed_at = NOW() WHERE id = ${arb.id}`;
+              if (c.pct < c.arbThreshold * 0.5) {
+                await dbSql`UPDATE arb_opportunities SET status = 'closed', closed_at = NOW() WHERE id = ${open.id}`;
               }
-            } else if (pct > arbThreshold) {
-              await dbSql`INSERT INTO arb_opportunities (symbol, spread_usd, spread_pct, high_exchange, low_exchange, max_spread_usd, max_spread_pct) VALUES (${sym}, ${spread}, ${pct}, ${high.exchange}, ${low.exchange}, ${spread}, ${pct})`;
+            } else if (c.pct > c.arbThreshold) {
+              await dbSql`INSERT INTO arb_opportunities (symbol, spread_usd, spread_pct, high_exchange, low_exchange, max_spread_usd, max_spread_pct) VALUES (${c.sym}, ${c.spread}, ${c.pct}, ${c.high.exchange}, ${c.low.exchange}, ${c.spread}, ${c.pct})`;
             }
-          } catch (arbErr) { /* arb tracking non-critical */ }
+          }
+        } catch (arbErr) {
+          // Arb tracking is non-critical — log and continue. Was silent
+          // before; the cron monitor missed regressions in this branch.
+          console.warn('[cron/snapshot] arb tracking failed:', arbErr instanceof Error ? arbErr.message : arbErr);
         }
 
         // Store per-exchange prices as mark_price in funding_snapshots every cron run
