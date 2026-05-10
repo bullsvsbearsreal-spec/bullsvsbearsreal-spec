@@ -4,9 +4,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { validateApiKey } from '@/lib/db';
 import { checkRateLimit } from '@/lib/api/rate-limit';
 import { createRateLimiter } from '@/lib/auth/rate-limit';
+
+/**
+ * Hash the raw bearer token before using it as a Map key. Without this,
+ * a memory dump (Node.js --inspect, OOM crash dump) would expose live
+ * bearer tokens in plaintext. The DB layer already SHA-256s before
+ * storage; this matches that pattern in-process.
+ */
+function cacheKeyFor(rawKey: string): string {
+  return createHash('sha256').update(rawKey).digest('hex');
+}
 
 // Fallback in-memory rate limiter when Redis is unavailable
 const fallbackLimiter = createRateLimiter({ maxAttempts: 60, windowMs: 60 * 1000, name: 'v1-api' });
@@ -63,9 +74,11 @@ export async function authenticateV1Request(request: NextRequest): Promise<
   }
 
   const rawKey = match[1];
+  // Cache lookup uses the SHA-256 hash, not the raw bearer token.
+  const cacheKey = cacheKeyFor(rawKey);
 
   // Check in-memory cache first
-  let keyData = apiKeyCache.get(rawKey);
+  let keyData = apiKeyCache.get(cacheKey);
   if (!keyData || Date.now() - keyData.cachedAt > API_KEY_CACHE_TTL) {
     try {
       const result = await validateApiKey(rawKey);
@@ -85,7 +98,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
         if (firstKey !== undefined) apiKeyCache.delete(firstKey);
         else apiKeyCache.clear(); // fallback: clear all if iterator fails
       }
-      apiKeyCache.set(rawKey, keyData);
+      apiKeyCache.set(cacheKey, keyData);
     } catch (e) {
       console.error('API key validation error:', e);
       return {

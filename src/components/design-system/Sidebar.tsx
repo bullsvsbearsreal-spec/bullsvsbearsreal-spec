@@ -6,11 +6,14 @@ import { useSession } from 'next-auth/react';
 
 const I = {
   fundRate:  '<path d="M3 3v18h18"/><polyline points="7 14 11 10 14 13 19 7"/>',
+  // fundHeat / oiHeat / liqHeat were all identical 4-cell grids — visually
+  // indistinguishable in the sidebar. Differentiated below: fundHeat keeps
+  // the matrix, oiHeat is a stacked-bar grid, liqHeat is a 9-cell heat grid.
   fundHeat:  '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   fundArb:   '<path d="M21 7H3M16 3l5 4-5 4"/><path d="M3 17h18M8 13l-5 4 5 4"/>',
   oi:        '<path d="M3 12h4l3 8 4-16 3 8h4"/>',
-  oiHeat:    '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-  liqHeat:   '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  oiHeat:    '<rect x="3" y="13" width="4" height="8" rx="1"/><rect x="9" y="9" width="4" height="12" rx="1"/><rect x="15" y="5" width="4" height="16" rx="1"/><line x1="3" y1="3" x2="19" y2="3" stroke-dasharray="2,2"/>',
+  liqHeat:   '<rect x="3" y="3" width="5" height="5" rx="0.5"/><rect x="9.5" y="3" width="5" height="5" rx="0.5"/><rect x="16" y="3" width="5" height="5" rx="0.5"/><rect x="3" y="9.5" width="5" height="5" rx="0.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="0.5"/><rect x="16" y="9.5" width="5" height="5" rx="0.5"/><rect x="3" y="16" width="5" height="5" rx="0.5"/><rect x="9.5" y="16" width="5" height="5" rx="0.5"/><rect x="16" y="16" width="5" height="5" rx="0.5"/>',
   search:    '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   liq:       '<path d="M12 2v8"/><path d="m6 6 6 6 6-6"/><path d="M5 22h14"/>',
   liqMap:    '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>',
@@ -24,7 +27,9 @@ const I = {
   alerts:    '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   news:      '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zM4 22a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>',
   dash:      '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>',
-  watch:     '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  // `watch` is the wallet-watching feature (different from `star` = bookmark/favorite).
+  // Eye icon better signals "I'm watching" vs the favorite-star semantics of `star`.
+  watch:     '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
   flame:     '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
   rocket:    '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>',
   globe:     '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
