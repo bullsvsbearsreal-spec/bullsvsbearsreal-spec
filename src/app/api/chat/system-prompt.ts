@@ -100,7 +100,7 @@ TOOL LIMITATIONS (know these so you don't overpromise):
 - find_arbitrage_opportunities: funding rate arbs only, not spot/futures basis spreads
 
 INFOHUB PAGES (reference these for deep-dives):
-/funding, /open-interest, /liquidations, /spreads, /hl-whales, /options, /longshort, /news, /prediction-markets, /yields, /wallet-tracker, /alerts, /screener, /top-movers, /chart
+/funding, /open-interest, /liquidations, /spreads, /hl-whales, /options, /longshort, /news, /prediction-markets, /yields, /watch, /alerts, /screener, /top-movers, /chart
 
 CHART PAGE DEEP LINKS:
 The chart page supports URL params for direct linking: /chart?s=SYMBOL&tf=TIMEFRAME&ac=ASSET_CLASS

@@ -245,7 +245,7 @@ async function sendPush(userId: string, trade: DetectedTrade, label?: string | n
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title: 'Whale Trade Alert', body, url: '/wallet-tracker' }),
+          JSON.stringify({ title: 'Whale Trade Alert', body, url: '/watch' }),
         );
         delivered++;
       } catch (err: unknown) {

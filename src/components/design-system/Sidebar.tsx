@@ -99,11 +99,10 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/liquidation-map',          label: 'Liq Map',         color: REKT, icon: I.liqMap },
     { href: '/liquidation-levels',       label: 'Liq Levels',      color: REKT, icon: I.liqLevels },
     { href: '/liq-calculator',           label: 'Liq Calculator',  color: REKT, icon: I.shield },
-    { href: '/whale-liq',                label: 'Whale Liq Roulette', color: REKT, icon: I.flame },
+    // /whale-liq + /whale-alert consolidated into /liquidations (May 2026)
     { href: '/watch',                    label: 'Wallet Watch',    color: ACC,  icon: I.watch },
     { href: '/leverage',                 label: 'Leverage',        color: REKT, icon: I.zap },
     { href: '/position-size',            label: 'Position Sizer',  color: REKT, icon: I.scale },
-    { href: '/whale-alert',              label: 'Whale Alert',     color: PUR,  icon: I.whale },
     { href: '/alerts',                   label: 'Alerts',          color: ACC,  icon: I.alerts },
   ]},
   { id: 'spot', label: 'Spot & Markets', items: [
@@ -160,12 +159,12 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   { id: 'whales', label: 'Smart Money & Whales', items: [
     { href: '/smart-money',       label: 'Smart Money',    color: PUR,  icon: I.signal },
     { href: '/smart-money/leaderboard', label: 'Top Traders',  color: ACC, icon: I.trophy },
-    { href: '/smart-money-composite', label: 'SM Composite', color: PUR, icon: I.pieChart },
+    // /smart-money-composite folded into /smart-money (May 2026)
     { href: '/hl-traders',        label: 'HL Traders',     color: PUR,  icon: I.user },
     { href: '/hl-vaults',         label: 'HL Vaults',      color: PUR,  icon: I.shield },
     { href: '/hl-whales',         label: 'HL Whales',      color: PUR,  icon: I.whale },
     { href: '/gmx-traders',       label: 'GMX Traders',    color: PUR,  icon: I.user },
-    { href: '/wallet-tracker',    label: 'Wallet Tracker', color: PUR,  icon: I.wallet },
+    // /wallet-tracker replaced by /watch (May 2026)
     { href: '/compare-traders',   label: 'Compare Traders', color: PUR, icon: I.scale },
   ]},
   { id: 'macro', label: 'Macro & Events', items: [

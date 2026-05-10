@@ -81,7 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'liq-calc',        label: 'Liq Calculator',  href: '/liq-calculator',        hint: 'Price needed to liquidate' },
       { id: 'leverage',        label: 'Leverage',        href: '/leverage',              hint: 'Position leverage' },
       { id: 'position-size',   label: 'Position Sizer',  href: '/position-size',         hint: 'Risk-based sizing' },
-      { id: 'whale-alert',     label: 'Whale Alert',     href: '/whale-alert',           hint: 'Large on-chain txns' },
+      // /whale-alert consolidated into /liquidations (May 2026)
       { id: 'alerts',          label: 'Alerts',          href: '/alerts',                hint: 'Triggers + history' },
     ]},
   { key: 'research', label: 'Research',
@@ -96,12 +96,12 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'airdrops',        label: 'Airdrops',        href: '/airdrops',              hint: 'Upcoming + claimed' },
       { id: 'btc-treasuries',  label: 'BTC Treasuries',  href: '/bitcoin-treasuries',    hint: 'Corporate holdings' },
       { id: 'smart-money',     label: 'Smart Money',     href: '/smart-money',           hint: 'Top trader flows' },
-      { id: 'sm-composite',    label: 'SM Composite',    href: '/smart-money-composite', hint: 'Per-coin SM positioning' },
+      // /smart-money-composite folded into /smart-money (May 2026)
       { id: 'hl-traders',      label: 'HL Traders',      href: '/hl-traders',            hint: 'Hyperliquid leaderboard' },
       { id: 'hl-vaults',       label: 'HL Vaults',       href: '/hl-vaults',             hint: 'Hyperliquid vaults' },
       { id: 'hl-whales',       label: 'HL Whales',       href: '/hl-whales',             hint: 'Top HL positions' },
       { id: 'gmx-traders',     label: 'GMX Traders',     href: '/gmx-traders',           hint: 'GMX leaderboard' },
-      { id: 'wallet-tracker',  label: 'Wallet Tracker',  href: '/wallet-tracker',        hint: 'Track addresses' },
+      // /wallet-tracker replaced by /watch (May 2026)
       { id: 'compare-traders', label: 'Compare Traders', href: '/compare-traders',       hint: 'Side-by-side' },
       { id: 'onchain',         label: 'On-Chain',        href: '/onchain',               hint: 'Network metrics' },
       { id: 'hash-ribbons',    label: 'Hash Ribbons',    href: '/hash-ribbons',          hint: 'BTC miner capitulation signal' },
