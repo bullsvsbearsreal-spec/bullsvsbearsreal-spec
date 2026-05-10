@@ -6,8 +6,12 @@ export const preferredRegion = 'bom1';
 
 const AGGREGATOR = 'http://46.101.247.54:3100';
 
-// Thin proxy to the VPS price aggregator — avoids mixed content (HTTPS→HTTP)
-// No caching — the aggregator serves fresh data every request
+// Thin proxy to the VPS price aggregator — avoids mixed content (HTTPS→HTTP).
+// Cached at the edge for 5s with up-to-15s SWR — this route is hit on
+// most page loads, and `no-store` would force every user to round-trip
+// to FRA1 (CLAUDE.md prohibits no-store on public, non-personalised
+// routes). 5s is short enough that prices stay fresh; SWR ensures a
+// burst of users on a popular page doesn't all hit the upstream.
 export async function GET(req: NextRequest) {
   const rawSymbol = req.nextUrl.searchParams.get('symbol') || '';
   const symbol = /^[A-Za-z0-9,]+$/.test(rawSymbol) ? rawSymbol : '';
@@ -18,7 +22,10 @@ export async function GET(req: NextRequest) {
     if (!r.ok) return NextResponse.json({ error: 'Aggregator unavailable' }, { status: 502 });
     const data = await r.json();
     return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'no-cache, no-store', 'Access-Control-Allow-Origin': '*' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   } catch {
     return NextResponse.json({ error: 'Aggregator timeout' }, { status: 504 });

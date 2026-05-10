@@ -11,14 +11,39 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
+// L1 in-memory cache keyed on (symbol, limit). Per CLAUDE.md, fan-out
+// routes need an in-process cache so simultaneous page loads don't each
+// trigger their own multi-venue fan-out (worst case ~22s sequential).
+// Map<symbol|limit → entry> avoids the original liquidation-map bug
+// where switching symbols trashed a single-slot cache.
+interface AggCacheEntry { body: unknown; ts: number }
+const aggCache = new Map<string, AggCacheEntry>();
+const AGG_TTL_MS = 8_000; // 8 seconds — CVD data is near-real-time but burst-tolerant
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const rawSymbol = searchParams.get('symbol')?.toUpperCase() || '';
   const symbol = /^[A-Z0-9]+$/.test(rawSymbol) ? rawSymbol : '';
-  const limit = Math.min(parseInt(searchParams.get('limit') || '500') || 500, 1000);
+  // parseInt('abc') returns NaN, and Math.min(NaN, 1000) returns NaN —
+  // which then becomes "limit=NaN" in the upstream URL. Guard with
+  // Number.isFinite explicitly so non-numeric input falls back to 500.
+  const rawLimit = parseInt(searchParams.get('limit') ?? '500', 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(1, rawLimit), 1000) : 500;
 
   if (!symbol) {
     return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 });
+  }
+
+  // L1 cache hit
+  const cacheKey = `${symbol}|${limit}`;
+  const hit = aggCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < AGG_TTL_MS) {
+    return NextResponse.json(hit.body, {
+      headers: {
+        'X-Cache': 'HIT',
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10',
+      },
+    });
   }
 
   const pair = `${symbol}USDT`;
@@ -152,7 +177,7 @@ export async function GET(request: NextRequest) {
       usdValue: t.price * t.qty,
     }));
 
-    return NextResponse.json({
+    const body = {
       symbol,
       pair,
       tradeCount: processed.length,
@@ -162,8 +187,21 @@ export async function GET(request: NextRequest) {
       buckets,
       recentTrades,
       source: tradeSource,
-    }, {
-      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10' },
+    };
+    // Cache only non-empty success — never pin "all upstreams down"
+    if (processed.length > 0) {
+      aggCache.set(cacheKey, { body, ts: Date.now() });
+      // Soft cap on the cache map to prevent unbounded growth — drop oldest
+      if (aggCache.size > 200) {
+        const oldest = aggCache.keys().next().value;
+        if (oldest) aggCache.delete(oldest);
+      }
+    }
+    return NextResponse.json(body, {
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10',
+      },
     });
   } catch (e) {
     console.error('[Aggtrades]', e instanceof Error ? e.message : e);

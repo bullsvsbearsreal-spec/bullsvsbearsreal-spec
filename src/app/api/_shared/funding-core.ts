@@ -103,7 +103,13 @@ export async function getFundingData(
   if (rawDataCache && Date.now() - rawDataCache.timestamp < RAW_TTL) {
     const filtered = filterByAssetClass(rawDataCache.dataWithPrices, rawDataCache.top500, rawDataCache.multiExchangeSymbols, assetClass);
     const result = buildResult(filtered, rawDataCache.health, assetClass);
-    responseCache.set(cacheKey, { body: result, timestamp: Date.now() });
+    // Don't pin an empty body — if filtering produced zero rows
+    // (asset-class filter too strict, or rawData was wiped during a
+    // partial-failure window), return it once but skip the cache write
+    // so the next caller re-fetches when raw refreshes.
+    if (result.data.length > 0) {
+      responseCache.set(cacheKey, { body: result, timestamp: Date.now() });
+    }
     return { result, cacheStatus: 'FILTERED' };
   }
 
@@ -230,8 +236,12 @@ export async function getFundingData(
   const filtered = filterByAssetClass(dataWithPrices, top500, multiExchangeSymbols, assetClass);
   const result = buildResult(filtered, health, assetClass);
 
-  // Update response cache
-  responseCache.set(cacheKey, { body: result, timestamp: Date.now() });
+  // Update response cache — but only if we actually got data. Pinning
+  // an empty body for 2 minutes during a venue outage means every user
+  // sees a "no funding data" page until the cache expires.
+  if (result.data.length > 0) {
+    responseCache.set(cacheKey, { body: result, timestamp: Date.now() });
+  }
 
   return { result, cacheStatus: 'MISS' };
 }

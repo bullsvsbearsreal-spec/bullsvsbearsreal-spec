@@ -75,7 +75,12 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  await initDB();
+  // Wrap the entire batch in a try/catch — without this, an unhandled
+  // throw from initDB (rotated DSN) or any per-source path bubbles up
+  // as a 500 HTML page from Next.js. The cron monitor greps for
+  // "HTTP 200" and would silently miss broken position sync for hours.
+  try {
+    await initDB();
 
   // Garbage-collect orphan positions: rows whose source_id no longer
   // exists in user_wallets / user_exchange_keys. These accumulate when a
@@ -314,17 +319,29 @@ export async function GET(req: NextRequest) {
     userStats.push(stat);
   }
 
-  return NextResponse.json(
-    {
-      users: targets.length,
-      totalKeys,
-      totalPositions,
-      totalTradesInserted,
-      totalErrors,
-      orphansDeleted,
-      stats: userStats,
-      ts: Date.now(),
-    },
-    { headers: { 'Cache-Control': 'no-store' } },
-  );
+    return NextResponse.json(
+      {
+        users: targets.length,
+        totalKeys,
+        totalPositions,
+        totalTradesInserted,
+        totalErrors,
+        orphansDeleted,
+        stats: userStats,
+        ts: Date.now(),
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  } catch (e) {
+    // Surface the failure: log to Sentry/journalctl AND return non-200
+    // so the cron monitor's HTTP grep flags it. Without this, broken
+    // initDB/listAllSyncTargets would silently stop syncing positions
+    // for every user with no signal.
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[sync-positions] cron failed:', msg);
+    return NextResponse.json(
+      { ok: false, error: msg },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 }

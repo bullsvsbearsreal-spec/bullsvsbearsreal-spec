@@ -7,6 +7,14 @@ export const dynamic = 'force-dynamic';
 
 const CMC_API_KEY = process.env.CMC_API_KEY || '';
 
+// L1 in-memory cache keyed on slug. CMC quotes change every ~5min and
+// each call costs an API credit, so caching aggressively saves money
+// AND latency. Map<slug, entry> avoids the single-slot trash bug when
+// users browse multiple coin pages.
+interface CoinCacheEntry { body: unknown; ts: number }
+const coinCache = new Map<string, CoinCacheEntry>();
+const COIN_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 function cmcImage(cmcId: number, size: number = 128): string {
   return `https://s2.coinmarketcap.com/static/img/coins/${size}x${size}/${cmcId}.png`;
 }
@@ -53,6 +61,17 @@ export async function GET(request: Request) {
     return NextResponse.json(null, { status: 400 });
   }
 
+  // L1 cache hit
+  const hit = coinCache.get(slug);
+  if (hit && Date.now() - hit.ts < COIN_TTL_MS) {
+    return NextResponse.json(hit.body, {
+      headers: {
+        'X-Cache': 'HIT',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      },
+    });
+  }
+
   try {
     const res = await fetchWithTimeout(
       `https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?slug=${encodeURIComponent(slug)}&convert=USD`,
@@ -70,8 +89,17 @@ export async function GET(request: Request) {
     const entries = Object.values(json.data || {});
     if (entries.length > 0) {
       const coinData = cmcToCoinData(entries[0]);
+      coinCache.set(slug, { body: coinData, ts: Date.now() });
+      // Soft cap on cache size — drop oldest when over 500 slugs
+      if (coinCache.size > 500) {
+        const oldest = coinCache.keys().next().value;
+        if (oldest) coinCache.delete(oldest);
+      }
       return NextResponse.json(coinData, {
-        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' },
+        headers: {
+          'X-Cache': 'MISS',
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        },
       });
     }
 

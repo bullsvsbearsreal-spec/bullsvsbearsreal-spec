@@ -998,18 +998,16 @@ export async function GET(request: NextRequest) {
   if (variant === 'tape' || variant === 'default') {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${request.headers.get('host')}`;
     const live = await fetchLiveTickers(baseUrl);
-    return new ImageResponse(renderTapeImage(live), {
-      width: 1200,
-      height: 630,
-      // Cache for 5 min on Cloudflare with up-to-15-min stale-while-revalidate.
-      // Long enough that we don't hammer the aggregator on every share but
-      // short enough that the prices stay reasonably fresh. Twitter / Slack
-      // cache per-URL much longer regardless — this header just controls
-      // our edge cache.
-      headers: {
-        'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=900',
-      },
-    });
+    const img = new ImageResponse(renderTapeImage(live), { width: 1200, height: 630 });
+    // ImageResponse sets a 1-year `Cache-Control: public, immutable,
+    // no-transform, max-age=31536000` by default. The `headers` option
+    // APPENDS instead of replacing, which produces a malformed header
+    // with TWO `max-age` values — clients use the first one (1 year)
+    // and ignore our 5-min override. Fix by deleting the default header
+    // off the response before setting our own.
+    img.headers.delete('Cache-Control');
+    img.headers.set('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=900');
+    return img;
   }
 
   const badges = badgesForVariant(variant);

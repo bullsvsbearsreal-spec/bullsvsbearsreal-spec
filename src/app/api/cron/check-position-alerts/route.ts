@@ -200,6 +200,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'DB unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
 
+  // Wrap the whole batch in try/catch — without it, an unhandled throw
+  // from listEnabledAlertsWithPositions, loadLastTwoFunding, or any
+  // delivery function turns into a 500 HTML page that the cron monitor
+  // (HTTP 200 grep) silently misses. Users would stop receiving
+  // near-liq / funding-flip alerts with no signal.
+  try {
   const all = await listEnabledAlertsWithPositions();
   let usersChecked = 0;
   let alertsFired = 0;
@@ -441,4 +447,12 @@ export async function GET(req: NextRequest) {
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[check-position-alerts] cron failed:', msg);
+    return NextResponse.json(
+      { ok: false, error: msg },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 }
