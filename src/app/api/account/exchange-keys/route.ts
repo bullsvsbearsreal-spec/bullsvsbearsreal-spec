@@ -14,7 +14,8 @@ import {
   listUserExchangeKeys,
   addUserExchangeKey,
 } from '@/lib/db';
-import { encryptSecret, isEncryptionConfigured, safePrefix } from '@/lib/crypto/exchange-keys';
+import { encryptSecret, encryptSecretLegacy, isEncryptionConfigured, safePrefix } from '@/lib/crypto/exchange-keys';
+import { getSQL } from '@/lib/db';
 import {
   isSupportedExchange,
   EXCHANGES_WITH_PASSPHRASE,
@@ -121,20 +122,49 @@ export async function POST(req: NextRequest) {
   // Make sure tables exist before first POST.
   await initDB();
 
+  // Two-phase encryption: we need the row's keyId to bind the v2 AAD,
+  // but we don't know it until after the INSERT. So:
+  //   1. INSERT with v1 (no AAD) blobs to get the keyId back
+  //   2. UPDATE the same row with v2 (AAD-bound) blobs using that keyId
+  //
+  // If step 2 fails (network blip mid-call), the row stays as v1 —
+  // still decryptable via the legacy path, just without AAD protection
+  // for that row. The promote-v1-to-v2 migration cron picks those up.
+  const userId = session.user.id;
   let result;
   try {
     result = await addUserExchangeKey({
-      userId: session.user.id,
+      userId,
       exchange,
       label,
       keyPrefix: safePrefix(apiKey, 8),
-      encryptedKey: encryptSecret(apiKey),
-      encryptedSecret: encryptSecret(apiSecret),
-      encryptedPassphrase: passphrase ? encryptSecret(passphrase) : null,
+      encryptedKey: encryptSecretLegacy(apiKey),
+      encryptedSecret: encryptSecretLegacy(apiSecret),
+      encryptedPassphrase: passphrase ? encryptSecretLegacy(passphrase) : null,
       // Phase B will populate this from the exchange's own permissions endpoint.
       // For now, NULL — UI shows "unknown" until first sync.
       permissions: null,
     });
+
+    // Phase 2: re-encrypt with v2 (AAD = `${userId}:${keyId}`) and UPDATE.
+    try {
+      const ctx = { userId, keyId: result.id };
+      const v2Key = encryptSecret(apiKey, ctx);
+      const v2Secret = encryptSecret(apiSecret, ctx);
+      const v2Pass = passphrase ? encryptSecret(passphrase, ctx) : null;
+      const sql = getSQL();
+      await sql`
+        UPDATE user_exchange_keys
+        SET encrypted_key = ${v2Key},
+            encrypted_secret = ${v2Secret},
+            encrypted_passphrase = ${v2Pass}
+        WHERE id = ${result.id} AND user_id = ${userId}
+      `;
+    } catch (upgradeErr) {
+      // Non-fatal: row exists as v1 and still decrypts. Log so the
+      // migration cron can pick it up later.
+      console.warn('[exchange-keys POST] v2 upgrade failed (row stays v1):', upgradeErr);
+    }
   } catch (err: any) {
     // 23505 = unique_violation — same key prefix already on this user/exchange
     if (err?.code === '23505') {

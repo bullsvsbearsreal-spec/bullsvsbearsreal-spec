@@ -133,10 +133,14 @@ export async function GET(req: NextRequest) {
           throw new Error(`unsupported exchange: ${k.exchange}`);
         }
         const client = getExchangeClient(k.exchange);
+        // Pass the row's identity as decryption context. v2 blobs were
+        // encrypted with AAD = `${userId}:${keyId}`; v1 blobs ignore the
+        // ctx (legacy path, no AAD). decryptSecret handles both.
+        const decryptCtx = { userId: target.userId, keyId: k.id };
         const creds = {
-          apiKey: decryptSecret(k.encryptedKey),
-          apiSecret: decryptSecret(k.encryptedSecret),
-          passphrase: k.encryptedPassphrase ? decryptSecret(k.encryptedPassphrase) : undefined,
+          apiKey: decryptSecret(k.encryptedKey, decryptCtx),
+          apiSecret: decryptSecret(k.encryptedSecret, decryptCtx),
+          passphrase: k.encryptedPassphrase ? decryptSecret(k.encryptedPassphrase, decryptCtx) : undefined,
         };
         const positions = await client.fetchPositions(creds);
         // Cumulative funding (last 30d). Best-effort — if the income endpoint
