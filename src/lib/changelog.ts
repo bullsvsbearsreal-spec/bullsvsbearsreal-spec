@@ -130,7 +130,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     links: [
       { label: 'Cycle Phase', href: '/cycle-phase' },
       { label: 'Crowdedness', href: '/crowdedness' },
-      { label: 'Funding Leaderboard', href: '/funding-leaderboard' },
+      { label: 'Funding Leaderboard', href: '/funding-paid' },
     ],
   },
   {
