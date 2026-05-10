@@ -1292,15 +1292,22 @@ export async function getFundingHistory(
         ORDER BY ts ASC
       `;
     } else {
+      // Group by minute — `ts` is microsecond-precision so the previous
+      // GROUP BY ts produced one group per row and AVG(rate) just returned
+      // each row's own rate (no aggregation actually happened). Funding
+      // snapshots come in roughly every minute from many exchanges; this
+      // averages across exchanges within each minute window, which is the
+      // meaningful "all-exchange average" the caller expects.
       rows = await sql`
-        SELECT EXTRACT(EPOCH FROM ts) * 1000 AS t, AVG(rate) AS rate
+        SELECT EXTRACT(EPOCH FROM date_trunc('minute', ts)) * 1000 AS t,
+               AVG(rate) AS rate
         FROM funding_snapshots
         WHERE symbol = ${symbol}
           AND ts > NOW() - ${intervalStr}::interval
           AND rate IS NOT NULL
           AND rate <> 0
-        GROUP BY ts
-        ORDER BY ts ASC
+        GROUP BY date_trunc('minute', ts)
+        ORDER BY t ASC
       `;
     }
     return rows.map((r: any) => ({ t: Number(r.t), rate: Number(r.rate) }));
@@ -1819,11 +1826,14 @@ export async function getTelegramLinkByUser(userId: string): Promise<TelegramLin
 export async function getActiveTelegramLinks(): Promise<TelegramLink[]> {
   try {
     const sql = getSQL();
+    // LIMIT 10000 — used to fan out per-alert notifications. Without
+    // a cap this scales linearly with linked-account count.
     const rows = await sql`
       SELECT chat_id, user_id, active, muted_until
       FROM telegram_links
       WHERE active = true
         AND (muted_until IS NULL OR muted_until < NOW())
+      LIMIT 10000
     `;
     return rows.map((r: any) => ({
       chat_id: Number(r.chat_id),
@@ -1884,11 +1894,21 @@ export async function getAllUsersWithAlerts(): Promise<AlertUserRow[]> {
       JOIN users u ON up.user_id = u.id
       WHERE jsonb_array_length(COALESCE(up.prefs->'alerts', '[]'::jsonb)) > 0
     `;
+    // postgres.js sometimes returns JSONB columns as strings instead of
+    // parsed objects. The alert cron iterates `alerts` directly — if it
+    // gets a string back, `.length` returns the character count and
+    // every index access is undefined → silent failure of every alert
+    // fire path. Parse defensively (matches the pattern in getUserData).
+    const parseJsonb = (raw: unknown) => {
+      if (raw == null) return raw;
+      if (typeof raw !== 'string') return raw;
+      try { return JSON.parse(raw); } catch { return null; }
+    };
     return rows.map((r: any) => ({
       userId: r.user_id,
       email: r.email,
-      alerts: (r.alerts ?? []) as any[],
-      notificationPrefs: r.notification_prefs as NotificationPrefs | undefined,
+      alerts: (Array.isArray(parseJsonb(r.alerts)) ? parseJsonb(r.alerts) : []) as any[],
+      notificationPrefs: parseJsonb(r.notification_prefs) as NotificationPrefs | undefined,
     }));
   } catch (e) {
     console.error('DB getAllUsersWithAlerts error:', e);
@@ -2241,13 +2261,18 @@ export async function getPortfolioHistory(
 ): Promise<Array<{ t: number; value: number; pnl: number }>> {
   try {
     const sql = getSQL();
-    const intervalStr = `${days} days`;
+    // Hard cap on `days` — the daily snapshot cron writes one row per
+    // user per day so 5000 days is decades. Without this an API caller
+    // passing days=999999 would scan the entire user partition.
+    const safeDays = Math.min(Math.max(1, Math.floor(days)), 5000);
+    const intervalStr = `${safeDays} days`;
     const rows = await sql`
       SELECT EXTRACT(EPOCH FROM ts) * 1000 AS t, total_value, total_pnl
       FROM portfolio_snapshots
       WHERE user_id = ${userId}
         AND ts > NOW() - ${intervalStr}::interval
       ORDER BY ts ASC
+      LIMIT 5000
     `;
     return rows.map((r: any) => ({
       t: Number(r.t),
@@ -2608,7 +2633,10 @@ export async function getUserDetailForAdmin(userId: string) {
 export async function getAllPushSubscriptions() {
   try {
     const db = getSQL();
-    const rows = await db`SELECT user_id, endpoint, p256dh, auth FROM push_subscriptions`;
+    // LIMIT 10000 — push_subscriptions grows with every browser opt-in.
+    // Without a cap, alert delivery code loads the entire table into
+    // memory. Matches the pattern in getAllActiveTelegramChatIds.
+    const rows = await db`SELECT user_id, endpoint, p256dh, auth FROM push_subscriptions LIMIT 10000`;
     return rows.map((r: any) => ({
       userId: r.user_id,
       subscription: { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
@@ -2882,23 +2910,51 @@ export async function insertWhaleTradeEvents(events: Array<{
   if (events.length === 0) return 0;
   try {
     const sql = getSQL();
-    let inserted = 0;
-    for (const e of events) {
-      const res = await sql`
-        INSERT INTO whale_trade_events (address, chain, tx_hash, log_index, dex, action,
-          token_in, token_in_symbol, amount_in, token_out, token_out_symbol, amount_out,
-          value_usd, block_number, block_time)
-        VALUES (${e.address.toLowerCase()}, ${e.chain}, ${e.txHash}, ${e.logIndex ?? 0},
-          ${e.dex || null}, ${e.action || 'swap'},
-          ${e.tokenIn || null}, ${e.tokenInSymbol || null}, ${e.amountIn ?? null},
-          ${e.tokenOut || null}, ${e.tokenOutSymbol || null}, ${e.amountOut ?? null},
-          ${e.valueUsd ?? null}, ${e.blockNumber ?? null}, ${e.blockTime.toISOString()})
-        ON CONFLICT (tx_hash, log_index) DO NOTHING
-        RETURNING id
-      `;
-      if (res.length > 0) inserted++;
-    }
-    return inserted;
+    // Bulk INSERT via UNNEST — was N round-trips, now 1. Sibling
+    // saveFundingSnapshot/saveOISnapshot/saveUserTrades all use this
+    // pattern; whale trades was the outlier. With typical 50-row batches
+    // this collapses 50 sequential round-trips to a single call.
+    const addresses = events.map(e => e.address.toLowerCase());
+    const chains = events.map(e => e.chain);
+    const txHashes = events.map(e => e.txHash);
+    const logIndices = events.map(e => e.logIndex ?? 0);
+    const dexes = events.map(e => e.dex ?? null);
+    const actions = events.map(e => e.action ?? 'swap');
+    const tokenIns = events.map(e => e.tokenIn ?? null);
+    const tokenInSymbols = events.map(e => e.tokenInSymbol ?? null);
+    const amountIns = events.map(e => e.amountIn ?? null);
+    const tokenOuts = events.map(e => e.tokenOut ?? null);
+    const tokenOutSymbols = events.map(e => e.tokenOutSymbol ?? null);
+    const amountOuts = events.map(e => e.amountOut ?? null);
+    const valueUsds = events.map(e => e.valueUsd ?? null);
+    const blockNumbers = events.map(e => e.blockNumber ?? null);
+    const blockTimes = events.map(e => e.blockTime.toISOString());
+
+    const res = await sql`
+      INSERT INTO whale_trade_events (address, chain, tx_hash, log_index, dex, action,
+        token_in, token_in_symbol, amount_in, token_out, token_out_symbol, amount_out,
+        value_usd, block_number, block_time)
+      SELECT * FROM UNNEST(
+        ${sql.array(addresses)}::text[],
+        ${sql.array(chains)}::text[],
+        ${sql.array(txHashes)}::text[],
+        ${sql.array(logIndices)}::int[],
+        ${sql.array(dexes)}::text[],
+        ${sql.array(actions)}::text[],
+        ${sql.array(tokenIns)}::text[],
+        ${sql.array(tokenInSymbols)}::text[],
+        ${sql.array(amountIns)}::numeric[],
+        ${sql.array(tokenOuts)}::text[],
+        ${sql.array(tokenOutSymbols)}::text[],
+        ${sql.array(amountOuts)}::numeric[],
+        ${sql.array(valueUsds)}::numeric[],
+        ${sql.array(blockNumbers)}::bigint[],
+        ${sql.array(blockTimes)}::timestamptz[]
+      )
+      ON CONFLICT (tx_hash, log_index) DO NOTHING
+      RETURNING id
+    `;
+    return res.length;
   } catch (e) {
     console.error('insertWhaleTradeEvents error:', e);
     return 0;
@@ -3036,8 +3092,15 @@ export async function logWhaleNotification(ownerId: string, tradeEventId: number
 export async function pruneOldWhaleData(keepDays = 30): Promise<{ events: number; notifs: number }> {
   try {
     const sql = getSQL();
-    const e = await sql`DELETE FROM whale_trade_events WHERE block_time < NOW() - ${keepDays + ' days'}::interval`;
-    const n = await sql`DELETE FROM whale_alert_notifications WHERE sent_at < NOW() - ${keepDays + ' days'}::interval`;
+    // Build the interval string in JS first, then pass as a parameter.
+    // The previous form `${keepDays + ' days'}` worked but is fragile —
+    // if `keepDays` is ever passed as a non-number, the JS concatenation
+    // produces e.g. `"undefined days"` which Postgres throws on at the
+    // ::interval cast. Safer to coerce + clamp here.
+    const safeDays = Math.min(Math.max(1, Math.floor(Number(keepDays) || 30)), 3650);
+    const interval = `${safeDays} days`;
+    const e = await sql`DELETE FROM whale_trade_events WHERE block_time < NOW() - ${interval}::interval`;
+    const n = await sql`DELETE FROM whale_alert_notifications WHERE sent_at < NOW() - ${interval}::interval`;
     return { events: e.count, notifs: n.count };
   } catch (e) {
     console.error('pruneOldWhaleData error:', e);
@@ -3078,9 +3141,11 @@ export interface WorkerHeartbeat {
 export async function getWorkerHeartbeats(staleMinutes: number = 15): Promise<WorkerHeartbeat[]> {
   try {
     const sql = getSQL();
+    const safeMins = Math.min(Math.max(1, Math.floor(Number(staleMinutes) || 15)), 1440);
+    const interval = `${safeMins} minutes`;
     const rows = await sql`
       SELECT worker, last_beat, status, details,
-             last_beat < NOW() - ${staleMinutes + ' minutes'}::interval AS stale
+             last_beat < NOW() - ${interval}::interval AS stale
       FROM worker_heartbeats
       ORDER BY worker ASC
       LIMIT 100
@@ -3212,6 +3277,8 @@ export async function getStaleSocialHandles(
   try {
     const sql = getSQL();
     const lower = watchedHandles.map(h => h.toLowerCase());
+    const safeHours = Math.min(Math.max(1, Math.floor(Number(hours) || 12)), 168);
+    const interval = `${safeHours} hours`;
     const rows = await sql`
       WITH watched AS (
         SELECT UNNEST(${sql.array(lower)}::text[]) AS handle
@@ -3221,7 +3288,7 @@ export async function getStaleSocialHandles(
       LEFT JOIN social_posts s ON s.handle = w.handle
       GROUP BY w.handle
       HAVING MAX(s.pub_date) IS NULL
-          OR MAX(s.pub_date) < NOW() - ${hours + ' hours'}::interval
+          OR MAX(s.pub_date) < NOW() - ${interval}::interval
       ORDER BY w.handle
     `;
     return rows.map((r: any) => ({ handle: r.handle, latestPubDate: r.latest }));
@@ -3859,15 +3926,22 @@ export async function listAllSyncTargets(): Promise<Array<{
 }>> {
   if (!DATABASE_URL) return [];
   const sql = getSQL();
+  // LIMIT 50000 on each — at scale this prevents loading the entire
+  // encrypted-credential table into a single heap allocation. The sync
+  // cron runs every 60s; if user counts grow past 50k connected sources
+  // we'd need cursor-based pagination, but until then this hard cap is
+  // a safety net against memory exhaustion.
   const keys = await sql`
     SELECT user_id, id, exchange, encrypted_key, encrypted_secret, encrypted_passphrase
     FROM user_exchange_keys
     ORDER BY user_id, id
+    LIMIT 50000
   `;
   const wallets = await sql`
     SELECT user_id, id, chain, address
     FROM user_wallets
     ORDER BY user_id, id
+    LIMIT 50000
   `;
   type SyncEntry = {
     userId: string;
