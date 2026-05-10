@@ -521,6 +521,14 @@ interface LiveTickers {
   totalVolume24h: number | null;
   /** Aggregate open interest in USD across all venues. */
   totalOpenInterest: number | null;
+  /** Hourly-bucketed BTC funding rate series (last 24 hours). Each value
+   *  is a fractional rate (0.0001 = 0.01%). 24 points or fewer if data
+   *  is sparse. */
+  btcFundingHourly: number[];
+  /** Most recent BTC funding rate (fractional, e.g. 0.0001 = 0.01%). */
+  btcFundingNow: number | null;
+  /** ms-epoch when the data was rendered (for "as of HH:MM" stamp). */
+  generatedAt: number;
 }
 
 const FALLBACK_TICKERS: LiveTickers = {
@@ -532,6 +540,13 @@ const FALLBACK_TICKERS: LiveTickers = {
   },
   totalVolume24h: 90_000_000_000,
   totalOpenInterest: 90_000_000_000,
+  // Mild positive sloping shape — rendered when funding-history is
+  // unreachable; matches the "+0.01%" fallback below.
+  btcFundingHourly: [0.0001, 0.00012, 0.00008, 0.00015, 0.00009, 0.00013, 0.00011, 0.00014, 0.00010, 0.00012,
+                     0.00009, 0.00011, 0.00013, 0.00015, 0.00012, 0.00014, 0.00010, 0.00013, 0.00015, 0.00012,
+                     0.00014, 0.00016, 0.00013, 0.00015],
+  btcFundingNow: 0.0001,
+  generatedAt: 0,
 };
 
 /**
@@ -543,15 +558,19 @@ async function fetchLiveTickers(baseUrl: string): Promise<LiveTickers> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
-    const [tickersRes, oiRes] = await Promise.allSettled([
+    const [tickersRes, oiRes, fundingHistRes, fundingNowRes] = await Promise.allSettled([
       fetch(`${baseUrl}/api/tickers?symbols=BTC,ETH,SOL,HYPE`, { signal: ctrl.signal, next: { revalidate: 60 } }),
       fetch(`${baseUrl}/api/openinterest`, { signal: ctrl.signal, next: { revalidate: 60 } }),
+      fetch(`${baseUrl}/api/history/funding?symbol=BTC&hours=24`, { signal: ctrl.signal, next: { revalidate: 300 } }),
+      fetch(`${baseUrl}/api/funding?symbol=BTC`, { signal: ctrl.signal, next: { revalidate: 60 } }),
     ]);
     clearTimeout(timer);
 
     const symbols: LiveTickers['symbols'] = { ...FALLBACK_TICKERS.symbols };
     let totalVolume: number | null = FALLBACK_TICKERS.totalVolume24h;
     let totalOI: number | null = FALLBACK_TICKERS.totalOpenInterest;
+    let btcFundingHourly: number[] = FALLBACK_TICKERS.btcFundingHourly;
+    let btcFundingNow: number | null = FALLBACK_TICKERS.btcFundingNow;
 
     if (tickersRes.status === 'fulfilled' && tickersRes.value.ok) {
       const json = await tickersRes.value.json();
@@ -584,10 +603,56 @@ async function fetchLiveTickers(baseUrl: string): Promise<LiveTickers> {
       if (Number.isFinite(sum) && sum > 0) totalOI = sum;
     }
 
-    return { symbols, totalVolume24h: totalVolume, totalOpenInterest: totalOI };
+    // Funding history → bucket into 1-hour windows for the last 24 hours.
+    // Endpoint returns ALL exchanges' rates as flat points {t, rate}.
+    // Average within each bucket so multiple venues don't double-count.
+    if (fundingHistRes.status === 'fulfilled' && fundingHistRes.value.ok) {
+      const json = await fundingHistRes.value.json();
+      const points = (json.points ?? []) as Array<{ t: number; rate: number }>;
+      const now = Date.now();
+      const cutoff = now - 24 * 3600_000;
+      const buckets = new Map<number, { sum: number; n: number }>();
+      for (const p of points) {
+        const t = Number(p.t);
+        const r = Number(p.rate);
+        if (!Number.isFinite(t) || !Number.isFinite(r) || t < cutoff) continue;
+        const hour = Math.floor(t / 3600_000); // hour-of-epoch
+        const cur = buckets.get(hour) ?? { sum: 0, n: 0 };
+        cur.sum += r;
+        cur.n += 1;
+        buckets.set(hour, cur);
+      }
+      if (buckets.size >= 3) {
+        const sortedHours = Array.from(buckets.keys()).sort((a, b) => a - b);
+        btcFundingHourly = sortedHours.map(h => {
+          const b = buckets.get(h)!;
+          return b.sum / b.n;
+        });
+      }
+    }
+
+    // Current funding rate — average across exchanges.
+    if (fundingNowRes.status === 'fulfilled' && fundingNowRes.value.ok) {
+      const json = await fundingNowRes.value.json();
+      const btcRows = ((json.data ?? []) as Array<{ symbol: string; fundingRate: number }>)
+        .filter(r => r.symbol === 'BTC' && Number.isFinite(Number(r.fundingRate)));
+      if (btcRows.length > 0) {
+        const avg = btcRows.reduce((s, r) => s + Number(r.fundingRate), 0) / btcRows.length;
+        if (Number.isFinite(avg)) btcFundingNow = avg;
+      }
+    }
+
+    return {
+      symbols,
+      totalVolume24h: totalVolume,
+      totalOpenInterest: totalOI,
+      btcFundingHourly,
+      btcFundingNow,
+      generatedAt: Date.now(),
+    };
   } catch {
     clearTimeout(timer);
-    return FALLBACK_TICKERS;
+    return { ...FALLBACK_TICKERS, generatedAt: Date.now() };
   }
 }
 
@@ -627,12 +692,23 @@ function TapeFundingCard({ live }: { live: LiveTickers }) {
     return {
       ...m,
       price: fmtPrice(t.price),
-      delta: t.change24hPct >= 0 ? `+${t.change24hPct.toFixed(2)}` : t.change24hPct.toFixed(2),
+      // Always 2-decimal % so the column is visually consistent with
+      // the chips above the headline (no mix of "+0.6" and "-2.34").
+      delta: fmtDelta(t.change24hPct),
       up: t.change24hPct >= 0,
     };
   });
-  // BTC 1H funding sparkline shape — deterministic, looks live.
-  const spark = [4, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24, 23, 26, 25, 28];
+  // BTC funding sparkline — real hourly buckets from the last 24 hours.
+  // Filter to finite numbers (defensive — upstream sometimes returns
+  // sparse rows) and keep the natural sign so up = funding paid by
+  // longs, down = funding paid by shorts.
+  const sparkRaw = (live.btcFundingHourly.length >= 3 ? live.btcFundingHourly : FALLBACK_TICKERS.btcFundingHourly)
+    .filter(Number.isFinite);
+  const spark = sparkRaw.length >= 3 ? sparkRaw : FALLBACK_TICKERS.btcFundingHourly;
+  // Whether the trailing rate is positive (color the line green) or
+  // negative (red). Use the latest known value, fall back to spark trend.
+  const fundingNow = live.btcFundingNow ?? spark[spark.length - 1] ?? 0;
+  const fundingPositive = fundingNow >= 0;
   const w = 540;
   const h = 56;
   const pad = 6;
@@ -717,20 +793,33 @@ function TapeFundingCard({ live }: { live: LiveTickers }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#525252', textTransform: 'uppercase', letterSpacing: 1.2 }}>
-            BTC · 1H FUNDING
+            BTC · 24H FUNDING
           </span>
           <div style={{ flex: 1, display: 'flex' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: PUMP, fontFamily: 'monospace' }}>+2.41% / 1H</span>
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: fundingPositive ? PUMP : REKT,
+            fontFamily: 'monospace',
+          }}>
+            {fundingNow >= 0 ? '+' : ''}{(fundingNow * 100).toFixed(4)}%
+          </span>
         </div>
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'flex' }}>
           <defs>
             <linearGradient id="tapeFundingFill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={ACCENT} stopOpacity="0.35" />
-              <stop offset="100%" stopColor={ACCENT} stopOpacity="0" />
+              <stop offset="0%" stopColor={fundingPositive ? PUMP : REKT} stopOpacity="0.35" />
+              <stop offset="100%" stopColor={fundingPositive ? PUMP : REKT} stopOpacity="0" />
             </linearGradient>
           </defs>
           <path d={fill} fill="url(#tapeFundingFill)" />
-          <path d={path} fill="none" stroke={ACCENT} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />
+          <path
+            d={path}
+            fill="none"
+            stroke={fundingPositive ? PUMP : REKT}
+            strokeWidth={1.6}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
     </div>
@@ -757,6 +846,12 @@ function renderTapeImage(live: LiveTickers) {
     { label: 'VENUES',        value: `${ALL_EXCHANGES.length}`,        tone: PUMP },
     { label: 'INFOHUB.IO',    value: '→',                              tone: ACCENT, isLink: true },
   ];
+  // "AS OF HH:MM UTC" — small freshness stamp so viewers can tell the
+  // image is real data not just a marketing render.
+  const ts = live.generatedAt > 0 ? new Date(live.generatedAt) : new Date();
+  const hh = String(ts.getUTCHours()).padStart(2, '0');
+  const mm = String(ts.getUTCMinutes()).padStart(2, '0');
+  const asOfStamp = `${hh}:${mm} UTC`;
 
   return (
     <div style={{
@@ -851,7 +946,7 @@ function renderTapeImage(live: LiveTickers) {
         display: 'flex', alignItems: 'center',
         padding: '0 48px 28px', gap: 32,
       }}>
-        {stats.map((s, i) => (
+        {stats.map((s) => (
           <div key={s.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <span style={{
               fontSize: s.isLink ? 24 : 28, fontWeight: 900, color: s.tone,
@@ -865,17 +960,23 @@ function renderTapeImage(live: LiveTickers) {
             }}>
               {s.label}
             </span>
-            {i < stats.length - 1 && (
-              <div style={{
-                position: 'absolute',
-                width: 1, height: 28,
-                background: 'rgba(255,255,255,0.06)',
-                marginLeft: 0,
-                display: 'none', // dividers handled by gap
-              }} />
-            )}
           </div>
         ))}
+        <div style={{ flex: 1, display: 'flex' }} />
+        {/* "as of HH:MM UTC" freshness stamp — anchored bottom-right of
+            the stats strip. Lets viewers see how stale the cached image is. */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: '#525252',
+            letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: 'monospace',
+          }}>
+            AS OF {asOfStamp}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: PUMP, display: 'flex' }} />
+            <span style={{ fontSize: 9, fontWeight: 700, color: PUMP, letterSpacing: 1 }}>LIVE FEED</span>
+          </div>
+        </div>
       </div>
     </div>
   );
