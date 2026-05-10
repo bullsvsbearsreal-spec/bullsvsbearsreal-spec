@@ -508,17 +508,129 @@ function badgesForVariant(variant: Variant): { label: string; color: string }[] 
 // Different from the other variants because it has its own logo+ticker
 // header, headline split across two lines (with one orange word), and
 // a stats footer — so it skips the standard 2-column chrome.
+//
+// Renders live market data when reachable, falls back to credible
+// recent values when upstream is down (so the OG always renders, even
+// during a venue outage).
 // ────────────────────────────────────────────────────────────────────
 
-function TapeFundingCard() {
+interface LiveTickers {
+  /** Symbol → { price, change24hPct } chosen from the highest-volume venue. */
+  symbols: Record<string, { price: number; change24hPct: number } | undefined>;
+  /** Aggregate 24h volume in USD across all venues. */
+  totalVolume24h: number | null;
+  /** Aggregate open interest in USD across all venues. */
+  totalOpenInterest: number | null;
+}
+
+const FALLBACK_TICKERS: LiveTickers = {
+  symbols: {
+    BTC:  { price: 80000,  change24hPct: 0.6 },
+    ETH:  { price: 2300,   change24hPct: 0.4 },
+    SOL:  { price: 93,     change24hPct: -0.1 },
+    HYPE: { price: 42.5,   change24hPct: -2.3 },
+  },
+  totalVolume24h: 90_000_000_000,
+  totalOpenInterest: 90_000_000_000,
+};
+
+/**
+ * Pull live tickers + OI from the existing aggregator endpoints.
+ * Wrapped in Promise.allSettled so a single venue blip doesn't fail
+ * the whole render. Aggressive 5s timeout — OG must respond fast.
+ */
+async function fetchLiveTickers(baseUrl: string): Promise<LiveTickers> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const [tickersRes, oiRes] = await Promise.allSettled([
+      fetch(`${baseUrl}/api/tickers?symbols=BTC,ETH,SOL,HYPE`, { signal: ctrl.signal, next: { revalidate: 60 } }),
+      fetch(`${baseUrl}/api/openinterest`, { signal: ctrl.signal, next: { revalidate: 60 } }),
+    ]);
+    clearTimeout(timer);
+
+    const symbols: LiveTickers['symbols'] = { ...FALLBACK_TICKERS.symbols };
+    let totalVolume: number | null = FALLBACK_TICKERS.totalVolume24h;
+    let totalOI: number | null = FALLBACK_TICKERS.totalOpenInterest;
+
+    if (tickersRes.status === 'fulfilled' && tickersRes.value.ok) {
+      const json = await tickersRes.value.json();
+      // Pick highest-volume entry per symbol. The aggregator returns
+      // the same symbol from many venues — best signal is the one with
+      // the most quoteVolume24h.
+      const best = new Map<string, { price: number; change24hPct: number; vol: number }>();
+      for (const t of (json.data ?? []) as Array<{ symbol: string; price: number; priceChangePercent24h: number; quoteVolume24h: number }>) {
+        const sym = t.symbol?.toUpperCase();
+        if (!sym || !['BTC', 'ETH', 'SOL', 'HYPE'].includes(sym)) continue;
+        const px = Number(t.price);
+        const ch = Number(t.priceChangePercent24h);
+        const vol = Number(t.quoteVolume24h) || 0;
+        if (!Number.isFinite(px) || px <= 0) continue;
+        const prev = best.get(sym);
+        if (!prev || vol > prev.vol) best.set(sym, { price: px, change24hPct: Number.isFinite(ch) ? ch : 0, vol });
+      }
+      best.forEach((v, sym) => {
+        symbols[sym] = { price: v.price, change24hPct: v.change24hPct };
+      });
+      if (json.meta?.totalVolume && Number.isFinite(Number(json.meta.totalVolume))) {
+        totalVolume = Number(json.meta.totalVolume);
+      }
+    }
+
+    if (oiRes.status === 'fulfilled' && oiRes.value.ok) {
+      const json = await oiRes.value.json();
+      const sum = ((json.data ?? []) as Array<{ openInterestValue?: number }>)
+        .reduce((acc, r) => acc + (Number(r.openInterestValue) || 0), 0);
+      if (Number.isFinite(sum) && sum > 0) totalOI = sum;
+    }
+
+    return { symbols, totalVolume24h: totalVolume, totalOpenInterest: totalOI };
+  } catch {
+    clearTimeout(timer);
+    return FALLBACK_TICKERS;
+  }
+}
+
+/** Compact USD formatter for OG card — "$112,842" / "$4,221" / "$38.21". */
+function fmtPrice(v: number): string {
+  if (!Number.isFinite(v)) return '—';
+  if (v >= 1000) return `$${Math.round(v).toLocaleString('en-US')}`;
+  if (v >= 100) return `$${v.toFixed(2)}`;
+  if (v >= 1) return `$${v.toFixed(2)}`;
+  if (v >= 0.01) return `$${v.toFixed(4)}`;
+  return `$${v.toPrecision(3)}`;
+}
+function fmtBig(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`;
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+  return `$${Math.round(v)}`;
+}
+function fmtDelta(v: number): string {
+  if (!Number.isFinite(v)) return '—';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+}
+
+function TapeFundingCard({ live }: { live: LiveTickers }) {
   // Card on the right side: FUNDING · 8H header with LIVE pulse,
-  // 4 perp rows (BTC/ETH/SOL/HYPE), and a sparkline footer for BTC 1H.
-  const rows = [
-    { sym: 'BTC',  full: 'BITCOIN',     bg: '#f7931a', fg: '#fff', price: '$112,842', delta: '+0.6',  up: true },
-    { sym: 'ETH',  full: 'ETHEREUM',    bg: '#627eea', fg: '#fff', price: '$4,221',   delta: '-0.6',  up: false },
-    { sym: 'SOL',  full: 'SOLANA',      bg: '#9945ff', fg: '#fff', price: '$214.52',  delta: '+0.1',  up: true },
-    { sym: 'HYPE', full: 'HYPERLIQUID', bg: '#50d2c1', fg: '#000', price: '$38.21',   delta: '+0.2',  up: true, hot: true },
+  // 4 perp rows (BTC/ETH/SOL/HYPE) populated from live data, and a
+  // sparkline footer for BTC 1H.
+  const meta = [
+    { sym: 'BTC',  full: 'BITCOIN',     bg: '#f7931a', fg: '#fff' },
+    { sym: 'ETH',  full: 'ETHEREUM',    bg: '#627eea', fg: '#fff' },
+    { sym: 'SOL',  full: 'SOLANA',      bg: '#9945ff', fg: '#fff' },
+    { sym: 'HYPE', full: 'HYPERLIQUID', bg: '#50d2c1', fg: '#000', hot: true },
   ];
+  const rows = meta.map(m => {
+    const t = live.symbols[m.sym] ?? FALLBACK_TICKERS.symbols[m.sym]!;
+    return {
+      ...m,
+      price: fmtPrice(t.price),
+      delta: t.change24hPct >= 0 ? `+${t.change24hPct.toFixed(2)}` : t.change24hPct.toFixed(2),
+      up: t.change24hPct >= 0,
+    };
+  });
   // BTC 1H funding sparkline shape — deterministic, looks live.
   const spark = [4, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24, 23, 26, 25, 28];
   const w = 540;
@@ -625,20 +737,25 @@ function TapeFundingCard() {
   );
 }
 
-function renderTapeImage() {
-  // Live ticker chips for the LEFT column. Static-but-credible values
-  // — OG images get cached aggressively by Twitter/Slack so live data
-  // would only update on cache bust anyway.
+function renderTapeImage(live: LiveTickers) {
+  // Live ticker chips for the LEFT column — pulled fresh from the
+  // aggregator at request time, with credible fallbacks if a venue blip
+  // takes upstream offline. Cloudflare's 5-min cache below means the
+  // image refreshes regularly even though OG consumers (Twitter/Slack)
+  // cache per-URL much longer.
+  const btc = live.symbols.BTC ?? FALLBACK_TICKERS.symbols.BTC!;
+  const eth = live.symbols.ETH ?? FALLBACK_TICKERS.symbols.ETH!;
+  const hype = live.symbols.HYPE ?? FALLBACK_TICKERS.symbols.HYPE!;
   const tickers = [
-    { sym: 'BTC',  px: '$112,842', delta: '+2.41%', up: true },
-    { sym: 'ETH',  px: '$4,221',   delta: '-0.64%', up: false },
-    { sym: 'HYPE', px: '$38.21',   delta: '+12.84%', up: true, glow: true },
+    { sym: 'BTC',  px: fmtPrice(btc.price),  delta: fmtDelta(btc.change24hPct),  up: btc.change24hPct >= 0 },
+    { sym: 'ETH',  px: fmtPrice(eth.price),  delta: fmtDelta(eth.change24hPct),  up: eth.change24hPct >= 0 },
+    { sym: 'HYPE', px: fmtPrice(hype.price), delta: fmtDelta(hype.change24hPct), up: hype.change24hPct >= 0, glow: true },
   ];
   const stats = [
-    { label: '24H VOL',     value: '$48.2B',  tone: '#fafafa' },
-    { label: 'OPEN INTEREST', value: '$24.1B', tone: '#fafafa' },
-    { label: 'STREAM RATE', value: '1,247/s', tone: PUMP },
-    { label: 'INFOHUB.IO',  value: '→',       tone: ACCENT, isLink: true },
+    { label: '24H VOL',       value: fmtBig(live.totalVolume24h),     tone: '#fafafa' },
+    { label: 'OPEN INTEREST', value: fmtBig(live.totalOpenInterest),  tone: '#fafafa' },
+    { label: 'VENUES',        value: `${ALL_EXCHANGES.length}`,        tone: PUMP },
+    { label: 'INFOHUB.IO',    value: '→',                              tone: ACCENT, isLink: true },
   ];
 
   return (
@@ -725,7 +842,7 @@ function renderTapeImage() {
 
         {/* ── RIGHT column ──────────────────────────────────────────── */}
         <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <TapeFundingCard />
+          <TapeFundingCard live={live} />
         </div>
       </div>
 
@@ -775,9 +892,23 @@ export async function GET(request: NextRequest) {
 
   // "tape" is the May 2026 hero design — also serves as the new default
   // since it's what we use across the site. Short-circuit and render its
-  // own JSX rather than slotting into the standard chrome.
+  // own JSX rather than slotting into the standard chrome. Fetch live
+  // tickers + OI from the aggregator before composing the image.
   if (variant === 'tape' || variant === 'default') {
-    return new ImageResponse(renderTapeImage(), { width: 1200, height: 630 });
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${request.headers.get('host')}`;
+    const live = await fetchLiveTickers(baseUrl);
+    return new ImageResponse(renderTapeImage(live), {
+      width: 1200,
+      height: 630,
+      // Cache for 5 min on Cloudflare with up-to-15-min stale-while-revalidate.
+      // Long enough that we don't hammer the aggregator on every share but
+      // short enough that the prices stay reasonably fresh. Twitter / Slack
+      // cache per-URL much longer regardless — this header just controls
+      // our edge cache.
+      headers: {
+        'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=900',
+      },
+    });
   }
 
   const badges = badgesForVariant(variant);
