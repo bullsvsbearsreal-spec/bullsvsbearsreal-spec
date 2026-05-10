@@ -83,10 +83,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/perp-dex-volume',          label: 'Perp DEX Volume', color: ACL,  icon: I.signal },
     { href: '/volume-share',             label: 'CEX vs DEX Vol',  color: ACL, icon: I.pieChart },
     { href: '/options',                  label: 'Options',         color: MUTE, icon: I.options },
-    { href: '/options-iv',               label: 'Options IV',      color: MUTE, icon: I.options },
-    { href: '/max-pain',                 label: 'Max Pain',        color: MUTE, icon: I.flame },
-    { href: '/skew',                     label: 'Skew',            color: MUTE, icon: I.signal },
-    { href: '/rv-iv',                    label: 'RV vs IV',        color: MUTE, icon: I.signal },
+    // /options-iv, /max-pain, /skew, /rv-iv consolidated into /options (May 2026)
     { href: '/longshort',                label: 'Long / Short',    color: PUR,  icon: I.ls },
     { href: '/etf',                      label: 'ETF Tracker',     color: ACC,  icon: I.etf },
     { href: '/etf-flows',                label: 'ETF Flows',       color: ACC,  icon: I.etf },

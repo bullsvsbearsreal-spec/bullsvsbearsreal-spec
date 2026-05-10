@@ -22,11 +22,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'screener',     label: 'Screener',          href: '/screener',  hint: 'Filter & sort markets' },
       { id: 'chart',        label: 'Chart',             href: '/chart',              hint: 'Candles + book + tape' },
-      { id: 'options',      label: 'Options',           href: '/options',   hint: 'Chain · Greeks · IV' },
-      { id: 'options-iv',   label: 'Options IV',        href: '/options-iv',         hint: 'IV smile + skew' },
-      { id: 'rv-iv',        label: 'RV vs IV',          href: '/rv-iv',              hint: 'Realized vs implied premium' },
-      { id: 'max-pain',     label: 'Max Pain',          href: '/max-pain',           hint: 'Pin levels' },
-      { id: 'skew',         label: 'Skew',              href: '/skew',               hint: 'Put-call IV per expiry' },
+      { id: 'options',      label: 'Options',           href: '/options',   hint: 'Chain · Greeks · IV · max pain · skew · RV vs IV' },
+      // /options-iv, /rv-iv, /max-pain, /skew consolidated into /options (May 2026)
       { id: 'spreads',      label: 'Spreads',           href: '/spreads',            hint: 'Cross-venue arb' },
       { id: 'funding-arb',  label: 'Funding Arb',       href: '/spread-scanner',     hint: 'Long/short pairs' },
       { id: 'basis',        label: 'Basis',             href: '/basis',              hint: 'Spot-perp premium' },

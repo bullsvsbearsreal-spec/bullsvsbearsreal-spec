@@ -110,7 +110,7 @@ const pageRegistry: PageEntry[] = [
   { name: 'Claim BOUNCE', href: '/bounce/claim', icon: Gift, keywords: ['claim', 'bounce', 'airdrop', 'rebate', 'register', 'rewards', 'how to claim'], category: 'Sentiment' },
   { name: 'HL Vaults', href: '/hl-vaults', icon: Vault, keywords: ['vault', 'vaults', 'hyperliquid', 'hl', 'leader', 'copy', 'trust', 'apr', 'tvl'], category: 'Sentiment' },
   { name: 'Staking + Restaking Yields', href: '/staking', icon: Layers, keywords: ['staking', 'restaking', 'lst', 'lrt', 'lido', 'rocket pool', 'ether.fi', 'renzo', 'kelp', 'ethena', 'usde', 'pendle'], category: 'Markets' },
-  { name: 'Options IV Dashboard', href: '/options-iv', icon: Sigma, keywords: ['iv', 'implied vol', 'skew', 'put call ratio', 'pcr', 'max pain', 'term structure', 'options', 'deribit'], category: 'Trading' },
+  { name: 'Options · IV · Skew · Max Pain', href: '/options', icon: Sigma, keywords: ['iv', 'implied vol', 'skew', 'put call ratio', 'pcr', 'max pain', 'term structure', 'options', 'deribit', 'rv-iv', 'realized vol'], category: 'Trading' },
   { name: 'Momentum Screener', href: '/momentum', icon: Zap, keywords: ['momentum', 'screener', 'breakout', 'volume surge', 'squeeze', 'setup', 'scan'], category: 'Trading' },
   { name: 'Liquidation Calculator', href: '/liq-calculator', icon: Calculator, keywords: ['liquidation', 'calc', 'calculator', 'leverage', 'margin', 'liq price', 'position size', 'risk'], category: 'Trading' },
   { name: 'Exchange Listings', href: '/listings', icon: Bell, keywords: ['listing', 'listings', 'new listings', 'delisting', 'delist', 'binance', 'bybit', 'coinbase', 'announcement'], category: 'Sentiment' },
@@ -119,7 +119,7 @@ const pageRegistry: PageEntry[] = [
   { name: 'Donate (Crypto)', href: '/donate', icon: Gift, keywords: ['donate', 'donation', 'support', 'tip', 'sponsor', 'btc', 'eth', 'sol', 'usdt'], category: 'More' },
   { name: 'Altcoin Outperformance', href: '/outperformers', icon: Trophy, keywords: ['outperform', 'outperformance', 'vs btc', 'vs eth', 'beat btc', 'relative performance', 'altcoin'], category: 'Markets' },
   { name: 'Exchange Fee Comparison', href: '/exchange-fees', icon: DollarSign, keywords: ['fees', 'maker', 'taker', 'comparison', 'commission', 'trading fees', 'affiliate', 'rebate'], category: 'Markets' },
-  { name: 'Max Pain Tracker', href: '/max-pain', icon: Crosshair, keywords: ['max pain', 'options', 'expiry', 'pinning', 'dealer', 'gamma', 'deribit'], category: 'Trading' },
+  // Max Pain folded into /options (May 2026) — entry above covers the keywords
   { name: 'Breakout Scanner', href: '/breakouts', icon: Rocket, keywords: ['breakout', 'breakdown', 'ath', 'all time high', 'new high', 'trend', 'recovery', 'screener'], category: 'Markets' },
 ];
 
