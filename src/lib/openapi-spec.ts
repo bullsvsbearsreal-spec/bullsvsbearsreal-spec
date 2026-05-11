@@ -311,11 +311,12 @@ export const openApiSpec = {
     '/funding': {
       get: {
         summary: 'Current funding rates across exchanges',
-        description: 'Returns the latest funding rate for every (symbol, exchange) pair we ingest. Filter by symbol or exchange.',
+        description: 'Returns the latest funding rate for every (symbol, exchange) pair we ingest. Per-exchange rows by default; pass aggregate=1 to collapse to one row per symbol with avg / min / max 8h-normalised rate + which venues hit the extremes (useful for spotting spreads at a glance).',
         parameters: [
-          { name: 'symbol', in: 'query', schema: { type: 'string' }, example: 'BTC', description: 'Filter to one symbol' },
-          { name: 'exchange', in: 'query', schema: { type: 'string' }, example: 'binance', description: 'Filter to one exchange' },
-          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+          { name: 'symbols', in: 'query', schema: { type: 'string' }, example: 'BTC,ETH', description: 'Comma-separated symbol filter' },
+          { name: 'exchanges', in: 'query', schema: { type: 'string' }, example: 'binance,bybit', description: 'Comma-separated exchange filter' },
+          { name: 'assetClass', in: 'query', schema: { type: 'string', enum: ['crypto', 'stocks', 'forex', 'commodities', 'all'], default: 'crypto' } },
+          { name: 'aggregate', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = one row per symbol with avg/min/max rate8h' },
         ],
         responses: {
           200: { description: 'OK', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiResponse' } } } },
