@@ -43,6 +43,14 @@ describe('formatPrice', () => {
     expect(formatPrice(NaN)).toBe('$0.00');
   });
 
+  it('renders literal zero as "$0.00", not exponent notation', () => {
+    // Regression: formatPrice(0) used to fall through to .toExponential(4)
+    // and emit '$0.0000e+0' in the chart stat bar when upstream tickers
+    // didn't include high/low fields.
+    expect(formatPrice(0)).toBe('$0.00');
+    expect(formatPrice(-0)).toBe('$0.00');
+  });
+
   it('formats large prices (≥1000) with no decimals', () => {
     const result = formatPrice(65432);
     expect(result).toMatch(/^\$65,?432$/);
@@ -71,10 +79,10 @@ describe('formatPrice', () => {
     expect(result).toMatch(/^\$\d\.\d{4}e[+-]\d+$/);
   });
 
-  it('formats zero as $0.0000e+0 (below all thresholds)', () => {
-    // abs(0) = 0, not >= any positive threshold, hits toExponential
-    expect(formatPrice(0)).toBe('$0.0000e+0');
-  });
+  // Zero handling was changed in cf826d32 — see the "literal zero"
+  // regression test above. This test used to expect "$0.0000e+0"
+  // (the buggy fall-through behavior) but was updated when the
+  // ChartStatsBar showed ugly exponent notation for ticker no-data.
 
   it('handles negative prices with sign prefix', () => {
     // abs(-5) = 5, which is >= 1, so formatted as -$5.00
