@@ -466,6 +466,12 @@ export const openApiSpec = {
     '/tickers': {
       get: {
         summary: 'Current ticker / mark prices across exchanges',
+        description: 'Per-exchange rows by default; pass aggregate=1 to collapse to one row per symbol with median price + max H/L + cross-venue deduped volume (\$100B per-entry sanity cap).',
+        parameters: [
+          { name: 'symbols', in: 'query', schema: { type: 'string' }, description: 'Comma-separated symbol filter (e.g. BTC,ETH)' },
+          { name: 'exchanges', in: 'query', schema: { type: 'string' }, description: 'Comma-separated exchange filter (case-insensitive)' },
+          { name: 'aggregate', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = one row per symbol, summed volume + median price' },
+        ],
         responses: { 200: { description: 'OK' } },
       },
     },
