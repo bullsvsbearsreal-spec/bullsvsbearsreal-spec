@@ -172,12 +172,21 @@ function annualizeRate(ratePct: number, intervalHours: number): number {
 }
 
 /** Compact APR formatter — "+0.0%" if too small, "+8.76%" otherwise. */
+/**
+ * Format an annualised funding rate for display. Returns the BARE
+ * number (e.g. "-11.0") — every caller adds its own "%" suffix.
+ *
+ * Was previously returning "-11.0%" with the percent sign included,
+ * but every call site was templating `${fmtApr(x)}%` on top of that,
+ * producing "-11.0%%" in the UI. Caught during the round-3 critic
+ * walkthrough on /positions.
+ */
 function fmtApr(apr: number | null | undefined): string {
   if (apr == null || !Number.isFinite(apr)) return '—';
   const abs = Math.abs(apr);
   const sign = apr > 0 ? '+' : apr < 0 ? '-' : '';
   const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
-  return `${sign}${abs.toFixed(digits)}%`;
+  return `${sign}${abs.toFixed(digits)}`;
 }
 
 const TONE_CLASS: Record<'good' | 'bad' | 'neutral', string> = {
