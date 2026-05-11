@@ -24,6 +24,7 @@ import {
   ChartStatsBar, ChartAiStrip, ChartVenueFundingStrip,
   type ChartStatsBarData, type VenueFundingRow,
 } from './components/ChartTerminalStrips';
+import { ChartPositionStrip } from './components/ChartPositionStrip';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
 const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
@@ -1034,6 +1035,13 @@ function ChartPageInner() {
               price: statsBarData.price,
             }}
           />
+        </ChartErrorBoundary>
+      )}
+      {/* User's open position(s) on this symbol — auto-hides when
+          signed-out or no matching row in /api/account/positions. */}
+      {isCrypto && (
+        <ChartErrorBoundary name="Position Strip">
+          <ChartPositionStrip symbol={displayLabel} />
         </ChartErrorBoundary>
       )}
 
