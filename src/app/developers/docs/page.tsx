@@ -121,6 +121,7 @@ const NAV_SECTIONS = [
     { id: 'funding', label: 'Funding Rates' },
     { id: 'openinterest', label: 'Open Interest' },
     { id: 'tickers', label: 'Tickers' },
+    { id: 'klines', label: 'Klines (OHLCV)' },
     { id: 'spreads', label: 'Spreads' },
   ]},
   { group: 'Trading Intelligence', items: [
@@ -429,6 +430,49 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
     }
   ]
 }`}</CodeBlock>
+            </Section>
+
+            {/* Klines */}
+            <Section id="klines" title="Klines (OHLCV)" method="GET" path="/api/v1/klines">
+              <p className="text-gray-400 mb-4">
+                OHLCV candle data backed by a multi-venue fallback chain
+                (Binance perp → Bybit → OKX → Binance spot). A single venue
+                outage doesn't break the response — the upstream that
+                served the response is named in <code className="text-amber-400">data.source</code>.
+              </p>
+              <ParamTable params={[
+                ['symbol', 'string', 'required', 'Base symbol (USDT pair appended internally)'],
+                ['interval', 'string', '1h', '1m | 5m | 15m | 1h | 4h | 1d | 1w'],
+                ['limit', 'number', '100', 'Max candles (1 to 500)'],
+              ]} />
+              <CodeBlock title="Response">{`{
+  "success": true,
+  "data": {
+    "pair": "BTCUSDT",
+    "interval": "1h",
+    "source": "binance",
+    "count": 100,
+    "candles": [
+      {
+        "time": 1778493600000,
+        "open": 80923.30,
+        "high": 81162.40,
+        "low": 80889.90,
+        "close": 80900.80,
+        "volume": 3424.195,
+        "closeTime": 1778497199999
+      }
+    ]
+  },
+  "meta": { "timestamp": 1778493700000 }
+}`}</CodeBlock>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400">
+                Times are Unix milliseconds. Volume is denominated in the BASE asset
+                (BTC for BTCUSDT) — multiply by close price for USD notional. Use
+                <code className="text-amber-400 mx-1">data.source</code> to detect
+                when the primary venue is down and your indicator math is sitting
+                on a fallback's data shape.
+              </div>
             </Section>
 
             {/* Spreads */}
