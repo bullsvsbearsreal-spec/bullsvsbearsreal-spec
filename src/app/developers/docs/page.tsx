@@ -126,15 +126,29 @@ const NAV_SECTIONS = [
   ]},
   { group: 'Trading Intelligence', items: [
     { id: 'arbitrage', label: 'Arbitrage' },
+    { id: 'funding-arb', label: 'Funding Arbitrage' },
     { id: 'longshort', label: 'Long/Short Ratio' },
     { id: 'liquidations', label: 'Liquidations' },
     { id: 'options', label: 'Options' },
+    { id: 'basis', label: 'CME Basis' },
   ]},
   { group: 'Market Context', items: [
     { id: 'top-movers', label: 'Top Movers' },
     { id: 'global-stats', label: 'Global Stats' },
     { id: 'fear-greed', label: 'Fear & Greed' },
     { id: 'funding-history', label: 'Funding History' },
+    { id: 'listing-radar', label: 'Listing Radar' },
+    { id: 'earnings-calendar', label: 'Events Calendar' },
+  ]},
+  { group: 'On-chain & Yield', items: [
+    { id: 'whales', label: 'Whale Trades' },
+    { id: 'whale-liq', label: 'Whale Liquidation Roulette' },
+    { id: 'smart-money-leaderboard', label: 'Smart Money' },
+    { id: 'bridge-flows', label: 'Bridge Flows' },
+    { id: 'restaking', label: 'Restaking Yields' },
+  ]},
+  { group: 'Tools', items: [
+    { id: 'backtest', label: 'Backtest' },
   ]},
   { group: 'Reference', items: [
     { id: 'exchanges', label: 'Exchanges' },
@@ -980,6 +994,184 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
   "documentation": "https://info-hub.io/developers/docs",
   "timestamp": 1713181800000
 }`}</CodeBlock>
+            </Section>
+
+            {/* Funding Arbitrage scanner */}
+            <div className="flex items-center gap-3 mb-8 mt-4">
+              <div className="text-[10px] text-green-400/70 uppercase tracking-widest font-bold">More Trading Intelligence</div>
+              <div className="flex-1 h-px bg-gradient-to-r from-green-500/20 to-transparent" />
+            </div>
+
+            <Section id="funding-arb" title="Funding Arbitrage" method="GET" path="/api/v1/funding-arb">
+              <p className="text-gray-400 mb-4">
+                Cross-exchange funding-rate arbitrage SCANNER — returns GROSS spreads (no fees deducted).
+                For the net version with feasibility grading + OI sanity + 7-day stability, see{' '}
+                <a href="#arbitrage" className="text-amber-400 hover:underline">/arbitrage</a>.
+              </p>
+              <ParamTable params={[
+                ['min_venues', 'number', '3', 'Only include symbols with N+ venues (2..40)'],
+                ['min_spread', 'number', '0.01', 'Minimum 8h spread % to include'],
+                ['sort', 'string', 'annualized', 'Sort: annualized | spread | venues'],
+                ['limit', 'number', '100', 'Max symbols (1..500)'],
+              ]} />
+              <CodeBlock title="Response">{`{
+  "success": true,
+  "data": [
+    {
+      "symbol": "BTC",
+      "venueCount": 14,
+      "min": { "exchange": "Hyperliquid", "rate8h": -0.0245, "interval": "1h", "markPrice": 81250.0, "type": "dex" },
+      "max": { "exchange": "Bybit", "rate8h": 0.0567, "interval": "8h", "markPrice": 81254.5, "type": "cex" },
+      "spread8h": 0.0812,
+      "annualized": 88.92,
+      "venues": [/* every venue */],
+      "dexOnOneSide": true
+    }
+  ],
+  "summary": { "totalSymbols": 230, "displayed": 50, "topAnnualized": 1937, "topSymbol": "AR", "medianSpread": 0.03, "dexCrossSymbols": 18 },
+  "meta": { "timestamp": 1709248000, "feeModel": { /* see Fee Model section */ }, "scope": "gross" }
+}`}</CodeBlock>
+            </Section>
+
+            {/* CME Basis */}
+            <Section id="basis" title="CME Basis" method="GET" path="/api/v1/basis">
+              <p className="text-gray-400 mb-4">
+                CME front-month futures basis vs spot for BTC + ETH. Annualized cash-and-carry rate
+                institutions use to size basis trades. Persistent positive basis = risk-on.
+              </p>
+              <CodeBlock title="Response">{`{
+  "success": true,
+  "data": [
+    {
+      "asset": "BTC",
+      "spot": 81250.50,
+      "cmeFront": 82100.00,
+      "daysToExpiry": 28,
+      "basisPct": 1.045,
+      "annualizedPct": 13.63,
+      "cmeSource": "CME",
+      "spotSource": "coinbase"
+    }
+  ],
+  "meta": { "timestamp": 1709248000, "fromCache": false }
+}`}</CodeBlock>
+            </Section>
+
+            {/* Listing Radar */}
+            <Section id="listing-radar" title="Listing Radar" method="GET" path="/api/v1/listing-radar">
+              <p className="text-gray-400 mb-4">
+                Real-time feed of Binance listing announcements + delistings. Listings historically
+                pump 30-200% in the first 24h — this is the earliest pre-trade signal we publish.
+              </p>
+              <ParamTable params={[
+                ['type', 'string', 'all', 'Filter: spot | perp | futures | option | delisting | other'],
+                ['hot', 'number', '0', '1 = only announcements <6h old'],
+                ['limit', 'number', '50', 'Max results (1..200)'],
+              ]} />
+            </Section>
+
+            {/* Earnings calendar */}
+            <Section id="earnings-calendar" title="Events Calendar" method="GET" path="/api/v1/earnings-calendar">
+              <p className="text-gray-400 mb-4">
+                Aggregated upcoming protocol events: token unlocks, TGEs, halvings, governance votes.
+                Source-attributed. One unified timeline of every catalyst that historically moves price.
+              </p>
+            </Section>
+
+            {/* On-chain group divider */}
+            <div className="flex items-center gap-3 mb-8 mt-4">
+              <div className="text-[10px] text-purple-400/70 uppercase tracking-widest font-bold">On-chain &amp; Yield</div>
+              <div className="flex-1 h-px bg-gradient-to-r from-purple-500/20 to-transparent" />
+            </div>
+
+            {/* Whales */}
+            <Section id="whales" title="Whale Trades" method="GET" path="/api/v1/whales">
+              <p className="text-gray-400 mb-4">
+                Recent on-chain DEX whale trades. Two modes:
+                <code className="text-amber-400 mx-1">?address=0x...</code> for one wallet (paginated newest-first),
+                or no address for the global feed across every tracked wallet.
+              </p>
+              <ParamTable params={[
+                ['address', 'string', '', 'Lowercased EVM address or Solana base58 (optional)'],
+                ['chain', 'string', 'all', 'ethereum | bsc | arbitrum | base | polygon | optimism | solana'],
+                ['minValueUsd', 'number', '0', 'Only trades >= this notional (global mode only)'],
+                ['limit', 'number', '50', 'Max entries (1..200)'],
+              ]} />
+            </Section>
+
+            {/* Whale liquidation roulette */}
+            <Section id="whale-liq" title="Whale Liquidation Roulette" method="GET" path="/api/v1/whale-liq">
+              <p className="text-gray-400 mb-4">
+                Hyperliquid whale positions sorted by proximity to liquidation price. Useful for
+                cascade prediction and alpha generation — the closer a whale is to liq, the bigger
+                the wipeout if it triggers.
+              </p>
+              <ParamTable params={[
+                ['within', 'number', '0.20', 'Distance threshold (0..1, e.g. 0.10 = within 10% of liq)'],
+                ['limit', 'number', '100', 'Max rows (1..500)'],
+              ]} />
+            </Section>
+
+            {/* Smart money */}
+            <Section id="smart-money-leaderboard" title="Smart Money Leaderboard" method="GET" path="/api/v1/smart-money-leaderboard">
+              <p className="text-gray-400 mb-4">
+                Top Hyperliquid wallets ranked by 90-day realised PnL. For each wallet: pulls
+                closing-trade analytics (win rate, biggest win/loss, top symbols, days-since-last).
+                Heavy first call (~5-15s) — cached 30 min after.
+              </p>
+            </Section>
+
+            {/* Bridge flows */}
+            <Section id="bridge-flows" title="Bridge Flows" method="GET" path="/api/v1/bridge-flows">
+              <p className="text-gray-400 mb-4">
+                Cross-chain bridge flow tracker (Wormhole). Volume, transfers, top assets, top corridors
+                across every Wormhole-supported chain. Strong leading indicator for chain rotation.
+              </p>
+            </Section>
+
+            {/* Restaking */}
+            <Section id="restaking" title="Restaking Yields" method="GET" path="/api/v1/restaking">
+              <p className="text-gray-400 mb-4">
+                Restaking yield aggregator. Cross-protocol pools (EigenLayer + Symbiotic + Karak + LRTs)
+                with APY, TVL, reward composition. Source: DeFi Llama yields.
+              </p>
+            </Section>
+
+            {/* Tools */}
+            <div className="flex items-center gap-3 mb-8 mt-4">
+              <div className="text-[10px] text-cyan-400/70 uppercase tracking-widest font-bold">Tools</div>
+              <div className="flex-1 h-px bg-gradient-to-r from-cyan-500/20 to-transparent" />
+            </div>
+
+            <Section id="backtest" title="Backtest" method="POST" path="/api/v1/backtest">
+              <p className="text-gray-400 mb-4">
+                Run a strategy backtest on historical data. Two strategies:
+                <strong className="text-white"> dca</strong> (dollar-cost average accumulation) and
+                <strong className="text-white"> funding-carry</strong> (collect funding spread between
+                cheap-and-expensive venues). Pure historical simulation — no fees, slippage, or
+                execution lag modelled.
+              </p>
+              <CodeBlock title="Request body (DCA)">{`{
+  "strategy": "dca",
+  "config": {
+    "asset": "bitcoin",
+    "amountUsd": 100,
+    "intervalDays": 7,
+    "lookbackDays": 90
+  }
+}`}</CodeBlock>
+              <CodeBlock title="Request body (funding-carry)">{`{
+  "strategy": "funding-carry",
+  "config": {
+    "notionalUsd": 10000,
+    "lookbackDays": 30,
+    "symbol": "BTC"
+  }
+}`}</CodeBlock>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400">
+                Response returns daily portfolio-value series, max drawdown, and Sharpe-ish ratio.
+                <code className="text-amber-400 mx-1">lookbackDays</code> clamped to 365.
+              </div>
             </Section>
 
             {/* Error Codes */}
