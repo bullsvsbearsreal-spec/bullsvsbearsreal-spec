@@ -710,7 +710,7 @@ export default function DevelopersPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold">API Endpoints</h2>
-              <p className="text-gray-500 text-sm mt-1">25 endpoints across 4 categories</p>
+              <p className="text-gray-500 text-sm mt-1">26 endpoints across 6 categories</p>
             </div>
             <Link href="/developers/docs" className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1 transition-colors font-medium">
               Full docs <ArrowRight className="w-3.5 h-3.5" />
@@ -868,7 +868,7 @@ console.log(data);`,
           <div className="space-y-2">
             <FaqItem
               q="Is the API free?"
-              a="Yes. The free tier gives you 100 requests per minute and 5,000 per day with access to all 25 endpoints. No credit card required."
+              a="Yes. The free tier gives you 100 requests per minute and 5,000 per day with access to all 26 endpoints. No credit card required."
             />
             <FaqItem
               q="What format does the API return?"
