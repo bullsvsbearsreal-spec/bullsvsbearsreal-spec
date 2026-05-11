@@ -294,16 +294,21 @@ export default function SymbolPage() {
             </div>
           </div>
 
-          {/* Context quick-links for this symbol */}
+          {/* Context quick-links for this symbol — keep this in sync with
+              every per-symbol page we add. The goal is to let a user
+              landing on /symbol/BTC pivot to any related view in one click
+              without having to know the URL pattern of each tool. */}
           <div className="flex flex-wrap items-center gap-2 mb-6">
             <span className="text-[10px] text-neutral-500 uppercase tracking-wider mr-1">Explore {symbol}:</span>
             {[
-              { label: 'Funding History', href: `/funding/${symbol}`, icon: Percent },
-              { label: 'Chart', href: `/chart?s=${symbol}&tf=240`, icon: LineChart },
-              { label: 'Open Interest', href: `/open-interest?sym=${symbol}`, icon: BarChart3 },
-              { label: 'Spreads', href: `/spreads?sym=${symbol}`, icon: ArrowLeftRight },
-              { label: 'Liquidations', href: `/liquidations?sym=${symbol}`, icon: Zap },
-              { label: 'Compare', href: `/compare?coins=${symbol}`, icon: GitCompareArrows },
+              { label: 'Chart',             href: `/chart?s=${symbol}&tf=240`,                icon: LineChart },
+              { label: 'Funding History',   href: `/funding/${symbol}`,                       icon: Percent },
+              { label: 'Open Interest',     href: `/open-interest?sym=${symbol}`,             icon: BarChart3 },
+              { label: 'Long / Short',      href: `/longshort?symbol=${symbol}USDT`,          icon: GitCompareArrows },
+              { label: 'Spreads',           href: `/spreads?sym=${symbol}`,                   icon: ArrowLeftRight },
+              { label: 'Liquidations',      href: `/liquidations?sym=${symbol}`,              icon: Zap },
+              { label: 'Liq Heatmap',       href: `/liquidation-heatmap?sym=${symbol}`,       icon: Zap },
+              { label: 'Compare',           href: `/compare?coins=${symbol}`,                 icon: GitCompareArrows },
             ].map(link => (
               <Link
                 key={link.href}
