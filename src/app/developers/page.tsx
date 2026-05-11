@@ -352,7 +352,7 @@ const ENDPOINT_GROUPS = [
 ];
 
 const STATS = [
-  { value: 33, suffix: '', label: 'Exchanges', icon: Database },
+  { value: 32, suffix: '', label: 'Exchanges', icon: Database },
   { value: 26, suffix: '', label: 'Endpoints', icon: Wifi },
   { value: 100, suffix: '/m', label: 'Free Requests', icon: Zap },
   { value: 3, suffix: 's', label: 'Data Freshness', icon: Clock },
