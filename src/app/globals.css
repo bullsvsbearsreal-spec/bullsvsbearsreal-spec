@@ -366,6 +366,41 @@ option { background: #171717; color: #fff; }
   }
 }
 
+/* ─── Mobile breakpoints (May 2026) ────────────────────────────────
+ *  Critic walkthrough flagged that the desktop sidebar + sticky tickers
+ *  + 4-up stat grids made phone screens unusable. We don't have a mobile
+ *  drawer yet, so this is a pragmatic first pass:
+ *    - Hide the 232px sidebar on <768px so main content gets full width
+ *    - Compact the TerminalHeader/Tape height so chrome is less of the page
+ *    - Force 4-up auto-fit grids into 2-up so cards don't squeeze
+ *  Real mobile drawer + bottom nav is a follow-up project.
+ */
+@media (max-width: 767px) {
+  aside[aria-label="Primary navigation"] {
+    display: none;
+  }
+  /* Auto-fit stat grids — force min ≥150px so we get 2-up on phones
+     instead of 1-up at the minmax(200px,1fr) default */
+  main [style*="minmax(200px"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+  main [style*="minmax(180px"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+  /* TerminalHeader compact — drop the dense top nav padding on phone */
+  header[aria-label="terminal-header"], header.terminal-header {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  /* MarketTape sticky bar is OK at 28px — it stays */
+  /* Make the StatusBar small-screen friendly */
+  footer[aria-label="status-bar"], footer.status-bar {
+    font-size: 9px !important;
+  }
+}
+
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
