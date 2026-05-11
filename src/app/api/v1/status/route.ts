@@ -33,6 +33,7 @@ export async function GET() {
       { path: '/api/v1/arbitrage', method: 'GET', description: 'Funding rate arbitrage opportunities with feasibility grades' },
       { path: '/api/v1/openinterest', method: 'GET', description: 'Open interest data across exchanges' },
       { path: '/api/v1/tickers', method: 'GET', description: 'Real-time price & volume data across exchanges' },
+      { path: '/api/v1/klines', method: 'GET', description: 'OHLCV candle data with Binance/Bybit/OKX multi-venue fallback' },
       { path: '/api/v1/liquidations', method: 'GET', description: 'Recent liquidation feed or aggregated summary' },
       { path: '/api/v1/spreads', method: 'GET', description: 'Cross-exchange price spreads ranked by opportunity' },
       { path: '/api/v1/fear-greed', method: 'GET', description: 'Fear & Greed Index (current + optional 30d history)' },

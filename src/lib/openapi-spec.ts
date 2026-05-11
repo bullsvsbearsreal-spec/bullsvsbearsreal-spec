@@ -199,6 +199,39 @@ export const openApiSpec = {
           },
         },
       },
+      KlinesResponse: {
+        type: 'object',
+        required: ['success', 'data', 'meta'],
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: {
+            type: 'object',
+            properties: {
+              pair: { type: 'string', example: 'BTCUSDT' },
+              interval: { type: 'string', example: '1h' },
+              source: { type: 'string', enum: ['binance', 'bybit', 'okx'], description: 'Which venue served this response' },
+              count: { type: 'integer' },
+              candles: { type: 'array', items: { $ref: '#/components/schemas/Kline' } },
+            },
+          },
+          meta: {
+            type: 'object',
+            properties: { timestamp: { type: 'integer', description: 'Unix ms' } },
+          },
+        },
+      },
+      Kline: {
+        type: 'object',
+        properties: {
+          time: { type: 'integer', description: 'Open time, Unix ms' },
+          open: { type: 'number' },
+          high: { type: 'number' },
+          low: { type: 'number' },
+          close: { type: 'number' },
+          volume: { type: 'number', description: 'Base-asset volume' },
+          closeTime: { type: 'integer', description: 'Close time, Unix ms' },
+        },
+      },
       SpreadsResponse: {
         type: 'object',
         required: ['success', 'data', 'meta'],
@@ -431,6 +464,27 @@ export const openApiSpec = {
       get: {
         summary: 'Current ticker / mark prices across exchanges',
         responses: { 200: { description: 'OK' } },
+      },
+    },
+    '/klines': {
+      get: {
+        summary: 'OHLCV candle data for a symbol on a given timeframe',
+        description: 'Backed by a multi-venue fallback chain (Binance perp → Bybit → OKX → Binance spot) so a single venue outage does not break the response. Returns up to 500 candles per call.',
+        parameters: [
+          { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, example: 'BTC' },
+          { name: 'interval', in: 'query', schema: { type: 'string', enum: ['1m', '5m', '15m', '1h', '4h', '1d', '1w'], default: '1h' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+        ],
+        responses: {
+          200: {
+            description: 'OK',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/KlinesResponse' },
+              },
+            },
+          },
+        },
       },
     },
     '/top-movers': {
