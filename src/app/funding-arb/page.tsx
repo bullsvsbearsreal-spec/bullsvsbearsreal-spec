@@ -13,6 +13,7 @@ import {
   ArrowLeftRight, Activity, ChevronDown, ChevronRight, Search, ExternalLink,
   TrendingUp, Layers,
 } from 'lucide-react';
+import { EXCHANGE_FEES, FEE_MODEL_VERSION } from '@/lib/constants/exchanges';
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 
@@ -74,6 +75,18 @@ function venueBadgeClass(type: 'cex' | 'dex'): string {
 function VenueTable({ venues }: { venues: VenueQuote[] }) {
   const min = venues[0];
   const max = venues[venues.length - 1];
+
+  // Estimated round-trip fees on the carry pair using canonical EXCHANGE_FEES
+  // (same table /api/v1/arbitrage uses). 4 fills total: open+close on each leg.
+  // Calculated here client-side because this page is a pure scanner — for the
+  // FULL net analysis (with OI sanity + grades), point partners at /arbitrage.
+  const minTaker = EXCHANGE_FEES[min.exchange]?.taker ?? 0.05;
+  const maxTaker = EXCHANGE_FEES[max.exchange]?.taker ?? 0.05;
+  const roundTripFee = (minTaker + maxTaker) * 2;   // open + close on each side
+  const grossSpread8h = max.rate8h - min.rate8h;
+  const netSpread8h = grossSpread8h - roundTripFee;
+  const netApr = netSpread8h * 3 * 365;
+
   return (
     <div className="bg-white/[0.02] rounded-lg p-3 mt-1.5">
       <div className="grid grid-cols-[1fr,70px,70px,80px] gap-2 text-[9px] uppercase tracking-wider text-neutral-500 font-semibold mb-1.5 px-2">
@@ -118,9 +131,20 @@ function VenueTable({ venues }: { venues: VenueQuote[] }) {
         {' · '}
         SHORT {max.exchange} (receive {fmtPct(max.rate8h)} 8h ·
         {max.rate > 0 ? ' you GET paid funding' : ' you PAY funding'}).
-        Net edge: <span className="text-hub-yellow font-mono">{fmtPct(max.rate8h - min.rate8h)}</span> per 8h
-        = <span className="text-hub-yellow font-mono">{fmtAPR((max.rate8h - min.rate8h) * 3 * 365)}</span> APR
-        (theoretical, pre fees / borrow cost / slippage).
+        Net edge:{' '}
+        <span className="text-hub-yellow font-mono">{fmtPct(grossSpread8h)}</span> per 8h gross
+        {' · '}
+        <span className={`font-mono ${netSpread8h > 0 ? 'text-green-400' : 'text-red-400'}`}>
+          {fmtPct(netSpread8h)}
+        </span> net after {fmtPct(roundTripFee)} round-trip fee
+        {' · '}
+        <span className={`font-mono ${netApr > 0 ? 'text-green-400' : 'text-red-400'}`}>
+          {fmtAPR(netApr)}
+        </span> APR.
+        <div className="mt-1 text-[9px] text-neutral-600">
+          Fees from canonical schedule ({FEE_MODEL_VERSION}, taker × 4 fills).
+          Borrow cost + slippage NOT modelled — see /arbitrage for full grade.
+        </div>
       </div>
     </div>
   );
