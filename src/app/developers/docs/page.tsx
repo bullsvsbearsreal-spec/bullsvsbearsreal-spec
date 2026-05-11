@@ -24,6 +24,16 @@ function CopyBtn({ text }: { text: string }) {
 function Section({ id, title, method, path, children }: {
   id: string; title: string; method?: string; path?: string; children: React.ReactNode;
 }) {
+  // Method color matches REST convention so partners scanning the page
+  // can immediately distinguish reads (GET, green) from writes (POST,
+  // blue / DELETE, red). Same palette as the endpoint catalog on
+  // /developers, kept in sync.
+  const methodStyles =
+    method === 'GET' ? 'text-green-400 bg-green-500/[0.08]'
+    : method === 'POST' ? 'text-blue-400 bg-blue-500/[0.08]'
+    : method === 'DELETE' ? 'text-red-400 bg-red-500/[0.08]'
+    : method === 'PUT' || method === 'PATCH' ? 'text-amber-400 bg-amber-500/[0.08]'
+    : 'text-gray-300 bg-white/[0.06]';
   return (
     <section id={id} className="mb-14 scroll-mt-24">
       <a href={`#${id}`} className="group flex items-center gap-2 mb-4 no-underline">
@@ -32,7 +42,7 @@ function Section({ id, title, method, path, children }: {
       </a>
       {method && path && (
         <div className="flex items-center gap-2.5 mb-5 bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3 w-fit relative pr-12">
-          <span className="text-[11px] text-green-400 font-mono font-bold bg-green-500/[0.08] px-2 py-0.5 rounded">{method}</span>
+          <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded tracking-wider ${methodStyles}`}>{method}</span>
           <code className="text-sm text-amber-400/90 font-mono">{path}</code>
           <CopyBtn text={`https://info-hub.io${path}`} />
         </div>
