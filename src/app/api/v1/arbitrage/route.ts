@@ -36,13 +36,25 @@ function computeArbitrageFromFunding(fundingData: any[]) {
     const mult = fr.fundingInterval === '1h' ? 8 : fr.fundingInterval === '4h' ? 2 : 1;
     const existing = symbolMap.get(canonicalSymbol) || [];
 
-    // For DEXes with separate long/short rates, use directional component only
+    // For DEXes with separate long/short rates (gTrade, GMX), use only the
+    // directional (asymmetric) component — strip out symmetric borrowing
+    // fees. Matches the canonical formula in lib/api/aggregator.ts:511.
+    //
+    // Convention: L/S are *earning* rates. fundingRateLong > 0 means longs
+    // are earning (shorts pay). To match the CEX convention (positive =
+    // longs pay shorts), the directional rate is (S - L)/2.
+    //
+    // Was (L - S)/2 — sign-flipped. Partners reading /api/v1/arbitrage
+    // for DEX pairs would have seen the OPPOSITE direction signaled and
+    // could have entered the wrong-side arbitrage. CEX-only pairs were
+    // unaffected (single fundingRate field).
     let effectiveRate: number;
     if (fr.fundingRateLong != null && fr.fundingRateShort != null) {
-      effectiveRate = (fr.fundingRateLong - fr.fundingRateShort) / 2;
+      effectiveRate = (fr.fundingRateShort - fr.fundingRateLong) / 2;
     } else {
       effectiveRate = fr.fundingRate;
     }
+    if (!Number.isFinite(effectiveRate)) effectiveRate = 0;
     existing.push({ exchange: fr.exchange, rate: effectiveRate * mult });
     symbolMap.set(canonicalSymbol, existing);
 
