@@ -608,8 +608,13 @@ function ChartPageInner() {
   return (
     <div id="main-content" style={{
       display: 'flex', flexDirection: 'column',
-      width: '100%', height: '100%', minHeight: 0,
-      background: '#000', overflow: 'hidden',
+      width: '100%', minHeight: '100%',
+      background: '#000',
+      // Allow vertical overflow so the bottom strips (signals + venue
+      // funding) stay reachable on small viewports — otherwise the
+      // chart's flex:1 + minHeight clips them. The chart itself has a
+      // minHeight so it never collapses to 0.
+      overflowY: 'auto', overflowX: 'hidden',
     }}>
       <h1 className="sr-only">Chart · {displayLabel}</h1>
 
@@ -1062,8 +1067,8 @@ function ChartPageInner() {
       )}
 
       {/* ─── Chart + side tape ─── */}
-      <div style={{ flex: 1, minHeight: 200, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, minHeight: 180, display: 'flex', position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 360, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minHeight: 280, display: 'flex', position: 'relative' }}>
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
             <ChartErrorBoundary name="TradingView Chart" minHeight="250px">
               <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
