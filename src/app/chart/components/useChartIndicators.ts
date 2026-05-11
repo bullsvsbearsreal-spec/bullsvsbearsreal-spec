@@ -1,15 +1,21 @@
 'use client';
 
 /**
- * useChartIndicators — fetches Binance perp klines for a symbol and
- * computes the classic technical indicators that the chart's stats bar
- * needs (RSI(14), ATR(14)). Klines are cached in-process and refreshed
- * every 60s so the bar updates without thrashing the public API.
+ * useChartIndicators — fetches perp klines for a symbol and computes
+ * the classic technical indicators that the chart's stats bar needs
+ * (RSI(14), ATR(14)). Klines are cached in-process and refreshed
+ * every 60s so the bar updates without thrashing upstream.
  *
- * Why client-side: Binance fapi.binance.com supports CORS for public
- * endpoints, so we can fetch directly from the browser without an
- * internal proxy. Falls back gracefully to nulls when geo-blocked or
- * when the symbol isn't on Binance perp.
+ * Goes through our internal `/api/klines` proxy (Binance fapi →
+ * Binance spot → Bybit → OKX fallback chain) instead of hitting
+ * fapi.binance.com directly. Two reasons:
+ *   1. The site's connect-src CSP only whitelists Binance's WS
+ *      (wss://fstream.binance.com), not their HTTP API.
+ *   2. The proxy already has geo-block fallbacks — direct browser
+ *      fetches would 451 for users in regions where Binance is
+ *      blocked.
+ *
+ * Returns nulls gracefully when every venue fails (rare).
  */
 
 import { useEffect, useState } from 'react';
@@ -90,13 +96,9 @@ export interface ChartIndicators {
   klinesCount: number;         // how many bars were used
 }
 
-const BINANCE_FAPI_BASES = [
-  'https://fapi.binance.com',
-  'https://fapi.binance.me',
-];
-
-/** Map TradingView interval string ('60', 'D', etc.) to Binance interval. */
-function toBinanceInterval(tvInterval: string): string {
+/** Map TradingView interval string ('60', 'D', etc.) to the lowercase
+ *  interval format /api/klines expects (1m / 5m / 15m / 1h / 4h / 1d / 1w). */
+function toApiInterval(tvInterval: string): string {
   switch (tvInterval) {
     case '1': return '1m';
     case '5': return '5m';
@@ -123,31 +125,30 @@ export function useChartIndicators(
     let cancelled = false;
 
     async function fetchKlines(): Promise<Kline[] | null> {
-      // Try the standard BTCUSDT-style pair (Binance perp linear).
-      const binanceSym = `${symbol.toUpperCase()}USDT`;
-      const interval = toBinanceInterval(tvInterval);
-      const path = `/fapi/v1/klines?symbol=${binanceSym}&interval=${interval}&limit=100`;
-
-      for (const base of BINANCE_FAPI_BASES) {
-        try {
-          const res = await fetch(`${base}${path}`, { signal: AbortSignal.timeout(8000) });
-          if (!res.ok) continue;
-          const arr = await res.json();
-          if (!Array.isArray(arr) || arr.length === 0) continue;
-          return arr.map((row: unknown) => {
-            const r = row as (string | number)[];
-            return {
-              open: Number(r[1]),
-              high: Number(r[2]),
-              low: Number(r[3]),
-              close: Number(r[4]),
-              volume: Number(r[5]),
-              closeTime: Number(r[6]),
-            };
-          });
-        } catch { /* try next base */ }
+      // Hit our internal /api/klines proxy — it handles the Binance →
+      // Bybit → OKX fallback chain server-side and dodges browser CSP.
+      const interval = toApiInterval(tvInterval);
+      const base = symbol.toUpperCase();
+      try {
+        const res = await fetch(
+          `/api/klines?symbol=${encodeURIComponent(base)}&interval=${interval}&limit=100`,
+          { signal: AbortSignal.timeout(10_000) },
+        );
+        if (!res.ok) return null;
+        const json = await res.json();
+        const candles = Array.isArray(json?.candles) ? json.candles : null;
+        if (!candles || candles.length === 0) return null;
+        return candles.map((c: { open: number; high: number; low: number; close: number; volume: number; closeTime: number }) => ({
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
+          volume: Number(c.volume),
+          closeTime: Number(c.closeTime),
+        }));
+      } catch {
+        return null;
       }
-      return null;
     }
 
     async function load() {
