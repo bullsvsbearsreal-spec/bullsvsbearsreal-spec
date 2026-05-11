@@ -365,8 +365,9 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
                 ['symbols', 'string', 'all', 'Comma-separated symbols (e.g. BTC,ETH,SOL)'],
                 ['exchanges', 'string', 'all', 'Comma-separated exchanges (e.g. binance,bybit)'],
                 ['assetClass', 'string', 'crypto', 'crypto, stocks, forex, commodities, or all'],
+                ['aggregate', 'number', '0', '1 = one row per symbol with avg/min/max rate8h'],
               ]} />
-              <CodeBlock title="Response">{`{
+              <CodeBlock title="Response (per-venue, default)">{`{
   "success": true,
   "data": [
     {
@@ -383,8 +384,29 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
       "assetClass": "crypto"
     }
   ],
-  "meta": { "timestamp": 1709248000, "exchanges": 24, "pairs": 6466 }
+  "meta": { "timestamp": 1709248000, "exchanges": 24, "pairs": 6466, "mode": "per-venue" }
 }`}</CodeBlock>
+              <CodeBlock title="Response (aggregate=1)">{`{
+  "success": true,
+  "data": [
+    {
+      "symbol": "BTC",
+      "venueCount": 14,
+      "avgRate8h": 0.0185,
+      "minRate8h": -0.0245,
+      "minExchange": "Hyperliquid",
+      "maxRate8h": 0.0567,
+      "maxExchange": "Bybit",
+      "spread8h": 0.0812
+    }
+  ],
+  "meta": { "timestamp": 1709248000, "entries": 230, "mode": "aggregate", "assetClass": "crypto" }
+}`}</CodeBlock>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400">
+                Aggregate mode is sorted by <code className="text-amber-400">spread8h</code> descending,
+                so the widest opportunities surface first. All rates are 8h-normalised, so 1h and 4h
+                venues compare directly with the typical 8h CEX rate.
+              </div>
             </Section>
 
             {/* Open Interest */}
@@ -682,7 +704,12 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
 
             {/* Long/Short Ratio */}
             <Section id="longshort" title="Long/Short Ratio" method="GET" path="/api/v1/longshort">
-              <p className="text-gray-400 mb-4">Long/short ratio data from Binance and OKX with historical values.</p>
+              <p className="text-gray-400 mb-4">
+                Long/short ratio data from Binance and OKX with historical values.
+                Includes a derived <code className="text-amber-400">longShortRatio</code>
+                (long ÷ short) and a <code className="text-amber-400">regime</code>
+                classifier so callers don't have to bucket the values themselves.
+              </p>
               <ParamTable params={[
                 ['symbol', 'string', 'BTC', 'Symbol (e.g. BTC, ETH, SOL)'],
                 ['period', 'string', '1h', 'Time period: 5m, 15m, 30m, 1h, 4h, 1d'],
@@ -696,6 +723,8 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
     "source": "global",
     "longRatio": 52.34,
     "shortRatio": 47.66,
+    "longShortRatio": 1.098,
+    "regime": "balanced",
     "exchange": "binance",
     "history": [
       { "longRatio": 52.1, "shortRatio": 47.9, "longShortRatio": 1.088, "timestamp": 1709244000 },
@@ -703,19 +732,37 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
     ]
   }
 }`}</CodeBlock>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400">
+                <div className="text-white font-semibold text-sm mb-2">Regime buckets</div>
+                <ul className="space-y-1">
+                  <li><code className="text-amber-400">crowded-long</code> — longRatio ≥ 70%</li>
+                  <li><code className="text-amber-400">long-heavy</code> — 60–70%</li>
+                  <li><code className="text-amber-400">balanced</code> — 40–60%</li>
+                  <li><code className="text-amber-400">short-heavy</code> — 30–40%</li>
+                  <li><code className="text-amber-400">crowded-short</code> — longRatio ≤ 30%</li>
+                </ul>
+              </div>
             </Section>
 
             {/* Liquidations */}
             <Section id="liquidations" title="Liquidations" method="GET" path="/api/v1/liquidations">
-              <p className="text-gray-400 mb-4">Recent liquidation events from the database. Sources: Binance, OKX, HTX, gTrade, Deribit.</p>
+              <p className="text-gray-400 mb-4">
+                Recent liquidation events from the database. Sources: Binance, OKX, HTX,
+                gTrade, Deribit. Two modes:
+                <strong className="text-white"> feed</strong> (default) returns individual
+                events; <strong className="text-white">summary</strong> returns aggregated
+                stats (total / long / short volume + largest single hit) for a symbol over
+                the lookback window — useful when you only want counts, not the full feed.
+              </p>
               <ParamTable params={[
-                ['symbol', 'string', 'all', 'Filter by symbol (e.g. BTC)'],
-                ['exchange', 'string', 'all', 'Filter by exchange'],
-                ['side', 'string', 'all', 'Filter by side: long or short'],
+                ['symbol', 'string', 'all', 'Filter by symbol (required for summary mode)'],
+                ['exchange', 'string', 'all', 'Filter by exchange (feed only)'],
+                ['side', 'string', 'all', 'Filter by side: long or short (feed only)'],
                 ['hours', 'number', '1', 'Lookback window (1 to 24 hours)'],
-                ['limit', 'number', '100', 'Max entries (1 to 500)'],
+                ['limit', 'number', '100', 'Max entries (1 to 500; feed only)'],
+                ['summary', 'number', '0', '1 = aggregated stats instead of feed'],
               ]} />
-              <CodeBlock title="Response">{`{
+              <CodeBlock title="Response (feed mode, default)">{`{
   "success": true,
   "data": [
     {
@@ -728,7 +775,27 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
       "timestamp": 1713181800000
     }
   ],
-  "meta": { "timestamp": 1713181800000, "hours": 1, "entries": 1, "limit": 100 }
+  "meta": { "timestamp": 1713181800000, "hours": 1, "entries": 1, "limit": 100, "mode": "feed" }
+}`}</CodeBlock>
+              <CodeBlock title="Response (summary=1, requires symbol)">{`{
+  "success": true,
+  "data": {
+    "symbol": "BTC",
+    "hours": 1,
+    "totalCount": 247,
+    "totalVolumeUsd": 8420000,
+    "longVolumeUsd": 6210000,
+    "shortVolumeUsd": 2210000,
+    "longShare": 0.737,
+    "largest": {
+      "valueUsd": 425000,
+      "price": 81250.00,
+      "side": "long",
+      "exchange": "binance",
+      "timestamp": 1713181500000
+    }
+  },
+  "meta": { "timestamp": 1713181800000, "mode": "summary" }
 }`}</CodeBlock>
             </Section>
 
