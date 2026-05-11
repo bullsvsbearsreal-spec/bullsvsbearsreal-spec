@@ -807,7 +807,8 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
 
             <Section id="exchanges" title="Exchanges" method="GET" path="/api/v1/exchanges">
               <p className="text-gray-400 mb-4">
-                Metadata for all 32 supported exchanges including fees, funding intervals, and trade URL patterns.
+                Metadata for all 32 supported exchanges including fees, funding intervals, trade URL patterns,
+                and a top-level <code className="text-amber-400">feeModel</code> with the schedule version + last-updated timestamp.
               </p>
               <CodeBlock title="Response">{`{
   "success": true,
@@ -820,17 +821,41 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
       "tradeUrlPattern": "https://www.binance.com/en/futures/{SYMBOL}USDT"
     }
   ],
-  "meta": { "total": 32, "cex": 18, "dex": 14, "timestamp": 1713181800000 }
+  "meta": {
+    "total": 32, "cex": 18, "dex": 14,
+    "timestamp": 1713181800000,
+    "feeModel": {
+      "version": "v1.0-2026-02-01",
+      "updatedAt": "2026-02-01T00:00:00Z",
+      "unit": "percent"
+    }
+  }
 }`}</CodeBlock>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400">
+                This endpoint is the canonical fee-schedule source — partners can cache
+                by <code className="text-amber-400">meta.feeModel.version</code> and only
+                refresh when it bumps. <code className="text-amber-400 mx-1">X-Fee-Model-Version</code>
+                and <code className="text-amber-400">X-Fee-Model-Updated-At</code> response
+                headers mirror the identifiers for cheap HEAD-request bump detection.
+              </div>
             </Section>
 
             {/* Status */}
             <Section id="status" title="Status" method="GET" path="/api/v1/status">
-              <p className="text-gray-400 mb-4">API health check. No authentication required. Use this for uptime monitoring.</p>
+              <p className="text-gray-400 mb-4">
+                API health check + fee-model identifier. No authentication required.
+                Use this for uptime monitoring or as a cheap HEAD-request probe to detect
+                fee-schedule bumps without parsing a body.
+              </p>
               <CodeBlock title="Response">{`{
   "success": true,
   "status": "operational",
   "version": "v1",
+  "feeModel": {
+    "version": "v1.0-2026-02-01",
+    "updatedAt": "2026-02-01T00:00:00Z",
+    "surfacedOn": ["/api/v1/arbitrage", "/api/v1/spreads", "/api/v1/funding-arb"]
+  },
   "endpoints": [
     { "path": "/api/v1/funding", "method": "GET", "description": "Real-time funding rates across 32 exchanges" }
   ],
