@@ -17,7 +17,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import FreshnessLabel from '@/components/FreshnessLabel';
 import { Crosshair, RefreshCw, ExternalLink, TrendingUp, TrendingDown, ChevronDown, Search } from 'lucide-react';
-import { getExchangeTradeUrl } from '@/lib/constants/exchanges';
+import { getExchangeTradeUrl, FEE_MODEL_VERSION } from '@/lib/constants/exchanges';
 
 interface FundingRow { exchange: string; symbol: string; fundingRate: number; nextFundingMs: number; intervalHours: number }
 interface FundingApi { rows: FundingRow[]; symbols: string[]; ts: number }
@@ -734,7 +734,8 @@ export default function TradeOptimizerPage() {
           fees + spread + impact, <span className="text-neutral-400">/api/funding-countdown</span> for current
           per-venue funding. CEX rows shown with estimated 5 bps taker since
           we don&apos;t pull live CEX orderbooks here. Round-trip = open + close.
-          <em>Slippage on extremely thin venues can dwarf fees — &quot;total bps&quot; is your truth-teller.</em>
+          {' '}Fees from canonical schedule <code className="text-neutral-400">{FEE_MODEL_VERSION}</code>.
+          {' '}<em>Slippage on extremely thin venues can dwarf fees — &quot;total bps&quot; is your truth-teller.</em>
         </div>
       </main>
       <Footer />
