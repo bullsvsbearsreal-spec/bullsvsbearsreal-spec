@@ -220,7 +220,7 @@ export default function DocsPage() {
               <p className="text-gray-400 text-base max-w-2xl mb-4">
                 Complete reference for the InfoHub Public API. Real-time derivatives data from 32 exchanges, aggregated into 26 REST endpoints.
               </p>
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap mb-6">
                 <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2">
                   <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Base URL</span>
                   <code className="text-amber-400/80 text-sm font-mono">https://info-hub.io/api/v1</code>
@@ -233,6 +233,67 @@ export default function DocsPage() {
                   <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Auth</span>
                   <span className="text-white text-sm">Bearer Token</span>
                 </div>
+                <a
+                  href="https://info-hub.io/api/v1/openapi"
+                  target="_blank"
+                  rel="noopener"
+                  className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] hover:border-amber-500/40 hover:bg-amber-500/[0.04] rounded-lg px-3 py-2 transition-colors group"
+                >
+                  <span className="text-[10px] text-gray-500 group-hover:text-amber-400/80 uppercase tracking-wider font-medium transition-colors">OpenAPI 3.1</span>
+                  <span className="text-white group-hover:text-amber-400 text-sm transition-colors">/api/v1/openapi</span>
+                  <ExternalLink className="w-3 h-3 text-gray-600 group-hover:text-amber-400 transition-colors" />
+                </a>
+              </div>
+
+              {/* What's new — highlight the major v1 surface upgrades partners
+                  should know about. Keep this list short and date-stamped so
+                  the next time we ship something significant we know what to
+                  replace. */}
+              <div className="bg-gradient-to-br from-amber-500/[0.08] to-orange-500/[0.04] border border-amber-500/15 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] text-amber-400/80 uppercase tracking-widest font-bold">What&apos;s new</span>
+                  <span className="text-[10px] text-gray-600 font-mono">May 2026</span>
+                </div>
+                <ul className="space-y-2 text-[13px] text-gray-300">
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-amber-400 mt-1.5 flex-shrink-0">●</span>
+                    <span>
+                      <strong className="text-white">Fee model surface</strong> — every fee-aware endpoint now returns
+                      <code className="text-amber-400 mx-1">meta.feeModel</code> with a version identifier and the full
+                      schedule. <a href="#fee-model" className="text-amber-400 hover:underline">Read &nbsp;→</a>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-amber-400 mt-1.5 flex-shrink-0">●</span>
+                    <span>
+                      <strong className="text-white">Aggregate modes</strong> on funding / open-interest / tickers —
+                      pass <code className="text-amber-400">?aggregate=1</code> for one row per symbol.
+                      <a href="#funding" className="text-amber-400 hover:underline ml-1">Read &nbsp;→</a>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-amber-400 mt-1.5 flex-shrink-0">●</span>
+                    <span>
+                      <strong className="text-white">/klines endpoint</strong> with Binance → Bybit → OKX fallback.
+                      <a href="#klines" className="text-amber-400 hover:underline ml-1">Read &nbsp;→</a>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-amber-400 mt-1.5 flex-shrink-0">●</span>
+                    <span>
+                      <strong className="text-white">Long/short regime classifier</strong> — every <code className="text-amber-400">/longshort</code>{' '}
+                      response now includes a <code className="text-amber-400">regime</code> field
+                      (crowded-long / balanced / crowded-short).
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-amber-400 mt-1.5 flex-shrink-0">●</span>
+                    <span>
+                      <strong className="text-white">Liquidation summary mode</strong> — <code className="text-amber-400">/liquidations?summary=1</code>{' '}
+                      returns aggregated stats instead of paging through the feed.
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
 
