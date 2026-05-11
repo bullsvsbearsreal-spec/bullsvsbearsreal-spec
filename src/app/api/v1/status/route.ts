@@ -65,6 +65,10 @@ export async function GET() {
       'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
       'X-Fee-Model-Version': FEE_MODEL_VERSION,
       'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+      // No-auth endpoint — allow browser fetches from any origin.
+      // Used by monitoring dashboards + status pages running in the
+      // browser without an API key.
+      'Access-Control-Allow-Origin': '*',
     },
   });
 }
