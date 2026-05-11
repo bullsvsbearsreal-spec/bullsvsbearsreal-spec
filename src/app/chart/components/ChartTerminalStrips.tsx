@@ -24,7 +24,9 @@ import { formatPrice } from '@/lib/utils/format';
 
 /* ─── Shared formatters ───────────────────────────────────────────── */
 
-function fmtCompactUsd(v: number | null | undefined, opts: { sign?: boolean } = {}): string {
+/** Format a USD amount as a compact K/M/B/T string with optional sign.
+ *  Null/NaN/Infinity → '—'. Exported for unit testing. */
+export function fmtCompactUsd(v: number | null | undefined, opts: { sign?: boolean } = {}): string {
   if (v == null || !Number.isFinite(v)) return '—';
   const sign = opts.sign && v > 0 ? '+' : v < 0 ? '-' : '';
   const abs = Math.abs(v);
@@ -35,14 +37,18 @@ function fmtCompactUsd(v: number | null | undefined, opts: { sign?: boolean } = 
   return `${sign}$${abs.toFixed(0)}`;
 }
 
-function fmtPct(v: number | null | undefined, opts: { digits?: number; sign?: boolean } = {}): string {
+/** Format a percentage with configurable digits + optional sign prefix.
+ *  Null/NaN/Infinity → '—'. Exported for unit testing. */
+export function fmtPct(v: number | null | undefined, opts: { digits?: number; sign?: boolean } = {}): string {
   if (v == null || !Number.isFinite(v)) return '—';
   const d = opts.digits ?? 2;
   const sign = opts.sign && v > 0 ? '+' : v < 0 ? '' : opts.sign ? '+' : ''; // '-' comes from toFixed
   return `${sign}${v.toFixed(d)}%`;
 }
 
-function fmtCountdown(ms: number): string {
+/** Format milliseconds as HH:MM:SS. Clamps to 00:00:00 on non-positive
+ *  input. Exported for unit testing. */
+export function fmtCountdown(ms: number): string {
   if (ms <= 0) return '00:00:00';
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
