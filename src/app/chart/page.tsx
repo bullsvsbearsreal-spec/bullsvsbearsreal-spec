@@ -16,6 +16,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import ChartErrorBoundary from './components/ChartErrorBoundary';
 import SoundToggle from '@/components/SoundToggle';
 import { SatPing, StreamBars } from '@/components/design-system';
+import { formatPrice } from '@/lib/utils/format';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
 const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
@@ -715,9 +716,11 @@ function ChartPageInner() {
             <span style={{
               fontSize: 15, fontWeight: 800, color: 'var(--fg-default)', letterSpacing: '-0.01em',
             }}>
-              {tickerStat.price >= 100 ? `$${tickerStat.price.toFixed(2)}`
-                : tickerStat.price >= 1   ? `$${tickerStat.price.toFixed(3)}`
-                : `$${tickerStat.price.toFixed(6)}`}
+              {/* Canonical formatPrice — was rendering "$81386.00" with
+                  trailing .00 noise for whole-dollar BTC prices. Now uses
+                  the global precision rule (no decimals over $1000, 2 over
+                  $1, 4-6 for sub-cent). */}
+              {formatPrice(tickerStat.price)}
             </span>
             <span style={{
               fontSize: 11, fontWeight: 700, color: priceColor,
@@ -729,12 +732,12 @@ function ChartPageInner() {
             </span>
             {tickerStat.high24h != null && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--fg-muted)' }}>
-                H <span style={{ color: 'var(--pump-mild)' }}>${tickerStat.high24h.toFixed(2)}</span>
+                H <span style={{ color: 'var(--pump-mild)' }}>{formatPrice(tickerStat.high24h)}</span>
               </span>
             )}
             {tickerStat.low24h != null && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--fg-muted)' }}>
-                L <span style={{ color: 'var(--rekt-mild)' }}>${tickerStat.low24h.toFixed(2)}</span>
+                L <span style={{ color: 'var(--rekt-mild)' }}>{formatPrice(tickerStat.low24h)}</span>
               </span>
             )}
             {tickerStat.volume24h != null && tickerStat.volume24h > 0 && (
