@@ -27,6 +27,30 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-05-11',
+    title: 'Public API · fee transparency + aggregate modes + new endpoints',
+    summary: 'Major upgrade to the v1 partner API: every fee-aware endpoint now exposes the full fee schedule with a versioned identifier, market-data endpoints support symbol-level rollups via aggregate=1, and partners get rate-limit visibility on every response.',
+    tags: ['new', 'improved'],
+    bullets: [
+      'Fee model surface — /arbitrage, /spreads, /funding-arb all return meta.feeModel { version, updatedAt, unit, schedule } with per-venue maker + taker. /status and /exchanges expose the identifiers so monitoring scripts can bump-detect via a no-auth probe.',
+      'Per-row maker + taker on /arbitrage — fees.shortExchangeMaker / longExchangeMaker / etc., so partners can recompute net spread under maker-only or post-only fill assumptions.',
+      'Net-of-fees on /spreads — netSpreadPct alongside the existing gross spreadPct, with the round-trip taker fee assumption surfaced in fees.roundTrip.',
+      'Aggregate modes — ?aggregate=1 on /funding, /openinterest, /tickers collapses per-venue rows into one row per symbol (avg/min/max funding rate, summed OI, deduped volume).',
+      'Liquidations summary mode — /liquidations?summary=1 returns aggregated totals (long $ vs short $, count, biggest single hit) in one query instead of paging the feed.',
+      'New /klines endpoint — OHLCV candles with Binance perp → Bybit → OKX → Binance spot fallback chain server-side, so partners survive single-venue outages.',
+      'Long/short regime classifier — /longshort response now includes a regime field (crowded-long / long-heavy / balanced / short-heavy / crowded-short) plus a derived longShortRatio.',
+      'X-RateLimit-* headers on every authenticated response — partners can throttle pre-emptively instead of waiting for a 429.',
+      'X-Fee-Model-Version + X-Fee-Model-Updated-At headers on every fee-aware endpoint (including 401 paths) so HEAD probes can detect schedule bumps cheaply.',
+      'OpenAPI 3.1 spec at /api/v1/openapi (no auth) — every new field documented, every $ref resolves (7 self-consistency tests lock the schema).',
+      'Dev docs rebuilt — all 26 endpoints have a body section + sidebar entry (was 14 before); new Fee Model + Klines + Whales + Backpack/Orderly/Paradex sections; JSON syntax highlighting on every response example.',
+    ],
+    links: [
+      { label: 'API documentation', href: '/developers/docs' },
+      { label: 'OpenAPI 3.1 spec', href: '/api/v1/openapi' },
+      { label: 'Get a free API key', href: '/developers' },
+    ],
+  },
+  {
     date: '2026-05-09',
     title: 'Wallet Watch · Hyperliquid + gTrade position alerter',
     summary: 'Watch any HL or gTrade wallet and get Telegram pings the moment they open, close, resize, near liq, take realized PnL, or pay funding — all on one page. Free.',
