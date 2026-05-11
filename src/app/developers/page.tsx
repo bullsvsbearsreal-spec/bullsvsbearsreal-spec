@@ -156,10 +156,16 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+// All 32 exchanges we track. Mirror ALL_EXCHANGES from
+// src/lib/constants/exchanges.ts — same order, so partners scanning
+// the trust ticker see exactly the same venues the API hits.
 const EXCHANGE_NAMES = [
-  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Kraken', 'BingX', 'KuCoin',
-  'Hyperliquid', 'dYdX', 'GMX', 'Phemex', 'Bitunix', 'HTX', 'Coinbase',
-  'Deribit', 'Aevo', 'Bitfinex', 'Gate.io',
+  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC',
+  'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
+  'Aevo', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
+  'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'Variational',
+  'BitMEX', 'Gate.io', 'edgeX', 'Nado',
+  'Backpack', 'Orderly', 'Paradex',
 ];
 
 function HeroTerminal() {
