@@ -29,10 +29,15 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
   const map = new Map<string, MarketData>();
 
   try {
+    // 10s per-fetch timeout. /api/openinterest can be ~600KB and would
+    // otherwise hang indefinitely on a slow server response — without
+    // a timeout, the 60s setInterval on runCheck would stack up hung
+    // fetches until the tab navigates away.
+    const T = () => AbortSignal.timeout(10_000);
     const [tickerRes, fundingRes, oiRes] = await Promise.all([
-      fetch('/api/tickers').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/funding').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/openinterest').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/tickers', { signal: T() }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/funding', { signal: T() }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/openinterest', { signal: T() }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
     // Tickers: build price + change24h (proper averaging across exchanges)

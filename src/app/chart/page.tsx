@@ -28,6 +28,7 @@ import { ChartPositionStrip } from './components/ChartPositionStrip';
 import { ChartSignalsStrip } from './components/ChartSignalsStrip';
 import { useChartIndicators } from './components/useChartIndicators';
 import { ChartCompareStrip, type ChartCompareData } from './components/ChartCompareStrip';
+import { pickBestTicker, projectTickerStat, type RawTicker, type TickerStat } from './tickerSelection';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
 const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
@@ -201,8 +202,6 @@ function findSymbolByTv(tv: string): AssetSymbol | undefined {
 // Live ticker fetch (used for the stat strip).
 // Selection logic + scoring live in ./tickerSelection.ts (unit-tested).
 // ────────────────────────────────────────────────────────────────────
-import { pickBestTicker, projectTickerStat, type RawTicker, type TickerStat } from './tickerSelection';
-
 function useTickerStats(symbol: string, isCrypto: boolean): TickerStat {
   const [stat, setStat] = useState<TickerStat>({});
   useEffect(() => {
@@ -210,7 +209,9 @@ function useTickerStats(symbol: string, isCrypto: boolean): TickerStat {
     let cancelled = false;
     async function load() {
       try {
-        const r = await fetch(`/api/tickers`);
+        // 8s timeout — without this a slow / hung /api/tickers would stack
+        // up an indefinite request every 15s on the setInterval below.
+        const r = await fetch(`/api/tickers`, { signal: AbortSignal.timeout(8000) });
         if (!r.ok) return;
         const v = await r.json();
         const arr = Array.isArray(v) ? v : v?.data ?? [];
