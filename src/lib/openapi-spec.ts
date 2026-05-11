@@ -365,14 +365,15 @@ export const openApiSpec = {
     },
     '/liquidations': {
       get: {
-        summary: 'Recent liquidation feed',
-        description: 'Returns liquidation events from the last N hours, optionally filtered by symbol/exchange/side.',
+        summary: 'Recent liquidation feed (or summary)',
+        description: 'Default: returns the recent liquidation feed from the last N hours. Pass summary=1 + symbol=X to get aggregated stats (total + long/short volume + largest single hit) over the window instead — avoids paging through hundreds of events client-side just to compute counts.',
         parameters: [
-          { name: 'symbol', in: 'query', schema: { type: 'string' } },
-          { name: 'exchange', in: 'query', schema: { type: 'string' } },
-          { name: 'side', in: 'query', schema: { type: 'string', enum: ['long', 'short'] } },
+          { name: 'symbol', in: 'query', schema: { type: 'string' }, description: 'Filter by symbol (required for summary mode)' },
+          { name: 'exchange', in: 'query', schema: { type: 'string' }, description: 'Filter by exchange (feed mode only)' },
+          { name: 'side', in: 'query', schema: { type: 'string', enum: ['long', 'short'] }, description: 'Filter by side (feed mode only)' },
           { name: 'hours', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 24, default: 1 } },
           { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+          { name: 'summary', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = return aggregated summary instead of feed' },
         ],
         responses: { 200: { description: 'OK', content: { 'application/json': { schema: { type: 'object', properties: { data: { type: 'array', items: { $ref: '#/components/schemas/LiquidationRow' } } } } } } } },
       },
