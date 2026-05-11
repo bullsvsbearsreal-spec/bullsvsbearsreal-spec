@@ -111,6 +111,10 @@ function StatTile({
   accent?: string;
   spark?: number[];
 }) {
+  // Treat the canonical empty values ('—', '$0', empty string) as loading
+  // skeletons rather than rendering them literally. First-paint flash of
+  // dashes + zeroes was making the homepage look broken before data arrived.
+  const isLoading = !value || value === '—' || value === '$0' || value === '0';
   return (
     <div style={{
       background: 'var(--hub-darker)',
@@ -141,10 +145,21 @@ function StatTile({
         }}>{label}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, position: 'relative' }}>
+        {isLoading ? (
+          <span style={{
+            display: 'inline-block',
+            width: 90, height: 18,
+            background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+            backgroundSize: '200% 100%',
+            borderRadius: 4,
+            animation: 'shimmer 1.4s ease-in-out infinite',
+          }} aria-label={`${label} loading`} />
+        ) : (
         <span style={{
           fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)',
           color: 'var(--fg-default)', letterSpacing: '-0.01em',
         }}>{value}</span>
+        )}
         {delta && (
           <span style={{
             fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)',
@@ -425,9 +440,13 @@ export default function HomePage() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-              <LiqStat label="Total Rekt"  value={fmtUSD(liqTotals?.totalValue ?? 0)} accent="var(--rekt-mild)" big />
-              <LiqStat label="Longs"       value={fmtUSD(liqTotals?.longValue  ?? 0)} accent="var(--rekt-mild)" />
-              <LiqStat label="Shorts"      value={fmtUSD(liqTotals?.shortValue ?? 0)} accent="var(--pump-mild)" />
+              {/* `liqTotals` is null while the WS bootstrap is in flight; pass
+                  null instead of pre-computing fmtUSD(0) so LiqStat renders a
+                  shimmer skeleton rather than a confusing "$0" against the
+                  "LIVE · 32 VENUES" pill above. */}
+              <LiqStat label="Total Rekt"  value={liqTotals ? fmtUSD(liqTotals.totalValue) : null} accent="var(--rekt-mild)" big />
+              <LiqStat label="Longs"       value={liqTotals ? fmtUSD(liqTotals.longValue)  : null} accent="var(--rekt-mild)" />
+              <LiqStat label="Shorts"      value={liqTotals ? fmtUSD(liqTotals.shortValue) : null} accent="var(--pump-mild)" />
             </div>
 
             {liqSkew && (
@@ -752,7 +771,11 @@ export default function HomePage() {
 // ────────────────────────────────────────────────────────────────────
 // Sub-components
 // ────────────────────────────────────────────────────────────────────
-function LiqStat({ label, value, accent, big }: { label: string; value: string; accent: string; big?: boolean }) {
+function LiqStat({ label, value, accent, big }: { label: string; value: string | null; accent: string; big?: boolean }) {
+  // null `value` = WS bootstrap still in flight. Render a shimmer
+  // skeleton rather than a literal "$0" — the "LIVE · 32 VENUES" pill
+  // next to these stats made the "$0" placeholder read as broken.
+  const isLoading = value == null;
   return (
     <div style={{
       background: 'rgba(255,255,255,0.02)',
@@ -771,10 +794,22 @@ function LiqStat({ label, value, accent, big }: { label: string; value: string; 
         fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
         color: 'var(--fg-muted)', marginBottom: 4, position: 'relative',
       }}>{label}</div>
-      <div style={{
-        fontSize: big ? 22 : 18, fontWeight: 800, fontFamily: 'var(--font-mono)',
-        color: accent, letterSpacing: '-0.01em', position: 'relative',
-      }}>{value}</div>
+      {isLoading ? (
+        <div style={{
+          height: big ? 24 : 20,
+          width: big ? 110 : 80,
+          background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+          backgroundSize: '200% 100%',
+          borderRadius: 4,
+          animation: 'shimmer 1.4s ease-in-out infinite',
+          position: 'relative',
+        }} aria-label={`${label} loading`} />
+      ) : (
+        <div style={{
+          fontSize: big ? 22 : 18, fontWeight: 800, fontFamily: 'var(--font-mono)',
+          color: accent, letterSpacing: '-0.01em', position: 'relative',
+        }}>{value}</div>
+      )}
     </div>
   );
 }
