@@ -176,17 +176,22 @@ export function ChartSignalsStrip({ data }: { data: ChartSignalsStripData }) {
   if (signals.length === 0) return null;
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 6,
-      padding: '4px 14px',
-      background: 'rgba(0,0,0,0.4)',
-      borderTop: '1px solid var(--hub-border-subtle)',
-      fontFamily: 'var(--font-sans)',
-      fontSize: 10,
-      overflowX: 'auto',
-      scrollbarWidth: 'none',
-      flexShrink: 0,
-    }} className="no-scrollbar">
+    <div
+      role="region"
+      aria-label={`Heuristic signals for ${data.symbol}`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '4px 14px',
+        background: 'rgba(0,0,0,0.4)',
+        borderTop: '1px solid var(--hub-border-subtle)',
+        fontFamily: 'var(--font-sans)',
+        fontSize: 10,
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        flexShrink: 0,
+      }}
+      className="no-scrollbar"
+    >
       <span style={{
         fontSize: 9, fontWeight: 800, letterSpacing: '0.14em',
         color: 'var(--fg-muted)', textTransform: 'uppercase',

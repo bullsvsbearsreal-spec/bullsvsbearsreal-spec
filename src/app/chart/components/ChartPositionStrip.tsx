@@ -97,11 +97,15 @@ export function ChartPositionStrip({ symbol }: { symbol: string }) {
   if (matched.length === 0) return null;
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      borderBottom: '1px solid var(--hub-border-subtle)',
-      flexShrink: 0,
-    }}>
+    <div
+      role="region"
+      aria-label={`Open positions on ${symbol}`}
+      style={{
+        display: 'flex', flexDirection: 'column',
+        borderBottom: '1px solid var(--hub-border-subtle)',
+        flexShrink: 0,
+      }}
+    >
       {matched.map(p => (
         <PositionRow key={`${p.exchange}-${p.id}`} p={p} />
       ))}

@@ -35,17 +35,22 @@ export function ChartCompareStrip({ data }: { data: ChartCompareData }) {
   if (peers.length === 0) return null;
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 14,
-      padding: '4px 14px',
-      background: 'var(--hub-darker)',
-      borderTop: '1px solid var(--hub-border-subtle)',
-      fontFamily: 'var(--font-mono)',
-      fontSize: 10,
-      overflowX: 'auto',
-      scrollbarWidth: 'none',
-      flexShrink: 0,
-    }} className="no-scrollbar">
+    <div
+      role="region"
+      aria-label={`${data.symbol} 24h performance vs majors`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '4px 14px',
+        background: 'var(--hub-darker)',
+        borderTop: '1px solid var(--hub-border-subtle)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 10,
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        flexShrink: 0,
+      }}
+      className="no-scrollbar"
+    >
       <span style={{
         fontSize: 9, fontWeight: 800, letterSpacing: '0.14em',
         color: 'var(--fg-muted)', textTransform: 'uppercase',

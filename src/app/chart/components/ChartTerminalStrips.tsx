@@ -104,6 +104,8 @@ export function ChartStatsBar({ data }: { data: ChartStatsBarData }) {
 
   return (
     <div
+      role="region"
+      aria-label={`${data.symbol} market stats`}
       style={{
         display: 'flex',
         alignItems: 'stretch',
@@ -408,14 +410,18 @@ export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
   })();
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '3px 14px',
-      background: 'rgba(255,165,0,0.04)',
-      borderBottom: '1px solid var(--hub-border-subtle)',
-      fontSize: 11,
-      flexShrink: 0,
-    }}>
+    <div
+      role="region"
+      aria-label="AI commentary"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '3px 14px',
+        background: 'rgba(255,165,0,0.04)',
+        borderBottom: '1px solid var(--hub-border-subtle)',
+        fontSize: 11,
+        flexShrink: 0,
+      }}
+    >
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '2px 7px', borderRadius: 4,
@@ -492,19 +498,22 @@ export function ChartVenueFundingStrip({ rows, symbol }: { rows: VenueFundingRow
     );
   }
   return (
-    <div style={{
-      display: 'flex', alignItems: 'stretch',
-      padding: '4px 14px',
-      background: 'var(--hub-darker)',
-      borderTop: '1px solid var(--hub-border-subtle)',
-      fontFamily: 'var(--font-mono)',
-      fontSize: 10,
-      overflowX: 'auto',
-      scrollbarWidth: 'none',
-      gap: 6,
-      flexShrink: 0,
-    }}
-    className="no-scrollbar"
+    <div
+      role="region"
+      aria-label={`Per-venue funding rates for ${symbol}`}
+      style={{
+        display: 'flex', alignItems: 'stretch',
+        padding: '4px 14px',
+        background: 'var(--hub-darker)',
+        borderTop: '1px solid var(--hub-border-subtle)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 10,
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        gap: 6,
+        flexShrink: 0,
+      }}
+      className="no-scrollbar"
     >
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
