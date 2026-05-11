@@ -287,6 +287,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Crypto Derivatives API · InfoHub',
     description: '26 endpoints, 32 exchanges, free 100 req/min tier. Real-time funding rates, OI, liquidations, fee-aware arbitrage grading, multi-venue klines fallback, on-chain whale data. OpenAPI 3.1 spec, X-RateLimit headers, no credit card required.',
   },
+  '/home': {
+    title: 'Live Crypto Derivatives Dashboard',
+    description: 'Real-time funding rates, open interest, liquidations, and arbitrage opportunities across 32 exchanges. Track BTC/ETH/SOL/altcoin perpetual futures with terminal-style precision.',
+  },
   '/spreads': {
     title: 'Price Spreads',
     description: 'Real-time cross-exchange price spread tracker for crypto perpetual futures. Compare bid/ask prices across 32 exchanges to find arbitrage opportunities.',
