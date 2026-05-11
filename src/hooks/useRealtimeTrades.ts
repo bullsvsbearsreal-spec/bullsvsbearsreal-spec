@@ -1,32 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  computeTradeStats,
+  type RealtimeTrade,
+  type TradeStats,
+} from './computeTradeStats';
 
 /**
  * Real-time trade stream via Binance Futures WebSocket.
  * Provides live aggTrades with buy/sell classification and rolling CVD.
+ * Pure stats math lives in `./computeTradeStats.ts`.
  */
 
-export interface RealtimeTrade {
-  time: number;
-  price: number;
-  qty: number;
-  quoteQty: number;
-  isBuy: boolean;
-}
-
-export interface TradeStats {
-  buyVolume: number;
-  sellVolume: number;
-  netDelta: number;
-  tradeCount: number;
-  tradeSpeed: number; // per second
-  bigBuys: number;    // >$50K
-  bigSells: number;
-  cvd: number;        // cumulative volume delta (session)
-  vwap: number;       // volume-weighted average price
-  cvdHistory: number[]; // last 60 CVD data points for sparkline
-}
+export type { RealtimeTrade, TradeStats };
 
 /** Time windows for stats aggregation */
 export type StatsWindow = 'live' | '5m' | '15m' | '1h' | 'all';
@@ -51,7 +38,6 @@ interface BinanceAggTrade {
 
 const MAX_DISPLAY_TRADES = 200;
 const MAX_STATS_TRADES = 10_000; // Keep more for longer windows
-const BIG_TRADE_USD = 50_000;
 
 export function useRealtimeTrades(symbol: string) {
   const [trades, setTrades] = useState<RealtimeTrade[]>([]);
@@ -73,62 +59,7 @@ export function useRealtimeTrades(symbol: string) {
   const computeStats = useCallback(() => {
     const now = Date.now();
     const windowDef = STATS_WINDOWS.find(w => w.key === statsWindowRef.current) ?? STATS_WINDOWS[1];
-    const windowMs = windowDef.ms;
-    const filtered = windowMs === Infinity
-      ? allTradesRef.current
-      : allTradesRef.current.filter(t => now - t.time < windowMs);
-
-    let buyVol = 0, sellVol = 0, bigBuys = 0, bigSells = 0;
-    for (const t of filtered) {
-      if (t.isBuy) {
-        buyVol += t.quoteQty;
-        if (t.quoteQty >= BIG_TRADE_USD) bigBuys++;
-      } else {
-        sellVol += t.quoteQty;
-        if (t.quoteQty >= BIG_TRADE_USD) bigSells++;
-      }
-    }
-
-    const oldest = filtered.length > 0 ? filtered[filtered.length - 1].time : now;
-    const rawSpan = (now - oldest) / 1000;
-    const spanSec = isFinite(rawSpan) && rawSpan > 0 ? rawSpan : 1;
-
-    // CVD: cumulative volume delta across all session trades
-    let cvd = 0;
-    let vwapNum = 0, vwapDen = 0;
-    const allTrades = allTradesRef.current;
-    for (let i = allTrades.length - 1; i >= 0; i--) {
-      const t = allTrades[i];
-      cvd += t.isBuy ? t.quoteQty : -t.quoteQty;
-      vwapNum += t.price * t.quoteQty;
-      vwapDen += t.quoteQty;
-    }
-    const vwap = vwapDen > 0 ? vwapNum / vwapDen : 0;
-
-    // CVD history: sample last 60 points from session data for sparkline
-    const cvdHistory: number[] = [];
-    if (allTrades.length > 0) {
-      const step = Math.max(1, Math.floor(allTrades.length / 60));
-      let runningCvd = 0;
-      for (let i = allTrades.length - 1; i >= 0; i--) {
-        const t = allTrades[i];
-        runningCvd += t.isBuy ? t.quoteQty : -t.quoteQty;
-        if ((allTrades.length - 1 - i) % step === 0) cvdHistory.push(runningCvd);
-      }
-    }
-
-    setStats({
-      buyVolume: buyVol,
-      sellVolume: sellVol,
-      netDelta: buyVol - sellVol,
-      tradeCount: filtered.length,
-      tradeSpeed: Math.round(filtered.length / spanSec),
-      bigBuys,
-      bigSells,
-      cvd,
-      vwap,
-      cvdHistory,
-    });
+    setStats(computeTradeStats(allTradesRef.current, windowDef.ms, now));
   }, []);
 
   useEffect(() => {
