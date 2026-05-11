@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { openApiSpec } from '@/lib/openapi-spec';
+import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-static';
@@ -14,6 +15,9 @@ export const dynamic = 'force-static';
  * directly via this URL. Useful for codegen too:
  *   openapi-typescript https://info-hub.io/api/v1/openapi -o src/api-types.ts
  *
+ * X-Fee-Model-Version is mirrored on the response so codegen tools that
+ * cache the schema know when to refresh after a fee-model bump.
+ *
  * Cache: 1 hour at the edge — the spec only changes when we ship.
  */
 export async function GET() {
@@ -21,6 +25,8 @@ export async function GET() {
     headers: {
       'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
       'Access-Control-Allow-Origin': '*',
+      'X-Fee-Model-Version': FEE_MODEL_VERSION,
+      'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
     },
   });
 }
