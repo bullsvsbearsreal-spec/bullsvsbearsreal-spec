@@ -518,8 +518,17 @@ export const openApiSpec = {
     },
     '/exchanges': {
       get: {
-        summary: 'List of supported exchanges + their funding intervals',
-        responses: { 200: { description: 'OK' } },
+        summary: 'Supported exchanges metadata',
+        description: 'Returns one row per supported exchange with type (cex/dex), maker + taker fees (% per trade), round-trip fee (taker × 2), funding interval, and trade URL pattern. The top-level meta.feeModel block emits the same { version, updatedAt, unit } the other fee-aware endpoints emit — use this endpoint as the canonical fee-schedule source and cache by version.',
+        responses: {
+          200: {
+            description: 'OK',
+            headers: {
+              'X-Fee-Model-Version': { description: 'Identifier for the fee schedule', schema: { type: 'string' } },
+              'X-Fee-Model-Updated-At': { description: 'ISO timestamp of last revision', schema: { type: 'string', format: 'date-time' } },
+            },
+          },
+        },
       },
     },
     '/listing-radar': {
