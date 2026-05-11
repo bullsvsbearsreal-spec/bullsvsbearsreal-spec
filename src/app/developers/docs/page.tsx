@@ -205,7 +205,10 @@ export default function DocsPage() {
             <nav className="space-y-5 pb-8">
               {NAV_SECTIONS.map(g => (
                 <div key={g.group}>
-                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold mb-2 px-3">{g.group}</div>
+                  <div className="flex items-center justify-between px-3 mb-2">
+                    <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">{g.group}</div>
+                    <span className="text-[9px] text-gray-700 font-mono tabular-nums">{g.items.length}</span>
+                  </div>
                   <div className="space-y-0.5">
                     {g.items.map(item => (
                       <a
