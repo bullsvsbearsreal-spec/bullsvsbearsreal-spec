@@ -73,7 +73,10 @@ describe('fetchAllExchangesWithHealth', () => {
     expect(broken!.count).toBe(0);
   });
 
-  it('retries once on failure before reporting error', async () => {
+  // 8s timeout: the retry path sleeps 500ms between attempts, so on a
+  // loaded CI box this can flake against the default 5s timeout when
+  // multiple retry tests run in parallel.
+  it('retries once on failure before reporting error', { timeout: 8000 }, async () => {
     let callCount = 0;
     const configs: ExchangeFetcherConfig<{ symbol: string }>[] = [
       makeConfig('Flaky', async () => {
