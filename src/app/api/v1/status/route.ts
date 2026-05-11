@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -7,14 +8,24 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/v1/status
  *
- * Returns API health status + version info.
- * No auth required — free call for monitoring.
+ * Returns API health status + version info + the current fee-model
+ * identifier so consumers can sanity-check both auth + fee assumptions
+ * with one unauthenticated call before paying for the bigger endpoints.
+ *
+ * No auth required — free call for monitoring / status pages.
  */
 export async function GET() {
   return NextResponse.json({
     success: true,
     status: 'operational',
     version: 'v1',
+    feeModel: {
+      version: FEE_MODEL_VERSION,
+      updatedAt: FEE_MODEL_UPDATED_AT,
+      // Full schedule lives on /arbitrage + /spreads + /funding-arb;
+      // expose just the identifiers here so the response stays compact.
+      surfacedOn: ['/api/v1/arbitrage', '/api/v1/spreads', '/api/v1/funding-arb'],
+    },
     endpoints: [
       { path: '/api/v1/funding', method: 'GET', description: 'Real-time funding rates across 32 exchanges' },
       { path: '/api/v1/funding/history', method: 'GET', description: 'Historical funding rate snapshots (up to 14 days)' },
@@ -49,6 +60,10 @@ export async function GET() {
     documentation: 'https://info-hub.io/developers/docs',
     timestamp: Date.now(),
   }, {
-    headers: { 'Cache-Control': 'public, s-maxage=60' },
+    headers: {
+      'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+      'X-Fee-Model-Version': FEE_MODEL_VERSION,
+      'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+    },
   });
 }

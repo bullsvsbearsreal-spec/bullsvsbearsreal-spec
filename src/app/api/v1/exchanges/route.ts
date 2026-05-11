@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ALL_EXCHANGES, EXCHANGE_FEES, isExchangeDex, getExchangeTradeUrl } from '@/lib/constants/exchanges';
+import {
+  ALL_EXCHANGES, EXCHANGE_FEES, isExchangeDex, getExchangeTradeUrl,
+  FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT,
+} from '@/lib/constants/exchanges';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
 
 export const runtime = 'nodejs';
@@ -53,9 +56,21 @@ export async function GET(request: NextRequest) {
       cex: exchanges.filter(e => e.type === 'cex').length,
       dex: exchanges.filter(e => e.type === 'dex').length,
       timestamp: Date.now(),
+      // Surface the same fee-model identifiers as /arbitrage + /spreads
+      // so /exchanges callers can use this endpoint as their canonical
+      // fee-schedule source and only refresh when version changes.
+      feeModel: {
+        version: FEE_MODEL_VERSION,
+        updatedAt: FEE_MODEL_UPDATED_AT,
+        unit: 'percent',
+      },
     },
   }, {
-    headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' },
+    headers: {
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
+      'X-Fee-Model-Version': FEE_MODEL_VERSION,
+      'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+    },
   });
   } catch (e) {
     console.error('v1/exchanges error:', e);
