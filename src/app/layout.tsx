@@ -101,7 +101,15 @@ export const metadata: Metadata = {
   },
 }
 
-// JSON-LD structured data for search engines (site-wide)
+// JSON-LD structured data for search engines (site-wide).
+// Three @graph nodes that link to each other:
+//   #app      — WebApplication (the dashboard product)
+//   #api      — WebAPI (the partner-facing REST API)
+//   #org      — Organization (publisher, with social profiles)
+//   #website  — WebSite (with sitelinks search box action)
+//
+// Linking via @id lets Google merge the entities into one Knowledge
+// Panel result; helps with the brand-mindshare gap vs Coinglass.
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -110,20 +118,25 @@ const jsonLd = {
       '@id': 'https://info-hub.io/#app',
       name: 'InfoHub',
       url: 'https://info-hub.io',
-      description: `Real-time funding rates, open interest, liquidations, and arbitrage tools across ${ALL_EXCHANGES.length}+ cryptocurrency exchanges (CEX + DEX). Multi-asset coverage including crypto, stocks, forex, and commodities.`,
+      description: `Real-time crypto derivatives dashboard: funding rates, open interest, liquidations, on-chain whales, and fee-aware arbitrage tools across ${ALL_EXCHANGES.length} exchanges (18 CEX + 14 DEX).`,
       applicationCategory: 'FinanceApplication',
       operatingSystem: 'Any',
       browserRequirements: 'Requires a modern web browser with JavaScript enabled',
       softwareVersion: '2.0',
       featureList: [
-        'Real-time funding rates across 32 exchanges',
-        'Open interest aggregation and tracking',
-        'Liquidation heatmaps and alerts',
-        'Funding rate arbitrage calculator',
+        `Real-time funding rates across ${ALL_EXCHANGES.length} exchanges`,
+        'Open interest aggregation and 24h change tracking',
+        'Liquidation heatmap + real-time WebSocket feed',
+        'Fee-aware funding-rate arbitrage scanner with A-D grading',
+        'Cross-exchange spread scanner with net-of-fees calculation',
+        'Bitcoin halving countdown',
+        'Long/short ratio with regime classifier',
+        'Options data: max pain, IV smile, put/call ratio',
+        'On-chain DEX whale trade feed + Hyperliquid liquidation roulette',
+        'Smart money leaderboard ranked by 90-day realized PnL',
+        'Wallet Watch — multi-venue position alerter (HL + gTrade)',
+        'TradingView chart with 6 terminal info-bands',
         'Multi-asset support: crypto, stocks, forex, commodities',
-        'CEX and DEX coverage',
-        'Customizable alerts and notifications',
-        'Historical data and charts',
       ],
       screenshot: {
         '@type': 'ImageObject',
@@ -141,6 +154,22 @@ const jsonLd = {
       publisher: { '@id': 'https://info-hub.io/#org' },
     },
     {
+      '@type': 'WebAPI',
+      '@id': 'https://info-hub.io/#api',
+      name: 'InfoHub Public API',
+      url: 'https://info-hub.io/developers',
+      description: 'REST API for crypto derivatives data: 26 endpoints across 32 exchanges with fee transparency, aggregate modes, and OpenAPI 3.1 spec. Free tier 100 req/min, 5,000 req/day.',
+      documentation: 'https://info-hub.io/developers/docs',
+      provider: { '@id': 'https://info-hub.io/#org' },
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        description: 'Free tier — 100 req/min, 5,000 req/day, no credit card required',
+      },
+    },
+    {
       '@type': 'Organization',
       '@id': 'https://info-hub.io/#org',
       name: 'InfoHub',
@@ -151,7 +180,9 @@ const jsonLd = {
         width: 512,
         height: 512,
       },
-      sameAs: [],
+      sameAs: [
+        'https://t.me/info_hub69',
+      ],
     },
     {
       '@type': 'WebSite',
@@ -159,7 +190,17 @@ const jsonLd = {
       url: 'https://info-hub.io',
       name: 'InfoHub',
       publisher: { '@id': 'https://info-hub.io/#org' },
-      description: `Real-time crypto derivatives dashboard aggregating data from ${ALL_EXCHANGES.length}+ exchanges.`,
+      description: `Real-time crypto derivatives dashboard aggregating data from ${ALL_EXCHANGES.length} exchanges. Free tools for traders.`,
+      // Sitelinks search box — lets Google show an in-result search bar
+      // for site queries directly in the SERP. Resolves to /symbol/<X>.
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: 'https://info-hub.io/symbol/{search_term_string}',
+        },
+        'query-input': 'required name=search_term_string',
+      },
     },
   ],
 }
