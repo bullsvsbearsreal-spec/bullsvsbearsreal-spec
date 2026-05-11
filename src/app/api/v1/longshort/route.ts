@@ -95,7 +95,10 @@ export async function GET(request: NextRequest) {
       },
       meta: { timestamp: Date.now() },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        ...auth.headers,
+      },
     });
   } catch (e) {
     console.error('v1/longshort error:', e);

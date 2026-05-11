@@ -269,6 +269,8 @@ export async function GET(request: NextRequest) {
         // can cheaply detect a fee-model bump without parsing the body.
         'X-Fee-Model-Version': FEE_MODEL_VERSION,
         'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+        // Rate-limit visibility — documented but was getting dropped here.
+        ...auth.headers,
       },
     });
   } catch (e) {

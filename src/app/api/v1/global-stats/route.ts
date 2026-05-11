@@ -47,7 +47,10 @@ export async function GET(request: NextRequest) {
       },
       meta: { timestamp: Date.now() },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        ...auth.headers,
+      },
     });
   } catch (e) {
     console.error('v1/global-stats error:', e);

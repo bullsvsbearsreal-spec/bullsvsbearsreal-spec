@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
       'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
       'X-Fee-Model-Version': FEE_MODEL_VERSION,
       'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+      ...auth.headers,
     },
   });
   } catch (e) {

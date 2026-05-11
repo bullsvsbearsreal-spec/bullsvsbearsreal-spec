@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
             largest: null,
           },
           meta: { timestamp: Date.now(), mode: 'summary' },
-        }, { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' } });
+        }, { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30', ...auth.headers } });
       }
       // Long/short ratio: how lopsided the wipeout was. Use long vs total
       // for a 0..1 share rather than the ratio (avoids /0 when only one side).
@@ -105,7 +105,10 @@ export async function GET(request: NextRequest) {
       data: cleaned,
       meta: { timestamp: Date.now(), hours, entries: cleaned.length, limit, mode: 'feed' },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
+        ...auth.headers,
+      },
     });
   } catch (e) {
     console.error('v1/liquidations error:', e);

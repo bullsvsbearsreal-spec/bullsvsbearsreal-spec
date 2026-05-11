@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
         'X-Fee-Model-Version': FEE_MODEL_VERSION,
         'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+        ...auth.headers,
       },
     });
   } catch (e) {

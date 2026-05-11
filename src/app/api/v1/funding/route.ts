@@ -112,7 +112,10 @@ export async function GET(request: NextRequest) {
           assetClass,
         },
       }, {
-        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+          ...auth.headers,
+        },
       });
     }
 
@@ -144,7 +147,10 @@ export async function GET(request: NextRequest) {
           : 0,
       },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        ...auth.headers,
+      },
     });
   } catch (e) {
     console.error('v1/funding error:', e);

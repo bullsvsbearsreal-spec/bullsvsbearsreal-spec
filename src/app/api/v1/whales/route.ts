@@ -79,7 +79,10 @@ export async function GET(request: NextRequest) {
         })),
         meta: { timestamp: Date.now(), entries: trades.length, limit, mode: 'wallet' as const },
       }, {
-        headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+          ...auth.headers,
+        },
       });
     } catch (e) {
       console.error('v1/whales (wallet) error:', e);
@@ -108,7 +111,10 @@ export async function GET(request: NextRequest) {
       })),
       meta: { timestamp: Date.now(), entries: trades.length, limit, minValueUsd, mode: 'global' as const },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        ...auth.headers,
+      },
     });
   } catch (e) {
     console.error('v1/whales (global) error:', e);

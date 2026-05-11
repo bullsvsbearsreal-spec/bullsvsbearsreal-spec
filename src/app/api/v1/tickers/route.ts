@@ -130,7 +130,10 @@ export async function GET(request: NextRequest) {
         data: aggArr,
         meta: { timestamp: Date.now(), entries: aggArr.length, mode: 'aggregate' },
       }, {
-        headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' },
+        headers: {
+          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+          ...auth.headers,
+        },
       });
     }
 
@@ -149,7 +152,10 @@ export async function GET(request: NextRequest) {
       data: cleaned,
       meta: { timestamp: Date.now(), entries: cleaned.length, mode: 'per-venue' },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+        ...auth.headers,
+      },
     });
   } catch (e) {
     console.error('v1/tickers error:', e);

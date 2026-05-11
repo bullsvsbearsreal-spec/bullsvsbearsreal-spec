@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   try {
     // Use the internal fear-greed route data
     if (l1Cache && Date.now() - l1Cache.ts < L1_TTL) {
-      return respond(l1Cache.data, wantHistory);
+      return respond(l1Cache.data, wantHistory, auth.headers);
     }
 
     const origin = request.nextUrl.origin;
@@ -41,15 +41,15 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json();
     l1Cache = { data, ts: Date.now() };
-    return respond(data, wantHistory);
+    return respond(data, wantHistory, auth.headers);
   } catch (e) {
     console.error('v1/fear-greed error:', e);
-    if (l1Cache) return respond(l1Cache.data, wantHistory);
+    if (l1Cache) return respond(l1Cache.data, wantHistory, auth.headers);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
-function respond(data: any, includeHistory: boolean) {
+function respond(data: any, includeHistory: boolean, rateLimitHeaders: Record<string, string>) {
   const result: any = {
     success: true,
     data: {
@@ -65,6 +65,9 @@ function respond(data: any, includeHistory: boolean) {
   }
 
   return NextResponse.json(result, {
-    headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    headers: {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      ...rateLimitHeaders,
+    },
   });
 }
