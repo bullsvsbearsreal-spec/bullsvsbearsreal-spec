@@ -15,8 +15,15 @@ import {
 import { TokenIconSimple } from '@/components/TokenIcon';
 import ChartErrorBoundary from './components/ChartErrorBoundary';
 import SoundToggle from '@/components/SoundToggle';
-import { SatPing, StreamBars } from '@/components/design-system';
+import { SatPing } from '@/components/design-system';
 import { formatPrice } from '@/lib/utils/format';
+import {
+  useFundingRates, useOpenInterest, useOIChanges, useLongShort,
+} from '@/hooks/useSWRApi';
+import {
+  ChartStatsBar, ChartAiStrip, ChartVenueFundingStrip,
+  type ChartStatsBarData, type VenueFundingRow,
+} from './components/ChartTerminalStrips';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
 const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
@@ -375,6 +382,125 @@ function ChartPageInner() {
   const tickerStat  = useTickerStats(displayLabel, isCrypto);
   const currentTab  = useMemo(() => ASSET_TABS.find(t => t.id === assetClass)!, [assetClass]);
 
+  // ─── Terminal-strip data sources (crypto only) ─────────────────────
+  // ChartStatsBar / ChartAiStrip / ChartVenueFundingStrip subscribe via
+  // SWR hooks so multiple chart panels share one in-flight request.
+  // We gate the fetch on `isCrypto` so non-crypto tabs don't trigger
+  // crypto-only endpoints.
+  const fundingApi    = useFundingRates('crypto');
+  const oiApi         = useOpenInterest();
+  const oiChangesApi  = useOIChanges();
+  const lsApi         = useLongShort(isCrypto ? `${displayLabel.toUpperCase()}USDT` : 'BTCUSDT');
+
+  const statsBarData = useMemo<ChartStatsBarData | null>(() => {
+    if (!isCrypto) return null;
+    const sym = displayLabel.toUpperCase();
+    const venue = tvSymbol.split(':')[0] || undefined;
+
+    // Funding — average across exchanges normalised to 8h basis
+    const fundingEntries = (fundingApi.data ?? []).filter(f => f.symbol === sym);
+    const norm8h = (f: { fundingRate: number; fundingInterval?: string }) =>
+      f.fundingRate * (f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1);
+    const fundingPcts = fundingEntries
+      .map(norm8h)
+      .filter(r => typeof r === 'number' && isFinite(r));
+    const avgFunding = fundingPcts.length > 0
+      ? (fundingPcts.reduce((a, b) => a + b, 0) / fundingPcts.length) * 100  // fraction → %
+      : null;
+
+    // Next funding time — earliest upcoming nextFundingTime across exchanges
+    const futureFundings = fundingEntries
+      .map(f => f.nextFundingTime)
+      .filter((t): t is number => typeof t === 'number' && t > Date.now());
+    const nextFundingAt = futureFundings.length > 0 ? Math.min(...futureFundings) : null;
+
+    // Mark / index — borrow from the first exchange that reports both
+    const refFunding = fundingEntries.find(f => f.markPrice != null && f.indexPrice != null);
+
+    // OI — sum across exchanges
+    const oiEntries = (oiApi.data ?? []).filter(o => o.symbol === sym);
+    const openInterestUsd = oiEntries.length > 0
+      ? oiEntries.reduce((sum, o) => sum + (o.openInterestValue ?? 0), 0)
+      : null;
+
+    // OI 24h change — from /api/openinterest?changes=1 piggyback
+    const oiChangeEntry = (oiChangesApi.data ?? []).find(o => o.symbol === sym);
+    const openInterestChange24hPct = oiChangeEntry?.pct24h ?? null;
+
+    // L/S ratio — comes as 0-100 from /api/longshort (multiplied by 100)
+    const lsRaw = lsApi.data as { longRatio?: number; shortRatio?: number; longShortRatio?: number } | null;
+    const longRatio = lsRaw?.longRatio != null ? lsRaw.longRatio / 100 : null;
+    const shortRatio = lsRaw?.shortRatio != null ? lsRaw.shortRatio / 100 : null;
+    const longShortRatio = lsRaw?.longShortRatio
+      ?? (longRatio != null && shortRatio != null && shortRatio > 0 ? longRatio / shortRatio : null);
+
+    // Volume — coin units estimated from quote vol / price
+    const volume24hUsd = tickerStat.volume24h ?? null;
+    const volume24hCoin = (volume24hUsd != null && tickerStat.price != null && tickerStat.price > 0)
+      ? volume24hUsd / tickerStat.price
+      : null;
+
+    // 24h change in dollars — derived from price * change%/100
+    const change24hUsd = (tickerStat.price != null && tickerStat.change24h != null)
+      ? tickerStat.price * (tickerStat.change24h / 100)
+      : null;
+
+    return {
+      symbol: sym,
+      pair: displayPair || undefined,
+      venue,
+      instrumentTag: venue === 'BINANCE' ? 'PERP' : undefined,
+      leverage: undefined,
+      price: tickerStat.price ?? null,
+      change24hUsd,
+      change24hPct: tickerStat.change24h ?? null,
+      high24h: tickerStat.high24h ?? null,
+      low24h: tickerStat.low24h ?? null,
+      volume24hUsd,
+      volume24hCoin,
+      openInterestUsd,
+      openInterestChange24hPct,
+      fundingRatePct: avgFunding,
+      nextFundingAt,
+      longRatio,
+      shortRatio,
+      longShortRatio,
+      markPrice: refFunding?.markPrice ?? null,
+      indexPrice: refFunding?.indexPrice ?? null,
+      basisPct: null,
+      rsi: null,
+      atr: null,
+    };
+  }, [isCrypto, displayLabel, displayPair, tvSymbol, tickerStat, fundingApi.data, oiApi.data, oiChangesApi.data, lsApi.data]);
+
+  const venueFundingRows = useMemo<VenueFundingRow[]>(() => {
+    if (!isCrypto) return [];
+    const sym = displayLabel.toUpperCase();
+    const oiByVenue = new Map<string, number>();
+    for (const o of oiApi.data ?? []) {
+      if (o.symbol !== sym) continue;
+      oiByVenue.set(o.exchange, (oiByVenue.get(o.exchange) ?? 0) + (o.openInterestValue ?? 0));
+    }
+    // Pick the most recent funding entry per exchange for this symbol
+    const byVenue = new Map<string, { rate: number; nextTs: number }>();
+    for (const f of fundingApi.data ?? []) {
+      if (f.symbol !== sym) continue;
+      const norm8h = f.fundingRate * (f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1);
+      const existing = byVenue.get(f.exchange);
+      if (!existing || (f.fundingTime ?? 0) > existing.nextTs) {
+        byVenue.set(f.exchange, { rate: norm8h, nextTs: f.fundingTime ?? 0 });
+      }
+    }
+    return Array.from(byVenue.entries())
+      .map(([venue, v]) => ({
+        venue,
+        fundingPct: v.rate * 100,
+        openInterestUsd: oiByVenue.get(venue) ?? null,
+      }))
+      .sort((a, b) => (b.openInterestUsd ?? 0) - (a.openInterestUsd ?? 0))
+      .slice(0, 14);
+  }, [isCrypto, displayLabel, fundingApi.data, oiApi.data]);
+
   const filteredSymbols = useMemo(() => {
     const q = symbolQuery.trim().toLowerCase();
     if (!q) return currentTab.pinned;
@@ -702,8 +828,10 @@ function ChartPageInner() {
           <Star size={13} fill={isFavorited ? 'currentColor' : 'none'} />
         </button>
 
-        {/* Live price strip (crypto only) */}
-        {isCrypto && tickerStat.price != null && (
+        {/* Live price strip — kept only for non-crypto asset classes;
+            crypto gets the richer <ChartStatsBar> below the quick-symbol
+            bar (mark/index/funding/OI/L-S/etc). */}
+        {!isCrypto && tickerStat.price != null && (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 14,
             padding: '4px 12px',
@@ -889,6 +1017,26 @@ function ChartPageInner() {
         })()}
       </div>
 
+      {/* ─── Terminal strips (crypto only): rich stat bar + AI line ─── */}
+      {isCrypto && statsBarData && (
+        <ChartErrorBoundary name="Chart Stats Bar">
+          <ChartStatsBar data={statsBarData} />
+        </ChartErrorBoundary>
+      )}
+      {isCrypto && statsBarData && (
+        <ChartErrorBoundary name="Chart AI Strip">
+          <ChartAiStrip
+            data={{
+              symbol: statsBarData.symbol,
+              fundingRatePct: statsBarData.fundingRatePct,
+              openInterestChange24hPct: statsBarData.openInterestChange24hPct,
+              change24hPct: statsBarData.change24hPct,
+              price: statsBarData.price,
+            }}
+          />
+        </ChartErrorBoundary>
+      )}
+
       {/* ─── Chart + side tape ─── */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1, minHeight: 0, display: 'flex', position: 'relative' }}>
@@ -914,6 +1062,11 @@ function ChartPageInner() {
               open={bottomPanelOpen}
               onToggle={() => setBottomPanelOpen(v => !v)}
             />
+          </ChartErrorBoundary>
+        )}
+        {isCrypto && (
+          <ChartErrorBoundary name="Venue Funding Strip">
+            <ChartVenueFundingStrip rows={venueFundingRows} symbol={displayLabel.toUpperCase()} />
           </ChartErrorBoundary>
         )}
       </div>
