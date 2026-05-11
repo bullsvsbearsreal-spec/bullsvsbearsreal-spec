@@ -124,6 +124,101 @@ export const openApiSpec = {
           dexOnOneSide: { type: 'boolean' },
         },
       },
+      ArbitrageResponse: {
+        type: 'object',
+        required: ['success', 'data', 'meta'],
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: { type: 'array', items: { $ref: '#/components/schemas/ArbitrageOpportunity' } },
+          meta: {
+            type: 'object',
+            properties: {
+              timestamp: { type: 'integer', description: 'Unix ms' },
+              totalPairs: { type: 'integer', description: 'Unfiltered count' },
+              filtered: { type: 'integer', description: 'Count returned after filters' },
+              grades: {
+                type: 'object',
+                properties: {
+                  A: { type: 'integer' }, B: { type: 'integer' },
+                  C: { type: 'integer' }, D: { type: 'integer' },
+                },
+              },
+              feeModel: { $ref: '#/components/schemas/FeeModel' },
+            },
+          },
+        },
+      },
+      ArbitrageOpportunity: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string', example: 'BTC' },
+          shortExchange: { type: 'string', example: 'Bybit' },
+          longExchange: { type: 'string', example: 'Hyperliquid' },
+          shortRate8h: { type: 'number', description: '8h-normalised funding on the short leg (%)' },
+          longRate8h: { type: 'number', description: '8h-normalised funding on the long leg (%)' },
+          grossSpread8h: { type: 'number', description: 'shortRate8h - longRate8h, before fees (%)' },
+          netSpread8h: { type: 'number', description: 'grossSpread8h - roundTripFee (%)' },
+          annualizedPct: { type: 'number', description: 'netSpread8h × 365 × 3 (%)' },
+          dailyPnlPer10k: { type: 'number', description: 'USD/day on $10k notional, assuming netSpread8h holds' },
+          fees: {
+            type: 'object',
+            description: 'Fee assumptions baked into netSpread8h. All values percent per trade.',
+            properties: {
+              roundTrip: { type: 'number', description: 'Total round-trip fee (taker × 4)' },
+              shortExchangeTaker: { type: 'number', nullable: true, description: 'Taker rate on the short leg' },
+              shortExchangeMaker: { type: 'number', nullable: true, description: 'Maker rate on the short leg (may be negative = rebate)' },
+              longExchangeTaker:  { type: 'number', nullable: true, description: 'Taker rate on the long leg' },
+              longExchangeMaker:  { type: 'number', nullable: true, description: 'Maker rate on the long leg' },
+              shortExchangeFee: { type: 'number', description: 'Legacy alias for shortExchangeTaker — kept for compatibility' },
+              longExchangeFee:  { type: 'number', description: 'Legacy alias for longExchangeTaker — kept for compatibility' },
+            },
+          },
+          oi: {
+            type: 'object',
+            properties: {
+              short: { type: 'integer' }, long: { type: 'integer' },
+              total: { type: 'integer' }, minSide: { type: 'integer' },
+            },
+          },
+          grade: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
+          stability: { type: 'string', enum: ['stable', 'volatile', 'new'] },
+          exchangeCount: { type: 'integer' },
+          allExchanges: {
+            type: 'array',
+            description: 'Every venue trading this symbol with its own funding rate + fees.',
+            items: {
+              type: 'object',
+              properties: {
+                exchange: { type: 'string' },
+                rate8h: { type: 'number' },
+                type: { type: 'string', enum: ['cex', 'dex'] },
+                makerFee: { type: 'number', nullable: true, description: 'Maker fee (%, negative = rebate)' },
+                takerFee: { type: 'number', nullable: true, description: 'Taker fee (%)' },
+              },
+            },
+          },
+        },
+      },
+      FeeModel: {
+        type: 'object',
+        description: 'Fee schedule snapshot. Bump-detect on `version` to know when to refresh cached calcs.',
+        properties: {
+          version: { type: 'string', example: 'v1.0-2026-02-01', description: 'Bumps on every value change' },
+          updatedAt: { type: 'string', format: 'date-time', example: '2026-02-01T00:00:00Z' },
+          unit: { type: 'string', enum: ['percent'], description: 'All fee values are percent-per-trade' },
+          schedule: {
+            type: 'object',
+            additionalProperties: {
+              type: 'object',
+              properties: {
+                maker: { type: 'number', description: 'Maker fee (%, negative = rebate)' },
+                taker: { type: 'number', description: 'Taker fee (%)' },
+              },
+            },
+            description: 'Map of exchange name → { maker, taker } in percent per trade',
+          },
+        },
+      },
       VenueQuote: {
         type: 'object',
         properties: {
@@ -226,8 +321,43 @@ export const openApiSpec = {
     },
     '/arbitrage': {
       get: {
-        summary: 'Spot/perp arbitrage opportunities',
-        responses: { 200: { description: 'OK' } },
+        summary: 'Cross-venue funding-rate arbitrage opportunities',
+        description: [
+          'Returns ranked arbitrage opportunities computed from funding-rate spreads',
+          'between exchanges, with feasibility grading (A-D), OI sanity checks, stability',
+          'analysis from 7-day spread history, and full fee accounting.',
+          '',
+          'Each row includes the per-exchange maker + taker fees the calculation assumed',
+          'so callers can verify or back the spread out under their own fill model. The',
+          'top-level `meta.feeModel` block exposes the same schedule plus a `version`',
+          'identifier and `updatedAt` ISO timestamp — bump-detect this to know when to',
+          'invalidate any cached fee assumptions on your side.',
+          '',
+          'The same version is mirrored on the response headers as `X-Fee-Model-Version`',
+          'and `X-Fee-Model-Updated-At` so HEAD-request consumers can cheaply check.',
+        ].join('\n'),
+        parameters: [
+          { name: 'minSpread', in: 'query', schema: { type: 'number', default: 0 }, description: 'Minimum 8h gross spread (%) to include' },
+          { name: 'minOI', in: 'query', schema: { type: 'number', default: 0 }, description: 'Minimum OI in USD on the smaller side' },
+          { name: 'grade', in: 'query', schema: { type: 'string' }, description: 'Comma-separated grades to keep (A,B,C,D)' },
+          { name: 'symbols', in: 'query', schema: { type: 'string' }, description: 'Comma-separated symbol filter (e.g. BTC,ETH)' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+          { name: 'assetClass', in: 'query', schema: { type: 'string', enum: ['crypto', 'stocks', 'forex', 'commodities', 'all'], default: 'crypto' } },
+        ],
+        responses: {
+          200: {
+            description: 'OK',
+            headers: {
+              'X-Fee-Model-Version': { description: 'Identifier for the fee schedule used (e.g. v1.0-2026-02-01)', schema: { type: 'string' } },
+              'X-Fee-Model-Updated-At': { description: 'ISO timestamp of the last fee schedule revision', schema: { type: 'string', format: 'date-time' } },
+            },
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ArbitrageResponse' },
+              },
+            },
+          },
+        },
       },
     },
     '/tickers': {

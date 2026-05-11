@@ -111,6 +111,51 @@ export interface ExchangeFees {
   maker: number;  // % per trade (negative = rebate)
 }
 
+/**
+ * Fee-schedule version identifier.
+ *
+ * Bump this whenever EXCHANGE_FEES values change so downstream API
+ * callers can tell whether their cached calculations are still valid.
+ * Format: `vN.M-YYYY-MM-DD` where:
+ *   - N is the major (= breaking change, e.g. struct re-shape)
+ *   - M is the minor (= any value flip, even on one exchange)
+ *   - the date suffix is the same as FEE_MODEL_UPDATED_AT
+ *
+ * When you edit fees: bump M, update the date, mention what changed
+ * in the commit body.
+ */
+export const FEE_MODEL_VERSION = 'v1.0-2026-02-01';
+
+/**
+ * Wall-clock timestamp of the last fee schedule revision, ISO-8601.
+ *
+ * Surfaced verbatim on /api/v1/arbitrage so callers can decide whether
+ * to refresh their downstream model.
+ */
+export const FEE_MODEL_UPDATED_AT = '2026-02-01T00:00:00Z';
+
+/**
+ * Return a flat snapshot of the fee schedule suitable for embedding
+ * in API responses. Includes the version + updatedAt so consumers
+ * don't need to track three separate fields.
+ */
+export function getFeeScheduleSnapshot(): {
+  version: string;
+  updatedAt: string;
+  unit: 'percent';
+  schedule: Record<string, ExchangeFees>;
+} {
+  return {
+    version: FEE_MODEL_VERSION,
+    updatedAt: FEE_MODEL_UPDATED_AT,
+    unit: 'percent',
+    // Shallow clone so callers can't mutate the constant in-place.
+    schedule: Object.fromEntries(
+      Object.entries(EXCHANGE_FEES).map(([ex, f]) => [ex, { ...f }]),
+    ),
+  };
+}
+
 export const EXCHANGE_FEES: Record<string, ExchangeFees> = {
   'Binance':      { taker: 0.0500, maker: 0.0200 },
   'Bybit':        { taker: 0.0550, maker: 0.0200 },

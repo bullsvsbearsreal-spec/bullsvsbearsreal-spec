@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getArbRoundTripFee, EXCHANGE_FEES, isExchangeDex } from '@/lib/constants/exchanges';
+import {
+  getArbRoundTripFee, EXCHANGE_FEES, isExchangeDex,
+  FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT, getFeeScheduleSnapshot,
+} from '@/lib/constants/exchanges';
 import { computeGrade } from '@/app/funding/components/arbitrage/utils';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
 import { getFundingData } from '../../_shared/funding-core';
@@ -166,6 +169,12 @@ export async function GET(request: NextRequest) {
       // Daily PnL per $10K
       const dailyPnlPer10k = netSpread8h > 0 ? (netSpread8h / 100) * 10000 * 3 : 0;
 
+      // Per-exchange fees (% per trade) — pulled from the same EXCHANGE_FEES
+      // table the round-trip math uses, so callers can verify the fee
+      // assumption matches their own model or back the spread out.
+      const shortFees = EXCHANGE_FEES[shortExchange.exchange];
+      const longFees  = EXCHANGE_FEES[longExchange.exchange];
+
       return {
         symbol: arb.symbol,
         shortExchange: shortExchange.exchange,
@@ -177,9 +186,18 @@ export async function GET(request: NextRequest) {
         annualizedPct: Math.round(annualizedPct * 100) / 100,
         dailyPnlPer10k: Math.round(dailyPnlPer10k * 100) / 100,
         fees: {
+          // Total round-trip fee assumed in netSpread8h (taker × 4: open+close on each side).
           roundTrip: Math.round(roundTripFee * 10000) / 10000,
-          shortExchangeFee: EXCHANGE_FEES[shortExchange.exchange]?.taker ?? 0,
-          longExchangeFee: EXCHANGE_FEES[longExchange.exchange]?.taker ?? 0,
+          // Per-side maker + taker, so callers can recompute net spread
+          // under their own fill assumptions (e.g. maker-only routing).
+          shortExchangeTaker: shortFees?.taker ?? null,
+          shortExchangeMaker: shortFees?.maker ?? null,
+          longExchangeTaker:  longFees?.taker  ?? null,
+          longExchangeMaker:  longFees?.maker  ?? null,
+          // Legacy aliases — keep around so existing integrations don't break.
+          // Both default to the taker rate (which is what netSpread8h uses).
+          shortExchangeFee: shortFees?.taker ?? 0,
+          longExchangeFee:  longFees?.taker  ?? 0,
         },
         oi: {
           short: Math.round(shortOI),
@@ -190,11 +208,19 @@ export async function GET(request: NextRequest) {
         grade,
         stability,
         exchangeCount: exchanges.length,
-        allExchanges: exchanges.map(e => ({
-          exchange: e.exchange,
-          rate8h: Math.round(e.rate * 10000) / 10000,
-          type: isExchangeDex(e.exchange) ? 'dex' : 'cex',
-        })),
+        // Each venue trading this symbol, with its own maker + taker fee
+        // attached so the caller can plan partial fills, alt-pair hedges,
+        // or different fee tiers without round-tripping to the fee table.
+        allExchanges: exchanges.map(e => {
+          const f = EXCHANGE_FEES[e.exchange];
+          return {
+            exchange: e.exchange,
+            rate8h: Math.round(e.rate * 10000) / 10000,
+            type: isExchangeDex(e.exchange) ? 'dex' : 'cex',
+            makerFee: f?.maker ?? null,
+            takerFee: f?.taker ?? null,
+          };
+        }),
       };
     });
 
@@ -227,9 +253,23 @@ export async function GET(request: NextRequest) {
           C: enriched.filter(a => a.grade === 'C').length,
           D: enriched.filter(a => a.grade === 'D').length,
         },
+        // Fee assumption surface. Callers can inspect `version` +
+        // `updatedAt` to know whether their downstream cache is stale,
+        // or use the full `schedule` table to recompute net spreads
+        // under their own fill assumptions.
+        //
+        // All values are percent-per-trade (e.g. 0.05 == 0.05%).
+        // Maker can be negative on venues that rebate makers (e.g. Nado).
+        feeModel: getFeeScheduleSnapshot(),
       },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        // Surface the version as a header too so HEAD-request consumers
+        // can cheaply detect a fee-model bump without parsing the body.
+        'X-Fee-Model-Version': FEE_MODEL_VERSION,
+        'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+      },
     });
   } catch (e) {
     console.error('v1/arbitrage error:', e);
