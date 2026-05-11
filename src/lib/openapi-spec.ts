@@ -351,10 +351,13 @@ export const openApiSpec = {
     },
     '/openinterest': {
       get: {
-        summary: 'Aggregated open interest per symbol',
+        summary: 'Open interest data across exchanges',
+        description: 'Per-exchange rows by default; pass aggregate=1 to collapse to one row per symbol with summed openInterestUsd + per-venue breakdown. Pass changes=1 to include 1h/4h/24h % deltas computed server-side from 5-min OI snapshots.',
         parameters: [
-          { name: 'symbol', in: 'query', schema: { type: 'string' } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 500, default: 100 } },
+          { name: 'symbols', in: 'query', schema: { type: 'string' }, description: 'Comma-separated symbol filter (e.g. BTC,ETH)' },
+          { name: 'exchanges', in: 'query', schema: { type: 'string' }, description: 'Comma-separated exchange filter (case-insensitive)' },
+          { name: 'aggregate', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = sum per symbol, one row each; 0 = per-venue (default)' },
+          { name: 'changes', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = include {pct1h, pct4h, pct24h} on each row' },
         ],
         responses: { 200: { description: 'OK' } },
       },
