@@ -312,7 +312,7 @@ export default function OrderflowPage() {
             {multiLoading && !multiData && (
               <div className="flex items-center justify-center py-20">
                 <RefreshCw className="w-6 h-6 animate-spin text-hub-yellow" />
-                <span className="ml-3 text-neutral-400">Loading depth data from 10 exchanges...</span>
+                <span className="ml-3 text-neutral-400">Loading depth data from 9 exchanges...</span>
               </div>
             )}
 
@@ -559,7 +559,7 @@ export default function OrderflowPage() {
             <div className="text-xs text-neutral-400 space-y-1">
               <p>
                 <strong className="text-neutral-300">Order Flow & Depth</strong> shows real-time orderbook
-                depth across {activeTab === 'orderbook' ? 'a single exchange' : '10 exchanges'}.
+                depth across {activeTab === 'orderbook' ? 'a single exchange' : '9 exchanges'}.
                 Data refreshes every 5 seconds.
               </p>
               <p>
