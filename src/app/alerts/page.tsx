@@ -35,7 +35,13 @@ function formatMetricValue(metric: AlertMetric, value: number): string {
     case 'price':
       return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
     case 'fundingRate':
-      return `${value.toFixed(4)}%`;
+      // Funding rate precision: use 4 decimals when |value| < 0.1% (typical
+      // 8h-tick scale) and 2 decimals when ≥ 0.1% (the "spicy" range). Was
+      // hardcoded to 4 decimals which produced "7.0000%" for a 7% threshold —
+      // ugly trailing zeros that read as suspicious over-precision.
+      return abs < 0.1
+        ? `${value.toFixed(4)}%`
+        : `${value.toFixed(2)}%`;
     case 'openInterest':
     case 'volume24h':
     case 'liquidations24h':
