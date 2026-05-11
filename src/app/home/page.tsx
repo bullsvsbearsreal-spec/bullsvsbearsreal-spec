@@ -17,6 +17,7 @@ import { type ExchangeHealthInfo } from '@/lib/api/aggregator';
 import { type FundingRateData } from '@/lib/api/types';
 import { type NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
 import { SatPing, StreamBars, Sparkline } from '@/components/design-system';
+import { BtcHalvingCountdown } from '@/components/BtcHalvingCountdown';
 
 // ────────────────────────────────────────────────────────────────────
 // Helpers
@@ -481,6 +482,7 @@ export default function HomePage() {
             symbol="ETH"
           />
           <ETFTile data={etf} />
+          <BtcHalvingCountdown />
         </div>
       </section>
 
