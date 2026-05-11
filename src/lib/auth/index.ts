@@ -105,6 +105,60 @@ export async function isAdmin(userId: string): Promise<boolean> {
   }
 }
 
+/**
+ * CSRF defense via Origin header check. Reject mutation requests whose
+ * Origin doesn't match our own. Browsers ALWAYS attach Origin to
+ * cross-origin POST/DELETE/PUT, so this catches forged form-submits
+ * from attacker-controlled pages that an admin happens to be visiting.
+ *
+ * NextAuth uses SameSite=Lax cookies (default) which already provides
+ * baseline CSRF protection, but this is defense-in-depth — Origin
+ * checks survive cookie behaviour changes and explicit browser
+ * overrides.
+ *
+ * Returns a 403 Response on mismatch, null on pass. Treats missing
+ * Origin (some old browsers, server-to-server) as failure because
+ * legitimate admin browsers always send it.
+ */
+export function verifySameOrigin(request: Request): Response | null {
+  const origin = request.headers.get('origin');
+  if (!origin) {
+    return Response.json(
+      { error: 'Missing Origin header — mutation requests must come from a browser' },
+      { status: 403 },
+    );
+  }
+  // Allow either the canonical BASE_URL or the live request host. The
+  // BASE_URL covers production (info-hub.io) and the host fallback
+  // covers preview deploys and the DO subdomain.
+  const allowed = new Set<string>();
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    allowed.add(new URL(process.env.NEXT_PUBLIC_BASE_URL).origin);
+  }
+  try {
+    allowed.add(new URL(request.url).origin);
+  } catch { /* unparseable url — fall through */ }
+
+  if (!allowed.has(origin)) {
+    return Response.json(
+      { error: 'Origin not allowed' },
+      { status: 403 },
+    );
+  }
+  return null;
+}
+
+/**
+ * Combined admin + Origin gate for mutation endpoints. Returns a
+ * Response if either check fails (401/403); returns null on pass.
+ * Use at the top of every admin POST/DELETE/PUT handler.
+ */
+export async function requireAdminMutation(request: Request): Promise<Response | null> {
+  const originErr = verifySameOrigin(request);
+  if (originErr) return originErr;
+  return requireAdmin();
+}
+
 /** Require admin role — re-verifies against DB to prevent stale JWT exploits */
 export async function requireAdmin(): Promise<Response | null> {
   const session = await auth();

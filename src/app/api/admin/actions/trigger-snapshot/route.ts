@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { requireAdminOrAdvisor, auth } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminOrAdvisor, verifySameOrigin, auth } from '@/lib/auth';
 import { recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -7,7 +7,9 @@ export const preferredRegion = 'bom1';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const originErr = verifySameOrigin(request);
+  if (originErr) return originErr;
   const adminErr = await requireAdminOrAdvisor();
   if (adminErr) return adminErr;
 

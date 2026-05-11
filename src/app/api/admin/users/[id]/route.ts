@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminOrAdvisor, requireAdmin, auth } from '@/lib/auth';
+import { requireAdminOrAdvisor, requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
 import { getUserDetailForAdmin, getSQL } from '@/lib/db';
 import { recordAuditEvent } from '@/lib/db';
 
@@ -28,9 +28,11 @@ export async function GET(
  * Removes all user data atomically. Cannot delete yourself or other admins.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const originErr = verifySameOrigin(request);
+  if (originErr) return originErr;
   const denied = await requireAdmin();
   if (denied) return denied;
 

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, auth } from '@/lib/auth';
+import { requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
 import { isDBConfigured, getSQL, recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -19,6 +19,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const originErr = verifySameOrigin(request);
+  if (originErr) return originErr;
   const denied = await requireAdmin();
   if (denied) return denied;
 

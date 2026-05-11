@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, auth } from '@/lib/auth';
+import { requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
 import { initDB, recordAuditEvent, getAllPushSubscriptions, getAllActiveTelegramChatIds } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -7,6 +7,8 @@ export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  const originErr = verifySameOrigin(request);
+  if (originErr) return originErr;
   const adminErr = await requireAdmin();
   if (adminErr) return adminErr;
 

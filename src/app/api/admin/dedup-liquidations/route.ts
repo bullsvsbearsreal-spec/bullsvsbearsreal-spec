@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, verifySameOrigin } from '@/lib/auth';
 import { isDBConfigured, getSQL } from '@/lib/db';
 
 /**
@@ -17,6 +17,8 @@ import { isDBConfigured, getSQL } from '@/lib/db';
  * Protected by admin session auth.
  */
 export async function POST(request: NextRequest) {
+  const originErr = verifySameOrigin(request);
+  if (originErr) return originErr;
   const adminErr = await requireAdmin();
   if (adminErr) return adminErr;
 

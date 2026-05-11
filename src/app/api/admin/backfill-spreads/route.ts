@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, verifySameOrigin } from '@/lib/auth';
 import { getSQL } from '@/lib/db';
 
 export const maxDuration = 30;
@@ -41,7 +41,13 @@ async function fetchBybitKlines(symbol: string, limit: number): Promise<Array<{t
 }
 
 export async function GET(req: NextRequest) { return run(req); }
-export async function POST(req: NextRequest) { return run(req); }
+export async function POST(req: NextRequest) {
+  // POST is the mutating path — gate on Origin to refuse CSRF-style
+  // cross-origin form submits. GET stays open (read-only, idempotent).
+  const originErr = verifySameOrigin(req);
+  if (originErr) return originErr;
+  return run(req);
+}
 
 async function run(req: NextRequest) {
   const adminErr = await requireAdmin();
