@@ -853,7 +853,7 @@ console.log(data);`,
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-gray-400">Endpoints</span>
-                  <span className="text-white font-semibold">All 14</span>
+                  <span className="text-white font-semibold">All 26</span>
                 </div>
               </div>
             </div>
