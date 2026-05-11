@@ -15,6 +15,7 @@ import {
   parseJsonbArray, VENUES,
   type AccountSnapshot, type PositionLite, type Thresholds, type Venue,
 } from '@/lib/hl-watch';
+import { createTickGate } from '@/lib/tickGate';
 
 export interface WatchTickStats {
   /** True iff the tick completed without errors. Skipped runs (cooldown
@@ -70,39 +71,31 @@ function rowToThresholds(r: SubscriberRow): Thresholds {
   };
 }
 
-/** Process-local mutex — prevents two runWatchTick calls from racing on
- *  the same address (which would cause both to read the same prevSnap,
- *  diff the same delta, insert TWO event rows, and fire duplicate
- *  Telegram pings since dedup is keyed on event_id and the rows have
- *  different ids). The piggyback from /api/cron/snapshot is the canonical
- *  trigger; this guard is defensive against:
+/** Process-local mutex + cooldown gate — prevents two runWatchTick calls
+ *  from racing on the same address (which would cause both to read the
+ *  same prevSnap, diff the same delta, insert TWO event rows, and fire
+ *  duplicate Telegram pings since dedup is keyed on event_id and the rows
+ *  have different ids). The piggyback from /api/cron/snapshot is the
+ *  canonical trigger; this guard is defensive against:
  *    - Manual /admin-panel#actions trigger while a snapshot tick is running
  *    - A future systemd timer ever being added without removing the piggyback
  *    - Multiple snapshot crons accidentally overlapping (e.g. timer drift)
- *  Cooldown of 30s also acts as a soft rate-limit against admin spam. */
-let lastTickAt = 0;
-let inFlight: Promise<WatchTickStats> | null = null;
+ *  Cooldown of 30s also acts as a soft rate-limit against admin spam.
+ *  Gating logic lives in `lib/tickGate.ts` (unit-tested). */
 const MIN_TICK_INTERVAL_MS = 30_000;
+const tickGate = createTickGate<WatchTickStats>({ minIntervalMs: MIN_TICK_INTERVAL_MS });
 
 /** Run one watcher tick — scan watched addresses, diff, fan out events to
  *  subscribed users, and update the snapshots. Returns stats so the caller
  *  can log / surface them. Safe to call from either an HTTP handler or
  *  another cron route. */
 export async function runWatchTick(): Promise<WatchTickStats> {
-  // Re-entry guard: if a tick is currently running, return its in-flight
-  // promise so the second caller waits for the first one to finish rather
-  // than spawning a duplicate.
-  if (inFlight) return inFlight;
-
-  // Soft cooldown: skip if the last tick completed less than 30s ago.
-  // Returns a "skipped" stats object so callers know nothing new happened.
-  // Note: errors array stays empty — skip is not an error.
-  const sinceLast = Date.now() - lastTickAt;
-  if (sinceLast < MIN_TICK_INTERVAL_MS) {
+  const r = await tickGate.tryRun(runTickInner);
+  if (r.type === 'cooldown') {
     return {
       ok: true,
       skipped: true,
-      skipReason: `cooldown: last tick ${Math.round(sinceLast / 1000)}s ago (min ${MIN_TICK_INTERVAL_MS / 1000}s)`,
+      skipReason: `cooldown: last tick ${Math.round(r.sinceLastMs / 1000)}s ago (min ${r.minIntervalMs / 1000}s)`,
       addresses: 0,
       snapshots_fetched: 0,
       events_emitted: 0,
@@ -111,15 +104,7 @@ export async function runWatchTick(): Promise<WatchTickStats> {
       durationMs: 0,
     };
   }
-
-  inFlight = runTickInner();
-  try {
-    const result = await inFlight;
-    lastTickAt = Date.now();
-    return result;
-  } finally {
-    inFlight = null;
-  }
+  return r.result;
 }
 
 async function runTickInner(): Promise<WatchTickStats> {

@@ -267,9 +267,10 @@ Key gotchas:
 - The mutex in `runWatchTick` is process-local. Single-instance DO
   App Platform = fine. If we ever scale out, the dedup needs to move
   to DB advisory locks.
-- 45 unit tests cover diff/threshold/format edge cases. Cron-runner
-  level (mutex/cooldown) is currently uncovered — extract gating into
-  a pure helper if you need to add tests.
+- 45 unit tests cover diff/threshold/format edge cases. Gating logic
+  (mutex + 30s cooldown) lives in `lib/tickGate.ts` and is covered by
+  13 unit tests — including the BlockedConcurrent-callers-share-result
+  invariant that's the actual Telegram-spam guard.
 
 ### Don't fetch internal `/api/openinterest` style giant payloads to filter
 one symbol — refactor the underlying logic into `lib/` and import directly.
