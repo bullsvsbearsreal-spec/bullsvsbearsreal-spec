@@ -65,6 +65,20 @@ export async function GET(request: NextRequest) {
     // Internal API returns { points: [...] } for limit>1, or flat { longRatio, shortRatio } for limit=1
     const points = raw.points ?? [];
     const latest = points.length > 0 ? points[points.length - 1] : raw;
+    const longPct  = latest.longRatio  ?? raw.longRatio  ?? null;
+    const shortPct = latest.shortRatio ?? raw.shortRatio ?? null;
+
+    // Derived view — convenient for callers that don't want to compute it.
+    let longShortRatio: number | null = null;
+    let regime: 'crowded-long' | 'long-heavy' | 'balanced' | 'short-heavy' | 'crowded-short' | null = null;
+    if (longPct != null && shortPct != null && shortPct > 0) {
+      longShortRatio = longPct / shortPct;
+      if (longPct >= 70) regime = 'crowded-long';
+      else if (longPct >= 60) regime = 'long-heavy';
+      else if (longPct >= 40) regime = 'balanced';
+      else if (longPct >= 30) regime = 'short-heavy';
+      else regime = 'crowded-short';
+    }
 
     return NextResponse.json({
       success: true,
@@ -72,8 +86,10 @@ export async function GET(request: NextRequest) {
         symbol,
         period,
         source,
-        longRatio: latest.longRatio ?? raw.longRatio ?? null,
-        shortRatio: latest.shortRatio ?? raw.shortRatio ?? null,
+        longRatio: longPct,
+        shortRatio: shortPct,
+        longShortRatio,
+        regime,
         exchange: raw.exchange ?? null,
         history: points,
       },
