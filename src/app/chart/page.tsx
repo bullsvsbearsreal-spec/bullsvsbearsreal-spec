@@ -198,9 +198,10 @@ function findSymbolByTv(tv: string): AssetSymbol | undefined {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Live ticker fetch (used for the stat strip)
+// Live ticker fetch (used for the stat strip).
+// Selection logic + scoring live in ./tickerSelection.ts (unit-tested).
 // ────────────────────────────────────────────────────────────────────
-interface TickerStat { price?: number; change24h?: number; high24h?: number; low24h?: number; volume24h?: number; }
+import { pickBestTicker, projectTickerStat, type RawTicker, type TickerStat } from './tickerSelection';
 
 function useTickerStats(symbol: string, isCrypto: boolean): TickerStat {
   const [stat, setStat] = useState<TickerStat>({});
@@ -213,46 +214,10 @@ function useTickerStats(symbol: string, isCrypto: boolean): TickerStat {
         if (!r.ok) return;
         const v = await r.json();
         const arr = Array.isArray(v) ? v : v?.data ?? [];
-        type RawTicker = {
-          symbol: string;
-          lastPrice?: number; price?: number;
-          priceChangePercent24h?: number; change24h?: number; changePercent24h?: number;
-          highPrice24h?: number; high24h?: number;
-          lowPrice24h?: number;  low24h?: number;
-          volume24h?: number; quoteVolume24h?: number;
-        };
         const matches: RawTicker[] = arr.filter((t: RawTicker) => t.symbol === symbol);
-        if (!matches.length) return;
-        // Pick the entry with the MOST COMPLETE data (price + 24h + h/l + vol),
-        // tiebreak on highest price. Previous logic just picked max-price, which
-        // for BTC kept landing on BITSTAMP (no high/low/change/vol fields) and
-        // rendered "$0.0000e+0" in the stat bar.
-        const score = (t: RawTicker): number => {
-          let s = 0;
-          if ((t.lastPrice ?? t.price ?? 0) > 0) s += 1;
-          if ((t.priceChangePercent24h ?? t.change24h ?? t.changePercent24h ?? 0) !== 0) s += 2;
-          if ((t.highPrice24h ?? t.high24h ?? 0) > 0) s += 2;
-          if ((t.lowPrice24h ?? t.low24h ?? 0) > 0) s += 2;
-          if ((t.volume24h ?? t.quoteVolume24h ?? 0) > 0) s += 2;
-          return s;
-        };
-        const best = matches.reduce((a, b) => {
-          const sa = score(a), sb = score(b);
-          if (sa !== sb) return sa > sb ? a : b;
-          return ((a.lastPrice ?? a.price ?? 0) > (b.lastPrice ?? b.price ?? 0) ? a : b);
-        });
-        if (cancelled) return;
-        // Coerce falsy zeros to undefined so consumers can treat "no data"
-        // distinctly from "literal zero".
-        const orUndef = (v: number | null | undefined): number | undefined =>
-          (v != null && v !== 0) ? v : undefined;
-        setStat({
-          price: best.lastPrice ?? best.price,
-          change24h: orUndef(best.priceChangePercent24h ?? best.change24h ?? best.changePercent24h),
-          high24h: orUndef(best.highPrice24h ?? best.high24h),
-          low24h: orUndef(best.lowPrice24h ?? best.low24h),
-          volume24h: orUndef(best.volume24h ?? best.quoteVolume24h),
-        });
+        const best = pickBestTicker(matches);
+        if (!best || cancelled) return;
+        setStat(projectTickerStat(best));
       } catch {}
     }
     load();
