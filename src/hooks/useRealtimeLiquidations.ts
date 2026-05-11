@@ -159,6 +159,10 @@ export function useRealtimeLiquidations(enabled: boolean) {
           const o = data.o;
           const price = parseFloat(o.p);
           const qty = parseFloat(o.q);
+          // NaN guard: `value < MIN_VALUE` is `false` for NaN, so a
+          // single malformed message would otherwise leak NaN price/value
+          // into the liquidations feed and corrupt downstream sorts/sums.
+          if (!Number.isFinite(price) || !Number.isFinite(qty) || price <= 0 || qty <= 0) return;
           const value = price * qty;
           if (value < MIN_VALUE) return;
           addLiq({

@@ -103,6 +103,12 @@ export function useRealtimeTrades(symbol: string) {
 
           const price = parseFloat(msg.p);
           const qty = parseFloat(msg.q);
+          // Reject malformed quote-pairs early — without this guard a
+          // single NaN-bearing trade poisons the session's CVD / VWAP /
+          // buyVol forever (NaN propagates through sums). Verified
+          // against computeTradeStats which doesn't filter at the
+          // aggregation layer.
+          if (!Number.isFinite(price) || !Number.isFinite(qty) || price <= 0 || qty <= 0) return;
           const quoteQty = price * qty;
           const trade: RealtimeTrade = {
             time: msg.T,
