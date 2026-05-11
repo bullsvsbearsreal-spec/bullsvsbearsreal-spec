@@ -277,9 +277,10 @@ const ENDPOINT_GROUPS = [
     border: 'border-blue-500/10',
     endpoints: [
       ['GET', '/api/v1/funding', 'Real-time funding rates across 32 exchanges'],
-      ['GET', '/api/v1/openinterest', 'Open interest data across exchanges'],
-      ['GET', '/api/v1/tickers', 'Price & volume across all exchanges'],
-      ['GET', '/api/v1/spreads', 'Cross-exchange price spreads'],
+      ['GET', '/api/v1/openinterest', 'Open interest per venue (aggregate=1 + changes=1)'],
+      ['GET', '/api/v1/tickers', 'Price & volume across all venues (aggregate=1)'],
+      ['GET', '/api/v1/klines', 'OHLCV candles with Binance/Bybit/OKX fallback'],
+      ['GET', '/api/v1/spreads', 'Cross-exchange spreads (gross + net of fees)'],
     ],
   },
   {
@@ -289,10 +290,12 @@ const ENDPOINT_GROUPS = [
     bg: 'bg-green-500/10',
     border: 'border-green-500/10',
     endpoints: [
-      ['GET', '/api/v1/arbitrage', 'Funding arbitrage with feasibility grades'],
-      ['GET', '/api/v1/longshort', 'Long/short ratios (Binance, OKX)'],
-      ['GET', '/api/v1/liquidations', 'Recent liquidation feed'],
+      ['GET', '/api/v1/arbitrage', 'Funding arbitrage with grades + fees + OI sanity'],
+      ['GET', '/api/v1/funding-arb', 'Gross funding-spread scanner'],
+      ['GET', '/api/v1/longshort', 'Long/short ratios + regime classifier'],
+      ['GET', '/api/v1/liquidations', 'Recent feed or summary=1 aggregated stats'],
       ['GET', '/api/v1/options', 'Options: max pain, P/C ratio, IV'],
+      ['GET', '/api/v1/basis', 'CME front-month futures basis (BTC + ETH)'],
     ],
   },
   {
@@ -305,7 +308,33 @@ const ENDPOINT_GROUPS = [
       ['GET', '/api/v1/top-movers', 'Top gainers & losers by 24h change'],
       ['GET', '/api/v1/global-stats', 'Altcoin season, BTC dominance, market cap'],
       ['GET', '/api/v1/fear-greed', 'Fear & Greed Index + 30d history'],
-      ['GET', '/api/v1/funding/history', 'Historical funding snapshots (7d)'],
+      ['GET', '/api/v1/funding/history', 'Historical funding snapshots (up to 14d)'],
+      ['GET', '/api/v1/listing-radar', 'Binance listing announcement tracker'],
+      ['GET', '/api/v1/earnings-calendar', 'Token unlocks, TGEs, halvings, governance'],
+    ],
+  },
+  {
+    label: 'On-chain & Yield',
+    icon: Wifi,
+    color: 'text-fuchsia-400',
+    bg: 'bg-fuchsia-500/10',
+    border: 'border-fuchsia-500/10',
+    endpoints: [
+      ['GET', '/api/v1/whales', 'On-chain DEX whale trades (global feed or per-wallet)'],
+      ['GET', '/api/v1/whale-liq', 'Hyperliquid positions sorted by liq proximity'],
+      ['GET', '/api/v1/smart-money-leaderboard', 'Top HL wallets by 90d realised PnL'],
+      ['GET', '/api/v1/bridge-flows', 'Cross-chain bridge flow tracker (Wormhole)'],
+      ['GET', '/api/v1/restaking', 'Restaking yields (EigenLayer + Symbiotic + Karak + LRTs)'],
+    ],
+  },
+  {
+    label: 'Tools',
+    icon: Zap,
+    color: 'text-cyan-400',
+    bg: 'bg-cyan-500/10',
+    border: 'border-cyan-500/10',
+    endpoints: [
+      ['POST', '/api/v1/backtest', 'Strategy backtest (DCA or funding-carry)'],
     ],
   },
   {
@@ -315,15 +344,16 @@ const ENDPOINT_GROUPS = [
     bg: 'bg-neutral-500/10',
     border: 'border-neutral-500/10',
     endpoints: [
-      ['GET', '/api/v1/exchanges', 'Exchange metadata, fees & intervals'],
-      ['GET', '/api/v1/status', 'API health status (no auth required)'],
+      ['GET', '/api/v1/exchanges', 'Exchange metadata + canonical fee schedule'],
+      ['GET', '/api/v1/status', 'Health + fee-model version (no auth required)'],
+      ['GET', '/api/v1/openapi', 'OpenAPI 3.1 spec (no auth, public)'],
     ],
   },
 ];
 
 const STATS = [
   { value: 33, suffix: '', label: 'Exchanges', icon: Database },
-  { value: 14, suffix: '', label: 'Endpoints', icon: Wifi },
+  { value: 26, suffix: '', label: 'Endpoints', icon: Wifi },
   { value: 100, suffix: '/m', label: 'Free Requests', icon: Zap },
   { value: 3, suffix: 's', label: 'Data Freshness', icon: Clock },
 ];
