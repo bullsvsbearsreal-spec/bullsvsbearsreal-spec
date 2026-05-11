@@ -86,7 +86,12 @@ export async function GET(request: NextRequest) {
           } : null,
         },
         meta: { timestamp: Date.now(), mode: 'summary' },
-      }, { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' } });
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
+          ...auth.headers,
+        },
+      });
     }
 
     const feed = await getLiquidationFeedFiltered(hours, limit, exchange, side === 'long' || side === 'short' ? side : undefined, symbol);

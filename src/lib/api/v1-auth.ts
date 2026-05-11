@@ -23,6 +23,18 @@ function cacheKeyFor(rawKey: string): string {
 // Fallback in-memory rate limiter when Redis is unavailable
 const fallbackLimiter = createRateLimiter({ maxAttempts: 60, windowMs: 60 * 1000, name: 'v1-api' });
 
+/**
+ * Fee-model identifier headers surfaced on ALL v1 error responses so
+ * partners doing cheap HEAD-based version polling can detect schedule
+ * bumps even when their key is rejected (no-key, invalid-key, DB-down,
+ * rate-limited). Without this on every path, a partner whose key gets
+ * revoked silently misses the next fee-schedule bump until they renew.
+ */
+const FEE_MODEL_HEADERS = {
+  'X-Fee-Model-Version': FEE_MODEL_VERSION,
+  'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+};
+
 interface V1AuthResult {
   userId: string;
   tier: string;
@@ -73,11 +85,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
           status: 401,
           headers: {
             'WWW-Authenticate': 'Bearer realm="InfoHub API"',
-            // Surface fee-model identifier even on auth-failure so
-            // monitoring scripts can probe with a HEAD/no-key request
-            // and still detect schedule bumps cheaply.
-            'X-Fee-Model-Version': FEE_MODEL_VERSION,
-            'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+            ...FEE_MODEL_HEADERS,
           },
         },
       ),
@@ -98,7 +106,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
           ok: false,
           response: NextResponse.json(
             { success: false, error: 'Invalid or revoked API key' },
-            { status: 401 },
+            { status: 401, headers: { ...FEE_MODEL_HEADERS } },
           ),
         };
       }
@@ -116,7 +124,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
         ok: false,
         response: NextResponse.json(
           { success: false, error: 'Authentication service unavailable' },
-          { status: 503 },
+          { status: 503, headers: { ...FEE_MODEL_HEADERS } },
         ),
       };
     }
@@ -141,6 +149,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
               'Retry-After': String(Math.max(1, Math.ceil((reset - Date.now()) / 1000))),
               ...rateLimitHeaders,
               'X-RateLimit-Remaining': '0',
+              ...FEE_MODEL_HEADERS,
             },
           },
         ),
@@ -154,7 +163,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
         ok: false,
         response: NextResponse.json(
           { success: false, error: 'Rate limit exceeded (service degraded). Try again shortly.' },
-          { status: 429, headers: { 'Retry-After': '60' } },
+          { status: 429, headers: { 'Retry-After': '60', ...FEE_MODEL_HEADERS } },
         ),
       };
     }
