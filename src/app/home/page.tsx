@@ -12,7 +12,7 @@ import {
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
-import { isValidNumber } from '@/lib/utils/format';
+import { isValidNumber, formatPrice } from '@/lib/utils/format';
 import { type ExchangeHealthInfo } from '@/lib/api/aggregator';
 import { type FundingRateData } from '@/lib/api/types';
 import { type NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
@@ -1280,9 +1280,10 @@ function MajorCoinsSection({ tickers, loading }: { tickers: TickerData[]; loadin
                     fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 600,
                     color: 'var(--fg-default)', lineHeight: 1.2,
                   }}>
-                    {price >= 100 ? `$${price.toFixed(2)}`
-                      : price >= 1 ? `$${price.toFixed(3)}`
-                      : `$${price.toFixed(6)}`}
+                    {/* Canonical formatPrice — was inline-formatted with 3
+                        decimals for $1-$100 prices ("$95.360" for SOL) which
+                        didn't match the 2-decimal rule used elsewhere. */}
+                    {formatPrice(price)}
                   </div>
                 </div>
                 <span style={{
