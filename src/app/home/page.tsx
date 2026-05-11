@@ -712,12 +712,17 @@ export default function HomePage() {
             />
             <SummaryStat
               icon={<Zap size={11} />}
-              label="Avg Latency"
+              // "Venue WS Ping" — clearer than "Avg Latency" which read like
+              // an InfoHub-side latency (our API is sub-200ms; the >1s number
+              // is the cross-region WebSocket round-trip to slow upstream
+              // venues like Bitget/HTX). Label was reading as a weakness.
+              label="Venue WS Ping"
               value={(() => {
                 const lats = exchangeHealth.filter(h => h.status === 'ok' && h.latencyMs).map(h => h.latencyMs);
                 if (!lats.length) return '—';
                 const avg = lats.reduce((s, n) => s + n, 0) / lats.length;
-                return `${avg.toFixed(0)}ms`;
+                // Show seconds when > 1s — "1.7s" is easier to read than "1743ms"
+                return avg >= 1000 ? `${(avg / 1000).toFixed(1)}s` : `${avg.toFixed(0)}ms`;
               })()}
               accent="#60a5fa"
             />

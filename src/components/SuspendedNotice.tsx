@@ -53,9 +53,9 @@ export default function SuspendedNotice({
             </Link>
           )}
         </div>
-        <p className="mt-6 text-[11px] text-neutral-600">
-          Temporarily paused — flip <code className="text-neutral-500">SUSPENDED</code> in source to re-enable.
-        </p>
+        {/* Dev-facing reminder removed — was leaking "flip SUSPENDED in source"
+            to real users. The flag still lives in the consuming page; flip
+            it there to re-enable. Users see only the maintenance card. */}
       </div>
     </main>
   );

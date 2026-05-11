@@ -203,7 +203,14 @@ export default function LiquidationsPage() {
                 )}
               </div>
               <p className="text-sm text-neutral-500">
-                Real-time liquidation data across {WS_EXCHANGES.length} exchanges
+                Real-time liquidation data across{' '}
+                <span
+                  className="border-b border-dotted border-neutral-600 cursor-help"
+                  title="Only the venues that expose a public liquidation stream are listed here. Several of our 32 tracked exchanges (notably some DEXes and OTC-style venues) don't broadcast liq events, so they're excluded from this page even though they appear elsewhere on InfoHub."
+                >
+                  {WS_EXCHANGES.length} exchanges
+                </span>
+                {' '}with live streams
                 {marketLabel && (
                   <span className={`ml-2 ${marketLabel.color}`}>
                     &mdash; {marketLabel.text}

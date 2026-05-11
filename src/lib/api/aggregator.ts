@@ -343,7 +343,13 @@ export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers:
     isValidNumber(t.priceChangePercent24h) &&
     t.quoteVolume24h >= 1_000_000 && // Min $1M volume — filters ghost/delisted pairs
     Math.abs(t.priceChangePercent24h) <= 200 && // Cap at 200% — beyond is squeeze/delisting noise
-    (exchangeCount.get(t.symbol) || 0) >= 2 // Must be on 2+ exchanges (filters ghost pairs)
+    (exchangeCount.get(t.symbol) || 0) >= 2 && // Must be on 2+ exchanges (filters ghost pairs)
+    // Reject sub-cent prices — the homepage formatter rounds these to "$0"
+    // which made the gainers list look like garbage (`B $0 +31.93%`, etc).
+    isValidNumber(t.lastPrice) && t.lastPrice >= 0.001 &&
+    // Reject single-letter symbols — usually low-quality wrapped/test tokens
+    // that happen to clear the volume filter via one rogue venue
+    typeof t.symbol === 'string' && t.symbol.length >= 2
   );
   const sorted = [...validTickers].sort((a, b) => b.priceChangePercent24h - a.priceChangePercent24h);
 
