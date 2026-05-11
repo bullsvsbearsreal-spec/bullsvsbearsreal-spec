@@ -247,8 +247,13 @@ function StatGroup({ label, children, wide }: {
   children: React.ReactNode;
   wide?: boolean;
 }) {
+  // Data attributes power the mobile compaction in globals.css —
+  // see [data-chart-cell] / [data-chart-cell-wide] rules.
+  const dataAttr = wide
+    ? { 'data-chart-cell-wide': '' }
+    : { 'data-chart-cell': '' };
   return (
-    <div style={{
+    <div {...dataAttr} style={{
       display: 'flex', flexDirection: 'column', gap: 0,
       padding: '0 12px',
       borderRight: '1px solid var(--hub-border-subtle)',
@@ -301,12 +306,13 @@ export interface ChartAiStripData {
 }
 
 export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
-  // Build a deterministic one-liner from the available signals.
-  // No model call — this is real-data commentary that ranks the
-  // strongest signals (funding extreme > RSI extreme > OI shift > spot
-  // momentum > positioning skew) and surfaces the top 1-2 as one
-  // English sentence. Refreshed whenever the parent re-derives the
-  // ChartStatsBarData (so it tracks 15-30s livelocks on /tickers).
+  // Build a deterministic 1-2 sentence summary from the available
+  // signals. No model call — this is heuristic commentary that ranks
+  // the strongest signals (funding extreme > RSI extreme > OI shift >
+  // spot momentum > positioning skew > volatility regime) and surfaces
+  // the top 2 as one Bloomberg-style line, prefixed with the symbol
+  // for readability ("BTC: ..."). Refreshes whenever the parent
+  // re-derives ChartStatsBarData (15-30s livelock on /tickers).
   const insight = (() => {
     type Bit = { text: string; weight: number };
     const bits: Bit[] = [];
@@ -381,11 +387,24 @@ export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
       else if (lp <= 35) bits.push({ weight: 40, text: `Book ${(100 - lp).toFixed(0)}% short — crowded.` });
     }
 
-    if (bits.length === 0) {
-      return `Warming up — watching ${data.symbol} for direction.`;
+    // ATR volatility regime — sits at lower weight so funding/RSI
+    // extremes always win the top slot, but surfaces "quiet" market
+    // moments when nothing else is firing.
+    if (data.atrPct != null) {
+      if (data.atrPct >= 4) {
+        bits.push({ weight: 45, text: `Volatility elevated (ATR ${data.atrPct.toFixed(2)}%).` });
+      } else if (data.atrPct <= 0.5) {
+        bits.push({ weight: 15, text: `Volatility compressed (ATR ${data.atrPct.toFixed(2)}%).` });
+      }
     }
-    // Top 2 by weight, joined with a space — readable like a Bloomberg ticker.
-    return bits.sort((a, b) => b.weight - a.weight).slice(0, 2).map(b => b.text).join(' ');
+
+    if (bits.length === 0) {
+      return `${data.symbol}: warming up — no strong signal on either side.`;
+    }
+    // Top 2 by weight, joined with a space, prefixed with the symbol
+    // so the line reads like a Bloomberg ticker headline.
+    const top = bits.sort((a, b) => b.weight - a.weight).slice(0, 2).map(b => b.text);
+    return `${data.symbol}: ${top.join(' ')}`;
   })();
 
   return (
@@ -410,11 +429,12 @@ export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
       <span style={{ flex: 1, color: 'var(--fg-default)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {insight}
       </span>
-      <span style={{ fontSize: 9, color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+      <span data-chart-hide-mobile="" style={{ fontSize: 9, color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
         updated &lt;1m ago
       </span>
       <button
         type="button"
+        data-chart-hide-mobile=""
         style={{
           padding: '3px 9px', borderRadius: 6,
           background: 'transparent',

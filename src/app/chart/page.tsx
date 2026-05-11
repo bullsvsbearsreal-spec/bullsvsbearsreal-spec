@@ -27,6 +27,7 @@ import {
 import { ChartPositionStrip } from './components/ChartPositionStrip';
 import { ChartSignalsStrip } from './components/ChartSignalsStrip';
 import { useChartIndicators } from './components/useChartIndicators';
+import { ChartCompareStrip, type ChartCompareData } from './components/ChartCompareStrip';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
 const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
@@ -493,6 +494,30 @@ function ChartPageInner() {
       atr: indicators.atrPct,  // render ATR as % so it's scale-free
     };
   }, [isCrypto, displayLabel, displayPair, tvSymbol, tickerStat, fundingApi.data, oiApi.data, oiChangesApi.data, lsApi.data, tickersApi.data, indicators]);
+
+  // Compare data: active symbol's 24h change vs BTC/ETH/SOL. Pulled
+  // from the same useTickers() snapshot the stats bar uses, so we
+  // never trigger a redundant fetch.
+  const compareData = useMemo<ChartCompareData | null>(() => {
+    if (!isCrypto) return null;
+    const upper = displayLabel.toUpperCase();
+    const findChange = (s: string): number | null => {
+      const entries = (tickersApi.data ?? []).filter(t => t.symbol === s);
+      if (entries.length === 0) return null;
+      // Pick the entry with the deepest 24h price reference (most accurate)
+      const best = entries.reduce((a, b) => ((a.priceChangePercent24h ?? 0) !== 0 ? a : b));
+      return best?.priceChangePercent24h ?? null;
+    };
+    return {
+      symbol: upper,
+      selfChange24h: tickerStat.change24h ?? null,
+      majors: {
+        BTC: findChange('BTC'),
+        ETH: findChange('ETH'),
+        SOL: findChange('SOL'),
+      },
+    };
+  }, [isCrypto, displayLabel, tickerStat.change24h, tickersApi.data]);
 
   const venueFundingRows = useMemo<VenueFundingRow[]>(() => {
     if (!isCrypto) return [];
@@ -1115,6 +1140,11 @@ function ChartPageInner() {
                 atrPct: statsBarData.atr,
               }}
             />
+          </ChartErrorBoundary>
+        )}
+        {isCrypto && compareData && (
+          <ChartErrorBoundary name="Compare Strip">
+            <ChartCompareStrip data={compareData} />
           </ChartErrorBoundary>
         )}
         {isCrypto && (

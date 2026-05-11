@@ -1633,6 +1633,25 @@ main { padding-bottom: 56px; }
   }
 }
 
+/* /chart strip compaction on mobile.
+   The terminal strips (StatsBar, AI, Position, Signals, Compare, Venue
+   Funding) are dense by design. On narrow viewports we tighten cell
+   padding + min-widths via data attributes so the bands pack tighter
+   without forcing every cell into its own scroll page. */
+@media (max-width: 640px) {
+  [data-chart-cell] {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    min-width: 64px !important;
+  }
+  [data-chart-cell-wide] {
+    min-width: 92px !important;
+  }
+  [data-chart-hide-mobile] {
+    display: none !important;
+  }
+}
+
 .scrollbar-accent::-webkit-scrollbar { width: 8px; height: 8px; }
 .scrollbar-accent::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 4px; }
 .scrollbar-accent::-webkit-scrollbar-thumb {

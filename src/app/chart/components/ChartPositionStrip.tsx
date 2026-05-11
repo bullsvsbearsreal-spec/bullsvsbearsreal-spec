@@ -203,7 +203,7 @@ function PositionRow({ p }: { p: ApiPosition }) {
 
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{
+    <div data-chart-cell="" style={{
       display: 'flex', flexDirection: 'column', gap: 0,
       padding: '0 12px',
       borderRight: '1px solid var(--hub-border-subtle)',
