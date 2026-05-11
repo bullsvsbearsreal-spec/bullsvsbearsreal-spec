@@ -26,6 +26,7 @@ import {
 } from './components/ChartTerminalStrips';
 import { ChartPositionStrip } from './components/ChartPositionStrip';
 import { ChartSignalsStrip } from './components/ChartSignalsStrip';
+import { useChartIndicators } from './components/useChartIndicators';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
 const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
@@ -394,6 +395,9 @@ function ChartPageInner() {
   const oiChangesApi  = useOIChanges();
   const lsApi         = useLongShort(isCrypto ? `${displayLabel.toUpperCase()}USDT` : 'BTCUSDT');
   const tickersApi    = useTickers();
+  // Client-side TA derived from Binance perp klines on the active timeframe.
+  // Gracefully no-ops on non-crypto / non-Binance symbols (returns nulls).
+  const indicators    = useChartIndicators(displayLabel, interval, isCrypto);
 
   const statsBarData = useMemo<ChartStatsBarData | null>(() => {
     if (!isCrypto) return null;
@@ -485,10 +489,10 @@ function ChartPageInner() {
       markPrice: refFunding?.markPrice ?? null,
       indexPrice: refFunding?.indexPrice ?? null,
       basisPct: null,
-      rsi: null,
-      atr: null,
+      rsi: indicators.rsi,
+      atr: indicators.atrPct,  // render ATR as % so it's scale-free
     };
-  }, [isCrypto, displayLabel, displayPair, tvSymbol, tickerStat, fundingApi.data, oiApi.data, oiChangesApi.data, lsApi.data, tickersApi.data]);
+  }, [isCrypto, displayLabel, displayPair, tvSymbol, tickerStat, fundingApi.data, oiApi.data, oiChangesApi.data, lsApi.data, tickersApi.data, indicators]);
 
   const venueFundingRows = useMemo<VenueFundingRow[]>(() => {
     if (!isCrypto) return [];
@@ -1054,6 +1058,9 @@ function ChartPageInner() {
               openInterestChange24hPct: statsBarData.openInterestChange24hPct,
               change24hPct: statsBarData.change24hPct,
               price: statsBarData.price,
+              rsi: statsBarData.rsi,
+              atrPct: statsBarData.atr,
+              longRatio: statsBarData.longRatio,
             }}
           />
         </ChartErrorBoundary>
@@ -1104,6 +1111,8 @@ function ChartPageInner() {
                 longRatio: statsBarData.longRatio,
                 shortRatio: statsBarData.shortRatio,
                 longShortRatio: statsBarData.longShortRatio,
+                rsi: statsBarData.rsi,
+                atrPct: statsBarData.atr,
               }}
             />
           </ChartErrorBoundary>

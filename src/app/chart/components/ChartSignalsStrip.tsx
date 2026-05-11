@@ -10,7 +10,7 @@
  * derived state. Hides itself when there's no usable signal.
  */
 
-import { TrendingUp, TrendingDown, Flame, Snowflake, Scale, Eye, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Flame, Snowflake, Scale, Eye, AlertTriangle, Activity, Gauge } from 'lucide-react';
 
 export interface ChartSignalsStripData {
   symbol: string;
@@ -20,6 +20,8 @@ export interface ChartSignalsStripData {
   longRatio?: number | null;               // 0-1
   shortRatio?: number | null;              // 0-1
   longShortRatio?: number | null;
+  rsi?: number | null;                     // 0-100
+  atrPct?: number | null;                  // ATR as % of last close
 }
 
 interface Signal {
@@ -142,6 +144,28 @@ function buildSignals(d: ChartSignalsStripData): Signal[] {
       icon: <AlertTriangle size={11} />,
       detail: 'hot funding · OI dropping',
     });
+  }
+
+  // 7. RSI — real TA from Binance perp klines on the active timeframe
+  if (d.rsi != null) {
+    if (d.rsi >= 75) {
+      out.push({ key: 'rsi-overbought', label: 'RSI overbought', tone: 'caution',
+        icon: <Gauge size={11} />, detail: d.rsi.toFixed(1) });
+    } else if (d.rsi <= 25) {
+      out.push({ key: 'rsi-oversold', label: 'RSI oversold', tone: 'bullish',
+        icon: <Gauge size={11} />, detail: d.rsi.toFixed(1) });
+    }
+  }
+
+  // 8. Volatility regime — ATR as % of price; high ATR% = expanded range
+  if (d.atrPct != null) {
+    if (d.atrPct >= 3) {
+      out.push({ key: 'vol-high', label: 'High volatility', tone: 'caution',
+        icon: <Activity size={11} />, detail: `ATR ${d.atrPct.toFixed(2)}%` });
+    } else if (d.atrPct <= 0.5) {
+      out.push({ key: 'vol-compressed', label: 'Volatility compressed', tone: 'neutral',
+        icon: <Activity size={11} />, detail: `ATR ${d.atrPct.toFixed(2)}%` });
+    }
   }
 
   return out;
