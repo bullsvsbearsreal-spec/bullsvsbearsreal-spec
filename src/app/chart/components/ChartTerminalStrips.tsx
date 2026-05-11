@@ -307,107 +307,118 @@ export interface ChartAiStripData {
   longRatio?: number | null;
 }
 
+/**
+ * Build the AI strip insight string from a signal payload.
+ *
+ * Exported as a pure function so the heuristic logic can be unit-tested
+ * without rendering the component. Returns a single Bloomberg-style
+ * line: "BTC: Funding hot (+0.0421%/8h) — longs paying. RSI 76 stretched."
+ *
+ * Ranking: funding extreme > RSI extreme > OI shift > spot momentum >
+ * positioning skew > ATR volatility regime. Top 2 signals by weight
+ * are joined with a single space.
+ *
+ * Falls back to "BTC: warming up — no strong signal on either side."
+ * when every threshold is below its activation level.
+ */
+export function buildAiInsight(data: ChartAiStripData): string {
+  type Bit = { text: string; weight: number };
+  const bits: Bit[] = [];
+  const f  = data.fundingRatePct;
+  const oi = data.openInterestChange24hPct;
+  const ch = data.change24hPct;
+  const r  = data.rsi;
+  const lr = data.longRatio;
+
+  // Funding regime (weight scales with magnitude)
+  if (f != null) {
+    const abs = Math.abs(f);
+    if (abs >= 0.05) {
+      bits.push({ weight: 100,
+        text: f > 0
+          ? `Funding overheated (+${f.toFixed(4)}%/8h) — longs paying a heavy carry.`
+          : `Funding deeply negative (${f.toFixed(4)}%/8h) — shorts paying out.`,
+      });
+    } else if (abs >= 0.02) {
+      bits.push({ weight: 70,
+        text: f > 0
+          ? `Funding hot (+${f.toFixed(4)}%/8h) — longs paying.`
+          : `Funding negative (${f.toFixed(4)}%/8h) — shorts paying.`,
+      });
+    } else if (abs >= 0.005) {
+      bits.push({ weight: 30, text: `Funding mild (${f >= 0 ? '+' : ''}${f.toFixed(4)}%/8h).` });
+    }
+  }
+
+  // RSI extreme
+  if (r != null) {
+    if (r >= 75) bits.push({ weight: 80, text: `RSI ${r.toFixed(1)} — overbought territory.` });
+    else if (r >= 70) bits.push({ weight: 50, text: `RSI ${r.toFixed(1)} stretched.` });
+    else if (r <= 25) bits.push({ weight: 80, text: `RSI ${r.toFixed(1)} — oversold.` });
+    else if (r <= 30) bits.push({ weight: 50, text: `RSI ${r.toFixed(1)} cooling.` });
+  }
+
+  // OI delta
+  if (oi != null) {
+    const abs = Math.abs(oi);
+    if (abs >= 5) {
+      bits.push({ weight: 65,
+        text: oi > 0
+          ? `OI +${oi.toFixed(1)}% on 24h — fresh positioning.`
+          : `OI ${oi.toFixed(1)}% on 24h — positions unwinding.`,
+      });
+    } else if (abs >= 2) {
+      bits.push({ weight: 35,
+        text: oi > 0 ? `OI +${oi.toFixed(1)}% 24h.` : `OI ${oi.toFixed(1)}% 24h.`,
+      });
+    }
+  }
+
+  // Spot momentum
+  if (ch != null) {
+    const abs = Math.abs(ch);
+    if (abs >= 5) {
+      bits.push({ weight: 60,
+        text: ch > 0 ? `Spot +${ch.toFixed(2)}% on the day.` : `Spot ${ch.toFixed(2)}% on the day.`,
+      });
+    } else if (abs >= 2) {
+      bits.push({ weight: 25,
+        text: ch > 0 ? `Spot up ${ch.toFixed(2)}%.` : `Spot down ${Math.abs(ch).toFixed(2)}%.`,
+      });
+    }
+  }
+
+  // Positioning skew (caveat / confluence)
+  if (lr != null) {
+    const lp = lr * 100;
+    if (lp >= 65) bits.push({ weight: 40, text: `Book ${lp.toFixed(0)}% long — crowded.` });
+    else if (lp <= 35) bits.push({ weight: 40, text: `Book ${(100 - lp).toFixed(0)}% short — crowded.` });
+  }
+
+  // ATR volatility regime — sits at lower weight so funding/RSI
+  // extremes always win the top slot, but surfaces "quiet" market
+  // moments when nothing else is firing.
+  if (data.atrPct != null) {
+    if (data.atrPct >= 4) {
+      bits.push({ weight: 45, text: `Volatility elevated (ATR ${data.atrPct.toFixed(2)}%).` });
+    } else if (data.atrPct <= 0.5) {
+      bits.push({ weight: 15, text: `Volatility compressed (ATR ${data.atrPct.toFixed(2)}%).` });
+    }
+  }
+
+  if (bits.length === 0) {
+    return `${data.symbol}: warming up — no strong signal on either side.`;
+  }
+  // Top 2 by weight, joined with a space, prefixed with the symbol
+  // so the line reads like a Bloomberg ticker headline.
+  const top = bits.sort((a, b) => b.weight - a.weight).slice(0, 2).map(b => b.text);
+  return `${data.symbol}: ${top.join(' ')}`;
+}
+
 export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
-  // Build a deterministic 1-2 sentence summary from the available
-  // signals. No model call — this is heuristic commentary that ranks
-  // the strongest signals (funding extreme > RSI extreme > OI shift >
-  // spot momentum > positioning skew > volatility regime) and surfaces
-  // the top 2 as one Bloomberg-style line, prefixed with the symbol
-  // for readability ("BTC: ..."). Refreshes whenever the parent
-  // re-derives ChartStatsBarData (15-30s livelock on /tickers).
-  const insight = (() => {
-    type Bit = { text: string; weight: number };
-    const bits: Bit[] = [];
-    const f  = data.fundingRatePct;
-    const oi = data.openInterestChange24hPct;
-    const ch = data.change24hPct;
-    const r  = data.rsi;
-    const lr = data.longRatio;
-
-    // Funding regime (weight scales with magnitude)
-    if (f != null) {
-      const abs = Math.abs(f);
-      if (abs >= 0.05) {
-        bits.push({ weight: 100,
-          text: f > 0
-            ? `Funding overheated (+${f.toFixed(4)}%/8h) — longs paying a heavy carry.`
-            : `Funding deeply negative (${f.toFixed(4)}%/8h) — shorts paying out.`,
-        });
-      } else if (abs >= 0.02) {
-        bits.push({ weight: 70,
-          text: f > 0
-            ? `Funding hot (+${f.toFixed(4)}%/8h) — longs paying.`
-            : `Funding negative (${f.toFixed(4)}%/8h) — shorts paying.`,
-        });
-      } else if (abs >= 0.005) {
-        bits.push({ weight: 30, text: `Funding mild (${f >= 0 ? '+' : ''}${f.toFixed(4)}%/8h).` });
-      }
-    }
-
-    // RSI extreme
-    if (r != null) {
-      if (r >= 75) bits.push({ weight: 80, text: `RSI ${r.toFixed(1)} — overbought territory.` });
-      else if (r >= 70) bits.push({ weight: 50, text: `RSI ${r.toFixed(1)} stretched.` });
-      else if (r <= 25) bits.push({ weight: 80, text: `RSI ${r.toFixed(1)} — oversold.` });
-      else if (r <= 30) bits.push({ weight: 50, text: `RSI ${r.toFixed(1)} cooling.` });
-    }
-
-    // OI delta
-    if (oi != null) {
-      const abs = Math.abs(oi);
-      if (abs >= 5) {
-        bits.push({ weight: 65,
-          text: oi > 0
-            ? `OI +${oi.toFixed(1)}% on 24h — fresh positioning.`
-            : `OI ${oi.toFixed(1)}% on 24h — positions unwinding.`,
-        });
-      } else if (abs >= 2) {
-        bits.push({ weight: 35,
-          text: oi > 0 ? `OI +${oi.toFixed(1)}% 24h.` : `OI ${oi.toFixed(1)}% 24h.`,
-        });
-      }
-    }
-
-    // Spot momentum
-    if (ch != null) {
-      const abs = Math.abs(ch);
-      if (abs >= 5) {
-        bits.push({ weight: 60,
-          text: ch > 0 ? `Spot +${ch.toFixed(2)}% on the day.` : `Spot ${ch.toFixed(2)}% on the day.`,
-        });
-      } else if (abs >= 2) {
-        bits.push({ weight: 25,
-          text: ch > 0 ? `Spot up ${ch.toFixed(2)}%.` : `Spot down ${Math.abs(ch).toFixed(2)}%.`,
-        });
-      }
-    }
-
-    // Positioning skew (caveat / confluence)
-    if (lr != null) {
-      const lp = lr * 100;
-      if (lp >= 65) bits.push({ weight: 40, text: `Book ${lp.toFixed(0)}% long — crowded.` });
-      else if (lp <= 35) bits.push({ weight: 40, text: `Book ${(100 - lp).toFixed(0)}% short — crowded.` });
-    }
-
-    // ATR volatility regime — sits at lower weight so funding/RSI
-    // extremes always win the top slot, but surfaces "quiet" market
-    // moments when nothing else is firing.
-    if (data.atrPct != null) {
-      if (data.atrPct >= 4) {
-        bits.push({ weight: 45, text: `Volatility elevated (ATR ${data.atrPct.toFixed(2)}%).` });
-      } else if (data.atrPct <= 0.5) {
-        bits.push({ weight: 15, text: `Volatility compressed (ATR ${data.atrPct.toFixed(2)}%).` });
-      }
-    }
-
-    if (bits.length === 0) {
-      return `${data.symbol}: warming up — no strong signal on either side.`;
-    }
-    // Top 2 by weight, joined with a space, prefixed with the symbol
-    // so the line reads like a Bloomberg ticker headline.
-    const top = bits.sort((a, b) => b.weight - a.weight).slice(0, 2).map(b => b.text);
-    return `${data.symbol}: ${top.join(' ')}`;
-  })();
+  // See buildAiInsight() above — extracted so the heuristic ranking
+  // logic is unit-testable without a DOM environment.
+  const insight = buildAiInsight(data);
 
   return (
     <div
