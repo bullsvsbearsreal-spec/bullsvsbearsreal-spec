@@ -47,7 +47,7 @@ type Kind = 'ath' | 'breakout' | 'breakdown' | 'strong-trend' | 'recovery';
 const KIND_META: Record<Kind, { label: string; emoji: string; color: string; desc: string }> = {
   ath:            { label: 'Near ATH',       emoji: '👑', color: 'text-hub-yellow', desc: 'Coins within 15% of their all-time high' },
   breakout:       { label: 'Breaking 24h',   emoji: '🚀', color: 'text-green-400', desc: 'Price at or near the 24h high with strong +24h move' },
-  'strong-trend': { label: 'Strong uptrend', emoji: '📈', color: 'text-green-400', desc: 'Positive across 24h, 7d, and 30d. +30d &gt; 10%' },
+  'strong-trend': { label: 'Strong uptrend', emoji: '📈', color: 'text-green-400', desc: 'Positive across 24h, 7d, and 30d. +30d > 10%' },
   breakdown:      { label: 'Breakdown',      emoji: '🩸', color: 'text-red-400',   desc: 'Big -24h move and close to all-time lows' },
   recovery:       { label: 'Recovery play',  emoji: '🌱', color: 'text-blue-400',  desc: 'Down big over 1y but positive in last 30d' },
 };
@@ -119,7 +119,7 @@ export default function BreakoutsPage() {
         </div>
 
         <div className="card-premium p-3 mb-4 text-[11px] text-neutral-500 bg-gradient-to-r from-hub-yellow/[0.03] to-transparent border-l-2 border-hub-yellow/30">
-          <span className={meta.color + ' font-bold'}>{meta.label}:</span> <span dangerouslySetInnerHTML={{ __html: meta.desc }} />
+          <span className={meta.color + ' font-bold'}>{meta.label}:</span> <span>{meta.desc}</span>
         </div>
 
         <div className="card-premium p-3 min-h-[500px]">
