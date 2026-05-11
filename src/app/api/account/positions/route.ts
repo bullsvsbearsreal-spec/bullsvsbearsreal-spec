@@ -167,6 +167,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'DB unavailable' }, { status: 503, headers: NO_STORE });
   }
 
+  try {
   const positions = await listUserPositions(session.user.id);
 
   // Pull funding context only when we have positions to look up.
@@ -346,4 +347,15 @@ export async function GET(request: NextRequest) {
     },
     { headers: NO_STORE },
   );
+  } catch (e) {
+    // Without this guard a transient DB blip or one-off query timeout
+    // bubbles up as a generic 500 with a stack trace in dev — partners
+    // and signed-in users would see an unhandled Next.js error page
+    // instead of a clean JSON response their dashboard can render.
+    console.error('account/positions error:', e instanceof Error ? e.message : e);
+    return NextResponse.json(
+      { error: 'Failed to load positions' },
+      { status: 500, headers: NO_STORE },
+    );
+  }
 }
