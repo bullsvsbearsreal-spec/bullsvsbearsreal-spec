@@ -25,6 +25,7 @@ import {
   type ChartStatsBarData, type VenueFundingRow,
 } from './components/ChartTerminalStrips';
 import { ChartPositionStrip } from './components/ChartPositionStrip';
+import { ChartSignalsStrip } from './components/ChartSignalsStrip';
 
 const TapeSidebar = dynamic(() => import('./components/TapeSidebar'), { ssr: false, loading: () => null });
 const CryptoMetricsPanel = dynamic(() => import('./components/CryptoMetricsPanel'), { ssr: false, loading: () => null });
@@ -1069,6 +1070,21 @@ function ChartPageInner() {
               symbol={displayLabel}
               open={bottomPanelOpen}
               onToggle={() => setBottomPanelOpen(v => !v)}
+            />
+          </ChartErrorBoundary>
+        )}
+        {isCrypto && statsBarData && (
+          <ChartErrorBoundary name="Signals Strip">
+            <ChartSignalsStrip
+              data={{
+                symbol: statsBarData.symbol,
+                fundingRatePct: statsBarData.fundingRatePct,
+                openInterestChange24hPct: statsBarData.openInterestChange24hPct,
+                change24hPct: statsBarData.change24hPct,
+                longRatio: statsBarData.longRatio,
+                shortRatio: statsBarData.shortRatio,
+                longShortRatio: statsBarData.longShortRatio,
+              }}
             />
           </ChartErrorBoundary>
         )}
