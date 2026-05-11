@@ -181,7 +181,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/api-docs': {
     title: 'API Documentation',
-    description: 'Crypto derivatives API. Access real-time funding rates, open interest, tickers, and prediction markets data.',
+    description: 'Crypto derivatives REST API across 32 exchanges. Real-time funding rates, open interest, liquidations, spreads, arbitrage, options, and on-chain whale data. OpenAPI 3.1 spec with full fee transparency.',
   },
   '/faq': {
     title: 'FAQ',
@@ -284,8 +284,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Compare DeFi yield opportunities across protocols and chains. Track APY, TVL, and risk metrics for lending, staking, and liquidity pools.',
   },
   '/developers': {
-    title: 'Developers',
-    description: 'InfoHub developer portal — create and manage API keys, view usage, and access real-time crypto derivatives data programmatically.',
+    title: 'Crypto Derivatives API · InfoHub',
+    description: '26 endpoints, 32 exchanges, free 100 req/min tier. Real-time funding rates, OI, liquidations, fee-aware arbitrage grading, multi-venue klines fallback, on-chain whale data. OpenAPI 3.1 spec, X-RateLimit headers, no credit card required.',
   },
   '/spreads': {
     title: 'Price Spreads',
@@ -368,8 +368,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     noIndex: true,
   },
   '/developers/docs': {
-    title: 'API Reference',
-    description: 'Complete API reference for the InfoHub v1 REST API. Endpoint documentation with request/response examples for funding rates, open interest, tickers, options, and more.',
+    title: 'API Reference · InfoHub v1',
+    description: '26 endpoints across funding, OI, tickers, klines, spreads, arbitrage, liquidations, options, on-chain whales, and more. Fee transparency with versioned schedule, aggregate=1 modes, X-RateLimit headers, OpenAPI 3.1 spec.',
   },
   '/guides/reading-open-interest': {
     title: 'How to Read Open Interest',
