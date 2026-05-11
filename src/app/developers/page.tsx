@@ -718,7 +718,7 @@ export default function DevelopersPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {ENDPOINT_GROUPS.map(g => (
-              <div key={g.label} className={`bg-white/[0.02] border ${g.border} hover:border-white/[0.1] rounded-xl p-5 transition-colors group`}>
+              <div key={g.label} className={`bg-white/[0.02] border ${g.border} hover:border-white/[0.12] hover:bg-white/[0.03] rounded-xl p-5 transition-all duration-200 group hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30`}>
                 <div className="flex items-center gap-2 mb-4">
                   <div className={`p-1.5 rounded-lg ${g.bg}`}>
                     <g.icon className={`w-4 h-4 ${g.color}`} />
@@ -726,17 +726,45 @@ export default function DevelopersPage() {
                   <h3 className="text-sm font-semibold text-white">{g.label}</h3>
                   <span className="text-[10px] text-gray-600 ml-auto bg-white/[0.04] px-2 py-0.5 rounded-full">{g.endpoints.length}</span>
                 </div>
-                <div className="space-y-2">
-                  {g.endpoints.map(([method, path, desc]) => (
-                    <Link key={path as string} href={`/developers/docs#${(path as string).split('/').pop()}`} className="flex items-start gap-2.5 py-1 -mx-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors group/ep">
-                      <span className="text-[10px] text-green-400 font-mono mt-1 shrink-0 w-7 font-bold">{method}</span>
-                      <div className="min-w-0 flex-1">
-                        <code className="text-xs text-amber-400/90 font-mono font-medium">{(path as string).replace('/api/v1/', '/')}</code>
-                        <p className="text-[11px] text-gray-500 leading-snug mt-0.5">{desc}</p>
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-gray-700 group-hover/ep:text-amber-400/60 mt-1 shrink-0 transition-colors" />
-                    </Link>
-                  ))}
+                <div className="space-y-1.5">
+                  {g.endpoints.map(([method, path, desc]) => {
+                    // Anchor = last path segment for top-level routes
+                    // (/api/v1/arbitrage → 'arbitrage'); preserve sub-paths
+                    // for nested routes (/api/v1/funding/history → 'funding-history').
+                    const pathStr = path as string;
+                    const anchorRaw = pathStr.replace('/api/v1/', '');
+                    const anchor = anchorRaw.replace(/\//g, '-');
+                    const methodStr = method as string;
+                    // Method colour matches REST convention so partners can
+                    // scan the column and find writes vs reads at a glance.
+                    const methodColor =
+                      methodStr === 'GET' ? 'text-green-400'
+                      : methodStr === 'POST' ? 'text-blue-400'
+                      : methodStr === 'DELETE' ? 'text-red-400'
+                      : methodStr === 'PUT' || methodStr === 'PATCH' ? 'text-amber-400'
+                      : 'text-gray-400';
+                    const methodBg =
+                      methodStr === 'GET' ? 'bg-green-500/10'
+                      : methodStr === 'POST' ? 'bg-blue-500/10'
+                      : methodStr === 'DELETE' ? 'bg-red-500/10'
+                      : 'bg-amber-500/10';
+                    return (
+                      <Link
+                        key={pathStr}
+                        href={`/developers/docs#${anchor}`}
+                        className="flex items-start gap-2.5 py-1 -mx-2 px-2 rounded-lg hover:bg-white/[0.04] transition-colors group/ep"
+                      >
+                        <span className={`text-[10px] font-mono shrink-0 font-bold tracking-wider px-1.5 py-0.5 rounded ${methodColor} ${methodBg}`}>
+                          {methodStr}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <code className="text-xs text-amber-400/90 font-mono font-medium">{pathStr.replace('/api/v1/', '/')}</code>
+                          <p className="text-[11px] text-gray-500 leading-snug mt-0.5">{desc}</p>
+                        </div>
+                        <ArrowRight className="w-3 h-3 text-gray-700 group-hover/ep:text-amber-400/60 mt-1 shrink-0 transition-colors" />
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ))}
