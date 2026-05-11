@@ -8,6 +8,7 @@ import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
+import { EXCHANGE_FEES } from '@/lib/constants/exchanges';
 import { RefreshCw, AlertTriangle, BarChart3, Table } from 'lucide-react';
 import { formatUSD } from '@/lib/utils/format';
 import DataFreshness from '@/components/DataFreshness';
@@ -15,7 +16,7 @@ import DataFreshness from '@/components/DataFreshness';
 const ComparisonCharts = dynamic(() => import('./components/ComparisonCharts'), { ssr: false });
 
 type ViewMode = 'chart' | 'table';
-type SortKey = 'oi' | 'funding' | 'volume' | 'symbols';
+type SortKey = 'oi' | 'funding' | 'volume' | 'symbols' | 'fees';
 
 interface OIEntry { exchange: string; symbol: string; openInterestValue?: number }
 interface FundingEntry { exchange: string; symbol: string; fundingRate: number; fundingInterval?: string }
@@ -152,6 +153,13 @@ export default function ExchangeComparisonPage() {
       case 'funding': return copy.sort((a, b) => Math.abs(b.avgFunding) - Math.abs(a.avgFunding));
       case 'volume': return copy.sort((a, b) => b.totalVolume - a.totalVolume);
       case 'symbols': return copy.sort((a, b) => b.symbolCount - a.symbolCount);
+      // Cheapest taker first — partners and cost-conscious traders want
+      // this view. Unknown venues sort to the bottom.
+      case 'fees': return copy.sort((a, b) => {
+        const ta = EXCHANGE_FEES[a.exchange]?.taker ?? Infinity;
+        const tb = EXCHANGE_FEES[b.exchange]?.taker ?? Infinity;
+        return ta - tb;
+      });
       default: return copy;
     }
   }, [exchangeStats, sortKey]);
@@ -299,6 +307,16 @@ export default function ExchangeComparisonPage() {
                         <th className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => setSortKey('symbols')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSortKey('symbols'); } }}>
                           Symbols {sortKey === 'symbols' && '↓'}
                         </th>
+                        <th
+                          className="text-right px-4 py-2.5 text-neutral-500 font-medium cursor-pointer hover:text-white"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setSortKey('fees')}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSortKey('fees'); } }}
+                          title="Taker / Maker (% per trade). Click to sort cheapest first."
+                        >
+                          Fees (T / M) {sortKey === 'fees' && '↑'}
+                        </th>
                         <th className="px-4 py-2.5 text-neutral-500 font-medium">OI Share</th>
                       </tr>
                     </thead>
@@ -323,6 +341,22 @@ export default function ExchangeComparisonPage() {
                               {formatRate(s.avgFunding)}
                             </td>
                             <td className="text-right px-4 py-2.5 text-white font-mono">{s.symbolCount}</td>
+                            <td className="text-right px-4 py-2.5 font-mono">
+                              {(() => {
+                                const f = EXCHANGE_FEES[s.exchange];
+                                if (!f) return <span className="text-neutral-600">—</span>;
+                                const taker = `${f.taker.toFixed(3)}%`;
+                                const maker = `${f.maker >= 0 ? '' : ''}${f.maker.toFixed(3)}%`;
+                                const isFree = f.taker <= 0;
+                                return (
+                                  <>
+                                    <span className={isFree ? 'text-green-400' : 'text-white'}>{taker}</span>
+                                    <span className="text-neutral-600 mx-1">/</span>
+                                    <span className={f.maker < 0 ? 'text-green-400' : 'text-neutral-400'}>{maker}</span>
+                                  </>
+                                );
+                              })()}
+                            </td>
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 h-2 rounded-full bg-white/[0.04] overflow-hidden">
