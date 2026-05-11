@@ -374,10 +374,15 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
 
             {/* Spreads */}
             <Section id="spreads" title="Spreads" method="GET" path="/api/v1/spreads">
-              <p className="text-gray-400 mb-4">Cross-exchange price spreads ranked by opportunity size.</p>
+              <p className="text-gray-400 mb-4">
+                Cross-exchange price spreads ranked by opportunity size. Returns
+                both gross spread and net spread (after round-trip taker fees on
+                both legs), plus per-side maker + taker so callers can recompute
+                under their own fill model.
+              </p>
               <ParamTable params={[
                 ['symbols', 'string', 'all', 'Comma-separated symbols'],
-                ['minSpread', 'number', '0', 'Minimum spread % to include'],
+                ['minSpread', 'number', '0', 'Minimum GROSS spread % to include'],
                 ['limit', 'number', '50', 'Max results (1 to 200)'],
               ]} />
               <CodeBlock title="Response">{`{
@@ -387,14 +392,37 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
       "symbol": "BTC",
       "spreadPct": 0.0312,
       "spreadUsd": 26.30,
+      "netSpreadPct": -0.0688,
       "highExchange": "Bitfinex",
       "highPrice": 84276.30,
       "lowExchange": "Binance",
       "lowPrice": 84250.00,
-      "exchangeCount": 18
+      "exchangeCount": 18,
+      "fees": {
+        "roundTrip": 0.1000,
+        "highExchangeTaker": 0.0000,
+        "highExchangeMaker": 0.0000,
+        "lowExchangeTaker":  0.0500,
+        "lowExchangeMaker":  0.0200
+      }
     }
-  ]
+  ],
+  "meta": {
+    "feeModel": {
+      "version": "v1.0-2026-02-01",
+      "updatedAt": "2026-02-01T00:00:00Z",
+      "unit": "percent",
+      "schedule": { /* full venue table */ }
+    }
+  }
 }`}</CodeBlock>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400">
+                Note: spreads can have NEGATIVE <code className="text-amber-400">netSpreadPct</code> when
+                fees outweigh the price difference — that's the signal that the
+                opportunity isn't actionable on taker liquidity. Bump-detect on
+                <code className="text-amber-400 mx-1">meta.feeModel.version</code>
+                to know when to invalidate cached calcs.
+              </div>
             </Section>
 
             {/* Arbitrage */}
@@ -430,7 +458,15 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
       "netSpread8h": 0.2832,
       "annualizedPct": 310.1,
       "dailyPnlPer10k": 8.50,
-      "fees": { "roundTrip": 0.2200 },
+      "fees": {
+        "roundTrip": 0.2200,
+        "shortExchangeTaker": 0.0500,
+        "shortExchangeMaker": 0.0200,
+        "longExchangeTaker":  0.0600,
+        "longExchangeMaker":  0.0200,
+        "shortExchangeFee":   0.0500,
+        "longExchangeFee":    0.0600
+      },
       "oi": {
         "short": 500000,
         "long": 120000,
@@ -441,16 +477,48 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
       "stability": "volatile",
       "exchangeCount": 5,
       "allExchanges": [
-        { "exchange": "Kraken", "rate8h": 0.5032, "type": "cex" }
+        {
+          "exchange": "Kraken",
+          "rate8h": 0.5032,
+          "type": "cex",
+          "makerFee": 0.0200,
+          "takerFee": 0.0500
+        }
       ]
     }
   ],
   "meta": {
     "totalPairs": 657,
     "filtered": 50,
-    "grades": { "A": 0, "B": 1, "C": 120, "D": 536 }
+    "grades": { "A": 0, "B": 1, "C": 120, "D": 536 },
+    "feeModel": {
+      "version": "v1.0-2026-02-01",
+      "updatedAt": "2026-02-01T00:00:00Z",
+      "unit": "percent",
+      "schedule": {
+        "Binance":     { "maker": 0.0200, "taker": 0.0500 },
+        "Hyperliquid": { "maker": 0.0150, "taker": 0.0450 }
+      }
+    }
   }
 }`}</CodeBlock>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400 mb-4">
+                <div className="text-white font-semibold text-sm mb-2">Fee model</div>
+                <p className="mb-2">
+                  All fee values are percent-per-trade (e.g. <code className="text-amber-400">0.05</code> means <code className="text-amber-400">0.05%</code>).
+                  Maker may be negative on venues that rebate makers.
+                </p>
+                <p className="mb-2">
+                  <code className="text-amber-400">netSpread8h</code> = <code className="text-amber-400">grossSpread8h - roundTrip</code>, where round-trip assumes
+                  taker fills (open + close on each side, so taker × 4).
+                </p>
+                <p>
+                  Use <code className="text-amber-400">meta.feeModel.version</code> to detect schedule bumps —
+                  it changes whenever any <code className="text-amber-400">EXCHANGE_FEES</code> value changes. The
+                  same identifier is on the <code className="text-amber-400">X-Fee-Model-Version</code> response
+                  header for cheap HEAD checks.
+                </p>
+              </div>
               <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400">
                 <div className="text-white font-semibold text-sm mb-2">Grade system</div>
                 <div className="space-y-1.5">
