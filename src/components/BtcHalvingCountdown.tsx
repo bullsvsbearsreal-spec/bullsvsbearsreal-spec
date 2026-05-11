@@ -17,20 +17,29 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Bitcoin, ArrowRight } from 'lucide-react';
 
-const NEXT_HALVING_ISO = '2028-04-17T00:00:00Z';
-const LAST_HALVING_ISO = '2024-04-19T00:00:00Z';
+export const NEXT_HALVING_ISO = '2028-04-17T00:00:00Z';
+export const LAST_HALVING_ISO = '2024-04-19T00:00:00Z';
 const NEXT_HALVING_TS = Date.parse(NEXT_HALVING_ISO);
 const LAST_HALVING_TS = Date.parse(LAST_HALVING_ISO);
 const CYCLE_MS = NEXT_HALVING_TS - LAST_HALVING_TS;
 
-/** Format remaining ms as {days, hours, minutes, seconds}. */
-function partitionMs(ms: number): { d: number; h: number; m: number; s: number } {
+/** Format remaining ms as {days, hours, minutes, seconds}.
+ *  Exported for testability — the component math has to handle the
+ *  past-the-target case (clamp to 0) without going negative. */
+export function partitionMs(ms: number): { d: number; h: number; m: number; s: number } {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const d = Math.floor(totalSec / 86400);
   const h = Math.floor((totalSec % 86400) / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
   return { d, h, m, s };
+}
+
+/** Cycle progress 0..1 for a given `now` timestamp. Useful for the
+ *  progress bar — and easy to misuse without bounds. Exported so the
+ *  test can lock the clamp behavior. */
+export function cycleProgress(now: number): number {
+  return Math.min(1, Math.max(0, (now - LAST_HALVING_TS) / CYCLE_MS));
 }
 
 export function BtcHalvingCountdown({ compact = false }: { compact?: boolean }) {
@@ -44,7 +53,7 @@ export function BtcHalvingCountdown({ compact = false }: { compact?: boolean }) 
   const remaining = NEXT_HALVING_TS - now;
   const { d, h, m, s } = partitionMs(remaining);
   // Cycle progress 0..1 — how far through the current 4-year cycle we are.
-  const progress = Math.min(1, Math.max(0, (now - LAST_HALVING_TS) / CYCLE_MS));
+  const progress = cycleProgress(now);
 
   if (compact) {
     return (
