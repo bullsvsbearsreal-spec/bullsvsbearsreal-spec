@@ -42,7 +42,35 @@ function Section({ id, title, method, path, children }: {
   );
 }
 
+/** Render JSON with cheap syntax highlighting: keys (purple),
+ *  string values (green), numbers (amber), booleans (blue), null (gray).
+ *  Done with regex replacements + dangerouslySetInnerHTML — no parser
+ *  dependency, no AST tree, no performance cost on render. */
+function highlightJson(src: string): string {
+  // Escape any HTML in the source first so user-supplied content
+  // can't inject markup. None of our examples have HTML in them,
+  // but the rule of zero exceptions is cheaper than the bug class.
+  const esc = src
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return esc
+    // "key":
+    .replace(/&quot;([^&]+?)&quot;(?=\s*:)/g, '<span style="color:#c084fc">&quot;$1&quot;</span>')
+    // : "value"
+    .replace(/(:\s*)&quot;([^&]*?)&quot;/g, '$1<span style="color:#86efac">&quot;$2&quot;</span>')
+    // : number
+    .replace(/(:\s*)(-?\d+(?:\.\d+)?)\b/g, '$1<span style="color:#fbbf24">$2</span>')
+    // : true|false|null
+    .replace(/(:\s*)(true|false)\b/g, '$1<span style="color:#60a5fa">$2</span>')
+    .replace(/(:\s*)(null)\b/g, '$1<span style="color:#6b7280">$2</span>');
+}
+
 function CodeBlock({ children, title, lang }: { children: string; title?: string; lang?: string }) {
+  // Auto-detect JSON: contents start with { or [ after trim → highlight.
+  // Anything else (bash, js, etc.) renders as plain mono text.
+  const trimmed = children.trim();
+  const isJson = trimmed.startsWith('{') || trimmed.startsWith('[');
   return (
     <div className="mb-5 relative">
       {title && <div className="text-[11px] text-gray-500 uppercase tracking-wider font-medium mb-1.5">{title}</div>}
@@ -51,8 +79,10 @@ function CodeBlock({ children, title, lang }: { children: string; title?: string
         {lang && (
           <span className="absolute top-2.5 left-3 text-[9px] text-gray-600 uppercase tracking-wider font-medium">{lang}</span>
         )}
-        <pre className={`bg-[#0a0a0a] border border-white/[0.06] rounded-xl p-4 pr-12 ${lang ? 'pt-7' : ''} text-[13px] text-green-400/90 font-mono overflow-x-auto whitespace-pre leading-relaxed`}>
-          {children}
+        <pre className={`bg-[#0a0a0a] border border-white/[0.06] rounded-xl p-4 pr-12 ${lang ? 'pt-7' : ''} text-[13px] ${isJson ? 'text-gray-300' : 'text-green-400/90'} font-mono overflow-x-auto whitespace-pre leading-relaxed`}>
+          {isJson
+            ? <span dangerouslySetInnerHTML={{ __html: highlightJson(children) }} />
+            : children}
         </pre>
       </div>
     </div>
