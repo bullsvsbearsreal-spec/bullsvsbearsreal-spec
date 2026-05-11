@@ -17,6 +17,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
+import {
+  fmtPrice, fmtSize, fmtUsd,
+  matchesSymbol,
+  liquidationDistance,
+  pnlPercentage,
+} from './positionHelpers';
 
 interface ApiPosition {
   id: number;
@@ -34,31 +40,6 @@ interface ApiPosition {
 
 interface ApiResponse {
   positions: ApiPosition[];
-}
-
-function fmtPrice(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return '—';
-  if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (Math.abs(n) >= 1) return n.toFixed(2);
-  if (Math.abs(n) >= 0.01) return n.toFixed(4);
-  return n.toFixed(6);
-}
-
-function fmtSize(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  if (Math.abs(n) >= 1) return n.toFixed(3);
-  return n.toFixed(6);
-}
-
-function fmtUsd(n: number | null | undefined, opts: { sign?: boolean } = {}): string {
-  if (n == null || !Number.isFinite(n)) return '—';
-  const sign = opts.sign && n > 0 ? '+' : '';
-  if (Math.abs(n) >= 1e9) return `${sign}$${(n / 1e9).toFixed(2)}B`;
-  if (Math.abs(n) >= 1e6) return `${sign}$${(n / 1e6).toFixed(2)}M`;
-  if (Math.abs(n) >= 1e3) return `${sign}$${(n / 1e3).toFixed(1)}K`;
-  return `${sign}$${n.toFixed(2)}`;
 }
 
 export function ChartPositionStrip({ symbol }: { symbol: string }) {
@@ -88,11 +69,7 @@ export function ChartPositionStrip({ symbol }: { symbol: string }) {
 
   // Match positions by base symbol (strip USDT/USD/PERP suffixes in either direction).
   // A user viewing "BTC" should match positions stored as "BTC", "BTCUSDT", "BTC-PERP", etc.
-  const target = symbol.toUpperCase().replace(/USDT$|USD$|-PERP$|PERP$/i, '');
-  const matched = positions.filter(p => {
-    const ps = p.symbol.toUpperCase().replace(/USDT$|USD$|-PERP$|PERP$/i, '');
-    return ps === target;
-  });
+  const matched = positions.filter(p => matchesSymbol(p.symbol, symbol));
 
   if (matched.length === 0) return null;
 
@@ -117,9 +94,7 @@ function PositionRow({ p }: { p: ApiPosition }) {
   const isLong = p.side === 'long';
   const sideColor = isLong ? 'var(--pump-mild)' : 'var(--rekt-mild)';
   const pnl = p.unrealizedPnl;
-  const pnlPct = (pnl != null && p.positionValue != null && p.positionValue !== 0)
-    ? (pnl / Math.abs(p.positionValue)) * 100
-    : null;
+  const pnlPct = pnlPercentage(pnl, p.positionValue);
   const pnlColor = (pnl ?? 0) >= 0 ? 'var(--pump-mild)' : 'var(--rekt-mild)';
 
   return (
@@ -174,14 +149,14 @@ function PositionRow({ p }: { p: ApiPosition }) {
           {fmtPrice(p.liquidationPrice)}
         </div>
         {(() => {
-          if (p.liquidationPrice == null || p.markPrice == null || p.markPrice <= 0) return null;
-          const distPct = Math.abs(p.markPrice - p.liquidationPrice) / p.markPrice * 100;
-          const distColor = distPct < 2 ? 'var(--rekt-hot)'
-            : distPct < 5 ? '#f5a623'
+          const liq = liquidationDistance(p.markPrice, p.liquidationPrice);
+          if (liq == null) return null;
+          const distColor = liq.severity === 'danger' ? 'var(--rekt-hot)'
+            : liq.severity === 'caution' ? '#f5a623'
             : 'var(--pump-mild)';
           return (
             <div style={{ fontSize: 10, color: distColor }}>
-              {distPct.toFixed(1)}% away
+              {liq.pct.toFixed(1)}% away
             </div>
           );
         })()}
