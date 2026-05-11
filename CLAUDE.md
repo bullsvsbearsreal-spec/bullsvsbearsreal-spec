@@ -128,6 +128,63 @@ For per-symbol routes, use `Map<symbol, entry>` instead of a single slot —
 otherwise switching symbols trashes the cache (the original liquidation-map
 bug, which produced 8s loads on every BTC↔ETH↔SOL toggle).
 
+### /chart — terminal-style multi-band trading view (May 2026)
+
+The `/chart` page is a TradingView Advanced Chart widget surrounded by
+6 horizontal info-bands and (when the user is signed in) an open-position
+strip. Every band is data-driven from existing aggregator endpoints —
+no new server routes were added.
+
+Layout (top → bottom inside `#main-content`):
+
+| Band | File | Source |
+| --- | --- | --- |
+| Top control bar | `chart/page.tsx` | local state |
+| Quick symbol bar | `chart/page.tsx` | favourites + recents (localStorage) |
+| `<ChartStatsBar>` | `chart/components/ChartTerminalStrips.tsx` | tickers + funding + OI + L/S + klines |
+| `<ChartAiStrip>` | same file | derived signals (no model call) |
+| `<ChartPositionStrip>` | `chart/components/ChartPositionStrip.tsx` | `/api/account/positions` |
+| TradingView iframe | `chart/page.tsx::TradingViewChart` | TradingView |
+| `<CryptoMetricsPanel>` | `chart/components/CryptoMetricsPanel.tsx` | tickers + funding + OI + history |
+| `<ChartSignalsStrip>` | `chart/components/ChartSignalsStrip.tsx` | derived from the same data |
+| `<ChartVenueFundingStrip>` | `chart/components/ChartTerminalStrips.tsx` | funding per-venue + OI per-venue |
+
+Data hooks (all in `hooks/useSWRApi.ts`, all keyed so multiple bands
+share one in-flight fetch):
+
+- `useTickers()` → `/api/tickers` (60s refresh, dedup-by-exchange)
+- `useFundingRates('crypto')` → `/api/funding?assetClass=crypto` (30s)
+- `useOpenInterest()` → `/api/openinterest` (60s)
+- `useOIChanges()` → `/api/openinterest?changes=1` (60s, top-20 only)
+- `useLongShort('BTCUSDT')` → `/api/longshort` (30s, Binance / OKX fallback)
+
+Client-side TA (`chart/components/useChartIndicators.ts`):
+
+- Direct fetch to `https://fapi.binance.com/fapi/v1/klines` (CORS-friendly),
+  fallback to `fapi.binance.me` for geo-blocked clients
+- Maps TradingView interval string ('60', 'D', etc.) → Binance interval
+- Computes Wilder's RSI(14) + ATR(14) on the last 100 bars
+- Returns ATR both absolute and as % of last close (scale-free, comparable
+  across BTC vs PEPE)
+- 60s refresh — graceful no-op for non-Binance symbols / geo-blocks
+- Pure functions covered by 9 unit tests in `__tests__/useChartIndicators.test.ts`
+
+Key gotchas:
+
+- `useTickerStats` (the legacy per-symbol hook still in `chart/page.tsx`)
+  picks ONE ticker entry by max price — its `volume24h` is **per-exchange**
+  and inflates by ~50× when stacked across venues. ChartStatsBar uses the
+  `useTickers()` aggregate instead (deduped by exchange, $100B sanity cap).
+- The non-crypto asset tabs (stocks/forex/commodities/indices) skip all
+  crypto-only strips and fall back to the simpler inline price strip in
+  the top control bar (see the `!isCrypto` branch).
+- `#main-content` uses `overflowY: auto` + a `minHeight: 360` chart
+  container so the bottom bands stay reachable on small (≤600px) viewports
+  while the TradingView candles stay usable.
+- Signal copy in `<ChartAiStrip>` is heuristic + deterministic (top-2
+  ranked signals joined as one sentence). No actual model call — real
+  ChatGPT/Claude integration is a follow-up.
+
 ### Wallet Watch — multi-venue position alerter (May 2026)
 
 `/watch` lets users subscribe to any HL or gTrade wallet and get
