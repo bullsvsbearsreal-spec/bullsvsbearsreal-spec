@@ -42,7 +42,7 @@ import {
 // Flip to false to re-enable the real command center. The original
 // code below stays in place so we can light it back up instantly
 // without re-implementing or copying back from git history.
-const SUSPENDED = true;
+const SUSPENDED = false;
 
 /* ────────────────────────────────────────────────────────────────── */
 /*  Types — the shapes we read from the existing APIs                 */

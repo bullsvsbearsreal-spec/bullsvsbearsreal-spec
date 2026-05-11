@@ -11,7 +11,7 @@ import { Mail, Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle } f
 // ── Suspension flag ──────────────────────────────────────────────────
 // Flip to false to re-enable signups. The original signup form below
 // stays in place so we can light it back up instantly.
-const SUSPENDED = true;
+const SUSPENDED = false;
 
 export default function SignupPage() {
   if (SUSPENDED) {

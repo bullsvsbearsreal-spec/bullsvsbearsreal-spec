@@ -197,8 +197,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/profile',           label: 'Profile',        color: MUTE, icon: I.user },
     { href: '/settings',          label: 'Settings',       color: MUTE, icon: I.settings },
     { href: '/login',             label: 'Sign In',        color: MUTE, icon: I.user },
-    // Signups paused — link hidden from sidebar. Re-add when SUSPENDED flag flips off.
-    // { href: '/signup',            label: 'Sign Up',        color: MUTE, icon: I.user },
+    { href: '/signup',            label: 'Sign Up',        color: MUTE, icon: I.user },
     { href: '/referrals',         label: 'Referrals',      color: ACC,  icon: I.gift },
     { href: '/donate',            label: 'Donate',         color: ACC,  icon: I.heart },
     { href: '/points',            label: 'Points',         color: ACC,  icon: I.star },

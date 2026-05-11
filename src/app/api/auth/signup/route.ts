@@ -13,7 +13,7 @@ import { signupLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit'
 // the page hidden behind a maintenance notice, callers shouldn't be
 // hitting this endpoint at all, but lock it down server-side as a
 // belt-and-braces guard against direct curl / form-replay attacks.
-const SIGNUPS_SUSPENDED = true;
+const SIGNUPS_SUSPENDED = false;
 
 let _resend: Resend | null = null;
 function getResend(): Resend | null {
