@@ -115,6 +115,7 @@ const NAV_SECTIONS = [
     { id: 'authentication', label: 'Authentication' },
     { id: 'rate-limits', label: 'Rate Limits' },
     { id: 'response-format', label: 'Response Format' },
+    { id: 'fee-model', label: 'Fee Model' },
   ]},
   { group: 'Market Data', items: [
     { id: 'funding', label: 'Funding Rates' },
@@ -290,6 +291,64 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
               <p className="text-gray-500 text-[13px]">
                 The <code className="text-amber-400">meta</code> field is optional and varies by endpoint. It may include counts, timestamps, or filter summaries.
               </p>
+            </Section>
+
+            {/* Fee Model */}
+            <Section id="fee-model" title="Fee Model">
+              <p className="text-gray-400 mb-4">
+                Fee-sensitive endpoints (<code className="text-amber-400">/arbitrage</code>,
+                <code className="text-amber-400 mx-1">/spreads</code>,
+                <code className="text-amber-400">/funding-arb</code>) expose the fee schedule
+                they used to compute net P&amp;L so callers can verify the
+                assumption or recompute under their own fill model.
+              </p>
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[13px] text-gray-400 mb-4 space-y-2">
+                <p><strong className="text-white">Unit.</strong> All fee values are percent-per-trade.
+                  <code className="text-amber-400 mx-1">0.05</code> means <code className="text-amber-400">0.05%</code>,
+                  not <code className="text-amber-400">5%</code>. Maker fees may be negative on venues that rebate makers.</p>
+                <p><strong className="text-white">Version bumps.</strong> The
+                  <code className="text-amber-400 mx-1">meta.feeModel.version</code> string changes
+                  whenever any value in our internal fee table changes — including a single venue's taker rate.
+                  Format is <code className="text-amber-400">vMAJOR.MINOR-YYYY-MM-DD</code>.</p>
+                <p><strong className="text-white">Headers.</strong> The same identifiers are mirrored on
+                  <code className="text-amber-400 mx-1">X-Fee-Model-Version</code> and
+                  <code className="text-amber-400">X-Fee-Model-Updated-At</code> response headers,
+                  so a cheap HEAD request is enough to detect a bump.</p>
+                <p><strong className="text-white">Where it appears.</strong> Same shape on every fee-sensitive
+                  endpoint: <code className="text-amber-400">meta.feeModel = {`{ version, updatedAt, unit, schedule }`}</code>.
+                  <code className="text-amber-400 mx-1">/status</code> and
+                  <code className="text-amber-400">/exchanges</code> emit just the identifiers (no schedule)
+                  so you can probe cheaply.</p>
+              </div>
+              <CodeBlock title="meta.feeModel shape">{`{
+  "version": "v1.0-2026-02-01",
+  "updatedAt": "2026-02-01T00:00:00Z",
+  "unit": "percent",
+  "schedule": {
+    "Binance":      { "maker": 0.0200, "taker": 0.0500 },
+    "Bybit":        { "maker": 0.0200, "taker": 0.0550 },
+    "Hyperliquid":  { "maker": 0.0150, "taker": 0.0450 },
+    "Nado":         { "maker": -0.0080, "taker": 0.0150 }
+  }
+}`}</CodeBlock>
+              <CodeBlock title="Detect a fee bump (curl)" lang="bash">{`# Lightweight HEAD probe — no body, just the version header
+curl -sI -H "Authorization: Bearer ih_xxx" \\
+  https://info-hub.io/api/v1/status \\
+  | grep -i "x-fee-model-version"
+
+# Output:
+# X-Fee-Model-Version: v1.0-2026-02-01
+# X-Fee-Model-Updated-At: 2026-02-01T00:00:00Z`}</CodeBlock>
+              <CodeBlock title="Recompute net under maker-only fills (JS)" lang="js">{`// Use the per-side fees in each arbitrage row to back out a maker-only net
+const row = data[0];
+const makerRoundTrip =
+  (row.fees.shortExchangeMaker ?? row.fees.shortExchangeTaker) +
+  (row.fees.longExchangeMaker  ?? row.fees.longExchangeTaker);
+// Round-trip = open + close on each side = 4 fills total
+const netSpreadMakerOnly = row.grossSpread8h - makerRoundTrip * 2;
+
+// Cache key for downstream models — refresh when this changes
+const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
             </Section>
 
             {/* Funding Rates */}
