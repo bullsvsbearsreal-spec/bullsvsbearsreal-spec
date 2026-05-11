@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
+import {
+  FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT, getFeeScheduleSnapshot,
+} from '@/lib/constants/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -13,6 +16,16 @@ export const dynamic = 'force-dynamic';
  * funding rate (LONG to collect/pay-less) and the venue with the highest
  * (SHORT to collect), plus the 8h-normalised spread and annualised yield.
  *
+ * Returns GROSS spreads — no fees are deducted. The `annualized` field
+ * is what a free-trade strategy would earn. Use /api/v1/arbitrage for
+ * the fee-aware version that bakes in round-trip taker fees and grades
+ * opportunities A-D.
+ *
+ * For callers who want to do their own fee math: the response now
+ * includes `meta.feeModel` (same shape as on /arbitrage and /spreads)
+ * with per-venue maker + taker fees. The `X-Fee-Model-Version` header
+ * is mirrored too so cache invalidation tracks one source of truth.
+ *
  * Query params:
  *   ?min_venues=3       2..40, only include symbols with >= N venues (default 3)
  *   ?min_spread=0.01    minimum spread (% per 8h) to include (default 0.01 = 1bp)
@@ -24,7 +37,7 @@ export const dynamic = 'force-dynamic';
  *     success: true,
  *     data: [{ symbol, venueCount, min, max, spread8h, annualized, venues, ... }],
  *     summary: { totalSymbols, displayed, topAnnualized, topSymbol, medianSpread, dexCrossSymbols },
- *     meta: { timestamp, minVenues, minSpread, sort, limit }
+ *     meta: { timestamp, minVenues, minSpread, sort, limit, feeModel }
  *   }
  *
  * Auth: Bearer ih_xxx (free tier OK).
@@ -53,15 +66,24 @@ export async function GET(request: NextRequest) {
       );
     }
     const upstream = await res.json();
-    // Wrap in the v1 response envelope.
+    // Wrap in the v1 response envelope. Annotate meta with the same
+    // feeModel surface as /arbitrage + /spreads so partners can drop
+    // their gross spreads into a fee-aware calc without round-tripping
+    // to a second endpoint just for the fee table.
     return NextResponse.json({
       success: true,
       data: upstream.data ?? [],
       summary: upstream.summary ?? null,
-      meta: upstream.meta ?? { timestamp: Date.now() },
+      meta: {
+        ...(upstream.meta ?? { timestamp: Date.now() }),
+        feeModel: getFeeScheduleSnapshot(),
+        scope: 'gross', // not net of fees — see /api/v1/arbitrage for net
+      },
     }, {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180',
+        'X-Fee-Model-Version': FEE_MODEL_VERSION,
+        'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
         ...auth.headers,
       },
     });
