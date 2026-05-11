@@ -341,13 +341,31 @@ export default function DocsPage() {
             </div>
 
             {/* Mobile TOC */}
+            {/* Mobile TOC — grouped like the desktop sidebar so partners
+                on a phone don't have to scroll a flat list of 30 items.
+                Each group is a collapsed-style header + the items below
+                it in a 2-col grid. */}
             <div className="lg:hidden bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 mb-10">
-              <div className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">On this page</div>
-              <div className="grid grid-cols-2 gap-1">
-                {NAV_SECTIONS.flatMap(g => g.items).map(item => (
-                  <a key={item.id} href={`#${item.id}`} className="text-[13px] text-gray-400 hover:text-amber-400 py-1 transition-colors">
-                    {item.label}
-                  </a>
+              <div className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-4">On this page</div>
+              <div className="space-y-4">
+                {NAV_SECTIONS.map(g => (
+                  <div key={g.group}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">{g.group}</div>
+                      <span className="text-[9px] text-gray-700 font-mono tabular-nums">{g.items.length}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {g.items.map(item => (
+                        <a
+                          key={item.id}
+                          href={`#${item.id}`}
+                          className="text-[13px] text-gray-400 hover:text-amber-400 py-1 transition-colors"
+                        >
+                          {item.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
