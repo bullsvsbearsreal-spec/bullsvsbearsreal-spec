@@ -128,6 +128,58 @@ For per-symbol routes, use `Map<symbol, entry>` instead of a single slot —
 otherwise switching symbols trashes the cache (the original liquidation-map
 bug, which produced 8s loads on every BTC↔ETH↔SOL toggle).
 
+### Fee Model surface on v1 API (May 2026)
+
+Every fee-sensitive v1 endpoint exposes the canonical fee schedule so
+partners can verify the assumption baked into net-PnL calculations or
+recompute under their own fill model. Lives in
+`src/lib/constants/exchanges.ts`:
+
+```ts
+export const FEE_MODEL_VERSION = 'v1.0-2026-02-01';
+export const FEE_MODEL_UPDATED_AT = '2026-02-01T00:00:00Z';
+export function getFeeScheduleSnapshot(): { version, updatedAt, unit, schedule };
+```
+
+**Bumping discipline.** Any edit to `EXCHANGE_FEES` MUST bump the minor
+digit of `FEE_MODEL_VERSION` and update `FEE_MODEL_UPDATED_AT` to match.
+Test `src/lib/constants/__tests__/exchanges-fees.test.ts` locks the
+contract.
+
+**Where it surfaces:**
+
+| Endpoint | meta.feeModel | X-Fee-Model-Version | Auth |
+| --- | --- | --- | --- |
+| `/api/v1/arbitrage` | full schedule + per-row maker/taker | ✅ | required |
+| `/api/v1/spreads` | full schedule + per-row maker/taker | ✅ | required |
+| `/api/v1/funding-arb` | full schedule (scope='gross') | ✅ | required |
+| `/api/v1/exchanges` | identifiers only | ✅ | required |
+| `/api/v1/status` | identifiers + surfacedOn[] | ✅ | none |
+| `/api/v1/openapi` | (header only) | ✅ | none |
+| `/api/v1/*` 401 path | (header only) | ✅ | n/a |
+| `/api/execution-costs` | (header only) | ✅ | none |
+
+All percent-per-trade. Maker may be negative (e.g. Nado, Deribit, BitMEX,
+Hyperliquid VIP tiers — see `EXCHANGE_FEES` for which). Bump-detect via
+`meta.feeModel.version` or `X-Fee-Model-Version` (cheap HEAD on /status
+or any v1 endpoint's 401 path).
+
+### Aggregate / summary modes on v1 endpoints
+
+Most market-data v1 endpoints support a flag to switch from per-venue
+rows to one-row-per-symbol roll-ups:
+
+| Endpoint | Flag | Aggregate row shape |
+| --- | --- | --- |
+| `/api/v1/funding` | `?aggregate=1` | `{ symbol, venueCount, avgRate8h, minRate8h, minExchange, maxRate8h, maxExchange, spread8h }` (sorted by spread desc) |
+| `/api/v1/openinterest` | `?aggregate=1` | `{ symbol, openInterestUsd, venueCount, venues[], changes? }` |
+| `/api/v1/tickers` | `?aggregate=1` | `{ symbol, lastPrice (median), high24h (max), low24h (min), volume24h (dedup-summed), priceChange24hPct (mean), venueCount }` |
+| `/api/v1/liquidations` | `?summary=1` (+ symbol required) | `{ symbol, hours, totalCount, totalVolumeUsd, longVolumeUsd, shortVolumeUsd, longShare, largest? }` |
+| `/api/v1/openinterest` | `?changes=1` | adds `{ pct1h, pct4h, pct24h }` to each row |
+
+`meta.mode` reports which shape the caller is getting ('per-venue' /
+'aggregate' / 'feed' / 'summary') so consumers can sanity-check.
+
 ### /chart — terminal-style multi-band trading view (May 2026)
 
 The `/chart` page is a TradingView Advanced Chart widget surrounded by
