@@ -389,12 +389,20 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
 
             {/* Open Interest */}
             <Section id="openinterest" title="Open Interest" method="GET" path="/api/v1/openinterest">
-              <p className="text-gray-400 mb-4">Open interest data across exchanges in USD.</p>
+              <p className="text-gray-400 mb-4">
+                Open interest across exchanges in USD. Per-venue rows by default;
+                pass <code className="text-amber-400">aggregate=1</code> to get one
+                row per symbol (with the per-venue breakdown nested inside), or
+                <code className="text-amber-400 mx-1">changes=1</code> to include
+                1h / 4h / 24h % deltas computed from server-side snapshots.
+              </p>
               <ParamTable params={[
                 ['symbols', 'string', 'all', 'Comma-separated symbols'],
                 ['exchanges', 'string', 'all', 'Comma-separated exchanges'],
+                ['aggregate', 'number', '0', '1 = one row per symbol with summed openInterestUsd'],
+                ['changes', 'number', '0', '1 = include {pct1h, pct4h, pct24h} on each row'],
               ]} />
-              <CodeBlock title="Response">{`{
+              <CodeBlock title="Response (per-venue, default)">{`{
   "success": true,
   "data": [
     {
@@ -405,18 +413,41 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
       "timestamp": 1713181800000
     }
   ],
-  "meta": { "timestamp": 1713181800000, "entries": 420, "exchanges": 26 }
+  "meta": { "timestamp": 1713181800000, "entries": 420, "exchanges": 26, "mode": "per-venue" }
+}`}</CodeBlock>
+              <CodeBlock title="Response (aggregate=1)">{`{
+  "success": true,
+  "data": [
+    {
+      "symbol": "BTC",
+      "openInterestUsd": 40250000000,
+      "venueCount": 14,
+      "venues": [
+        { "exchange": "Binance", "openInterestUsd": 7870000000 },
+        { "exchange": "Bybit",   "openInterestUsd": 4280000000 }
+      ],
+      "timestamp": 1713181800000,
+      "changes": { "pct1h": 0.42, "pct4h": -1.83, "pct24h": 5.21 }
+    }
+  ],
+  "meta": { "timestamp": 1713181800000, "entries": 230, "mode": "aggregate", "changesAvailable": true }
 }`}</CodeBlock>
             </Section>
 
             {/* Tickers */}
             <Section id="tickers" title="Tickers" method="GET" path="/api/v1/tickers">
-              <p className="text-gray-400 mb-4">Real-time price and volume data across exchanges.</p>
+              <p className="text-gray-400 mb-4">
+                Real-time price and volume data across exchanges. Per-venue rows by
+                default; pass <code className="text-amber-400">aggregate=1</code> to
+                get one row per symbol with median price, max H, min L, and cross-venue
+                deduped 24h volume ($100B per-entry sanity cap to filter mis-reported figures).
+              </p>
               <ParamTable params={[
                 ['symbols', 'string', 'all', 'Comma-separated symbols (e.g. BTC,ETH)'],
                 ['exchanges', 'string', 'all', 'Comma-separated exchanges'],
+                ['aggregate', 'number', '0', '1 = one row per symbol with summed volume'],
               ]} />
-              <CodeBlock title="Response">{`{
+              <CodeBlock title="Response (per-venue, default)">{`{
   "success": true,
   "data": [
     {
@@ -428,7 +459,23 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
       "volume24h": 12500000000,
       "priceChange24hPct": 1.25
     }
-  ]
+  ],
+  "meta": { "timestamp": 1713181800000, "entries": 380, "mode": "per-venue" }
+}`}</CodeBlock>
+              <CodeBlock title="Response (aggregate=1)">{`{
+  "success": true,
+  "data": [
+    {
+      "symbol": "BTC",
+      "lastPrice": 84250.50,
+      "high24h": 85100.00,
+      "low24h": 83200.00,
+      "volume24h": 38400000000,
+      "priceChange24hPct": 1.27,
+      "venueCount": 14
+    }
+  ],
+  "meta": { "timestamp": 1713181800000, "entries": 230, "mode": "aggregate" }
 }`}</CodeBlock>
             </Section>
 
