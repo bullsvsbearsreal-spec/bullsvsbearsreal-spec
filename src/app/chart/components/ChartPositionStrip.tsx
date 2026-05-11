@@ -100,6 +100,7 @@ export function ChartPositionStrip({ symbol }: { symbol: string }) {
     <div style={{
       display: 'flex', flexDirection: 'column',
       borderBottom: '1px solid var(--hub-border-subtle)',
+      flexShrink: 0,
     }}>
       {matched.map(p => (
         <PositionRow key={`${p.exchange}-${p.id}`} p={p} />
@@ -120,12 +121,13 @@ function PositionRow({ p }: { p: ApiPosition }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 0,
-      padding: '6px 14px',
+      padding: '4px 14px',
       background: 'rgba(0,0,0,0.5)',
       fontFamily: 'var(--font-mono)',
       fontSize: 11,
       overflowX: 'auto',
       scrollbarWidth: 'none',
+      lineHeight: 1.2,
     }} className="no-scrollbar">
       {/* LONG / SHORT pill + exchange */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 14, borderRight: '1px solid var(--hub-border-subtle)' }}>
@@ -202,17 +204,20 @@ function PositionRow({ p }: { p: ApiPosition }) {
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', gap: 1,
-      padding: '0 14px',
+      display: 'flex', flexDirection: 'column', gap: 0,
+      padding: '0 12px',
       borderRight: '1px solid var(--hub-border-subtle)',
-      minWidth: 90,
+      minWidth: 86,
       whiteSpace: 'nowrap',
+      lineHeight: 1.2,
+      justifyContent: 'center',
     }}>
       <span style={{
         fontSize: 9, fontWeight: 700,
         letterSpacing: '0.1em', textTransform: 'uppercase',
         color: 'var(--fg-subtle)',
-        marginBottom: 1,
+        marginBottom: 0,
+        lineHeight: 1.2,
       }}>{label}</span>
       {children}
     </div>

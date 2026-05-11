@@ -18,7 +18,7 @@ import SoundToggle from '@/components/SoundToggle';
 import { SatPing } from '@/components/design-system';
 import { formatPrice } from '@/lib/utils/format';
 import {
-  useFundingRates, useOpenInterest, useOIChanges, useLongShort,
+  useFundingRates, useOpenInterest, useOIChanges, useLongShort, useTickers,
 } from '@/hooks/useSWRApi';
 import {
   ChartStatsBar, ChartAiStrip, ChartVenueFundingStrip,
@@ -393,6 +393,7 @@ function ChartPageInner() {
   const oiApi         = useOpenInterest();
   const oiChangesApi  = useOIChanges();
   const lsApi         = useLongShort(isCrypto ? `${displayLabel.toUpperCase()}USDT` : 'BTCUSDT');
+  const tickersApi    = useTickers();
 
   const statsBarData = useMemo<ChartStatsBarData | null>(() => {
     if (!isCrypto) return null;
@@ -436,8 +437,22 @@ function ChartPageInner() {
     const longShortRatio = lsRaw?.longShortRatio
       ?? (longRatio != null && shortRatio != null && shortRatio > 0 ? longRatio / shortRatio : null);
 
-    // Volume — coin units estimated from quote vol / price
-    const volume24hUsd = tickerStat.volume24h ?? null;
+    // Volume — aggregate cross-venue (deduped by exchange, cap per-entry against
+    // mis-reported figures from a single venue). Mirrors the dedupe logic in
+    // CryptoMetricsPanel so the two strips show the same total.
+    const MAX_SANE_VOL = 100_000_000_000;
+    const tickerEntries = (tickersApi.data ?? []).filter(t => t.symbol === sym);
+    const volByVenue = new Map<string, number>();
+    for (const t of tickerEntries) {
+      const v = Number(t.quoteVolume24h ?? t.volume24h) || 0;
+      if (v <= 0 || v > MAX_SANE_VOL || !t.exchange) continue;
+      const prev = volByVenue.get(t.exchange) ?? 0;
+      if (v > prev) volByVenue.set(t.exchange, v);
+    }
+    const aggVolume24hUsd = volByVenue.size > 0
+      ? Array.from(volByVenue.values()).reduce((a, b) => a + b, 0)
+      : null;
+    const volume24hUsd = aggVolume24hUsd ?? tickerStat.volume24h ?? null;
     const volume24hCoin = (volume24hUsd != null && tickerStat.price != null && tickerStat.price > 0)
       ? volume24hUsd / tickerStat.price
       : null;
@@ -473,7 +488,7 @@ function ChartPageInner() {
       rsi: null,
       atr: null,
     };
-  }, [isCrypto, displayLabel, displayPair, tvSymbol, tickerStat, fundingApi.data, oiApi.data, oiChangesApi.data, lsApi.data]);
+  }, [isCrypto, displayLabel, displayPair, tvSymbol, tickerStat, fundingApi.data, oiApi.data, oiChangesApi.data, lsApi.data, tickersApi.data]);
 
   const venueFundingRows = useMemo<VenueFundingRow[]>(() => {
     if (!isCrypto) return [];
@@ -1047,8 +1062,8 @@ function ChartPageInner() {
       )}
 
       {/* ─── Chart + side tape ─── */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 200, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minHeight: 180, display: 'flex', position: 'relative' }}>
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
             <ChartErrorBoundary name="TradingView Chart" minHeight="250px">
               <TradingViewChart tvSymbol={tvSymbol} interval={interval} />

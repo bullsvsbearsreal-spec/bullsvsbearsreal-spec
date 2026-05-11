@@ -108,24 +108,25 @@ export function ChartStatsBar({ data }: { data: ChartStatsBarData }) {
         display: 'flex',
         alignItems: 'stretch',
         gap: 0,
-        padding: '8px 14px',
+        padding: '4px 14px',
         background: 'var(--hub-darker)',
         borderBottom: '1px solid var(--hub-border-subtle)',
         fontFamily: 'var(--font-mono)',
         fontSize: 11,
         overflowX: 'auto',
         scrollbarWidth: 'none',
+        flexShrink: 0,
       }}
       className="no-scrollbar"
     >
       {/* Symbol / venue / instrument */}
       <StatGroup wide>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--fg-default)', letterSpacing: '-0.01em' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1.1 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--fg-default)', letterSpacing: '-0.01em' }}>
             {data.symbol}{data.pair ?? ''}
           </span>
         </div>
-        <div style={{ fontSize: 9, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', gap: 6 }}>
+        <div style={{ fontSize: 9, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', gap: 6, lineHeight: 1.2 }}>
           {data.venue && <span>{data.venue}</span>}
           {data.instrumentTag && <span style={{ color: 'var(--hub-accent)' }}>· {data.instrumentTag}</span>}
           {data.leverage && <span>· {data.leverage}x</span>}
@@ -134,11 +135,11 @@ export function ChartStatsBar({ data }: { data: ChartStatsBarData }) {
 
       {/* Price + 24h change */}
       <StatGroup wide>
-        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--fg-default)', letterSpacing: '-0.02em' }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--fg-default)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
           {data.price != null ? formatPrice(data.price) : <SkeletonValue width={80} />}
         </div>
         {data.change24hUsd != null && data.change24hPct != null ? (
-          <div style={{ display: 'flex', gap: 6, fontSize: 11, fontWeight: 700, color: priceColor }}>
+          <div style={{ display: 'flex', gap: 6, fontSize: 10, fontWeight: 700, color: priceColor, lineHeight: 1.2 }}>
             <span>{fmtCompactUsd(data.change24hUsd, { sign: true })}</span>
             <span>{fmtPct(data.change24hPct, { sign: true })}</span>
           </div>
@@ -244,18 +245,21 @@ function StatGroup({ label, children, wide }: {
 }) {
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', gap: 1,
-      padding: '0 14px',
+      display: 'flex', flexDirection: 'column', gap: 0,
+      padding: '0 12px',
       borderRight: '1px solid var(--hub-border-subtle)',
-      minWidth: wide ? 140 : 90,
+      minWidth: wide ? 130 : 86,
       whiteSpace: 'nowrap',
+      lineHeight: 1.2,
+      justifyContent: 'center',
     }}>
       {label && (
         <span style={{
           fontSize: 9, fontWeight: 700,
           letterSpacing: '0.1em', textTransform: 'uppercase',
           color: 'var(--fg-subtle)',
-          marginBottom: 1,
+          marginBottom: 0,
+          lineHeight: 1.2,
         }}>{label}</span>
       )}
       {children}
@@ -324,10 +328,11 @@ export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '6px 14px',
+      padding: '3px 14px',
       background: 'rgba(255,165,0,0.04)',
       borderBottom: '1px solid var(--hub-border-subtle)',
       fontSize: 11,
+      flexShrink: 0,
     }}>
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -392,11 +397,12 @@ export function ChartVenueFundingStrip({ rows, symbol }: { rows: VenueFundingRow
   if (rows.length === 0) {
     return (
       <div style={{
-        padding: '8px 14px',
+        padding: '4px 14px',
         background: 'var(--hub-darker)',
         borderTop: '1px solid var(--hub-border-subtle)',
         fontSize: 10,
         color: 'var(--fg-muted)',
+        flexShrink: 0,
       }}>
         FUNDING · waiting for venue data…
       </div>
@@ -405,7 +411,7 @@ export function ChartVenueFundingStrip({ rows, symbol }: { rows: VenueFundingRow
   return (
     <div style={{
       display: 'flex', alignItems: 'stretch',
-      padding: '8px 14px',
+      padding: '4px 14px',
       background: 'var(--hub-darker)',
       borderTop: '1px solid var(--hub-border-subtle)',
       fontFamily: 'var(--font-mono)',
@@ -413,6 +419,7 @@ export function ChartVenueFundingStrip({ rows, symbol }: { rows: VenueFundingRow
       overflowX: 'auto',
       scrollbarWidth: 'none',
       gap: 6,
+      flexShrink: 0,
     }}
     className="no-scrollbar"
     >
@@ -439,43 +446,32 @@ export function ChartVenueFundingStrip({ rows, symbol }: { rows: VenueFundingRow
         const glyph = r.glyph ?? r.venue.slice(0, 1).toUpperCase();
         return (
           <div key={r.venue} style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '5px 10px', borderRadius: 6,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '3px 9px', borderRadius: 5,
             background: 'var(--hub-dark)',
             border: '1px solid var(--hub-border-subtle)',
             whiteSpace: 'nowrap',
-            minWidth: 140,
+            minWidth: 130,
           }}>
             <span style={{
-              width: 16, height: 16, borderRadius: 4,
+              width: 14, height: 14, borderRadius: 3,
               background: r.glyphBg ?? palette,
               color: '#fff',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, fontWeight: 800,
+              fontSize: 8, fontWeight: 800,
               flexShrink: 0,
             }}>
               {glyph}
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-default)' }}>{r.venue}</span>
-                <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 700, color }}>
-                  {r.fundingPct != null
-                    ? `${r.fundingPct >= 0 ? '+' : ''}${r.fundingPct.toFixed(4)}%`
-                    : '—'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 7, fontSize: 9, color: 'var(--fg-subtle)' }}>
-                {r.openInterestUsd != null && (
-                  <span>OI {fmtCompactUsd(r.openInterestUsd)}</span>
-                )}
-                {r.fundingChangeBps != null && (
-                  <span style={{ color: r.fundingChangeBps >= 0 ? 'var(--pump-mild)' : 'var(--rekt-mild)' }}>
-                    {r.fundingChangeBps >= 0 ? '+' : ''}{r.fundingChangeBps.toFixed(1)} bps
-                  </span>
-                )}
-              </div>
-            </div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-default)' }}>{r.venue}</span>
+            <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 700, color }}>
+              {r.fundingPct != null
+                ? `${r.fundingPct >= 0 ? '+' : ''}${r.fundingPct.toFixed(4)}%`
+                : '—'}
+            </span>
+            {r.openInterestUsd != null && (
+              <span style={{ fontSize: 9, color: 'var(--fg-subtle)' }}>{fmtCompactUsd(r.openInterestUsd)}</span>
+            )}
           </div>
         );
       })}
