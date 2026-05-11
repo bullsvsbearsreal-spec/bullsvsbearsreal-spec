@@ -1002,15 +1002,21 @@ function SummaryStat({ icon, label, value, accent, dotPulse }: {
 function FearGreedTile({ data }: { data: FearGreedResp | null }) {
   const value = data?.value ?? data?.data?.value ?? null;
   const cls = data?.classification ?? data?.data?.classification ?? null;
+  // While loading, value is null. Previously fell through to `v = 50`
+  // which rendered a half-empty arc + "—" number — looked broken.
+  // Now render a static neutral track with no arc + a shimmer text
+  // skeleton until real data arrives.
+  const isLoading = value == null;
   const v = value ?? 50;
 
   // Color stop based on value
-  const color =
+  const color = isLoading ? 'rgba(255,255,255,0.12)' : (
     v < 25 ? '#dc2626' :
     v < 45 ? '#f59e0b' :
     v < 55 ? '#facc15' :
     v < 75 ? '#84cc16' :
-            '#22c55e';
+            '#22c55e'
+  );
 
   // semicircle path: 180° arc from left to right, radius 60, center 75,72
   const r = 56;
@@ -1039,12 +1045,15 @@ function FearGreedTile({ data }: { data: FearGreedResp | null }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
         <svg width="160" height="84" viewBox="0 0 160 84" style={{ flexShrink: 0 }}>
-          {/* Track */}
+          {/* Track — always shown */}
           <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={10} strokeLinecap="round" />
-          {/* Filled arc */}
-          <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${endX} ${endY}`} fill="none" stroke={color} strokeWidth={10} strokeLinecap="round" style={{ filter: `drop-shadow(0 0 6px ${color}66)` }} />
-          {/* Needle dot */}
-          <circle cx={endX} cy={endY} r={5} fill={color} />
+          {/* Filled arc — only when we have a real value */}
+          {!isLoading && (
+            <>
+              <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${endX} ${endY}`} fill="none" stroke={color} strokeWidth={10} strokeLinecap="round" style={{ filter: `drop-shadow(0 0 6px ${color}66)` }} />
+              <circle cx={endX} cy={endY} r={5} fill={color} />
+            </>
+          )}
         </svg>
       </div>
       <div style={{
@@ -1052,11 +1061,32 @@ function FearGreedTile({ data }: { data: FearGreedResp | null }) {
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
       }}>
         <div>
-          <div style={{
-            fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-mono)',
-            color, letterSpacing: '-0.02em', lineHeight: 1,
-          }}>{value ?? '—'}</div>
-          <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginTop: 3 }}>{cls ?? '—'}</div>
+          {isLoading ? (
+            <>
+              <div style={{
+                height: 22, width: 38,
+                background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+                backgroundSize: '200% 100%',
+                borderRadius: 4,
+                animation: 'shimmer 1.4s ease-in-out infinite',
+              }} aria-label="Fear & Greed loading" />
+              <div style={{
+                height: 10, width: 64, marginTop: 3,
+                background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+                backgroundSize: '200% 100%',
+                borderRadius: 3,
+                animation: 'shimmer 1.4s ease-in-out infinite',
+              }} />
+            </>
+          ) : (
+            <>
+              <div style={{
+                fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-mono)',
+                color, letterSpacing: '-0.02em', lineHeight: 1,
+              }}>{value}</div>
+              <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginTop: 3 }}>{cls ?? '—'}</div>
+            </>
+          )}
         </div>
         <Link href="/fear-greed" style={{
           color, fontSize: 10, fontWeight: 700, textDecoration: 'none',
@@ -1074,6 +1104,10 @@ function FearGreedTile({ data }: { data: FearGreedResp | null }) {
 // Dominance tile (BTC / ETH)
 // ────────────────────────────────────────────────────────────────────
 function DominanceTile({ label, value, color, symbol }: { label: string; value?: number | null; color: string; symbol: string }) {
+  // Render skeleton instead of "—%" + a half-empty progress bar when
+  // value is missing. The critic walkthrough flagged the loading state
+  // as looking broken (faint progress line with "—%" badge).
+  const isLoading = value == null;
   const v = value ?? 0;
   return (
     <div style={{
@@ -1097,23 +1131,42 @@ function DominanceTile({ label, value, color, symbol }: { label: string; value?:
         }}>{label}</span>
       </div>
       <div style={{ position: 'relative' }}>
-        <div style={{
-          fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)',
-          color: 'var(--fg-default)', letterSpacing: '-0.01em', lineHeight: 1,
-        }}>
-          {value != null ? `${v.toFixed(2)}` : '—'}
-          <span style={{ color, fontSize: 18, marginLeft: 2 }}>%</span>
-        </div>
-        {/* progress bar */}
-        <div style={{ marginTop: 14, height: 6, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-          <div style={{
-            height: '100%',
-            width: `${Math.min(100, Math.max(0, v))}%`,
-            background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-            boxShadow: `0 0 8px ${color}55`,
-            transition: 'width 600ms ease-out',
-          }} />
-        </div>
+        {isLoading ? (
+          <>
+            <div style={{
+              height: 28, width: 100,
+              background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+              backgroundSize: '200% 100%',
+              borderRadius: 4,
+              animation: 'shimmer 1.4s ease-in-out infinite',
+            }} aria-label={`${label} loading`} />
+            <div style={{
+              marginTop: 14, height: 6, borderRadius: 4,
+              background: 'rgba(255,255,255,0.04)',
+              overflow: 'hidden',
+            }} />
+          </>
+        ) : (
+          <>
+            <div style={{
+              fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)',
+              color: 'var(--fg-default)', letterSpacing: '-0.01em', lineHeight: 1,
+            }}>
+              {v.toFixed(2)}
+              <span style={{ color, fontSize: 18, marginLeft: 2 }}>%</span>
+            </div>
+            {/* progress bar */}
+            <div style={{ marginTop: 14, height: 6, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.min(100, Math.max(0, v))}%`,
+                background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+                boxShadow: `0 0 8px ${color}55`,
+                transition: 'width 600ms ease-out',
+              }} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

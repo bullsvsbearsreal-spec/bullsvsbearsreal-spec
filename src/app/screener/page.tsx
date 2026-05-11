@@ -417,7 +417,7 @@ export default function ScreenerPage() {
             <h1 className="heading-page">Screener</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
               {loading && rows.length === 0
-                ? 'Scanning symbols across 26 exchanges...'
+                ? 'Scanning symbols across 26 of 32 tracked venues…'
                 : `Filter ${rows.length} symbols by funding, OI, volume, and price action`}
             </p>
           </div>

@@ -149,6 +149,45 @@ const SENTIMENT_COLORS = {
   neutral: { bg: 'bg-neutral-500/10', text: 'text-neutral-400', dot: 'bg-neutral-400' },
 };
 
+/**
+ * Pick which article gets the big featured / hero slot. Was just
+ * `displayArticles[0]` (newest), which let exchange promo posts
+ * ("BTC Predict & Earn Challenge", "Up to 100% bonus", etc.) take
+ * over the prime real estate. Now:
+ *   - Examines the top 5 newest articles
+ *   - Skips entries that look like promos (exchange source AND title
+ *     hits a promo keyword)
+ *   - Returns the index of the first non-promo, or 0 as fallback
+ */
+const PROMO_KEYWORDS = /(predict\s*&?\s*earn|airdrop|bonus|earn\s+up\s+to|launchpad|giveaway|cashback|trading\s+contest|deposit\s+to\s+win|points\s+mall|carnival|festival|trade\s+to\s+earn)/i;
+const EXCHANGE_SOURCES = new Set([
+  'Bybit', 'Binance', 'OKX', 'Coinbase', 'Kraken', 'KuCoin', 'Bitget',
+  'Bitfinex', 'MEXC', 'Gate.io', 'HTX', 'Bitstamp', 'BingX', 'BitMEX',
+]);
+
+function looksLikePromo(article: NewsArticle): boolean {
+  // Treat as promo only when BOTH source is an exchange AND the title
+  // matches a promo keyword. A news outlet writing ABOUT a promo (e.g.,
+  // Cointelegraph covering a Bybit campaign) is legitimate news and
+  // shouldn't be skipped.
+  if (!EXCHANGE_SOURCES.has(article.source)) return false;
+  return PROMO_KEYWORDS.test(article.title);
+}
+
+function pickFeaturedArticleIndex(articles: NewsArticle[]): number {
+  if (articles.length === 0) return -1;
+  // Look in the top 5 newest for the first non-promo. Past 5 the
+  // "freshness" benefit fades; we'd rather promote a 6-hour-old
+  // real story than a 5-minute-old promo.
+  const window = Math.min(5, articles.length);
+  for (let i = 0; i < window; i++) {
+    if (!looksLikePromo(articles[i])) return i;
+  }
+  // All 5 look promotional — fall back to the freshest. The page
+  // is mostly promos at this hour; nothing better to surface.
+  return 0;
+}
+
 /* ─── Main Page ──────────────────────────────────────────────── */
 
 export default function NewsPage() {
@@ -541,31 +580,46 @@ export default function NewsPage() {
               <div className="space-y-4">
                 {viewMode === 'cards' ? (
                   <>
-                    {/* Featured article (first one) */}
-                    {displayArticles.length > 0 && (
-                      <FeaturedArticle
-                        article={displayArticles[0]}
-                        onCurrencyClick={handleCurrencyClick}
-                        isRead={readIds.has(displayArticles[0].id)}
-                        isBookmarked={bookmarkedIds.has(displayArticles[0].id)}
-                        onArticleClick={handleArticleClick}
-                        onBookmark={handleBookmark}
-                      />
-                    )}
-                    {/* Article grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {displayArticles.slice(1).map(article => (
-                        <NewsCard
-                          key={article.id}
-                          article={article}
-                          onCurrencyClick={handleCurrencyClick}
-                          isRead={readIds.has(article.id)}
-                          isBookmarked={bookmarkedIds.has(article.id)}
-                          onArticleClick={handleArticleClick}
-                          onBookmark={handleBookmark}
-                        />
-                      ))}
-                    </div>
+                    {/* Featured article — pick the first NON-promotional one.
+                        Was rendering displayArticles[0] which sometimes meant
+                        a Bybit/Binance "Predict & Earn" / airdrop promo took
+                        the half-viewport hero slot. Now we look at the first
+                        5 candidates and prefer real editorial copy (news /
+                        blogs). Falls back to the first article if everything
+                        in the top 5 looks promotional. */}
+                    {(() => {
+                      const featuredIdx = pickFeaturedArticleIndex(displayArticles);
+                      if (featuredIdx < 0) return null;
+                      const featured = displayArticles[featuredIdx];
+                      // Remaining list: everything else in the original order
+                      const remaining = displayArticles.filter((_, i) => i !== featuredIdx);
+                      return (
+                        <>
+                          <FeaturedArticle
+                            article={featured}
+                            onCurrencyClick={handleCurrencyClick}
+                            isRead={readIds.has(featured.id)}
+                            isBookmarked={bookmarkedIds.has(featured.id)}
+                            onArticleClick={handleArticleClick}
+                            onBookmark={handleBookmark}
+                          />
+                          {/* Article grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {remaining.map(article => (
+                              <NewsCard
+                                key={article.id}
+                                article={article}
+                                onCurrencyClick={handleCurrencyClick}
+                                isRead={readIds.has(article.id)}
+                                isBookmarked={bookmarkedIds.has(article.id)}
+                                onArticleClick={handleArticleClick}
+                                onBookmark={handleBookmark}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   /* Feed view — compact list like Tree of Alpha */

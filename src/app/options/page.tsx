@@ -865,7 +865,7 @@ export default function OptionsPage() {
               <h1 className="text-2xl font-bold text-white tracking-tight">Options</h1>
             </div>
             <p className="text-neutral-500 text-sm ml-12">
-              Max pain, OI distribution & IV across {activeCount} exchanges
+              Max pain, OI distribution & IV across {activeCount} options venues
             </p>
           </div>
 
@@ -935,7 +935,17 @@ export default function OptionsPage() {
                 const mp = nearest?.maxPain || data.maxPain || 0;
                 const spot = liveSpot || data.underlyingPrice;
                 const dist = spot > 0 ? ((mp - spot) / spot * 100) : 0;
-                const label = nearest ? nearest.date.slice(5) : 'Global';
+                // Render the expiry as "May 12" instead of "05-12" (which read
+                // ambiguously as May-12 vs December-5). Falls back gracefully
+                // if the date isn't parseable.
+                const label = nearest
+                  ? (() => {
+                      const d = new Date(nearest.date);
+                      return Number.isNaN(d.getTime())
+                        ? nearest.date.slice(5)
+                        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                    })()
+                  : 'Global';
                 return (
                   <MetricCard
                     icon={<Crosshair className="w-4 h-4 text-hub-yellow" />}
