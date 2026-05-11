@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateAllVenueCosts } from '@/lib/execution-costs/calculator';
 import { Direction, ExecutionCostResponse } from '@/lib/execution-costs/types';
+import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -47,7 +48,15 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(response, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+        // Surface the fee-model identifier so cost-calc consumers know
+        // which fee table the venue.fee values came from. Same convention
+        // as /api/v1/arbitrage and /api/v1/spreads.
+        'X-Fee-Model-Version': FEE_MODEL_VERSION,
+        'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+      },
     });
   } catch (error) {
     console.error('Execution cost API error:', error);
