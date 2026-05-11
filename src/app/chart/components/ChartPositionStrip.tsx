@@ -161,11 +161,26 @@ function PositionRow({ p }: { p: ApiPosition }) {
         <div style={{ color: 'var(--fg-default)' }}>{fmtPrice(p.markPrice)}</div>
       </Cell>
 
-      {/* Liq */}
+      {/* Liq + distance to liq.
+          Distance % = |mark - liq| / mark × 100. Color-codes so the
+          trader can see at a glance whether the position is in
+          danger (red <2%), caution (yellow <5%), or safe. */}
       <Cell label="LIQ">
         <div style={{ color: p.liquidationPrice != null ? 'var(--rekt-mild)' : 'var(--fg-muted)' }}>
           {fmtPrice(p.liquidationPrice)}
         </div>
+        {(() => {
+          if (p.liquidationPrice == null || p.markPrice == null || p.markPrice <= 0) return null;
+          const distPct = Math.abs(p.markPrice - p.liquidationPrice) / p.markPrice * 100;
+          const distColor = distPct < 2 ? 'var(--rekt-hot)'
+            : distPct < 5 ? '#f5a623'
+            : 'var(--pump-mild)';
+          return (
+            <div style={{ fontSize: 10, color: distColor }}>
+              {distPct.toFixed(1)}% away
+            </div>
+          );
+        })()}
       </Cell>
 
       {/* P&L */}
