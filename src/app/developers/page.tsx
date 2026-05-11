@@ -10,7 +10,7 @@ import AuthPromptBanner from '@/components/AuthPromptBanner';
 import {
   Key, Copy, Check, Trash2, Zap, BarChart3, TrendingUp, Shield, Clock, Globe,
   ArrowRight, Terminal, Code2, Activity, Layers, LineChart,
-  ChevronRight, Database, Wifi, ChevronDown, Hash,
+  ChevronRight, Database, Wifi, ChevronDown, Hash, Scale,
 } from 'lucide-react';
 
 interface ApiKeyInfo {
@@ -607,6 +607,62 @@ export default function DevelopersPage() {
                 </div>
                 <h3 className="text-sm font-bold text-white mb-1.5">{s.title}</h3>
                 <p className="text-gray-500 text-[13px] leading-relaxed max-w-[240px] mx-auto">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </FadeIn>
+
+        {/* Why InfoHub — differentiators vs other crypto data providers.
+            Each card highlights something we do that aggregators like
+            Coinglass / CoinAPI / etc. don't expose, or expose less cleanly. */}
+        <FadeIn className="mb-14 sm:mb-20">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-2">Why InfoHub vs alternatives</h2>
+            <p className="text-gray-500 text-sm">What you get here that you don&apos;t get from the bigger aggregators</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {([
+              {
+                title: 'Fee transparency',
+                accent: 'border-l-amber-500',
+                icon: Shield,
+                desc: 'Every /arbitrage and /spreads response returns the per-venue maker + taker schedule, a version identifier, and a last-updated timestamp. Verify the assumption baked into netSpread8h or recompute under your own fill model. Most aggregators bury fees in their pricing tier.',
+              },
+              {
+                title: 'Aggregate + per-venue modes',
+                accent: 'border-l-blue-500',
+                icon: Layers,
+                desc: 'Pass ?aggregate=1 on /funding, /openinterest, /tickers to collapse to one row per symbol with avg/min/max + venue breakdown. One fetch instead of paging through 30 venues client-side.',
+              },
+              {
+                title: 'Real, source-attributed data',
+                accent: 'border-l-green-500',
+                icon: Database,
+                desc: 'Multi-venue fallback chains (e.g. Binance → Bybit → OKX → Binance spot on /klines) keep responses up when one venue is down. Response includes data.source so your indicator math knows which venue served it.',
+              },
+              {
+                title: 'OpenAPI 3.1 + codegen',
+                accent: 'border-l-cyan-500',
+                icon: Code2,
+                desc: 'Full OpenAPI 3.1 spec at /api/v1/openapi (no auth) for codegen. X-Fee-Model-Version + X-RateLimit-* headers on every response. Tested for $ref integrity — every schema reference resolves.',
+              },
+              {
+                title: 'Built-in fee-aware grading',
+                accent: 'border-l-purple-500',
+                icon: Scale,
+                desc: 'The /arbitrage endpoint grades opportunities A-D using OI sanity + 7-day spread stability + round-trip fee deduction. Don’t hunt through dozens of paper-thin opportunities — filter by grade and execute.',
+              },
+              {
+                title: 'On-chain integration',
+                accent: 'border-l-pink-500',
+                icon: Wifi,
+                desc: 'On-chain DEX whale trade feed + Hyperliquid whale liquidation roulette + smart-money leaderboard + cross-chain bridge flows. Most aggregators only have CEX data.',
+              },
+            ] as const).map(c => (
+              <div key={c.title} className={`bg-white/[0.02] border border-white/[0.06] border-l-2 ${c.accent} rounded-xl p-5 hover:border-white/[0.1] hover:bg-white/[0.03] transition-all`}>
+                <c.icon className="w-5 h-5 text-gray-500 mb-3" />
+                <h3 className="text-sm font-bold text-white mb-2">{c.title}</h3>
+                <p className="text-gray-500 text-[13px] leading-relaxed">{c.desc}</p>
               </div>
             ))}
           </div>
