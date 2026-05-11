@@ -8,6 +8,7 @@ import { createHash } from 'crypto';
 import { validateApiKey } from '@/lib/db';
 import { checkRateLimit } from '@/lib/api/rate-limit';
 import { createRateLimiter } from '@/lib/auth/rate-limit';
+import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
 
 /**
  * Hash the raw bearer token before using it as a Map key. Without this,
@@ -68,7 +69,17 @@ export async function authenticateV1Request(request: NextRequest): Promise<
       ok: false,
       response: NextResponse.json(
         { success: false, error: 'API key required. Pass Authorization: Bearer ih_xxx' },
-        { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="InfoHub API"' } },
+        {
+          status: 401,
+          headers: {
+            'WWW-Authenticate': 'Bearer realm="InfoHub API"',
+            // Surface fee-model identifier even on auth-failure so
+            // monitoring scripts can probe with a HEAD/no-key request
+            // and still detect schedule bumps cheaply.
+            'X-Fee-Model-Version': FEE_MODEL_VERSION,
+            'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+          },
+        },
       ),
     };
   }
