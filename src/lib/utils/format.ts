@@ -16,6 +16,10 @@ export function isValidNumber(value: unknown): value is number {
 export function formatPrice(num: SafeNumber): string {
   if (num === undefined || num === null || isNaN(num) || !isFinite(num)) return '$0.00';
   const abs = Math.abs(num);
+  // Short-circuit exact zero — otherwise the sub-$0.00000001 branch below
+  // would emit ugly "$0.0000e+0" exponent notation for what's really
+  // just "no data" (e.g. when an upstream ticker lacks high/low fields).
+  if (abs === 0) return '$0.00';
   const sign = num < 0 ? '-' : '';
   if (abs >= 1000) return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   if (abs >= 1) return `${sign}$${abs.toFixed(2)}`;
