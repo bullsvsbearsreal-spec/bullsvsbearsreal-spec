@@ -425,10 +425,44 @@ export default function DevelopersPage() {
   };
 
   if (status === 'loading') {
+    // Soft skeleton hero — gives the page weight while the session resolves,
+    // so the layout doesn't pop in. Mirrors the real hero structure roughly
+    // so the perceived load is shorter than a bare "Loading..." line.
     return (
       <div className="min-h-screen bg-black text-white">
         <Header />
-        <div className="max-w-5xl mx-auto px-4 py-20 text-center text-gray-400">Loading...</div>
+        <main id="main-content">
+          <section className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,184,0,0.08),transparent)]" />
+            <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-24">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                <div className="space-y-6">
+                  <div className="h-7 w-40 rounded-full bg-white/[0.04] animate-pulse" />
+                  <div className="space-y-3">
+                    <div className="h-12 w-full max-w-md rounded-md bg-white/[0.04] animate-pulse" />
+                    <div className="h-12 w-3/4 max-w-sm rounded-md bg-white/[0.04] animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-full max-w-lg rounded bg-white/[0.03] animate-pulse" />
+                    <div className="h-4 w-5/6 max-w-md rounded bg-white/[0.03] animate-pulse" />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <div className="h-12 w-44 rounded-xl bg-amber-500/15 animate-pulse" />
+                    <div className="h-12 w-36 rounded-xl bg-white/[0.04] animate-pulse" />
+                  </div>
+                  <div className="grid grid-cols-4 gap-3 pt-4">
+                    {[0,1,2,3].map(i => (
+                      <div key={i} className="h-16 rounded-lg bg-white/[0.03] animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+                <div className="hidden lg:block">
+                  <div className="h-[420px] rounded-2xl bg-white/[0.02] border border-white/[0.05] animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
       </div>
     );
   }
