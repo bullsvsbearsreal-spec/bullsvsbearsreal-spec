@@ -30,71 +30,97 @@ export async function GET(request: NextRequest) {
 
   const pair = `${symbol}USDT`;
 
-  // Try Binance Futures first (works from datacenter IPs where spot is blocked)
-  try {
-    const res = await fetch(
-      `https://fapi.binance.com/fapi/v1/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
-      { signal: AbortSignal.timeout(8000) },
-    );
-    if (res.ok) {
-      const data = await res.json();
-      return formatBinanceResponse(data, pair, interval);
-    }
-  } catch { /* fall through */ }
-
-  // Bybit fallback — interval format differs: 1=1m,5=5m,15=15m,60=1h,240=4h,D=1d,W=1w
+  // Fan out to all 4 venues in parallel and return the first non-empty hit.
+  // Previously this was serial with 8s+8s+8s+6s = 30s worst case, which
+  // hit the gateway timeout for unknown symbols (all venues fail) and
+  // returned 504 HTML instead of the intended 502 JSON. Now: 6s worst
+  // case regardless of how many venues we have to consult.
   const bybitIntervalMap: Record<string, string> = {
     '1m': '1', '5m': '5', '15m': '15', '1h': '60', '4h': '240', '1d': 'D', '1w': 'W',
   };
   const bybitInterval = bybitIntervalMap[interval] || '60';
 
-  try {
-    const res = await fetch(
-      `https://api.bybit.com/v5/market/kline?category=linear&symbol=${pair}&interval=${bybitInterval}&limit=${limit}`,
-      { signal: AbortSignal.timeout(8000) },
-    );
-    if (res.ok) {
-      const json = await res.json();
-      const list = json?.result?.list;
-      if (Array.isArray(list) && list.length > 0) {
-        return formatBybitResponse(list, pair, interval);
-      }
-    }
-  } catch { /* fall through to OKX */ }
-
-  // OKX fallback — interval format: 1m,5m,15m,1H,4H,1D,1W
   const okxIntervalMap: Record<string, string> = {
     '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W',
   };
   const okxInterval = okxIntervalMap[interval] || '1H';
   const okxInstId = `${symbol}-USDT-SWAP`;
 
-  try {
-    const res = await fetch(
-      `https://www.okx.com/api/v5/market/candles?instId=${okxInstId}&bar=${okxInterval}&limit=${Math.min(limit, 300)}`,
-      { signal: AbortSignal.timeout(8000) },
-    );
-    if (res.ok) {
-      const json = await res.json();
-      if (json?.code === '0' && Array.isArray(json.data) && json.data.length > 0) {
-        return formatOkxResponse(json.data, pair, interval);
-      }
-    }
-  } catch { /* fall through to spot */ }
+  const TIMEOUT = 6000;
 
-  // Binance Spot — last resort (often blocked from datacenter IPs)
-  try {
-    const res = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
-      { signal: AbortSignal.timeout(6000) },
-    );
-    if (res.ok) {
+  type Attempt = () => Promise<NextResponse | null>;
+
+  const tryBinanceFutures: Attempt = async () => {
+    try {
+      const res = await fetch(
+        `https://fapi.binance.com/fapi/v1/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
+        { signal: AbortSignal.timeout(TIMEOUT) },
+      );
+      if (!res.ok) return null;
       const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) return null;
       return formatBinanceResponse(data, pair, interval);
-    }
-  } catch { /* fall through */ }
+    } catch { return null; }
+  };
 
-  return NextResponse.json({ error: 'All kline sources failed' }, { status: 502 });
+  const tryBybit: Attempt = async () => {
+    try {
+      const res = await fetch(
+        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${pair}&interval=${bybitInterval}&limit=${limit}`,
+        { signal: AbortSignal.timeout(TIMEOUT) },
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      const list = json?.result?.list;
+      if (!Array.isArray(list) || list.length === 0) return null;
+      return formatBybitResponse(list, pair, interval);
+    } catch { return null; }
+  };
+
+  const tryOKX: Attempt = async () => {
+    try {
+      const res = await fetch(
+        `https://www.okx.com/api/v5/market/candles?instId=${okxInstId}&bar=${okxInterval}&limit=${Math.min(limit, 300)}`,
+        { signal: AbortSignal.timeout(TIMEOUT) },
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (json?.code !== '0' || !Array.isArray(json.data) || json.data.length === 0) return null;
+      return formatOkxResponse(json.data, pair, interval);
+    } catch { return null; }
+  };
+
+  const tryBinanceSpot: Attempt = async () => {
+    try {
+      const res = await fetch(
+        `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
+        { signal: AbortSignal.timeout(TIMEOUT) },
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) return null;
+      return formatBinanceResponse(data, pair, interval);
+    } catch { return null; }
+  };
+
+  // Race: take the first venue that returns data, with a preference order
+  // (Binance perp → Bybit → OKX → Binance spot) used only as a tiebreaker
+  // if multiple resolve in the same tick.
+  const results = await Promise.allSettled([
+    tryBinanceFutures(),
+    tryBybit(),
+    tryOKX(),
+    tryBinanceSpot(),
+  ]);
+
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) return r.value;
+  }
+
+  return NextResponse.json(
+    { error: 'All kline sources failed', pair, interval },
+    { status: 502 },
+  );
 }
 
 function formatBinanceResponse(data: any[], pair: string, interval: string) {
